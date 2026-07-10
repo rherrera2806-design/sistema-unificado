@@ -258,14 +258,14 @@ const App = {
 
     async resetWithData() {
         if (!(await this.confirm('¿Estás seguro? Se eliminarán TODOS los datos.'))) return;
-        try { await fetch('/api/reset', { method: 'POST' }); this.showAlert('Base de datos reiniciada'); }
+        try { await fetch('/api/sigma/reset', { method: 'POST' }); this.showAlert('Base de datos reiniciada'); }
         catch(e) { this.showAlert('Error: ' + e.message, 'danger'); }
         this.loadModule('dashboard');
     },
 
     async resetBlank() {
         try {
-            await fetch('/api/clear', { method: 'POST' });
+            await fetch('/api/sigma/clear', { method: 'POST' });
             this.showAlert('Sistema limpiado: todos los datos eliminados');
         } catch(e) { this.showAlert('Error: ' + e.message, 'danger'); }
         this.loadModule('dashboard');

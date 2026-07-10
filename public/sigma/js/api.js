@@ -1,6 +1,6 @@
 class ApiClient {
     constructor() {
-        this.baseUrl = '/api';
+        this.baseUrl = '/api/sigma';
         this.cache = {};
     }
 
