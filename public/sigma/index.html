@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA - Sistema de Gesti\u00f3n de Mantenimiento Industrial</title>
+    <link rel="stylesheet" href="/sigma/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <button class="menu-toggle" onclick="App.toggleSidebar()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;padding:4px 8px;">☰</button>
+            <div class="header-title"><span>SIGMA</span> - Mantenimiento Industrial</div>
+            <div class="header-right">
+                <span class="date-display" id="currentDate"></span>
+            </div>
+        </header>
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="App.closeSidebar()"></div>
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">M</div>
+                <div class="logo-text">
+                    SIGMA
+                    <small>Sistema de Gestión de Mantenimiento</small>
+                </div>
+            </div>
+            <nav class="sidebar-nav" id="sidebarNav"></nav>
+        </aside>
+        <main class="main-content" id="mainContent">
+            <div class="page active" id="page-dashboard"></div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalHeaderTitle">Título</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body"></div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/sigma/js/api.js"></script>
+    <script src="/sigma/js/app.js"></script>
+    <script src="/sigma/js/modules/dashboard.js"></script>
+    <script src="/sigma/js/modules/machineTypes.js"></script>
+    <script src="/sigma/js/modules/machines.js"></script>
+    <script src="/sigma/js/modules/components.js"></script>
+    <script src="/sigma/js/modules/preventive.js"></script>
+    <script src="/sigma/js/modules/corrective.js"></script>
+    <script src="/sigma/js/modules/calendar.js"></script>
+    <script src="/sigma/js/modules/notas.js"></script>
+    <script src="/sigma/js/modules/history.js"></script>
+    <script src="/sigma/js/modules/bitacora.js"></script>
+    <script src="/sigma/js/modules/reports.js"></script>
+</body>
+</html>

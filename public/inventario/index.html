@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Inventario - Vidrieria</title>
+    <link rel="stylesheet" href="/inv-css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <button class="menu-toggle" onclick="App.toggleSidebar()">☰</button>
+            <div class="header-title"><span>Control Inventario</span> - Vidrieria</div>
+            <div class="header-right">
+                <span class="user-name" id="headerUser"></span>
+                <button class="btn btn-sm btn-outline" onclick="window.top.App && window.top.showSelector ? window.top.showSelector() : history.back()" style="color:white;border-color:rgba(255,255,255,0.3);">Modulos</button>
+            </div>
+        </header>
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="App.closeSidebar()"></div>
+        <aside class="sidebar" id="sidebar"></aside>
+        <main class="main-content" id="mainContent"></main>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Titulo</h3>
+                <button class="modal-close" onclick="App.hideModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script src="/inv-js/api.js"></script>
+    <script src="/inv-js/app.js"></script>
+    <script src="/inv-js/modules/dashboard.js"></script>
+    <script src="/inv-js/modules/movimientos.js"></script>
+    <script src="/inv-js/modules/inventario.js"></script>
+    <script src="/inv-js/modules/historial.js"></script>
+</body>
+</html>
