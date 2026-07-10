@@ -2,8 +2,8 @@ const SigmaSpareparts = {
   components: [],
 
   async render() {
-    const container = document.getElementById('sigma-content');
-    container.innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div></div>';
+    const container = document.querySelector('.page.active');
+    container.innerHTML = '<div class="empty-state"><p>Cargando repuestos...</p></div>';
 
     try {
       const [parts, components] = await Promise.all([
@@ -13,16 +13,14 @@ const SigmaSpareparts = {
       this.components = components || [];
 
       container.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="section-title">
           <h2>Repuestos</h2>
-          <button class="btn btn-primary" onclick="SigmaSpareparts.openAddModal()">
-            <i class="fa fa-plus me-1"></i> Nuevo Repuesto
-          </button>
+          <button class="btn btn-primary" onclick="SigmaSpareparts.openAddModal()">+ Nuevo Repuesto</button>
         </div>
         <div class="card">
-          <div class="card-body p-0">
+          <div class="card-body">
             <div class="table-responsive">
-              <table class="table table-hover mb-0">
+              <table>
                 <thead>
                   <tr>
                     <th>Codigo</th>
@@ -37,27 +35,21 @@ const SigmaSpareparts = {
                 </thead>
                 <tbody>
                   ${parts.length === 0
-                    ? '<tr><td colspan="8" class="text-center text-muted py-3">No hay repuestos registrados</td></tr>'
+                    ? '<tr><td colspan="8" class="empty-state"><p>No hay repuestos registrados</p></td></tr>'
                     : parts.map(p => {
                       const isLow = (p.stock_actual || 0) <= (p.stock_minimo || 0);
                       return `
-                        <tr class="${isLow ? 'table-danger' : ''}">
-                          <td><code>${this._esc(p.codigo)}</code></td>
+                        <tr style="${isLow ? 'background:rgba(220,53,69,0.08);' : ''}">
+                          <td>${this._esc(p.codigo)}</td>
                           <td>${this._esc(p.descripcion)}</td>
                           <td>${this._esc(this._getComponentName(p.componente_id))}</td>
-                          <td class="fw-bold">${p.stock_actual || 0}</td>
+                          <td style="font-weight:bold;${isLow ? 'color:#dc3545;' : ''}">${p.stock_actual || 0}</td>
                           <td>${p.stock_minimo || 0}</td>
                           <td>${this._esc(p.proveedor)}</td>
                           <td>${this._esc(p.ubicacion)}</td>
                           <td>
-                            <div class="btn-group btn-group-sm">
-                              <button class="btn btn-outline-primary" onclick="SigmaSpareparts.openEditModal('${p.id}')" title="Editar">
-                                <i class="fa fa-edit"></i>
-                              </button>
-                              <button class="btn btn-outline-danger" onclick="SigmaSpareparts.confirmDelete('${p.id}', '${this._esc(p.descripcion)}')" title="Eliminar">
-                                <i class="fa fa-trash"></i>
-                              </button>
-                            </div>
+                            <button class="btn btn-sm btn-outline" onclick="SigmaSpareparts.openEditModal('${p.id}')">Editar</button>
+                            <button class="btn btn-sm btn-danger" onclick="SigmaSpareparts.confirmDelete('${p.id}', '${this._esc(p.descripcion)}')">Eliminar</button>
                           </td>
                         </tr>
                       `;
@@ -86,46 +78,52 @@ const SigmaSpareparts = {
 
     return `
       <form id="sparepartForm" onsubmit="SigmaSpareparts.saveForm(event)">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Codigo *</label>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Codigo *</label>
             <input type="text" class="form-control" name="codigo" required value="${this._esc(part ? part.codigo : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Descripcion *</label>
+          <div class="form-group">
+            <label>Descripcion *</label>
             <input type="text" class="form-control" name="descripcion" required value="${this._esc(part ? part.descripcion : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Componente</label>
-            <select class="form-select" name="componente_id">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Componente</label>
+            <select class="form-control" name="componente_id">
               <option value="">Seleccionar componente...</option>
               ${componentOptions}
             </select>
           </div>
-          <div class="col-md-3">
-            <label class="form-label">Stock Actual</label>
+          <div class="form-group">
+            <label>Stock Actual</label>
             <input type="number" class="form-control" name="stock_actual" min="0" value="${part ? (part.stock_actual || 0) : 0}">
           </div>
-          <div class="col-md-3">
-            <label class="form-label">Stock Minimo</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Stock Minimo</label>
             <input type="number" class="form-control" name="stock_minimo" min="0" value="${part ? (part.stock_minimo || 0) : 0}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Proveedor</label>
+          <div class="form-group">
+            <label>Proveedor</label>
             <input type="text" class="form-control" name="proveedor" value="${this._esc(part ? part.proveedor : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Ubicacion</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ubicacion</label>
             <input type="text" class="form-control" name="ubicacion" value="${this._esc(part ? part.ubicacion : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Precio Unitario</label>
+          <div class="form-group">
+            <label>Precio Unitario</label>
             <input type="number" step="0.01" class="form-control" name="precio_unitario" value="${part ? (part.precio_unitario || '') : ''}">
           </div>
-          <div class="col-12">
-            <label class="form-label">Observaciones</label>
-            <textarea class="form-control" name="observaciones" rows="2">${this._esc(part ? part.observaciones : '')}</textarea>
-          </div>
+        </div>
+        <div class="form-group">
+          <label>Observaciones</label>
+          <textarea class="form-control" name="observaciones" rows="2">${this._esc(part ? part.observaciones : '')}</textarea>
         </div>
         <input type="hidden" name="id" value="${part ? part.id : ''}">
       </form>
@@ -134,15 +132,20 @@ const SigmaSpareparts = {
 
   openAddModal() {
     App.showModal('Nuevo Repuesto', this._getFormHtml(null),
-      '<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'sparepartForm\').requestSubmit()">Guardar</button>'
+      '<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'sparepartForm\').requestSubmit()">Guardar</button>'
     );
   },
 
   async openEditModal(id) {
     try {
-      const part = await api.sigma().crud('spare_parts').getById(id);
+      const parts = await api.sigma().crud('spare_parts').getAll();
+      const part = parts.find(p => p.id === id);
+      if (!part) {
+        App.toast('Repuesto no encontrado', 'error');
+        return;
+      }
       App.showModal('Editar Repuesto', this._getFormHtml(part),
-        '<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'sparepartForm\').requestSubmit()">Actualizar</button>'
+        '<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'sparepartForm\').requestSubmit()">Actualizar</button>'
       );
     } catch (err) {
       App.toast('Error al cargar repuesto: ' + err.message, 'error');
@@ -175,8 +178,8 @@ const SigmaSpareparts = {
 
   confirmDelete(id, name) {
     App.showModal('Confirmar Eliminacion',
-      `<p>¿Está seguro que desea eliminar el repuesto <strong>${name}</strong>?</p>`,
-      `<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-danger" onclick="SigmaSpareparts.doDelete('${id}')">Eliminar</button>`
+      `<p>Seguro que desea eliminar el repuesto <strong>${name}</strong>?</p>`,
+      `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-danger" onclick="SigmaSpareparts.doDelete('${id}')">Eliminar</button>`
     );
   },
 

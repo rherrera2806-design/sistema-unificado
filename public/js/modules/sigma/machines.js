@@ -2,8 +2,8 @@ const SigmaMachines = {
   types: [],
 
   async render() {
-    const container = document.getElementById('sigma-content');
-    container.innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div></div>';
+    const container = document.querySelector('.page.active');
+    container.innerHTML = '<div class="empty-state"><p>Cargando maquinas...</p></div>';
 
     try {
       const [machines, types] = await Promise.all([
@@ -13,16 +13,14 @@ const SigmaMachines = {
       this.types = types || [];
 
       container.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="section-title">
           <h2>Maquinas</h2>
-          <button class="btn btn-primary" onclick="SigmaMachines.openAddModal()">
-            <i class="fa fa-plus me-1"></i> Nueva Maquina
-          </button>
+          <button class="btn btn-primary" onclick="SigmaMachines.openAddModal()">+ Nueva Maquina</button>
         </div>
         <div class="card">
-          <div class="card-body p-0">
+          <div class="card-body">
             <div class="table-responsive">
-              <table class="table table-hover mb-0">
+              <table>
                 <thead>
                   <tr>
                     <th>Codigo</th>
@@ -37,10 +35,10 @@ const SigmaMachines = {
                 </thead>
                 <tbody>
                   ${machines.length === 0
-                    ? '<tr><td colspan="8" class="text-center text-muted py-3">No hay maquinas registradas</td></tr>'
+                    ? '<tr><td colspan="8" class="empty-state"><p>No hay maquinas registradas</p></td></tr>'
                     : machines.map(m => `
                       <tr>
-                        <td><code>${this._esc(m.codigo)}</code></td>
+                        <td>${this._esc(m.codigo)}</td>
                         <td>${this._esc(m.nombre)}</td>
                         <td>${this._esc(this._getTypeName(m.tipo_id))}</td>
                         <td>${this._esc(m.marca)}</td>
@@ -48,14 +46,8 @@ const SigmaMachines = {
                         <td>${this._esc(m.ubicacion)}</td>
                         <td><span class="badge ${this._estadoBadge(m.estado_operativo)}">${this._esc(m.estado_operativo)}</span></td>
                         <td>
-                          <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="SigmaMachines.openEditModal('${m.id}')" title="Editar">
-                              <i class="fa fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-danger" onclick="SigmaMachines.confirmDelete('${m.id}', '${this._esc(m.nombre)}')" title="Eliminar">
-                              <i class="fa fa-trash"></i>
-                            </button>
-                          </div>
+                          <button class="btn btn-sm btn-outline" onclick="SigmaMachines.openEditModal('${m.id}')">Editar</button>
+                          <button class="btn btn-sm btn-danger" onclick="SigmaMachines.confirmDelete('${m.id}', '${this._esc(m.nombre)}')">Eliminar</button>
                         </td>
                       </tr>
                     `).join('')
@@ -78,12 +70,12 @@ const SigmaMachines = {
 
   _estadoBadge(estado) {
     const map = {
-      'Activo': 'bg-success',
-      'Mantenimiento': 'bg-warning text-dark',
-      'Inactivo': 'bg-secondary',
-      'Fuera de servicio': 'bg-danger'
+      'Activo': 'badge-salida',
+      'Mantenimiento': 'badge-entrada',
+      'Inactivo': 'badge-entrada',
+      'Fuera de servicio': 'badge-entrada'
     };
-    return map[estado] || 'bg-secondary';
+    return map[estado] || 'badge-entrada';
   },
 
   _getFormHtml(machine) {
@@ -93,54 +85,62 @@ const SigmaMachines = {
 
     return `
       <form id="machineForm" onsubmit="SigmaMachines.saveForm(event)">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Codigo *</label>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Codigo *</label>
             <input type="text" class="form-control" name="codigo" required value="${this._esc(machine ? machine.codigo : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Nombre *</label>
+          <div class="form-group">
+            <label>Nombre *</label>
             <input type="text" class="form-control" name="nombre" required value="${this._esc(machine ? machine.nombre : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Tipo *</label>
-            <select class="form-select" name="tipo_id" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select class="form-control" name="tipo_id" required>
               <option value="">Seleccionar tipo...</option>
               ${tipoOptions}
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Marca</label>
+          <div class="form-group">
+            <label>Marca</label>
             <input type="text" class="form-control" name="marca" value="${this._esc(machine ? machine.marca : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Modelo</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Modelo</label>
             <input type="text" class="form-control" name="modelo" value="${this._esc(machine ? machine.modelo : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Numero de Serie</label>
+          <div class="form-group">
+            <label>Numero de Serie</label>
             <input type="text" class="form-control" name="numero_serie" value="${this._esc(machine ? machine.numero_serie : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Ubicacion</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ubicacion</label>
             <input type="text" class="form-control" name="ubicacion" value="${this._esc(machine ? machine.ubicacion : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Fecha de Compra</label>
+          <div class="form-group">
+            <label>Fecha de Compra</label>
             <input type="date" class="form-control" name="fecha_compra" value="${this._esc(machine ? machine.fecha_compra : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Estado Operativo</label>
-            <select class="form-select" name="estado_operativo">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Estado Operativo</label>
+            <select class="form-control" name="estado_operativo">
               <option value="Activo" ${machine && machine.estado_operativo === 'Activo' ? 'selected' : ''}>Activo</option>
               <option value="Mantenimiento" ${machine && machine.estado_operativo === 'Mantenimiento' ? 'selected' : ''}>Mantenimiento</option>
               <option value="Inactivo" ${machine && machine.estado_operativo === 'Inactivo' ? 'selected' : ''}>Inactivo</option>
               <option value="Fuera de servicio" ${machine && machine.estado_operativo === 'Fuera de servicio' ? 'selected' : ''}>Fuera de servicio</option>
             </select>
           </div>
-          <div class="col-12">
-            <label class="form-label">Observaciones</label>
-            <textarea class="form-control" name="observaciones" rows="3">${this._esc(machine ? machine.observaciones : '')}</textarea>
+          <div class="form-group">
+            <label>Observaciones</label>
+            <textarea class="form-control" name="observaciones" rows="2">${this._esc(machine ? machine.observaciones : '')}</textarea>
           </div>
         </div>
         <input type="hidden" name="id" value="${machine ? machine.id : ''}">
@@ -150,7 +150,7 @@ const SigmaMachines = {
 
   openAddModal() {
     App.showModal('Nueva Maquina', this._getFormHtml(null),
-      '<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'machineForm\').requestSubmit()">Guardar</button>'
+      '<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'machineForm\').requestSubmit()">Guardar</button>'
     );
   },
 
@@ -158,7 +158,7 @@ const SigmaMachines = {
     try {
       const machine = await api.sigma().getMachineDetails(id);
       App.showModal('Editar Maquina', this._getFormHtml(machine),
-        '<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'machineForm\').requestSubmit()">Actualizar</button>'
+        '<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'machineForm\').requestSubmit()">Actualizar</button>'
       );
     } catch (err) {
       App.toast('Error al cargar maquina: ' + err.message, 'error');
@@ -189,8 +189,8 @@ const SigmaMachines = {
 
   confirmDelete(id, name) {
     App.showModal('Confirmar Eliminacion',
-      `<p>¿Está seguro que desea eliminar la maquina <strong>${name}</strong>?</p><p class="text-muted small">Esta accion no se puede deshacer.</p>`,
-      `<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-danger" onclick="SigmaMachines.doDelete('${id}')">Eliminar</button>`
+      `<p>Seguro que desea eliminar la maquina <strong>${name}</strong>?</p><p style="color:#888;font-size:0.85rem;">Esta accion no se puede deshacer.</p>`,
+      `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-danger" onclick="SigmaMachines.doDelete('${id}')">Eliminar</button>`
     );
   },
 

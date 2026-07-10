@@ -3,8 +3,8 @@ const SigmaPreventive = {
   components: [],
 
   async render() {
-    const container = document.getElementById('sigma-content');
-    container.innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div></div>';
+    const container = document.querySelector('.page.active');
+    container.innerHTML = '<div class="empty-state"><p>Cargando mantenimientos preventivos...</p></div>';
 
     try {
       const [records, machines, components] = await Promise.all([
@@ -16,16 +16,14 @@ const SigmaPreventive = {
       this.components = components || [];
 
       container.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="section-title">
           <h2>Mantencion Preventiva</h2>
-          <button class="btn btn-primary" onclick="SigmaPreventive.openAddModal()">
-            <i class="fa fa-plus me-1"></i> Nueva Programacion
-          </button>
+          <button class="btn btn-primary" onclick="SigmaPreventive.openAddModal()">+ Nueva Programacion</button>
         </div>
         <div class="card">
-          <div class="card-body p-0">
+          <div class="card-body">
             <div class="table-responsive">
-              <table class="table table-hover mb-0">
+              <table>
                 <thead>
                   <tr>
                     <th>Maquina</th>
@@ -39,7 +37,7 @@ const SigmaPreventive = {
                 </thead>
                 <tbody>
                   ${records.length === 0
-                    ? '<tr><td colspan="7" class="text-center text-muted py-3">No hay mantenimientos preventivos programados</td></tr>'
+                    ? '<tr><td colspan="7" class="empty-state"><p>No hay mantenimientos preventivos programados</p></td></tr>'
                     : records.map(r => `
                       <tr>
                         <td>${this._esc(this._getMachineName(r.maquina_id))}</td>
@@ -49,14 +47,8 @@ const SigmaPreventive = {
                         <td>${this._esc(r.tecnico)}</td>
                         <td><span class="badge ${this._estadoBadge(r.estado)}">${this._esc(r.estado)}</span></td>
                         <td>
-                          <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="SigmaPreventive.openEditModal('${r.id}')" title="Editar">
-                              <i class="fa fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-danger" onclick="SigmaPreventive.confirmDelete('${r.id}')" title="Eliminar">
-                              <i class="fa fa-trash"></i>
-                            </button>
-                          </div>
+                          <button class="btn btn-sm btn-outline" onclick="SigmaPreventive.openEditModal('${r.id}')">Editar</button>
+                          <button class="btn btn-sm btn-danger" onclick="SigmaPreventive.confirmDelete('${r.id}')">Eliminar</button>
                         </td>
                       </tr>
                     `).join('')
@@ -84,12 +76,12 @@ const SigmaPreventive = {
 
   _estadoBadge(estado) {
     const map = {
-      'Programada': 'bg-info',
-      'En Proceso': 'bg-warning text-dark',
-      'Realizada': 'bg-success',
-      'Vencida': 'bg-danger'
+      'Programada': 'badge-entrada',
+      'En Proceso': 'badge-entrada',
+      'Realizada': 'badge-salida',
+      'Vencida': 'badge-entrada'
     };
-    return map[estado] || 'bg-secondary';
+    return map[estado] || 'badge-entrada';
   },
 
   _getFormHtml(record) {
@@ -103,46 +95,50 @@ const SigmaPreventive = {
 
     return `
       <form id="preventiveForm" onsubmit="SigmaPreventive.saveForm(event)">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Maquina *</label>
-            <select class="form-select" name="maquina_id" required>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Maquina *</label>
+            <select class="form-control" name="maquina_id" required>
               <option value="">Seleccionar maquina...</option>
               ${machineOptions}
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Componente *</label>
-            <select class="form-select" name="componente_id" required>
+          <div class="form-group">
+            <label>Componente *</label>
+            <select class="form-control" name="componente_id" required>
               <option value="">Seleccionar componente...</option>
               ${componentOptions}
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Frecuencias</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Frecuencias</label>
             <input type="text" class="form-control" name="frecuencias" value="${this._esc(record ? record.frecuencias : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Fecha Programada *</label>
+          <div class="form-group">
+            <label>Fecha Programada *</label>
             <input type="date" class="form-control" name="fecha_programada" required value="${this._esc(record ? record.fecha_programada : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Tecnico</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tecnico</label>
             <input type="text" class="form-control" name="tecnico" value="${this._esc(record ? record.tecnico : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Estado</label>
-            <select class="form-select" name="estado">
+          <div class="form-group">
+            <label>Estado</label>
+            <select class="form-control" name="estado">
               <option value="Programada" ${record && record.estado === 'Programada' ? 'selected' : ''}>Programada</option>
               <option value="En Proceso" ${record && record.estado === 'En Proceso' ? 'selected' : ''}>En Proceso</option>
               <option value="Realizada" ${record && record.estado === 'Realizada' ? 'selected' : ''}>Realizada</option>
               <option value="Vencida" ${record && record.estado === 'Vencida' ? 'selected' : ''}>Vencida</option>
             </select>
           </div>
-          <div class="col-12">
-            <label class="form-label">Observaciones</label>
-            <textarea class="form-control" name="observaciones" rows="3">${this._esc(record ? record.observaciones : '')}</textarea>
-          </div>
+        </div>
+        <div class="form-group">
+          <label>Observaciones</label>
+          <textarea class="form-control" name="observaciones" rows="2">${this._esc(record ? record.observaciones : '')}</textarea>
         </div>
         <input type="hidden" name="id" value="${record ? record.id : ''}">
       </form>
@@ -151,15 +147,20 @@ const SigmaPreventive = {
 
   openAddModal() {
     App.showModal('Nueva Mantencion Preventiva', this._getFormHtml(null),
-      '<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'preventiveForm\').requestSubmit()">Guardar</button>'
+      '<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'preventiveForm\').requestSubmit()">Guardar</button>'
     );
   },
 
   async openEditModal(id) {
     try {
-      const record = await api.sigma().crud('preventive_maintenance').getById(id);
+      const records = await api.sigma().crud('preventive_maintenance').getAll();
+      const record = records.find(r => r.id === id);
+      if (!record) {
+        App.toast('Registro no encontrado', 'error');
+        return;
+      }
       App.showModal('Editar Mantencion Preventiva', this._getFormHtml(record),
-        '<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'preventiveForm\').requestSubmit()">Actualizar</button>'
+        '<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'preventiveForm\').requestSubmit()">Actualizar</button>'
       );
     } catch (err) {
       App.toast('Error al cargar registro: ' + err.message, 'error');
@@ -191,8 +192,8 @@ const SigmaPreventive = {
 
   confirmDelete(id) {
     App.showModal('Confirmar Eliminacion',
-      '<p>¿Está seguro que desea eliminar este registro de mantenimiento preventivo?</p>',
-      `<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-danger" onclick="SigmaPreventive.doDelete('${id}')">Eliminar</button>`
+      '<p>Seguro que desea eliminar este registro de mantenimiento preventivo?</p>',
+      `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-danger" onclick="SigmaPreventive.doDelete('${id}')">Eliminar</button>`
     );
   },
 

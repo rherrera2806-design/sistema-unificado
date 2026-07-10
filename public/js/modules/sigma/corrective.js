@@ -3,8 +3,8 @@ const SigmaCorrective = {
   components: [],
 
   async render() {
-    const container = document.getElementById('sigma-content');
-    container.innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div></div>';
+    const container = document.querySelector('.page.active');
+    container.innerHTML = '<div class="empty-state"><p>Cargando mantenimientos correctivos...</p></div>';
 
     try {
       const [records, machines, components] = await Promise.all([
@@ -16,16 +16,14 @@ const SigmaCorrective = {
       this.components = components || [];
 
       container.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="section-title">
           <h2>Mantencion Correctiva</h2>
-          <button class="btn btn-primary" onclick="SigmaCorrective.openAddModal()">
-            <i class="fa fa-plus me-1"></i> Nueva Correccion
-          </button>
+          <button class="btn btn-primary" onclick="SigmaCorrective.openAddModal()">+ Nueva Correccion</button>
         </div>
         <div class="card">
-          <div class="card-body p-0">
+          <div class="card-body">
             <div class="table-responsive">
-              <table class="table table-hover mb-0">
+              <table>
                 <thead>
                   <tr>
                     <th>Maquina</th>
@@ -39,24 +37,18 @@ const SigmaCorrective = {
                 </thead>
                 <tbody>
                   ${records.length === 0
-                    ? '<tr><td colspan="7" class="text-center text-muted py-3">No hay mantenimientos correctivos registrados</td></tr>'
+                    ? '<tr><td colspan="7" class="empty-state"><p>No hay mantenimientos correctivos registrados</p></td></tr>'
                     : records.map(r => `
                       <tr>
                         <td>${this._esc(this._getMachineName(r.maquina_id))}</td>
                         <td>${this._esc(this._getComponentName(r.componente_id))}</td>
                         <td>${this._esc(r.fecha_falla)}</td>
-                        <td class="text-truncate" style="max-width:200px" title="${this._esc(r.descripcion)}">${this._esc(r.descripcion)}</td>
+                        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${this._esc(r.descripcion)}">${this._esc(r.descripcion)}</td>
                         <td><span class="badge ${this._estadoBadge(r.estado)}">${this._esc(r.estado)}</span></td>
                         <td>${this._esc(r.responsable)}</td>
                         <td>
-                          <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="SigmaCorrective.openEditModal('${r.id}')" title="Editar">
-                              <i class="fa fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-danger" onclick="SigmaCorrective.confirmDelete('${r.id}')" title="Eliminar">
-                              <i class="fa fa-trash"></i>
-                            </button>
-                          </div>
+                          <button class="btn btn-sm btn-outline" onclick="SigmaCorrective.openEditModal('${r.id}')">Editar</button>
+                          <button class="btn btn-sm btn-danger" onclick="SigmaCorrective.confirmDelete('${r.id}')">Eliminar</button>
                         </td>
                       </tr>
                     `).join('')
@@ -84,10 +76,10 @@ const SigmaCorrective = {
 
   _estadoBadge(estado) {
     const map = {
-      'En Mantencion': 'bg-warning text-dark',
-      'Reparada': 'bg-success'
+      'En Mantencion': 'badge-entrada',
+      'Reparada': 'badge-salida'
     };
-    return map[estado] || 'bg-secondary';
+    return map[estado] || 'badge-entrada';
   },
 
   _getFormHtml(record) {
@@ -101,48 +93,52 @@ const SigmaCorrective = {
 
     return `
       <form id="correctiveForm" onsubmit="SigmaCorrective.saveForm(event)">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Maquina *</label>
-            <select class="form-select" name="maquina_id" required>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Maquina *</label>
+            <select class="form-control" name="maquina_id" required>
               <option value="">Seleccionar maquina...</option>
               ${machineOptions}
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Componente *</label>
-            <select class="form-select" name="componente_id" required>
+          <div class="form-group">
+            <label>Componente *</label>
+            <select class="form-control" name="componente_id" required>
               <option value="">Seleccionar componente...</option>
               ${componentOptions}
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Fecha Falla *</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha Falla *</label>
             <input type="date" class="form-control" name="fecha_falla" required value="${this._esc(record ? record.fecha_falla : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Estado</label>
-            <select class="form-select" name="estado">
+          <div class="form-group">
+            <label>Estado</label>
+            <select class="form-control" name="estado">
               <option value="En Mantencion" ${record && record.estado === 'En Mantencion' ? 'selected' : ''}>En Mantencion</option>
               <option value="Reparada" ${record && record.estado === 'Reparada' ? 'selected' : ''}>Reparada</option>
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Responsable</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Responsable</label>
             <input type="text" class="form-control" name="responsable" value="${this._esc(record ? record.responsable : '')}">
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Costo Reparacion</label>
+          <div class="form-group">
+            <label>Costo Reparacion</label>
             <input type="number" step="0.01" class="form-control" name="costo_reparacion" value="${record ? (record.costo_reparacion || '') : ''}">
           </div>
-          <div class="col-12">
-            <label class="form-label">Descripcion *</label>
-            <textarea class="form-control" name="descripcion" rows="3" required>${this._esc(record ? record.descripcion : '')}</textarea>
-          </div>
-          <div class="col-12">
-            <label class="form-label">Observaciones</label>
-            <textarea class="form-control" name="observaciones" rows="2">${this._esc(record ? record.observaciones : '')}</textarea>
-          </div>
+        </div>
+        <div class="form-group">
+          <label>Descripcion *</label>
+          <textarea class="form-control" name="descripcion" rows="3" required>${this._esc(record ? record.descripcion : '')}</textarea>
+        </div>
+        <div class="form-group">
+          <label>Observaciones</label>
+          <textarea class="form-control" name="observaciones" rows="2">${this._esc(record ? record.observaciones : '')}</textarea>
         </div>
         <input type="hidden" name="id" value="${record ? record.id : ''}">
       </form>
@@ -151,15 +147,20 @@ const SigmaCorrective = {
 
   openAddModal() {
     App.showModal('Nueva Mantencion Correctiva', this._getFormHtml(null),
-      '<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'correctiveForm\').requestSubmit()">Guardar</button>'
+      '<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'correctiveForm\').requestSubmit()">Guardar</button>'
     );
   },
 
   async openEditModal(id) {
     try {
-      const record = await api.sigma().crud('corrective_maintenance').getById(id);
+      const records = await api.sigma().crud('corrective_maintenance').getAll();
+      const record = records.find(r => r.id === id);
+      if (!record) {
+        App.toast('Registro no encontrado', 'error');
+        return;
+      }
       App.showModal('Editar Mantencion Correctiva', this._getFormHtml(record),
-        '<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'correctiveForm\').requestSubmit()">Actualizar</button>'
+        '<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-primary" onclick="document.getElementById(\'correctiveForm\').requestSubmit()">Actualizar</button>'
       );
     } catch (err) {
       App.toast('Error al cargar registro: ' + err.message, 'error');
@@ -191,8 +192,8 @@ const SigmaCorrective = {
 
   confirmDelete(id) {
     App.showModal('Confirmar Eliminacion',
-      '<p>¿Está seguro que desea eliminar este registro de mantenimiento correctivo?</p>',
-      `<button class="btn btn-secondary" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-danger" onclick="SigmaCorrective.doDelete('${id}')">Eliminar</button>`
+      '<p>Seguro que desea eliminar este registro de mantenimiento correctivo?</p>',
+      `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button> <button class="btn btn-danger" onclick="SigmaCorrective.doDelete('${id}')">Eliminar</button>`
     );
   },
 

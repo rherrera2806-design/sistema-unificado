@@ -1,32 +1,23 @@
 const SigmaReports = {
   currentTab: 'vencidas',
+  _tabData: {},
 
   async render() {
-    const container = document.getElementById('sigma-content');
-    container.innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div></div>';
+    const container = document.querySelector('.page.active');
+    container.innerHTML = '<div class="empty-state"><p>Cargando reportes...</p></div>';
 
     try {
       container.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="section-title">
           <h2>Reportes</h2>
-          <button class="btn btn-outline-success" onclick="SigmaReports.exportCSV()">
-            <i class="fa fa-download me-1"></i> Exportar CSV
-          </button>
+          <button class="btn btn-success" onclick="SigmaReports.exportCSV()">Exportar CSV</button>
         </div>
-        <ul class="nav nav-tabs mb-3">
-          <li class="nav-item">
-            <a class="nav-link ${this.currentTab === 'vencidas' ? 'active' : ''}" href="#" onclick="SigmaReports.switchTab('vencidas'); return false;">Vencidas</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link ${this.currentTab === 'proximas' ? 'active' : ''}" href="#" onclick="SigmaReports.switchTab('proximas'); return false;">Proximas</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link ${this.currentTab === 'completadas' ? 'active' : ''}" href="#" onclick="SigmaReports.switchTab('completadas'); return false;">Completadas</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link ${this.currentTab === 'bitacora' ? 'active' : ''}" href="#" onclick="SigmaReports.switchTab('bitacora'); return false;">Bitacora</a>
-          </li>
-        </ul>
+        <div class="filters-bar" style="margin-bottom:1.5rem;">
+          <button class="filter-chip ${this.currentTab === 'vencidas' ? 'active' : ''}" onclick="SigmaReports.switchTab('vencidas')">Vencidas</button>
+          <button class="filter-chip ${this.currentTab === 'proximas' ? 'active' : ''}" onclick="SigmaReports.switchTab('proximas')">Proximas</button>
+          <button class="filter-chip ${this.currentTab === 'completadas' ? 'active' : ''}" onclick="SigmaReports.switchTab('completadas')">Completadas</button>
+          <button class="filter-chip ${this.currentTab === 'bitacora' ? 'active' : ''}" onclick="SigmaReports.switchTab('bitacora')">Bitacora</button>
+        </div>
         <div id="sigma-reports-content"></div>
       `;
 
@@ -45,7 +36,7 @@ const SigmaReports = {
     const content = document.getElementById('sigma-reports-content');
     if (!content) return;
 
-    content.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></div>';
+    content.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
 
     try {
       switch (this.currentTab) {
@@ -72,13 +63,14 @@ const SigmaReports = {
     const machines = await api.sigma().getMachines();
     const components = await api.sigma().crud('components').getAll();
     const vencidas = (records || []).filter(r => r.estado === 'Vencida');
+    this._tabData.vencidas = vencidas;
 
     content.innerHTML = `
       <div class="card">
         <div class="card-header">Mantenimientos Preventivos Vencidos (${vencidas.length})</div>
-        <div class="card-body p-0">
+        <div class="card-body">
           <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table>
               <thead>
                 <tr>
                   <th>Maquina</th>
@@ -90,9 +82,9 @@ const SigmaReports = {
               </thead>
               <tbody>
                 ${vencidas.length === 0
-                  ? '<tr><td colspan="5" class="text-center text-muted py-3">No hay mantenimientos vencidos</td></tr>'
+                  ? '<tr><td colspan="5" class="empty-state"><p>No hay mantenimientos vencidos</p></td></tr>'
                   : vencidas.map(r => `
-                    <tr class="table-danger">
+                    <tr style="background:rgba(220,53,69,0.08);">
                       <td>${this._esc(this._findName(machines, r.maquina_id))}</td>
                       <td>${this._esc(this._findName(components, r.componente_id))}</td>
                       <td>${this._esc(r.fecha_programada)}</td>
@@ -114,13 +106,14 @@ const SigmaReports = {
     const machines = await api.sigma().getMachines();
     const components = await api.sigma().crud('components').getAll();
     const proximas = (records || []).filter(r => r.estado === 'Programada');
+    this._tabData.proximas = proximas;
 
     content.innerHTML = `
       <div class="card">
         <div class="card-header">Mantenimientos Preventivos Programados (${proximas.length})</div>
-        <div class="card-body p-0">
+        <div class="card-body">
           <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table>
               <thead>
                 <tr>
                   <th>Maquina</th>
@@ -132,7 +125,7 @@ const SigmaReports = {
               </thead>
               <tbody>
                 ${proximas.length === 0
-                  ? '<tr><td colspan="5" class="text-center text-muted py-3">No hay mantenimientos programados</td></tr>'
+                  ? '<tr><td colspan="5" class="empty-state"><p>No hay mantenimientos programados</p></td></tr>'
                   : proximas.map(r => `
                     <tr>
                       <td>${this._esc(this._findName(machines, r.maquina_id))}</td>
@@ -156,13 +149,14 @@ const SigmaReports = {
     const machines = await api.sigma().getMachines();
     const components = await api.sigma().crud('components').getAll();
     const completadas = (records || []).filter(r => r.estado === 'Realizada');
+    this._tabData.completadas = completadas;
 
     content.innerHTML = `
       <div class="card">
         <div class="card-header">Mantenimientos Preventivos Completados (${completadas.length})</div>
-        <div class="card-body p-0">
+        <div class="card-body">
           <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table>
               <thead>
                 <tr>
                   <th>Maquina</th>
@@ -174,9 +168,9 @@ const SigmaReports = {
               </thead>
               <tbody>
                 ${completadas.length === 0
-                  ? '<tr><td colspan="5" class="text-center text-muted py-3">No hay mantenimientos completados</td></tr>'
+                  ? '<tr><td colspan="5" class="empty-state"><p>No hay mantenimientos completados</p></td></tr>'
                   : completadas.map(r => `
-                    <tr class="table-success">
+                    <tr style="background:rgba(40,167,69,0.08);">
                       <td>${this._esc(this._findName(machines, r.maquina_id))}</td>
                       <td>${this._esc(this._findName(components, r.componente_id))}</td>
                       <td>${this._esc(r.fecha_programada)}</td>
@@ -197,13 +191,14 @@ const SigmaReports = {
     const records = await api.sigma().crud('corrective_maintenance').getAll();
     const machines = await api.sigma().getMachines();
     const components = await api.sigma().crud('components').getAll();
+    this._tabData.bitacora = records || [];
 
     content.innerHTML = `
       <div class="card">
         <div class="card-header">Bitacora de Mantencion Correctiva (${(records || []).length})</div>
-        <div class="card-body p-0">
+        <div class="card-body">
           <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table>
               <thead>
                 <tr>
                   <th>Maquina</th>
@@ -217,14 +212,14 @@ const SigmaReports = {
               </thead>
               <tbody>
                 ${(!records || records.length === 0)
-                  ? '<tr><td colspan="7" class="text-center text-muted py-3">No hay registros en la bitacora</td></tr>'
+                  ? '<tr><td colspan="7" class="empty-state"><p>No hay registros en la bitacora</p></td></tr>'
                   : records.map(r => `
                     <tr>
                       <td>${this._esc(this._findName(machines, r.maquina_id))}</td>
                       <td>${this._esc(this._findName(components, r.componente_id))}</td>
                       <td>${this._esc(r.fecha_falla)}</td>
-                      <td class="text-truncate" style="max-width:200px" title="${this._esc(r.descripcion)}">${this._esc(r.descripcion)}</td>
-                      <td><span class="badge ${r.estado === 'Reparada' ? 'bg-success' : 'bg-warning'}">${this._esc(r.estado)}</span></td>
+                      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${this._esc(r.descripcion)}">${this._esc(r.descripcion)}</td>
+                      <td><span class="badge ${r.estado === 'Reparada' ? 'badge-salida' : 'badge-entrada'}">${this._esc(r.estado)}</span></td>
                       <td>${this._esc(r.responsable)}</td>
                       <td>${r.costo_reparacion ? '$' + Number(r.costo_reparacion).toLocaleString() : '-'}</td>
                     </tr>
