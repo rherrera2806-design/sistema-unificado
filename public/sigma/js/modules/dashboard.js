@@ -5,17 +5,6 @@ App.registerModule('dashboard', {
         try { stats = await db.getStatsSummary(); } catch(e) { console.error('Error loading stats:', e); }
 
         el.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2>Dashboard</h2>
-                    <div class="subtitle">Panel principal de control de mantenimiento</div>
-                </div>
-                <div class="btn-group">
-                    <button class="btn btn-outline" onclick="App.exportData()">📤 Exportar</button>
-                    <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">📥 Importar</button>
-                    <input type="file" id="importFile" accept=".json" style="display:none">
-                </div>
-            </div>
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon blue">🏭</div>
