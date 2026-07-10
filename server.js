@@ -872,15 +872,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
-    // STATIC FILES
+    // TEMPORARY MIGRATION ENDPOINT
     // =====================================================
-    serveStatic(res, urlPath);
-});
-
-    // TEMPORARY MIGRATION ENDPOINT - will remove after data migration
     if (urlPath === '/api/migrate-sigma' && req.method === 'POST') {
-        const { Pool: PgPool } = require('pg');
-        const renderPool = new PgPool({
+        const renderPool = new Pool({
             connectionString: 'postgresql://sigma_db_xvaa_user:pyADEAFcrLynuAl6aXU5fQdYfAjdupCz@dpg-d96hl0l8nd3s73bhb5n0-a.oregon-postgres.render.com/sigma_db_xvaa',
             ssl: { rejectUnauthorized: false },
             connectionTimeoutMillis: 15000
@@ -911,6 +906,12 @@ const server = http.createServer(async (req, res) => {
         await renderPool.end();
         return;
     }
+
+    // =====================================================
+    // STATIC FILES
+    // =====================================================
+    serveStatic(res, urlPath);
+});
 
     server.listen(PORT, '0.0.0.0', () => {
     console.log('========================================');
