@@ -1,0 +1,15 @@
+{
+  "name": "sistema-unificado",
+  "version": "1.0.0",
+  "description": "Sistema Unificado - Mantencion + Inventario",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

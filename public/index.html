@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Unificado</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- LOGIN -->
+    <div class="login-container" id="loginScreen">
+        <div class="login-box">
+            <div class="login-logo">S</div>
+            <h1>Sistema Unificado</h1>
+            <p class="subtitle">Mantencion + Inventario</p>
+            <div id="loginError" class="alert alert-danger" style="display:none;"></div>
+            <form onsubmit="App.login(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" class="form-control" placeholder="admin@vidrieria.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Contrasena</label>
+                    <input type="password" id="loginPassword" class="form-control" placeholder="Tu contrasena" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="loginBtn">Iniciar Sesion</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SELECTOR DE MODULO -->
+    <div class="selector-container" id="selectorScreen" style="display:none;">
+        <div class="selector-box">
+            <div class="selector-user">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <h2>Bienvenido, <span id="userName">Usuario</span></h2>
+                <p>Selecciona un modulo para continuar</p>
+            </div>
+            <div class="module-grid">
+                <div class="module-card" onclick="App.enterModule('sigma')">
+                    <div class="module-icon sigma-icon">M</div>
+                    <h3>Mantencion</h3>
+                    <p>Maquinas, mantenimiento preventivo/correctivo, repuestos</p>
+                </div>
+                <div class="module-card" onclick="App.enterModule('inventario')">
+                    <div class="module-icon inventario-icon">I</div>
+                    <h3>Inventario</h3>
+                    <p>Entradas, salidas, stock de cristales</p>
+                </div>
+            </div>
+            <button class="btn btn-outline" onclick="App.logout()" style="margin-top:20px;">Cerrar Sesion</button>
+        </div>
+    </div>
+
+    <!-- APP PRINCIPAL -->
+    <div class="app-container" id="appScreen" style="display:none;">
+        <header class="header">
+            <button class="menu-toggle" onclick="App.toggleSidebar()">☰</button>
+            <div class="header-title">
+                <span id="moduleTitle">Modulo</span>
+            </div>
+            <div class="header-right">
+                <span class="user-name" id="headerUser"></span>
+                <button class="btn btn-sm btn-outline" onclick="App.backToSelector()" style="color:white;border-color:rgba(255,255,255,0.3);">Modulos</button>
+                <button class="btn btn-sm btn-outline" onclick="App.logout()" style="color:white;border-color:rgba(255,255,255,0.3);">Salir</button>
+            </div>
+        </header>
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="App.closeSidebar()"></div>
+        <aside class="sidebar" id="sidebar"></aside>
+        <main class="main-content" id="mainContent"></main>
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Titulo</h3>
+                <button class="modal-close" onclick="App.hideModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/modules/sigma/dashboard.js"></script>
+    <script src="js/modules/sigma/machines.js"></script>
+    <script src="js/modules/sigma/preventive.js"></script>
+    <script src="js/modules/sigma/corrective.js"></script>
+    <script src="js/modules/sigma/spareparts.js"></script>
+    <script src="js/modules/sigma/reports.js"></script>
+    <script src="js/modules/inventario/dashboard.js"></script>
+    <script src="js/modules/inventario/movimientos.js"></script>
+    <script src="js/modules/inventario/inventario.js"></script>
+    <script src="js/modules/inventario/historial.js"></script>
+</body>
+</html>
