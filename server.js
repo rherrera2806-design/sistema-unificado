@@ -632,6 +632,9 @@ function parseQuery(url) {
 
 function serveStatic(res, urlPath) {
     let filePath = path.join(PUBLIC_DIR, urlPath === '/' ? 'index.html' : urlPath);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(filePath, 'index.html');
+    }
     if (!fs.existsSync(filePath)) filePath = path.join(PUBLIC_DIR, 'index.html');
     const ext = path.extname(filePath);
     const contentType = MIME[ext] || 'application/octet-stream';
