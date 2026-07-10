@@ -877,7 +877,42 @@ const server = http.createServer(async (req, res) => {
     serveStatic(res, urlPath);
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+    // TEMPORARY MIGRATION ENDPOINT - will remove after data migration
+    if (urlPath === '/api/migrate-sigma' && req.method === 'POST') {
+        const { Pool: PgPool } = require('pg');
+        const renderPool = new PgPool({
+            connectionString: 'postgresql://sigma_db_xvaa_user:pyADEAFcrLynuAl6aXU5fQdYfAjdupCz@dpg-d96hl0l8nd3s73bhb5n0-a.oregon-postgres.render.com/sigma_db_xvaa',
+            ssl: { rejectUnauthorized: false },
+            connectionTimeoutMillis: 15000
+        });
+        const TABLES = ['machine_types','components','component_type_links','machines','spare_parts','preventive_maintenance','corrective_maintenance','machine_components','notas'];
+        try {
+            await query('BEGIN');
+            for (const table of TABLES) {
+                const result = await renderPool.query(`SELECT * FROM ${table}`);
+                if (result.rows.length > 0) {
+                    await query(`DELETE FROM ${table}`);
+                    for (const row of result.rows) {
+                        const cols = Object.keys(row);
+                        const vals = cols.map(c => row[c]);
+                        const ph = cols.map((_, i) => `$${i + 1}`);
+                        await query(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${ph.join(',')})`, vals);
+                    }
+                }
+            }
+            await query('COMMIT');
+            const counts = {};
+            for (const t of TABLES) { const r = await query(`SELECT COUNT(*) as c FROM ${t}`); counts[t] = Number(r.rows[0].c); }
+            json(res, { success: true, counts });
+        } catch(e) {
+            await query('ROLLBACK').catch(() => {});
+            json(res, { error: e.message }, 500);
+        }
+        await renderPool.end();
+        return;
+    }
+
+    server.listen(PORT, '0.0.0.0', () => {
     console.log('========================================');
     console.log('  SISTEMA UNIFICADO');
     console.log(`  Servidor: http://localhost:${PORT}`);
