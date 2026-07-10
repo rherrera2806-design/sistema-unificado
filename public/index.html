@@ -20,6 +20,9 @@
         .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 14px; }
         .btn-primary { background: var(--primary); color: white; width: 100%; }
         .btn-primary:hover { background: var(--primary-dark); }
+        .btn-sm { padding: 6px 14px; font-size: 13px; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
         .btn-outline { background: white; color: var(--gray-700); border: 1px solid var(--gray-300); }
         .btn-outline:hover { background: var(--gray-100); }
         .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
@@ -34,8 +37,38 @@
         .module-icon { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; margin: 0 auto 12px; color: white; }
         .sigma-icon { background: #16a34a; }
         .inventario-icon { background: #2563eb; }
+        .usuarios-icon { background: #7c3aed; }
         .module-card h3 { font-size: 16px; margin-bottom: 6px; color: var(--gray-800); }
         .module-card p { font-size: 12px; color: var(--gray-500); line-height: 1.4; }
+        /* Admin Panel */
+        .admin-container { min-height: 100vh; background: var(--gray-100); }
+        .admin-header { background: var(--primary); color: white; padding: 16px 30px; display: flex; align-items: center; justify-content: space-between; }
+        .admin-header h1 { font-size: 18px; }
+        .admin-body { padding: 30px; max-width: 900px; margin: 0 auto; }
+        .admin-card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; }
+        .admin-card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: space-between; }
+        .admin-card-header h2 { font-size: 16px; color: var(--gray-800); }
+        .admin-table { width: 100%; border-collapse: collapse; }
+        .admin-table th, .admin-table td { padding: 12px 16px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--gray-200); }
+        .admin-table th { background: var(--gray-100); font-weight: 600; color: var(--gray-700); }
+        .admin-table tr:hover { background: #f8f9ff; }
+        .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; margin: 2px; }
+        .badge-admin { background: #ede9fe; color: #7c3aed; }
+        .badge-usuario { background: #dbeafe; color: #2563eb; }
+        .badge-sigma { background: #dcfce7; color: #16a34a; }
+        .badge-inventario { background: #dbeafe; color: #2563eb; }
+        .badge-usuarios { background: #ede9fe; color: #7c3aed; }
+        .badge-active { background: #dcfce7; color: #16a34a; }
+        .badge-inactive { background: #fee2e2; color: #dc2626; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; border-radius: 12px; padding: 24px; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal h3 { margin-bottom: 20px; font-size: 18px; color: var(--gray-800); }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .check-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+        .check-label { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--gray-300); border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+        .check-label:has(input:checked) { border-color: var(--primary); background: #eef2ff; }
+        .check-label input { accent-color: var(--primary); }
     </style>
 </head>
 <body>
@@ -66,45 +99,87 @@
             <div class="user-avatar" id="userAvatar">U</div>
             <h2>Bienvenido, <span id="userName">Usuario</span></h2>
             <p class="sub">Selecciona un modulo para continuar</p>
-            <div class="module-grid">
-                <a class="module-card" href="/sigma/">
-                    <div class="module-icon sigma-icon">M</div>
-                    <h3>Mantencion</h3>
-                    <p>SIGMA - Maquinas, mantenimiento preventivo/correctivo, repuestos</p>
-                </a>
-                <div class="module-card" onclick="enterInventario()">
-                    <div class="module-icon inventario-icon">I</div>
-                    <h3>Inventario</h3>
-                    <p>Entradas, salidas, stock de cristales</p>
-                </div>
-            </div>
+            <div class="module-grid" id="moduleGrid"></div>
             <button class="btn btn-outline" onclick="doLogout()" style="margin-top:8px;">Cerrar Sesion</button>
         </div>
     </div>
 
-    <!-- INVENTARIO APP (carga aqui) -->
+    <!-- ADMIN PANEL -->
+    <div class="admin-container" id="adminScreen" style="display:none;">
+        <div class="admin-header">
+            <h1>Panel de Administracion</h1>
+            <button class="btn btn-outline btn-sm" onclick="showSelector()" style="color:white;border-color:rgba(255,255,255,0.4);">Volver</button>
+        </div>
+        <div class="admin-body">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h2>Usuarios</h2>
+                    <button class="btn btn-success btn-sm" onclick="showUserForm()">+ Nuevo Usuario</button>
+                </div>
+                <table class="admin-table">
+                    <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Permisos</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="usersTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- INVENTARIO APP -->
     <div id="inventarioApp" style="display:none;"></div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+            <h3 id="modalTitle"></h3>
+            <div id="modalBody"></div>
+            <div class="modal-actions" id="modalActions"></div>
+        </div>
+    </div>
 
     <script>
         const USER_KEY = 'unified_user';
+        const MODULES = {
+            sigma: { icon: 'M', iconClass: 'sigma-icon', title: 'Mantencion', desc: 'SIGMA - Maquinas, mantenimiento preventivo/correctivo, repuestos', href: '/sigma/' },
+            inventario: { icon: 'I', iconClass: 'inventario-icon', title: 'Inventario', desc: 'Entradas, salidas, stock de cristales', action: 'enterInventario()' },
+            usuarios: { icon: 'U', iconClass: 'usuarios-icon', title: 'Usuarios', desc: 'Gestionar usuarios y permisos del sistema', action: 'openAdmin()' }
+        };
 
-        function getUser() {
-            try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch(e) { return null; }
-        }
+        function getUser() { try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch(e) { return null; } }
 
         function showLogin() {
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('selectorScreen').style.display = 'none';
+            document.getElementById('adminScreen').style.display = 'none';
             document.getElementById('inventarioApp').style.display = 'none';
         }
 
         function showSelector() {
             const user = getUser();
+            if (!user) return showLogin();
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('selectorScreen').style.display = 'flex';
+            document.getElementById('adminScreen').style.display = 'none';
             document.getElementById('inventarioApp').style.display = 'none';
             document.getElementById('userName').textContent = user.nombre;
             document.getElementById('userAvatar').textContent = user.nombre.charAt(0).toUpperCase();
+            renderModules();
+        }
+
+        function renderModules() {
+            const user = getUser();
+            const permisos = user.permisos || [];
+            const grid = document.getElementById('moduleGrid');
+            grid.innerHTML = '';
+            for (const [key, mod] of Object.entries(MODULES)) {
+                if (permisos.includes(key)) {
+                    const action = mod.href ? `window.location.href='${mod.href}'` : mod.action;
+                    grid.innerHTML += `<div class="module-card" onclick="${action}">
+                        <div class="module-icon ${mod.iconClass}">${mod.icon}</div>
+                        <h3>${mod.title}</h3>
+                        <p>${mod.desc}</p>
+                    </div>`;
+                }
+            }
         }
 
         async function doLogin(e) {
@@ -113,39 +188,110 @@
             const password = document.getElementById('loginPassword').value;
             const btn = document.getElementById('loginBtn');
             const errDiv = document.getElementById('loginError');
-            btn.textContent = 'Ingresando...';
-            btn.disabled = true;
-            errDiv.style.display = 'none';
+            btn.textContent = 'Ingresando...'; btn.disabled = true; errDiv.style.display = 'none';
             try {
-                const res = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
+                const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Error');
                 localStorage.setItem(USER_KEY, JSON.stringify(data));
                 showSelector();
-            } catch(err) {
-                errDiv.textContent = err.message;
-                errDiv.style.display = 'block';
-            } finally {
-                btn.textContent = 'Iniciar Sesion';
-                btn.disabled = false;
-            }
+            } catch(err) { errDiv.textContent = err.message; errDiv.style.display = 'block'; }
+            finally { btn.textContent = 'Iniciar Sesion'; btn.disabled = false; }
         }
 
-        function doLogout() {
-            localStorage.removeItem(USER_KEY);
-            showLogin();
-        }
+        function doLogout() { localStorage.removeItem(USER_KEY); showLogin(); }
 
         function enterInventario() {
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('selectorScreen').style.display = 'none';
+            document.getElementById('adminScreen').style.display = 'none';
             document.getElementById('inventarioApp').style.display = 'block';
             document.getElementById('inventarioApp').innerHTML = '<iframe src="/inventario/" style="width:100%;height:100vh;border:none;"></iframe>';
         }
+
+        function openAdmin() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('selectorScreen').style.display = 'none';
+            document.getElementById('inventarioApp').style.display = 'none';
+            document.getElementById('adminScreen').style.display = 'block';
+            loadUsers();
+        }
+
+        // ===== ADMIN =====
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/admin/usuarios');
+                const users = await res.json();
+                const tbody = document.getElementById('usersTable');
+                tbody.innerHTML = users.map(u => `<tr>
+                    <td><strong>${u.nombre}</strong></td>
+                    <td>${u.email}</td>
+                    <td><span class="badge badge-${u.rol}">${u.rol}</span></td>
+                    <td>${(u.permisos||[]).map(p => `<span class="badge badge-${p}">${p}</span>`).join(' ') || '<span style="color:#999">Sin permisos</span>'}</td>
+                    <td><span class="badge badge-${u.activo ? 'active' : 'inactive'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="showUserForm(${u.id})" style="padding:4px 10px;font-size:12px">Editar</button>
+                        ${u.rol !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})" style="padding:4px 10px;font-size:12px">Eliminar</button>` : ''}
+                    </td>
+                </tr>`).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        async function showUserForm(id) {
+            let user = { nombre: '', email: '', password: '', rol: 'usuario', permisos: [] };
+            if (id) {
+                try { const res = await fetch('/api/admin/usuarios'); const all = await res.json(); user = all.find(u => u.id === id) || user; } catch(e) {}
+            }
+            document.getElementById('modalTitle').textContent = id ? 'Editar Usuario' : 'Nuevo Usuario';
+            document.getElementById('modalBody').innerHTML = `
+                <div class="form-group"><label>Nombre</label><input class="form-control" id="fNombre" value="${user.nombre}"></div>
+                <div class="form-group"><label>Email</label><input class="form-control" id="fEmail" type="email" value="${user.email}"></div>
+                <div class="form-group"><label>${id ? 'Nueva contrasena (dejar vacio para no cambiar)' : 'Contrasena'}</label><input class="form-control" id="fPassword" type="password" ${id ? '' : 'required'}></div>
+                <div class="form-group"><label>Rol</label>
+                    <select class="form-control" id="fRol">
+                        <option value="usuario" ${user.rol==='usuario'?'selected':''}>Usuario</option>
+                        <option value="admin" ${user.rol==='admin'?'selected':''}>Administrador</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Modulos permitidos</label>
+                    <div class="check-grid">
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="sigma" ${(user.permisos||[]).includes('sigma')?'checked':''}> Mantencion (SIGMA)</label>
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="inventario" ${(user.permisos||[]).includes('inventario')?'checked':''}> Inventario</label>
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="usuarios" ${(user.permisos||[]).includes('usuarios')?'checked':''}> Administrar Usuarios</label>
+                    </div>
+                </div>`;
+            document.getElementById('modalActions').innerHTML = `
+                <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                <button class="btn btn-primary" style="width:auto" onclick="saveUser(${id || 0})">${id ? 'Actualizar' : 'Crear'}</button>`;
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        async function saveUser(id) {
+            const data = {
+                nombre: document.getElementById('fNombre').value.trim(),
+                email: document.getElementById('fEmail').value.trim(),
+                rol: document.getElementById('fRol').value,
+                permisos: Array.from(document.querySelectorAll('.perm-check:checked')).map(c => c.value)
+            };
+            const pw = document.getElementById('fPassword').value;
+            if (pw) data.password = pw;
+            if (!data.nombre || !data.email) return alert('Nombre y email son requeridos');
+            if (!id && !pw) return alert('La contrasena es requerida');
+            try {
+                const url = id ? `/api/admin/usuarios/${id}` : '/api/admin/usuarios';
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                if (!res.ok) { const err = await res.json(); alert(err.error); return; }
+                closeModal(); loadUsers();
+            } catch(e) { alert('Error: ' + e.message); }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Eliminar este usuario?')) return;
+            try { await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE' }); loadUsers(); } catch(e) { alert('Error'); }
+        }
+
+        function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
 
         // Init
         if (getUser()) showSelector(); else showLogin();

@@ -44,9 +44,12 @@ async function initDB() {
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         rol VARCHAR(20) DEFAULT 'usuario',
+        permisos TEXT[] DEFAULT '{}',
         activo BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    // Add permisos column if missing (migration)
+    await query(`DO $$ BEGIN ALTER TABLE usuarios ADD COLUMN permisos TEXT[] DEFAULT '{}'; EXCEPTION WHEN duplicate_column THEN null; END $$`);
 
     // --- SIGMA Tables ---
     await query(`CREATE TABLE IF NOT EXISTS machine_types (
@@ -140,9 +143,11 @@ async function initDB() {
     const adminCheck = await query("SELECT id FROM usuarios WHERE email = 'admin@vidrieria.com'");
     if (adminCheck.rows.length === 0) {
         await query(
-            "INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4)",
-            ['Administrador', 'admin@vidrieria.com', hashPassword('admin123'), 'admin']
+            "INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5)",
+            ['Administrador', 'admin@vidrieria.com', hashPassword('admin123'), 'admin', ['sigma','inventario','usuarios']]
         );
+    } else {
+        await query("UPDATE usuarios SET permisos = ARRAY['sigma','inventario','usuarios']::text[] WHERE email = 'admin@vidrieria.com' AND (permisos IS NULL OR permisos = '{}'::text[] OR NOT permisos @> ARRAY['usuarios']::text[])");
     }
 
     // --- Seed SIGMA data ---
@@ -454,7 +459,7 @@ async function login(email, password) {
     if (result.rows.length === 0) return null;
     const user = result.rows[0];
     if (user.password !== hashPassword(password)) return null;
-    return { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol };
+    return { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol, permisos: user.permisos || [] };
 }
 
 async function register(nombre, email, password) {
@@ -696,6 +701,67 @@ const server = http.createServer(async (req, res) => {
         } catch(e) {
             json(res, { error: e.message }, 400);
         }
+        return;
+    }
+
+    // =====================================================
+    // ADMIN - USER MANAGEMENT (prefix /api/admin/)
+    // =====================================================
+    if (urlPath === '/api/admin/usuarios' && req.method === 'GET') {
+        const result = await query('SELECT id, nombre, email, rol, permisos, activo, created_at FROM usuarios ORDER BY id');
+        json(res, result.rows);
+        return;
+    }
+    if (urlPath === '/api/admin/usuarios' && req.method === 'POST') {
+        const body = await parseBody(req);
+        if (!body.nombre || !body.email || !body.password) return json(res, { error: 'Nombre, email y password son requeridos' }, 400);
+        try {
+            const exists = await query('SELECT id FROM usuarios WHERE email = $1', [body.email]);
+            if (exists.rows.length > 0) return json(res, { error: 'El email ya esta registrado' }, 409);
+            const result = await query(
+                'INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5) RETURNING id, nombre, email, rol, permisos, activo',
+                [body.nombre, body.email, hashPassword(body.password), body.rol || 'usuario', body.permisos || []]
+            );
+            json(res, result.rows[0], 201);
+        } catch(e) {
+            json(res, { error: e.message }, 500);
+        }
+        return;
+    }
+
+    const adminUserMatch = urlPath.match(/^\/api\/admin\/usuarios\/(\d+)$/);
+    if (adminUserMatch && req.method === 'PUT') {
+        const id = Number(adminUserMatch[1]);
+        const body = await parseBody(req);
+        const fields = [];
+        const vals = [];
+        let idx = 1;
+        if (body.nombre !== undefined) { fields.push(`nombre = $${idx++}`); vals.push(body.nombre); }
+        if (body.email !== undefined) { fields.push(`email = $${idx++}`); vals.push(body.email); }
+        if (body.password) { fields.push(`password = $${idx++}`); vals.push(hashPassword(body.password)); }
+        if (body.rol !== undefined) { fields.push(`rol = $${idx++}`); vals.push(body.rol); }
+        if (body.permisos !== undefined) { fields.push(`permisos = $${idx++}`); vals.push(body.permisos); }
+        if (body.activo !== undefined) { fields.push(`activo = $${idx++}`); vals.push(body.activo); }
+        if (fields.length === 0) return json(res, { error: 'Sin cambios' }, 400);
+        vals.push(id);
+        try {
+            const result = await query(`UPDATE usuarios SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, nombre, email, rol, permisos, activo`, vals);
+            if (result.rows.length === 0) return json(res, { error: 'Usuario no encontrado' }, 404);
+            json(res, result.rows[0]);
+        } catch(e) {
+            json(res, { error: e.message }, 500);
+        }
+        return;
+    }
+    if (adminUserMatch && req.method === 'DELETE') {
+        const id = Number(adminUserMatch[1]);
+        const admin = await query('SELECT rol FROM usuarios WHERE id = $1', [id]);
+        if (admin.rows.length > 0 && admin.rows[0].rol === 'admin') {
+            const adminCount = await query("SELECT COUNT(*) as c FROM usuarios WHERE rol = 'admin'");
+            if (Number(adminCount.rows[0].c) <= 1) return json(res, { error: 'No se puede eliminar el ultimo admin' }, 400);
+        }
+        await query('DELETE FROM usuarios WHERE id = $1', [id]);
+        json(res, { success: true });
         return;
     }
 
