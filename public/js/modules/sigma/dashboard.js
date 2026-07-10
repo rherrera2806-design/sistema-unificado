@@ -4,10 +4,13 @@ const SigmaDashboard = {
     container.innerHTML = '<div class="empty-state"><p>Cargando dashboard...</p></div>';
 
     try {
-      const stats = await api.sigma().stats();
+      const [stats, allSpareParts] = await Promise.all([
+        api.sigma().stats(),
+        api.sigma().crud('spare_parts').getAll()
+      ]);
 
       const recentFailures = (stats.recentFailures || []).slice(0, 5);
-      const criticalParts = (stats.totalSpareParts || []).filter(p => (p.stock_actual || 0) <= (p.stock_minimo || 0)).slice(0, 5);
+      const criticalParts = allSpareParts.filter(p => (p.stock_actual || 0) <= (p.stock_minimo || 0)).slice(0, 5);
 
       container.innerHTML = `
         <div class="section-title">
@@ -85,8 +88,8 @@ const SigmaDashboard = {
                         ? '<tr><td colspan="5" class="empty-state"><p>No hay fallas recientes</p></td></tr>'
                         : recentFailures.map(f => `
                           <tr>
-                            <td>${this._esc(f.machine_name || '-')}</td>
-                            <td>${this._esc(f.component_name || '-')}</td>
+                            <td>${this._esc(f.maquina_nombre || '-')}</td>
+                            <td>${this._esc(f.componente_nombre || '-')}</td>
                             <td>${this._esc(f.fecha_falla || '-')}</td>
                             <td><span class="badge ${f.estado === 'Reparada' ? 'badge-salida' : 'badge-entrada'}">${this._esc(f.estado || '-')}</span></td>
                             <td>${this._esc(f.responsable || '-')}</td>
