@@ -209,8 +209,8 @@ const App = {
         document.getElementById('modalOverlay').addEventListener('click', (e) => {
             if (e.target === e.currentTarget) this.hideModal();
         });
-        document.getElementById('btnExport').addEventListener('click', () => this.exportData());
-        document.getElementById('btnImport').addEventListener('click', () => document.getElementById('importFile').click());
+        document.getElementById('btnExport')?.addEventListener('click', () => this.exportData());
+        document.getElementById('btnImport')?.addEventListener('click', () => document.getElementById('importFile')?.click());
         document.getElementById('importFile')?.addEventListener('change', (e) => {
             if (e.target.files.length) {
                 const reader = new FileReader();
