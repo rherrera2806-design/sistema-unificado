@@ -49,6 +49,10 @@ const App = {
         this.pages[page].render();
     },
 
+    navigateInv(page) {
+        this.navigate(page);
+    },
+
     toggleSidebar() {
         document.querySelector('.sidebar').classList.toggle('open');
         document.getElementById('sidebarOverlay').classList.toggle('active');
