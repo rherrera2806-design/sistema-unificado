@@ -489,7 +489,12 @@ async function bCargar() {
         document.getElementById('bPendBadge').textContent = p.length;
         document.getElementById('bEntregBadge').textContent = ent.length;
         document.getElementById('bPendList').innerHTML = p.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">No hay entregas pendientes</div>' : p.map(e=>`<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:6px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><button onclick="bEntregar(${e.id})" class="btn btn-green btn-sm">ENTREGADO</button></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`).join('');
-        document.getElementById('bEntregList').innerHTML = ent.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin entregas hoy</div>' : ent.map(e=>`<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:4px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><div class="text-right" style="font-size:11px"><div class="text-green-400 font-bold">Entregado: ${e.hora_entregada||'-'}</div><div class="text-slate-500">Tiempo: ${fmtTimeDiff(e.hora_registrada, e.hora_entregada)}</div></div></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`).join('');
+        document.getElementById('bEntregList').innerHTML = ent.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin entregas hoy</div>' : ent.map(e=>{
+            const esDespacho = e.tipo === 'Despacho';
+            const estadoLabel = esDespacho ? '&#10003; Despachado' : '&#10003; Entregado';
+            const estadoColor = esDespacho ? 'color:#fbbf24' : 'color:#4ade80';
+            return `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:4px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><div class="text-right" style="font-size:11px"><div style="font-weight:700;${estadoColor}">${estadoLabel}: ${e.hora_entregada||'-'}</div><div class="text-slate-500">Tiempo: ${fmtTimeDiff(e.hora_registrada, e.hora_entregada)}</div></div></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`;
+        }).join('');
     } catch(e) {}
 }
 async function bRegistrar() {
