@@ -37,6 +37,7 @@
         .module-icon { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; margin: 0 auto 12px; color: white; }
         .sigma-icon { background: #16a34a; }
         .inventario-icon { background: #2563eb; }
+        .turnos-icon { background: #f59e0b; }
         .usuarios-icon { background: #7c3aed; }
         .module-card h3 { font-size: 16px; margin-bottom: 6px; color: var(--gray-800); }
         .module-card p { font-size: 12px; color: var(--gray-500); line-height: 1.4; }
@@ -141,6 +142,7 @@
         const MODULES = {
             sigma: { icon: 'M', iconClass: 'sigma-icon', title: 'Mantencion', desc: 'SIGMA - Maquinas, mantenimiento preventivo/correctivo, repuestos', href: '/sigma/' },
             inventario: { icon: 'I', iconClass: 'inventario-icon', title: 'Inventario', desc: 'Entradas, salidas, stock de cristales', action: 'enterInventario()' },
+            turnos: { icon: 'T', iconClass: 'turnos-icon', title: 'Turnos', desc: 'Sistema de turnos por QR con espera en tiempo real', href: '/turnos/' },
             usuarios: { icon: 'U', iconClass: 'usuarios-icon', title: 'Usuarios', desc: 'Gestionar usuarios y permisos del sistema', action: 'openAdmin()' }
         };
 
@@ -257,6 +259,7 @@
                     <div class="check-grid">
                         <label class="check-label"><input type="checkbox" class="perm-check" value="sigma" ${(user.permisos||[]).includes('sigma')?'checked':''}> Mantencion (SIGMA)</label>
                         <label class="check-label"><input type="checkbox" class="perm-check" value="inventario" ${(user.permisos||[]).includes('inventario')?'checked':''}> Inventario</label>
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="turnos" ${(user.permisos||[]).includes('turnos')?'checked':''}> Turnos QR</label>
                         <label class="check-label"><input type="checkbox" class="perm-check" value="usuarios" ${(user.permisos||[]).includes('usuarios')?'checked':''}> Administrar Usuarios</label>
                     </div>
                 </div>`;

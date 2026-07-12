@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 const crypto = require('crypto');
+const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -21,7 +22,7 @@ const SIGMA_TABLES = ['machine_types', 'machines', 'components', 'component_type
 
 const pool = new Pool({
     connectionString: DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: DATABASE_URL.includes('railway') || DATABASE_URL.includes('render') ? { rejectUnauthorized: false } : false
 });
 
 async function query(text, params = []) {
@@ -117,6 +118,21 @@ async function initDB() {
     await query(`CREATE TABLE IF NOT EXISTS notas (
         id SERIAL PRIMARY KEY, tecnico TEXT, nota TEXT, fecha TEXT, hora TEXT
     )`);
+
+    // --- Turnos QR ---
+    await query(`CREATE TABLE IF NOT EXISTS turnos (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(100) NOT NULL,
+        numero INTEGER NOT NULL,
+        estado VARCHAR(20) DEFAULT 'espera',
+        fecha DATE DEFAULT CURRENT_DATE,
+        hora_creacion TIME DEFAULT CURRENT_TIME,
+        hora_llamada TIME,
+        hora_fin TIME
+    )`);
+    await query('CREATE INDEX IF NOT EXISTS idx_turnos_estado ON turnos(estado)');
+    await query('CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON turnos(fecha)');
+    await query('CREATE INDEX IF NOT EXISTS idx_turnos_numero ON turnos(numero)');
 
     // --- Inventario Tables ---
     await query(`CREATE TABLE IF NOT EXISTS movimientos (
@@ -605,6 +621,62 @@ async function getEstadisticasPorTipo() {
 }
 
 // =====================================================
+// TURNOS FUNCTIONS
+// =====================================================
+async function getTurnoActual() {
+    const hoy = new Date().toISOString().split('T')[0];
+    const result = await query('SELECT * FROM turnos WHERE fecha = $1 AND estado = $2 ORDER BY numero DESC LIMIT 1', [hoy, 'atendiendo']);
+    return result.rows[0] || null;
+}
+
+async function getCola() {
+    const hoy = new Date().toISOString().split('T')[0];
+    const result = await query('SELECT * FROM turnos WHERE fecha = $1 AND estado = $2 ORDER BY numero ASC', [hoy, 'espera']);
+    return result.rows;
+}
+
+async function getPosicionCola(numero) {
+    const hoy = new Date().toISOString().split('T')[0];
+    const actual = await getTurnoActual();
+    if (!actual) return 0;
+    const result = await query('SELECT numero FROM turnos WHERE fecha = $1 AND estado = $2 AND numero < $3 ORDER BY numero DESC', [hoy, 'espera', numero]);
+    return result.rows.length;
+}
+
+async function getTurnosStats() {
+    const hoy = new Date().toISOString().split('T')[0];
+    const [totalR, atendidosR, enColaR] = await Promise.all([
+        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1', [hoy]),
+        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado = $2', [hoy, 'atendido']),
+        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado = $2', [hoy, 'espera'])
+    ]);
+    const total = Number(totalR.rows[0].n);
+    const atendidos = Number(atendidosR.rows[0].n);
+    const enCola = Number(enColaR.rows[0].n);
+    const actual = await getTurnoActual();
+    return { total, atendidos, enCola, actual };
+}
+
+async function getHistorial() {
+    const hoy = new Date().toISOString().split('T')[0];
+    const result = await query(`
+        SELECT id, nombre, numero, estado, fecha,
+            to_char(hora_creacion, 'HH24:MI:SS') as hora_creacion,
+            to_char(hora_llamada, 'HH24:MI:SS') as hora_llamada,
+            to_char(hora_fin, 'HH24:MI:SS') as hora_fin,
+            CASE WHEN hora_llamada IS NOT NULL THEN
+                EXTRACT(EPOCH FROM (hora_llamada - hora_creacion))::INTEGER
+            END AS espera_segundos,
+            CASE WHEN hora_fin IS NOT NULL AND hora_llamada IS NOT NULL THEN
+                EXTRACT(EPOCH FROM (hora_fin - hora_llamada))::INTEGER
+            END AS duracion_segundos
+        FROM turnos WHERE fecha = $1 AND estado = 'atendido'
+        ORDER BY numero ASC
+    `, [hoy]);
+    return result.rows;
+}
+
+// =====================================================
 // HTTP SERVER
 // =====================================================
 function parseBody(req) {
@@ -679,8 +751,88 @@ const server = http.createServer(async (req, res) => {
     // HEALTH
     // =====================================================
     if (urlPath === '/api/health') {
-        json(res, { status: 'ok', version: '2.0.0-unificado', modules: ['sigma', 'inventario'] });
+        json(res, { status: 'ok', version: '3.0.0-unificado', modules: ['sigma', 'inventario', 'turnos'] });
         return;
+    }
+
+    // =====================================================
+    // TURNOS ENDPOINTS (prefix /api/turnos/)
+    // =====================================================
+    if (urlPath.startsWith('/api/turnos/')) {
+        const turnosPath = urlPath.substring('/api/turnos/'.length);
+
+        // Crear turno
+        if (turnosPath === 'crear' && req.method === 'POST') {
+            const body = await parseBody(req);
+            const nombre = (body.nombre || '').trim();
+            if (!nombre) return json(res, { error: 'Nombre requerido' }, 400);
+            const hoy = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            const numRow = await query('SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM turnos WHERE fecha = $1', [hoy]);
+            const numero = numRow.rows[0].next;
+            const result = await query(
+                'INSERT INTO turnos (nombre, numero, fecha, hora_creacion) VALUES ($1, $2, $3, $4) RETURNING *',
+                [nombre, numero, hoy, hora]
+            );
+            const turno = result.rows[0];
+            io.emit('turno:nuevo', { turno, ...await getTurnosStats() });
+            json(res, turno, 201);
+            return;
+        }
+
+        // Detalle de un turno
+        const turnoIdMatch = turnosPath.match(/^(\d+)$/);
+        if (turnoIdMatch && req.method === 'GET') {
+            const id = Number(turnoIdMatch[1]);
+            const result = await query('SELECT * FROM turnos WHERE id = $1', [id]);
+            if (result.rows.length === 0) return json(res, { error: 'No encontrado' }, 404);
+            const turno = result.rows[0];
+            const actual = await getTurnoActual();
+            const posicion = await getPosicionCola(turno.numero);
+            const estimado = posicion * 10;
+            const esSuTurno = actual && actual.numero === turno.numero;
+            json(res, { turno, posicion, estimado, esSuTurno, actualNumero: actual ? actual.numero : null });
+            return;
+        }
+
+        // Llamar siguiente
+        if (turnosPath === 'siguiente' && req.method === 'POST') {
+            const hoy = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            const actual = (await query('SELECT * FROM turnos WHERE fecha = $1 AND estado = $2 ORDER BY numero DESC LIMIT 1', [hoy, 'atendiendo'])).rows[0];
+            if (actual) {
+                await query('UPDATE turnos SET estado = $1, hora_fin = $2 WHERE id = $3', ['atendido', hora, actual.id]);
+            }
+            const siguiente = (await query('SELECT * FROM turnos WHERE fecha = $1 AND estado = $2 ORDER BY numero ASC LIMIT 1', [hoy, 'espera'])).rows[0];
+            if (!siguiente) return json(res, { error: 'No hay turnos en espera' }, 400);
+            await query('UPDATE turnos SET estado = $1, hora_llamada = $2 WHERE id = $3', ['atendiendo', hora, siguiente.id]);
+            const stats = await getTurnosStats();
+            io.emit('turno:avanzado', { actual: stats.actual, ...stats });
+            json(res, { llamado: siguiente, ...stats });
+            return;
+        }
+
+        // Estado actual
+        if (turnosPath === 'estado') {
+            json(res, await getTurnosStats());
+            return;
+        }
+
+        // Cola
+        if (turnosPath === 'cola') {
+            json(res, await getCola());
+            return;
+        }
+
+        // Historial
+        if (turnosPath === 'historial') {
+            json(res, await getHistorial());
+            return;
+        }
     }
 
     // =====================================================
@@ -943,11 +1095,23 @@ const server = http.createServer(async (req, res) => {
     serveStatic(res, urlPath);
 });
 
+// =====================================================
+// SOCKET.IO
+// =====================================================
+const io = new Server(server, {
+    cors: { origin: '*', methods: ['GET', 'POST'] }
+});
+
+io.on('connection', (socket) => {
+    console.log('Cliente conectado:', socket.id);
+    socket.on('disconnect', () => console.log('Desconectado:', socket.id));
+});
+
     server.listen(PORT, '0.0.0.0', () => {
     console.log('========================================');
     console.log('  SISTEMA UNIFICADO');
     console.log(`  Servidor: http://localhost:${PORT}`);
-    console.log('  Módulos: SIGMA + Control Inventario');
+    console.log('  Módulos: SIGMA + Control Inventario + Turnos QR');
     console.log('  Base: PostgreSQL');
     console.log('  Admin: admin@vidrieria.com / admin123');
     console.log('========================================');
