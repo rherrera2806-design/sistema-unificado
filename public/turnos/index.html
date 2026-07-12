@@ -38,7 +38,7 @@
         .badge-pend{background:rgba(251,191,36,0.15);color:#fbbf24}
         .badge-entreg{background:rgba(34,197,94,0.15);color:#22c55e}
         .menu-card{background:rgba(30,41,59,0.8);border:2px solid #334155;border-radius:16px;padding:32px 24px;text-align:center;cursor:pointer;transition:all .2s;text-decoration:none;color:inherit}
-        .menu-card:hover{border-color:#f59e0b;transform:translateY(-3px);box-shadow:0 8px 24px rgba(245,158,11,0.15)}
+        .menu-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(245,158,11,0.15)}
         .menu-icon{font-size:48px;margin-bottom:12px}
         .modal-overlay{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7)}
         .modal-overlay.show{display:flex}
@@ -112,19 +112,19 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
         <h1 class="text-2xl font-black text-amber-400 mb-2">TURNO QR</h1>
         <p class="text-slate-400 mb-6 text-sm">Selecciona un módulo</p>
         <div class="grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-            <div class="menu-card" onclick="navigate('recepcion')">
+            <div class="menu-card" onclick="navigate('recepcion')" style="background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.35)">
                 <div class="menu-icon">&#128203;</div>
-                <h3>Recepción y Control de Turnos</h3>
+                <h3 style="color:#4ade80">Recepción y Control de Turnos</h3>
                 <p>Gestionar cola, llamar siguiente, ver historial</p>
             </div>
-            <div class="menu-card" onclick="navigate('bodega')">
+            <div class="menu-card" onclick="navigate('bodega')" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.35)">
                 <div class="menu-icon">&#128230;</div>
-                <h3>Entrega de Bodega</h3>
+                <h3 style="color:#fbbf24">Entrega de Bodega</h3>
                 <p>Ver pendientes y marcar entregas realizadas</p>
             </div>
-            <div class="menu-card" onclick="navigate('qr')">
+            <div class="menu-card" onclick="navigate('qr')" style="background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.35)">
                 <div class="menu-icon">&#128186;</div>
-                <h3>QR Clientes</h3>
+                <h3 style="color:#60a5fa">QR Clientes</h3>
                 <p>Código QR para que los clientes tomen turno</p>
             </div>
         </div>
