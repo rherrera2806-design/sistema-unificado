@@ -702,6 +702,9 @@ async function getHistorial() {
             CASE WHEN e.hora_entregada IS NOT NULL AND e.hora_registrada IS NOT NULL THEN
                 EXTRACT(EPOCH FROM (e.hora_entregada - e.hora_registrada))::INTEGER
             END AS bodega_segundos,
+            CASE WHEN e.hora_entregada IS NOT NULL THEN
+                EXTRACT(EPOCH FROM (e.hora_entregada - t.hora_creacion))::INTEGER
+            END AS total_segundos,
             'turno' as origen
         FROM turnos t
         LEFT JOIN entregas e ON e.turno_id = t.id
@@ -723,6 +726,9 @@ async function getHistorial() {
             CASE WHEN e.hora_entregada IS NOT NULL AND e.hora_registrada IS NOT NULL THEN
                 EXTRACT(EPOCH FROM (e.hora_entregada - e.hora_registrada))::INTEGER
             END AS bodega_segundos,
+            CASE WHEN e.hora_entregada IS NOT NULL AND e.hora_registrada IS NOT NULL THEN
+                EXTRACT(EPOCH FROM (e.hora_entregada - e.hora_registrada))::INTEGER
+            END AS total_segundos,
             'bodega' as origen
         FROM entregas e
         WHERE e.fecha = $1 AND e.turno_id IS NULL

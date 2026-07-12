@@ -130,7 +130,6 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
         </div>
         <div class="mt-8">
             <a href="/" class="btn-volver">Volver al Sistema</a>
-            <div class="mt-4"><button onclick="toggleAdmin()" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer">&#128274; Admin</button></div>
         </div>
     </div>
 </div>
@@ -139,10 +138,6 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 <!-- PÁGINA: RECEPCIÓN Y CONTROL DE TURNOS -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="pageRecepcion" class="bg-grad" style="display:none">
-    <div class="admin-bar">
-        <span>&#128274; Modo Admin</span>
-        <button onclick="toggleAdmin()" style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444;padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer">Desactivar</button>
-    </div>
     <div class="header">
         <div class="header-title"><span>Turnos</span> - Recepción y Control</div>
         <div class="header-right">
@@ -189,10 +184,6 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 <!-- PÁGINA: ENTREGA DE BODEGA -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="pageBodega" class="bg-grad" style="display:none">
-    <div class="admin-bar">
-        <span>&#128274; Modo Admin</span>
-        <button onclick="toggleAdmin()" style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444;padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer">Desactivar</button>
-    </div>
     <div class="header">
         <div class="header-title"><span>Turnos</span> - Entrega Bodega</div>
         <div class="header-right">
@@ -360,37 +351,40 @@ function renderHistorialItem(t) {
     const tipoLabel = t.tipo || 'Retira';
     const tipoClass = tipoLabel === 'Despacho' ? 'tag-despacho' : 'tag-retira';
     const esDespacho = tipoLabel === 'Despacho';
+    const delFn = isDirecto ? `eliminarEntrega(${t.id})` : (t.id ? `eliminarTurno(${t.id})` : '');
+
     let html = `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:4px;padding:12px">`;
     html += `<div class="flex items-center justify-between flex-wrap gap-1">`;
     html += `<div class="flex items-center gap-2 flex-wrap">`;
     if (isDirecto) {
         html += `<span class="text-amber-400 font-black">${t.nombre}</span>`;
-        html += `<span class="tag ${tipoClass}">${tipoLabel}</span>`;
-        if (t.entrega_estado === 'entregado') {
-            const iconLabel = esDespacho ? '&#10003; Despachado' : '&#10003; Entregado';
-            const iconColor = esDespacho ? 'background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid #fbbf24' : 'background:rgba(34,197,94,0.2);color:#4ade80;border:1px solid #22c55e';
-            html += `<span class="tag" style="${iconColor}">${iconLabel}</span>`;
-        } else if (t.entrega_estado === 'pendiente') {
-            html += `<span class="tag" style="background:rgba(251,191,36,0.15);color:#fbbf24">Pendiente</span>`;
-        }
     } else {
         html += `<span class="text-amber-400 font-black">#${t.numero}</span><span class="text-slate-300 font-semibold">${t.nombre}</span>`;
-        html += `<span class="tag ${tipoClass}">${tipoLabel}</span>`;
-        if (t.entrega_estado === 'entregado') {
-            const iconLabel = esDespacho ? '&#10003; Despachado' : '&#10003; Entregado';
-            const iconColor = esDespacho ? 'background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid #fbbf24' : 'background:rgba(34,197,94,0.2);color:#4ade80;border:1px solid #22c55e';
-            html += `<span class="tag" style="${iconColor}">${iconLabel}</span>`;
-        } else if (t.entrega_estado === 'pendiente') {
-            html += `<span class="tag" style="background:rgba(251,191,36,0.15);color:#fbbf24">Pendiente bodega</span>`;
-        } else {
-            html += estadoTag(t.estado);
-        }
     }
+    html += `<span class="tag ${tipoClass}">${tipoLabel}</span>`;
+    if (t.entrega_estado === 'entregado') {
+        const iconLabel = esDespacho ? '&#10003; Despachado' : '&#10003; Entregado';
+        const iconColor = esDespacho ? 'background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid #fbbf24' : 'background:rgba(34,197,94,0.2);color:#4ade80;border:1px solid #22c55e';
+        html += `<span class="tag" style="${iconColor}">${iconLabel}</span>`;
+    } else if (t.entrega_estado === 'pendiente') {
+        html += `<span class="tag" style="background:rgba(251,191,36,0.15);color:#fbbf24">Pendiente bodega</span>`;
+    } else if (!isDirecto) {
+        html += estadoTag(t.estado);
+    }
+    if (delFn) html += `<button class="btn-delete" onclick="${delFn}">&#10005;</button>`;
     html += `</div>`;
-    html += `<span class="text-slate-500 text-xs">${t.fecha_fmt||''} ${t.hora_creacion||t.bodega_recibido||''}</span></div>`;
-    html += `<div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px">`;
-    if (!isDirecto) {
+    html += `<span class="text-slate-500 text-xs">${t.fecha_fmt||''}</span></div>`;
+
+    html += `<div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;margin-top:4px">`;
+    if (!isDirecto && t.hora_creacion) {
+        html += `<div><span class="text-slate-600">Llegada: </span><span class="text-slate-300 font-bold">${t.hora_creacion}</span></div>`;
+    }
+    if (!isDirecto && t.hora_llamada) {
+        html += `<div><span class="text-slate-600">Atenci&oacute;n: </span><span class="text-blue-400 font-bold">${t.hora_llamada}</span></div>`;
         html += `<div><span class="text-slate-600">Espera: </span><span class="text-amber-400 font-bold">${fmtSec(t.espera_segundos)}</span></div>`;
+    }
+    if (!isDirecto && t.hora_fin && t.estado !== 'atendiendo') {
+        html += `<div><span class="text-slate-600">Derivaci&oacute;n: </span><span class="text-cyan-400 font-bold">${t.hora_fin}</span></div>`;
         html += `<div><span class="text-slate-600">Recepci&oacute;n: </span><span class="text-blue-400 font-bold">${fmtSec(t.recepcion_segundos)}</span></div>`;
     }
     if (t.pedidos && t.pedidos.trim()) {
@@ -399,18 +393,19 @@ function renderHistorialItem(t) {
     if (t.factura && t.factura.trim()) {
         html += `<div><span class="text-slate-600">Factura: </span><span class="text-purple-400 font-bold">${t.factura}</span></div>`;
     }
-    if (t.entrega_estado) {
-        html += `<div><span class="text-slate-600">Bodega recibi&oacute;: </span><span class="text-slate-300 font-bold">${t.bodega_recibido||'-'}</span></div>`;
+    if (t.bodega_recibido) {
+        html += `<div><span class="text-slate-600">Bodega recibi&oacute;: </span><span class="text-slate-300 font-bold">${t.bodega_recibido}</span></div>`;
     }
     if (t.bodega_entregado) {
-        html += `<div><span class="text-slate-600">Bodega entreg&oacute;: </span><span class="text-green-400 font-bold">${t.bodega_entregado}</span></div>`;
+        html += `<div><span class="text-slate-600">Entrega: </span><span class="text-green-400 font-bold">${t.bodega_entregado}</span></div>`;
         html += `<div><span class="text-slate-600">Tiempo bodega: </span><span class="text-green-400 font-bold">${fmtSec(t.bodega_segundos)}</span></div>`;
-    } else if (t.entrega_estado === 'pendiente') {
-        html += `<div><span class="text-slate-600">Bodega: </span><span class="text-amber-400 font-bold">Pendiente</span></div>`;
+    }
+    if (t.total_segundos) {
+        html += `<div><span class="text-slate-600">Tiempo total: </span><span class="text-white font-bold" style="border-bottom:1px solid #475569">${fmtSec(t.total_segundos)}</span></div>`;
+    } else if (isDirecto && t.bodega_entregado) {
+        html += `<div><span class="text-slate-600">Tiempo total: </span><span class="text-white font-bold" style="border-bottom:1px solid #475569">${fmtSec(t.bodega_segundos)}</span></div>`;
     }
     html += `</div></div>`;
-    const delFn = isDirecto ? `eliminarEntrega(${t.id})` : (t.id ? `eliminarTurno(${t.id})` : '');
-    if (delFn) html += `<div style="text-align:right;margin-top:4px"><button class="btn-delete" onclick="${delFn}">&#10005; Eliminar</button></div>`;
     return html;
 }
 async function rCargar() {
@@ -595,22 +590,10 @@ async function tCargar() {
 }
 
 // ═══════ ADMIN ═══════
+function getTurnosUser() { try { return JSON.parse(localStorage.getItem('unified_user')); } catch(e) { return null; } }
 function checkAdmin() {
-    if (localStorage.getItem('turnos_admin') === '1') document.body.classList.add('isAdmin');
-}
-function toggleAdmin() {
-    if (document.body.classList.contains('isAdmin')) {
-        localStorage.removeItem('turnos_admin');
-        document.body.classList.remove('isAdmin');
-    } else {
-        const pass = prompt('Contraseña de administrador:');
-        if (pass === 'admin123') {
-            localStorage.setItem('turnos_admin', '1');
-            document.body.classList.add('isAdmin');
-        } else if (pass !== null) {
-            alert('Contraseña incorrecta');
-        }
-    }
+    const user = getTurnosUser();
+    if (user && user.rol === 'admin') document.body.classList.add('isAdmin');
 }
 checkAdmin();
 
