@@ -173,7 +173,10 @@
             const grid = document.getElementById('moduleGrid');
             grid.innerHTML = '';
             for (const [key, mod] of Object.entries(MODULES)) {
-                if (permisos.includes(key)) {
+                const hasPerm = key === 'turnos'
+                    ? permisos.some(p => p === 'turnos' || p.startsWith('turnos-'))
+                    : permisos.includes(key);
+                if (hasPerm) {
                     const action = mod.href ? `window.location.href='${mod.href}'` : mod.action;
                     grid.innerHTML += `<div class="module-card" onclick="${action}">
                         <div class="module-icon ${mod.iconClass}">${mod.icon}</div>
@@ -259,7 +262,12 @@
                     <div class="check-grid">
                         <label class="check-label"><input type="checkbox" class="perm-check" value="sigma" ${(user.permisos||[]).includes('sigma')?'checked':''}> Mantencion (SIGMA)</label>
                         <label class="check-label"><input type="checkbox" class="perm-check" value="inventario" ${(user.permisos||[]).includes('inventario')?'checked':''}> Inventario</label>
-                        <label class="check-label"><input type="checkbox" class="perm-check" value="turnos" ${(user.permisos||[]).includes('turnos')?'checked':''}> Turnos QR</label>
+                        <label class="check-label"><input type="checkbox" id="permTurnosPadre" onchange="toggleTurnosPadre()" ${(user.permisos||[]).includes('turnos')||['turnos-recepcion','turnos-bodega','turnos-qr'].some(p=>(user.permisos||[]).includes(p))?'checked':''}> Turnos QR</label>
+                        <div id="turnosChildren" style="width:100%;margin-left:24px;display:${(user.permisos||[]).includes('turnos')||['turnos-recepcion','turnos-bodega','turnos-qr'].some(p=>(user.permisos||[]).includes(p))?'block':'none'}">
+                            <label class="check-label"><input type="checkbox" class="perm-check perm-turnos" value="turnos-recepcion" onchange="toggleTurnosHijo()" ${(user.permisos||[]).includes('turnos')||(user.permisos||[]).includes('turnos-recepcion')?'checked':''}> Recepcion y Control</label>
+                            <label class="check-label"><input type="checkbox" class="perm-check perm-turnos" value="turnos-bodega" onchange="toggleTurnosHijo()" ${(user.permisos||[]).includes('turnos')||(user.permisos||[]).includes('turnos-bodega')?'checked':''}> Entrega de Bodega</label>
+                            <label class="check-label"><input type="checkbox" class="perm-check perm-turnos" value="turnos-qr" onchange="toggleTurnosHijo()" ${(user.permisos||[]).includes('turnos')||(user.permisos||[]).includes('turnos-qr')?'checked':''}> QR Clientes</label>
+                        </div>
                         <label class="check-label"><input type="checkbox" class="perm-check" value="usuarios" ${(user.permisos||[]).includes('usuarios')?'checked':''}> Administrar Usuarios</label>
                     </div>
                 </div>`;
@@ -295,6 +303,20 @@
         }
 
         function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+        function toggleTurnosPadre() {
+            const padre = document.getElementById('permTurnosPadre');
+            const hijos = document.querySelectorAll('.perm-turnos');
+            const contenedor = document.getElementById('turnosChildren');
+            contenedor.style.display = padre.checked ? 'block' : 'none';
+            hijos.forEach(h => h.checked = padre.checked);
+        }
+
+        function toggleTurnosHijo() {
+            const hijos = document.querySelectorAll('.perm-turnos');
+            const todos = Array.from(hijos).every(h => h.checked);
+            document.getElementById('permTurnosPadre').checked = todos;
+        }
 
         // Init
         if (getUser()) showSelector(); else showLogin();

@@ -102,6 +102,40 @@ let ticketId = params.get('id');
 function fmtSec(s){ if(s==null)return'-'; const m=Math.floor(s/60); return m>0?`${m}m ${s%60}s`:`${s}s`; }
 
 function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extra}`; }
+
+function getTurnosPerms() {
+    try {
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const p = user.permisos || [];
+        const hasLegacy = p.includes('turnos');
+        return {
+            recepcion: hasLegacy || p.includes('turnos-recepcion'),
+            bodega: hasLegacy || p.includes('turnos-bodega'),
+            qr: hasLegacy || p.includes('turnos-qr')
+        };
+    } catch(e) { return { recepcion: false, bodega: false, qr: false }; }
+}
+
+function renderMenuTurnos() {
+    const perm = getTurnosPerms();
+    const opciones = [];
+    if (perm.recepcion) opciones.push({ view:'recepcion', icon:'&#128203;', title:'Recepci\u00f3n y Control de Turnos', desc:'Gestionar cola, llamar siguiente, ver historial', color:'#4ade80', bg:'rgba(34,197,94,0.12)', border:'rgba(34,197,94,0.35)' });
+    if (perm.bodega) opciones.push({ view:'bodega', icon:'&#128230;', title:'Entrega de Bodega', desc:'Ver pendientes y marcar entregas realizadas', color:'#fbbf24', bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.35)' });
+    if (perm.qr) opciones.push({ view:'qr', icon:'&#128186;', title:'QR Clientes', desc:'C\u00f3digo QR para que los clientes tomen turno', color:'#60a5fa', bg:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.35)' });
+    if (opciones.length === 1) { navigate(opciones[0].view); return; }
+    const grid = document.getElementById('menuGrid');
+    if (!grid) return;
+    if (opciones.length === 0) {
+        grid.innerHTML = '<div class="text-center text-slate-500 py-8"><p class="text-lg mb-4">No tienes acceso a ning\u00fan sub-m\u00f3dulo de Turnos QR</p><a href="/" class="btn-volver">Volver al Sistema</a></div>';
+        return;
+    }
+    grid.innerHTML = opciones.map(o => `
+        <div class="menu-card" onclick="navigate('${o.view}')" style="background:${o.bg};border-color:${o.border}">
+            <div class="menu-icon">${o.icon}</div>
+            <h3 style="color:${o.color}">${o.title}</h3>
+            <p>${o.desc}</p>
+        </div>`).join('');
+}
 </script>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -110,24 +144,8 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 <div id="pageMenu" class="bg-grad" style="display:none;padding:24px 16px">
     <div class="max-w-3xl mx-auto text-center">
         <h1 class="text-2xl font-black text-amber-400 mb-2">TURNO QR</h1>
-        <p class="text-slate-400 mb-6 text-sm">Selecciona un módulo</p>
-        <div class="grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-            <div class="menu-card" onclick="navigate('recepcion')" style="background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.35)">
-                <div class="menu-icon">&#128203;</div>
-                <h3 style="color:#4ade80">Recepción y Control de Turnos</h3>
-                <p>Gestionar cola, llamar siguiente, ver historial</p>
-            </div>
-            <div class="menu-card" onclick="navigate('bodega')" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.35)">
-                <div class="menu-icon">&#128230;</div>
-                <h3 style="color:#fbbf24">Entrega de Bodega</h3>
-                <p>Ver pendientes y marcar entregas realizadas</p>
-            </div>
-            <div class="menu-card" onclick="navigate('qr')" style="background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.35)">
-                <div class="menu-icon">&#128186;</div>
-                <h3 style="color:#60a5fa">QR Clientes</h3>
-                <p>Código QR para que los clientes tomen turno</p>
-            </div>
-        </div>
+        <p class="text-slate-400 mb-6 text-sm">Selecciona un m\u00f3dulo</p>
+        <div id="menuGrid" class="grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"></div>
         <div class="mt-8">
             <a href="/" class="btn-volver">Volver al Sistema</a>
         </div>
@@ -612,9 +630,10 @@ const pageId = {menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr
 const page = document.getElementById(pageId);
 if(page) page.style.display='block';
 
-if(view==='recepcion'){rCargar();setInterval(rCargar,3000);}
-if(view==='bodega'){bCargar();setInterval(bCargar,3000);}
-if(view==='qr'){qrLoad();qrCargar();setInterval(qrCargar,3000);}
+if(view==='menu') renderMenuTurnos();
+if(view==='recepcion'){if(!getTurnosPerms().recepcion){navigate('menu');return;}rCargar();setInterval(rCargar,3000);}
+if(view==='bodega'){if(!getTurnosPerms().bodega){navigate('menu');return;}bCargar();setInterval(bCargar,3000);}
+if(view==='qr'){if(!getTurnosPerms().qr){navigate('menu');return;}qrLoad();qrCargar();setInterval(qrCargar,3000);}
 if(view==='registro'){document.getElementById('cNombre').addEventListener('keydown',e=>{if(e.key==='Enter')cCrear();});}
 if(view==='ticket'){tCargar();setInterval(tCargar,3000);}
 
