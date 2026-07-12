@@ -187,8 +187,12 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
     </div>
     <div style="padding:12px;max-width:600px;margin:0 auto">
         <div class="card mb-3">
-            <h2 class="text-sm font-semibold text-amber-400 mb-3">Registrar Entrega</h2>
-            <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleFormBodega()">
+                <h2 class="text-sm font-semibold text-amber-400">Registrar Entrega</h2>
+                <span id="bFormArrow" class="text-slate-400 text-lg" style="transition:transform .2s">&#9660;</span>
+            </div>
+            <div id="bFormBody" style="display:none;margin-top:12px">
+                <div style="display:flex;flex-direction:column;gap:8px">
                 <select id="bTipo" class="input" style="cursor:pointer">
                     <option value="Retira sin turno">Retira sin turno</option>
                     <option value="Despacho">Despacho</option>
@@ -202,6 +206,7 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
                 <button onclick="bRegistrar()" class="btn btn-amber" style="width:100%">REGISTRAR</button>
             </div>
             <p id="bError" class="text-red-400 text-xs mt-2 hidden"></p>
+            </div>
         </div>
         <div class="card mb-3">
             <div class="flex items-center justify-between mb-3">
@@ -446,6 +451,17 @@ async function rLlamar() {
 }
 
 // ═══════ BODEGA ═══════
+function toggleFormBodega() {
+    const body = document.getElementById('bFormBody');
+    const arrow = document.getElementById('bFormArrow');
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        arrow.style.transform = 'rotate(180deg)';
+    } else {
+        body.style.display = 'none';
+        arrow.style.transform = 'rotate(0deg)';
+    }
+}
 function entregaInfoHtml(e) {
     let info = `<span class="text-amber-400 font-black">${e.cliente_nombre}</span>`;
     if (e.turno_numero) info += ` <span class="text-slate-500 text-xs">#${e.turno_numero}</span>`;
