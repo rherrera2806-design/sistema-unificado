@@ -702,7 +702,7 @@ async function getHistorial() {
         FROM turnos t
         LEFT JOIN entregas e ON e.turno_id = t.id
         WHERE t.fecha = $1 AND t.estado IN ('atendiendo', 'atendido', 'derivado', 'entregado')
-        ORDER BY t.numero ASC
+        ORDER BY t.numero DESC
     `, [hoy]);
     return result.rows;
 }

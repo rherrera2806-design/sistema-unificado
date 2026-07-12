@@ -49,6 +49,26 @@
         .tag-factura{background:rgba(168,85,247,0.15);color:#c084fc}
         .menu-card h3{font-size:18px;font-weight:700;margin-bottom:6px}
         .menu-card p{font-size:13px;color:#94a3b8}
+        @media(max-width:640px){
+            .header{padding:0 12px;height:48px}
+            .header-title{font-size:14px}
+            .btn-volver{padding:5px 10px;font-size:12px}
+            .card{padding:14px;border-radius:12px}
+            .btn{padding:10px 16px;font-size:14px}
+            .btn-sm{padding:6px 10px;font-size:12px}
+            .stat-box{padding:10px}
+            .turno-item{padding:10px 12px}
+            .input{padding:12px 14px;font-size:15px}
+            .tag{font-size:10px;padding:2px 6px}
+            .menu-card{padding:20px 16px}
+            .menu-icon{font-size:36px}
+            .menu-card h3{font-size:15px}
+            .menu-card p{font-size:12px}
+            .modal-box{padding:18px}
+            .modal-title{font-size:16px}
+            #rActual{font-size:3rem}
+            #qrImg img{width:200px!important}
+        }
     </style>
 </head>
 <body>
@@ -79,11 +99,11 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 <!-- ═══════════════════════════════════════════════════════ -->
 <!-- PÁGINA: MENÚ PRINCIPAL -->
 <!-- ═══════════════════════════════════════════════════════ -->
-<div id="pageMenu" class="bg-grad" style="display:none;padding:40px 20px">
+<div id="pageMenu" class="bg-grad" style="display:none;padding:24px 16px">
     <div class="max-w-3xl mx-auto text-center">
-        <h1 class="text-3xl font-black text-amber-400 mb-2">TURNO QR</h1>
-        <p class="text-slate-400 mb-10">Selecciona un módulo</p>
-        <div class="grid gap-6" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+        <h1 class="text-2xl font-black text-amber-400 mb-2">TURNO QR</h1>
+        <p class="text-slate-400 mb-6 text-sm">Selecciona un módulo</p>
+        <div class="grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
             <div class="menu-card" onclick="navigate('recepcion')">
                 <div class="menu-icon">&#128203;</div>
                 <h3>Recepción y Control de Turnos</h3>
@@ -116,7 +136,7 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
             <a href="/turnos/" class="btn-volver">Volver</a>
         </div>
     </div>
-    <div style="padding:20px;max-width:600px;margin:0 auto">
+    <div style="padding:12px;max-width:600px;margin:0 auto">
         <div class="card card-glow mb-4 text-center">
             <p class="text-xs uppercase tracking-widest text-amber-400 mb-1 font-semibold">Turno Actual</p>
             <div id="rActual" class="text-6xl font-black text-amber-400">-</div>
@@ -162,17 +182,17 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
             <a href="/turnos/" class="btn-volver">Volver</a>
         </div>
     </div>
-    <div style="padding:20px;max-width:600px;margin:0 auto">
-        <div class="card mb-4">
+    <div style="padding:12px;max-width:600px;margin:0 auto">
+        <div class="card mb-3">
             <h2 class="text-sm font-semibold text-amber-400 mb-3">Registrar Entrega</h2>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <input id="bNombre" type="text" class="input" placeholder="Nombre del cliente" style="flex:2;min-width:150px">
-                <input id="bDesc" type="text" class="input" placeholder="Descripción (opcional)" style="flex:3;min-width:150px">
-                <button onclick="bRegistrar()" class="btn btn-amber">REGISTRAR</button>
+            <div style="display:flex;flex-direction:column;gap:8px">
+                <input id="bNombre" type="text" class="input" placeholder="Nombre del cliente">
+                <input id="bDesc" type="text" class="input" placeholder="Descripción (opcional)">
+                <button onclick="bRegistrar()" class="btn btn-amber" style="width:100%">REGISTRAR</button>
             </div>
             <p id="bError" class="text-red-400 text-xs mt-2 hidden"></p>
         </div>
-        <div class="card mb-4">
+        <div class="card mb-3">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-sm font-semibold text-slate-300">Pendientes de Entrega</h2>
                 <span id="bPendBadge" class="badge badge-pend">0</span>
@@ -224,10 +244,10 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
             <a href="/turnos/" class="btn-volver">Volver</a>
         </div>
     </div>
-    <div style="padding:40px 20px;max-width:500px;margin:0 auto;text-align:center">
-        <div class="card mb-6">
+    <div style="padding:20px 12px;max-width:500px;margin:0 auto;text-align:center">
+        <div class="card mb-4">
             <h2 class="text-sm font-semibold text-amber-400 mb-4">Escanea para tomar turno</h2>
-            <div id="qrImg" class="bg-white p-4 rounded-xl inline-block mb-4">
+            <div id="qrImg" class="bg-white p-3 rounded-xl inline-block mb-3">
                 <p class="text-slate-400 text-xs">Cargando QR...</p>
             </div>
             <p id="qrUrl" class="text-slate-600 text-xs break-all"></p>
@@ -243,11 +263,11 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 <!-- PÁGINA: REGISTRO CLIENTE -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="pageRegistro" class="bg-grad" style="display:none">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;min-height:100vh">
-        <div class="text-center mb-8">
-            <div class="text-5xl mb-3">&#128186;</div>
-            <h1 class="text-3xl font-black text-amber-400">TURNO QR</h1>
-            <p class="text-slate-400 mt-2">Ingresa tu nombre para tomar turno</p>
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 16px;min-height:100vh">
+        <div class="text-center mb-6">
+            <div class="text-4xl mb-2">&#128186;</div>
+            <h1 class="text-2xl font-black text-amber-400">TURNO QR</h1>
+            <p class="text-slate-400 mt-2 text-sm">Ingresa tu nombre para tomar turno</p>
         </div>
         <div class="card w-full" style="max-width:400px">
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Tu nombre</label>
@@ -262,11 +282,11 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 <!-- PÁGINA: TICKET CLIENTE -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="pageTicket" class="bg-grad" style="display:none">
-    <div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;max-width:500px;margin:0 auto">
-        <div class="text-center mb-6">
+    <div style="display:flex;flex-direction:column;align-items:center;padding:20px 16px;max-width:500px;margin:0 auto">
+        <div class="text-center mb-4">
             <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">Tu número</p>
-            <div id="tNumero" class="text-7xl font-black text-amber-400"></div>
-            <p id="tNombre" class="text-slate-300 text-lg mt-1"></p>
+            <div id="tNumero" class="text-6xl font-black text-amber-400"></div>
+            <p id="tNombre" class="text-slate-300 text-base mt-1"></p>
         </div>
         <div class="w-full space-y-3">
             <div class="card">
@@ -306,27 +326,27 @@ function estadoTag(estado) {
     return map[estado] || `<span class="tag bg-slate-700 text-slate-400">${estado}</span>`;
 }
 function renderHistorialItem(t) {
-    let html = `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:6px">`;
-    html += `<div class="flex items-center justify-between">`;
-    html += `<div class="flex items-center gap-2"><span class="text-amber-400 font-black">#${t.numero}</span><span class="text-slate-300 font-semibold">${t.nombre}</span>${estadoTag(t.estado)}</div>`;
-    html += `<span class="text-slate-600 text-xs">${t.hora_creacion||''}</span></div>`;
-    html += `<div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px">`;
-    html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Espera</div><div class="text-amber-400 font-bold">${fmtSec(t.espera_segundos)}</div></div>`;
-    html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Recepci&oacute;n</div><div class="text-blue-400 font-bold">${fmtSec(t.recepcion_segundos)}</div></div>`;
+    let html = `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:4px;padding:12px">`;
+    html += `<div class="flex items-center justify-between flex-wrap gap-1">`;
+    html += `<div class="flex items-center gap-2 flex-wrap"><span class="text-amber-400 font-black">#${t.numero}</span><span class="text-slate-300 font-semibold">${t.nombre}</span>${estadoTag(t.estado)}</div>`;
+    html += `<span class="text-slate-500 text-xs">${t.fecha||''} ${t.hora_creacion||''}</span></div>`;
+    html += `<div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px">`;
+    html += `<div><span class="text-slate-600">Espera: </span><span class="text-amber-400 font-bold">${fmtSec(t.espera_segundos)}</span></div>`;
+    html += `<div><span class="text-slate-600">Recepci&oacute;n: </span><span class="text-blue-400 font-bold">${fmtSec(t.recepcion_segundos)}</span></div>`;
     if (t.pedidos && t.pedidos.trim()) {
-        html += `<div><div class="text-slate-600 text-xs">Pedido(s)</div><div class="text-cyan-400 font-bold">${t.pedidos}</div></div>`;
+        html += `<div><span class="text-slate-600">Pedido: </span><span class="text-cyan-400 font-bold">${t.pedidos}</span></div>`;
     }
     if (t.factura && t.factura.trim()) {
-        html += `<div><div class="text-slate-600 text-xs">Factura</div><div class="text-purple-400 font-bold">${t.factura}</div></div>`;
+        html += `<div><span class="text-slate-600">Factura: </span><span class="text-purple-400 font-bold">${t.factura}</span></div>`;
     }
     if (t.entrega_estado) {
-        html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Bodega recibi&oacute;</div><div class="text-slate-300 font-bold">${t.bodega_recibido||'-'}</div></div>`;
+        html += `<div><span class="text-slate-600">Bodega recibi&oacute;: </span><span class="text-slate-300 font-bold">${t.bodega_recibido||'-'}</span></div>`;
     }
     if (t.bodega_entregado) {
-        html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Bodega entreg&oacute;</div><div class="text-green-400 font-bold">${t.bodega_entregado}</div></div>`;
-        html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Tiempo bodega</div><div class="text-green-400 font-bold">${fmtSec(t.bodega_segundos)}</div></div>`;
+        html += `<div><span class="text-slate-600">Bodega entreg&oacute;: </span><span class="text-green-400 font-bold">${t.bodega_entregado}</span></div>`;
+        html += `<div><span class="text-slate-600">Tiempo bodega: </span><span class="text-green-400 font-bold">${fmtSec(t.bodega_segundos)}</span></div>`;
     } else if (t.entrega_estado === 'pendiente') {
-        html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Bodega</div><div class="text-amber-400 font-bold">Pendiente</div></div>`;
+        html += `<div><span class="text-slate-600">Bodega: </span><span class="text-amber-400 font-bold">Pendiente</span></div>`;
     }
     html += `</div></div>`;
     return html;
@@ -423,8 +443,8 @@ async function bCargar() {
         const ent = a.filter(e=>e.estado==='entregado');
         document.getElementById('bPendBadge').textContent = p.length;
         document.getElementById('bEntregBadge').textContent = ent.length;
-        document.getElementById('bPendList').innerHTML = p.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">No hay entregas pendientes</div>' : p.map(e=>`<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:6px"><div class="flex items-center justify-between"><div>${entregaInfoHtml(e)}</div><button onclick="bEntregar(${e.id})" class="btn btn-green btn-sm">ENTREGADO</button></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`).join('');
-        document.getElementById('bEntregList').innerHTML = ent.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin entregas hoy</div>' : ent.map(e=>`<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:4px"><div class="flex items-center justify-between"><div>${entregaInfoHtml(e)}</div><div class="text-right" style="font-size:11px"><div class="text-green-400 font-bold">Entregado: ${e.hora_entregada||'-'}</div><div class="text-slate-500">Tiempo: ${fmtTimeDiff(e.hora_registrada, e.hora_entregada)}</div></div></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`).join('');
+        document.getElementById('bPendList').innerHTML = p.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">No hay entregas pendientes</div>' : p.map(e=>`<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:6px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><button onclick="bEntregar(${e.id})" class="btn btn-green btn-sm">ENTREGADO</button></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`).join('');
+        document.getElementById('bEntregList').innerHTML = ent.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin entregas hoy</div>' : ent.map(e=>`<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:4px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><div class="text-right" style="font-size:11px"><div class="text-green-400 font-bold">Entregado: ${e.hora_entregada||'-'}</div><div class="text-slate-500">Tiempo: ${fmtTimeDiff(e.hora_registrada, e.hora_entregada)}</div></div></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`).join('');
     } catch(e) {}
 }
 async function bRegistrar() {
