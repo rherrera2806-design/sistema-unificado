@@ -329,7 +329,7 @@ function renderHistorialItem(t) {
     let html = `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:4px;padding:12px">`;
     html += `<div class="flex items-center justify-between flex-wrap gap-1">`;
     html += `<div class="flex items-center gap-2 flex-wrap"><span class="text-amber-400 font-black">#${t.numero}</span><span class="text-slate-300 font-semibold">${t.nombre}</span>${estadoTag(t.estado)}</div>`;
-    html += `<span class="text-slate-500 text-xs">${t.fecha||''} ${t.hora_creacion||''}</span></div>`;
+    html += `<span class="text-slate-500 text-xs">${t.fecha_fmt||''} ${t.hora_creacion||''}</span></div>`;
     html += `<div style="display:flex;flex-wrap:wrap;gap:6px 12px;font-size:11px">`;
     html += `<div><span class="text-slate-600">Espera: </span><span class="text-amber-400 font-bold">${fmtSec(t.espera_segundos)}</span></div>`;
     html += `<div><span class="text-slate-600">Recepci&oacute;n: </span><span class="text-blue-400 font-bold">${fmtSec(t.recepcion_segundos)}</span></div>`;

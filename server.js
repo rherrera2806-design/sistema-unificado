@@ -683,6 +683,7 @@ async function getHistorial() {
     const hoy = new Date().toISOString().split('T')[0];
     const result = await query(`
         SELECT t.id, t.nombre, t.numero, t.estado, t.fecha,
+            to_char(t.fecha, 'DD/MM/YYYY') as fecha_fmt,
             to_char(t.hora_creacion, 'HH24:MI') as hora_creacion,
             to_char(t.hora_llamada, 'HH24:MI') as hora_llamada,
             to_char(t.hora_fin, 'HH24:MI') as hora_fin,
