@@ -88,7 +88,7 @@
 </div>
 
 <script>
-const socket = io();
+const socket = typeof io !== 'undefined' ? io() : { on: function(){}, emit: function(){} };
 const BASE = window.location.pathname.replace(/\/$/, '');
 let params = new URLSearchParams(window.location.search);
 let view = params.get('view') || 'menu';
@@ -552,9 +552,9 @@ async function cCrear() {
     try {
         const r = await fetch('/api/turnos/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n})});
         const d = await r.json();
-        if(r.ok) window.location.href=`${BASE}?view=ticket&id=${d.id}`;
-        else { document.getElementById('cError').textContent=d.error||'Error'; document.getElementById('cError').classList.remove('hidden'); btn.disabled=false; btn.textContent='TOMAR TURNO'; }
-    } catch(e) { document.getElementById('cError').textContent='Error conexión'; document.getElementById('cError').classList.remove('hidden'); btn.disabled=false; btn.textContent='TOMAR TURNO'; }
+        if(r.ok && d.id) window.location.href=`${BASE}?view=ticket&id=${d.id}`;
+        else { const e=document.getElementById('cError'); if(e){e.textContent=d.error||'Error';e.classList.remove('hidden');} btn.disabled=false; btn.textContent='TOMAR TURNO'; }
+    } catch(e) { const err=document.getElementById('cError'); if(err){err.textContent='Error conexión';err.classList.remove('hidden');} btn.disabled=false; btn.textContent='TOMAR TURNO'; }
 }
 
 // ═══════ CLIENTE: TICKET ═══════
@@ -562,28 +562,27 @@ async function tCargar() {
     if(!ticketId) return;
     try {
         const r = await fetch(`/api/turnos/${ticketId}`);
-        if(!r.ok){document.getElementById('pageTicket').innerHTML='<div class="flex items-center justify-center p-10"><p class="text-red-400 text-xl">Turno no encontrado</p></div>';return;}
+        if(!r.ok){const el=document.getElementById('pageTicket');if(el)el.innerHTML='<div class="flex items-center justify-center p-10"><p class="text-red-400 text-xl">Turno no encontrado</p></div>';return;}
         const d = await r.json();
+        if(!d.turno) return;
         const {turno,posicion,estimado,esSuTurno,actualNumero}=d;
-        document.getElementById('tNumero').textContent=turno.numero;
-        document.getElementById('tNombre').textContent=turno.nombre;
-        document.getElementById('tActual').textContent=actualNumero||'-';
-        document.getElementById('tActualInfo').textContent=actualNumero===turno.numero?'¡Es tu turno!':(actualNumero?`Atendiendo #${actualNumero}`:'Sin turno');
-        document.getElementById('tPosicion').textContent=posicion;
-        document.getElementById('tTiempo').textContent=estimado>0?`~${estimado} min`:'0 min';
+        const e0=document.getElementById('tNumero');if(e0)e0.textContent=turno.numero;
+        const el2=document.getElementById('tNombre');if(el2)el2.textContent=turno.nombre;
+        const el3=document.getElementById('tActual');if(el3)el3.textContent=actualNumero||'-';
+        const el4=document.getElementById('tActualInfo');if(el4)el4.textContent=actualNumero===turno.numero?'¡Es tu turno!':(actualNumero?`Atendiendo #${actualNumero}`:'Sin turno');
+        const el5=document.getElementById('tPosicion');if(el5)el5.textContent=posicion;
+        const el6=document.getElementById('tTiempo');if(el6)el6.textContent=estimado>0?`~${estimado} min`:'0 min';
         const ov=document.getElementById('alertOverlay'),bx=document.getElementById('tEstadoBox');
-        if(esSuTurno&&turno.estado==='atendiendo'){ov.classList.add('show');document.getElementById('alertNumero').textContent=`#${turno.numero}`;bx.className='card text-center glow-green';document.getElementById('tEstadoIcon').textContent='🎉';document.getElementById('tEstadoTexto').textContent='¡Dirígete al mostrador!';}
-        else if(turno.estado==='atendido'){ov.classList.remove('show');bx.className='card text-center';document.getElementById('tEstadoIcon').textContent='✅';document.getElementById('tEstadoTexto').textContent='Tu turno fue atendido';}
-        else{ov.classList.remove('show');bx.className='card text-center';document.getElementById('tEstadoIcon').textContent='⏳';document.getElementById('tEstadoTexto').textContent='En espera...';}
+        if(esSuTurno&&turno.estado==='atendiendo'){if(ov)ov.classList.add('show');const an=document.getElementById('alertNumero');if(an)an.textContent=`#${turno.numero}`;if(bx){bx.className='card text-center glow-green';}const ei=document.getElementById('tEstadoIcon');if(ei)ei.textContent='🎉';const et=document.getElementById('tEstadoTexto');if(et)et.textContent='¡Dirígete al mostrador!';}
+        else{if(ov)ov.classList.remove('show');if(bx)bx.className='card text-center';const ei=document.getElementById('tEstadoIcon');if(ei)ei.textContent=turno.estado==='atendido'?'✅':'⏳';const et=document.getElementById('tEstadoTexto');if(et)et.textContent=turno.estado==='atendido'?'Tu turno fue atendido':'En espera...';}
     } catch(e) {}
 }
 
 // ═══════ ROUTER ═══════
 document.querySelectorAll('[id^="page"]').forEach(p=>p.style.display='none');
-const page = document.getElementById({
-    menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'pageQR',registro:'pageRegistro',ticket:'pageTicket'
-}[view]||'pageMenu');
-page.style.display='';
+const pageId = {menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'pageQR',registro:'pageRegistro',ticket:'pageTicket'}[view]||'pageMenu';
+const page = document.getElementById(pageId);
+if(page) page.style.display='block';
 
 if(view==='recepcion'){rCargar();setInterval(rCargar,3000);}
 if(view==='bodega'){bCargar();setInterval(bCargar,3000);}
