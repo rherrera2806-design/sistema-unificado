@@ -160,10 +160,10 @@ async function initDB() {
     if (adminCheck.rows.length === 0) {
         await query(
             "INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5)",
-            ['Administrador', 'admin@vidrieria.com', hashPassword('admin123'), 'admin', ['sigma','inventario','usuarios']]
+            ['Administrador', 'admin@vidrieria.com', hashPassword('admin123'), 'admin', ['sigma','inventario','turnos','usuarios']]
         );
     } else {
-        await query("UPDATE usuarios SET permisos = ARRAY['sigma','inventario','usuarios']::text[] WHERE email = 'admin@vidrieria.com' AND (permisos IS NULL OR permisos = '{}'::text[] OR NOT permisos @> ARRAY['usuarios']::text[])");
+        await query("UPDATE usuarios SET permisos = ARRAY['sigma','inventario','turnos','usuarios']::text[] WHERE email = 'admin@vidrieria.com'");
     }
 
     // --- Seed SIGMA data ---
