@@ -80,6 +80,8 @@
     </style>
 </head>
 <body>
+<div id="diag" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:red;color:white;padding:4px 12px;font:12px monospace;display:none">LOADING...</div>
+<script>window.onerror=function(m,s,l,c,e){var d=document.getElementById('diag');if(d){d.style.display='block';d.textContent='JS ERROR: '+m+' (line '+l+':'+c+')';}console.error('GLOBAL ERROR:',m,s,l,c,e);return false;};</script>
 
 <!-- ALERTA "ES TU TURNO" -->
 <div id="alertOverlay" class="alert-overlay">
@@ -93,6 +95,7 @@
 </div>
 
 <script>
+var _diag=document.getElementById('diag'); if(_diag){_diag.style.display='block';_diag.textContent='SCRIPT 1 LOADING...';}
 const socket = typeof io !== 'undefined' ? io() : { on: function(){}, emit: function(){} };
 const BASE = window.location.pathname.replace(/\/$/, '');
 let params = new URLSearchParams(window.location.search);
@@ -119,6 +122,10 @@ function getTurnosPerms() {
 
 function renderMenuTurnos() {
     const perm = getTurnosPerms();
+    const rawUser = JSON.parse(localStorage.getItem('unified_user') || '{}');
+    console.log('Turnos QR - User:', rawUser);
+    console.log('Turnos QR - Permisos raw:', rawUser.permisos);
+    console.log('Turnos QR - Permisos parsed:', perm);
     const opciones = [];
     if (perm.recepcion) opciones.push({ view:'recepcion', icon:'&#128203;', title:'Recepci\u00f3n y Control de Turnos', desc:'Gestionar cola, llamar siguiente, ver historial', color:'#4ade80', bg:'rgba(34,197,94,0.12)', border:'rgba(34,197,94,0.35)' });
     if (perm.bodega) opciones.push({ view:'bodega', icon:'&#128230;', title:'Entrega de Bodega', desc:'Ver pendientes y marcar entregas realizadas', color:'#fbbf24', bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.35)' });
@@ -626,10 +633,13 @@ async function eliminarEntrega(id) {
 }
 
 // ═══════ ROUTER ═══════
+var _d2=document.getElementById('diag'); if(_d2){_d2.textContent='ROUTER: view='+view+' | '+document.querySelectorAll('[id^="page"]').length+' pages found';}
+try {
 document.querySelectorAll('[id^="page"]').forEach(p=>p.style.display='none');
 const pageId = {menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'pageQR',registro:'pageRegistro',ticket:'pageTicket'}[view]||'pageMenu';
 const page = document.getElementById(pageId);
 if(page) page.style.display='block';
+var _d3=document.getElementById('diag'); if(_d3){_d3.textContent='ROUTER OK: showing '+pageId+' | view='+view;setTimeout(function(){_d3.style.display='none';},5000);}
 
 if(view==='menu') renderMenuTurnos();
 if(view==='recepcion'){if(!getTurnosPerms().recepcion){navigate('menu');return;}rCargar();setInterval(rCargar,3000);}
@@ -642,6 +652,10 @@ socket.on('turno:avanzado',()=>{if(view==='recepcion')rCargar();if(view==='ticke
 socket.on('turno:nuevo',()=>{if(view==='recepcion')rCargar();if(view==='qr')qrCargar();});
 socket.on('entrega:nueva',()=>{if(view==='bodega')bCargar();});
 socket.on('entrega:completada',()=>{if(view==='bodega')bCargar();});
+} catch(routerErr) {
+    console.error('Router error:', routerErr);
+    document.body.innerHTML = '<div style="padding:40px;color:white;text-align:center"><h2>Error en Turnos QR</h2><p>' + routerErr.message + '</p><a href="/" style="color:#4ade80">Volver al Sistema</a></div>';
+}
 </script>
 
 </body>
