@@ -667,7 +667,7 @@ async function getTurnosStats() {
     const hoy = new Date().toISOString().split('T')[0];
     const [totalR, atendidosR, enColaR, pendBodegaR] = await Promise.all([
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1', [hoy]),
-        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado IN ($2, $3)', [hoy, 'atendido', 'derivado']),
+        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado IN ($2, $3, $4)', [hoy, 'atendido', 'derivado', 'entregado']),
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado = $2', [hoy, 'espera']),
         query('SELECT COUNT(*) AS n FROM entregas WHERE estado = $1 AND fecha = $2', ['pendiente', hoy])
     ]);
@@ -701,7 +701,7 @@ async function getHistorial() {
             END AS bodega_segundos
         FROM turnos t
         LEFT JOIN entregas e ON e.turno_id = t.id
-        WHERE t.fecha = $1 AND t.estado IN ('atendido', 'derivado', 'entregado')
+        WHERE t.fecha = $1 AND t.estado IN ('atendiendo', 'atendido', 'derivado', 'entregado')
         ORDER BY t.numero ASC
     `, [hoy]);
     return result.rows;
@@ -932,8 +932,13 @@ const server = http.createServer(async (req, res) => {
             const now = new Date();
             const pad = n => String(n).padStart(2, '0');
             const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            const entrega = (await query('SELECT turno_id FROM entregas WHERE id = $1', [id])).rows[0];
             await query('UPDATE entregas SET estado = $1, hora_entregada = $2 WHERE id = $3', ['entregado', hora, id]);
+            if (entrega && entrega.turno_id) {
+                await query('UPDATE turnos SET estado = $1, hora_fin = $2 WHERE id = $3', ['entregado', hora, entrega.turno_id]);
+            }
             io.emit('entrega:completada', { id });
+            io.emit('turno:avanzado', { turno_id: entrega?.turno_id, estado: 'entregado' });
             json(res, { success: true });
             return;
         }
