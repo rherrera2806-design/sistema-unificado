@@ -140,6 +140,8 @@ async function initDB() {
         turno_id INTEGER REFERENCES turnos(id),
         cliente_nombre VARCHAR(100) NOT NULL,
         descripcion TEXT,
+        pedidos TEXT,
+        factura VARCHAR(50),
         estado VARCHAR(20) DEFAULT 'pendiente',
         fecha DATE DEFAULT CURRENT_DATE,
         hora_registrada TIME DEFAULT CURRENT_TIME,
@@ -147,6 +149,10 @@ async function initDB() {
     )`);
     await query('CREATE INDEX IF NOT EXISTS idx_entregas_estado ON entregas(estado)');
     await query('CREATE INDEX IF NOT EXISTS idx_entregas_fecha ON entregas(fecha)');
+
+    // Migration: add pedidos/factura if table already exists
+    try { await query('ALTER TABLE entregas ADD COLUMN IF NOT EXISTS pedidos TEXT'); } catch(e) {}
+    try { await query('ALTER TABLE entregas ADD COLUMN IF NOT EXISTS factura VARCHAR(50)'); } catch(e) {}
 
     // --- Inventario Tables ---
     await query(`CREATE TABLE IF NOT EXISTS movimientos (
@@ -903,6 +909,29 @@ const server = http.createServer(async (req, res) => {
             await query('UPDATE entregas SET estado = $1, hora_entregada = $2 WHERE id = $3', ['entregado', hora, id]);
             io.emit('entrega:completada', { id });
             json(res, { success: true });
+            return;
+        }
+
+        // Derivar turno atendido a bodega (recepción → bodega)
+        if (turnosPath === 'derivar-bodega' && req.method === 'POST') {
+            const body = await parseBody(req);
+            const { turno_id, pedidos, factura } = body;
+            if (!turno_id) return json(res, { error: 'turno_id requerido' }, 400);
+            const turnoResult = await query('SELECT * FROM turnos WHERE id = $1', [turno_id]);
+            if (turnoResult.rows.length === 0) return json(res, { error: 'Turno no encontrado' }, 400);
+            const turno = turnoResult.rows[0];
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            const hoy = new Date().toISOString().split('T')[0];
+            const result = await query(
+                'INSERT INTO entregas (turno_id, cliente_nombre, descripcion, pedidos, factura, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+                [turno.id, turno.nombre, '', pedidos || '', factura || '', hoy, hora]
+            );
+            await query('UPDATE turnos SET estado = $1, hora_atencion = $2 WHERE id = $3', ['derivado', hora, turno.id]);
+            io.emit('entrega:nueva', result.rows[0]);
+            io.emit('turno:avanzado', { turno_id: turno.id, estado: 'derivado' });
+            json(res, result.rows[0], 201);
             return;
         }
     }
