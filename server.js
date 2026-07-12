@@ -903,14 +903,24 @@ const server = http.createServer(async (req, res) => {
 
         // Listar entregas pendientes
         if (turnosPath === 'entregas/pendientes') {
-            const result = await query('SELECT * FROM entregas WHERE estado = $1 AND fecha = CURRENT_DATE ORDER BY id ASC', ['pendiente']);
+            const result = await query(`
+                SELECT e.*, t.numero as turno_numero
+                FROM entregas e
+                LEFT JOIN turnos t ON t.id = e.turno_id
+                WHERE e.estado = $1 AND e.fecha = CURRENT_DATE ORDER BY e.id ASC
+            `, ['pendiente']);
             json(res, result.rows);
             return;
         }
 
         // Listar todas las entregas del día
         if (turnosPath === 'entregas') {
-            const result = await query('SELECT * FROM entregas WHERE fecha = CURRENT_DATE ORDER BY id DESC');
+            const result = await query(`
+                SELECT e.*, t.numero as turno_numero
+                FROM entregas e
+                LEFT JOIN turnos t ON t.id = e.turno_id
+                WHERE e.fecha = CURRENT_DATE ORDER BY e.id DESC
+            `);
             json(res, result.rows);
             return;
         }
