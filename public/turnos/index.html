@@ -9,13 +9,11 @@
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#f1f5f9;min-height:100vh}
-        .view{display:none;min-height:100vh}.view.active{display:flex}
-        .bg-grad{background:linear-gradient(135deg,#0f172a,#1e293b)}
+        .bg-grad{background:linear-gradient(135deg,#0f172a,#1e293b);min-height:100vh}
         .header{background:#1e293b;border-bottom:2px solid #f59e0b;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px}
         .header-title{font-size:16px;font-weight:700;color:#f1f5f9}
         .header-title span{color:#f59e0b}
-        .header-right{display:flex;align-items:center;gap:12px}
-        .btn-volver{background:#16a34a;color:white;text-decoration:none;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;border:none;cursor:pointer}
+        .btn-volver{background:#16a34a;color:white;text-decoration:none;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer}
         .btn-volver:hover{background:#15803d}
         .card{background:rgba(30,41,59,0.8);backdrop-filter:blur(12px);border:1px solid #334155;border-radius:16px;padding:20px}
         .card-glow{border-color:#f59e0b;box-shadow:0 0 20px rgba(245,158,11,0.15)}
@@ -23,8 +21,6 @@
         .btn:active{transform:scale(0.97)}
         .btn-amber{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000}
         .btn-green{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff}
-        .btn-blue{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff}
-        .btn-red{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff}
         .btn-sm{padding:8px 14px;font-size:13px;border-radius:8px}
         .input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#f1f5f9;font-size:16px;outline:none}
         .input:focus{border-color:#f59e0b}
@@ -37,15 +33,14 @@
         .alert-overlay.show{display:flex}
         @keyframes bounce-in{0%{transform:scale(0.5);opacity:0}100%{transform:scale(1);opacity:1}}
         .bounce{animation:bounce-in .5s ease-out}
-        .sub-nav{display:flex;gap:6px;flex-wrap:wrap}
-        .sub-link{padding:10px 18px;border-radius:10px;font-weight:600;font-size:13px;text-decoration:none;transition:all .15s;cursor:pointer;border:2px solid transparent}
-        .sub-link:hover{background:rgba(51,65,85,0.5)}
-        .sub-link.active{background:#f59e0b;color:#000;border-color:#f59e0b}
-        .sub-link:not(.active){color:#94a3b8;border-color:#334155}
         .badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
         .badge-pend{background:rgba(251,191,36,0.15);color:#fbbf24}
         .badge-entreg{background:rgba(34,197,94,0.15);color:#22c55e}
-        .tab-hidden{display:none!important}
+        .menu-card{background:rgba(30,41,59,0.8);border:2px solid #334155;border-radius:16px;padding:32px 24px;text-align:center;cursor:pointer;transition:all .2s;text-decoration:none;color:inherit}
+        .menu-card:hover{border-color:#f59e0b;transform:translateY(-3px);box-shadow:0 8px 24px rgba(245,158,11,0.15)}
+        .menu-icon{font-size:48px;margin-bottom:12px}
+        .menu-card h3{font-size:18px;font-weight:700;margin-bottom:6px}
+        .menu-card p{font-size:13px;color:#94a3b8}
     </style>
 </head>
 <body>
@@ -57,65 +52,89 @@
         <h1 class="text-5xl font-black text-white mb-4">¡ES TU TURNO!</h1>
         <p class="text-xl text-green-100">Acércate al mostrador</p>
         <div id="alertNumero" class="text-6xl font-black text-white mt-6 bg-white/20 rounded-2xl px-8 py-4 inline-block"></div>
-        <br><button class="btn mt-6 bg-white text-green-700 font-bold px-8 py-3 rounded-xl" onclick="closeAlert()">ENTENDIDO</button>
+        <br><button class="btn mt-6 bg-white text-green-700 font-bold px-8 py-3 rounded-xl" onclick="document.getElementById('alertOverlay').classList.remove('show')">ENTENDIDO</button>
     </div>
 </div>
 
+<script>
+const socket = io();
+const BASE = window.location.pathname.replace(/\/$/, '');
+let params = new URLSearchParams(window.location.search);
+let view = params.get('view') || 'menu';
+let ticketId = params.get('id');
+
+function fmtSec(s){ if(s==null)return'-'; const m=Math.floor(s/60); return m>0?`${m}m ${s%60}s`:`${s}s`; }
+
+function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extra}`; }
+</script>
+
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- HEADER -->
+<!-- PÁGINA: MENÚ PRINCIPAL -->
 <!-- ═══════════════════════════════════════════════════════ -->
-<div id="appHeader" class="header">
-    <div class="header-title"><span>Turnos</span> QR - Sistema de Turnos</div>
-    <div class="header-right">
-        <div class="sub-nav" id="subNavTabs">
-            <div class="sub-link active" onclick="switchTab('recepcion')">&#128203; Recepción</div>
-            <div class="sub-link" onclick="switchTab('bodega')">&#128230; Entrega Bodega</div>
-            <div class="sub-link" onclick="switchTab('qr')">&#128186; QR Clientes</div>
+<div id="pageMenu" class="bg-grad" style="display:none;padding:40px 20px">
+    <div class="max-w-3xl mx-auto text-center">
+        <h1 class="text-3xl font-black text-amber-400 mb-2">TURNO QR</h1>
+        <p class="text-slate-400 mb-10">Selecciona un módulo</p>
+        <div class="grid gap-6" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+            <div class="menu-card" onclick="navigate('recepcion')">
+                <div class="menu-icon">&#128203;</div>
+                <h3>Recepción y Control de Turnos</h3>
+                <p>Gestionar cola, llamar siguiente, ver historial</p>
+            </div>
+            <div class="menu-card" onclick="navigate('bodega')">
+                <div class="menu-icon">&#128230;</div>
+                <h3>Entrega de Bodega</h3>
+                <p>Ver pendientes y marcar entregas realizadas</p>
+            </div>
+            <div class="menu-card" onclick="navigate('qr')">
+                <div class="menu-icon">&#128186;</div>
+                <h3>QR Clientes</h3>
+                <p>Código QR para que los clientes tomen turno</p>
+            </div>
         </div>
-        <a href="/" class="btn-volver">Salir</a>
+        <div class="mt-8">
+            <a href="/" class="btn-volver">Volver al Sistema</a>
+        </div>
     </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- TAB 1: RECEPCIÓN (SECRETARÍA) -->
+<!-- PÁGINA: RECEPCIÓN Y CONTROL DE TURNOS -->
 <!-- ═══════════════════════════════════════════════════════ -->
-<div id="tabRecepcion" class="bg-grad" style="padding:20px;flex:1">
-    <div class="max-w-2xl mx-auto">
-
-        <!-- Turno actual -->
-        <div id="panelActualBox" class="card card-glow mb-4 text-center">
+<div id="pageRecepcion" class="bg-grad" style="display:none">
+    <div class="header">
+        <div class="header-title"><span>Turnos</span> - Recepción y Control</div>
+        <div class="header-right">
+            <a href="/" class="btn-volver">Salir</a>
+        </div>
+    </div>
+    <div style="padding:20px;max-width:600px;margin:0 auto">
+        <div class="card card-glow mb-4 text-center">
             <p class="text-xs uppercase tracking-widest text-amber-400 mb-1 font-semibold">Turno Actual</p>
-            <div id="panelActual" class="text-6xl font-black text-amber-400">-</div>
-            <div id="panelActualNombre" class="text-slate-400 text-lg mt-1">Sin turno</div>
+            <div id="rActual" class="text-6xl font-black text-amber-400">-</div>
+            <div id="rActualNombre" class="text-slate-400 text-lg mt-1">Sin turno</div>
         </div>
-
-        <button onclick="llamarSiguiente()" class="btn btn-green w-full text-lg mb-4" id="btnSiguiente">LLAMAR SIGUIENTE</button>
-
-        <!-- Stats -->
+        <button onclick="rLlamar()" class="btn btn-green w-full text-lg mb-4" id="rBtnLlamar">LLAMAR SIGUIENTE</button>
         <div class="grid grid-cols-3 gap-3 mb-4">
-            <div class="stat-box"><div id="panelTotal" class="text-2xl font-bold text-white">0</div><div class="text-xs text-slate-500 mt-1">Total hoy</div></div>
-            <div class="stat-box"><div id="panelCola" class="text-2xl font-bold text-blue-400">0</div><div class="text-xs text-slate-500 mt-1">En cola</div></div>
-            <div class="stat-box"><div id="panelAtendidos" class="text-2xl font-bold text-green-400">0</div><div class="text-xs text-slate-500 mt-1">Atendidos</div></div>
+            <div class="stat-box"><div id="rTotal" class="text-2xl font-bold text-white">0</div><div class="text-xs text-slate-500 mt-1">Total hoy</div></div>
+            <div class="stat-box"><div id="rCola" class="text-2xl font-bold text-blue-400">0</div><div class="text-xs text-slate-500 mt-1">En cola</div></div>
+            <div class="stat-box"><div id="rAtendidos" class="text-2xl font-bold text-green-400">0</div><div class="text-xs text-slate-500 mt-1">Atendidos</div></div>
         </div>
-
-        <!-- Cola -->
         <div class="card mb-4">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-sm font-semibold text-slate-300">Cola de Espera</h2>
-                <span id="panelColaBadge" class="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                <span id="rColaBadge" class="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
             </div>
-            <div id="panelColaList" class="max-h-64 overflow-y-auto">
+            <div id="rColaList" class="max-h-64 overflow-y-auto">
                 <div class="text-center text-slate-600 py-4 text-sm">No hay personas en cola</div>
             </div>
         </div>
-
-        <!-- Historial -->
         <div class="card mb-4">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-sm font-semibold text-slate-300">Historial del Día</h2>
-                <span id="panelHistBadge" class="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                <span id="rHistBadge" class="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
             </div>
-            <div id="panelHistList" class="max-h-64 overflow-y-auto">
+            <div id="rHistList" class="max-h-64 overflow-y-auto">
                 <div class="text-center text-slate-600 py-4 text-sm">Sin registros</div>
             </div>
         </div>
@@ -123,40 +142,40 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- TAB 2: ENTREGA BODEGA -->
+<!-- PÁGINA: ENTREGA DE BODEGA -->
 <!-- ═══════════════════════════════════════════════════════ -->
-<div id="tabBodega" class="bg-grad tab-hidden" style="padding:20px;flex:1">
-    <div class="max-w-2xl mx-auto">
-
-        <!-- Registrar entrega -->
+<div id="pageBodega" class="bg-grad" style="display:none">
+    <div class="header">
+        <div class="header-title"><span>Turnos</span> - Entrega Bodega</div>
+        <div class="header-right">
+            <a href="/" class="btn-volver">Salir</a>
+        </div>
+    </div>
+    <div style="padding:20px;max-width:600px;margin:0 auto">
         <div class="card mb-4">
             <h2 class="text-sm font-semibold text-amber-400 mb-3">Registrar Entrega</h2>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <input id="bodNombre" type="text" class="input" placeholder="Nombre del cliente" style="flex:2;min-width:150px">
-                <input id="bodDesc" type="text" class="input" placeholder="Descripción (opcional)" style="flex:3;min-width:150px">
-                <button onclick="registrarEntrega()" class="btn btn-amber">REGISTRAR</button>
+                <input id="bNombre" type="text" class="input" placeholder="Nombre del cliente" style="flex:2;min-width:150px">
+                <input id="bDesc" type="text" class="input" placeholder="Descripción (opcional)" style="flex:3;min-width:150px">
+                <button onclick="bRegistrar()" class="btn btn-amber">REGISTRAR</button>
             </div>
-            <p id="bodError" class="text-red-400 text-xs mt-2 hidden"></p>
+            <p id="bError" class="text-red-400 text-xs mt-2 hidden"></p>
         </div>
-
-        <!-- Pendientes -->
         <div class="card mb-4">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-sm font-semibold text-slate-300">Pendientes de Entrega</h2>
-                <span id="bodPendBadge" class="badge badge-pend">0</span>
+                <span id="bPendBadge" class="badge badge-pend">0</span>
             </div>
-            <div id="bodPendList" class="max-h-72 overflow-y-auto">
+            <div id="bPendList" class="max-h-72 overflow-y-auto">
                 <div class="text-center text-slate-600 py-4 text-sm">No hay entregas pendientes</div>
             </div>
         </div>
-
-        <!-- Entregados hoy -->
         <div class="card">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-sm font-semibold text-slate-300">Entregados Hoy</h2>
-                <span id="bodEntregBadge" class="badge badge-entreg">0</span>
+                <span id="bEntregBadge" class="badge badge-entreg">0</span>
             </div>
-            <div id="bodEntregList" class="max-h-64 overflow-y-auto">
+            <div id="bEntregList" class="max-h-64 overflow-y-auto">
                 <div class="text-center text-slate-600 py-4 text-sm">Sin entregas hoy</div>
             </div>
         </div>
@@ -164,20 +183,23 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- TAB 3: QR CLIENTES -->
+<!-- PÁGINA: QR CLIENTES -->
 <!-- ═══════════════════════════════════════════════════════ -->
-<div id="tabQR" class="bg-grad tab-hidden" style="padding:20px;flex:1">
-    <div class="max-w-md mx-auto">
-        <!-- QR Code -->
-        <div class="card mb-4 text-center">
-            <h2 class="text-sm font-semibold text-amber-400 mb-3">QR de Registro</h2>
-            <div id="qrDisplay" class="bg-white p-4 rounded-xl inline-block mb-3">
+<div id="pageQR" class="bg-grad" style="display:none">
+    <div class="header">
+        <div class="header-title"><span>Turnos</span> - QR Clientes</div>
+        <div class="header-right">
+            <a href="/" class="btn-volver">Salir</a>
+        </div>
+    </div>
+    <div style="padding:40px 20px;max-width:500px;margin:0 auto;text-align:center">
+        <div class="card mb-6">
+            <h2 class="text-sm font-semibold text-amber-400 mb-4">Escanea para tomar turno</h2>
+            <div id="qrImg" class="bg-white p-4 rounded-xl inline-block mb-4">
                 <p class="text-slate-400 text-xs">Cargando QR...</p>
             </div>
-            <p class="text-slate-600 text-xs">Escanea desde tu celular para tomar turno</p>
+            <p id="qrUrl" class="text-slate-600 text-xs break-all"></p>
         </div>
-
-        <!-- Resumen rápido -->
         <div class="grid grid-cols-2 gap-3">
             <div class="stat-box"><div id="qrTotal" class="text-xl font-bold text-white">0</div><div class="text-xs text-slate-500 mt-1">Total hoy</div></div>
             <div class="stat-box"><div id="qrCola" class="text-xl font-bold text-blue-400">0</div><div class="text-xs text-slate-500 mt-1">En espera</div></div>
@@ -186,51 +208,53 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════ -->
-<!-- VISTA CLIENTE (独立, sin sub-nav) -->
+<!-- PÁGINA: REGISTRO CLIENTE -->
 <!-- ═══════════════════════════════════════════════════════ -->
-<div id="viewCliente" class="view bg-grad">
-    <div class="flex flex-col items-center justify-center p-6 w-full max-w-md mx-auto">
+<div id="pageRegistro" class="bg-grad" style="display:none">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;min-height:100vh">
         <div class="text-center mb-8">
             <div class="text-5xl mb-3">&#128186;</div>
             <h1 class="text-3xl font-black text-amber-400">TURNO QR</h1>
             <p class="text-slate-400 mt-2">Ingresa tu nombre para tomar turno</p>
         </div>
-        <div class="card w-full">
+        <div class="card w-full" style="max-width:400px">
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Tu nombre</label>
-            <input id="regNombre" type="text" class="input mb-4" placeholder="Ej: Juan Pérez">
-            <button onclick="crearTurno()" class="btn btn-amber w-full" id="btnRegistrar">TOMAR TURNO</button>
-            <p id="regError" class="text-red-400 text-sm text-center mt-3 hidden"></p>
+            <input id="cNombre" type="text" class="input mb-4" placeholder="Ej: Juan Pérez">
+            <button onclick="cCrear()" class="btn btn-amber w-full" id="cBtn">TOMAR TURNO</button>
+            <p id="cError" class="text-red-400 text-sm text-center mt-3 hidden"></p>
         </div>
     </div>
 </div>
 
-<!-- VISTA TICKET CLIENTE -->
-<div id="viewTicket" class="view bg-grad">
-    <div class="flex flex-col items-center p-6 w-full max-w-md mx-auto">
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PÁGINA: TICKET CLIENTE -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="pageTicket" class="bg-grad" style="display:none">
+    <div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;max-width:500px;margin:0 auto">
         <div class="text-center mb-6">
             <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">Tu número</p>
-            <div id="tkNumero" class="text-7xl font-black text-amber-400"></div>
-            <p id="tkNombre" class="text-slate-300 text-lg mt-1"></p>
+            <div id="tNumero" class="text-7xl font-black text-amber-400"></div>
+            <p id="tNombre" class="text-slate-300 text-lg mt-1"></p>
         </div>
         <div class="w-full space-y-3">
             <div class="card">
                 <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">Turno actual</p>
                 <div class="flex items-center gap-3">
-                    <span id="tkActual" class="text-3xl font-black text-green-400">-</span>
-                    <span id="tkActualInfo" class="text-sm text-slate-400"></span>
+                    <span id="tActual" class="text-3xl font-black text-green-400">-</span>
+                    <span id="tActualInfo" class="text-sm text-slate-400"></span>
                 </div>
             </div>
             <div class="card">
                 <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">Personas antes que tú</p>
-                <div id="tkPosicion" class="text-3xl font-black text-blue-400"></div>
+                <div id="tPosicion" class="text-3xl font-black text-blue-400"></div>
             </div>
             <div class="card">
                 <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">Tiempo estimado</p>
-                <div id="tkTiempo" class="text-3xl font-black text-amber-400"></div>
+                <div id="tTiempo" class="text-3xl font-black text-amber-400"></div>
             </div>
-            <div id="tkEstadoBox" class="card text-center">
-                <div id="tkEstadoIcon" class="text-2xl mb-1">&#9203;</div>
-                <p id="tkEstadoTexto" class="text-slate-300 font-semibold"></p>
+            <div id="tEstadoBox" class="card text-center">
+                <div id="tEstadoIcon" class="text-2xl mb-1">&#9203;</div>
+                <p id="tEstadoTexto" class="text-slate-300 font-semibold"></p>
             </div>
         </div>
         <p class="text-slate-600 text-xs mt-6">Se actualiza automáticamente</p>
@@ -238,266 +262,121 @@
 </div>
 
 <script>
-    const socket = io();
-    const BASE = window.location.pathname.replace(/\/$/, '');
-    let activeTab = 'recepcion';
-    let ticketId = null;
-    let clienteMode = false;
+// ═══════ RECEPCIÓN ═══════
+async function rCargar() {
+    try {
+        const [eR, cR, hR] = await Promise.all([fetch('/api/turnos/estado'), fetch('/api/turnos/cola'), fetch('/api/turnos/historial')]);
+        const e = await eR.json(), c = await cR.json(), h = await hR.json();
+        document.getElementById('rActual').textContent = e.actual ? e.actual.numero : '-';
+        document.getElementById('rActualNombre').textContent = e.actual ? e.actual.nombre : 'Sin turno';
+        document.getElementById('rTotal').textContent = e.total;
+        document.getElementById('rCola').textContent = e.enCola;
+        document.getElementById('rAtendidos').textContent = e.atendidos;
+        document.getElementById('rColaBadge').textContent = e.enCola;
+        const btn = document.getElementById('rBtnLlamar');
+        btn.disabled = e.enCola===0 && !e.actual;
+        btn.className = (e.enCola===0 && !e.actual) ? 'btn w-full text-lg mb-4 bg-slate-700 text-slate-500 cursor-not-allowed' : 'btn btn-green w-full text-lg mb-4';
+        document.getElementById('rColaList').innerHTML = c.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">No hay personas en cola</div>' : c.map((t,i)=>`<div class="turno-item"><div class="flex items-center gap-3"><span class="text-slate-600 text-sm">${i+1}</span><span class="text-amber-400 font-black text-lg">#${t.numero}</span><span class="text-slate-300">${t.nombre}</span></div><span class="text-slate-600 text-xs">${t.hora_creacion?String(t.hora_creacion).slice(0,5):''}</span></div>`).join('');
+        document.getElementById('rHistBadge').textContent = h.length;
+        document.getElementById('rHistList').innerHTML = h.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin registros</div>' : h.map(t=>`<div class="turno-item"><div class="flex items-center gap-3"><span class="text-green-400 font-black">#${t.numero}</span><span class="text-slate-300">${t.nombre}</span></div><div class="flex gap-4 text-xs"><div class="text-center"><div class="text-slate-600">Espera</div><div class="text-amber-400 font-bold">${fmtSec(t.espera_segundos)}</div></div><div class="text-center"><div class="text-slate-600">Atención</div><div class="text-blue-400 font-bold">${fmtSec(t.duracion_segundos)}</div></div></div></div>`).join('');
+    } catch(e) {}
+}
+async function rLlamar() {
+    const btn = document.getElementById('rBtnLlamar');
+    btn.disabled=true; btn.textContent='LLAMANDO...';
+    try { await fetch('/api/turnos/siguiente',{method:'POST'}); await rCargar(); } catch(e) { alert('Error'); }
+    btn.disabled=false; btn.textContent='LLAMAR SIGUIENTE';
+}
 
-    // ═══════ ROUTER ═══════
-    function initRouter() {
-        const params = new URLSearchParams(window.location.search);
-        const view = params.get('view');
-        const id = params.get('id');
+// ═══════ BODEGA ═══════
+async function bCargar() {
+    try {
+        const [pR, aR] = await Promise.all([fetch('/api/turnos/entregas/pendientes'), fetch('/api/turnos/entregas')]);
+        const p = await pR.json(), a = await aR.json();
+        const ent = a.filter(e=>e.estado==='entregado');
+        document.getElementById('bPendBadge').textContent = p.length;
+        document.getElementById('bEntregBadge').textContent = ent.length;
+        document.getElementById('bPendList').innerHTML = p.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">No hay entregas pendientes</div>' : p.map(e=>`<div class="turno-item"><div><span class="text-amber-400 font-black">${e.cliente_nombre}</span>${e.descripcion?`<span class="text-slate-500 text-xs ml-2">${e.descripcion}</span>`:''}<div class="text-slate-600 text-xs mt-1">${e.hora_registrada?String(e.hora_registrada).slice(0,5):''}</div></div><button onclick="bEntregar(${e.id})" class="btn btn-green btn-sm">ENTREGADO</button></div>`).join('');
+        document.getElementById('bEntregList').innerHTML = ent.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin entregas hoy</div>' : ent.map(e=>`<div class="turno-item"><div><span class="text-green-400 font-black">${e.cliente_nombre}</span>${e.descripcion?`<span class="text-slate-500 text-xs ml-2">${e.descripcion}</span>`:''}</div><span class="text-slate-600 text-xs">${e.hora_entregada?String(e.hora_entregada).slice(0,5):''}</span></div>`).join('');
+    } catch(e) {}
+}
+async function bRegistrar() {
+    const n = document.getElementById('bNombre').value.trim();
+    const d = document.getElementById('bDesc').value.trim();
+    if(!n){document.getElementById('bError').textContent='Nombre requerido';document.getElementById('bError').classList.remove('hidden');return;}
+    try { await fetch('/api/turnos/entregas/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cliente_nombre:n,descripcion:d})}); document.getElementById('bNombre').value=''; document.getElementById('bDesc').value=''; document.getElementById('bError').classList.add('hidden'); bCargar(); } catch(e) {}
+}
+async function bEntregar(id) { try { await fetch(`/api/turnos/entregas/${id}/entregar`,{method:'POST'}); bCargar(); } catch(e) {} }
 
-        if (view === 'ticket' && id) {
-            clienteMode = true;
-            document.getElementById('appHeader').style.display = 'none';
-            showView('ticket');
-            ticketId = id;
-            cargarTicket();
-            return;
-        }
-        if (view === 'registro' || !view) {
-            clienteMode = true;
-            document.getElementById('appHeader').style.display = 'none';
-            showView('registro');
-            return;
-        }
-        // Panel interno
-        clienteMode = false;
-        document.getElementById('appHeader').style.display = 'flex';
-        showView('panel');
-        switchTab(view || 'recepcion');
-    }
+// ═══════ QR ═══════
+async function qrCargar() {
+    try {
+        const r = await fetch('/api/turnos/estado'); const d = await r.json();
+        document.getElementById('qrTotal').textContent = d.total;
+        document.getElementById('qrCola').textContent = d.enCola;
+    } catch(e) {}
+}
+async function qrLoad() {
+    try {
+        const base = window.location.origin;
+        const r = await fetch(`/api/turnos/qr?url=${encodeURIComponent(base+'/turnos/?view=registro')}`);
+        const d = await r.json();
+        document.getElementById('qrImg').innerHTML = `<img src="${d.qr}" alt="QR" style="width:250px" class="rounded-lg">`;
+        document.getElementById('qrUrl').textContent = d.url;
+    } catch(e) { document.getElementById('qrImg').innerHTML='<p class="text-red-400 text-xs">Error QR</p>'; }
+}
 
-    function showView(v) {
-        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-        if (v === 'registro') document.getElementById('viewCliente').classList.add('active');
-        else if (v === 'ticket') document.getElementById('viewTicket').classList.add('active');
-    }
+// ═══════ CLIENTE: REGISTRO ═══════
+async function cCrear() {
+    const n = document.getElementById('cNombre').value.trim();
+    if(!n){document.getElementById('cError').textContent='Ingresa tu nombre';document.getElementById('cError').classList.remove('hidden');return;}
+    const btn = document.getElementById('cBtn'); btn.disabled=true; btn.textContent='REGISTRANDO...';
+    try {
+        const r = await fetch('/api/turnos/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n})});
+        const d = await r.json();
+        if(r.ok) window.location.href=`${BASE}?view=ticket&id=${d.id}`;
+        else { document.getElementById('cError').textContent=d.error||'Error'; document.getElementById('cError').classList.remove('hidden'); btn.disabled=false; btn.textContent='TOMAR TURNO'; }
+    } catch(e) { document.getElementById('cError').textContent='Error conexión'; document.getElementById('cError').classList.remove('hidden'); btn.disabled=false; btn.textContent='TOMAR TURNO'; }
+}
 
-    // ═══════ SUB-TABS ═══════
-    function switchTab(tab) {
-        activeTab = tab;
-        document.querySelectorAll('.sub-link').forEach((el, i) => {
-            el.classList.toggle('active', ['recepcion','bodega','qr'][i] === tab);
-        });
-        ['tabRecepcion','tabBodega','tabQR'].forEach(id => {
-            document.getElementById(id).classList.add('tab-hidden');
-        });
-        if (tab === 'recepcion') { document.getElementById('tabRecepcion').classList.remove('tab-hidden'); cargarPanel(); }
-        if (tab === 'bodega') { document.getElementById('tabBodega').classList.remove('tab-hidden'); cargarBodega(); }
-        if (tab === 'qr') { document.getElementById('tabQR').classList.remove('tab-hidden'); cargarQR(); }
-    }
+// ═══════ CLIENTE: TICKET ═══════
+async function tCargar() {
+    if(!ticketId) return;
+    try {
+        const r = await fetch(`/api/turnos/${ticketId}`);
+        if(!r.ok){document.getElementById('pageTicket').innerHTML='<div class="flex items-center justify-center p-10"><p class="text-red-400 text-xl">Turno no encontrado</p></div>';return;}
+        const d = await r.json();
+        const {turno,posicion,estimado,esSuTurno,actualNumero}=d;
+        document.getElementById('tNumero').textContent=turno.numero;
+        document.getElementById('tNombre').textContent=turno.nombre;
+        document.getElementById('tActual').textContent=actualNumero||'-';
+        document.getElementById('tActualInfo').textContent=actualNumero===turno.numero?'¡Es tu turno!':(actualNumero?`Atendiendo #${actualNumero}`:'Sin turno');
+        document.getElementById('tPosicion').textContent=posicion;
+        document.getElementById('tTiempo').textContent=estimado>0?`~${estimado} min`:'0 min';
+        const ov=document.getElementById('alertOverlay'),bx=document.getElementById('tEstadoBox');
+        if(esSuTurno&&turno.estado==='atendiendo'){ov.classList.add('show');document.getElementById('alertNumero').textContent=`#${turno.numero}`;bx.className='card text-center glow-green';document.getElementById('tEstadoIcon').textContent='🎉';document.getElementById('tEstadoTexto').textContent='¡Dirígete al mostrador!';}
+        else if(turno.estado==='atendido'){ov.classList.remove('show');bx.className='card text-center';document.getElementById('tEstadoIcon').textContent='✅';document.getElementById('tEstadoTexto').textContent='Tu turno fue atendido';}
+        else{ov.classList.remove('show');bx.className='card text-center';document.getElementById('tEstadoIcon').textContent='⏳';document.getElementById('tEstadoTexto').textContent='En espera...';}
+    } catch(e) {}
+}
 
-    // ═══════ RECEPCIÓN ═══════
-    async function cargarPanel() {
-        try {
-            const [estadoRes, colaRes, histRes] = await Promise.all([
-                fetch('/api/turnos/estado'), fetch('/api/turnos/cola'), fetch('/api/turnos/historial')
-            ]);
-            const estado = await estadoRes.json();
-            const cola = await colaRes.json();
-            const historial = await histRes.json();
+// ═══════ ROUTER ═══════
+document.querySelectorAll('[id^="page"]').forEach(p=>p.style.display='none');
+const page = document.getElementById({
+    menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'pageQR',registro:'pageRegistro',ticket:'pageTicket'
+}[view]||'pageMenu');
+page.style.display='';
 
-            document.getElementById('panelActual').textContent = estado.actual ? estado.actual.numero : '-';
-            document.getElementById('panelActualNombre').textContent = estado.actual ? estado.actual.nombre : 'Sin turno';
-            document.getElementById('panelTotal').textContent = estado.total;
-            document.getElementById('panelCola').textContent = estado.enCola;
-            document.getElementById('panelAtendidos').textContent = estado.atendidos;
-            document.getElementById('panelColaBadge').textContent = estado.enCola;
+if(view==='recepcion'){rCargar();setInterval(rCargar,3000);}
+if(view==='bodega'){bCargar();setInterval(bCargar,3000);}
+if(view==='qr'){qrLoad();qrCargar();setInterval(qrCargar,3000);}
+if(view==='registro'){document.getElementById('cNombre').addEventListener('keydown',e=>{if(e.key==='Enter')cCrear();});}
+if(view==='ticket'){tCargar();setInterval(tCargar,3000);}
 
-            const box = document.getElementById('panelActualBox');
-            box.className = (estado.enCola > 0 || estado.actual) ? 'card card-glow mb-4 text-center' : 'card mb-4 text-center';
-
-            const btn = document.getElementById('btnSiguiente');
-            btn.disabled = estado.enCola === 0 && !estado.actual;
-            btn.className = (estado.enCola === 0 && !estado.actual) ? 'btn w-full text-lg mb-4 bg-slate-700 text-slate-500 cursor-not-allowed' : 'btn btn-green w-full text-lg mb-4';
-
-            const colaList = document.getElementById('panelColaList');
-            colaList.innerHTML = cola.length === 0
-                ? '<div class="text-center text-slate-600 py-4 text-sm">No hay personas en cola</div>'
-                : cola.map((t, i) => `<div class="turno-item"><div class="flex items-center gap-3"><span class="text-slate-600 text-sm">${i+1}</span><span class="text-amber-400 font-black text-lg">#${t.numero}</span><span class="text-slate-300">${t.nombre}</span></div><span class="text-slate-600 text-xs">${t.hora_creacion?String(t.hora_creacion).slice(0,5):''}</span></div>`).join('');
-
-            document.getElementById('panelHistBadge').textContent = historial.length;
-            const histList = document.getElementById('panelHistList');
-            histList.innerHTML = historial.length === 0
-                ? '<div class="text-center text-slate-600 py-4 text-sm">Sin registros</div>'
-                : historial.map(t => `<div class="turno-item"><div class="flex items-center gap-3"><span class="text-green-400 font-black">#${t.numero}</span><span class="text-slate-300">${t.nombre}</span></div><div class="flex gap-4 text-xs"><div class="text-center"><div class="text-slate-600">Espera</div><div class="text-amber-400 font-bold">${fmtSec(t.espera_segundos)}</div></div><div class="text-center"><div class="text-slate-600">Atención</div><div class="text-blue-400 font-bold">${fmtSec(t.duracion_segundos)}</div></div></div></div>`).join('');
-        } catch(e) {}
-    }
-
-    async function llamarSiguiente() {
-        const btn = document.getElementById('btnSiguiente');
-        btn.disabled = true; btn.textContent = 'LLAMANDO...';
-        try { await fetch('/api/turnos/siguiente', { method: 'POST' }); await cargarPanel(); }
-        catch(e) { alert('Error'); }
-        btn.disabled = false; btn.textContent = 'LLAMAR SIGUIENTE';
-    }
-
-    // ═══════ BODEGA ═══════
-    async function cargarBodega() {
-        try {
-            const [pendRes, allRes] = await Promise.all([
-                fetch('/api/turnos/entregas/pendientes'), fetch('/api/turnos/entregas')
-            ]);
-            const pendientes = await pendRes.json();
-            const todas = await allRes.json();
-            const entregadas = todas.filter(e => e.estado === 'entregado');
-
-            document.getElementById('bodPendBadge').textContent = pendientes.length;
-            document.getElementById('bodEntregBadge').textContent = entregadas.length;
-
-            const pendList = document.getElementById('bodPendList');
-            pendList.innerHTML = pendientes.length === 0
-                ? '<div class="text-center text-slate-600 py-4 text-sm">No hay entregas pendientes</div>'
-                : pendientes.map(e => `
-                    <div class="turno-item">
-                        <div>
-                            <span class="text-amber-400 font-black">${e.cliente_nombre}</span>
-                            ${e.descripcion ? `<span class="text-slate-500 text-xs ml-2">${e.descripcion}</span>` : ''}
-                            <div class="text-slate-600 text-xs mt-1">${e.hora_registrada ? String(e.hora_registrada).slice(0,5) : ''}</div>
-                        </div>
-                        <button onclick="marcarEntregada(${e.id})" class="btn btn-green btn-sm">ENTREGADO</button>
-                    </div>
-                `).join('');
-
-            const entregList = document.getElementById('bodEntregList');
-            entregList.innerHTML = entregadas.length === 0
-                ? '<div class="text-center text-slate-600 py-4 text-sm">Sin entregas hoy</div>'
-                : entregadas.map(e => `
-                    <div class="turno-item">
-                        <div>
-                            <span class="text-green-400 font-black">${e.cliente_nombre}</span>
-                            ${e.descripcion ? `<span class="text-slate-500 text-xs ml-2">${e.descripcion}</span>` : ''}
-                        </div>
-                        <span class="text-slate-600 text-xs">${e.hora_entregada ? String(e.hora_entregada).slice(0,5) : ''}</span>
-                    </div>
-                `).join('');
-        } catch(e) {}
-    }
-
-    async function registrarEntrega() {
-        const nombre = document.getElementById('bodNombre').value.trim();
-        const desc = document.getElementById('bodDesc').value.trim();
-        if (!nombre) { showErr('bodError', 'Nombre requerido'); return; }
-        try {
-            await fetch('/api/turnos/entregas/registrar', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cliente_nombre: nombre, descripcion: desc })
-            });
-            document.getElementById('bodNombre').value = '';
-            document.getElementById('bodDesc').value = '';
-            document.getElementById('bodError').classList.add('hidden');
-            cargarBodega();
-        } catch(e) { showErr('bodError', 'Error'); }
-    }
-
-    async function marcarEntregada(id) {
-        try { await fetch(`/api/turnos/entregas/${id}/entregar`, { method: 'POST' }); cargarBodega(); }
-        catch(e) {}
-    }
-
-    // ═══════ QR ═══════
-    async function cargarQR() {
-        try {
-            const res = await fetch('/api/turnos/estado');
-            const data = await res.json();
-            document.getElementById('qrTotal').textContent = data.total;
-            document.getElementById('qrCola').textContent = data.enCola;
-        } catch(e) {}
-    }
-
-    async function loadQR() {
-        try {
-            const base = window.location.origin;
-            const res = await fetch(`/api/turnos/qr?url=${encodeURIComponent(base + '/turnos/?view=registro')}`);
-            const data = await res.json();
-            document.getElementById('qrDisplay').innerHTML = `<img src="${data.qr}" alt="QR" style="width:200px" class="rounded-lg">`;
-        } catch(e) {
-            document.getElementById('qrDisplay').innerHTML = '<p class="text-red-400 text-xs">Error QR</p>';
-        }
-    }
-
-    // ═══════ CLIENTE: REGISTRO ═══════
-    async function crearTurno() {
-        const nombre = document.getElementById('regNombre').value.trim();
-        if (!nombre) { showErr('regError', 'Ingresa tu nombre'); return; }
-        const btn = document.getElementById('btnRegistrar');
-        btn.disabled = true; btn.textContent = 'REGISTRANDO...';
-        try {
-            const res = await fetch('/api/turnos/crear', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                window.location.href = `${window.location.pathname}?view=ticket&id=${data.id}`;
-            } else {
-                showErr('regError', data.error || 'Error');
-                btn.disabled = false; btn.textContent = 'TOMAR TURNO';
-            }
-        } catch(e) { showErr('regError', 'Error de conexión'); btn.disabled = false; btn.textContent = 'TOMAR TURNO'; }
-    }
-
-    // ═══════ CLIENTE: TICKET ═══════
-    async function cargarTicket() {
-        if (!ticketId) return;
-        try {
-            const res = await fetch(`/api/turnos/${ticketId}`);
-            if (!res.ok) { document.getElementById('viewTicket').innerHTML = '<div class="flex items-center justify-center p-10"><p class="text-red-400 text-xl">Turno no encontrado</p></div>'; return; }
-            const data = await res.json();
-            const { turno, posicion, estimado, esSuTurno, actualNumero } = data;
-            document.getElementById('tkNumero').textContent = turno.numero;
-            document.getElementById('tkNombre').textContent = turno.nombre;
-            document.getElementById('tkActual').textContent = actualNumero || '-';
-            document.getElementById('tkActualInfo').textContent = actualNumero === turno.numero ? '¡Es tu turno!' : (actualNumero ? `Atendiendo #${actualNumero}` : 'Sin turno');
-            document.getElementById('tkPosicion').textContent = posicion;
-            document.getElementById('tkTiempo').textContent = estimado > 0 ? `~${estimado} min` : '0 min';
-            const overlay = document.getElementById('alertOverlay');
-            const box = document.getElementById('tkEstadoBox');
-            if (esSuTurno && turno.estado === 'atendiendo') {
-                overlay.classList.add('show');
-                document.getElementById('alertNumero').textContent = `#${turno.numero}`;
-                box.className = 'card text-center glow-green';
-                document.getElementById('tkEstadoIcon').textContent = '🎉';
-                document.getElementById('tkEstadoTexto').textContent = '¡Dirígete al mostrador!';
-            } else if (turno.estado === 'atendido') {
-                overlay.classList.remove('show');
-                box.className = 'card text-center';
-                document.getElementById('tkEstadoIcon').textContent = '✅';
-                document.getElementById('tkEstadoTexto').textContent = 'Tu turno fue atendido';
-            } else {
-                overlay.classList.remove('show');
-                box.className = 'card text-center';
-                document.getElementById('tkEstadoIcon').textContent = '⏳';
-                document.getElementById('tkEstadoTexto').textContent = 'En espera...';
-            }
-        } catch(e) {}
-    }
-
-    function closeAlert() { document.getElementById('alertOverlay').classList.remove('show'); }
-
-    // ═══════ UTILS ═══════
-    function fmtSec(s) { if (s == null) return '-'; const m = Math.floor(s/60); return m > 0 ? `${m}m ${s%60}s` : `${s}s`; }
-    function showErr(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.remove('hidden'); }
-
-    // ═══════ SOCKET ═══════
-    socket.on('turno:avanzado', () => { if (!clienteMode && activeTab === 'recepcion') cargarPanel(); if (clienteMode) cargarTicket(); });
-    socket.on('turno:nuevo', () => { if (!clienteMode && activeTab === 'recepcion') cargarPanel(); if (activeTab === 'qr') cargarQR(); });
-    socket.on('entrega:nueva', () => { if (activeTab === 'bodega') cargarBodega(); });
-    socket.on('entrega:completada', () => { if (activeTab === 'bodega') cargarBodega(); });
-
-    // ═══════ INIT ═══════
-    initRouter();
-    if (!clienteMode) {
-        setInterval(() => { if (activeTab === 'recepcion') cargarPanel(); if (activeTab === 'bodega') cargarBodega(); if (activeTab === 'qr') cargarQR(); }, 3000);
-        loadQR();
-    } else {
-        setInterval(() => { if (ticketId) cargarTicket(); }, 3000);
-    }
-    document.getElementById('regNombre').addEventListener('keydown', e => { if (e.key === 'Enter') crearTurno(); });
+socket.on('turno:avanzado',()=>{if(view==='recepcion')rCargar();if(view==='ticket')tCargar();});
+socket.on('turno:nuevo',()=>{if(view==='recepcion')rCargar();if(view==='qr')qrCargar();});
+socket.on('entrega:nueva',()=>{if(view==='bodega')bCargar();});
+socket.on('entrega:completada',()=>{if(view==='bodega')bCargar();});
 </script>
 
 </body>
