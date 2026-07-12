@@ -683,13 +683,12 @@ async function getTurnosStats() {
 
 async function getHistorial() {
     const hoy = new Date().toISOString().split('T')[0];
-    const tz = 'America/Santiago';
     const result = await query(`
         SELECT t.id, t.nombre, t.numero, t.estado, t.fecha,
             to_char(t.fecha, 'DD/MM/YYYY') as fecha_fmt,
-            to_char(t.hora_creacion AT TIME ZONE 'UTC' AT TIME ZONE $2, 'HH24:MI') as hora_creacion,
-            to_char(t.hora_llamada AT TIME ZONE 'UTC' AT TIME ZONE $2, 'HH24:MI') as hora_llamada,
-            to_char(t.hora_fin AT TIME ZONE 'UTC' AT TIME ZONE $2, 'HH24:MI') as hora_fin,
+            to_char((t.fecha + t.hora_creacion) AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_creacion,
+            to_char((t.fecha + t.hora_llamada) AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_llamada,
+            to_char((t.fecha + t.hora_fin) AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_fin,
             CASE WHEN t.hora_llamada IS NOT NULL THEN
                 EXTRACT(EPOCH FROM (t.hora_llamada - t.hora_creacion))::INTEGER
             END AS espera_segundos,
@@ -697,8 +696,8 @@ async function getHistorial() {
                 EXTRACT(EPOCH FROM (t.hora_fin - t.hora_llamada))::INTEGER
             END AS recepcion_segundos,
             e.pedidos, e.factura, e.tipo,
-            to_char(e.hora_registrada AT TIME ZONE 'UTC' AT TIME ZONE $2, 'HH24:MI') as bodega_recibido,
-            to_char(e.hora_entregada AT TIME ZONE 'UTC' AT TIME ZONE $2, 'HH24:MI') as bodega_entregado,
+            to_char((e.fecha + e.hora_registrada) AT TIME ZONE 'America/Santiago', 'HH24:MI') as bodega_recibido,
+            to_char((e.fecha + e.hora_entregada) AT TIME ZONE 'America/Santiago', 'HH24:MI') as bodega_entregado,
             e.estado as entrega_estado,
             CASE WHEN e.hora_entregada IS NOT NULL AND e.hora_registrada IS NOT NULL THEN
                 EXTRACT(EPOCH FROM (e.hora_entregada - e.hora_registrada))::INTEGER
@@ -718,8 +717,8 @@ async function getHistorial() {
             NULL AS espera_segundos,
             NULL AS recepcion_segundos,
             e.pedidos, e.factura, e.tipo,
-            to_char(e.hora_registrada AT TIME ZONE 'UTC' AT TIME ZONE $2, 'HH24:MI') as bodega_recibido,
-            to_char(e.hora_entregada AT TIME ZONE 'UTC' AT TIME ZONE $2, 'HH24:MI') as bodega_entregado,
+            to_char((e.fecha + e.hora_registrada) AT TIME ZONE 'America/Santiago', 'HH24:MI') as bodega_recibido,
+            to_char((e.fecha + e.hora_entregada) AT TIME ZONE 'America/Santiago', 'HH24:MI') as bodega_entregado,
             e.estado as entrega_estado,
             CASE WHEN e.hora_entregada IS NOT NULL AND e.hora_registrada IS NOT NULL THEN
                 EXTRACT(EPOCH FROM (e.hora_entregada - e.hora_registrada))::INTEGER
@@ -729,7 +728,7 @@ async function getHistorial() {
         WHERE e.fecha = $1 AND e.turno_id IS NULL
 
         ORDER BY fecha_fmt DESC, bodega_recibido DESC
-    `, [hoy, tz]);
+    `, [hoy]);
     return result.rows;
 }
 
@@ -931,8 +930,8 @@ const server = http.createServer(async (req, res) => {
         if (turnosPath === 'entregas/pendientes') {
             const result = await query(`
                 SELECT e.*, t.numero as turno_numero,
-                    to_char(e.hora_registrada AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_registrada,
-                    to_char(e.hora_entregada AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_entregada
+                    to_char((e.fecha + e.hora_registrada) AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_registrada,
+                    to_char((e.fecha + e.hora_entregada) AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_entregada
                 FROM entregas e
                 LEFT JOIN turnos t ON t.id = e.turno_id
                 WHERE e.estado = $1 AND e.fecha = CURRENT_DATE ORDER BY e.id ASC
@@ -945,8 +944,8 @@ const server = http.createServer(async (req, res) => {
         if (turnosPath === 'entregas') {
             const result = await query(`
                 SELECT e.*, t.numero as turno_numero,
-                    to_char(e.hora_registrada AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_registrada,
-                    to_char(e.hora_entregada AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_entregada
+                    to_char((e.fecha + e.hora_registrada) AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_registrada,
+                    to_char((e.fecha + e.hora_entregada) AT TIME ZONE 'America/Santiago', 'HH24:MI') as hora_entregada
                 FROM entregas e
                 LEFT JOIN turnos t ON t.id = e.turno_id
                 WHERE e.fecha = CURRENT_DATE ORDER BY e.id DESC
