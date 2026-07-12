@@ -80,8 +80,6 @@
     </style>
 </head>
 <body>
-<div id="diag" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:red;color:white;padding:4px 12px;font:12px monospace;display:none">LOADING...</div>
-<script>window.onerror=function(m,s,l,c,e){var d=document.getElementById('diag');if(d){d.style.display='block';d.textContent='JS ERROR: '+m+' (line '+l+':'+c+')';}console.error('GLOBAL ERROR:',m,s,l,c,e);return false;};</script>
 
 <!-- ALERTA "ES TU TURNO" -->
 <div id="alertOverlay" class="alert-overlay">
@@ -95,7 +93,6 @@
 </div>
 
 <script>
-var _diag=document.getElementById('diag'); if(_diag){_diag.style.display='block';_diag.textContent='SCRIPT 1 LOADING...';}
 const socket = typeof io !== 'undefined' ? io() : { on: function(){}, emit: function(){} };
 const BASE = window.location.pathname.replace(/\/$/, '');
 let params = new URLSearchParams(window.location.search);
@@ -106,43 +103,58 @@ function fmtSec(s){ if(s==null)return'-'; const m=Math.floor(s/60); return m>0?`
 
 function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extra}`; }
 
+function getUserRaw() {
+    try {
+        var raw = localStorage.getItem('unified_user');
+        if (!raw) return null;
+        var parsed = JSON.parse(raw);
+        return parsed && parsed.id ? parsed : null;
+    } catch(e) { return null; }
+}
+
 function getTurnosPerms() {
     try {
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        let p = user.permisos || [];
-        if (!Array.isArray(p)) p = typeof p === 'string' ? p.replace(/[{}"]/g, '').split(',').filter(Boolean) : [];
-        const hasLegacy = p.includes('turnos');
+        var user = getUserRaw();
+        if (!user) return { recepcion: false, bodega: false, qr: false, _none: true };
+        var p = user.permisos || [];
+        if (!Array.isArray(p)) p = typeof p === 'string' ? p.replace(/[{}"]/g, '').split(',').map(function(s){return s.trim()}).filter(Boolean) : [];
+        var hasLegacy = p.indexOf('turnos') !== -1;
         return {
-            recepcion: hasLegacy || p.includes('turnos-recepcion'),
-            bodega: hasLegacy || p.includes('turnos-bodega'),
-            qr: hasLegacy || p.includes('turnos-qr')
+            recepcion: hasLegacy || p.indexOf('turnos-recepcion') !== -1,
+            bodega: hasLegacy || p.indexOf('turnos-bodega') !== -1,
+            qr: hasLegacy || p.indexOf('turnos-qr') !== -1,
+            _none: false
         };
-    } catch(e) { return { recepcion: false, bodega: false, qr: false }; }
+    } catch(e) { return { recepcion: false, bodega: false, qr: false, _none: true }; }
 }
 
 function renderMenuTurnos() {
-    const perm = getTurnosPerms();
-    const rawUser = JSON.parse(localStorage.getItem('unified_user') || '{}');
-    console.log('Turnos QR - User:', rawUser);
-    console.log('Turnos QR - Permisos raw:', rawUser.permisos);
-    console.log('Turnos QR - Permisos parsed:', perm);
-    const opciones = [];
+    var perm = getTurnosPerms();
+    var grid = document.getElementById('menuGrid');
+    if (!grid) return;
+
+    if (perm._none) {
+        grid.innerHTML = '<div class="text-center py-8" style="padding:40px 20px"><p class="text-lg mb-2" style="color:#ef4444">No has iniciado sesion</p><p class="text-sm mb-4" style="color:#94a3b8">Inicia sesion desde el sistema principal para acceder a Turnos QR</p><a href="/" class="btn-volver">Ir al Login</a></div>';
+        return;
+    }
+
+    var opciones = [];
     if (perm.recepcion) opciones.push({ view:'recepcion', icon:'&#128203;', title:'Recepci\u00f3n y Control de Turnos', desc:'Gestionar cola, llamar siguiente, ver historial', color:'#4ade80', bg:'rgba(34,197,94,0.12)', border:'rgba(34,197,94,0.35)' });
     if (perm.bodega) opciones.push({ view:'bodega', icon:'&#128230;', title:'Entrega de Bodega', desc:'Ver pendientes y marcar entregas realizadas', color:'#fbbf24', bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.35)' });
     if (perm.qr) opciones.push({ view:'qr', icon:'&#128186;', title:'QR Clientes', desc:'C\u00f3digo QR para que los clientes tomen turno', color:'#60a5fa', bg:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.35)' });
-    if (opciones.length === 1) { navigate(opciones[0].view); return; }
-    const grid = document.getElementById('menuGrid');
-    if (!grid) return;
+
     if (opciones.length === 0) {
-        grid.innerHTML = '<div class="text-center text-slate-500 py-8"><p class="text-lg mb-4">No tienes acceso a ning\u00fan sub-m\u00f3dulo de Turnos QR</p><a href="/" class="btn-volver">Volver al Sistema</a></div>';
+        grid.innerHTML = '<div class="text-center py-8" style="padding:40px 20px"><p class="text-lg mb-2" style="color:#fbbf24">Sin acceso a Turnos QR</p><p class="text-sm mb-4" style="color:#94a3b8">Tu usuario no tiene permisos para acceder a ningun sub-modulo de Turnos QR</p><a href="/" class="btn-volver">Volver al Sistema</a></div>';
         return;
     }
-    grid.innerHTML = opciones.map(o => `
-        <div class="menu-card" onclick="navigate('${o.view}')" style="background:${o.bg};border-color:${o.border}">
-            <div class="menu-icon">${o.icon}</div>
-            <h3 style="color:${o.color}">${o.title}</h3>
-            <p>${o.desc}</p>
-        </div>`).join('');
+
+    grid.innerHTML = opciones.map(function(o) {
+        return '<div class="menu-card" onclick="navigate(\'' + o.view + '\')" style="background:' + o.bg + ';border-color:' + o.border + '">' +
+            '<div class="menu-icon">' + o.icon + '</div>' +
+            '<h3 style="color:' + o.color + '">' + o.title + '</h3>' +
+            '<p>' + o.desc + '</p>' +
+        '</div>';
+    }).join('');
 }
 </script>
 
@@ -618,40 +630,49 @@ async function tCargar() {
 // ═══════ ADMIN ═══════
 function getTurnosUser() { try { return JSON.parse(localStorage.getItem('unified_user')); } catch(e) { return null; } }
 function checkAdmin() {
-    const user = getTurnosUser();
+    var user = getTurnosUser();
     if (user && user.rol === 'admin') document.body.classList.add('isAdmin');
 }
 checkAdmin();
 
 async function eliminarTurno(id) {
-    if (!confirm('¿Eliminar este registro del historial?')) return;
-    try { await fetch(`/api/turnos/eliminar-turno/${id}`, { method: 'DELETE' }); rCargar(); } catch(e) {}
+    if (!confirm('\u00bfEliminar este registro del historial?')) return;
+    try { await fetch('/api/turnos/eliminar-turno/' + id, { method: 'DELETE' }); rCargar(); } catch(e) {}
 }
 async function eliminarEntrega(id) {
-    if (!confirm('¿Eliminar este registro del historial?')) return;
-    try { await fetch(`/api/turnos/eliminar-entrega/${id}`, { method: 'DELETE' }); rCargar(); bCargar(); } catch(e) {}
+    if (!confirm('\u00bfEliminar este registro del historial?')) return;
+    try { await fetch('/api/turnos/eliminar-entrega/' + id, { method: 'DELETE' }); rCargar(); bCargar(); } catch(e) {}
 }
 
 // ═══════ ROUTER ═══════
-var _d2=document.getElementById('diag'); if(_d2){_d2.textContent='ROUTER: view='+view+' | '+document.querySelectorAll('[id^="page"]').length+' pages found';}
 try {
-document.querySelectorAll('[id^="page"]').forEach(p=>p.style.display='none');
-const pageId = {menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'pageQR',registro:'pageRegistro',ticket:'pageTicket'}[view]||'pageMenu';
-const page = document.getElementById(pageId);
+document.querySelectorAll('[id^="page"]').forEach(function(p){p.style.display='none'});
+var pageMap = {menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'pageQR',registro:'pageRegistro',ticket:'pageTicket'};
+var pageId = pageMap[view] || 'pageMenu';
+var page = document.getElementById(pageId);
 if(page) page.style.display='block';
-var _d3=document.getElementById('diag'); if(_d3){_d3.textContent='ROUTER OK: showing '+pageId+' | view='+view;setTimeout(function(){_d3.style.display='none';},5000);}
 
 if(view==='menu') renderMenuTurnos();
-if(view==='recepcion'){if(!getTurnosPerms().recepcion){navigate('menu');return;}rCargar();setInterval(rCargar,3000);}
-if(view==='bodega'){if(!getTurnosPerms().bodega){navigate('menu');return;}bCargar();setInterval(bCargar,3000);}
-if(view==='qr'){if(!getTurnosPerms().qr){navigate('menu');return;}qrLoad();qrCargar();setInterval(qrCargar,3000);}
-if(view==='registro'){document.getElementById('cNombre').addEventListener('keydown',e=>{if(e.key==='Enter')cCrear();});}
+
+if(view==='recepcion'){
+    if(!getTurnosPerms().recepcion){window.location.replace(BASE);return;}
+    rCargar();setInterval(rCargar,3000);
+}
+if(view==='bodega'){
+    if(!getTurnosPerms().bodega){window.location.replace(BASE);return;}
+    bCargar();setInterval(bCargar,3000);
+}
+if(view==='qr'){
+    if(!getTurnosPerms().qr){window.location.replace(BASE);return;}
+    qrLoad();qrCargar();setInterval(qrCargar,3000);
+}
+if(view==='registro'){document.getElementById('cNombre').addEventListener('keydown',function(e){if(e.key==='Enter')cCrear();});}
 if(view==='ticket'){tCargar();setInterval(tCargar,3000);}
 
-socket.on('turno:avanzado',()=>{if(view==='recepcion')rCargar();if(view==='ticket')tCargar();});
-socket.on('turno:nuevo',()=>{if(view==='recepcion')rCargar();if(view==='qr')qrCargar();});
-socket.on('entrega:nueva',()=>{if(view==='bodega')bCargar();});
-socket.on('entrega:completada',()=>{if(view==='bodega')bCargar();});
+socket.on('turno:avanzado',function(){if(view==='recepcion')rCargar();if(view==='ticket')tCargar();});
+socket.on('turno:nuevo',function(){if(view==='recepcion')rCargar();if(view==='qr')qrCargar();});
+socket.on('entrega:nueva',function(){if(view==='bodega')bCargar();});
+socket.on('entrega:completada',function(){if(view==='bodega')bCargar();});
 } catch(routerErr) {
     console.error('Router error:', routerErr);
     document.body.innerHTML = '<div style="padding:40px;color:white;text-align:center"><h2>Error en Turnos QR</h2><p>' + routerErr.message + '</p><a href="/" style="color:#4ade80">Volver al Sistema</a></div>';
