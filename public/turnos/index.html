@@ -125,10 +125,11 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
         </div>
         <button onclick="rLlamar()" class="btn btn-green w-full text-lg mb-4" id="rBtnLlamar">LLAMAR SIGUIENTE</button>
         <button onclick="abrirModalDerivar()" class="btn btn-blue w-full text-lg mb-4 hidden" id="rBtnDerivar">&#128230; DERIVAR A BODEGA</button>
-        <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="stat-box"><div id="rTotal" class="text-2xl font-bold text-white">0</div><div class="text-xs text-slate-500 mt-1">Total hoy</div></div>
             <div class="stat-box"><div id="rCola" class="text-2xl font-bold text-blue-400">0</div><div class="text-xs text-slate-500 mt-1">En cola</div></div>
             <div class="stat-box"><div id="rAtendidos" class="text-2xl font-bold text-green-400">0</div><div class="text-xs text-slate-500 mt-1">Atendidos</div></div>
+            <div class="stat-box" style="border-color:#f59e0b"><div id="rPendBodega" class="text-2xl font-bold text-amber-400">0</div><div class="text-xs text-slate-500 mt-1">Pend. Bodega</div></div>
         </div>
         <div class="card mb-4">
             <div class="flex items-center justify-between mb-3">
@@ -144,7 +145,7 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
                 <h2 class="text-sm font-semibold text-slate-300">Historial del Día</h2>
                 <span id="rHistBadge" class="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
             </div>
-            <div id="rHistList" class="max-h-64 overflow-y-auto">
+            <div id="rHistList" class="max-h-96 overflow-y-auto">
                 <div class="text-center text-slate-600 py-4 text-sm">Sin registros</div>
             </div>
         </div>
@@ -295,6 +296,40 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 <script>
 // ═══════ RECEPCIÓN ═══════
 let rActualTurno = null;
+function estadoTag(estado) {
+    const map = {
+        derivado: '<span class="tag" style="background:rgba(59,130,246,0.15);color:#60a5fa">Derivado a bodega</span>',
+        entregado: '<span class="tag" style="background:rgba(34,197,94,0.15);color:#22c55e">Entregado</span>',
+        atendido: '<span class="tag" style="background:rgba(34,197,94,0.15);color:#22c55e">Atendido</span>'
+    };
+    return map[estado] || `<span class="tag bg-slate-700 text-slate-400">${estado}</span>`;
+}
+function renderHistorialItem(t) {
+    let html = `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:6px">`;
+    html += `<div class="flex items-center justify-between">`;
+    html += `<div class="flex items-center gap-2"><span class="text-amber-400 font-black">#${t.numero}</span><span class="text-slate-300 font-semibold">${t.nombre}</span>${estadoTag(t.estado)}</div>`;
+    html += `<span class="text-slate-600 text-xs">${t.hora_creacion||''}</span></div>`;
+    html += `<div style="display:flex;flex-wrap:wrap;gap:8px;font-size:12px">`;
+    html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Espera</div><div class="text-amber-400 font-bold">${fmtSec(t.espera_segundos)}</div></div>`;
+    html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Recepci&oacute;n</div><div class="text-blue-400 font-bold">${fmtSec(t.recepcion_segundos)}</div></div>`;
+    if (t.pedidos && t.pedidos.trim()) {
+        html += `<div><div class="text-slate-600 text-xs">Pedido(s)</div><div class="text-cyan-400 font-bold">${t.pedidos}</div></div>`;
+    }
+    if (t.factura && t.factura.trim()) {
+        html += `<div><div class="text-slate-600 text-xs">Factura</div><div class="text-purple-400 font-bold">${t.factura}</div></div>`;
+    }
+    if (t.entrega_estado) {
+        html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Bodega recibi&oacute;</div><div class="text-slate-300 font-bold">${t.bodega_recibido||'-'}</div></div>`;
+    }
+    if (t.bodega_entregado) {
+        html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Bodega entreg&oacute;</div><div class="text-green-400 font-bold">${t.bodega_entregado}</div></div>`;
+        html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Tiempo bodega</div><div class="text-green-400 font-bold">${fmtSec(t.bodega_segundos)}</div></div>`;
+    } else if (t.entrega_estado === 'pendiente') {
+        html += `<div class="text-center" style="min-width:70px"><div class="text-slate-600 text-xs">Bodega</div><div class="text-amber-400 font-bold">Pendiente</div></div>`;
+    }
+    html += `</div></div>`;
+    return html;
+}
 async function rCargar() {
     try {
         const [eR, cR, hR] = await Promise.all([fetch('/api/turnos/estado'), fetch('/api/turnos/cola'), fetch('/api/turnos/historial')]);
@@ -305,6 +340,7 @@ async function rCargar() {
         document.getElementById('rTotal').textContent = e.total;
         document.getElementById('rCola').textContent = e.enCola;
         document.getElementById('rAtendidos').textContent = e.atendidos;
+        document.getElementById('rPendBodega').textContent = e.pendientesBodega || 0;
         document.getElementById('rColaBadge').textContent = e.enCola;
         const btn = document.getElementById('rBtnLlamar');
         const btnDerivar = document.getElementById('rBtnDerivar');
@@ -319,7 +355,7 @@ async function rCargar() {
         }
         document.getElementById('rColaList').innerHTML = c.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">No hay personas en cola</div>' : c.map((t,i)=>`<div class="turno-item"><div class="flex items-center gap-3"><span class="text-slate-600 text-sm">${i+1}</span><span class="text-amber-400 font-black text-lg">#${t.numero}</span><span class="text-slate-300">${t.nombre}</span></div><span class="text-slate-600 text-xs">${t.hora_creacion?String(t.hora_creacion).slice(0,5):''}</span></div>`).join('');
         document.getElementById('rHistBadge').textContent = h.length;
-        document.getElementById('rHistList').innerHTML = h.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin registros</div>' : h.map(t=>`<div class="turno-item"><div class="flex items-center gap-3"><span class="text-green-400 font-black">#${t.numero}</span><span class="text-slate-300">${t.nombre}</span></div><div class="flex gap-4 text-xs"><div class="text-center"><div class="text-slate-600">Espera</div><div class="text-amber-400 font-bold">${fmtSec(t.espera_segundos)}</div></div><div class="text-center"><div class="text-slate-600">Atención</div><div class="text-blue-400 font-bold">${fmtSec(t.duracion_segundos)}</div></div></div></div>`).join('');
+        document.getElementById('rHistList').innerHTML = h.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin registros</div>' : h.map(t=>renderHistorialItem(t)).join('');
     } catch(e) {}
 }
 function abrirModalDerivar() {

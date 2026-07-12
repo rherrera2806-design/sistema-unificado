@@ -665,35 +665,51 @@ async function getPosicionCola(numero) {
 
 async function getTurnosStats() {
     const hoy = new Date().toISOString().split('T')[0];
-    const [totalR, atendidosR, enColaR] = await Promise.all([
+    const [totalR, atendidosR, enColaR, pendBodegaR] = await Promise.all([
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1', [hoy]),
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado IN ($2, $3)', [hoy, 'atendido', 'derivado']),
-        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado = $2', [hoy, 'espera'])
+        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado = $2', [hoy, 'espera']),
+        query('SELECT COUNT(*) AS n FROM entregas WHERE estado = $1 AND fecha = $2', ['pendiente', hoy])
     ]);
     const total = Number(totalR.rows[0].n);
     const atendidos = Number(atendidosR.rows[0].n);
     const enCola = Number(enColaR.rows[0].n);
+    const pendientesBodega = Number(pendBodegaR.rows[0].n);
     const actual = await getTurnoActual();
-    return { total, atendidos, enCola, actual };
+    return { total, atendidos, enCola, pendientesBodega, actual };
 }
 
 async function getHistorial() {
     const hoy = new Date().toISOString().split('T')[0];
     const result = await query(`
-        SELECT id, nombre, numero, estado, fecha,
-            to_char(hora_creacion, 'HH24:MI:SS') as hora_creacion,
-            to_char(hora_llamada, 'HH24:MI:SS') as hora_llamada,
-            to_char(hora_fin, 'HH24:MI:SS') as hora_fin,
-            CASE WHEN hora_llamada IS NOT NULL THEN
-                EXTRACT(EPOCH FROM (hora_llamada - hora_creacion))::INTEGER
+        SELECT t.id, t.nombre, t.numero, t.estado, t.fecha,
+            to_char(t.hora_creacion, 'HH24:MI') as hora_creacion,
+            to_char(t.hora_llamada, 'HH24:MI') as hora_llamada,
+            to_char(t.hora_fin, 'HH24:MI') as hora_fin,
+            CASE WHEN t.hora_llamada IS NOT NULL THEN
+                EXTRACT(EPOCH FROM (t.hora_llamada - t.hora_creacion))::INTEGER
             END AS espera_segundos,
-            CASE WHEN hora_fin IS NOT NULL AND hora_llamada IS NOT NULL THEN
-                EXTRACT(EPOCH FROM (hora_fin - hora_llamada))::INTEGER
-            END AS duracion_segundos
-        FROM turnos WHERE fecha = $1 AND estado = 'atendido'
-        ORDER BY numero ASC
+            CASE WHEN t.hora_fin IS NOT NULL AND t.hora_llamada IS NOT NULL THEN
+                EXTRACT(EPOCH FROM (t.hora_fin - t.hora_llamada))::INTEGER
+            END AS recepcion_segundos,
+            e.pedidos, e.factura,
+            to_char(e.hora_registrada, 'HH24:MI') as bodega_recibido,
+            to_char(e.hora_entregada, 'HH24:MI') as bodega_entregado,
+            e.estado as entrega_estado,
+            CASE WHEN e.hora_entregada IS NOT NULL AND e.hora_registrada IS NOT NULL THEN
+                EXTRACT(EPOCH FROM (e.hora_entregada - e.hora_registrada))::INTEGER
+            END AS bodega_segundos
+        FROM turnos t
+        LEFT JOIN entregas e ON e.turno_id = t.id
+        WHERE t.fecha = $1 AND t.estado IN ('atendido', 'derivado', 'entregado')
+        ORDER BY t.numero ASC
     `, [hoy]);
     return result.rows;
+}
+
+async function getPendientesBodega() {
+    const result = await query('SELECT COUNT(*) AS n FROM entregas WHERE estado = $1 AND fecha = CURRENT_DATE', ['pendiente']);
+    return Number(result.rows[0].n);
 }
 
 // =====================================================
