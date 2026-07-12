@@ -134,6 +134,20 @@ async function initDB() {
     await query('CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON turnos(fecha)');
     await query('CREATE INDEX IF NOT EXISTS idx_turnos_numero ON turnos(numero)');
 
+    // --- Entregas Bodega ---
+    await query(`CREATE TABLE IF NOT EXISTS entregas (
+        id SERIAL PRIMARY KEY,
+        turno_id INTEGER REFERENCES turnos(id),
+        cliente_nombre VARCHAR(100) NOT NULL,
+        descripcion TEXT,
+        estado VARCHAR(20) DEFAULT 'pendiente',
+        fecha DATE DEFAULT CURRENT_DATE,
+        hora_registrada TIME DEFAULT CURRENT_TIME,
+        hora_entregada TIME
+    )`);
+    await query('CREATE INDEX IF NOT EXISTS idx_entregas_estado ON entregas(estado)');
+    await query('CREATE INDEX IF NOT EXISTS idx_entregas_fecha ON entregas(fecha)');
+
     // --- Inventario Tables ---
     await query(`CREATE TABLE IF NOT EXISTS movimientos (
         id SERIAL PRIMARY KEY,
@@ -761,6 +775,19 @@ const server = http.createServer(async (req, res) => {
     if (urlPath.startsWith('/api/turnos/')) {
         const turnosPath = urlPath.substring('/api/turnos/'.length);
 
+        // QR Code
+        if (turnosPath === 'qr') {
+            const QRCode = require('qrcode');
+            const registroUrl = q.url || `${req.protocol}://${req.get('host')}/turnos/?view=registro`;
+            try {
+                const qr = await QRCode.toDataURL(registroUrl, { width: 300, margin: 2, color: { dark: '#1e293b', light: '#ffffff' } });
+                json(res, { qr, url: registroUrl });
+            } catch(err) {
+                json(res, { error: 'Error generando QR' }, 500);
+            }
+            return;
+        }
+
         // Crear turno
         if (turnosPath === 'crear' && req.method === 'POST') {
             const body = await parseBody(req);
@@ -831,6 +858,51 @@ const server = http.createServer(async (req, res) => {
         // Historial
         if (turnosPath === 'historial') {
             json(res, await getHistorial());
+            return;
+        }
+
+        // Registrar entrega
+        if (turnosPath === 'entregas/registrar' && req.method === 'POST') {
+            const body = await parseBody(req);
+            const { cliente_nombre, descripcion, turno_id } = body;
+            if (!cliente_nombre) return json(res, { error: 'Nombre del cliente requerido' }, 400);
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            const hoy = new Date().toISOString().split('T')[0];
+            const result = await query(
+                'INSERT INTO entregas (turno_id, cliente_nombre, descripcion, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+                [turno_id || null, cliente_nombre, descripcion || '', hoy, hora]
+            );
+            io.emit('entrega:nueva', result.rows[0]);
+            json(res, result.rows[0], 201);
+            return;
+        }
+
+        // Listar entregas pendientes
+        if (turnosPath === 'entregas/pendientes') {
+            const result = await query('SELECT * FROM entregas WHERE estado = $1 AND fecha = CURRENT_DATE ORDER BY id ASC', ['pendiente']);
+            json(res, result.rows);
+            return;
+        }
+
+        // Listar todas las entregas del día
+        if (turnosPath === 'entregas') {
+            const result = await query('SELECT * FROM entregas WHERE fecha = CURRENT_DATE ORDER BY id DESC');
+            json(res, result.rows);
+            return;
+        }
+
+        // Marcar entrega como entregada
+        const entregaMatch = turnosPath.match(/^entregas\/(\d+)\/entregar$/);
+        if (entregaMatch && req.method === 'POST') {
+            const id = Number(entregaMatch[1]);
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            await query('UPDATE entregas SET estado = $1, hora_entregada = $2 WHERE id = $3', ['entregado', hora, id]);
+            io.emit('entrega:completada', { id });
+            json(res, { success: true });
             return;
         }
     }
