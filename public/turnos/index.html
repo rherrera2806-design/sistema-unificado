@@ -106,7 +106,8 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 function getTurnosPerms() {
     try {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const p = user.permisos || [];
+        let p = user.permisos || [];
+        if (!Array.isArray(p)) p = typeof p === 'string' ? p.replace(/[{}"]/g, '').split(',').filter(Boolean) : [];
         const hasLegacy = p.includes('turnos');
         return {
             recepcion: hasLegacy || p.includes('turnos-recepcion'),

@@ -147,6 +147,7 @@
         };
 
         function getUser() { try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch(e) { return null; } }
+        function getPermisos(u) { const p = (u||{}).permisos || []; return Array.isArray(p) ? p : (typeof p === 'string' ? p.replace(/[{}"]/g, '').split(',').filter(Boolean) : []); }
 
         function showLogin() {
             document.getElementById('loginScreen').style.display = 'flex';
@@ -169,7 +170,7 @@
 
         function renderModules() {
             const user = getUser();
-            const permisos = user.permisos || [];
+            const permisos = getPermisos(user);
             const grid = document.getElementById('moduleGrid');
             grid.innerHTML = '';
             for (const [key, mod] of Object.entries(MODULES)) {
@@ -247,6 +248,7 @@
             if (id) {
                 try { const res = await fetch('/api/admin/usuarios'); const all = await res.json(); user = all.find(u => u.id === id) || user; } catch(e) {}
             }
+            const up = getPermisos(user);
             document.getElementById('modalTitle').textContent = id ? 'Editar Usuario' : 'Nuevo Usuario';
             document.getElementById('modalBody').innerHTML = `
                 <div class="form-group"><label>Nombre</label><input class="form-control" id="fNombre" value="${user.nombre}"></div>
@@ -260,13 +262,13 @@
                 </div>
                 <div class="form-group"><label>Modulos permitidos</label>
                     <div class="check-grid">
-                        <label class="check-label"><input type="checkbox" class="perm-check" value="sigma" ${(user.permisos||[]).includes('sigma')?'checked':''}> Mantencion (SIGMA)</label>
-                        <label class="check-label"><input type="checkbox" class="perm-check" value="inventario" ${(user.permisos||[]).includes('inventario')?'checked':''}> Inventario</label>
-                        <label class="check-label"><input type="checkbox" id="permTurnosPadre" onchange="toggleTurnosPadre()" ${(user.permisos||[]).includes('turnos')||['turnos-recepcion','turnos-bodega','turnos-qr'].some(p=>(user.permisos||[]).includes(p))?'checked':''}> Turnos QR</label>
-                        <div id="turnosChildren" style="width:100%;margin-left:24px;display:${(user.permisos||[]).includes('turnos')||['turnos-recepcion','turnos-bodega','turnos-qr'].some(p=>(user.permisos||[]).includes(p))?'block':'none'}">
-                            <label class="check-label"><input type="checkbox" class="perm-check perm-turnos" value="turnos-recepcion" onchange="toggleTurnosHijo()" ${(user.permisos||[]).includes('turnos')||(user.permisos||[]).includes('turnos-recepcion')?'checked':''}> Recepcion y Control</label>
-                            <label class="check-label"><input type="checkbox" class="perm-check perm-turnos" value="turnos-bodega" onchange="toggleTurnosHijo()" ${(user.permisos||[]).includes('turnos')||(user.permisos||[]).includes('turnos-bodega')?'checked':''}> Entrega de Bodega</label>
-                            <label class="check-label"><input type="checkbox" class="perm-check perm-turnos" value="turnos-qr" onchange="toggleTurnosHijo()" ${(user.permisos||[]).includes('turnos')||(user.permisos||[]).includes('turnos-qr')?'checked':''}> QR Clientes</label>
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="sigma" ${up.includes('sigma')?'checked':''}> Mantencion (SIGMA)</label>
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="inventario" ${up.includes('inventario')?'checked':''}> Inventario</label>
+                        <label class="check-label"><input type="checkbox" id="permTurnosPadre" onchange="toggleTurnosPadre()" ${up.includes('turnos')||['turnos-recepcion','turnos-bodega','turnos-qr'].some(p=>up.includes(p))?'checked':''}> Turnos QR</label>
+                        <div id="turnosChildren" style="width:100%;margin-left:24px;display:${up.includes('turnos')||['turnos-recepcion','turnos-bodega','turnos-qr'].some(p=>up.includes(p))?'block':'none'}">
+                            <label class="check-label"><input type="checkbox" class="perm-check perm-turnos" value="turnos-recepcion" onchange="toggleTurnosHijo()" ${up.includes('turnos')||up.includes('turnos-recepcion')?'checked':''}> Recepcion y Control</label>
+                            <label class="check-label"><input type="checkbox" class="perm-check perm-turnos" value="turnos-bodega" onchange="toggleTurnosHijo()" ${up.includes('turnos')||up.includes('turnos-bodega')?'checked':''}> Entrega de Bodega</label>
+                            <label class="check-label"><input type="checkbox" class="perm-check perm-turnos" value="turnos-qr" onchange="toggleTurnosHijo()" ${up.includes('turnos')||up.includes('turnos-qr')?'checked':''}> QR Clientes</label>
                         </div>
                         <label class="check-label"><input type="checkbox" class="perm-check" value="usuarios" ${(user.permisos||[]).includes('usuarios')?'checked':''}> Administrar Usuarios</label>
                     </div>

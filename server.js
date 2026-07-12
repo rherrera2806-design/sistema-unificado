@@ -499,7 +499,7 @@ async function login(email, password) {
     if (result.rows.length === 0) return null;
     const user = result.rows[0];
     if (user.password !== hashPassword(password)) return null;
-    return { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol, permisos: user.permisos || [] };
+    return { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol, permisos: Array.isArray(user.permisos) ? user.permisos : (typeof user.permisos === 'string' ? user.permisos.replace(/[{}"]/g, '').split(',').filter(Boolean) : []) };
 }
 
 async function register(nombre, email, password) {
@@ -1049,7 +1049,7 @@ const server = http.createServer(async (req, res) => {
     // =====================================================
     if (urlPath === '/api/admin/usuarios' && req.method === 'GET') {
         const result = await query('SELECT id, nombre, email, rol, permisos, activo, created_at FROM usuarios ORDER BY id');
-        json(res, result.rows);
+        json(res, result.rows.map(u => ({ ...u, permisos: Array.isArray(u.permisos) ? u.permisos : (typeof u.permisos === 'string' ? u.permisos.replace(/[{}"]/g, '').split(',').filter(Boolean) : []) })));
         return;
     }
     if (urlPath === '/api/admin/usuarios' && req.method === 'POST') {
