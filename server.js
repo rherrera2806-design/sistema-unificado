@@ -667,7 +667,7 @@ async function getTurnosStats() {
     const hoy = new Date().toISOString().split('T')[0];
     const [totalR, atendidosR, enColaR] = await Promise.all([
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1', [hoy]),
-        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado = $2', [hoy, 'atendido']),
+        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado IN ($2, $3)', [hoy, 'atendido', 'derivado']),
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado = $2', [hoy, 'espera'])
     ]);
     const total = Number(totalR.rows[0].n);
@@ -928,7 +928,7 @@ const server = http.createServer(async (req, res) => {
                 'INSERT INTO entregas (turno_id, cliente_nombre, descripcion, pedidos, factura, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
                 [turno.id, turno.nombre, '', pedidos || '', factura || '', hoy, hora]
             );
-            await query('UPDATE turnos SET estado = $1, hora_atencion = $2 WHERE id = $3', ['derivado', hora, turno.id]);
+            await query('UPDATE turnos SET estado = $1, hora_fin = $2 WHERE id = $3', ['derivado', hora, turno.id]);
             io.emit('entrega:nueva', result.rows[0]);
             io.emit('turno:avanzado', { turno_id: turno.id, estado: 'derivado' });
             json(res, result.rows[0], 201);
