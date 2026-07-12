@@ -142,6 +142,7 @@ async function initDB() {
         descripcion TEXT,
         pedidos TEXT,
         factura VARCHAR(50),
+        tipo VARCHAR(30) DEFAULT 'Retira',
         estado VARCHAR(20) DEFAULT 'pendiente',
         fecha DATE DEFAULT CURRENT_DATE,
         hora_registrada TIME DEFAULT CURRENT_TIME,
@@ -150,9 +151,10 @@ async function initDB() {
     await query('CREATE INDEX IF NOT EXISTS idx_entregas_estado ON entregas(estado)');
     await query('CREATE INDEX IF NOT EXISTS idx_entregas_fecha ON entregas(fecha)');
 
-    // Migration: add pedidos/factura if table already exists
+    // Migration: add columns if table already exists
     try { await query('ALTER TABLE entregas ADD COLUMN IF NOT EXISTS pedidos TEXT'); } catch(e) {}
     try { await query('ALTER TABLE entregas ADD COLUMN IF NOT EXISTS factura VARCHAR(50)'); } catch(e) {}
+    try { await query("ALTER TABLE entregas ADD COLUMN IF NOT EXISTS tipo VARCHAR(30) DEFAULT 'Retira'"); } catch(e) {}
 
     // --- Inventario Tables ---
     await query(`CREATE TABLE IF NOT EXISTS movimientos (
@@ -693,17 +695,39 @@ async function getHistorial() {
             CASE WHEN t.hora_fin IS NOT NULL AND t.hora_llamada IS NOT NULL THEN
                 EXTRACT(EPOCH FROM (t.hora_fin - t.hora_llamada))::INTEGER
             END AS recepcion_segundos,
-            e.pedidos, e.factura,
+            e.pedidos, e.factura, e.tipo,
             to_char(e.hora_registrada, 'HH24:MI') as bodega_recibido,
             to_char(e.hora_entregada, 'HH24:MI') as bodega_entregado,
             e.estado as entrega_estado,
             CASE WHEN e.hora_entregada IS NOT NULL AND e.hora_registrada IS NOT NULL THEN
                 EXTRACT(EPOCH FROM (e.hora_entregada - e.hora_registrada))::INTEGER
-            END AS bodega_segundos
+            END AS bodega_segundos,
+            'turno' as origen
         FROM turnos t
         LEFT JOIN entregas e ON e.turno_id = t.id
         WHERE t.fecha = $1 AND t.estado IN ('atendiendo', 'atendido', 'derivado', 'entregado')
-        ORDER BY t.numero DESC
+
+        UNION ALL
+
+        SELECT NULL as id, e.cliente_nombre as nombre, NULL as numero, e.estado, e.fecha,
+            to_char(e.fecha, 'DD/MM/YYYY') as fecha_fmt,
+            NULL as hora_creacion,
+            NULL as hora_llamada,
+            NULL as hora_fin,
+            NULL AS espera_segundos,
+            NULL AS recepcion_segundos,
+            e.pedidos, e.factura, e.tipo,
+            to_char(e.hora_registrada, 'HH24:MI') as bodega_recibido,
+            to_char(e.hora_entregada, 'HH24:MI') as bodega_entregado,
+            e.estado as entrega_estado,
+            CASE WHEN e.hora_entregada IS NOT NULL AND e.hora_registrada IS NOT NULL THEN
+                EXTRACT(EPOCH FROM (e.hora_entregada - e.hora_registrada))::INTEGER
+            END AS bodega_segundos,
+            'bodega' as origen
+        FROM entregas e
+        WHERE e.fecha = $1 AND e.turno_id IS NULL
+
+        ORDER BY fecha_fmt DESC, bodega_recibido DESC
     `, [hoy]);
     return result.rows;
 }
@@ -887,15 +911,15 @@ const server = http.createServer(async (req, res) => {
         // Registrar entrega
         if (turnosPath === 'entregas/registrar' && req.method === 'POST') {
             const body = await parseBody(req);
-            const { cliente_nombre, descripcion, turno_id } = body;
+            const { cliente_nombre, descripcion, turno_id, tipo, pedidos, factura } = body;
             if (!cliente_nombre) return json(res, { error: 'Nombre del cliente requerido' }, 400);
             const now = new Date();
             const pad = n => String(n).padStart(2, '0');
             const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
             const hoy = new Date().toISOString().split('T')[0];
             const result = await query(
-                'INSERT INTO entregas (turno_id, cliente_nombre, descripcion, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-                [turno_id || null, cliente_nombre, descripcion || '', hoy, hora]
+                'INSERT INTO entregas (turno_id, cliente_nombre, descripcion, pedidos, factura, tipo, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+                [turno_id || null, cliente_nombre, descripcion || '', pedidos || '', factura || '', tipo || 'Retira sin turno', hoy, hora]
             );
             io.emit('entrega:nueva', result.rows[0]);
             json(res, result.rows[0], 201);
@@ -957,8 +981,8 @@ const server = http.createServer(async (req, res) => {
             const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
             const hoy = new Date().toISOString().split('T')[0];
             const result = await query(
-                'INSERT INTO entregas (turno_id, cliente_nombre, descripcion, pedidos, factura, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-                [turno.id, turno.nombre, '', pedidos || '', factura || '', hoy, hora]
+                'INSERT INTO entregas (turno_id, cliente_nombre, descripcion, pedidos, factura, tipo, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+                [turno.id, turno.nombre, '', pedidos || '', factura || '', 'Retira', hoy, hora]
             );
             await query('UPDATE turnos SET estado = $1, hora_fin = $2 WHERE id = $3', ['derivado', hora, turno.id]);
             io.emit('entrega:nueva', result.rows[0]);
