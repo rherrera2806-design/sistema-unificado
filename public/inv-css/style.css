@@ -858,8 +858,8 @@ textarea.form-control {
    ======================================== */
 @media (max-width: 768px) {
     .app-container {
-        grid-template-columns: 1fr;
-        grid-template-areas: "header" "main";
+        grid-template-columns: 1fr !important;
+        grid-template-areas: "header" "main" !important;
     }
 
     .sidebar {
@@ -876,8 +876,12 @@ textarea.form-control {
         left: 0;
     }
 
+    .sidebar-overlay {
+        display: none !important;
+    }
+
     .sidebar-overlay.show {
-        display: block;
+        display: block !important;
     }
 
     .menu-toggle {
@@ -887,11 +891,13 @@ textarea.form-control {
     .main-content {
         padding: 12px;
         overflow-x: hidden;
+        grid-column: 1;
     }
 
     .header {
         padding: 0 12px;
         height: 50px;
+        grid-column: 1;
     }
 
     .header-title {
