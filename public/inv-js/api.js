@@ -45,7 +45,9 @@ class ApiClient {
                 return self.request('GET', `/inv/inventario${qs ? '?' + qs : ''}`);
             },
             getEstadisticas: () => self.request('GET', '/inv/estadisticas'),
-            getEstadisticasPorTipo: () => self.request('GET', '/inv/estadisticas-por-tipo')
+            getEstadisticasPorTipo: () => self.request('GET', '/inv/estadisticas-por-tipo'),
+            getTiposCristal: () => self.request('GET', '/catalogos/tipos-cristal'),
+            getEspesores: () => self.request('GET', '/catalogos/espesores')
         };
     }
 
