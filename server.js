@@ -279,6 +279,21 @@ async function initDB() {
 
     const mtCount = await query('SELECT COUNT(*) as c FROM machine_types');
     if (Number(mtCount.rows[0].c) === 0) await seedSigma();
+    
+    // Corregir secuencias de IDs
+    await resetSequences();
+}
+
+async function resetSequences() {
+    const tables = ['usuarios', 'machine_types', 'machines', 'components', 'component_type_links', 
+                    'spare_parts', 'preventive_maintenance', 'corrective_maintenance', 
+                    'machine_components', 'notas', 'turnos', 'entregas', 'movimientos',
+                    'catalogo_tipos_cristal', 'catalogo_espesores'];
+    for (const table of tables) {
+        try {
+            await query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 1))`);
+        } catch(e) { /* tabla sin serial */ }
+    }
 }
 
 async function seedSigma() {
