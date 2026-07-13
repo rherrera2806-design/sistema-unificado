@@ -1,4 +1,4 @@
-const InvMovimientos = {
+﻿const InvMovimientos = {
     tipoMovimiento: '',
     tipoSalida: '',
     allMovimientos: [],
@@ -10,7 +10,7 @@ const InvMovimientos = {
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         
         try {
-            // Cargar catálogos y movimientos en paralelo
+            // Cargar catÃ¡logos y movimientos en paralelo
             const [movimientos, tiposCristal, espesores] = await Promise.all([
                 api.inv().getMovimientos(),
                 api.catalogos.getTiposCristal(),
@@ -35,8 +35,8 @@ const InvMovimientos = {
                             <div class="form-group">
                                 <label>Tipo de Movimiento *</label>
                                 <div style="display:flex; gap:12px;">
-                                    <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')">➕ Entrada</label>
-                                    <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')">➖ Salida</label>
+                                    <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')">âž• Entrada</label>
+                                    <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')">âž– Salida</label>
                                 </div>
                             </div>
                             <div class="form-group" id="tipoSalidaGroup" style="display:none;">
@@ -79,7 +79,7 @@ const InvMovimientos = {
                                 </div>
                                 <div class="form-group">
                                     <label>Metros Cuadrados</label>
-                                    <div id="m2Display" style="padding:12px; background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; font-size:20px; font-weight:700; color:var(--primary);">0.00 m²</div>
+                                    <div id="m2Display" style="padding:12px; background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; font-size:20px; font-weight:700; color:var(--primary);">0.00 mÂ²</div>
                                 </div>
                             </div>
                             <div class="form-row">
@@ -119,7 +119,7 @@ const InvMovimientos = {
                                             <th>Espesor</th>
                                             <th>Dimensiones</th>
                                             <th>Cantidad</th>
-                                            <th>m²</th>
+                                            <th>mÂ²</th>
                                             <th>Proveedor</th>
                                             <th>Acciones</th>
                                         </tr>
@@ -184,7 +184,7 @@ const InvMovimientos = {
         const a = parseInt(document.getElementById('ancho').value) || 0;
         const b = parseInt(document.getElementById('alto').value) || 0;
         const c = parseInt(document.getElementById('cantidadPlanchas').value) || 0;
-        document.getElementById('m2Display').textContent = ((a * b * c) / 1000000).toFixed(2) + ' m²';
+        document.getElementById('m2Display').textContent = ((a * b * c) / 1000000).toFixed(2) + ' mÂ²';
     },
 
     capitalizeWords(input) {
@@ -217,15 +217,15 @@ const InvMovimientos = {
         const cantidad = document.getElementById('cantidadPlanchas').value;
 
         if (!Number.isInteger(Number(ancho)) || Number(ancho) <= 0) {
-            App.toast('El ancho debe ser un número entero positivo', 'error');
+            App.toast('El ancho debe ser un nÃºmero entero positivo', 'error');
             return;
         }
         if (!Number.isInteger(Number(alto)) || Number(alto) <= 0) {
-            App.toast('El alto debe ser un número entero positivo', 'error');
+            App.toast('El alto debe ser un nÃºmero entero positivo', 'error');
             return;
         }
         if (!Number.isInteger(Number(cantidad)) || Number(cantidad) <= 0) {
-            App.toast('La cantidad debe ser un número entero positivo', 'error');
+            App.toast('La cantidad debe ser un nÃºmero entero positivo', 'error');
             return;
         }
 
@@ -256,7 +256,7 @@ const InvMovimientos = {
     },
 
     async eliminar(id) {
-        if (!confirm('¿Eliminar este movimiento?')) return;
+        if (!confirm('Â¿Eliminar este movimiento?')) return;
         try { 
             await api.inv().eliminarMovimiento(id); 
             App.toast('Eliminado'); 

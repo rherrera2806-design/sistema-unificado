@@ -1,12 +1,12 @@
-const App = {
+﻿const App = {
     currentPage: null,
     userRole: null,
 
     pages: {
-        inventario: { icon: '📦', label: 'Inventario', render: () => InvInventario.render() },
-        movimientos: { icon: '📋', label: 'Movimientos', render: () => InvMovimientos.render() },
-        historial: { icon: '🕐', label: 'Historial', render: () => InvHistorial.render() },
-        catalogos: { icon: '⚙️', label: 'Catálogos', render: () => InvCatalogos.render(), adminOnly: true }
+        inventario: { icon: 'ðŸ“¦', label: 'Inventario', render: () => InvInventario.render() },
+        movimientos: { icon: 'ðŸ“‹', label: 'Movimientos', render: () => InvMovimientos.render() },
+        historial: { icon: 'ðŸ•', label: 'Historial', render: () => InvHistorial.render() },
+        catalogos: { icon: 'âš™ï¸', label: 'CatÃ¡logos', render: () => InvCatalogos.render(), adminOnly: true }
     },
 
     init() {

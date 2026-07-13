@@ -1,4 +1,4 @@
-const InvInventario = {
+﻿const InvInventario = {
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
@@ -37,7 +37,7 @@ const InvInventario = {
                 <div class="card">
                     <div class="card-header">Inventario Actual <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${items.length} tipos)</span></div>
                     <div class="card-body" style="padding:0">
-                        ${items.length === 0 ? '<div class="empty-state"><div class="icon">📦</div><p>No hay items en inventario</p></div>' : `<div class="table-responsive"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(this.allItems)}</tbody></table></div>`}
+                        ${items.length === 0 ? '<div class="empty-state"><div class="icon">ðŸ“¦</div><p>No hay items en inventario</p></div>' : `<div class="table-responsive"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(this.allItems)}</tbody></table></div>`}
                     </div>
                 </div>`;
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
