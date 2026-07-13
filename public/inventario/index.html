@@ -4,8 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="Control de inventario de vidrieria">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Control Inventario - Vidrieria</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
     <link rel="stylesheet" href="/inv-css/style.css">
+    <style>
+        /* Critical CSS inlined for faster FCP */
+        .app-container{display:grid;grid-template-columns:250px 1fr;grid-template-rows:56px 1fr;height:100vh;grid-template-areas:"sidebar header" "sidebar main"}
+        .sidebar{grid-area:sidebar;background:#0f172a;overflow-y:auto}
+        .main-content{grid-area:main;overflow-y:auto;padding:24px;background:#f1f5f9}
+        .page{display:none}.page.active{display:block}
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -36,12 +47,11 @@
     </div>
     <div class="toast" id="toast" role="alert" aria-live="polite"></div>
 
-    <script src="/inv-js/api.js"></script>
-    <script src="/inv-js/app.js"></script>
-    <script src="/inv-js/modules/catalogos.js"></script>
-    <script src="/inv-js/modules/dashboard.js"></script>
-    <script src="/inv-js/modules/movimientos.js"></script>
-    <script src="/inv-js/modules/inventario.js"></script>
-    <script src="/inv-js/modules/historial.js"></script>
+    <script src="/inv-js/api.js" defer></script>
+    <script src="/inv-js/app.js" defer></script>
+    <script src="/inv-js/modules/catalogos.js" defer></script>
+    <script src="/inv-js/modules/movimientos.js" defer></script>
+    <script src="/inv-js/modules/inventario.js" defer></script>
+    <script src="/inv-js/modules/historial.js" defer></script>
 </body>
 </html>

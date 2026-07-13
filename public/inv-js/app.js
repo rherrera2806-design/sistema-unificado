@@ -3,16 +3,15 @@ const App = {
     userRole: null,
 
     pages: {
-        dashboard: { icon: '📊', label: 'Dashboard', render: () => InvDashboard.render() },
-        movimientos: { icon: '📋', label: 'Movimientos', render: () => InvMovimientos.render() },
         inventario: { icon: '📦', label: 'Inventario', render: () => InvInventario.render() },
+        movimientos: { icon: '📋', label: 'Movimientos', render: () => InvMovimientos.render() },
         historial: { icon: '🕐', label: 'Historial', render: () => InvHistorial.render() },
         catalogos: { icon: '⚙️', label: 'Catálogos', render: () => InvCatalogos.render(), adminOnly: true }
     },
 
     init() {
         this.renderSidebar();
-        this.navigate('dashboard');
+        this.navigate('inventario');
         const user = this.getParentUser();
         if (user) {
             document.getElementById('headerUser').textContent = user.nombre;

@@ -32,7 +32,7 @@ const InvCatalogos = {
                             <span class="badge badge-entrada">${tiposCristal.length} tipos</span>
                         </div>
                         <div class="card-body">
-                            <div class="flex gap-8 mb-16">
+                            <div style="display:flex; gap:12px; margin-bottom:16px;">
                                 <input type="text" id="nuevoTipoCristal" class="form-control" placeholder="Nuevo tipo de cristal..." style="flex:1;">
                                 <button class="btn btn-success" onclick="InvCatalogos.agregarTipoCristal()">+ Agregar</button>
                             </div>
@@ -49,7 +49,7 @@ const InvCatalogos = {
                             <span class="badge badge-entrada">${espesores.length} valores</span>
                         </div>
                         <div class="card-body">
-                            <div class="flex gap-8 mb-16">
+                            <div style="display:flex; gap:12px; margin-bottom:16px;">
                                 <input type="number" id="nuevoEspesor" class="form-control" placeholder="Nuevo espesor (mm)..." min="1" max="100" style="flex:1;">
                                 <button class="btn btn-success" onclick="InvCatalogos.agregarEspesor()">+ Agregar</button>
                             </div>

@@ -81,10 +81,7 @@ const InvMovimientos = {
                                     <label for="proveedor">Proveedor (opcional)</label>
                                     <input type="text" id="proveedor" class="form-control" placeholder="Nombre del proveedor">
                                 </div>
-                                <div class="form-group">
-                                    <label for="fecha">Fecha (opcional)</label>
-                                    <input type="date" id="fecha" class="form-control">
-                                </div>
+                                <div class="form-group"></div>
                             </div>
                             <div class="form-group">
                                 <label for="observaciones">Observaciones (opcional)</label>
@@ -96,9 +93,11 @@ const InvMovimientos = {
                 </div>
                 <div class="filters-bar">
                     <span style="font-weight:500; color:var(--gray-700); font-size:13px;">Filtrar:</span>
-                    <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll">Todos</a>
-                    <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</a>
-                    <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</a>
+                    <select onchange="InvMovimientos.filtrar(this.value)" class="form-control" style="width:auto; min-height:32px; padding:4px 32px 4px 12px; font-size:13px;">
+                        <option value="">Todos</option>
+                        <option value="entrada">Entradas</option>
+                        <option value="salida">Salidas</option>
+                    </select>
                 </div>
                 <div class="card">
                     <div class="card-header">Movimientos <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
@@ -138,24 +137,28 @@ const InvMovimientos = {
     },
 
     renderRows(movs) {
-        return movs.map(m => `
+        return movs.map(m => {
+            const fecha = new Date(m.fecha_hora);
+            const fechaStr = fecha.toLocaleDateString('es-CL');
+            const horaStr = fecha.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+            return `
             <tr>
-                <td>${new Date(m.fecha_hora).toLocaleDateString('es-CL')}</td>
+                <td>${fechaStr}<br><small style="color:var(--gray-500);">${horaStr}</small></td>
                 <td>
                     <span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>
                     ${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}
                 </td>
                 <td>${this.escapeHtml(m.tipo_cristal)}</td>
                 <td>${m.espesor}mm</td>
-                <td>${m.ancho} x ${m.alto} mm</td>
+                <td>${parseInt(m.ancho)} x ${parseInt(m.alto)} mm</td>
                 <td>${m.cantidad_planchas}</td>
                 <td>${Number(m.metros_cuadrados).toFixed(2)}</td>
                 <td>${m.proveedor || '-'}</td>
                 <td>
                     <button class="btn btn-danger btn-sm" onclick="InvMovimientos.eliminar(${m.id})">Eliminar</button>
                 </td>
-            </tr>
-        `).join('');
+            </tr>`;
+        }).join('');
     },
 
     setTipo(t) {
@@ -210,6 +213,10 @@ const InvMovimientos = {
         }
 
         try {
+            // Obtener fecha y hora actual del sistema
+            const now = new Date();
+            const fechaHora = now.toISOString();
+            
             await api.inv().crearMovimiento({
                 tipo_movimiento: this.tipoMovimiento,
                 tipo_cristal: document.getElementById('tipoCristal').value,
@@ -220,7 +227,7 @@ const InvMovimientos = {
                 proveedor: document.getElementById('proveedor').value || null,
                 tipo_salida: this.tipoMovimiento === 'salida' ? this.tipoSalida : null,
                 observaciones: document.getElementById('observaciones').value || null,
-                fecha_hora: document.getElementById('fecha').value ? document.getElementById('fecha').value + 'T12:00:00' : null
+                fecha_hora: fechaHora
             });
             App.toast('Movimiento registrado');
             this.tipoMovimiento = '';
@@ -243,11 +250,6 @@ const InvMovimientos = {
     },
 
     async filtrar(tipo) {
-        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-        if (tipo === '') document.getElementById('fAll').classList.add('active');
-        else if (tipo === 'entrada') document.getElementById('fEnt').classList.add('active');
-        else document.getElementById('fSal').classList.add('active');
-        
         const tbody = document.getElementById('invMovBody');
         if (!tbody) return;
         

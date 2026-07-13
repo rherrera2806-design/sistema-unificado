@@ -4,6 +4,11 @@ const InvInventario = {
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         try {
             const [items, tiposCristal] = await Promise.all([api.inv().getInventario(), api.inv().getTiposCristal()]);
+            this.allItems = items.sort((a, b) => {
+                if (a.tipo_cristal < b.tipo_cristal) return -1;
+                if (a.tipo_cristal > b.tipo_cristal) return 1;
+                return a.espesor - b.espesor;
+            });
             page.innerHTML = `
                 <div class="filters-bar">
                     <label style="font-weight:500; color:var(--gray-700); font-size:13px;">Tipo Cristal:</label>
@@ -19,10 +24,9 @@ const InvInventario = {
                 <div class="card">
                     <div class="card-header">Inventario Actual <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${items.length} tipos)</span></div>
                     <div class="card-body" style="padding:0">
-                        ${items.length === 0 ? '<div class="empty-state"><div class="icon">📦</div><p>No hay items en inventario</p></div>' : `<div class="table-responsive"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(items)}</tbody></table></div>`}
+                        ${items.length === 0 ? '<div class="empty-state"><div class="icon">📦</div><p>No hay items en inventario</p></div>' : `<div class="table-responsive"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(this.allItems)}</tbody></table></div>`}
                     </div>
                 </div>`;
-            this.allItems = items;
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
     },
     renderRows(items) {
@@ -31,8 +35,13 @@ const InvInventario = {
     async filtrar(cristal) {
         try {
             const items = cristal ? await api.inv().getInventario({ cristal }) : await api.inv().getInventario();
+            const sorted = items.sort((a, b) => {
+                if (a.tipo_cristal < b.tipo_cristal) return -1;
+                if (a.tipo_cristal > b.tipo_cristal) return 1;
+                return a.espesor - b.espesor;
+            });
             const tbody = document.getElementById('invBody');
-            if (tbody) tbody.innerHTML = this.renderRows(items);
+            if (tbody) tbody.innerHTML = this.renderRows(sorted);
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     },
     exportarExcel() {

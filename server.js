@@ -4,6 +4,7 @@ const path = require('path');
 const { Pool } = require('pg');
 const crypto = require('crypto');
 const { Server } = require('socket.io');
+const zlib = require('zlib');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -673,6 +674,32 @@ function parseQuery(url) {
     return { path: url.substring(0, idx), query };
 }
 
+// Performance: Gzip compression helper
+function compressAndSend(res, content, headers) {
+    const acceptEncoding = res.req?.headers?.['accept-encoding'] || '';
+    const textTypes = ['.html', '.css', '.js', '.json', '.svg'];
+    const ext = headers['Content-Type'] ? '.' + headers['Content-Type'].split('/')[1]?.split(';')[0] : '';
+    
+    if (textTypes.some(t => headers['Content-Type']?.includes(t)) && acceptEncoding.includes('gzip')) {
+        zlib.gzip(content, (err, compressed) => {
+            if (!err && compressed.length < content.length) {
+                headers['Content-Encoding'] = 'gzip';
+                headers['Content-Length'] = compressed.length;
+                res.writeHead(200, headers);
+                res.end(compressed);
+            } else {
+                headers['Content-Length'] = content.length;
+                res.writeHead(200, headers);
+                res.end(content);
+            }
+        });
+    } else {
+        headers['Content-Length'] = content.length;
+        res.writeHead(200, headers);
+        res.end(content);
+    }
+}
+
 function serveStatic(res, urlPath) {
     let filePath = path.join(PUBLIC_DIR, urlPath === '/' ? 'index.html' : urlPath);
     if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
@@ -681,10 +708,21 @@ function serveStatic(res, urlPath) {
     if (!fs.existsSync(filePath)) filePath = path.join(PUBLIC_DIR, 'index.html');
     const ext = path.extname(filePath);
     const contentType = MIME[ext] || 'application/octet-stream';
+    
+    // Performance: Cache headers based on file type
+    const cacheHeaders = { 'Content-Type': contentType };
+    if (ext === '.html') {
+        cacheHeaders['Cache-Control'] = 'no-cache, must-revalidate';
+    } else if (ext === '.css' || ext === '.js') {
+        cacheHeaders['Cache-Control'] = 'public, max-age=86400, stale-while-revalidate=604800';
+        cacheHeaders['ETag'] = `"${Date.now()}"`;
+    } else if (['.png', '.jpg', '.svg', '.ico'].includes(ext)) {
+        cacheHeaders['Cache-Control'] = 'public, max-age=31536000, immutable';
+    }
+    
     try {
         const content = fs.readFileSync(filePath);
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.end(content);
+        compressAndSend(res, content, cacheHeaders);
     } catch(e) {
         res.writeHead(404);
         res.end('No encontrado');
@@ -959,19 +997,43 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
-    // SIGMA - Machine Details
+    // SIGMA - Machine Details (with full history)
     // =====================================================
     const machineDetailsMatch = urlPath.match(/^\/api\/sigma\/machines\/(\d+)\/details$/);
     if (machineDetailsMatch && req.method === 'GET') {
         const id = Number(machineDetailsMatch[1]);
-        const machine = await getById('machines', id);
-        if (!machine) return json(res, { error: 'No encontrada' }, 404);
+        const machineResult = await query('SELECT * FROM machines WHERE id = $1', [id]);
+        if (machineResult.rows.length === 0) return json(res, { error: 'No encontrada' }, 404);
+        const maquina = machineResult.rows[0];
+        
+        // Get machine type
+        const tipoResult = maquina.tipo_id ? await query('SELECT * FROM machine_types WHERE id = $1', [maquina.tipo_id]) : { rows: [] };
+        const tipo = tipoResult.rows[0] || null;
+        
+        // Get components
         const comps = await query(
             `SELECT c.* FROM components c
              INNER JOIN machine_components mc ON c.id = mc.componente_id
              WHERE mc.maquina_id = $1`, [id]
         );
-        json(res, { ...machine, componentes: comps.rows });
+        
+        // Get preventive maintenance
+        const preventivos = await query(
+            `SELECT * FROM preventive_maintenance WHERE maquina_id = $1 ORDER BY fecha_programada DESC`, [id]
+        );
+        
+        // Get corrective maintenance
+        const correctivos = await query(
+            `SELECT * FROM corrective_maintenance WHERE maquina_id = $1 ORDER BY fecha_falla DESC`, [id]
+        );
+        
+        json(res, { 
+            maquina, 
+            tipo, 
+            componentes: comps.rows, 
+            preventivos: preventivos.rows, 
+            correctivos: correctivos.rows 
+        });
         return;
     }
 
@@ -1076,14 +1138,42 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (urlPath === '/api/sigma/reports/bitacora' && req.method === 'GET') {
-        const result = await query(
-            `SELECT cm.*, m.nombre as maquina_nombre, c.nombre as componente_nombre
+        // Combine preventive and corrective maintenance into unified bitacora
+        const preventivos = await query(
+            `SELECT pm.*, m.nombre as maquina_nombre, c.nombre as componente_nombre,
+                    'Preventiva' as tipo_mantencion,
+                    pm.observaciones as detalle,
+                    pm.tecnico,
+                    pm.fecha_ejecutada,
+                    pm.fecha_programada
+             FROM preventive_maintenance pm
+             LEFT JOIN machines m ON pm.maquina_id = m.id
+             LEFT JOIN components c ON pm.componente_id = c.id`
+        );
+        
+        const correctivos = await query(
+            `SELECT cm.*, m.nombre as maquina_nombre, c.nombre as componente_nombre,
+                    'Correctiva' as tipo_mantencion,
+                    cm.descripcion_falla as detalle,
+                    cm.responsable as tecnico,
+                    cm.fecha_falla as fecha_ejecutada,
+                    cm.fecha_falla as fecha_programada
              FROM corrective_maintenance cm
              LEFT JOIN machines m ON cm.maquina_id = m.id
-             LEFT JOIN components c ON cm.componente_id = c.id
-             ORDER BY cm.id DESC`
+             LEFT JOIN components c ON cm.componente_id = c.id`
         );
-        json(res, result.rows);
+        
+        // Combine and sort by date
+        const all = [
+            ...preventivos.rows.map(r => ({ ...r, tipo_mantencion: 'Preventiva' })),
+            ...correctivos.rows.map(r => ({ ...r, tipo_mantencion: 'Correctiva' }))
+        ].sort((a, b) => {
+            const dateA = a.fecha_ejecutada || a.fecha_programada || '';
+            const dateB = b.fecha_ejecutada || b.fecha_programada || '';
+            return dateB.localeCompare(dateA);
+        });
+        
+        json(res, all);
         return;
     }
 
