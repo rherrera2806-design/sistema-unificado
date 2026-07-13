@@ -295,38 +295,40 @@ button:focus-visible,
 
 .selector-box { 
     background: white; 
-    padding: 40px; 
-    border-radius: 16px; 
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
+    padding: 48px 40px; 
+    border-radius: 20px; 
+    box-shadow: 0 24px 64px rgba(0,0,0,0.25); 
     width: 100%; 
     max-width: 600px; 
     text-align: center; 
 }
 
 .user-avatar { 
-    width: 64px; 
-    height: 64px; 
-    background: var(--primary); 
+    width: 72px; 
+    height: 72px; 
+    background: linear-gradient(135deg, var(--primary), var(--primary-light)); 
     color: white; 
     border-radius: 50%; 
     display: flex; 
     align-items: center; 
     justify-content: center; 
-    font-size: 28px; 
+    font-size: 30px; 
     font-weight: 700; 
-    margin: 0 auto 12px; 
+    margin: 0 auto 16px;
+    box-shadow: 0 8px 20px rgba(26,35,126,0.25);
 }
 
 .selector-box h2 { 
-    font-size: 20px; 
+    font-size: 22px; 
     color: var(--gray-800); 
-    margin-bottom: 4px; 
+    margin-bottom: 6px;
+    font-weight: 600;
 }
 
 .selector-box .sub { 
-    color: var(--gray-600); 
-    margin-bottom: 28px; 
-    font-size: 14px; 
+    color: var(--gray-500); 
+    margin-bottom: 32px; 
+    font-size: 14px;
 }
 
 .module-grid { 
@@ -343,20 +345,39 @@ button:focus-visible,
 }
 
 .module-card { 
-    border: 2px solid var(--gray-200); 
-    border-radius: 12px; 
-    padding: 28px 16px; 
+    border: 1px solid var(--gray-200); 
+    border-radius: 16px; 
+    padding: 32px 20px; 
     cursor: pointer; 
-    transition: all 0.2s; 
+    transition: all 0.25s ease; 
     text-decoration: none; 
     color: inherit;
     min-height: 44px;
+    background: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.module-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    opacity: 0;
+    transition: opacity 0.25s;
 }
 
 .module-card:hover { 
-    border-color: var(--primary); 
-    box-shadow: 0 8px 24px rgba(26,35,126,0.15); 
-    transform: translateY(-2px); 
+    border-color: transparent; 
+    box-shadow: 0 12px 32px rgba(26,35,126,0.12); 
+    transform: translateY(-4px); 
+}
+
+.module-card:hover::before {
+    opacity: 1;
 }
 
 .module-card:focus-visible {
@@ -365,33 +386,35 @@ button:focus-visible,
 }
 
 .module-icon { 
-    width: 56px; 
-    height: 56px; 
-    border-radius: 14px; 
+    width: 64px; 
+    height: 64px; 
+    border-radius: 16px; 
     display: flex; 
     align-items: center; 
     justify-content: center; 
-    font-size: 24px; 
-    font-weight: 700; 
-    margin: 0 auto 12px; 
-    color: white; 
+    margin: 0 auto 16px; 
+    color: white;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.sigma-icon { background: #16a34a; }
-.inventario-icon { background: #2563eb; }
-.turnos-icon { background: #d97706; }
-.usuarios-icon { background: #7c3aed; }
+.module-card:hover .module-icon {
+    transform: scale(1.05);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+}
 
 .module-card h3 { 
-    font-size: 16px; 
-    margin-bottom: 6px; 
-    color: var(--gray-800); 
+    font-size: 17px; 
+    margin-bottom: 8px; 
+    color: var(--gray-800);
+    font-weight: 600;
 }
 
 .module-card p { 
     font-size: 13px; 
-    color: var(--gray-600); 
-    line-height: 1.4; 
+    color: var(--gray-500); 
+    line-height: 1.5;
+    margin: 0;
 }
 
 /* =====================================================
