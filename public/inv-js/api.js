@@ -46,8 +46,14 @@ class ApiClient {
             },
             getEstadisticas: () => self.request('GET', '/inv/estadisticas'),
             getEstadisticasPorTipo: () => self.request('GET', '/inv/estadisticas-por-tipo'),
-            getTiposCristal: () => self.request('GET', '/catalogos/tipos-cristal'),
-            getEspesores: () => self.request('GET', '/catalogos/espesores')
+            getTiposCristal: async () => {
+                const data = await self.request('GET', '/catalogos/tipos-cristal');
+                return data.map(t => t.nombre || t);
+            },
+            getEspesores: async () => {
+                const data = await self.request('GET', '/catalogos/espesores');
+                return data.map(e => e.valor || e);
+            }
         };
     }
 
