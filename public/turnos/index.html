@@ -103,58 +103,15 @@ function fmtSec(s){ if(s==null)return'-'; const m=Math.floor(s/60); return m>0?`
 
 function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extra}`; }
 
-function getUserRaw() {
-    try {
-        var raw = localStorage.getItem('unified_user');
-        if (!raw) return null;
-        var parsed = JSON.parse(raw);
-        return parsed && parsed.id ? parsed : null;
-    } catch(e) { return null; }
+function getTurnosUser() {
+    try { var u = JSON.parse(localStorage.getItem('unified_user')); return u && u.id ? u : null; } catch(e) { return null; }
 }
-
-function getTurnosPerms() {
-    try {
-        var user = getUserRaw();
-        if (!user) return { recepcion: false, bodega: false, qr: false, _none: true };
-        var p = user.permisos || [];
-        if (!Array.isArray(p)) p = typeof p === 'string' ? p.replace(/[{}"]/g, '').split(',').map(function(s){return s.trim()}).filter(Boolean) : [];
-        var hasLegacy = p.indexOf('turnos') !== -1;
-        return {
-            recepcion: hasLegacy || p.indexOf('turnos-recepcion') !== -1,
-            bodega: hasLegacy || p.indexOf('turnos-bodega') !== -1,
-            qr: hasLegacy || p.indexOf('turnos-qr') !== -1,
-            _none: false
-        };
-    } catch(e) { return { recepcion: false, bodega: false, qr: false, _none: true }; }
-}
-
-function renderMenuTurnos() {
-    var perm = getTurnosPerms();
-    var grid = document.getElementById('menuGrid');
-    if (!grid) return;
-
-    if (perm._none) {
-        grid.innerHTML = '<div class="text-center py-8" style="padding:40px 20px"><p class="text-lg mb-2" style="color:#ef4444">No has iniciado sesion</p><p class="text-sm mb-4" style="color:#94a3b8">Inicia sesion desde el sistema principal para acceder a Turnos QR</p><a href="/" class="btn-volver">Ir al Login</a></div>';
-        return;
-    }
-
-    var opciones = [];
-    if (perm.recepcion) opciones.push({ view:'recepcion', icon:'&#128203;', title:'Recepci\u00f3n y Control de Turnos', desc:'Gestionar cola, llamar siguiente, ver historial', color:'#4ade80', bg:'rgba(34,197,94,0.12)', border:'rgba(34,197,94,0.35)' });
-    if (perm.bodega) opciones.push({ view:'bodega', icon:'&#128230;', title:'Entrega de Bodega', desc:'Ver pendientes y marcar entregas realizadas', color:'#fbbf24', bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.35)' });
-    if (perm.qr) opciones.push({ view:'qr', icon:'&#128186;', title:'QR Clientes', desc:'C\u00f3digo QR para que los clientes tomen turno', color:'#60a5fa', bg:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.35)' });
-
-    if (opciones.length === 0) {
-        grid.innerHTML = '<div class="text-center py-8" style="padding:40px 20px"><p class="text-lg mb-2" style="color:#fbbf24">Sin acceso a Turnos QR</p><p class="text-sm mb-4" style="color:#94a3b8">Tu usuario no tiene permisos para acceder a ningun sub-modulo de Turnos QR</p><a href="/" class="btn-volver">Volver al Sistema</a></div>';
-        return;
-    }
-
-    grid.innerHTML = opciones.map(function(o) {
-        return '<div class="menu-card" onclick="navigate(\'' + o.view + '\')" style="background:' + o.bg + ';border-color:' + o.border + '">' +
-            '<div class="menu-icon">' + o.icon + '</div>' +
-            '<h3 style="color:' + o.color + '">' + o.title + '</h3>' +
-            '<p>' + o.desc + '</p>' +
-        '</div>';
-    }).join('');
+function hasTurnosPerm(perm) {
+    var u = getTurnosUser();
+    if (!u) return false;
+    var p = u.permisos || [];
+    if (!Array.isArray(p)) p = [];
+    return p.indexOf('turnos') !== -1 || p.indexOf(perm) !== -1;
 }
 </script>
 
@@ -164,8 +121,24 @@ function renderMenuTurnos() {
 <div id="pageMenu" class="bg-grad" style="display:none;padding:24px 16px">
     <div class="max-w-3xl mx-auto text-center">
         <h1 class="text-2xl font-black text-amber-400 mb-2">TURNO QR</h1>
-        <p class="text-slate-400 mb-6 text-sm">Selecciona un m\u00f3dulo</p>
-        <div id="menuGrid" class="grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"></div>
+        <p class="text-slate-400 mb-6 text-sm">Selecciona un módulo</p>
+        <div class="grid gap-4" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+            <div class="menu-card" onclick="navigate('recepcion')" style="background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.35)">
+                <div class="menu-icon">&#128203;</div>
+                <h3 style="color:#4ade80">Recepción y Control de Turnos</h3>
+                <p>Gestionar cola, llamar siguiente, ver historial</p>
+            </div>
+            <div class="menu-card" onclick="navigate('bodega')" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.35)">
+                <div class="menu-icon">&#128230;</div>
+                <h3 style="color:#fbbf24">Entrega de Bodega</h3>
+                <p>Ver pendientes y marcar entregas realizadas</p>
+            </div>
+            <div class="menu-card" onclick="navigate('qr')" style="background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.35)">
+                <div class="menu-icon">&#128186;</div>
+                <h3 style="color:#60a5fa">QR Clientes</h3>
+                <p>Código QR para que los clientes tomen turno</p>
+            </div>
+        </div>
         <div class="mt-8">
             <a href="/" class="btn-volver">Volver al Sistema</a>
         </div>
@@ -630,53 +603,51 @@ async function tCargar() {
 // ═══════ ADMIN ═══════
 function getTurnosUser() { try { return JSON.parse(localStorage.getItem('unified_user')); } catch(e) { return null; } }
 function checkAdmin() {
-    var user = getTurnosUser();
+    const user = getTurnosUser();
     if (user && user.rol === 'admin') document.body.classList.add('isAdmin');
 }
 checkAdmin();
 
 async function eliminarTurno(id) {
-    if (!confirm('\u00bfEliminar este registro del historial?')) return;
-    try { await fetch('/api/turnos/eliminar-turno/' + id, { method: 'DELETE' }); rCargar(); } catch(e) {}
+    if (!confirm('¿Eliminar este registro del historial?')) return;
+    try { await fetch(`/api/turnos/eliminar-turno/${id}`, { method: 'DELETE' }); rCargar(); } catch(e) {}
 }
 async function eliminarEntrega(id) {
-    if (!confirm('\u00bfEliminar este registro del historial?')) return;
-    try { await fetch('/api/turnos/eliminar-entrega/' + id, { method: 'DELETE' }); rCargar(); bCargar(); } catch(e) {}
+    if (!confirm('¿Eliminar este registro del historial?')) return;
+    try { await fetch(`/api/turnos/eliminar-entrega/${id}`, { method: 'DELETE' }); rCargar(); bCargar(); } catch(e) {}
 }
 
 // ═══════ ROUTER ═══════
-try {
-document.querySelectorAll('[id^="page"]').forEach(function(p){p.style.display='none'});
-var pageMap = {menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'pageQR',registro:'pageRegistro',ticket:'pageTicket'};
-var pageId = pageMap[view] || 'pageMenu';
+document.querySelectorAll('[id^="page"]').forEach(p=>p.style.display='none');
+
+if (view === 'menu') {
+    var u = getTurnosUser();
+    if (!u) {
+        var grid = document.querySelector('#pageMenu .grid');
+        if (grid) grid.innerHTML = '<div class="text-center py-8" style="grid-column:1/-1"><p class="text-lg mb-2" style="color:#ef4444">No has iniciado sesion</p><p class="text-sm mb-4" style="color:#94a3b8">Inicia sesion desde el sistema principal</p><a href="/" class="btn-volver">Ir al Login</a></div>';
+    } else if (u.rol !== 'admin') {
+        if (hasTurnosPerm('turnos-recepcion')) { navigate('recepcion'); return; }
+        if (hasTurnosPerm('turnos-bodega')) { navigate('bodega'); return; }
+        if (hasTurnosPerm('turnos-qr')) { navigate('qr'); return; }
+        var grid2 = document.querySelector('#pageMenu .grid');
+        if (grid2) grid2.innerHTML = '<div class="text-center py-8" style="grid-column:1/-1"><p class="text-lg mb-2" style="color:#fbbf24">Sin acceso</p><p class="text-sm mb-4" style="color:#94a3b8">No tienes permisos para Turnos QR</p><a href="/" class="btn-volver">Volver</a></div>';
+    }
+}
+
+var pageId = {menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'pageQR',registro:'pageRegistro',ticket:'pageTicket'}[view]||'pageMenu';
 var page = document.getElementById(pageId);
 if(page) page.style.display='block';
 
-if(view==='menu') renderMenuTurnos();
-
-if(view==='recepcion'){
-    if(!getTurnosPerms().recepcion){window.location.replace(BASE);return;}
-    rCargar();setInterval(rCargar,3000);
-}
-if(view==='bodega'){
-    if(!getTurnosPerms().bodega){window.location.replace(BASE);return;}
-    bCargar();setInterval(bCargar,3000);
-}
-if(view==='qr'){
-    if(!getTurnosPerms().qr){window.location.replace(BASE);return;}
-    qrLoad();qrCargar();setInterval(qrCargar,3000);
-}
-if(view==='registro'){document.getElementById('cNombre').addEventListener('keydown',function(e){if(e.key==='Enter')cCrear();});}
+if(view==='recepcion'){rCargar();setInterval(rCargar,3000);}
+if(view==='bodega'){bCargar();setInterval(bCargar,3000);}
+if(view==='qr'){qrLoad();qrCargar();setInterval(qrCargar,3000);}
+if(view==='registro'){document.getElementById('cNombre').addEventListener('keydown',e=>{if(e.key==='Enter')cCrear();});}
 if(view==='ticket'){tCargar();setInterval(tCargar,3000);}
 
-socket.on('turno:avanzado',function(){if(view==='recepcion')rCargar();if(view==='ticket')tCargar();});
-socket.on('turno:nuevo',function(){if(view==='recepcion')rCargar();if(view==='qr')qrCargar();});
-socket.on('entrega:nueva',function(){if(view==='bodega')bCargar();});
-socket.on('entrega:completada',function(){if(view==='bodega')bCargar();});
-} catch(routerErr) {
-    console.error('Router error:', routerErr);
-    document.body.innerHTML = '<div style="padding:40px;color:white;text-align:center"><h2>Error en Turnos QR</h2><p>' + routerErr.message + '</p><a href="/" style="color:#4ade80">Volver al Sistema</a></div>';
-}
+socket.on('turno:avanzado',()=>{if(view==='recepcion')rCargar();if(view==='ticket')tCargar();});
+socket.on('turno:nuevo',()=>{if(view==='recepcion')rCargar();if(view==='qr')qrCargar();});
+socket.on('entrega:nueva',()=>{if(view==='bodega')bCargar();});
+socket.on('entrega:completada',()=>{if(view==='bodega')bCargar();});
 </script>
 
 </body>
