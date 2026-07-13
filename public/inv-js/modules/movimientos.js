@@ -79,7 +79,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Metros Cuadrados</label>
-                                    <div id="m2Display" style="padding:12px; background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; font-size:20px; font-weight:700; color:var(--primary);">0.00 mÂ²</div>
+                                    <div id="m2Display" style="padding:12px; background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; font-size:20px; font-weight:700; color:var(--primary);">0.00 m2</div>
                                 </div>
                             </div>
                             <div class="form-row">
@@ -119,7 +119,7 @@
                                             <th>Espesor</th>
                                             <th>Dimensiones</th>
                                             <th>Cantidad</th>
-                                            <th>mÂ²</th>
+                                            <th>m2</th>
                                             <th>Proveedor</th>
                                             <th>Acciones</th>
                                         </tr>
@@ -184,7 +184,7 @@
         const a = parseInt(document.getElementById('ancho').value) || 0;
         const b = parseInt(document.getElementById('alto').value) || 0;
         const c = parseInt(document.getElementById('cantidadPlanchas').value) || 0;
-        document.getElementById('m2Display').textContent = ((a * b * c) / 1000000).toFixed(2) + ' mÂ²';
+        document.getElementById('m2Display').textContent = ((a * b * c) / 1000000).toFixed(2) + ' m2';
     },
 
     capitalizeWords(input) {
