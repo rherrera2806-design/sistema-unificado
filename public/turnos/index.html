@@ -106,13 +106,6 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 function getTurnosUser() {
     try { var u = JSON.parse(localStorage.getItem('unified_user')); return u && u.id ? u : null; } catch(e) { return null; }
 }
-function hasTurnosPerm(perm) {
-    var u = getTurnosUser();
-    if (!u) return false;
-    var p = u.permisos || [];
-    if (!Array.isArray(p)) p = [];
-    return p.indexOf('turnos') !== -1 || p.indexOf(perm) !== -1;
-}
 </script>
 
 <!-- ═══════════════════════════════════════════════════════ -->
@@ -619,21 +612,6 @@ async function eliminarEntrega(id) {
 
 // ═══════ ROUTER ═══════
 document.querySelectorAll('[id^="page"]').forEach(p=>p.style.display='none');
-
-if (view === 'menu') {
-    var u = getTurnosUser();
-    if (!u) {
-        var grid = document.querySelector('#pageMenu .grid');
-        if (grid) grid.innerHTML = '<div class="text-center py-8" style="grid-column:1/-1"><p class="text-lg mb-2" style="color:#ef4444">No has iniciado sesion</p><p class="text-sm mb-4" style="color:#94a3b8">Inicia sesion desde el sistema principal</p><a href="/" class="btn-volver">Ir al Login</a></div>';
-    } else if (u.rol !== 'admin') {
-        if (hasTurnosPerm('turnos-recepcion')) { navigate('recepcion'); return; }
-        if (hasTurnosPerm('turnos-bodega')) { navigate('bodega'); return; }
-        if (hasTurnosPerm('turnos-qr')) { navigate('qr'); return; }
-        var grid2 = document.querySelector('#pageMenu .grid');
-        if (grid2) grid2.innerHTML = '<div class="text-center py-8" style="grid-column:1/-1"><p class="text-lg mb-2" style="color:#fbbf24">Sin acceso</p><p class="text-sm mb-4" style="color:#94a3b8">No tienes permisos para Turnos QR</p><a href="/" class="btn-volver">Volver</a></div>';
-    }
-}
-
 var pageId = {menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'pageQR',registro:'pageRegistro',ticket:'pageTicket'}[view]||'pageMenu';
 var page = document.getElementById(pageId);
 if(page) page.style.display='block';

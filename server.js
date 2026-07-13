@@ -51,8 +51,8 @@ async function initDB() {
     )`);
     // Add permisos column if missing (migration)
     await query(`DO $$ BEGIN ALTER TABLE usuarios ADD COLUMN permisos TEXT[] DEFAULT '{}'; EXCEPTION WHEN duplicate_column THEN null; END $$`);
-    // Migrate legacy 'turnos' permission to sub-permissions
-    await query(`UPDATE usuarios SET permisos = (SELECT ARRAY_REMOVE(permisos, 'turnos') || ARRAY['turnos-recepcion','turnos-bodega','turnos-qr'] WHERE 'turnos' = ANY(permisos)) WHERE 'turnos' = ANY(permisos)`);
+    // Migrate: convert sub-permissions (turnos-recepcion/bodega/qr) back to simple 'turnos'
+    await query(`UPDATE usuarios SET permisos = CASE WHEN 'turnos' = ANY(COALESCE(permisos,'{}')) THEN ARRAY_REMOVE(ARRAY_REMOVE(ARRAY_REMOVE(COALESCE(permisos,'{}'), 'turnos-recepcion'), 'turnos-bodega'), 'turnos-qr') ELSE ARRAY_REMOVE(ARRAY_REMOVE(ARRAY_REMOVE(ARRAY_APPEND(COALESCE(permisos,'{}'), 'turnos'), 'turnos-recepcion'), 'turnos-bodega'), 'turnos-qr') END WHERE 'turnos-recepcion' = ANY(COALESCE(permisos,'{}')) OR 'turnos-bodega' = ANY(COALESCE(permisos,'{}')) OR 'turnos-qr' = ANY(COALESCE(permisos,'{}'))`);
 
     // --- SIGMA Tables ---
     await query(`CREATE TABLE IF NOT EXISTS machine_types (
@@ -184,10 +184,10 @@ async function initDB() {
     if (adminCheck.rows.length === 0) {
         await query(
             "INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5)",
-            ['Administrador', 'admin@vidrieria.com', hashPassword('admin123'), 'admin', ['sigma','inventario','turnos-recepcion','turnos-bodega','turnos-qr','usuarios']]
+            ['Administrador', 'admin@vidrieria.com', hashPassword('admin123'), 'admin', ['sigma','inventario','turnos','usuarios']]
         );
     } else {
-        await query("UPDATE usuarios SET permisos = ARRAY['sigma','inventario','turnos-recepcion','turnos-bodega','turnos-qr','usuarios']::text[] WHERE email = 'admin@vidrieria.com'");
+        await query("UPDATE usuarios SET permisos = ARRAY['sigma','inventario','turnos','usuarios']::text[] WHERE email = 'admin@vidrieria.com'");
     }
 
     // --- Seed SIGMA data ---
