@@ -867,7 +867,7 @@ textarea.form-control {
         left: -280px;
         top: 0;
         bottom: 0;
-        width: var(--sidebar-width);
+        width: 260px;
         transition: left 0.3s ease;
         z-index: 500;
     }
@@ -885,55 +885,204 @@ textarea.form-control {
     }
 
     .main-content {
-        padding: var(--space-4);
+        padding: 12px;
+        overflow-x: hidden;
     }
 
     .header {
-        padding: 0 var(--space-4);
+        padding: 0 12px;
+        height: 50px;
+    }
+
+    .header-title {
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .page-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: var(--space-3);
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .page-header h2 {
+        font-size: 18px;
     }
 
     .stats-grid-4 {
         grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .stat-card-sm {
+        padding: 10px 12px;
+    }
+
+    .stat-card-sm .value {
+        font-size: 16px;
     }
 
     .quick-actions {
         grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-2);
+        gap: 8px;
+    }
+
+    .action-card {
+        padding: 10px 8px;
+    }
+
+    .action-card .icon {
+        font-size: 18px;
+    }
+
+    .action-card .label {
+        font-size: 11px;
     }
 
     .form-row {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .form-group {
+        margin-bottom: 12px;
+    }
+
+    .form-group label {
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+
+    .form-control {
+        font-size: 14px;
+        min-height: 44px;
     }
 
     .modal {
         width: 95%;
-        margin: var(--space-4);
+        margin: 10px;
+        max-height: 85vh;
+    }
+
+    .modal-header {
+        padding: 12px 16px;
+    }
+
+    .modal-body {
+        padding: 16px;
     }
 
     .filters-bar {
         flex-direction: column;
         align-items: stretch;
+        gap: 10px;
+        padding: 12px;
     }
 
+    .filters-bar select {
+        width: 100% !important;
+    }
+
+    .card {
+        margin-bottom: 12px;
+    }
+
+    .card-header {
+        padding: 12px 14px;
+        font-size: 13px;
+    }
+
+    .card-body {
+        padding: 12px 14px;
+    }
+
+    /* Table responsive */
+    .table-responsive {
+        margin: 0 -14px;
+        padding: 0 14px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        min-width: 500px;
+    }
+
+    table th {
+        padding: 10px 12px;
+        font-size: 10px;
+    }
+
+    table td {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    /* Buttons */
+    .btn {
+        min-height: 44px;
+        font-size: 14px;
+    }
+
+    .btn-sm {
+        min-height: 36px;
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+
+    /* Badges */
+    .badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+
+    /* Filter chips */
     .filter-chip {
-        justify-content: center;
+        min-height: 40px;
+        font-size: 13px;
     }
 }
 
 @media (max-width: 480px) {
     .stats-grid-4 {
         grid-template-columns: 1fr 1fr;
-        gap: var(--space-2);
+        gap: 6px;
+    }
+
+    .stat-card-sm {
+        padding: 8px 10px;
+    }
+
+    .stat-card-sm .label {
+        font-size: 10px;
+    }
+
+    .stat-card-sm .value {
+        font-size: 14px;
     }
 
     .quick-actions {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+    }
+
+    .header-title {
+        font-size: 12px;
+    }
+
+    .user-name {
+        display: none;
+    }
+
+    .page-header h2 {
+        font-size: 16px;
+    }
+
+    .page-header .subtitle {
+        font-size: 12px;
     }
 }
 
