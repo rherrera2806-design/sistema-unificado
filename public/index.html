@@ -2,119 +2,68 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta name="theme-color" content="#1a237e">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Sistema Unificado">
-    <meta name="description" content="Sistema Unificado de Mantención + Inventario">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="apple-touch-icon" href="/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema Unificado</title>
-    <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <!-- Enlace de salto para navegación por teclado -->
-    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
-
     <!-- LOGIN -->
-    <main id="main-content">
-        <div class="login-container" id="loginScreen" role="region" aria-label="Inicio de sesión">
-            <div class="login-box">
-                <div class="login-logo" aria-hidden="true">S</div>
-                <h1>Sistema Unificado</h1>
-                <p class="subtitle">Mantención + Inventario</p>
-                <div id="loginError" class="alert-danger" role="alert" aria-live="assertive" style="display:none;"></div>
-                <form onsubmit="doLogin(event)" novalidate>
-                    <div class="form-group">
-                        <label for="loginEmail">Correo electrónico</label>
-                        <input 
-                            type="email" 
-                            id="loginEmail" 
-                            class="form-control" 
-                            placeholder="admin@vidrieria.com" 
-                            required
-                            autocomplete="email"
-                            aria-describedby="emailHelp"
-                        >
-                    </div>
-                    <div class="form-group">
-                        <label for="loginPassword">Contraseña</label>
-                        <input 
-                            type="password" 
-                            id="loginPassword" 
-                            class="form-control" 
-                            placeholder="Tu contraseña" 
-                            required
-                            autocomplete="current-password"
-                            minlength="6"
-                        >
-                    </div>
-                    <button type="submit" class="btn btn-primary" id="loginBtn">
-                        <span id="loginBtnText">Iniciar Sesión</span>
-                        <span id="loginBtnLoading" class="visually-hidden" aria-live="polite">Ingresando...</span>
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- SELECTOR DE MÓDULO -->
-        <div class="selector-container" id="selectorScreen" style="display:none;" role="region" aria-label="Selector de módulo">
-            <div class="selector-box">
-                <div class="user-avatar" id="userAvatar" aria-hidden="true">U</div>
-                <h2>Bienvenido, <span id="userName">Usuario</span></h2>
-                <p class="sub">Selecciona un módulo para continuar</p>
-                <div class="module-grid" id="moduleGrid" role="list"></div>
-                <button class="btn btn-outline" onclick="doLogout()" style="margin-top:8px;" aria-label="Cerrar sesión">
-                    Cerrar Sesión
-                </button>
-            </div>
-        </div>
-
-        <!-- PANEL DE ADMINISTRACIÓN -->
-        <div class="admin-container" id="adminScreen" style="display:none;" role="region" aria-label="Panel de administración">
-            <header class="admin-header">
-                <h1>Panel de Administración</h1>
-                <button class="btn btn-success btn-sm" onclick="showSelector()" style="padding:8px 18px;font-size:14px;" aria-label="Volver al menú principal">
-                    Volver a menú
-                </button>
-            </header>
-            <div class="admin-body">
-                <div class="admin-card">
-                    <div class="admin-card-header">
-                        <h2>Usuarios</h2>
-                        <button class="btn btn-success btn-sm" onclick="showUserForm()" aria-label="Crear nuevo usuario">
-                            + Nuevo Usuario
-                        </button>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="admin-table" aria-label="Lista de usuarios">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Nombre</th>
-                                    <th scope="col">Email</th>
-                                    <th scope="col">Rol</th>
-                                    <th scope="col">Permisos</th>
-                                    <th scope="col">Estado</th>
-                                    <th scope="col">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usersTable"></tbody>
-                        </table>
-                    </div>
+    <div class="login-container" id="loginScreen">
+        <div class="login-box">
+            <div class="login-logo">S</div>
+            <h1>Sistema Unificado</h1>
+            <p class="subtitle">Mantencion + Inventario</p>
+            <div id="loginError" class="alert-danger" style="display:none;"></div>
+            <form onsubmit="doLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" class="form-control" placeholder="admin@vidrieria.com" required>
                 </div>
+                <div class="form-group">
+                    <label>Contrasena</label>
+                    <input type="password" id="loginPassword" class="form-control" placeholder="Tu contrasena" required>
+                </div>
+                <button type="submit" class="btn btn-primary" id="loginBtn">Iniciar Sesion</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SELECTOR DE MODULO -->
+    <div class="selector-container" id="selectorScreen" style="display:none;">
+        <div class="selector-box">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <h2>Bienvenido, <span id="userName">Usuario</span></h2>
+            <p class="sub">Selecciona un modulo para continuar</p>
+            <div class="module-grid" id="moduleGrid"></div>
+            <button class="btn btn-outline" onclick="doLogout()" style="margin-top:8px;">Cerrar Sesion</button>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div class="admin-container" id="adminScreen" style="display:none;">
+        <div class="admin-header">
+            <h1>Panel de Administracion</h1>
+            <button class="btn btn-success btn-sm" onclick="showSelector()" style="padding:8px 18px;font-size:14px;">Volver a menu</button>
+        </div>
+        <div class="admin-body">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h2>Usuarios</h2>
+                    <button class="btn btn-success btn-sm" onclick="showUserForm()">+ Nuevo Usuario</button>
+                </div>
+                <table class="admin-table">
+                    <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Permisos</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="usersTable"></tbody>
+                </table>
             </div>
         </div>
+    </div>
 
-        <!-- APLICACIÓN DE INVENTARIO -->
-        <div id="inventarioApp" style="display:none;" role="region" aria-label="Aplicación de inventario"></div>
-    </main>
+    <!-- INVENTARIO APP -->
+    <div id="inventarioApp" style="display:none;"></div>
 
     <!-- MODAL -->
-    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
         <div class="modal">
             <h3 id="modalTitle"></h3>
             <div id="modalBody"></div>
@@ -122,37 +71,16 @@
         </div>
     </div>
 
-    <!-- Región para anuncios dinámicos -->
-    <div id="liveRegion" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
-
     <script>
         const USER_KEY = 'unified_user';
-        const MODULES = {
-            sigma: { icon: 'M', iconClass: 'sigma-icon', title: 'Mantención', desc: 'SIGMA - Máquinas, mantenimiento preventivo/correctivo, repuestos', href: '/sigma/' },
-            inventario: { icon: 'I', iconClass: 'inventario-icon', title: 'Inventario', desc: 'Entradas, salidas, stock de cristales', action: 'enterInventario()' },
-            turnos: { icon: 'T', iconClass: 'turnos-icon', title: 'Turnos', desc: 'Sistema de turnos por QR con espera en tiempo real', href: '/turnos/' },
-            usuarios: { icon: 'U', iconClass: 'usuarios-icon', title: 'Usuarios', desc: 'Gestionar usuarios y permisos del sistema', action: 'openAdmin()' }
-        };
 
-        // Función para anunciar cambios a lectores de pantalla
-        function announce(message) {
-            const liveRegion = document.getElementById('liveRegion');
-            liveRegion.textContent = message;
-            setTimeout(() => { liveRegion.textContent = ''; }, 1000);
+        function getUser() {
+            try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch(e) { return null; }
         }
 
-        function getUser() { 
-            try { 
-                const user = localStorage.getItem(USER_KEY);
-                return user ? JSON.parse(user) : null; 
-            } catch(e) { 
-                return null; 
-            } 
-        }
-
-        function getPermisos(u) { 
-            const p = (u||{}).permisos || []; 
-            return Array.isArray(p) ? p : (typeof p === 'string' ? p.replace(/[{}"]/g, '').split(',').filter(Boolean) : []); 
+        function getPermisos(u) {
+            const p = (u||{}).permisos || [];
+            return Array.isArray(p) ? p : [];
         }
 
         function showLogin() {
@@ -160,7 +88,6 @@
             document.getElementById('selectorScreen').style.display = 'none';
             document.getElementById('adminScreen').style.display = 'none';
             document.getElementById('inventarioApp').style.display = 'none';
-            document.getElementById('loginEmail').focus();
         }
 
         function showSelector() {
@@ -173,48 +100,38 @@
             document.getElementById('userName').textContent = user.nombre;
             document.getElementById('userAvatar').textContent = user.nombre.charAt(0).toUpperCase();
             renderModules();
-            announce('Menú principal cargado');
         }
 
         function renderModules() {
             const user = getUser();
             const permisos = getPermisos(user);
             const grid = document.getElementById('moduleGrid');
+            
+            const modules = [
+                { key: 'sigma', icon: 'M', iconClass: 'sigma-icon', title: 'Mantencion', desc: 'SIGMA - Maquinas, mantenimiento preventivo/correctivo, repuestos', href: '/sigma/' },
+                { key: 'inventario', icon: 'I', iconClass: 'inventario-icon', title: 'Inventario', desc: 'Entradas, salidas, stock de cristales', href: '/inventario/' },
+                { key: 'turnos', icon: 'T', iconClass: 'turnos-icon', title: 'Turnos', desc: 'Sistema de turnos por QR con espera en tiempo real', href: '/turnos/' },
+                { key: 'usuarios', icon: 'U', iconClass: 'usuarios-icon', title: 'Usuarios', desc: 'Gestionar usuarios y permisos del sistema', action: 'admin' }
+            ];
+
             grid.innerHTML = '';
-            for (const [key, mod] of Object.entries(MODULES)) {
-                const hasPerm = permisos.includes(key);
-                if (hasPerm) {
+            
+            for (const mod of modules) {
+                if (permisos.includes(mod.key)) {
                     const card = document.createElement('div');
                     card.className = 'module-card';
-                    card.setAttribute('role', 'listitem');
-                    card.setAttribute('tabindex', '0');
-                    card.setAttribute('aria-label', `${mod.title}: ${mod.desc}`);
-                    
-                    // Función para manejar el clic
-                    const handleClick = () => {
-                        if (key === 'sigma') {
-                            window.location.href = '/sigma/';
-                        } else if (key === 'inventario') {
-                            enterInventario();
-                        } else if (key === 'turnos') {
-                            window.location.href = '/turnos/';
-                        } else if (key === 'usuarios') {
-                            openAdmin();
-                        }
-                    };
-                    
-                    card.onclick = handleClick;
-                    card.onkeydown = (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleClick();
-                        }
-                    };
                     card.innerHTML = `
-                        <div class="module-icon ${mod.iconClass}" aria-hidden="true">${mod.icon}</div>
+                        <div class="module-icon ${mod.iconClass}">${mod.icon}</div>
                         <h3>${mod.title}</h3>
                         <p>${mod.desc}</p>
                     `;
+                    
+                    if (mod.action === 'admin') {
+                        card.onclick = function() { openAdmin(); };
+                    } else {
+                        card.onclick = function() { window.location.href = mod.href; };
+                    }
+                    
                     grid.appendChild(card);
                 }
             }
@@ -222,61 +139,37 @@
 
         async function doLogin(e) {
             e.preventDefault();
-            const email = document.getElementById('loginEmail').value.trim();
+            const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             const btn = document.getElementById('loginBtn');
-            const btnText = document.getElementById('loginBtnText');
-            const btnLoading = document.getElementById('loginBtnLoading');
             const errDiv = document.getElementById('loginError');
             
-            // Validación básica
-            if (!email || !password) {
-                errDiv.textContent = 'Por favor completa todos los campos';
-                errDiv.style.display = 'block';
-                announce('Error: Por favor completa todos los campos');
-                return;
-            }
-
-            btnText.textContent = 'Ingresando...';
-            btnLoading.classList.remove('visually-hidden');
+            btn.textContent = 'Ingresando...';
             btn.disabled = true;
             errDiv.style.display = 'none';
-
+            
             try {
-                const res = await fetch('/api/auth/login', { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ email, password }) 
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Error');
                 localStorage.setItem(USER_KEY, JSON.stringify(data));
                 showSelector();
-                announce('Sesión iniciada correctamente');
             } catch(err) {
                 errDiv.textContent = err.message;
                 errDiv.style.display = 'block';
-                announce(`Error: ${err.message}`);
             } finally {
-                btnText.textContent = 'Iniciar Sesión';
-                btnLoading.classList.add('visually-hidden');
+                btn.textContent = 'Iniciar Sesion';
                 btn.disabled = false;
             }
         }
 
-        function doLogout() { 
-            localStorage.removeItem(USER_KEY); 
+        function doLogout() {
+            localStorage.removeItem(USER_KEY);
             showLogin();
-            announce('Sesión cerrada');
-        }
-
-        function enterInventario() {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('selectorScreen').style.display = 'none';
-            document.getElementById('adminScreen').style.display = 'none';
-            document.getElementById('inventarioApp').style.display = 'block';
-            document.getElementById('inventarioApp').innerHTML = '<iframe src="/inventario/" style="width:100%;height:100vh;border:none;" title="Aplicación de inventario"></iframe>';
-            announce('Módulo de inventario cargado');
         }
 
         function openAdmin() {
@@ -285,89 +178,60 @@
             document.getElementById('inventarioApp').style.display = 'none';
             document.getElementById('adminScreen').style.display = 'block';
             loadUsers();
-            announce('Panel de administración cargado');
         }
 
-        // ===== ADMIN =====
         async function loadUsers() {
             try {
                 const res = await fetch('/api/admin/usuarios');
                 const users = await res.json();
                 const tbody = document.getElementById('usersTable');
                 tbody.innerHTML = users.map(u => `<tr>
-                    <td><strong>${escapeHtml(u.nombre)}</strong></td>
-                    <td>${escapeHtml(u.email)}</td>
+                    <td><strong>${u.nombre}</strong></td>
+                    <td>${u.email}</td>
                     <td><span class="badge badge-${u.rol}">${u.rol}</span></td>
-                    <td>${(u.permisos||[]).map(p => `<span class="badge badge-${p}">${p}</span>`).join(' ') || '<span style="color:#999">Sin permisos</span>'}</td>
+                    <td>${(u.permisos||[]).map(p => `<span class="badge badge-${p}">${p}</span>`).join(' ') || 'Sin permisos'}</td>
                     <td><span class="badge badge-${u.activo ? 'active' : 'inactive'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
                     <td>
-                        <button class="btn btn-outline btn-sm" onclick="showUserForm(${u.id})" style="padding:4px 10px;font-size:12px" aria-label="Editar usuario ${escapeHtml(u.nombre)}">Editar</button>
-                        ${u.rol !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})" style="padding:4px 10px;font-size:12px" aria-label="Eliminar usuario ${escapeHtml(u.nombre)}">Eliminar</button>` : ''}
+                        <button class="btn btn-outline btn-sm" onclick="showUserForm(${u.id})">Editar</button>
+                        ${u.rol !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">Eliminar</button>` : ''}
                     </td>
                 </tr>`).join('');
-            } catch(e) { 
-                console.error('Error cargando usuarios:', e);
-                announce('Error al cargar usuarios');
-            }
-        }
-
-        // Función para escapar HTML y prevenir XSS
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+            } catch(e) { console.error(e); }
         }
 
         async function showUserForm(id) {
             let user = { nombre: '', email: '', password: '', rol: 'usuario', permisos: [] };
             if (id) {
-                try { 
-                    const res = await fetch('/api/admin/usuarios'); 
-                    const all = await res.json(); 
-                    user = all.find(u => u.id === id) || user; 
-                } catch(e) {
-                    console.error('Error cargando usuario:', e);
-                }
+                try {
+                    const res = await fetch('/api/admin/usuarios');
+                    const all = await res.json();
+                    user = all.find(u => u.id === id) || user;
+                } catch(e) {}
             }
             const up = getPermisos(user);
             document.getElementById('modalTitle').textContent = id ? 'Editar Usuario' : 'Nuevo Usuario';
             document.getElementById('modalBody').innerHTML = `
-                <div class="form-group">
-                    <label for="fNombre">Nombre</label>
-                    <input class="form-control" id="fNombre" value="${escapeHtml(user.nombre)}" required aria-required="true">
-                </div>
-                <div class="form-group">
-                    <label for="fEmail">Correo electrónico</label>
-                    <input class="form-control" id="fEmail" type="email" value="${escapeHtml(user.email)}" required aria-required="true" autocomplete="email">
-                </div>
-                <div class="form-group">
-                    <label for="fPassword">${id ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña'}</label>
-                    <input class="form-control" id="fPassword" type="password" ${id ? '' : 'required'} autocomplete="${id ? 'new-password' : 'password'}" minlength="6">
-                </div>
-                <div class="form-group">
-                    <label for="fRol">Rol</label>
+                <div class="form-group"><label>Nombre</label><input class="form-control" id="fNombre" value="${user.nombre}"></div>
+                <div class="form-group"><label>Email</label><input class="form-control" id="fEmail" type="email" value="${user.email}"></div>
+                <div class="form-group"><label>${id ? 'Nueva contrasena (dejar vacio para no cambiar)' : 'Contrasena'}</label><input class="form-control" id="fPassword" type="password" ${id ? '' : 'required'}></div>
+                <div class="form-group"><label>Rol</label>
                     <select class="form-control" id="fRol">
                         <option value="usuario" ${user.rol==='usuario'?'selected':''}>Usuario</option>
                         <option value="admin" ${user.rol==='admin'?'selected':''}>Administrador</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <fieldset>
-                        <legend>Módulos permitidos</legend>
-                        <div class="check-grid">
-                            <label class="check-label"><input type="checkbox" class="perm-check" value="sigma" ${up.includes('sigma')?'checked':''}> Mantención (SIGMA)</label>
-                            <label class="check-label"><input type="checkbox" class="perm-check" value="inventario" ${up.includes('inventario')?'checked':''}> Inventario</label>
-                            <label class="check-label"><input type="checkbox" class="perm-check" value="turnos" ${up.includes('turnos')?'checked':''}> Turnos QR</label>
-                            <label class="check-label"><input type="checkbox" class="perm-check" value="usuarios" ${(user.permisos||[]).includes('usuarios')?'checked':''}> Administrar Usuarios</label>
-                        </div>
-                    </fieldset>
+                <div class="form-group"><label>Modulos permitidos</label>
+                    <div class="check-grid">
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="sigma" ${up.includes('sigma')?'checked':''}> Mantencion (SIGMA)</label>
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="inventario" ${up.includes('inventario')?'checked':''}> Inventario</label>
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="turnos" ${up.includes('turnos')?'checked':''}> Turnos QR</label>
+                        <label class="check-label"><input type="checkbox" class="perm-check" value="usuarios" ${up.includes('usuarios')?'checked':''}> Administrar Usuarios</label>
+                    </div>
                 </div>`;
             document.getElementById('modalActions').innerHTML = `
-                <button class="btn btn-outline" onclick="closeModal()" type="button">Cancelar</button>
-                <button class="btn btn-primary" style="width:auto" onclick="saveUser(${id || 0})" type="button">${id ? 'Actualizar' : 'Crear'}</button>`;
+                <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                <button class="btn btn-primary" style="width:auto" onclick="saveUser(${id || 0})">${id ? 'Actualizar' : 'Crear'}</button>`;
             document.getElementById('modalOverlay').classList.add('show');
-            document.getElementById('fNombre').focus();
         }
 
         async function saveUser(id) {
@@ -379,122 +243,26 @@
             };
             const pw = document.getElementById('fPassword').value;
             if (pw) data.password = pw;
-            
-            if (!data.nombre || !data.email) {
-                alert('Nombre y email son requeridos');
-                announce('Error: Nombre y email son requeridos');
-                return;
-            }
-            if (!id && !pw) {
-                alert('La contraseña es requerida');
-                announce('Error: La contraseña es requerida');
-                return;
-            }
-            if (pw && pw.length < 6) {
-                alert('La contraseña debe tener al menos 6 caracteres');
-                announce('Error: La contraseña debe tener al menos 6 caracteres');
-                return;
-            }
-
+            if (!data.nombre || !data.email) return alert('Nombre y email son requeridos');
+            if (!id && !pw) return alert('La contrasena es requerida');
             try {
                 const url = id ? `/api/admin/usuarios/${id}` : '/api/admin/usuarios';
                 const method = id ? 'PUT' : 'POST';
-                const res = await fetch(url, { 
-                    method, 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(data) 
-                });
-                if (!res.ok) { 
-                    const err = await res.json(); 
-                    alert(err.error); 
-                    announce(`Error: ${err.error}`);
-                    return; 
-                }
-                closeModal(); 
+                const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                if (!res.ok) { const err = await res.json(); alert(err.error); return; }
+                closeModal();
                 loadUsers();
-                announce(id ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente');
-            } catch(e) { 
-                alert('Error: ' + e.message); 
-                announce('Error al guardar usuario');
-            }
+            } catch(e) { alert('Error: ' + e.message); }
         }
 
         async function deleteUser(id) {
-            if (!confirm('¿Eliminar este usuario?')) return;
-            try { 
-                await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE' }); 
-                loadUsers();
-                announce('Usuario eliminado');
-            } catch(e) { 
-                alert('Error'); 
-                announce('Error al eliminar usuario');
-            }
+            if (!confirm('Eliminar este usuario?')) return;
+            try { await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE' }); loadUsers(); } catch(e) { alert('Error'); }
         }
 
-        function closeModal() { 
-            document.getElementById('modalOverlay').classList.remove('show');
-        }
+        function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
 
-        // Cerrar modal con Escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && document.getElementById('modalOverlay').classList.contains('show')) {
-                closeModal();
-            }
-        });
-
-        // =====================================================
-        // MEJORAS MÓVILES
-        // =====================================================
-        
-        // Prevenir doble tap para zoom en móviles
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', (event) => {
-            const now = Date.now();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-
-        // Mejorar scroll en modales en iOS
-        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-            document.querySelector('.modal').addEventListener('touchmove', function(e) {
-                e.stopPropagation();
-            }, false);
-        }
-
-        // Detectar si es dispositivo móvil para ajustar comportamiento
-        function isMobile() {
-            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        }
-
-        // Ajustar comportamiento de formularios en móvil
-        if (isMobile()) {
-            // Enfocar inputs sin zoom en iOS (requiere font-size >= 16px)
-            document.querySelectorAll('input[type="email"], input[type="password"], input[type="text"]').forEach(input => {
-                input.addEventListener('focus', function() {
-                    this.style.fontSize = '16px';
-                });
-            });
-        }
-
-        // Manejar orientación landscape
-        function handleOrientation() {
-            const isLandscape = window.matchMedia("(orientation: landscape)").matches;
-            const isShortScreen = window.innerHeight < 500;
-            
-            if (isLandscape && isShortScreen) {
-                document.body.classList.add('landscape-mode');
-            } else {
-                document.body.classList.remove('landscape-mode');
-            }
-        }
-
-        window.addEventListener('orientationchange', handleOrientation);
-        window.addEventListener('resize', handleOrientation);
-        handleOrientation();
-
-        // Inicialización
+        // Init
         if (getUser()) showSelector(); else showLogin();
     </script>
 </body>
