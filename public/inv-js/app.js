@@ -1,22 +1,31 @@
 const App = {
     currentPage: null,
+    userRole: null,
 
     pages: {
         dashboard: { icon: '📊', label: 'Dashboard', render: () => InvDashboard.render() },
         movimientos: { icon: '📋', label: 'Movimientos', render: () => InvMovimientos.render() },
         inventario: { icon: '📦', label: 'Inventario', render: () => InvInventario.render() },
-        historial: { icon: '🕐', label: 'Historial', render: () => InvHistorial.render() }
+        historial: { icon: '🕐', label: 'Historial', render: () => InvHistorial.render() },
+        catalogos: { icon: '⚙️', label: 'Catálogos', render: () => InvCatalogos.render(), adminOnly: true }
     },
 
     init() {
         this.renderSidebar();
         this.navigate('dashboard');
         const user = this.getParentUser();
-        if (user) document.getElementById('headerUser').textContent = user.nombre;
+        if (user) {
+            document.getElementById('headerUser').textContent = user.nombre;
+            this.userRole = user.rol;
+        }
     },
 
     getParentUser() {
         try { return JSON.parse(localStorage.getItem('unified_user')); } catch(e) { return null; }
+    },
+
+    isAdmin() {
+        return this.userRole === 'admin';
     },
 
     renderSidebar() {
@@ -33,11 +42,13 @@ const App = {
 
     renderNavItems() {
         const nav = document.getElementById('sidebarNav');
-        nav.innerHTML = Object.entries(this.pages).map(([key, page]) =>
-            `<a class="nav-item ${key === this.currentPage ? 'active' : ''}" onclick="App.navigate('${key}')">
-                <span class="icon">${page.icon}</span> ${page.label}
-            </a>`
-        ).join('');
+        nav.innerHTML = Object.entries(this.pages)
+            .filter(([key, page]) => !page.adminOnly || this.isAdmin())
+            .map(([key, page]) =>
+                `<a class="nav-item ${key === this.currentPage ? 'active' : ''}" onclick="App.navigate('${key}')" role="menuitem">
+                    <span class="icon" aria-hidden="true">${page.icon}</span> ${page.label}
+                </a>`
+            ).join('');
     },
 
     navigate(page) {
@@ -55,22 +66,24 @@ const App = {
 
     toggleSidebar() {
         document.querySelector('.sidebar').classList.toggle('open');
-        document.getElementById('sidebarOverlay').classList.toggle('active');
+        document.getElementById('sidebarOverlay').classList.toggle('show');
     },
 
     closeSidebar() {
         document.querySelector('.sidebar').classList.remove('open');
-        document.getElementById('sidebarOverlay').classList.remove('active');
+        document.getElementById('sidebarOverlay').classList.remove('show');
     },
 
     showModal(title, bodyHtml, footerHtml) {
         document.getElementById('modalTitle').textContent = title;
         document.getElementById('modalBody').innerHTML = bodyHtml;
         document.getElementById('modalFooter').innerHTML = footerHtml || '<button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>';
-        document.getElementById('modalOverlay').classList.add('active');
+        document.getElementById('modalOverlay').classList.add('show');
     },
 
-    hideModal() { document.getElementById('modalOverlay').classList.remove('active'); },
+    hideModal() { 
+        document.getElementById('modalOverlay').classList.remove('show'); 
+    },
 
     toast(msg, type = 'success') {
         const t = document.getElementById('toast');
