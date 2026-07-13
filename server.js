@@ -53,6 +53,8 @@ async function initDB() {
     await query(`DO $$ BEGIN ALTER TABLE usuarios ADD COLUMN permisos TEXT[] DEFAULT '{}'; EXCEPTION WHEN duplicate_column THEN null; END $$`);
     // Migrate: convert sub-permissions (turnos-recepcion/bodega/qr) back to simple 'turnos'
     await query(`UPDATE usuarios SET permisos = CASE WHEN 'turnos' = ANY(COALESCE(permisos,'{}')) THEN ARRAY_REMOVE(ARRAY_REMOVE(ARRAY_REMOVE(COALESCE(permisos,'{}'), 'turnos-recepcion'), 'turnos-bodega'), 'turnos-qr') ELSE ARRAY_REMOVE(ARRAY_REMOVE(ARRAY_REMOVE(ARRAY_APPEND(COALESCE(permisos,'{}'), 'turnos'), 'turnos-recepcion'), 'turnos-bodega'), 'turnos-qr') END WHERE 'turnos-recepcion' = ANY(COALESCE(permisos,'{}')) OR 'turnos-bodega' = ANY(COALESCE(permisos,'{}')) OR 'turnos-qr' = ANY(COALESCE(permisos,'{}'))`);
+    // Ensure all admin users have 'turnos' permission
+    await query(`UPDATE usuarios SET permisos = ARRAY_APPEND(COALESCE(permisos,'{}'), 'turnos') WHERE rol = 'admin' AND NOT ('turnos' = ANY(COALESCE(permisos,'{}')))`);
 
     // --- SIGMA Tables ---
     await query(`CREATE TABLE IF NOT EXISTS machine_types (
