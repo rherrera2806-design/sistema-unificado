@@ -54,6 +54,13 @@ const App = {
         this.currentPage = page;
         this.renderNavItems();
         this.closeSidebar();
+        
+        // Update header title
+        const headerTitle = document.querySelector('.header-title');
+        if (headerTitle && this.pages[page]) {
+            headerTitle.innerHTML = `<span>${this.pages[page].label}</span>`;
+        }
+        
         const main = document.getElementById('mainContent');
         main.innerHTML = `<div class="page active" id="page-${page}"></div>`;
         this.pages[page].render();

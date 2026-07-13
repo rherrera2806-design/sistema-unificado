@@ -22,6 +22,12 @@ const InvMovimientos = {
             this.espesores = espesores;
 
             page.innerHTML = `
+                <div class="page-header">
+                    <div>
+                        <h2>Movimientos</h2>
+                        <p class="subtitle">Control de entrada y salida de planchas</p>
+                    </div>
+                </div>
                 <div class="card" style="margin-bottom:20px;">
                     <div class="card-header">Nuevo Movimiento</div>
                     <div class="card-body">
@@ -79,13 +85,13 @@ const InvMovimientos = {
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="proveedor">Proveedor (opcional)</label>
-                                    <input type="text" id="proveedor" class="form-control" placeholder="Nombre del proveedor">
+                                    <input type="text" id="proveedor" class="form-control" placeholder="Nombre del proveedor" oninput="InvMovimientos.capitalizeWords(this)">
                                 </div>
                                 <div class="form-group"></div>
                             </div>
                             <div class="form-group">
                                 <label for="observaciones">Observaciones (opcional)</label>
-                                <textarea id="observaciones" class="form-control" rows="2" placeholder="Notas..."></textarea>
+                                <textarea id="observaciones" class="form-control" rows="2" placeholder="Notas..." oninput="InvMovimientos.capitalizeWords(this)"></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary" style="width:100%;">Registrar Movimiento</button>
                         </form>
@@ -143,7 +149,7 @@ const InvMovimientos = {
             const horaStr = fecha.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
             return `
             <tr>
-                <td>${fechaStr}<br><small style="color:var(--gray-500);">${horaStr}</small></td>
+                <td>${fechaStr} <span style="color:#1e3a8a; font-weight:500;">${horaStr}</span></td>
                 <td>
                     <span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>
                     ${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}
@@ -179,6 +185,17 @@ const InvMovimientos = {
         const b = parseInt(document.getElementById('alto').value) || 0;
         const c = parseInt(document.getElementById('cantidadPlanchas').value) || 0;
         document.getElementById('m2Display').textContent = ((a * b * c) / 1000000).toFixed(2) + ' m²';
+    },
+
+    capitalizeWords(input) {
+        const cursorPos = input.selectionStart;
+        const words = input.value.split(' ');
+        const capitalized = words.map(word => {
+            if (word.length === 0) return word;
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        });
+        input.value = capitalized.join(' ');
+        input.setSelectionRange(cursorPos, cursorPos);
     },
 
     async guardar(e) {

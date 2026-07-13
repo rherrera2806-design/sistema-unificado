@@ -3,18 +3,31 @@ const InvInventario = {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         try {
-            const [items, tiposCristal] = await Promise.all([api.inv().getInventario(), api.inv().getTiposCristal()]);
+            const [items, tiposCristal, espesores] = await Promise.all([
+                api.inv().getInventario(), 
+                api.inv().getTiposCristal(),
+                api.catalogos.getEspesores()
+            ]);
             this.allItems = items.sort((a, b) => {
                 if (a.tipo_cristal < b.tipo_cristal) return -1;
                 if (a.tipo_cristal > b.tipo_cristal) return 1;
                 return a.espesor - b.espesor;
             });
+            
+            // Get unique espesores from items
+            const uniqueEspesores = [...new Set(items.map(i => i.espesor))].sort((a, b) => a - b);
+            
             page.innerHTML = `
                 <div class="filters-bar">
                     <label style="font-weight:500; color:var(--gray-700); font-size:13px;">Tipo Cristal:</label>
-                    <select id="invFilterSelect" class="form-control" style="width:auto; min-width:180px;" onchange="InvInventario.filtrar(this.value)">
+                    <select id="invFilterCristal" class="form-control" style="width:auto; min-width:180px;" onchange="InvInventario.filtrar()">
                         <option value="">Todos</option>
                         ${tiposCristal.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                    <label style="font-weight:500; color:var(--gray-700); font-size:13px; margin-left:12px;">Espesor:</label>
+                    <select id="invFilterEspesor" class="form-control" style="width:auto; min-width:120px;" onchange="InvInventario.filtrar()">
+                        <option value="">Todos</option>
+                        ${uniqueEspesores.map(e => `<option value="${e}">${e}mm</option>`).join('')}
                     </select>
                 </div>
                 <div style="display:flex; gap:8px; margin-bottom:14px; justify-content:flex-end;">
@@ -32,14 +45,27 @@ const InvInventario = {
     renderRows(items) {
         return items.map(i => `<tr><td style="font-weight:600;">${i.tipo_cristal}</td><td><span style="background:var(--primary-light); color:var(--primary); padding:2px 10px; border-radius:12px; font-size:12px;">${i.espesor}mm</span></td><td>${parseInt(i.ancho)}</td><td>${parseInt(i.alto)}</td><td><span style="font-size:16px; font-weight:700; color:${i.stock > 0 ? 'var(--success)' : 'var(--danger)'};">${i.stock}</span></td><td>${(i.m2_entradas - i.m2_salidas).toFixed(2)} m2</td></tr>`).join('');
     },
-    async filtrar(cristal) {
+    async filtrar() {
         try {
-            const items = cristal ? await api.inv().getInventario({ cristal }) : await api.inv().getInventario();
+            const cristal = document.getElementById('invFilterCristal').value;
+            const espesor = document.getElementById('invFilterEspesor').value;
+            
+            let items = await api.inv().getInventario();
+            
+            // Apply filters
+            if (cristal) {
+                items = items.filter(i => i.tipo_cristal === cristal);
+            }
+            if (espesor) {
+                items = items.filter(i => i.espesor === parseInt(espesor));
+            }
+            
             const sorted = items.sort((a, b) => {
                 if (a.tipo_cristal < b.tipo_cristal) return -1;
                 if (a.tipo_cristal > b.tipo_cristal) return 1;
                 return a.espesor - b.espesor;
             });
+            
             const tbody = document.getElementById('invBody');
             if (tbody) tbody.innerHTML = this.renderRows(sorted);
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
