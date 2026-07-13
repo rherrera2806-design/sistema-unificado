@@ -612,15 +612,17 @@ async function getCola() {
 
 async function getTurnosStats() {
     const hoy = new Date().toISOString().split('T')[0];
-    const [totalR, atendidosR, enColaR] = await Promise.all([
+    const [totalR, atendidosR, enColaR, pendR] = await Promise.all([
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1', [hoy]),
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado IN ($2, $3, $4)', [hoy, 'atendido', 'derivado', 'entregado']),
-        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado = $2', [hoy, 'espera'])
+        query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado = $2', [hoy, 'espera']),
+        query("SELECT COUNT(*) AS n FROM entregas WHERE fecha = $1 AND estado = 'pendiente'", [hoy])
     ]);
     return {
         total: Number(totalR.rows[0].n),
         atendidos: Number(atendidosR.rows[0].n),
         enCola: Number(enColaR.rows[0].n),
+        pendientesBodega: Number(pendR.rows[0].n),
         actual: await getTurnoActual()
     };
 }
@@ -1141,6 +1143,161 @@ const server = http.createServer(async (req, res) => {
 
     if (urlPath === '/api/turnos/cola' && req.method === 'GET') {
         json(res, await getCola());
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Historial del día
+    // =====================================================
+    if (urlPath === '/api/turnos/historial' && req.method === 'GET') {
+        const hoy = new Date().toISOString().split('T')[0];
+        const result = await query(
+            `SELECT t.*, e.estado as entrega_estado, e.pedidos, e.factura, e.tipo,
+                    e.hora_registrada as bodega_recibido, e.hora_entregada as bodega_entregado
+             FROM turnos t
+             LEFT JOIN entregas e ON t.id = e.turno_id
+             WHERE t.fecha = $1 AND t.estado != 'espera'
+             ORDER BY t.numero DESC`, [hoy]
+        );
+        const turnos = result.rows.map(t => {
+            let espera_segundos = null, recepcion_segundos = null, bodega_segundos = null, total_segundos = null;
+            const pad = s => { const p = s.split(':').map(Number); return p[0]*3600 + p[1]*60 + (p[2]||0); };
+            if (t.hora_creacion && t.hora_llamada) espera_segundos = pad(t.hora_llamada) - pad(t.hora_creacion);
+            if (t.hora_fin && t.hora_llamada) recepcion_segundos = pad(t.hora_fin) - pad(t.hora_llamada);
+            if (t.bodega_recibido && t.bodega_entregado) bodega_segundos = pad(t.bodega_entregado) - pad(t.bodega_recibido);
+            if (t.hora_creacion && t.bodega_entregado) total_segundos = pad(t.bodega_entregado) - pad(t.hora_creacion);
+            else if (t.hora_creacion && t.hora_fin) total_segundos = pad(t.hora_fin) - pad(t.hora_creacion);
+            return { ...t, espera_segundos, recepcion_segundos, bodega_segundos, total_segundos,
+                     fecha_fmt: new Date(t.fecha).toLocaleDateString('es-CL') };
+        });
+        json(res, turnos);
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Ticket individual
+    // =====================================================
+    const turnoByIdMatch = urlPath.match(/^\/api\/turnos\/(\d+)$/);
+    if (turnoByIdMatch && req.method === 'GET') {
+        const id = Number(turnoByIdMatch[1]);
+        const result = await query('SELECT * FROM turnos WHERE id = $1', [id]);
+        if (result.rows.length === 0) return json(res, { error: 'No encontrado' }, 404);
+        const turno = result.rows[0];
+        const hoy = turno.fecha;
+        const antes = await query('SELECT COUNT(*) as c FROM turnos WHERE fecha = $1 AND numero < $2 AND estado IN ($3, $4)', [hoy, turno.numero, 'espera', 'atendiendo']);
+        const posicion = Number(antes.rows[0].c);
+        const actualRes = await query('SELECT * FROM turnos WHERE fecha = $1 AND estado = $2 ORDER BY numero DESC LIMIT 1', [hoy, 'atendiendo']);
+        const actualNumero = actualRes.rows.length > 0 ? actualRes.rows[0].numero : null;
+        const esSuTurno = actualNumero === turno.numero;
+        const estimado = posicion * 5;
+        json(res, { turno, posicion, estimado, esSuTurno, actualNumero });
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Derivar a bodega
+    // =====================================================
+    if (urlPath === '/api/turnos/derivar-bodega' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { turno_id, pedidos, factura } = body;
+        if (!turno_id) return json(res, { error: 'turno_id requerido' }, 400);
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        await query('UPDATE turnos SET estado = $1, hora_fin = $2 WHERE id = $3', ['derivado', hora, turno_id]);
+        const turnoRes = await query('SELECT numero FROM turnos WHERE id = $1', [turno_id]);
+        const numero = turnoRes.rows.length > 0 ? turnoRes.rows[0].numero : 0;
+        await query(
+            'INSERT INTO entregas (turno_id, cliente_nombre, pedidos, factura, tipo, estado) VALUES ($1, (SELECT nombre FROM turnos WHERE id=$2), $3, $4, $5, $6)',
+            [turno_id, turno_id, pedidos || null, factura || null, 'Retira', 'pendiente']
+        );
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - QR
+    // =====================================================
+    if (urlPath === '/api/turnos/qr' && req.method === 'GET') {
+        const url = q.url || (req.headers.host ? `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/turnos/?view=registro` : 'http://localhost:3000/turnos/?view=registro');
+        const qrData = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}`;
+        json(res, { qr: qrData, url });
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Entregas (Bodega)
+    // =====================================================
+    if (urlPath === '/api/turnos/entregas' && req.method === 'GET') {
+        const hoy = new Date().toISOString().split('T')[0];
+        const result = await query(
+            `SELECT e.*, t.numero as turno_numero
+             FROM entregas e
+             LEFT JOIN turnos t ON e.turno_id = t.id
+             WHERE e.fecha = $1
+             ORDER BY e.id DESC`, [hoy]
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    if (urlPath === '/api/turnos/entregas/pendientes' && req.method === 'GET') {
+        const hoy = new Date().toISOString().split('T')[0];
+        const result = await query(
+            `SELECT e.*, t.numero as turno_numero
+             FROM entregas e
+             LEFT JOIN turnos t ON e.turno_id = t.id
+             WHERE e.fecha = $1 AND e.estado = 'pendiente'
+             ORDER BY e.id ASC`, [hoy]
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    if (urlPath === '/api/turnos/entregas/registrar' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { cliente_nombre, descripcion, tipo, pedidos, factura } = body;
+        if (!cliente_nombre) return json(res, { error: 'Nombre requerido' }, 400);
+        const hoy = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        const result = await query(
+            'INSERT INTO entregas (cliente_nombre, descripcion, tipo, pedidos, factura, estado, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [cliente_nombre, descripcion || null, tipo || 'Retira', pedidos || null, factura || null, 'pendiente', hoy, hora]
+        );
+        json(res, result.rows[0], 201);
+        return;
+    }
+
+    const entregaEntregarMatch = urlPath.match(/^\/api\/turnos\/entregas\/(\d+)\/entregar$/);
+    if (entregaEntregarMatch && req.method === 'POST') {
+        const id = Number(entregaEntregarMatch[1]);
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        await query('UPDATE entregas SET estado = $1, hora_entregada = $2 WHERE id = $3', ['entregado', hora, id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Eliminar
+    // =====================================================
+    const eliminarTurnoMatch = urlPath.match(/^\/api\/turnos\/eliminar-turno\/(\d+)$/);
+    if (eliminarTurnoMatch && req.method === 'DELETE') {
+        const id = Number(eliminarTurnoMatch[1]);
+        await query('DELETE FROM entregas WHERE turno_id = $1', [id]);
+        await query('DELETE FROM turnos WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    const eliminarEntregaMatch = urlPath.match(/^\/api\/turnos\/eliminar-entrega\/(\d+)$/);
+    if (eliminarEntregaMatch && req.method === 'DELETE') {
+        const id = Number(eliminarEntregaMatch[1]);
+        await query('DELETE FROM entregas WHERE id = $1', [id]);
+        json(res, { ok: true });
         return;
     }
 
