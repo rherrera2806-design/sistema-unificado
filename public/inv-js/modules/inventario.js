@@ -26,7 +26,7 @@ const InvInventario = {
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
     },
     renderRows(items) {
-        return items.map(i => `<tr><td style="font-weight:600;">${i.tipo_cristal}</td><td><span style="background:var(--primary-light); color:var(--primary); padding:2px 10px; border-radius:12px; font-size:12px;">${i.espesor}mm</span></td><td>${i.ancho}</td><td>${i.alto}</td><td><span style="font-size:16px; font-weight:700; color:${i.stock > 0 ? 'var(--success)' : 'var(--danger)'};">${i.stock}</span></td><td>${(i.m2_entradas - i.m2_salidas).toFixed(2)} m2</td></tr>`).join('');
+        return items.map(i => `<tr><td style="font-weight:600;">${i.tipo_cristal}</td><td><span style="background:var(--primary-light); color:var(--primary); padding:2px 10px; border-radius:12px; font-size:12px;">${i.espesor}mm</span></td><td>${parseInt(i.ancho)}</td><td>${parseInt(i.alto)}</td><td><span style="font-size:16px; font-weight:700; color:${i.stock > 0 ? 'var(--success)' : 'var(--danger)'};">${i.stock}</span></td><td>${(i.m2_entradas - i.m2_salidas).toFixed(2)} m2</td></tr>`).join('');
     },
     async filtrar(cristal) {
         try {
