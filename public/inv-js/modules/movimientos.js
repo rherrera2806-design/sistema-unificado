@@ -35,8 +35,8 @@
                             <div class="form-group">
                                 <label>Tipo de Movimiento *</label>
                                 <div style="display:flex; gap:12px;">
-                                    <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')">âž• Entrada</label>
-                                    <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')">âž– Salida</label>
+                                    <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg> Entrada</label>
+                                    <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg> Salida</label>
                                 </div>
                             </div>
                             <div class="form-group" id="tipoSalidaGroup" style="display:none;">
