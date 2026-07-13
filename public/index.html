@@ -184,17 +184,30 @@
             for (const [key, mod] of Object.entries(MODULES)) {
                 const hasPerm = permisos.includes(key);
                 if (hasPerm) {
-                    const action = mod.href ? `window.location.href='${mod.href}'` : mod.action;
                     const card = document.createElement('div');
                     card.className = 'module-card';
                     card.setAttribute('role', 'listitem');
                     card.setAttribute('tabindex', '0');
                     card.setAttribute('aria-label', `${mod.title}: ${mod.desc}`);
-                    card.onclick = () => eval(action);
+                    
+                    // Función para manejar el clic
+                    const handleClick = () => {
+                        if (key === 'sigma') {
+                            window.location.href = '/sigma/';
+                        } else if (key === 'inventario') {
+                            enterInventario();
+                        } else if (key === 'turnos') {
+                            window.location.href = '/turnos/';
+                        } else if (key === 'usuarios') {
+                            openAdmin();
+                        }
+                    };
+                    
+                    card.onclick = handleClick;
                     card.onkeydown = (e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            eval(action);
+                            handleClick();
                         }
                     };
                     card.innerHTML = `
