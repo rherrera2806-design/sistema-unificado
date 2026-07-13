@@ -825,13 +825,254 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
-    // SIGMA
+    // SIGMA - Stats
     // =====================================================
     if (urlPath === '/api/sigma/stats' && req.method === 'GET') {
         json(res, await getSigmaStats());
         return;
     }
 
+    if (urlPath === '/api/sigma/stats/summary' && req.method === 'GET') {
+        const [machines, completedPreventive, upcoming, overdue, failures, criticalParts, recentFailures] = await Promise.all([
+            query('SELECT COUNT(*) as c FROM machines'),
+            query("SELECT COUNT(*) as c FROM preventive_maintenance WHERE estado = 'Realizada'"),
+            query("SELECT COUNT(*) as c FROM preventive_maintenance WHERE fecha_programada >= $1 AND fecha_programada <= $2 AND estado != 'Realizada'", [new Date().toISOString().split('T')[0], new Date(Date.now() + 15*24*60*60*1000).toISOString().split('T')[0]]),
+            query("SELECT COUNT(*) as c FROM preventive_maintenance WHERE fecha_programada < $1 AND estado != 'Realizada'", [new Date().toISOString().split('T')[0]]),
+            query('SELECT COUNT(*) as c FROM corrective_maintenance'),
+            query('SELECT COUNT(*) as c FROM spare_parts WHERE stock_actual <= stock_minimo'),
+            query('SELECT * FROM corrective_maintenance ORDER BY id DESC LIMIT 5')
+        ]);
+        const failuresReparadas = await query("SELECT COUNT(*) as c FROM corrective_maintenance WHERE estado = 'Reparada' OR fecha_reparacion IS NOT NULL");
+        const totalFailures = Number(failures.rows[0].c);
+        const reparadas = Number(failuresReparadas.rows[0].c);
+        json(res, {
+            totalMachines: Number(machines.rows[0].c),
+            completedMaintenance: Number(completedPreventive.rows[0].c),
+            upcomingMaintenance: Number(upcoming.rows[0].c),
+            overdueMaintenance: Number(overdue.rows[0].c),
+            totalFailures: totalFailures,
+            failuresReparadas: reparadas,
+            failuresEnMantencion: totalFailures - reparadas,
+            criticalSpareParts: Number(criticalParts.rows[0].c),
+            recentFailures: recentFailures.rows
+        });
+        return;
+    }
+
+    // =====================================================
+    // SIGMA - CRUD Generico para colecciones
+    // =====================================================
+    const sigmaCollectionMatch = urlPath.match(/^\/api\/sigma\/([a-z_]+)$/);
+    if (sigmaCollectionMatch && req.method === 'GET') {
+        const table = sigmaCollectionMatch[1];
+        try {
+            const data = await getAll(table);
+            json(res, data);
+        } catch(e) {
+            json(res, { error: e.message }, 400);
+        }
+        return;
+    }
+
+    const sigmaByIdMatch = urlPath.match(/^\/api\/sigma\/([a-z_]+)\/(\d+)$/);
+    if (sigmaByIdMatch && req.method === 'GET') {
+        const table = sigmaByIdMatch[1];
+        const id = Number(sigmaByIdMatch[2]);
+        try {
+            const item = await getById(table, id);
+            if (!item) return json(res, { error: 'No encontrado' }, 404);
+            json(res, item);
+        } catch(e) {
+            json(res, { error: e.message }, 400);
+        }
+        return;
+    }
+
+    if (sigmaCollectionMatch && req.method === 'POST') {
+        const table = sigmaCollectionMatch[1];
+        const body = await parseBody(req);
+        try {
+            const item = await insert(table, body);
+            json(res, item, 201);
+        } catch(e) {
+            json(res, { error: e.message }, 400);
+        }
+        return;
+    }
+
+    if (sigmaByIdMatch && req.method === 'PUT') {
+        const table = sigmaByIdMatch[1];
+        const id = Number(sigmaByIdMatch[2]);
+        const body = await parseBody(req);
+        try {
+            const item = await update(table, id, body);
+            json(res, item);
+        } catch(e) {
+            json(res, { error: e.message }, 400);
+        }
+        return;
+    }
+
+    if (sigmaByIdMatch && req.method === 'DELETE') {
+        const table = sigmaByIdMatch[1];
+        const id = Number(sigmaByIdMatch[2]);
+        try {
+            const ok = await del(table, id);
+            if (!ok) return json(res, { error: 'No encontrado' }, 404);
+            json(res, { ok: true });
+        } catch(e) {
+            json(res, { error: e.message }, 400);
+        }
+        return;
+    }
+
+    // =====================================================
+    // SIGMA - Components by Type
+    // =====================================================
+    const compByTypeMatch = urlPath.match(/^\/api\/sigma\/components\/by-type\/(\d+)$/);
+    if (compByTypeMatch && req.method === 'GET') {
+        const tipoId = Number(compByTypeMatch[1]);
+        const result = await query(
+            `SELECT c.* FROM components c
+             INNER JOIN component_type_links ctl ON c.id = ctl.componente_id
+             WHERE ctl.tipo_id = $1 ORDER BY c.nombre`, [tipoId]
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    // =====================================================
+    // SIGMA - Machine Details
+    // =====================================================
+    const machineDetailsMatch = urlPath.match(/^\/api\/sigma\/machines\/(\d+)\/details$/);
+    if (machineDetailsMatch && req.method === 'GET') {
+        const id = Number(machineDetailsMatch[1]);
+        const machine = await getById('machines', id);
+        if (!machine) return json(res, { error: 'No encontrada' }, 404);
+        const comps = await query(
+            `SELECT c.* FROM components c
+             INNER JOIN machine_components mc ON c.id = mc.componente_id
+             WHERE mc.maquina_id = $1`, [id]
+        );
+        json(res, { ...machine, componentes: comps.rows });
+        return;
+    }
+
+    // =====================================================
+    // SIGMA - Machine Components
+    // =====================================================
+    const machineCompsMatch = urlPath.match(/^\/api\/sigma\/machines\/(\d+)\/components$/);
+    if (machineCompsMatch && req.method === 'GET') {
+        const maquinaId = Number(machineCompsMatch[1]);
+        const result = await query(
+            `SELECT c.* FROM components c
+             INNER JOIN machine_components mc ON c.id = mc.componente_id
+             WHERE mc.maquina_id = $1 ORDER BY c.nombre`, [maquinaId]
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    if (machineCompsMatch && req.method === 'PUT') {
+        const maquinaId = Number(machineCompsMatch[1]);
+        const body = await parseBody(req);
+        const componentes = body.componentes || [];
+        await query('DELETE FROM machine_components WHERE maquina_id = $1', [maquinaId]);
+        for (const compId of componentes) {
+            await query('INSERT INTO machine_components (maquina_id, componente_id) VALUES ($1, $2)', [maquinaId, compId]);
+        }
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // SIGMA - Reports
+    // =====================================================
+    if (urlPath === '/api/sigma/reports/overdue' && req.method === 'GET') {
+        const result = await query(
+            `SELECT pm.*, m.nombre as maquina_nombre, c.nombre as componente_nombre
+             FROM preventive_maintenance pm
+             LEFT JOIN machines m ON pm.maquina_id = m.id
+             LEFT JOIN components c ON pm.componente_id = c.id
+             WHERE pm.fecha_programada < $1 AND pm.estado != 'Realizada'
+             ORDER BY pm.fecha_programada ASC`, [new Date().toISOString().split('T')[0]]
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    if (urlPath === '/api/sigma/reports/upcoming' && req.method === 'GET') {
+        const days = Number(q.days) || 15;
+        const hoy = new Date().toISOString().split('T')[0];
+        const futuro = new Date(Date.now() + days*24*60*60*1000).toISOString().split('T')[0];
+        const result = await query(
+            `SELECT pm.*, m.nombre as maquina_nombre, c.nombre as componente_nombre
+             FROM preventive_maintenance pm
+             LEFT JOIN machines m ON pm.maquina_id = m.id
+             LEFT JOIN components c ON pm.componente_id = c.id
+             WHERE pm.fecha_programada >= $1 AND pm.fecha_programada <= $2 AND pm.estado != 'Realizada'
+             ORDER BY pm.fecha_programada ASC`, [hoy, futuro]
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    if (urlPath === '/api/sigma/reports/completed' && req.method === 'GET') {
+        const result = await query(
+            `SELECT pm.*, m.nombre as maquina_nombre, c.nombre as componente_nombre
+             FROM preventive_maintenance pm
+             LEFT JOIN machines m ON pm.maquina_id = m.id
+             LEFT JOIN components c ON pm.componente_id = c.id
+             WHERE pm.estado = 'Realizada'
+             ORDER BY pm.fecha_ejecutada DESC`
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    if (urlPath === '/api/sigma/reports/recent-completed' && req.method === 'GET') {
+        const result = await query(
+            `SELECT pm.*, m.nombre as maquina_nombre, c.nombre as componente_nombre
+             FROM preventive_maintenance pm
+             LEFT JOIN machines m ON pm.maquina_id = m.id
+             LEFT JOIN components c ON pm.componente_id = c.id
+             WHERE pm.estado = 'Realizada' AND pm.fecha_ejecutada IS NOT NULL
+             ORDER BY pm.fecha_ejecutada DESC LIMIT 10`
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    if (urlPath === '/api/sigma/reports/by-period' && req.method === 'GET') {
+        const start = q.start || '2000-01-01';
+        const end = q.end || '2099-12-31';
+        const result = await query(
+            `SELECT pm.*, m.nombre as maquina_nombre, c.nombre as componente_nombre
+             FROM preventive_maintenance pm
+             LEFT JOIN machines m ON pm.maquina_id = m.id
+             LEFT JOIN components c ON pm.componente_id = c.id
+             WHERE pm.fecha_programada >= $1 AND pm.fecha_programada <= $2
+             ORDER BY pm.fecha_programada ASC`, [start, end]
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    if (urlPath === '/api/sigma/reports/bitacora' && req.method === 'GET') {
+        const result = await query(
+            `SELECT cm.*, m.nombre as maquina_nombre, c.nombre as componente_nombre
+             FROM corrective_maintenance cm
+             LEFT JOIN machines m ON cm.maquina_id = m.id
+             LEFT JOIN components c ON cm.componente_id = c.id
+             ORDER BY cm.id DESC`
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    // =====================================================
+    // SIGMA - Export / Import / Reset
+    // =====================================================
     if (urlPath === '/api/sigma/export' && req.method === 'GET') {
         json(res, await exportJSON());
         return;
@@ -847,6 +1088,12 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/sigma/clear' && req.method === 'POST') {
         await clearAllSigma();
         json(res, { ok: true });
+        return;
+    }
+
+    if (urlPath === '/api/sigma/reset' && req.method === 'POST') {
+        await clearAllSigma();
+        json(res, { ok: true, message: 'Base de datos reiniciada' });
         return;
     }
 
