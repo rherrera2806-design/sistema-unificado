@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Unificado - Vidriería</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">S</div>
+                <div class="sidebar-title">
+                    Sistema Unificado
+                    <small>Vidriería</small>
+                </div>
+            </div>
+            <nav class="sidebar-nav" id="sidebarNav"></nav>
+        </aside>
+
+        <!-- HEADER -->
+        <header class="header">
+            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <div class="header-left">
+                <div class="header-title" id="headerTitle">Dashboard</div>
+            </div>
+            <div class="header-right">
+                <div class="header-date" id="currentDate"></div>
+                <div class="header-user">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <span id="userName">Usuario</span>
+                </div>
+                <button class="btn-header" onclick="doLogout()">Salir</button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content" id="mainContent"></main>
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle"></h3>
+                <button style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter"></div>
+        </div>
+    </div>
+
+    <!-- API Client -->
+    <script>
+    class ApiClient {
+        constructor() { this.baseUrl = '/api'; }
+        async request(method, path, body = null) {
+            const opts = { method, headers: { 'Content-Type': 'application/json' } };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(`${this.baseUrl}${path}`, opts);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: res.statusText }));
+                throw new Error(err.error || `HTTP ${res.status}`);
+            }
+            return res.json();
+        }
+        async login(email, password) { return this.request('POST', '/auth/login', { email, password }); }
+        catalogos = {
+            getTiposCristal: () => this.request('GET', '/catalogos/tipos-cristal'),
+            crearTipoCristal: (nombre) => this.request('POST', '/catalogos/tipos-cristal', { nombre }),
+            eliminarTipoCristal: (id) => this.request('DELETE', `/catalogos/tipos-cristal/${id}`),
+            getEspesores: () => this.request('GET', '/catalogos/espesores'),
+            crearEspesor: (valor) => this.request('POST', '/catalogos/espesores', { valor }),
+            eliminarEspesor: (id) => this.request('DELETE', `/catalogos/espesores/${id}`)
+        };
+        inv = {
+            getMovimientos: (f={}) => { const qs = new URLSearchParams(f).toString(); return this.request('GET', `/inv/movimientos${qs?'?'+qs:''}`); },
+            crearMovimiento: (d) => this.request('POST', '/inv/movimientos', d),
+            eliminarMovimiento: (id) => this.request('DELETE', `/inv/movimientos/${id}`),
+            getInventario: (f={}) => { const qs = new URLSearchParams(f).toString(); return this.request('GET', `/inv/inventario${qs?'?'+qs:''}`); },
+            getEstadisticas: () => this.request('GET', '/inv/estadisticas'),
+            getEstadisticasPorTipo: () => this.request('GET', '/inv/estadisticas-por-tipo'),
+            getTiposCristal: async () => (await this.request('GET', '/catalogos/tipos-cristal')).map(t => t.nombre),
+            getEspesores: async () => (await this.request('GET', '/catalogos/espesores')).map(e => e.valor)
+        };
+        turnos = {
+            getEstado: () => this.request('GET', '/turnos/estado'),
+            crear: (nombre) => this.request('POST', '/turnos/crear', { nombre }),
+            siguiente: () => this.request('POST', '/turnos/siguiente'),
+            getCola: () => this.request('GET', '/turnos/cola')
+        };
+        sigma = {
+            getAll: (c) => this.request('GET', `/sigma/${c}`),
+            getById: (c, id) => this.request('GET', `/sigma/${c}/${id}`),
+            insert: (c, d) => this.request('POST', `/sigma/${c}`, d),
+            update: (c, id, d) => this.request('PUT', `/sigma/${c}/${id}`, d),
+            delete: (c, id) => this.request('DELETE', `/sigma/${c}/${id}`),
+            getOverdue: () => this.request('GET', '/sigma/overdue-maintenance'),
+            getBitacora: () => this.request('GET', '/sigma/reports/bitacora')
+        };
+    }
+    const db = new ApiClient();
+    </script>
+
+    <!-- App Logic -->
+    <script src="/js/app-main.js"></script>
+</body>
+</html>
