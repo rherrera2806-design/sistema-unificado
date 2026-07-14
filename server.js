@@ -1,11 +1,9 @@
 const http = require('http');
-const https = require('https');
-const tls = require('tls');
-tls.DEFAULT_MIN_VERSION = 'TLSv1.2';
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 const crypto = require('crypto');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { Server } = require('socket.io');
 const zlib = require('zlib');
 
@@ -23,132 +21,22 @@ const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'ordenes-venta';
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-d70f793c9dc24a3fa46ef91fb4e0a45a.r2.dev';
 const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
-// Helper: Create AWS Signature V4 for R2
-function hmac(key, data) {
-    return crypto.createHmac('sha256', key).update(data).digest();
-}
-
-function getSignatureKey(secretKey, dateStamp, region, service) {
-    const kDate = hmac('AWS4' + secretKey, dateStamp);
-    const kRegion = hmac(kDate, region);
-    const kService = hmac(kRegion, service);
-    const kSigning = hmac(kService, 'aws4_request');
-    return kSigning;
-}
-
-async function r2Upload(key, fileBuffer, contentType) {
-    if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
-        throw new Error('R2 no esta configurado. Faltan variables de entorno R2_ACCOUNT_ID, R2_ACCESS_KEY_ID o R2_SECRET_ACCESS_KEY.');
-    }
-    const now = new Date();
-    const dateStamp = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 8);
-    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
-    const region = 'auto';
-    const service = 's3';
-    const canonicalUri = `/${key}`;
-    const payloadHash = fileBuffer ? crypto.createHash('sha256').update(fileBuffer).digest('hex') : 'UNSIGNED-PAYLOAD';
-    
-    const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-
-    const clientHeaders = {
-        'x-amz-date': amzDate,
-        'x-amz-content-sha256': payloadHash,
-        'Content-Type': contentType,
-    };
-
-    const canonicalHeaders = `host:${host}\n` + Object.keys(clientHeaders).sort().map(k => `${k.toLowerCase()}:${clientHeaders[k]}`).join('\n') + '\n';
-    const signedHeaders = 'host;' + Object.keys(clientHeaders).sort().map(k => k.toLowerCase()).join(';');
-    
-    const canonicalRequest = [
-        'PUT', canonicalUri, '', canonicalHeaders, signedHeaders, payloadHash
-    ].join('\n');
-    
-    const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-    const stringToSign = [
-        'AWS4-HMAC-SHA256', amzDate, credentialScope,
-        crypto.createHash('sha256').update(canonicalRequest).digest('hex')
-    ].join('\n');
-    
-    const signingKey = getSignatureKey(R2_SECRET_ACCESS_KEY, dateStamp, region, service);
-    const signature = hmac(signingKey, stringToSign).toString('hex');
-    
-    const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-    
-    const url = `https://${host}/${key}`;
-    return { url, headers: { ...clientHeaders, 'Authorization': authorization } };
-}
+const r2Client = (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) ? new S3Client({
+    region: 'auto',
+    endpoint: R2_ENDPOINT,
+    credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
+    requestHandler: { httpsAgent: new https.Agent({ rejectUnauthorized: true }) },
+}) : null;
 
 async function r2Delete(key) {
-    const now = new Date();
-    const dateStamp = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 8);
-    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
-    const region = 'auto';
-    const service = 's3';
-    const canonicalUri = `/${key}`;
-    const payloadHash = crypto.createHash('sha256').update('').digest('hex');
-    
-    const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-    const headers = {
-        'Host': host,
-        'x-amz-date': amzDate,
-        'x-amz-content-sha256': payloadHash,
-    };
-    
-    const signedHeaderKeys = Object.keys(headers).sort();
-    const canonicalHeaders = signedHeaderKeys.map(k => `${k.toLowerCase()}:${headers[k]}`).join('\n') + '\n';
-    const signedHeaders = signedHeaderKeys.map(k => k.toLowerCase()).join(';');
-    
-    const canonicalRequest = [
-        'DELETE', canonicalUri, '', canonicalHeaders, signedHeaders, payloadHash
-    ].join('\n');
-    
-    const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-    const stringToSign = [
-        'AWS4-HMAC-SHA256', amzDate, credentialScope,
-        crypto.createHash('sha256').update(canonicalRequest).digest('hex')
-    ].join('\n');
-    
-    const signingKey = getSignatureKey(R2_SECRET_ACCESS_KEY, dateStamp, region, service);
-    const signature = hmac(signingKey, stringToSign).toString('hex');
-    
-    const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-    
-    const url = `https://${host}/${key}`;
-    const response = await fetch(url, {
-        method: 'DELETE',
-        headers: {
-            ...headers,
-            'Authorization': authorization,
-        },
-    });
-    
-    return response.ok;
-}
-
-function r2UploadNative(host, key, buffer, headers) {
-    return new Promise((resolve, reject) => {
-        const options = {
-            hostname: host,
-            port: 443,
-            path: '/' + key,
-            method: 'PUT',
-            headers: headers,
-            rejectUnauthorized: true,
-            secureProtocol: 'TLSv1_2_method',
-        };
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', (chunk) => data += chunk);
-            res.on('end', () => {
-                if (res.statusCode >= 200 && res.statusCode < 300) resolve({ ok: true, status: res.statusCode });
-                else resolve({ ok: false, status: res.statusCode, body: data });
-            });
-        });
-        req.on('error', (e) => reject(e));
-        req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout')); });
-        req.write(buffer);
-        req.end();
-    });
+    if (!r2Client) return false;
+    try {
+        await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
+        return true;
+    } catch(e) {
+        console.error('R2 delete error:', e.message);
+        return false;
+    }
 }
 
 // =====================================================
@@ -1483,9 +1371,15 @@ const server = http.createServer(async (req, res) => {
     // TURNOS - QR
     // =====================================================
     if (urlPath === '/api/turnos/qr' && req.method === 'GET') {
-        const url = q.url || (req.headers.host ? `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/turnos/?view=registro` : 'http://localhost:3000/turnos/?view=registro');
-        const qrData = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}`;
-        json(res, { qr: qrData, url });
+        const QRCode = require('qrcode');
+        const url = req.headers.host ? `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/turnos/?view=registro` : 'http://localhost:3000/turnos/?view=registro';
+        try {
+            const qrDataUrl = await QRCode.toDataURL(url, { width: 250, margin: 2 });
+            json(res, { qr: qrDataUrl, url });
+        } catch(e) {
+            console.error('QR generation error:', e.message);
+            json(res, { qr: '', url, error: e.message });
+        }
         return;
     }
 
@@ -1695,7 +1589,7 @@ const server = http.createServer(async (req, res) => {
     // R2 - SUBIR ARCHIVO
     // =====================================================
     if (urlPath === '/api/r2/upload' && req.method === 'POST') {
-        if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+        if (!r2Client) {
             json(res, { error: 'R2 no esta configurado en el servidor. Contacta al administrador.' }, 500);
             return;
         }
@@ -1709,12 +1603,10 @@ const server = http.createServer(async (req, res) => {
         
         try {
             const key = `pedidos/${fileName}`;
-            const result = await r2Upload(key, null, contentType || 'application/pdf');
-            console.log(`R2: Presigned URL generada para ${key}`);
-            json(res, { uploadUrl: result.url, headers: result.headers, key, url: `${R2_PUBLIC_URL}/${key}` });
+            json(res, { key, url: `${R2_PUBLIC_URL}/${key}` });
         } catch(e) {
-            console.error('R2 presign error:', e.message);
-            json(res, { error: 'Error al generar URL: ' + e.message }, 500);
+            console.error('R2 error:', e.message);
+            json(res, { error: 'Error: ' + e.message }, 500);
         }
         return;
     }
@@ -1722,8 +1614,10 @@ const server = http.createServer(async (req, res) => {
     // =====================================================
     // R2 - SUBIR ARCHIVO (proxy server-side con https nativo)
     // =====================================================
+    // R2 - SUBIR ARCHIVO (via AWS SDK S3)
+    // =====================================================
     if (urlPath === '/api/r2/direct-upload' && req.method === 'POST') {
-        if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+        if (!r2Client) {
             json(res, { error: 'R2 no esta configurado en el servidor. Contacta al administrador.' }, 500);
             return;
         }
@@ -1736,19 +1630,17 @@ const server = http.createServer(async (req, res) => {
         try {
             const key = `pedidos/${fileName}`;
             const buffer = Buffer.from(fileBase64, 'base64');
-            const signResult = await r2Upload(key, buffer, contentType || 'application/pdf');
-            const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-            const r2Res = await r2UploadNative(host, key, buffer, signResult.headers);
-            if (!r2Res.ok) {
-                console.error('R2 direct upload error:', r2Res.status, r2Res.body);
-                json(res, { error: 'Error al subir a R2: ' + r2Res.status }, 500);
-                return;
-            }
-            console.log(`R2: Archivo subido directamente ${key}`);
+            await r2Client.send(new PutObjectCommand({
+                Bucket: R2_BUCKET_NAME,
+                Key: key,
+                Body: buffer,
+                ContentType: contentType || 'application/pdf',
+            }));
+            console.log(`R2: Archivo subido ${key} (${buffer.length} bytes)`);
             json(res, { key, url: `${R2_PUBLIC_URL}/${key}` });
         } catch(e) {
-            console.error('R2 direct upload error:', e.message);
-            json(res, { error: 'Error al subir: ' + e.message }, 500);
+            console.error('R2 upload error:', e.message);
+            json(res, { error: 'Error al subir a R2: ' + e.message }, 500);
         }
         return;
     }

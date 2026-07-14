@@ -324,34 +324,13 @@ App.registerModule('turnos', {
     generateQR(text) {
         const el = document.getElementById('tQRImg');
         if (!el) return;
-        if (typeof qrcode === 'undefined') { el.innerHTML = '<span style="color:var(--danger);font-size:12px">Error: QR lib not loaded</span>'; return; }
-        try {
-            var qr = qrcode(0, 'M');
-            qr.addData(text);
-            qr.make();
-            var moduleCount = qr.getModuleCount();
-            var size = 250;
-            var canvas = document.createElement('canvas');
-            canvas.width = size; canvas.height = size;
-            var ctx = canvas.getContext('2d');
-            var cellSize = Math.floor((size - 20) / moduleCount);
-            var offset = Math.floor((size - cellSize * moduleCount) / 2);
-            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
-            ctx.fillStyle = '#000';
-            for (var r = 0; r < moduleCount; r++) {
-                for (var c = 0; c < moduleCount; c++) {
-                    if (qr.isDark(r, c)) {
-                        ctx.fillRect(offset + c * cellSize, offset + r * cellSize, cellSize, cellSize);
-                    }
-                }
-            }
-            el.innerHTML = '';
-            canvas.style.width = '220px'; canvas.style.height = '220px';
-            el.appendChild(canvas);
-        } catch(e) {
-            console.error('QR Error:', e);
-            el.innerHTML = '<span style="color:var(--danger);font-size:12px">Error generando QR</span>';
-        }
+        fetch('/api/turnos/qr')
+            .then(r => r.json())
+            .then(d => {
+                if (d.qr) { el.innerHTML = '<img src="' + d.qr + '" alt="QR" style="width:220px;border-radius:8px">'; }
+                else { el.innerHTML = '<span style="color:var(--danger);font-size:12px">Error generando QR</span>'; }
+            })
+            .catch(() => { el.innerHTML = '<span style="color:var(--danger);font-size:12px">Error de conexion</span>'; });
     },
 
     async qrCargar() {
