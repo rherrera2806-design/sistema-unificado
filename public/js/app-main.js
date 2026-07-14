@@ -385,7 +385,11 @@ function openExternalPage(url, label) {
 
 // ─── Init ────
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!getUser()) { window.location.href = '/'; return; }
+    const user = getUser();
+    if (!user) { window.location.href = '/'; return; }
+    document.getElementById('userName').textContent = user.nombre || user.email || 'Usuario';
+    document.getElementById('userAvatar').textContent = (user.nombre || 'U').charAt(0).toUpperCase();
+    document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     renderSidebar();
     await App.updateNavBadge();
     App.loadModule('dashboard');
