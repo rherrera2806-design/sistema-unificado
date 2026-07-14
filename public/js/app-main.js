@@ -267,30 +267,17 @@ function renderSidebar() {
     const adm = isAdmin() || hasArea('Gerencia');
     let html = '';
 
-    // PRINCIPAL
-    html += `<div class="nav-section">PRINCIPAL</div>`;
-    html += navI('dashboard', 'Dashboard', '📊');
-
-    // EQUIPOS
+    // MANTENCION (todo junto, sin sub-secciones)
     if (adm || hasArea('Mantencion')) {
-        html += `<div class="nav-section">EQUIPOS</div>`;
+        html += `<div class="nav-section">MANTENCION</div>`;
+        html += navI('dashboard', 'Dashboard', '📊');
         html += navI('machineTypes', 'Tipos de Area', '⚙️');
         html += navI('machines', 'Maquinas', '🏭');
         html += navI('components', 'Componentes', '🔧');
-    }
-
-    // MANTENCION
-    if (adm || hasArea('Mantencion')) {
-        html += `<div class="nav-section">MANTENCION</div>`;
         html += navI('preventive', 'Preventivo', '📋');
         html += navI('corrective', 'Correctivo', '🔴');
         html += navI('calendar', 'Calendario', '📅');
         html += navI('notas', 'Notas', '📒');
-    }
-
-    // REPORTES
-    if (adm || hasArea('Mantencion')) {
-        html += `<div class="nav-section">REPORTES</div>`;
         html += navI('reports', 'Reportes', '📈');
         html += navI('history', 'Historial', '📜');
         html += navI('bitacora', 'Bitacora de Mantencion', '📒');
@@ -305,13 +292,13 @@ function renderSidebar() {
         html += navI('inv_catalogos', 'Catalogos', '⚙️');
     }
 
-    // TURNOS
+    // ATENCION
     if (adm || hasArea('Recepcion')) {
         html += `<div class="nav-section">ATENCION</div>`;
         html += navI('turnos_page', 'Turnos QR', '🎫');
     }
 
-    // PEDIDOS
+    // VENTAS
     if (adm || hasArea('Ventas')) {
         html += `<div class="nav-section">VENTAS</div>`;
         html += navI('pedidos_page', 'Pedidos / Ordenes', '📄');
