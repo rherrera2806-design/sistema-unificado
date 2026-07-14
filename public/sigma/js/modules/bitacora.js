@@ -77,6 +77,13 @@ App.registerModule('bitacora', {
             return true;
         });
 
+        // Sort by date ascending (oldest first)
+        filtered.sort((a, b) => {
+            const fechaA = a.tipo_mantencion === 'Preventiva' ? (a.fecha_ejecutada || a.fecha_programada || '') : (a.fecha_falla || '');
+            const fechaB = b.tipo_mantencion === 'Preventiva' ? (b.fecha_ejecutada || b.fecha_programada || '') : (b.fecha_falla || '');
+            return fechaA.localeCompare(fechaB);
+        });
+
         this.renderTable(filtered);
     },
 
