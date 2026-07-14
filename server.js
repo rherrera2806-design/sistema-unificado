@@ -34,6 +34,9 @@ function getSignatureKey(secretKey, dateStamp, region, service) {
 }
 
 async function r2Upload(key, fileBuffer, contentType) {
+    if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+        throw new Error('R2 no esta configurado. Faltan variables de entorno R2_ACCOUNT_ID, R2_ACCESS_KEY_ID o R2_SECRET_ACCESS_KEY.');
+    }
     const now = new Date();
     const dateStamp = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 8);
     const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
@@ -69,21 +72,33 @@ async function r2Upload(key, fileBuffer, contentType) {
     const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
     
     const url = `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
-    const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-            ...headers,
-            'Authorization': authorization,
-        },
-        body: fileBuffer,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`R2 upload failed: ${response.status} ${text}`);
+    try {
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                ...headers,
+                'Authorization': authorization,
+            },
+            body: fileBuffer,
+            signal: controller.signal,
+        });
+        
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`R2 respondio ${response.status}: ${text}`);
+        }
+        
+        return `${R2_PUBLIC_URL}/${key}`;
+    } catch(e) {
+        if (e.name === 'AbortError') throw new Error('R2 upload timeout (30s). Verifica tu conexion.');
+        if (e.cause) throw new Error(`R2 upload error: ${e.message} (cause: ${e.cause.message || e.cause})`);
+        throw e;
+    } finally {
+        clearTimeout(timeout);
     }
-    
-    return `${R2_PUBLIC_URL}/${key}`;
 }
 
 async function r2Delete(key) {
@@ -1661,6 +1676,10 @@ const server = http.createServer(async (req, res) => {
     // R2 - SUBIR ARCHIVO
     // =====================================================
     if (urlPath === '/api/r2/upload' && req.method === 'POST') {
+        if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+            json(res, { error: 'R2 no esta configurado en el servidor. Contacta al administrador.' }, 500);
+            return;
+        }
         const body = await parseBody(req);
         const { fileName, fileContent, contentType } = body;
         
@@ -1672,10 +1691,12 @@ const server = http.createServer(async (req, res) => {
         try {
             const buffer = Buffer.from(fileContent, 'base64');
             const key = `pedidos/${fileName}`;
+            console.log(`R2: Subiendo ${fileName} (${buffer.length} bytes)...`);
             const publicUrl = await r2Upload(key, buffer, contentType || 'application/pdf');
+            console.log(`R2: OK - ${publicUrl}`);
             json(res, { url: publicUrl, key });
         } catch(e) {
-            console.error('Error uploading to R2:', e);
+            console.error('R2 upload error:', e.message);
             json(res, { error: 'Error al subir archivo: ' + e.message }, 500);
         }
         return;
@@ -1744,4 +1765,13 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
     console.log(`Servidor corriendo en puerto ${PORT}`);
+    if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) {
+        console.log('R2: Configurado correctamente');
+    } else {
+        console.warn('R2: NO configurado. Variables faltantes:', [
+            !R2_ACCOUNT_ID && 'R2_ACCOUNT_ID',
+            !R2_ACCESS_KEY_ID && 'R2_ACCESS_KEY_ID',
+            !R2_SECRET_ACCESS_KEY && 'R2_SECRET_ACCESS_KEY'
+        ].filter(Boolean).join(', '));
+    }
 });
