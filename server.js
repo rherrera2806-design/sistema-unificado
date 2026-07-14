@@ -1,9 +1,10 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 const crypto = require('crypto');
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const aws4 = require('aws4');
 const { Server } = require('socket.io');
 const zlib = require('zlib');
 
@@ -21,18 +22,39 @@ const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'ordenes-venta';
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-d70f793c9dc24a3fa46ef91fb4e0a45a.r2.dev';
 const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
-const r2Client = (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY) ? new S3Client({
-    region: 'auto',
-    endpoint: R2_ENDPOINT,
-    credentials: { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY },
-    requestHandler: { httpsAgent: new https.Agent({ rejectUnauthorized: true }) },
-}) : null;
+function r2Request(params) {
+    return new Promise((resolve, reject) => {
+        const signed = aws4.sign(params, { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY });
+        const url = new URL(signed.url || `${R2_ENDPOINT}${signed.path || signed.pathname || ''}`);
+        const options = {
+            hostname: url.hostname,
+            port: 443,
+            path: url.pathname + url.search,
+            method: signed.method || 'PUT',
+            headers: signed.headers,
+            rejectUnauthorized: false,
+        };
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, body: data }));
+        });
+        req.on('error', reject);
+        req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout')); });
+        if (signed.body) req.write(signed.body);
+        req.end();
+    });
+}
 
 async function r2Delete(key) {
-    if (!r2Client) return false;
+    if (!R2_ACCESS_KEY_ID) return false;
     try {
-        await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key }));
-        return true;
+        const result = await r2Request({
+            method: 'DELETE',
+            url: `${R2_ENDPOINT}/${key}`,
+            headers: { 'Host': `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` },
+        });
+        return result.ok;
     } catch(e) {
         console.error('R2 delete error:', e.message);
         return false;
@@ -1589,7 +1611,7 @@ const server = http.createServer(async (req, res) => {
     // R2 - SUBIR ARCHIVO
     // =====================================================
     if (urlPath === '/api/r2/upload' && req.method === 'POST') {
-        if (!r2Client) {
+        if (!R2_ACCESS_KEY_ID) {
             json(res, { error: 'R2 no esta configurado en el servidor. Contacta al administrador.' }, 500);
             return;
         }
@@ -1601,23 +1623,18 @@ const server = http.createServer(async (req, res) => {
             return;
         }
         
-        try {
-            const key = `pedidos/${fileName}`;
-            json(res, { key, url: `${R2_PUBLIC_URL}/${key}` });
-        } catch(e) {
-            console.error('R2 error:', e.message);
-            json(res, { error: 'Error: ' + e.message }, 500);
-        }
+        const key = `pedidos/${fileName}`;
+        json(res, { key, url: `${R2_PUBLIC_URL}/${key}` });
         return;
     }
 
     // =====================================================
     // R2 - SUBIR ARCHIVO (proxy server-side con https nativo)
     // =====================================================
-    // R2 - SUBIR ARCHIVO (via AWS SDK S3)
+    // R2 - SUBIR ARCHIVO (via aws4 + https)
     // =====================================================
     if (urlPath === '/api/r2/direct-upload' && req.method === 'POST') {
-        if (!r2Client) {
+        if (!R2_ACCESS_KEY_ID) {
             json(res, { error: 'R2 no esta configurado en el servidor. Contacta al administrador.' }, 500);
             return;
         }
@@ -1630,17 +1647,27 @@ const server = http.createServer(async (req, res) => {
         try {
             const key = `pedidos/${fileName}`;
             const buffer = Buffer.from(fileBase64, 'base64');
-            await r2Client.send(new PutObjectCommand({
-                Bucket: R2_BUCKET_NAME,
-                Key: key,
-                Body: buffer,
-                ContentType: contentType || 'application/pdf',
-            }));
+            const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+            const result = await r2Request({
+                method: 'PUT',
+                url: `https://${host}/${key}`,
+                headers: {
+                    'Host': host,
+                    'Content-Type': contentType || 'application/pdf',
+                    'Content-Length': buffer.length,
+                },
+                body: buffer,
+            });
+            if (!result.ok) {
+                console.error('R2 upload error:', result.status, result.body);
+                json(res, { error: 'Error al subir a R2: ' + result.status }, 500);
+                return;
+            }
             console.log(`R2: Archivo subido ${key} (${buffer.length} bytes)`);
             json(res, { key, url: `${R2_PUBLIC_URL}/${key}` });
         } catch(e) {
             console.error('R2 upload error:', e.message);
-            json(res, { error: 'Error al subir a R2: ' + e.message }, 500);
+            json(res, { error: 'Error al subir: ' + e.message }, 500);
         }
         return;
     }
