@@ -77,6 +77,21 @@ const App = {
             if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; navItem.appendChild(badge); }
             badge.textContent = count;
         } else if (badge) { badge.remove(); }
+        await this.updateNotasBadge();
+    },
+
+    async updateNotasBadge() {
+        try {
+            const data = await db.getAll('notas');
+            const unread = data.filter(n => !n.leido).length;
+            const navItem = document.querySelector(`.nav-item[data-page="notas"]`);
+            if (!navItem) return;
+            let badge = navItem.querySelector('.badge');
+            if (unread > 0) {
+                if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; navItem.appendChild(badge); }
+                badge.textContent = unread;
+            } else if (badge) { badge.remove(); }
+        } catch(e) {}
     },
 
     async loadModule(name) {
