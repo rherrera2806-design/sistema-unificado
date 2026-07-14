@@ -3,7 +3,7 @@ App.registerModule('preventive', {
         const el = document.getElementById('page-preventive');
         const registros = await db.getAll('preventive_maintenance');
         const maquinas = await db.getAll('machines');
-        const filterEstado = document.getElementById('filterPrevEstado')?.value || '';
+        const filterEstado = document.getElementById('filterPrevEstado')?.value || 'activas';
         const filterMaquina = document.getElementById('filterPrevMaq')?.value || '';
         let filtered = [];
         for (const r of registros) {
@@ -11,7 +11,14 @@ App.registerModule('preventive', {
             const comp = await db.getById('components', r.componente_id).catch(() => null);
             filtered.push({ ...r, maquinaNombre: maq ? maq.nombre : '', componenteNombre: comp ? comp.nombre : '' });
         }
-        if (filterEstado) filtered = filtered.filter(r => r.estado === filterEstado);
+        
+        // Default filter: show Programada and Vencida
+        if (filterEstado === 'activas') {
+            filtered = filtered.filter(r => r.estado === 'Programada' || r.estado === 'Vencida');
+        } else if (filterEstado) {
+            filtered = filtered.filter(r => r.estado === filterEstado);
+        }
+        
         if (filterMaquina) filtered = filtered.filter(r => r.maquina_id === parseInt(filterMaquina));
         
         // Sort by fecha_programada ascending (oldest first)
@@ -45,7 +52,8 @@ App.registerModule('preventive', {
                             ${maquinas.map(m => `<option value="${m.id}" ${filterMaquina === String(m.id) ? 'selected' : ''}>${m.nombre}</option>`).join('')}
                         </select>
                         <select class="form-control" id="filterPrevEstado" style="width:auto;min-width:130px" onchange="App.modules.preventive.render()">
-                            <option value="">Todos</option>
+                            <option value="activas" ${filterEstado === 'activas' ? 'selected' : ''}>Programadas y Vencidas</option>
+                            <option value="" ${filterEstado === '' ? 'selected' : ''}>Todos</option>
                             <option value="Programada" ${filterEstado === 'Programada' ? 'selected' : ''}>Programada</option>
                             <option value="Realizada" ${filterEstado === 'Realizada' ? 'selected' : ''}>Realizada</option>
                             <option value="Vencida" ${filterEstado === 'Vencida' ? 'selected' : ''}>Vencida</option>
