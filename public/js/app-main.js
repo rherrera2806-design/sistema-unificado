@@ -348,9 +348,9 @@ function renderSidebar() {
             if (page.startsWith('inv_')) {
                 navigateToInv(page);
             } else if (page === 'turnos_page') {
-                openExternalPage('/turnos/', 'Turnos QR');
+                App.loadModule('turnos');
             } else if (page === 'pedidos_page') {
-                openExternalPage('/pedidos/', 'Pedidos');
+                App.loadModule('pedidos');
             } else {
                 App.loadModule(page);
             }
@@ -378,7 +378,7 @@ function navigateToInv(name) {
     pg.render();
 }
 
-// ─── External Page (Turnos, Pedidos) ────
+// ─── External Page (legacy, no longer used) ────
 function openExternalPage(url, label) {
     window.open(url, '_blank');
 }

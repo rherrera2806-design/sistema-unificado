@@ -73,33 +73,7 @@ async function r2Upload(key, fileBuffer, contentType) {
     const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
     
     const url = `https://${host}/${key}`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-    
-    try {
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-                ...headers,
-                'Authorization': authorization,
-            },
-            body: fileBuffer,
-            signal: controller.signal,
-        });
-        
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`R2 respondio ${response.status}: ${text}`);
-        }
-        
-        return `${R2_PUBLIC_URL}/${key}`;
-    } catch(e) {
-        if (e.name === 'AbortError') throw new Error('R2 upload timeout (30s). Verifica tu conexion.');
-        if (e.cause) throw new Error(`R2 upload error: ${e.message} (cause: ${e.cause.message || e.cause})`);
-        throw e;
-    } finally {
-        clearTimeout(timeout);
-    }
+    return { url, headers: { ...headers, 'Authorization': authorization } };
 }
 
 async function r2Delete(key) {
@@ -1683,23 +1657,21 @@ const server = http.createServer(async (req, res) => {
             return;
         }
         const body = await parseBody(req);
-        const { fileName, fileContent, contentType } = body;
+        const { fileName, contentType } = body;
         
-        if (!fileName || !fileContent) {
-            json(res, { error: 'fileName y fileContent son requeridos' }, 400);
+        if (!fileName) {
+            json(res, { error: 'fileName es requerido' }, 400);
             return;
         }
         
         try {
-            const buffer = Buffer.from(fileContent, 'base64');
             const key = `pedidos/${fileName}`;
-            console.log(`R2: Subiendo ${fileName} (${buffer.length} bytes)...`);
-            const publicUrl = await r2Upload(key, buffer, contentType || 'application/pdf');
-            console.log(`R2: OK - ${publicUrl}`);
-            json(res, { url: publicUrl, key });
+            const result = r2Upload(key, null, contentType || 'application/pdf');
+            console.log(`R2: Presigned URL generada para ${key}`);
+            json(res, { uploadUrl: result.url, headers: result.headers, key, url: `${R2_PUBLIC_URL}/${key}` });
         } catch(e) {
-            console.error('R2 upload error:', e.message);
-            json(res, { error: 'Error al subir archivo: ' + e.message }, 500);
+            console.error('R2 presign error:', e.message);
+            json(res, { error: 'Error al generar URL: ' + e.message }, 500);
         }
         return;
     }

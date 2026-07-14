@@ -412,30 +412,26 @@
             try {
                 const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
                 
-                // Convert file to base64
-                const base64 = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(selectedFile);
-                });
-                
-                // Upload to R2
                 const fileName = `${numero}_${Date.now()}.pdf`;
-                const uploadRes = await fetch('/api/r2/upload', {
+                
+                // Step 1: Get presigned URL from server
+                const presignRes = await fetch('/api/r2/upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fileName: fileName,
-                        fileContent: base64,
-                        contentType: 'application/pdf'
-                    })
+                    body: JSON.stringify({ fileName, contentType: 'application/pdf' })
                 });
+                const presignData = await presignRes.json();
+                if (!presignRes.ok) throw new Error(presignData.error || 'Error al obtener URL de subida');
                 
-                const uploadData = await uploadRes.json();
-                if (!uploadRes.ok) throw new Error(uploadData.error || 'Error al subir PDF');
+                // Step 2: Upload file directly to R2 using presigned URL
+                const uploadRes = await fetch(presignData.uploadUrl, {
+                    method: 'PUT',
+                    headers: presignData.headers,
+                    body: selectedFile
+                });
+                if (!uploadRes.ok) throw new Error('Error al subir PDF a R2: ' + uploadRes.status);
                 
-                // Save pedido with R2 URL
+                // Step 3: Save pedido with R2 URL
                 const res = await fetch('/api/pedidos', {
                     method: 'POST',
                     headers: { 
@@ -447,7 +443,7 @@
                         numero_pedido: numero,
                         cliente: cliente,
                         vendedor: user.email || '',
-                        archivo_url: uploadData.url
+                        archivo_url: presignData.url
                     })
                 });
                 

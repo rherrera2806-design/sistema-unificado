@@ -325,3 +325,23 @@ tr:hover { background: #f8fafc; }
 .catalog-items { display: flex; flex-direction: column; gap: 6px; }
 .catalog-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border); }
 .catalog-item-name { font-weight: 500; font-size: 13px; }
+
+/* ── Turnos QR ── */
+.turnos-bg { background: linear-gradient(135deg, #0f172a, #1e293b); }
+.turnos-card {
+    background: rgba(30,41,59,0.8); border: 2px solid #334155; border-radius: 16px;
+    padding: 28px 20px; text-align: center; transition: all 0.2s; cursor: pointer;
+}
+.turnos-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(245,158,11,0.15); }
+
+/* ── Pedidos upload ── */
+.upload-area {
+    border: 2px dashed #cbd5e1; border-radius: 10px; padding: 32px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+}
+.upload-area:hover { border-color: #3b82f6; background: #f8fafc; }
+
+/* ── Pedidos badges ── */
+.badge-pendiente { background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.badge-aprobado { background: #dcfce7; color: #166534; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.badge-rechazado { background: #fee2e2; color: #991b1b; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
