@@ -225,7 +225,7 @@ async function initDB() {
     await query(`CREATE TABLE IF NOT EXISTS notas (
         id SERIAL PRIMARY KEY, tecnico TEXT, nota TEXT, fecha TEXT, hora TEXT
     )`);
-
+    try { await query("ALTER TABLE notas ADD COLUMN IF NOT EXISTS leido BOOLEAN DEFAULT FALSE"); } catch(e) { }
     await query(`CREATE TABLE IF NOT EXISTS turnos (
         id SERIAL PRIMARY KEY,
         nombre VARCHAR(100) NOT NULL,
