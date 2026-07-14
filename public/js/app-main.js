@@ -318,13 +318,15 @@ function renderSidebar() {
     // ATENCION
     if (adm || hasArea('Recepcion')) {
         html += `<div class="nav-section">ATENCION</div>`;
-        html += navI('turnos_page', 'Turnos QR', '🎫');
+        html += navI('turnos_recepcion', 'Recepcion y Control', '📋');
+        html += navI('turnos_bodega', 'Entrega de Bodega', '📦');
+        html += navI('turnos_qr', 'QR Clientes', '💻');
     }
 
     // VENTAS
     if (adm || hasArea('Ventas')) {
         html += `<div class="nav-section">VENTAS</div>`;
-        html += navI('pedidos_page', 'Pedidos / Ordenes', '📄');
+        html += navI('pedidos', 'Pedidos / Ordenes', '📄');
     }
 
     // ADMIN
@@ -347,9 +349,16 @@ function renderSidebar() {
             const page = el.dataset.page;
             if (page.startsWith('inv_')) {
                 navigateToInv(page);
-            } else if (page === 'turnos_page') {
+            } else if (page === 'turnos_recepcion') {
                 App.loadModule('turnos');
-            } else if (page === 'pedidos_page') {
+                setTimeout(() => App.modules.turnos.showRecepcion(), 100);
+            } else if (page === 'turnos_bodega') {
+                App.loadModule('turnos');
+                setTimeout(() => App.modules.turnos.showBodega(), 100);
+            } else if (page === 'turnos_qr') {
+                App.loadModule('turnos');
+                setTimeout(() => App.modules.turnos.showQR(), 100);
+            } else if (page === 'pedidos') {
                 App.loadModule('pedidos');
             } else {
                 App.loadModule(page);
