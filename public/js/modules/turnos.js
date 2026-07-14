@@ -324,224 +324,35 @@ App.registerModule('turnos', {
     generateQR(text) {
         const el = document.getElementById('tQRImg');
         if (!el) return;
-        const size = 250;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        const modules = this.qrEncode(text);
-        const moduleCount = modules.length;
-        const cellSize = Math.floor((size - 20) / moduleCount);
-        const offset = Math.floor((size - cellSize * moduleCount) / 2);
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, size, size);
-        ctx.fillStyle = '#000';
-        for (let r = 0; r < moduleCount; r++) {
-            for (let c = 0; c < moduleCount; c++) {
-                if (modules[r][c]) {
-                    ctx.fillRect(offset + c * cellSize, offset + r * cellSize, cellSize, cellSize);
+        if (typeof qrcode === 'undefined') { el.innerHTML = '<span style="color:var(--danger);font-size:12px">Error: QR lib not loaded</span>'; return; }
+        try {
+            var qr = qrcode(0, 'M');
+            qr.addData(text);
+            qr.make();
+            var moduleCount = qr.getModuleCount();
+            var size = 250;
+            var canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            var ctx = canvas.getContext('2d');
+            var cellSize = Math.floor((size - 20) / moduleCount);
+            var offset = Math.floor((size - cellSize * moduleCount) / 2);
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+            ctx.fillStyle = '#000';
+            for (var r = 0; r < moduleCount; r++) {
+                for (var c = 0; c < moduleCount; c++) {
+                    if (qr.isDark(r, c)) {
+                        ctx.fillRect(offset + c * cellSize, offset + r * cellSize, cellSize, cellSize);
+                    }
                 }
             }
+            el.innerHTML = '';
+            canvas.style.width = '220px'; canvas.style.height = '220px';
+            el.appendChild(canvas);
+        } catch(e) {
+            console.error('QR Error:', e);
+            el.innerHTML = '<span style="color:var(--danger);font-size:12px">Error generando QR</span>';
         }
-        el.innerHTML = '';
-        canvas.style.width = '220px';
-        canvas.style.height = '220px';
-        el.appendChild(canvas);
     },
-
-    qrEncode(text) {
-        const typeNumber = 0;
-        const errorCorrectionLevel = 'M';
-        const data = this.qrUtil.getData(typeNumber, errorCorrectionLevel);
-        data.addData(text);
-        data.make();
-        const count = data.getModuleCount();
-        const modules = [];
-        for (let r = 0; r < count; r++) {
-            modules[r] = [];
-            for (let c = 0; c < count; c++) {
-                modules[r][c] = data.isDark(r, c);
-            }
-        }
-        return modules;
-    },
-
-    qrUtil: (function() {
-        function QRUtil() {}
-        QRUtil.prototype = {
-            _data: null, _typeNumber: 0, _errorCorrectLevel: 'M',
-            addData: function(data) { this._data = data; },
-            make: function() {
-                var typeNumber = this._typeNumber;
-                var ecLevel = {L:1,M:0,Q:3,H:2}[this._errorCorrectLevel]||0;
-                var modules = this._generate(typeNumber, ecLevel, this._data);
-                this._modules = modules;
-                this._moduleCount = modules.length;
-            },
-            getModuleCount: function() { return this._moduleCount; },
-            isDark: function(r, c) { return this._modules[r][c]; },
-            _generate: function(typeNumber, ecLevel, dataStr) {
-                var n = this._getTypeNumber(typeNumber, dataStr.length);
-                var data = this._createData(n, ecLevel, dataStr);
-                return this._createMatrix(n, data);
-            },
-            _getTypeNumber: function(typeNumber, dataLength) {
-                if (typeNumber > 0) return typeNumber;
-                for (var i = 1; i <= 40; i++) {
-                    var capacity = this._getCapacity(i);
-                    if (dataLength <= capacity) return i;
-                }
-                return 40;
-            },
-            _getCapacity: function(typeNumber) {
-                var totalCodewords = this._TOTAL_CODEWORDS[typeNumber - 1];
-                var ecCodewords = this._EC_CODEWORDS_PER_BLOCK[0][typeNumber - 1];
-                var blocks = this._NUMBER_OF_BLOCKS[0][typeNumber - 1];
-                var dataCodewords = totalCodewords - ecCodewords * blocks;
-                var chars = Math.floor(dataCodewords * 8 / 8);
-                return Math.floor(dataCodewords * 8 / 8);
-            },
-            _TOTAL_CODEWORDS: [26,44,70,100,134,172,196,242,292,346,404,466,532,581,655,733,815,901,991,1085,1156,1258,1364,1474,1588,1706,1828,1921,2051,2185,2323,2465,2611,2761,2876,3034,3196,3362,3532,3706],
-            _EC_CODEWORDS_PER_BLOCK: [[10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28]],
-            _NUMBER_OF_BLOCKS: [[1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,30,32,33,35,37,38,40,43,45,47]],
-            _createData: function(typeNumber, ecLevel, dataStr) {
-                var dataBits = [];
-                for (var i = 0; i < dataStr.length; i++) {
-                    var chr = dataStr.charCodeAt(i);
-                    if (chr < 128) {
-                        dataBits.push(0x04);
-                        for (var b = 7; b >= 0; b--) dataBits.push((chr >> b) & 1);
-                    } else {
-                        dataBits.push(0x04);
-                        for (var b = 7; b >= 0; b--) dataBits.push((chr >> b) & 1);
-                    }
-                }
-                var totalCodewords = this._TOTAL_CODEWORDS[typeNumber - 1];
-                var ecCodewords = this._EC_CODEWORDS_PER_BLOCK[0][typeNumber - 1];
-                var numBlocks = this._NUMBER_OF_BLOCKS[0][typeNumber - 1];
-                var dataPerBlock = Math.floor((totalCodewords - ecCodewords * numBlocks));
-                var totalDataBits = dataPerBlock * 8;
-                while (dataBits.length < totalDataBits) { dataBits.push(0); }
-                dataBits = dataBits.slice(0, totalDataBits);
-                var blocks = [];
-                var bSize = Math.floor(dataPerBlock);
-                for (var i = 0; i < numBlocks; i++) {
-                    blocks.push(dataBits.slice(i * bSize, (i + 1) * bSize));
-                }
-                return { blocks: blocks, ecPerBlock: ecCodewords };
-            },
-            _createMatrix: function(typeNumber, data) {
-                var size = typeNumber * 4 + 17;
-                var matrix = [];
-                var reserved = [];
-                for (var i = 0; i < size; i++) { matrix[i] = []; reserved[i] = []; for (var j = 0; j < size; j++) { matrix[i][j] = false; reserved[i][j] = false; } }
-                this._placeFinderPatterns(matrix, reserved, size);
-                this._placeAlignPatterns(matrix, reserved, size, typeNumber);
-                this._placeTimingPatterns(matrix, reserved, size);
-                this._reserveFormatArea(reserved, size);
-                this._placeData(matrix, reserved, data, size);
-                this._placeFormatBits(matrix, reserved, size, 0);
-                return matrix;
-            },
-            _placeFinderPatterns: function(m, r, size) {
-                var pattern = [[1,1,1,1,1,1,1],[1,0,0,0,0,0,1],[1,0,1,1,1,0,1],[1,0,1,1,1,0,1],[1,0,1,1,1,0,1],[1,0,0,0,0,0,1],[1,1,1,1,1,1,1]];
-                var positions = [[0,0],[0,size-7],[size-7,0]];
-                for (var p = 0; p < 3; p++) {
-                    var row = positions[p][0], col = positions[p][1];
-                    for (var i = 0; i < 7; i++) for (var j = 0; j < 7; j++) {
-                        m[row+i][col+j] = pattern[i][j] === 1;
-                        r[row+i][col+j] = true;
-                    }
-                    for (var i = -1; i <= 7; i++) for (var j = -1; j <= 7; j++) {
-                        var ri = row+i, ci = col+j;
-                        if (ri >= 0 && ri < size && ci >= 0 && ci < size && !r[ri][ci]) { m[ri][ci] = false; r[ri][ci] = true; }
-                    }
-                }
-            },
-            _placeAlignPatterns: function(m, r, size, typeNumber) {
-                if (typeNumber < 2) return;
-                var positions = this._getAlignPositions(typeNumber);
-                for (var i = 0; i < positions.length; i++) for (var j = 0; j < positions.length; j++) {
-                    var row = positions[i], col = positions[j];
-                    if (r[row][col]) continue;
-                    for (var dr = -2; dr <= 2; dr++) for (var dc = -2; dc <= 2; dc++) {
-                        var dark = Math.abs(dr) === 2 || Math.abs(dc) === 2 || (dr === 0 && dc === 0);
-                        m[row+dr][col+dc] = dark;
-                        r[row+dr][col+dc] = true;
-                    }
-                }
-            },
-            _getAlignPositions: function(typeNumber) {
-                if (typeNumber === 1) return [];
-                var first = 6;
-                var last = typeNumber * 4 + 10;
-                var step = typeNumber > 10 ? Math.floor((typeNumber - 14) / (Math.ceil((typeNumber-14)/28)*2||1) + 1) : Math.floor((typeNumber-7)/2) || 1;
-                if (step < 1) step = 1;
-                var positions = [first];
-                var pos = last;
-                while (pos > first && positions.length < 7) { positions.unshift(pos); pos -= step; }
-                if (positions[0] !== first) positions.unshift(first);
-                if (positions[positions.length-1] !== last) positions.push(last);
-                return positions;
-            },
-            _placeTimingPatterns: function(m, r, size) {
-                for (var i = 8; i < size - 8; i++) {
-                    var dark = i % 2 === 0;
-                    if (!r[6][i]) { m[6][i] = dark; r[6][i] = true; }
-                    if (!r[i][6]) { m[i][6] = dark; r[i][6] = true; }
-                }
-            },
-            _reserveFormatArea: function(r, size) {
-                for (var i = 0; i <= 8; i++) { r[8][i] = true; r[i][8] = true; r[8][size-1-i] = true; r[size-1-i][8] = true; }
-                r[8][8] = true;
-            },
-            _placeData: function(m, r, data, size) {
-                var bitIndex = 0;
-                var bits = [];
-                if (data.blocks) {
-                    var totalBits = 0;
-                    for (var b = 0; b < data.blocks.length; b++) totalBits += data.blocks[b].length * 8;
-                    for (var b = 0; b < data.blocks.length; b++) {
-                        var block = data.blocks[b];
-                        for (var i = 0; i < block.length; i++) bits.push(block[i]);
-                    }
-                    while (bits.length < size * size) bits.push(0);
-                }
-                var col = size - 1;
-                var upward = true;
-                while (col >= 0) {
-                    if (col === 6) col--;
-                    for (var i = 0; i < size; i++) {
-                        var row = upward ? size - 1 - i : i;
-                        for (var dc = 0; dc <= 1; dc++) {
-                            var c = col - dc;
-                            if (c >= 0 && !r[row][c]) {
-                                m[row][c] = bits[bitIndex] === 1;
-                                bitIndex++;
-                            }
-                        }
-                    }
-                    upward = !upward;
-                    col -= 2;
-                }
-            },
-            _placeFormatBits: function(m, r, size, mask) {
-                var data = (mask << 3) | 0;
-                var rem = data;
-                for (var i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >> 9) * 0x537);
-                var bits = ((data << 10) | rem) ^ 0x5412;
-                for (var i = 0; i <= 5; i++) { m[8][i] = ((bits >> (14 - i)) & 1) === 1; }
-                m[8][7] = ((bits >> 8) & 1) === 1;
-                m[8][8] = ((bits >> 7) & 1) === 1;
-                m[7][8] = ((bits >> 6) & 1) === 1;
-                for (var i = 0; i < 6; i++) m[5 - i][8] = ((bits >> i) & 1) === 1;
-                for (var i = 0; i < 8; i++) m[size - 1 - i][8] = ((bits >> (14 - i)) & 1) === 1;
-                for (var i = 0; i < 7; i++) m[8][size - 7 + i] = ((bits >> (6 - i)) & 1) === 1;
-                m[0][8] = true; m[8][0] = true; m[size-1][8] = true; m[8][size-1] = true;
-            }
-        };
-        return new QRUtil();
-    })(),
 
     async qrCargar() {
         try {

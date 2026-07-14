@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Unificado - Vidrieria</title>
+    <title>VitroFlow - TEMPLAGLASS</title>
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
@@ -13,8 +13,8 @@
             <div class="sidebar-header">
                 <div class="sidebar-logo">S</div>
                 <div class="sidebar-title">
-                    Sistema Unificado
-                    <small>Vidrieria</small>
+                    VitroFlow
+                    <small>TEMPLAGLASS</small>
                 </div>
             </div>
             <nav class="sidebar-nav" id="sidebarNav"></nav>
@@ -22,7 +22,7 @@
         <header class="header">
             <button class="menu-toggle" onclick="App.toggleSidebar()">☰</button>
             <div class="header-left">
-                <div class="header-title" id="headerTitle">Sistema Unificado</div>
+                <div class="header-title" id="headerTitle">VitroFlow</div>
             </div>
             <div class="header-right">
                 <div class="header-date" id="currentDate"></div>
@@ -88,6 +88,9 @@
 
     <!-- Pedidos Module (inline) -->
     <script src="/js/modules/pedidos.js"></script>
+
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
     <!-- Turnos Module (inline) -->
     <script src="/js/modules/turnos.js"></script>

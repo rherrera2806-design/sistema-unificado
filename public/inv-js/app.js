@@ -32,7 +32,7 @@ const App = {
         nav.innerHTML = `
             <div class="sidebar-header">
                 <div class="logo" style="background:#2563eb;">I</div>
-                <div class="logo-text">INVENTARIO<small>Vidrieria</small></div>
+                <div class="logo-text">INVENTARIO<small>TEMPLAGLASS</small></div>
             </div>
             <nav class="sidebar-nav" id="sidebarNav"></nav>
         `;

@@ -43,19 +43,18 @@ async function r2Upload(key, fileBuffer, contentType) {
     const region = 'auto';
     const service = 's3';
     const canonicalUri = `/${key}`;
-    const payloadHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    const payloadHash = fileBuffer ? crypto.createHash('sha256').update(fileBuffer).digest('hex') : 'UNSIGNED-PAYLOAD';
     
     const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-    const headers = {
-        'Host': host,
+
+    const clientHeaders = {
         'x-amz-date': amzDate,
         'x-amz-content-sha256': payloadHash,
         'Content-Type': contentType,
     };
-    
-    const signedHeaderKeys = Object.keys(headers).sort();
-    const canonicalHeaders = signedHeaderKeys.map(k => `${k.toLowerCase()}:${headers[k]}`).join('\n') + '\n';
-    const signedHeaders = signedHeaderKeys.map(k => k.toLowerCase()).join(';');
+
+    const canonicalHeaders = `host:${host}\n` + Object.keys(clientHeaders).sort().map(k => `${k.toLowerCase()}:${clientHeaders[k]}`).join('\n') + '\n';
+    const signedHeaders = 'host;' + Object.keys(clientHeaders).sort().map(k => k.toLowerCase()).join(';');
     
     const canonicalRequest = [
         'PUT', canonicalUri, '', canonicalHeaders, signedHeaders, payloadHash
@@ -73,7 +72,7 @@ async function r2Upload(key, fileBuffer, contentType) {
     const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
     
     const url = `https://${host}/${key}`;
-    return { url, headers: { ...headers, 'Authorization': authorization } };
+    return { url, headers: { ...clientHeaders, 'Authorization': authorization } };
 }
 
 async function r2Delete(key) {
@@ -1672,6 +1671,45 @@ const server = http.createServer(async (req, res) => {
         } catch(e) {
             console.error('R2 presign error:', e.message);
             json(res, { error: 'Error al generar URL: ' + e.message }, 500);
+        }
+        return;
+    }
+
+    // =====================================================
+    // R2 - SUBIR ARCHIVO (proxy server-side, fallback)
+    // =====================================================
+    if (urlPath === '/api/r2/direct-upload' && req.method === 'POST') {
+        if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+            json(res, { error: 'R2 no esta configurado en el servidor. Contacta al administrador.' }, 500);
+            return;
+        }
+        const body = await parseBody(req);
+        const { fileName, contentType, fileBase64 } = body;
+        if (!fileName || !fileBase64) {
+            json(res, { error: 'fileName y fileBase64 son requeridos' }, 400);
+            return;
+        }
+        try {
+            const key = `pedidos/${fileName}`;
+            const buffer = Buffer.from(fileBase64, 'base64');
+            const result = await r2Upload(key, buffer, contentType || 'application/pdf');
+            const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+            const r2Res = await fetch(`https://${host}/${key}`, {
+                method: 'PUT',
+                headers: { ...result.headers, 'Content-Type': contentType || 'application/pdf' },
+                body: buffer,
+            });
+            if (!r2Res.ok) {
+                const errText = await r2Res.text().catch(() => '');
+                console.error('R2 direct upload error:', r2Res.status, errText);
+                json(res, { error: 'Error al subir a R2: ' + r2Res.status }, 500);
+                return;
+            }
+            console.log(`R2: Archivo subido directamente ${key}`);
+            json(res, { key, url: `${R2_PUBLIC_URL}/${key}` });
+        } catch(e) {
+            console.error('R2 direct upload error:', e.message);
+            json(res, { error: 'Error al subir: ' + e.message }, 500);
         }
         return;
     }

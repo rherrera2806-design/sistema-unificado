@@ -198,21 +198,46 @@ App.registerModule('pedidos', {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const fileName = `${numero}_${Date.now()}.pdf`;
+            let archivoUrl = null;
 
-            const presignRes = await fetch('/api/r2/upload', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fileName, contentType: 'application/pdf' })
-            });
-            const presignData = await presignRes.json();
-            if (!presignRes.ok) throw new Error(presignData.error || 'Error al obtener URL de subida');
+            try {
+                const presignRes = await fetch('/api/r2/upload', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileName, contentType: 'application/pdf' })
+                });
+                const presignData = await presignRes.json();
+                if (presignRes.ok && presignData.uploadUrl) {
+                    const uploadRes = await fetch(presignData.uploadUrl, { method: 'PUT', headers: presignData.headers, body: this.selectedFile });
+                    if (uploadRes.ok) {
+                        archivoUrl = presignData.url;
+                    } else {
+                        console.warn('R2 presigned upload failed, trying server-side fallback');
+                    }
+                }
+            } catch(presignErr) {
+                console.warn('R2 presigned approach failed:', presignErr.message);
+            }
 
-            const uploadRes = await fetch(presignData.uploadUrl, { method: 'PUT', headers: presignData.headers, body: this.selectedFile });
-            if (!uploadRes.ok) throw new Error('Error al subir PDF a R2: ' + uploadRes.status);
+            if (!archivoUrl) {
+                const fileBase64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(this.selectedFile);
+                });
+                const directRes = await fetch('/api/r2/direct-upload', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileName, contentType: 'application/pdf', fileBase64 })
+                });
+                const directData = await directRes.json();
+                if (!directRes.ok) throw new Error(directData.error || 'Error al subir PDF');
+                archivoUrl = directData.url;
+            }
 
             const res = await fetch('/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', archivo_url: presignData.url })
+                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', archivo_url: archivoUrl })
             });
 
             if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }
