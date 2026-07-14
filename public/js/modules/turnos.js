@@ -48,6 +48,7 @@ App.registerModule('turnos', {
 
     fmtSec(s) { if (s == null) return '-'; const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s%60}s` : `${s}s`; },
     fmtTime(t) { if (!t) return '-'; return String(t).slice(0, 8); },
+    timeToSec(t) { if (!t) return 0; const p = String(t).slice(0,8).split(':').map(Number); return p[0]*3600 + p[1]*60 + (p[2]||0); },
 
     // ═══════ RECEPCION ═══════
     async showRecepcion() {
@@ -154,8 +155,10 @@ App.registerModule('turnos', {
         if (!isBodega && t.hora_llamada) details += `<span><span style="color:var(--text-light)">Atencion: </span><span style="color:var(--info);font-weight:700">${t.hora_llamada}</span></span><span><span style="color:var(--text-light)">Espera: </span><span style="color:var(--warning);font-weight:700">${this.fmtSec(t.espera_segundos)}</span></span>`;
         if (t.pedidos) details += `<span><span style="color:var(--text-light)">Pedido: </span><span style="color:var(--info);font-weight:700">${t.pedidos}</span></span>`;
         if (t.factura) details += `<span><span style="color:var(--text-light)">Factura: </span><span style="color:#a855f7;font-weight:700">${t.factura}</span></span>`;
+        if (t.estado === 'derivado' && t.hora_fin) details += `<span><span style="color:var(--text-light)">Derivo: </span><span style="color:var(--accent);font-weight:700">${this.fmtTime(t.hora_fin)}</span></span>`;
+        if (t.bodega_entregado) details += `<span><span style="color:var(--text-light)">Entrega bodega: </span><span style="color:var(--success);font-weight:700">${this.fmtTime(t.bodega_entregado)}</span></span>`;
+        if (t.hora_fin && t.bodega_entregado) { const seg = this.timeToSec(t.bodega_entregado) - this.timeToSec(t.hora_fin); if (seg > 0) details += `<span><span style="color:var(--text-light)">Espera bodega: </span><span style="color:var(--warning);font-weight:700">${this.fmtSec(seg)}</span></span>`; }
         if (t.total_segundos) details += `<span><span style="color:var(--text-light)">Total: </span><span style="font-weight:700">${this.fmtSec(t.total_segundos)}</span></span>`;
-        else if (isBodega && t.bodega_segundos) details += `<span><span style="color:var(--text-light)">Total: </span><span style="font-weight:700">${this.fmtSec(t.bodega_segundos)}</span></span>`;
         details += `</div>`;
         return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)">${info}${details}<span style="font-size:11px;color:var(--text-light);margin-top:2px;display:block">${t.fecha_fmt||''}</span></div>`;
     },

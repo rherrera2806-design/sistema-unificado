@@ -1375,7 +1375,7 @@ const server = http.createServer(async (req, res) => {
         const body = await parseBody(req);
         const { turno_id, pedidos, factura } = body;
         if (!turno_id) return json(res, { error: 'turno_id requerido' }, 400);
-        const now = new Date();
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         await query('UPDATE turnos SET estado = $1, hora_fin = $2 WHERE id = $3', ['derivado', hora, turno_id]);
