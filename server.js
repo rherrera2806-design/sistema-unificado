@@ -307,8 +307,14 @@ async function initDB() {
     if (adminCheck.rows.length === 0) {
         await query(
             "INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5)",
-            ['Administrador', adminEmail, hashPassword(adminPassword), 'admin', ['sigma','inventario','turnos','usuarios']]
+            ['Administrador', adminEmail, hashPassword(adminPassword), 'admin', ['sigma','inventario','turnos','usuarios','pedidos','pedidos.autorizar']]
         );
+    } else {
+        // Agregar permisos de pedidos a usuarios admin existentes
+        try {
+            await query("UPDATE usuarios SET permisos = array_append(permisos, 'pedidos') WHERE rol = 'admin' AND NOT ('pedidos' = ANY(permisos))");
+            await query("UPDATE usuarios SET permisos = array_append(permisos, 'pedidos.autorizar') WHERE rol = 'admin' AND NOT ('pedidos.autorizar' = ANY(permisos))");
+        } catch(e) {}
     }
 
     const mtCount = await query('SELECT COUNT(*) as c FROM machine_types');
@@ -789,7 +795,7 @@ const server = http.createServer(async (req, res) => {
     // HEALTH
     // =====================================================
     if (urlPath === '/api/health') {
-        json(res, { status: 'ok', version: '3.2.0', modules: ['sigma', 'inventario', 'turnos'] });
+        json(res, { status: 'ok', version: '3.3.0', modules: ['sigma', 'inventario', 'turnos', 'pedidos'] });
         return;
     }
 
