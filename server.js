@@ -5,8 +5,6 @@ const { Pool } = require('pg');
 const crypto = require('crypto');
 const { Server } = require('socket.io');
 const zlib = require('zlib');
-const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -20,15 +18,119 @@ const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || '';
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '';
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'ordenes-venta';
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-d70f793c9dc24a3fa46ef91fb4e0a45a.r2.dev';
+const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
-const r2Client = new S3Client({
-    region: 'auto',
-    endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-        accessKeyId: R2_ACCESS_KEY_ID,
-        secretAccessKey: R2_SECRET_ACCESS_KEY,
-    },
-});
+// Helper: Create AWS Signature V4 for R2
+function hmac(key, data) {
+    return crypto.createHmac('sha256', key).update(data).digest();
+}
+
+function getSignatureKey(secretKey, dateStamp, region, service) {
+    const kDate = hmac('AWS4' + secretKey, dateStamp);
+    const kRegion = hmac(kDate, region);
+    const kService = hmac(kRegion, service);
+    const kSigning = hmac(kService, 'aws4_request');
+    return kSigning;
+}
+
+async function r2Upload(key, fileBuffer, contentType) {
+    const now = new Date();
+    const dateStamp = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 8);
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+    const region = 'auto';
+    const service = 's3';
+    const canonicalUri = `/${R2_BUCKET_NAME}/${key}`;
+    const payloadHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    
+    const headers = {
+        'Host': `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        'x-amz-date': amzDate,
+        'x-amz-content-sha256': payloadHash,
+        'Content-Type': contentType,
+    };
+    
+    const signedHeaderKeys = Object.keys(headers).sort();
+    const canonicalHeaders = signedHeaderKeys.map(k => `${k.toLowerCase()}:${headers[k]}`).join('\n') + '\n';
+    const signedHeaders = signedHeaderKeys.map(k => k.toLowerCase()).join(';');
+    
+    const canonicalRequest = [
+        'PUT', canonicalUri, '', canonicalHeaders, signedHeaders, payloadHash
+    ].join('\n');
+    
+    const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+    const stringToSign = [
+        'AWS4-HMAC-SHA256', amzDate, credentialScope,
+        crypto.createHash('sha256').update(canonicalRequest).digest('hex')
+    ].join('\n');
+    
+    const signingKey = getSignatureKey(R2_SECRET_ACCESS_KEY, dateStamp, region, service);
+    const signature = hmac(signingKey, stringToSign).toString('hex');
+    
+    const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+    
+    const url = `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
+    const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+            ...headers,
+            'Authorization': authorization,
+        },
+        body: fileBuffer,
+    });
+    
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`R2 upload failed: ${response.status} ${text}`);
+    }
+    
+    return `${R2_PUBLIC_URL}/${key}`;
+}
+
+async function r2Delete(key) {
+    const now = new Date();
+    const dateStamp = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 8);
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+    const region = 'auto';
+    const service = 's3';
+    const canonicalUri = `/${R2_BUCKET_NAME}/${key}`;
+    const payloadHash = crypto.createHash('sha256').update('').digest('hex');
+    
+    const headers = {
+        'Host': `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        'x-amz-date': amzDate,
+        'x-amz-content-sha256': payloadHash,
+    };
+    
+    const signedHeaderKeys = Object.keys(headers).sort();
+    const canonicalHeaders = signedHeaderKeys.map(k => `${k.toLowerCase()}:${headers[k]}`).join('\n') + '\n';
+    const signedHeaders = signedHeaderKeys.map(k => k.toLowerCase()).join(';');
+    
+    const canonicalRequest = [
+        'DELETE', canonicalUri, '', canonicalHeaders, signedHeaders, payloadHash
+    ].join('\n');
+    
+    const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+    const stringToSign = [
+        'AWS4-HMAC-SHA256', amzDate, credentialScope,
+        crypto.createHash('sha256').update(canonicalRequest).digest('hex')
+    ].join('\n');
+    
+    const signingKey = getSignatureKey(R2_SECRET_ACCESS_KEY, dateStamp, region, service);
+    const signature = hmac(signingKey, stringToSign).toString('hex');
+    
+    const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+    
+    const url = `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
+    const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+            ...headers,
+            'Authorization': authorization,
+        },
+    });
+    
+    return response.ok;
+}
 
 // =====================================================
 // SEGURIDAD: Rate limiting en memoria
@@ -1570,19 +1672,11 @@ const server = http.createServer(async (req, res) => {
         try {
             const buffer = Buffer.from(fileContent, 'base64');
             const key = `pedidos/${fileName}`;
-            
-            await r2Client.send(new PutObjectCommand({
-                Bucket: R2_BUCKET_NAME,
-                Key: key,
-                Body: buffer,
-                ContentType: contentType || 'application/pdf',
-            }));
-            
-            const publicUrl = `${R2_PUBLIC_URL}/${key}`;
+            const publicUrl = await r2Upload(key, buffer, contentType || 'application/pdf');
             json(res, { url: publicUrl, key });
         } catch(e) {
             console.error('Error uploading to R2:', e);
-            json(res, { error: 'Error al subir archivo' }, 500);
+            json(res, { error: 'Error al subir archivo: ' + e.message }, 500);
         }
         return;
     }
@@ -1622,10 +1716,7 @@ const server = http.createServer(async (req, res) => {
         }
         
         try {
-            await r2Client.send(new DeleteObjectCommand({
-                Bucket: R2_BUCKET_NAME,
-                Key: key,
-            }));
+            await r2Delete(key);
             json(res, { ok: true });
         } catch(e) {
             console.error('Error deleting from R2:', e);
