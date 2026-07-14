@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos - Sistema Unificado</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #1e293b; }
+        
+        /* Header */
+        .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 20px; font-weight: 600; }
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        .btn-primary { background: #22c55e; color: white; }
+        .btn-primary:hover { background: #16a34a; }
+        .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; }
+        .btn-outline:hover { background: rgba(255,255,255,0.1); }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: #22c55e; color: white; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+        
+        /* Main content */
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .stat-value { font-size: 28px; font-weight: 700; color: #1e40af; }
+        .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+        
+        /* Filters */
+        .filters { background: white; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 12px; color: #64748b; font-weight: 500; }
+        .form-control { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; min-width: 150px; }
+        .form-control:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        
+        /* Table */
+        .card { background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        .card-header { padding: 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .card-body { padding: 0; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        tr:hover { background: #f8fafc; }
+        
+        /* Status badges */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .badge-pendiente { background: #fef3c7; color: #92400e; }
+        .badge-aprobado { background: #d1fae5; color: #065f46; }
+        .badge-rechazado { background: #fee2e2; color: #991b1b; }
+        
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; border-radius: 12px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { font-size: 18px; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #64748b; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px; }
+        
+        /* Upload area */
+        .upload-area { border: 2px dashed #cbd5e1; border-radius: 10px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .upload-area:hover { border-color: #3b82f6; background: #f8fafc; }
+        .upload-area.dragover { border-color: #3b82f6; background: #eff6ff; }
+        .upload-icon { font-size: 48px; margin-bottom: 12px; }
+        .upload-text { color: #64748b; }
+        .upload-filename { margin-top: 12px; color: #1e40af; font-weight: 500; }
+        
+        /* PDF Preview */
+        .pdf-preview { width: 100%; height: 400px; border: 1px solid #e2e8f0; border-radius: 8px; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 12px; }
+            .filters { flex-direction: column; }
+            .form-control { min-width: 100%; }
+            table { font-size: 12px; }
+            th, td { padding: 8px; }
+        }
+        
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .text-muted { color: #64748b; }
+        .mt-2 { margin-top: 8px; }
+        .mb-2 { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h1>Pedidos</h1>
+            <div style="font-size: 12px; opacity: 0.8;">Gestión de pedidos y documentos</div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline" onclick="goBack()">← Volver</button>
+            <button class="btn btn-primary" id="btnNuevoPedido" onclick="showUploadModal()">+ Nuevo Pedido</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="statTotal">0</div>
+                <div class="stat-label">Total Pedidos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statPendientes" style="color: #f59e0b;">0</div>
+                <div class="stat-label">Pendientes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statAprobados" style="color: #22c55e;">0</div>
+                <div class="stat-label">Aprobados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statRechazados" style="color: #ef4444;">0</div>
+                <div class="stat-label">Rechazados</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <div class="form-group">
+                <label>Buscar</label>
+                <input type="text" class="form-control" id="filterSearch" placeholder="N° Pedido, Cliente..." oninput="filterPedidos()">
+            </div>
+            <div class="form-group">
+                <label>Estado</label>
+                <select class="form-control" id="filterEstado" onchange="filterPedidos()">
+                    <option value="">Todos</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="aprobado">Aprobado</option>
+                    <option value="rechazado">Rechazado</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Lista de Pedidos</h3>
+            </div>
+            <div class="card-body">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>N° Pedido</th>
+                            <th>Cliente</th>
+                            <th>Vendedor</th>
+                            <th>Fecha Subida</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pedidosTable">
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">Cargando pedidos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="modal-overlay" id="uploadModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Nuevo Pedido</h3>
+                <button class="modal-close" onclick="hideUploadModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group mb-2">
+                    <label>Número de Pedido *</label>
+                    <input type="text" class="form-control" id="pedidoNumero" placeholder="Ej: 12345">
+                </div>
+                <div class="form-group mb-2">
+                    <label>Cliente *</label>
+                    <input type="text" class="form-control" id="pedidoCliente" placeholder="Nombre del cliente">
+                </div>
+                <div class="form-group mb-2">
+                    <label>PDF del Pedido *</label>
+                    <div class="upload-area" id="uploadArea" onclick="document.getElementById('pedidoFile').click()">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text">Arrastra un PDF aquí o haz clic para seleccionar</div>
+                        <div class="upload-filename hidden" id="uploadFilename"></div>
+                    </div>
+                    <input type="file" id="pedidoFile" accept=".pdf" class="hidden" onchange="handleFileSelect(event)">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" style="color: #64748b; border-color: #e2e8f0;" onclick="hideUploadModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="uploadPedido()">Subir Pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Modal -->
+    <div class="modal-overlay" id="reviewModal">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>Revisar Pedido</h3>
+                <button class="modal-close" onclick="hideReviewModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div>
+                        <strong>N° Pedido:</strong> <span id="reviewNumero"></span>
+                    </div>
+                    <div>
+                        <strong>Cliente:</strong> <span id="reviewCliente"></span>
+                    </div>
+                    <div>
+                        <strong>Vendedor:</strong> <span id="reviewVendedor"></span>
+                    </div>
+                    <div>
+                        <strong>Fecha:</strong> <span id="reviewFecha"></span>
+                    </div>
+                </div>
+                <div class="form-group mb-2">
+                    <label>PDF del Pedido</label>
+                    <iframe id="reviewPdf" class="pdf-preview"></iframe>
+                </div>
+                <div class="form-group mb-2 hidden" id="motivoGroup">
+                    <label>Motivo de Rechazo</label>
+                    <textarea class="form-control" id="pedidoMotivo" rows="3" placeholder="Indica el motivo del rechazo..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" style="color: #64748b; border-color: #e2e8f0;" onclick="hideReviewModal()">Cancelar</button>
+                <button class="btn btn-danger" id="btnRechazar" onclick="reviewPedido('rechazado')">Rechazar</button>
+                <button class="btn btn-success" id="btnAprobar" onclick="reviewPedido('aprobado')">Aprobar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View PDF Modal -->
+    <div class="modal-overlay" id="viewPdfModal">
+        <div class="modal" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3>Ver PDF</h3>
+                <button class="modal-close" onclick="hideViewPdfModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <iframe id="viewPdfFrame" class="pdf-preview" style="height: 600px;"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allPedidos = [];
+        let currentPedido = null;
+        let selectedFile = null;
+        let isVendedor = false;
+        let canAuthorize = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkPermissions();
+            loadPedidos();
+            setupDragDrop();
+        });
+
+        function checkPermissions() {
+            const user = JSON.parse(localStorage.getItem('sistema_unificado_user') || '{}');
+            const permisos = user.permisos || [];
+            isVendedor = permisos.includes('pedidos') && !permisos.includes('pedidos.autorizar');
+            canAuthorize = permisos.includes('pedidos.autorizar') || permisos.includes('usuarios');
+            
+            document.getElementById('btnNuevoPedido').style.display = isVendedor || canAuthorize ? 'block' : 'none';
+        }
+
+        function goBack() {
+            window.location.href = '/';
+        }
+
+        async function loadPedidos() {
+            try {
+                const user = JSON.parse(localStorage.getItem('sistema_unificado_user') || '{}');
+                const res = await fetch('/api/pedidos', {
+                    headers: {
+                        'X-User-Permisos': (user.permisos || []).join(','),
+                        'X-User-Email': user.email || ''
+                    }
+                });
+                allPedidos = await res.json();
+                updateStats();
+                filterPedidos();
+            } catch(e) {
+                console.error('Error loading pedidos:', e);
+                document.getElementById('pedidosTable').innerHTML = 
+                    '<tr><td colspan="6" class="text-center text-muted">Error al cargar pedidos</td></tr>';
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('statTotal').textContent = allPedidos.length;
+            document.getElementById('statPendientes').textContent = allPedidos.filter(p => p.estado === 'pendiente').length;
+            document.getElementById('statAprobados').textContent = allPedidos.filter(p => p.estado === 'aprobado').length;
+            document.getElementById('statRechazados').textContent = allPedidos.filter(p => p.estado === 'rechazado').length;
+        }
+
+        function filterPedidos() {
+            const search = document.getElementById('filterSearch').value.toLowerCase();
+            const estado = document.getElementById('filterEstado').value;
+            
+            let filtered = allPedidos.filter(p => {
+                const matchSearch = !search || 
+                    (p.numero_pedido || '').toLowerCase().includes(search) ||
+                    (p.cliente || '').toLowerCase().includes(search) ||
+                    (p.vendedor || '').toLowerCase().includes(search);
+                const matchEstado = !estado || p.estado === estado;
+                return matchSearch && matchEstado;
+            });
+            
+            renderTable(filtered);
+        }
+
+        function renderTable(pedidos) {
+            const tbody = document.getElementById('pedidosTable');
+            if (pedidos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay pedidos</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = pedidos.map(p => `
+                <tr>
+                    <td><strong>${p.numero_pedido}</strong></td>
+                    <td>${p.cliente}</td>
+                    <td>${p.vendedor}</td>
+                    <td>${formatDate(p.fecha_subida)}</td>
+                    <td><span class="badge badge-${p.estado}">${p.estado}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" style="color: #3b82f6; border-color: #3b82f6;" onclick="viewPdf('${p.archivo_url}')">Ver PDF</button>
+                        ${canAuthorize && p.estado === 'pendiente' ? 
+                            `<button class="btn btn-sm btn-primary" style="margin-left: 4px;" onclick="showReviewModal(${p.id})">Revisar</button>` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Upload functions
+        function showUploadModal() {
+            document.getElementById('uploadModal').classList.add('show');
+            document.getElementById('pedidoNumero').value = '';
+            document.getElementById('pedidoCliente').value = '';
+            document.getElementById('uploadFilename').classList.add('hidden');
+            document.getElementById('uploadArea').style.borderColor = '#cbd5e1';
+            selectedFile = null;
+        }
+
+        function hideUploadModal() {
+            document.getElementById('uploadModal').classList.remove('show');
+        }
+
+        function setupDragDrop() {
+            const area = document.getElementById('uploadArea');
+            area.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                area.classList.add('dragover');
+            });
+            area.addEventListener('dragleave', () => {
+                area.classList.remove('dragover');
+            });
+            area.addEventListener('drop', (e) => {
+                e.preventDefault();
+                area.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+        }
+
+        function handleFileSelect(event) {
+            handleFile(event.target.files[0]);
+        }
+
+        function handleFile(file) {
+            if (file && file.type === 'application/pdf') {
+                selectedFile = file;
+                document.getElementById('uploadFilename').textContent = file.name;
+                document.getElementById('uploadFilename').classList.remove('hidden');
+                document.getElementById('uploadArea').style.borderColor = '#22c55e';
+            } else {
+                alert('Por favor selecciona un archivo PDF');
+            }
+        }
+
+        async function uploadPedido() {
+            const numero = document.getElementById('pedidoNumero').value.trim();
+            const cliente = document.getElementById('pedidoCliente').value.trim();
+            
+            if (!numero || !cliente) {
+                alert('Número de pedido y cliente son requeridos');
+                return;
+            }
+            
+            if (!selectedFile) {
+                alert('Por favor selecciona un archivo PDF');
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(localStorage.getItem('sistema_unificado_user') || '{}');
+                
+                // Convert file to base64
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(selectedFile);
+                });
+                
+                // Upload to R2
+                const fileName = `${numero}_${Date.now()}.pdf`;
+                const uploadRes = await fetch('/api/r2/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileName: fileName,
+                        fileContent: base64,
+                        contentType: 'application/pdf'
+                    })
+                });
+                
+                const uploadData = await uploadRes.json();
+                if (!uploadRes.ok) throw new Error(uploadData.error || 'Error al subir PDF');
+                
+                // Save pedido with R2 URL
+                const res = await fetch('/api/pedidos', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-User-Permisos': (user.permisos || []).join(','),
+                        'X-User-Email': user.email || ''
+                    },
+                    body: JSON.stringify({
+                        numero_pedido: numero,
+                        cliente: cliente,
+                        vendedor: user.email || '',
+                        archivo_url: uploadData.url
+                    })
+                });
+                
+                if (res.ok) {
+                    hideUploadModal();
+                    loadPedidos();
+                    alert('Pedido subido exitosamente');
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Error al subir pedido');
+                }
+            } catch(e) {
+                alert('Error al subir pedido: ' + e.message);
+            }
+        }
+
+        // Review functions
+        function showReviewModal(id) {
+            currentPedido = allPedidos.find(p => p.id === id);
+            if (!currentPedido) return;
+            
+            document.getElementById('reviewNumero').textContent = currentPedido.numero_pedido;
+            document.getElementById('reviewCliente').textContent = currentPedido.cliente;
+            document.getElementById('reviewVendedor').textContent = currentPedido.vendedor;
+            document.getElementById('reviewFecha').textContent = formatDate(currentPedido.fecha_subida);
+            document.getElementById('reviewPdf').src = currentPedido.archivo_url;
+            document.getElementById('pedidoMotivo').value = '';
+            document.getElementById('motivoGroup').classList.add('hidden');
+            
+            document.getElementById('reviewModal').classList.add('show');
+        }
+
+        function hideReviewModal() {
+            document.getElementById('reviewModal').classList.remove('show');
+            currentPedido = null;
+        }
+
+        async function reviewPedido(estado) {
+            if (!currentPedido) return;
+            
+            if (estado === 'rechazado') {
+                document.getElementById('motivoGroup').classList.remove('hidden');
+                const motivo = document.getElementById('pedidoMotivo').value.trim();
+                if (!motivo) {
+                    alert('Por favor indica el motivo del rechazo');
+                    return;
+                }
+            }
+            
+            try {
+                const user = JSON.parse(localStorage.getItem('sistema_unificado_user') || '{}');
+                const res = await fetch(`/api/pedidos/${currentPedido.id}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-User-Permisos': (user.permisos || []).join(','),
+                        'X-User-Email': user.email || ''
+                    },
+                    body: JSON.stringify({
+                        estado: estado,
+                        motivo_rechazo: estado === 'rechazado' ? document.getElementById('pedidoMotivo').value.trim() : null,
+                        revisado_por: user.email || ''
+                    })
+                });
+                
+                if (res.ok) {
+                    hideReviewModal();
+                    loadPedidos();
+                    alert(estado === 'aprobado' ? 'Pedido aprobado' : 'Pedido rechazado');
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Error al revisar pedido');
+                }
+            } catch(e) {
+                alert('Error al revisar pedido: ' + e.message);
+            }
+        }
+
+        // View PDF
+        function viewPdf(url) {
+            document.getElementById('viewPdfFrame').src = url;
+            document.getElementById('viewPdfModal').classList.add('show');
+        }
+
+        function hideViewPdfModal() {
+            document.getElementById('viewPdfModal').classList.remove('show');
+            document.getElementById('viewPdfFrame').src = '';
+        }
+
+        // Helpers
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+    </script>
+</body>
+</html>

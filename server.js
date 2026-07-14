@@ -5,10 +5,30 @@ const { Pool } = require('pg');
 const crypto = require('crypto');
 const { Server } = require('socket.io');
 const zlib = require('zlib');
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/sistema_unificado';
+
+// =====================================================
+// CLOUDFLARE R2 CONFIGURATION
+// =====================================================
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '';
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || '';
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '';
+const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'ordenes-venta';
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-d70f793c9dc24a3fa46ef91fb4e0a45a.r2.dev';
+
+const r2Client = new S3Client({
+    region: 'auto',
+    endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+        accessKeyId: R2_ACCESS_KEY_ID,
+        secretAccessKey: R2_SECRET_ACCESS_KEY,
+    },
+});
 
 // =====================================================
 // SEGURIDAD: Rate limiting en memoria
@@ -90,7 +110,7 @@ const MIME = {
     '.ico': 'image/x-icon'
 };
 
-const SIGMA_TABLES = ['machine_types', 'machines', 'components', 'component_type_links', 'spare_parts', 'preventive_maintenance', 'corrective_maintenance', 'machine_components', 'notas'];
+const SIGMA_TABLES = ['machine_types', 'machines', 'components', 'component_type_links', 'spare_parts', 'preventive_maintenance', 'corrective_maintenance', 'machine_components', 'notas', 'pedidos'];
 
 const pool = new Pool({
     connectionString: DATABASE_URL,
@@ -267,6 +287,19 @@ async function initDB() {
         fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    await query(`CREATE TABLE IF NOT EXISTS pedidos (
+        id SERIAL PRIMARY KEY,
+        numero_pedido TEXT NOT NULL,
+        cliente TEXT NOT NULL,
+        vendedor TEXT NOT NULL,
+        archivo_url TEXT,
+        estado TEXT DEFAULT 'pendiente',
+        motivo_rechazo TEXT,
+        fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_revision TIMESTAMP,
+        revisado_por TEXT
+    )`);
+
     // SEMILLA: Usuario admin
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
@@ -288,7 +321,7 @@ async function initDB() {
 async function resetSequences() {
     const tables = ['usuarios', 'machine_types', 'machines', 'components', 'component_type_links', 
                     'spare_parts', 'preventive_maintenance', 'corrective_maintenance', 
-                    'machine_components', 'notas', 'turnos', 'entregas', 'movimientos',
+                    'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
                     'catalogo_tipos_cristal', 'catalogo_espesores'];
     for (const table of tables) {
         try {
@@ -744,7 +777,7 @@ const server = http.createServer(async (req, res) => {
     setSecurityHeaders(res);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Permisos, X-User-Email');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
     if (!dbReady && !dbError) { json(res, { error: 'Base de datos inicializando...' }, 503); return; }
@@ -1435,6 +1468,162 @@ const server = http.createServer(async (req, res) => {
             json(res, result.rows[0], 201);
         } catch(e) {
             json(res, { error: 'Error al crear usuario' }, 500);
+        }
+        return;
+    }
+
+    // =====================================================
+    // PEDIDOS
+    // =====================================================
+    
+    // Obtener todos los pedidos (filtrado por vendedor si no es admin/supervisor)
+    if (urlPath === '/api/pedidos' && req.method === 'GET') {
+        const userPerm = req.headers['x-user-permisos'] || '';
+        const userEmail = req.headers['x-user-email'] || '';
+        const esAdminOsupervisor = userPerm.includes('pedidos.autorizar') || userPerm.includes('usuarios');
+        
+        let result;
+        if (esAdminOsupervisor) {
+            result = await query('SELECT * FROM pedidos ORDER BY fecha_subida DESC');
+        } else {
+            result = await query('SELECT * FROM pedidos WHERE vendedor = $1 ORDER BY fecha_subida DESC', [userEmail]);
+        }
+        json(res, result.rows);
+        return;
+    }
+
+    // Obtener un pedido por ID
+    const pedidoByIdMatch = urlPath.match(/^\/api\/pedidos\/(\d+)$/);
+    if (pedidoByIdMatch && req.method === 'GET') {
+        const id = Number(pedidoByIdMatch[1]);
+        const result = await query('SELECT * FROM pedidos WHERE id = $1', [id]);
+        if (result.rows.length === 0) { json(res, { error: 'Pedido no encontrado' }, 404); return; }
+        json(res, result.rows[0]);
+        return;
+    }
+
+    // Crear nuevo pedido (subir PDF)
+    if (urlPath === '/api/pedidos' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { numero_pedido, cliente, vendedor, archivo_url } = body;
+        if (!numero_pedido || !cliente) {
+            json(res, { error: 'Número de pedido y cliente son requeridos' }, 400);
+            return;
+        }
+        const result = await query(
+            'INSERT INTO pedidos (numero_pedido, cliente, vendedor, archivo_url, estado) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [numero_pedido, cliente, vendedor || '', archivo_url || '', 'pendiente']
+        );
+        json(res, result.rows[0], 201);
+        return;
+    }
+
+    // Actualizar estado del pedido (autorizar/rechazar)
+    const updatePedidoMatch = urlPath.match(/^\/api\/pedidos\/(\d+)$/);
+    if (updatePedidoMatch && req.method === 'PUT') {
+        const id = Number(updatePedidoMatch[1]);
+        const body = await parseBody(req);
+        const { estado, motivo_rechazo, revisado_por } = body;
+        
+        if (!estado || !['aprobado', 'rechazado'].includes(estado)) {
+            json(res, { error: 'Estado debe ser "aprobado" o "rechazado"' }, 400);
+            return;
+        }
+        
+        const result = await query(
+            'UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+            [estado, motivo_rechazo || null, revisado_por || '', id]
+        );
+        
+        if (result.rows.length === 0) { json(res, { error: 'Pedido no encontrado' }, 404); return; }
+        json(res, result.rows[0]);
+        return;
+    }
+
+    // Eliminar pedido
+    const deletePedidoMatch = urlPath.match(/^\/api\/pedidos\/(\d+)$/);
+    if (deletePedidoMatch && req.method === 'DELETE') {
+        const id = Number(deletePedidoMatch[1]);
+        await query('DELETE FROM pedidos WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // R2 - SUBIR ARCHIVO
+    // =====================================================
+    if (urlPath === '/api/r2/upload' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { fileName, fileContent, contentType } = body;
+        
+        if (!fileName || !fileContent) {
+            json(res, { error: 'fileName y fileContent son requeridos' }, 400);
+            return;
+        }
+        
+        try {
+            const buffer = Buffer.from(fileContent, 'base64');
+            const key = `pedidos/${fileName}`;
+            
+            await r2Client.send(new PutObjectCommand({
+                Bucket: R2_BUCKET_NAME,
+                Key: key,
+                Body: buffer,
+                ContentType: contentType || 'application/pdf',
+            }));
+            
+            const publicUrl = `${R2_PUBLIC_URL}/${key}`;
+            json(res, { url: publicUrl, key });
+        } catch(e) {
+            console.error('Error uploading to R2:', e);
+            json(res, { error: 'Error al subir archivo' }, 500);
+        }
+        return;
+    }
+
+    // =====================================================
+    // R2 - OBTENER URL DE DESCARGA
+    // =====================================================
+    if (urlPath === '/api/r2/download' && req.method === 'GET') {
+        const urlObj = new URL(req.url, `http://${req.headers.host}`);
+        const key = urlObj.searchParams.get('key');
+        
+        if (!key) {
+            json(res, { error: 'key es requerida' }, 400);
+            return;
+        }
+        
+        try {
+            const publicUrl = `${R2_PUBLIC_URL}/${key}`;
+            json(res, { url: publicUrl });
+        } catch(e) {
+            console.error('Error getting R2 URL:', e);
+            json(res, { error: 'Error al obtener URL' }, 500);
+        }
+        return;
+    }
+
+    // =====================================================
+    // R2 - ELIMINAR ARCHIVO
+    // =====================================================
+    if (urlPath === '/api/r2/delete' && req.method === 'DELETE') {
+        const body = await parseBody(req);
+        const { key } = body;
+        
+        if (!key) {
+            json(res, { error: 'key es requerida' }, 400);
+            return;
+        }
+        
+        try {
+            await r2Client.send(new DeleteObjectCommand({
+                Bucket: R2_BUCKET_NAME,
+                Key: key,
+            }));
+            json(res, { ok: true });
+        } catch(e) {
+            console.error('Error deleting from R2:', e);
+            json(res, { error: 'Error al eliminar archivo' }, 500);
         }
         return;
     }
