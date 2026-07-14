@@ -82,12 +82,11 @@ window.api = new InvApiClient();
 const App = {
     modules: {},
     currentPage: null,
-    currentGroup: null,
 
     // ── SIGMA module registration ──
     registerModule(name, handler) { this.modules[name] = handler; },
 
-    // ── Navigation ──
+    // ── Navigation (SIGMA) ──
     async loadModule(name) {
         if (this.currentPage === name) return;
         document.querySelectorAll('#mainContent .page').forEach(p => p.classList.remove('active'));
@@ -113,7 +112,27 @@ const App = {
         }
     },
 
-    // ── Modal ──
+    // ── Navigation (Inventario) ──
+    navigateInv(name) {
+        document.querySelectorAll('#mainContent .page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+        let page = document.getElementById(`page-${name}`);
+        if (!page) {
+            page = document.createElement('div');
+            page.id = `page-${name}`;
+            page.className = 'page active';
+            document.getElementById('mainContent').appendChild(page);
+        }
+        page.classList.add('active');
+        page.innerHTML = '<div style="text-align:center;padding:40px;color:#64748b">Cargando...</div>';
+
+        const navItem = document.querySelector(`.nav-item[data-page="${name}"]`);
+        if (navItem) navItem.classList.add('active');
+        this.currentPage = name;
+    },
+
+    // ── Modal (SIGMA-compatible) ──
     showModal(html, options = {}) {
         const overlay = document.getElementById('modalOverlay');
         const modal = overlay.querySelector('.modal');
@@ -125,6 +144,18 @@ const App = {
         footer.innerHTML = '<button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>';
         overlay.classList.add('show');
     },
+
+    // ── Modal (Inventario-compatible: title, body, footer) ──
+    showModalInv(title, bodyHtml, footerHtml) {
+        const overlay = document.getElementById('modalOverlay');
+        const modal = overlay.querySelector('.modal');
+        modal.className = 'modal';
+        overlay.querySelector('.modal-header h3').textContent = title || '';
+        overlay.querySelector('.modal-body').innerHTML = bodyHtml || '';
+        overlay.querySelector('.modal-footer').innerHTML = footerHtml || '<button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>';
+        overlay.classList.add('show');
+    },
+
     hideModal() { document.getElementById('modalOverlay').classList.remove('show'); },
 
     // ── Alert ──
@@ -143,6 +174,11 @@ const App = {
         setTimeout(() => alert.remove(), 4000);
     },
 
+    // ── Toast (Inventario-compatible) ──
+    toast(message, type = 'success') {
+        this.showAlert(message, type === 'error' ? 'danger' : type);
+    },
+
     // ── Confirm ──
     confirm(message) {
         return new Promise((resolve) => {
@@ -157,11 +193,11 @@ const App = {
             const btnCancel = document.createElement('button');
             btnCancel.className = 'btn btn-outline';
             btnCancel.textContent = 'Cancelar';
-            btnCancel.onclick = () => { overlay.classList.remove('show'); resolve(false); };
+            btnCancel.onclick = () => { overlay.classList.remove('show'); modal.style.maxWidth = ''; resolve(false); };
             const btnConfirm = document.createElement('button');
             btnConfirm.className = 'btn btn-danger';
             btnConfirm.textContent = 'Confirmar';
-            btnConfirm.onclick = () => { overlay.classList.remove('show'); resolve(true); };
+            btnConfirm.onclick = () => { overlay.classList.remove('show'); modal.style.maxWidth = ''; resolve(true); };
             footer.appendChild(btnCancel);
             footer.appendChild(btnConfirm);
             overlay.classList.add('show');
@@ -185,19 +221,21 @@ const App = {
         const map = { 'Operativo': 'status-operativo', 'En mantención': 'status-mantenimiento', 'Detenido': 'status-detenido', 'Realizada': 'status-realizada', 'Programada': 'status-programada', 'Vencida': 'status-vencida' };
         return map[estado] || 'status-programada';
     },
-    async getRelationName(collection, id, nameField = 'nombre') {
-        if (!id) return '-';
-        try { const item = await db.getById(collection, id); return item ? item[nameField] : '-'; } catch(e) { return '-'; }
+    isAdmin() {
+        const u = getUser();
+        return u && u.rol === 'admin';
     },
 
     // ── Sidebar ──
     toggleSidebar() {
         document.querySelector('.sidebar').classList.toggle('open');
-        document.getElementById('sidebarOverlay').classList.toggle('show');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (overlay) overlay.classList.toggle('show');
     },
     closeSidebar() {
         document.querySelector('.sidebar').classList.remove('open');
-        document.getElementById('sidebarOverlay').classList.remove('show');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (overlay) overlay.classList.remove('show');
     },
 
     // ── Notas badge ──
@@ -226,21 +264,6 @@ const App = {
             badge.textContent = count;
         } else if (badge) { badge.remove(); }
         await this.updateNotasBadge();
-    },
-
-    // ── Export/Import ──
-    async exportData() {
-        try {
-            const data = await db.exportJSON();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `mantenimiento_backup_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            this.showAlert('Datos exportados correctamente');
-        } catch(e) { this.showAlert('Error al exportar: ' + e.message, 'danger'); }
     }
 };
 
@@ -267,7 +290,7 @@ function renderSidebar() {
     const adm = isAdmin() || hasArea('Gerencia');
     let html = '';
 
-    // MANTENCION (todo junto, sin sub-secciones)
+    // MANTENCION (todo junto)
     if (adm || hasArea('Mantencion')) {
         html += `<div class="nav-section">MANTENCION</div>`;
         html += navI('dashboard', 'Dashboard', '📊');
@@ -322,8 +345,12 @@ function renderSidebar() {
     nav.querySelectorAll('.nav-item[data-page]').forEach(el => {
         el.addEventListener('click', () => {
             const page = el.dataset.page;
-            if (page.startsWith('inv_') || page === 'turnos_page' || page === 'pedidos_page') {
-                openExternalModule(page);
+            if (page.startsWith('inv_')) {
+                navigateToInv(page);
+            } else if (page === 'turnos_page') {
+                openExternalPage('/turnos/', 'Turnos QR');
+            } else if (page === 'pedidos_page') {
+                openExternalPage('/pedidos/', 'Pedidos');
             } else {
                 App.loadModule(page);
             }
@@ -336,33 +363,24 @@ function navI(id, label, icon) {
     return `<div class="nav-item" data-page="${id}"><span class="nav-icon">${icon}</span> ${label}</div>`;
 }
 
-// ─── External Modules (iframe) ────
-const EXTERNAL_MODULES = {
-    inv_inventario: { url: '/inventario/', label: 'Inventario' },
-    inv_movimientos: { url: '/inventario/?view=movimientos', label: 'Movimientos' },
-    inv_historial: { url: '/inventario/?view=historial', label: 'Historial Inventario' },
-    inv_catalogos: { url: '/inventario/?view=catalogos', label: 'Catalogos' },
-    turnos_page: { url: '/turnos/', label: 'Turnos QR' },
-    pedidos_page: { url: '/pedidos/', label: 'Pedidos' }
+// ─── Inventario Navigation (inline) ────
+const INV_PAGES = {
+    inv_inventario: { label: 'Inventario', render: () => InvInventario.render() },
+    inv_movimientos: { label: 'Movimientos', render: () => InvMovimientos.render() },
+    inv_historial: { label: 'Historial Inventario', render: () => InvHistorial.render() },
+    inv_catalogos: { label: 'Catalogos', render: () => InvCatalogos.render() }
 };
 
-function openExternalModule(id) {
-    const mod = EXTERNAL_MODULES[id];
-    if (!mod) return;
-    document.getElementById('launcherView').style.display = 'none';
-    document.getElementById('moduleView').style.display = 'flex';
-    document.getElementById('moduleLabel').textContent = mod.label;
-    document.getElementById('moduleFrame').src = mod.url;
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    const navItem = document.querySelector(`.nav-item[data-page="${id}"]`);
-    if (navItem) navItem.classList.add('active');
+function navigateToInv(name) {
+    const pg = INV_PAGES[name];
+    if (!pg) return;
+    App.navigateInv(name);
+    pg.render();
 }
 
-function closeModule() {
-    document.getElementById('moduleView').style.display = 'none';
-    document.getElementById('launcherView').style.display = 'grid';
-    document.getElementById('moduleFrame').src = 'about:blank';
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+// ─── External Page (Turnos, Pedidos) ────
+function openExternalPage(url, label) {
+    window.open(url, '_blank');
 }
 
 // ─── Init ────
