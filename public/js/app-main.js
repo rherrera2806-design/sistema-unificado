@@ -1,150 +1,371 @@
 /* =============================================
-   SISTEMA UNIFICADO - Panel Principal
-   Sidebar unificado que carga modulos completos
+   SISTEMA UNIFIED - App Object + Navigation
+   Compatible with SIGMA + Inventario modules
    ============================================= */
 
-let currentUser = null;
-let sidebarOpen = false;
+// ─── SIGMA-compatible ApiClient (for `db`) ────
+class SigmaApiClient {
+    constructor() { this.baseUrl = '/api/sigma'; }
+    async request(method, path, body = null) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(`${this.baseUrl}${path}`, opts);
+        if (!res.ok) { const err = await res.json().catch(() => ({ error: res.statusText })); throw new Error(err.error || `HTTP ${res.status}`); }
+        return res.json();
+    }
+    async getAll(c) { return this.request('GET', `/${c}`); }
+    async getById(c, id) { return this.request('GET', `/${c}/${id}`); }
+    async insert(c, d) { return this.request('POST', `/${c}`, d); }
+    async update(c, id, d) { return this.request('PUT', `/${c}/${id}`, d); }
+    async delete(c, id) { return this.request('DELETE', `/${c}/${id}`); }
+    async query(c, fn) { const all = await this.getAll(c); return all.filter(fn); }
+    async getComponentsByType(id) { return this.request('GET', `/components/by-type/${id}`); }
+    async getMachineWithDetails(id) { return this.request('GET', `/machines/${id}/details`); }
+    async getOverdueMaintenance() { return this.request('GET', '/reports/overdue'); }
+    async getUpcomingMaintenance(d = 15) { return this.request('GET', `/reports/upcoming?days=${d}`); }
+    async getCompletedMaintenance() { return this.request('GET', '/reports/completed'); }
+    async getRecentCompleted() { return this.request('GET', '/reports/recent-completed'); }
+    async getBitacora() { return this.request('GET', '/reports/bitacora'); }
+    async getMachineComponents(id) { return this.request('GET', `/machines/${id}/components`); }
+    async saveMachineComponents(id, comps) { return this.request('PUT', `/machines/${id}/components`, { componentes: comps }); }
+    async getStatsSummary() { return this.request('GET', '/stats/summary'); }
+    async exportJSON() { return this.request('GET', '/export'); }
+    async importJSON(json) { const d = typeof json === 'string' ? JSON.parse(json) : json; return this.request('POST', '/import', d); }
+    async resetDatabase() { return this.request('POST', '/reset'); }
+    async getMaintenanceByPeriod(s, e) { return this.request('GET', `/reports/by-period?start=${s}&end=${e}`); }
+}
 
-// ─── Auth ──────────────────────────────────────
+// ─── Inventario-compatible ApiClient (for `api`) ────
+class InvApiClient {
+    constructor() { this.baseUrl = '/api'; }
+    async request(method, path, body = null) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(`${this.baseUrl}${path}`, opts);
+        if (!res.ok) { const err = await res.json().catch(() => ({ error: res.statusText })); throw new Error(err.error || `HTTP ${res.status}`); }
+        return res.json();
+    }
+    catalogos = {
+        getTiposCristal: () => this.request('GET', '/catalogos/tipos-cristal'),
+        crearTipoCristal: (n) => this.request('POST', '/catalogos/tipos-cristal', { nombre: n }),
+        eliminarTipoCristal: (id) => this.request('DELETE', `/catalogos/tipos-cristal/${id}`),
+        getEspesores: () => this.request('GET', '/catalogos/espesores'),
+        crearEspesor: (v) => this.request('POST', '/catalogos/espesores', { valor: v }),
+        eliminarEspesor: (id) => this.request('DELETE', `/catalogos/espesores/${id}`)
+    };
+    inv() {
+        const self = this;
+        return {
+            getMovimientos: (f = {}) => { const qs = new URLSearchParams(f).toString(); return self.request('GET', `/inv/movimientos${qs ? '?' + qs : ''}`); },
+            crearMovimiento: (d) => self.request('POST', '/inv/movimientos', d),
+            eliminarMovimiento: (id) => self.request('DELETE', `/inv/movimientos/${id}`),
+            getInventario: (f = {}) => { const qs = new URLSearchParams(f).toString(); return self.request('GET', `/inv/inventario${qs ? '?' + qs : ''}`); },
+            getEstadisticas: () => self.request('GET', '/inv/estadisticas'),
+            getEstadisticasPorTipo: () => self.request('GET', '/inv/estadisticas-por-tipo'),
+            getTiposCristal: async () => (await self.request('GET', '/catalogos/tipos-cristal')).map(t => t.nombre || t),
+            getEspesores: async () => (await self.request('GET', '/catalogos/espesores')).map(e => e.valor || e)
+        };
+    }
+    turnos = {
+        getEstado: () => this.request('GET', '/turnos/estado'),
+        crear: (n) => this.request('POST', '/turnos/crear', { nombre: n }),
+        siguiente: () => this.request('POST', '/turnos/siguiente'),
+        getCola: () => this.request('GET', '/turnos/cola')
+    };
+}
+
+// ─── Create global instances ────
+window.db = new SigmaApiClient();
+window.api = new InvApiClient();
+
+// ─── Unified App Object ────
+const App = {
+    modules: {},
+    currentPage: null,
+    currentGroup: null,
+
+    // ── SIGMA module registration ──
+    registerModule(name, handler) { this.modules[name] = handler; },
+
+    // ── Navigation ──
+    async loadModule(name) {
+        if (this.currentPage === name) return;
+        document.querySelectorAll('#mainContent .page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+        let page = document.getElementById(`page-${name}`);
+        if (!page) {
+            page = document.createElement('div');
+            page.id = `page-${name}`;
+            page.className = 'page active';
+            document.getElementById('mainContent').appendChild(page);
+        }
+        page.classList.add('active');
+        page.innerHTML = '<div style="text-align:center;padding:40px;color:#64748b">Cargando...</div>';
+
+        const navItem = document.querySelector(`.nav-item[data-page="${name}"]`);
+        if (navItem) navItem.classList.add('active');
+        this.currentPage = name;
+
+        if (this.modules[name]) {
+            try { await this.modules[name].render(); }
+            catch (e) { page.innerHTML = `<div class="alert alert-danger">Error al cargar: ${e.message}</div>`; console.error(e); }
+        }
+    },
+
+    // ── Modal ──
+    showModal(html, options = {}) {
+        const overlay = document.getElementById('modalOverlay');
+        const modal = overlay.querySelector('.modal');
+        modal.className = `modal ${options.lg ? 'modal-lg' : ''}`;
+        overlay.querySelector('.modal-body').innerHTML = html;
+        const header = overlay.querySelector('.modal-header h3');
+        if (header) header.textContent = options.title || '';
+        const footer = overlay.querySelector('.modal-footer');
+        footer.innerHTML = '<button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>';
+        overlay.classList.add('show');
+    },
+    hideModal() { document.getElementById('modalOverlay').classList.remove('show'); },
+
+    // ── Alert ──
+    showAlert(message, type = 'success') {
+        const container = document.getElementById('alertContainer') || (() => {
+            const el = document.createElement('div');
+            el.id = 'alertContainer';
+            el.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2000;max-width:400px;';
+            document.body.appendChild(el);
+            return el;
+        })();
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.textContent = message;
+        container.appendChild(alert);
+        setTimeout(() => alert.remove(), 4000);
+    },
+
+    // ── Confirm ──
+    confirm(message) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('modalOverlay');
+            const modal = overlay.querySelector('.modal');
+            modal.className = 'modal';
+            modal.style.maxWidth = '400px';
+            overlay.querySelector('.modal-header h3').textContent = 'Confirmar';
+            overlay.querySelector('.modal-body').innerHTML = `<p style="font-size:14px;margin:8px 0">${message}</p>`;
+            const footer = overlay.querySelector('.modal-footer');
+            footer.innerHTML = '';
+            const btnCancel = document.createElement('button');
+            btnCancel.className = 'btn btn-outline';
+            btnCancel.textContent = 'Cancelar';
+            btnCancel.onclick = () => { overlay.classList.remove('show'); resolve(false); };
+            const btnConfirm = document.createElement('button');
+            btnConfirm.className = 'btn btn-danger';
+            btnConfirm.textContent = 'Confirmar';
+            btnConfirm.onclick = () => { overlay.classList.remove('show'); resolve(true); };
+            footer.appendChild(btnCancel);
+            footer.appendChild(btnConfirm);
+            overlay.classList.add('show');
+        });
+    },
+
+    // ── Helpers ──
+    formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr + 'T12:00:00');
+        return d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    },
+    formatCurrency(amount) {
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(amount || 0);
+    },
+    capitalize(str) {
+        if (!str) return '';
+        return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+    },
+    getEstadoClass(estado) {
+        const map = { 'Operativo': 'status-operativo', 'En mantención': 'status-mantenimiento', 'Detenido': 'status-detenido', 'Realizada': 'status-realizada', 'Programada': 'status-programada', 'Vencida': 'status-vencida' };
+        return map[estado] || 'status-programada';
+    },
+    async getRelationName(collection, id, nameField = 'nombre') {
+        if (!id) return '-';
+        try { const item = await db.getById(collection, id); return item ? item[nameField] : '-'; } catch(e) { return '-'; }
+    },
+
+    // ── Sidebar ──
+    toggleSidebar() {
+        document.querySelector('.sidebar').classList.toggle('open');
+        document.getElementById('sidebarOverlay').classList.toggle('show');
+    },
+    closeSidebar() {
+        document.querySelector('.sidebar').classList.remove('open');
+        document.getElementById('sidebarOverlay').classList.remove('show');
+    },
+
+    // ── Notas badge ──
+    async updateNotasBadge() {
+        try {
+            const data = await db.getAll('notas');
+            const unread = data.filter(n => !n.leido).length;
+            const navItem = document.querySelector(`.nav-item[data-page="notas"]`);
+            if (!navItem) return;
+            let badge = navItem.querySelector('.badge');
+            if (unread > 0) {
+                if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; navItem.appendChild(badge); }
+                badge.textContent = unread;
+            } else if (badge) { badge.remove(); }
+        } catch(e) {}
+    },
+
+    async updateNavBadge() {
+        let count = 0;
+        try { count = (await db.getOverdueMaintenance()).length; } catch(e) {}
+        const navItem = document.querySelector(`.nav-item[data-page="preventive"]`);
+        if (!navItem) return;
+        let badge = navItem.querySelector('.badge');
+        if (count > 0) {
+            if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; navItem.appendChild(badge); }
+            badge.textContent = count;
+        } else if (badge) { badge.remove(); }
+        await this.updateNotasBadge();
+    },
+
+    // ── Export/Import ──
+    async exportData() {
+        try {
+            const data = await db.exportJSON();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mantenimiento_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            this.showAlert('Datos exportados correctamente');
+        } catch(e) { this.showAlert('Error al exportar: ' + e.message, 'danger'); }
+    }
+};
+
+// ─── Auth ────
 function getUser() {
     try { return JSON.parse(localStorage.getItem('unified_user')); } catch { return null; }
 }
-
 function doLogout() {
     localStorage.removeItem('unified_user');
     window.location.href = '/';
 }
 
-// ─── Init ──────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-    currentUser = getUser();
-    if (!currentUser) { window.location.href = '/'; return; }
-    document.getElementById('userName').textContent = currentUser.nombre || currentUser.email;
-    document.getElementById('userAvatar').textContent = (currentUser.nombre || 'U').charAt(0).toUpperCase();
-    const now = new Date();
-    document.getElementById('currentDate').textContent = now.toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    renderSidebar();
-    renderModuleGrid();
-});
-
-// ─── Sidebar ───────────────────────────────────
+// ─── Sidebar Structure ────
 function getAreas() {
-    return currentUser.areas || (currentUser.area ? [currentUser.area] : []);
+    const u = getUser();
+    return u ? (u.areas || (u.area ? [u.area] : [])) : [];
 }
 function hasArea(a) { return getAreas().includes(a); }
-function isAdmin() { return currentUser.rol === 'admin'; }
+function isAdmin() { const u = getUser(); return u && u.rol === 'admin'; }
 
 function renderSidebar() {
     const nav = document.getElementById('sidebarNav');
     const areas = getAreas();
-    const isAdminOrGerencia = isAdmin() || hasArea('Gerencia');
+    const adm = isAdmin() || hasArea('Gerencia');
     let html = '';
 
-    // Inicio
+    // PRINCIPAL
     html += `<div class="nav-section">PRINCIPAL</div>`;
-    html += `<div class="nav-item active" onclick="showLauncher()" data-page="inicio">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg></span>
-        Inicio</div>`;
+    html += navI('dashboard', 'Dashboard', '📊');
 
-    // SIGMA
-    if (isAdminOrGerencia || hasArea('Mantencion')) {
-        html += `<div class="nav-section">SIGMA</div>`;
-        html += navItem('sigma', 'Mantenimiento Industrial', 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z');
+    // EQUIPOS
+    if (adm || hasArea('Mantencion')) {
+        html += `<div class="nav-section">EQUIPOS</div>`;
+        html += navI('machineTypes', 'Tipos de Area', '⚙️');
+        html += navI('machines', 'Maquinas', '🏭');
+        html += navI('components', 'Componentes', '🔧');
     }
 
-    // Ventas / Pedidos
-    if (isAdminOrGerencia || hasArea('Ventas')) {
-        html += `<div class="nav-section">VENTAS</div>`;
-        html += navItem('pedidos', 'Pedidos / Ordenes', 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2');
+    // MANTENCION
+    if (adm || hasArea('Mantencion')) {
+        html += `<div class="nav-section">MANTENCION</div>`;
+        html += navI('preventive', 'Preventivo', '📋');
+        html += navI('corrective', 'Correctivo', '🔴');
+        html += navI('calendar', 'Calendario', '📅');
+        html += navI('notas', 'Notas', '📒');
     }
 
-    // Stock / Inventario
-    if (isAdminOrGerencia || hasArea('Bodega')) {
-        html += `<div class="nav-section">STOCK</div>`;
-        html += navItem('inventario', 'Inventario', 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4');
+    // REPORTES
+    if (adm || hasArea('Mantencion')) {
+        html += `<div class="nav-section">REPORTES</div>`;
+        html += navI('reports', 'Reportes', '📈');
+        html += navI('history', 'Historial', '📜');
+        html += navI('bitacora', 'Bitacora de Mantencion', '📒');
     }
 
-    // Turnos
-    if (isAdminOrGerencia || hasArea('Recepcion')) {
+    // INVENTARIO
+    if (adm || hasArea('Bodega')) {
+        html += `<div class="nav-section">INVENTARIO</div>`;
+        html += navI('inv_inventario', 'Inventario', '📦');
+        html += navI('inv_movimientos', 'Movimientos', '📋');
+        html += navI('inv_historial', 'Historial Inventario', '🕐');
+        html += navI('inv_catalogos', 'Catalogos', '⚙️');
+    }
+
+    // TURNOS
+    if (adm || hasArea('Recepcion')) {
         html += `<div class="nav-section">ATENCION</div>`;
-        html += navItem('turnos', 'Turnos QR', 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z');
+        html += navI('turnos_page', 'Turnos QR', '🎫');
     }
 
-    // Admin
+    // PEDIDOS
+    if (adm || hasArea('Ventas')) {
+        html += `<div class="nav-section">VENTAS</div>`;
+        html += navI('pedidos_page', 'Pedidos / Ordenes', '📄');
+    }
+
+    // ADMIN
     if (isAdmin()) {
         html += `<div class="nav-section">ADMINISTRACION</div>`;
-        html += `<div class="nav-item" onclick="window.open('/?admin=1','_blank')" data-page="usuarios">
-            <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></span>
-            Usuarios</div>`;
+        html += `<div class="nav-item" onclick="window.open('/?admin=1','_blank')">
+            <span class="nav-icon">👥</span> Usuarios</div>`;
     }
 
     // Cerrar sesion
-    html += `<div class="nav-section" style="margin-top:auto; padding-bottom:16px;"></div>`;
-    html += `<div class="nav-item" onclick="doLogout()" style="color:rgba(255,255,255,0.45);">
-        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></span>
-        Cerrar Sesion</div>`;
+    html += `<div style="flex:1"></div>`;
+    html += `<div class="nav-item" onclick="doLogout()" style="opacity:0.5;margin-top:8px">
+        <span class="nav-icon">🚪</span> Cerrar Sesion</div>`;
 
     nav.innerHTML = html;
-}
 
-function navItem(id, label, path) {
-    return `<div class="nav-item" onclick="openModule('${id}')" data-page="${id}">
-        <span class="nav-icon"><svg viewBox="0 0 24 24">${path}</svg></span>
-        ${label}
-    </div>`;
-}
-
-// ─── Module Grid (launcher cards) ──────────────
-const MODULES = [
-    { id: 'sigma',    name: 'SIGMA',          desc: 'Mantenimiento Industrial',  icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z', color: '#1a237e', url: '/sigma/' },
-    { id: 'pedidos',  name: 'Pedidos',        desc: 'Ordenes de Venta',          icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', color: '#0369a1', url: '/pedidos/' },
-    { id: 'inventario', name: 'Inventario',   desc: 'Stock y Control',           icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', color: '#1e40af', url: '/inventario/' },
-    { id: 'turnos',    name: 'Turnos QR',     desc: 'Atencion al Cliente',       icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', color: '#b45309', url: '/turnos/' },
-];
-
-function renderModuleGrid() {
-    const grid = document.getElementById('moduleGrid');
-    const areas = getAreas();
-    const isAdminOrGerencia = isAdmin() || hasArea('Gerencia');
-
-    const visible = MODULES.filter(m => {
-        if (m.id === 'sigma')    return isAdminOrGerencia || hasArea('Mantencion');
-        if (m.id === 'pedidos')  return isAdminOrGerencia || hasArea('Ventas');
-        if (m.id === 'inventario') return isAdminOrGerencia || hasArea('Bodega');
-        if (m.id === 'turnos')   return isAdminOrGerencia || hasArea('Recepcion');
-        return false;
+    // Bind clicks
+    nav.querySelectorAll('.nav-item[data-page]').forEach(el => {
+        el.addEventListener('click', () => {
+            const page = el.dataset.page;
+            if (page.startsWith('inv_') || page === 'turnos_page' || page === 'pedidos_page') {
+                openExternalModule(page);
+            } else {
+                App.loadModule(page);
+            }
+            App.closeSidebar();
+        });
     });
-
-    grid.innerHTML = visible.map(m => `
-        <div class="module-card" onclick="openModule('${m.id}')" style="--mc:${m.color}">
-            <div class="module-card-icon" style="background:${m.color}">
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${m.icon}</svg>
-            </div>
-            <div class="module-card-info">
-                <div class="module-card-name">${m.name}</div>
-                <div class="module-card-desc">${m.desc}</div>
-            </div>
-            <div class="module-card-arrow">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
-            </div>
-        </div>
-    `).join('');
 }
 
-// ─── Module Loading (iframe) ───────────────────
-function openModule(id) {
-    const mod = MODULES.find(m => m.id === id);
-    if (!mod) return;
+function navI(id, label, icon) {
+    return `<div class="nav-item" data-page="${id}"><span class="nav-icon">${icon}</span> ${label}</div>`;
+}
 
+// ─── External Modules (iframe) ────
+const EXTERNAL_MODULES = {
+    inv_inventario: { url: '/inventario/', label: 'Inventario' },
+    inv_movimientos: { url: '/inventario/?view=movimientos', label: 'Movimientos' },
+    inv_historial: { url: '/inventario/?view=historial', label: 'Historial Inventario' },
+    inv_catalogos: { url: '/inventario/?view=catalogos', label: 'Catalogos' },
+    turnos_page: { url: '/turnos/', label: 'Turnos QR' },
+    pedidos_page: { url: '/pedidos/', label: 'Pedidos' }
+};
+
+function openExternalModule(id) {
+    const mod = EXTERNAL_MODULES[id];
+    if (!mod) return;
     document.getElementById('launcherView').style.display = 'none';
     document.getElementById('moduleView').style.display = 'flex';
-    document.getElementById('moduleLabel').textContent = mod.name;
-
-    const frame = document.getElementById('moduleFrame');
-    frame.src = mod.url;
-
-    // Update nav active state
+    document.getElementById('moduleLabel').textContent = mod.label;
+    document.getElementById('moduleFrame').src = mod.url;
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const navItem = document.querySelector(`.nav-item[data-page="${id}"]`);
     if (navItem) navItem.classList.add('active');
@@ -154,25 +375,13 @@ function closeModule() {
     document.getElementById('moduleView').style.display = 'none';
     document.getElementById('launcherView').style.display = 'grid';
     document.getElementById('moduleFrame').src = 'about:blank';
-
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    const homeItem = document.querySelector('.nav-item[data-page="inicio"]');
-    if (homeItem) homeItem.classList.add('active');
 }
 
-function showLauncher() {
-    closeModule();
-}
-
-// ─── Sidebar Toggle ────────────────────────────
-function toggleSidebar() {
-    sidebarOpen = !sidebarOpen;
-    document.getElementById('sidebar').classList.toggle('open', sidebarOpen);
-}
-
-document.addEventListener('click', (e) => {
-    if (sidebarOpen && !e.target.closest('.sidebar') && !e.target.closest('.menu-toggle')) {
-        sidebarOpen = false;
-        document.getElementById('sidebar').classList.remove('open');
-    }
+// ─── Init ────
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!getUser()) { window.location.href = '/'; return; }
+    renderSidebar();
+    await App.updateNavBadge();
+    App.loadModule('dashboard');
 });
