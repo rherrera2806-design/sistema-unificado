@@ -42,11 +42,12 @@ async function r2Upload(key, fileBuffer, contentType) {
     const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
     const region = 'auto';
     const service = 's3';
-    const canonicalUri = `/${R2_BUCKET_NAME}/${key}`;
+    const canonicalUri = `/${key}`;
     const payloadHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
     
+    const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
     const headers = {
-        'Host': `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        'Host': host,
         'x-amz-date': amzDate,
         'x-amz-content-sha256': payloadHash,
         'Content-Type': contentType,
@@ -71,7 +72,7 @@ async function r2Upload(key, fileBuffer, contentType) {
     
     const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
     
-    const url = `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
+    const url = `https://${host}/${key}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
     
@@ -107,11 +108,12 @@ async function r2Delete(key) {
     const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
     const region = 'auto';
     const service = 's3';
-    const canonicalUri = `/${R2_BUCKET_NAME}/${key}`;
+    const canonicalUri = `/${key}`;
     const payloadHash = crypto.createHash('sha256').update('').digest('hex');
     
+    const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
     const headers = {
-        'Host': `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        'Host': host,
         'x-amz-date': amzDate,
         'x-amz-content-sha256': payloadHash,
     };
@@ -135,7 +137,7 @@ async function r2Delete(key) {
     
     const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
     
-    const url = `${R2_ENDPOINT}/${R2_BUCKET_NAME}/${key}`;
+    const url = `https://${host}/${key}`;
     const response = await fetch(url, {
         method: 'DELETE',
         headers: {
