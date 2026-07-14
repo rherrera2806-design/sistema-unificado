@@ -13,6 +13,20 @@ App.registerModule('preventive', {
         }
         if (filterEstado) filtered = filtered.filter(r => r.estado === filterEstado);
         if (filterMaquina) filtered = filtered.filter(r => r.maquina_id === parseInt(filterMaquina));
+        
+        // Sort by fecha_programada ascending (oldest first)
+        filtered.sort((a, b) => {
+            const parseDate = (dateStr) => {
+                if (!dateStr) return new Date(0);
+                const parts = dateStr.split('-');
+                if (parts.length === 3 && parts[0].length === 2) {
+                    return new Date(parts[2], parts[1] - 1, parts[0]);
+                }
+                return new Date(dateStr);
+            };
+            return parseDate(a.fecha_programada) - parseDate(b.fecha_programada);
+        });
+        
         const today = new Date().toISOString().split('T')[0];
 
         el.innerHTML = `
