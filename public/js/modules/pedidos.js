@@ -155,7 +155,7 @@ App.registerModule('pedidos', {
             <td>${this.fmtDate(p.fecha_subida)}</td>
             <td><span class="badge badge-${p.estado === 'pendiente' ? 'programada' : p.estado === 'aprobado' ? 'realizada' : 'vencida'}">${p.estado}</span></td>
             <td>
-                <button class="btn btn-sm btn-outline" onclick="App.modules.pedidos.viewPdf('${p.archivo_url}')">Ver PDF</button>
+                <button class="btn btn-sm btn-outline" onclick="App.modules.pedidos.viewPdf(${p.id})">Ver PDF</button>
                 ${this.canAuthorize && p.estado === 'pendiente' ? `<button class="btn btn-sm btn-primary" style="margin-left:4px" onclick="App.modules.pedidos.showReviewModal(${p.id})">Revisar</button>` : ''}
             </td></tr>`).join('');
     },
@@ -198,46 +198,24 @@ App.registerModule('pedidos', {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const fileName = `${numero}_${Date.now()}.pdf`;
-            let archivoUrl = null;
+            const fileBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(this.selectedFile);
+            });
 
-            try {
-                const presignRes = await fetch('/api/r2/upload', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileName, contentType: 'application/pdf' })
-                });
-                const presignData = await presignRes.json();
-                if (presignRes.ok && presignData.uploadUrl) {
-                    const uploadRes = await fetch(presignData.uploadUrl, { method: 'PUT', headers: presignData.headers, body: this.selectedFile });
-                    if (uploadRes.ok) {
-                        archivoUrl = presignData.url;
-                    } else {
-                        console.warn('R2 presigned upload failed, trying server-side fallback');
-                    }
-                }
-            } catch(presignErr) {
-                console.warn('R2 presigned approach failed:', presignErr.message);
-            }
-
-            if (!archivoUrl) {
-                const fileBase64 = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(this.selectedFile);
-                });
-                const directRes = await fetch('/api/r2/direct-upload', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileName, contentType: 'application/pdf', fileBase64 })
-                });
-                const directData = await directRes.json();
-                if (!directRes.ok) throw new Error(directData.error || 'Error al subir PDF');
-                archivoUrl = directData.url;
-            }
+            const r2Res = await fetch('/api/r2/direct-upload', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName, contentType: 'application/pdf', fileBase64 })
+            });
+            const r2Data = await r2Res.json();
+            if (!r2Res.ok || !r2Data.url) throw new Error(r2Data.error || 'Error al subir PDF a R2');
 
             const res = await fetch('/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', archivo_url: archivoUrl })
+                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', archivo_url: r2Data.url })
             });
 
             if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }
@@ -252,7 +230,7 @@ App.registerModule('pedidos', {
         document.getElementById('pedReviewCliente').textContent = this.currentPedido.cliente;
         document.getElementById('pedReviewVendedor').textContent = this.currentPedido.vendedor;
         document.getElementById('pedReviewFecha').textContent = this.fmtDate(this.currentPedido.fecha_subida);
-        document.getElementById('pedReviewPdf').src = this.currentPedido.archivo_url;
+        document.getElementById('pedReviewPdf').src = `/api/pedidos/${this.currentPedido.id}/pdf`;
         document.getElementById('pedMotivo').value = '';
         document.getElementById('pedMotivoGroup').style.display = 'none';
         document.getElementById('pedReviewModal').classList.add('show');
@@ -277,7 +255,7 @@ App.registerModule('pedidos', {
         } catch(e) { alert('Error al revisar pedido: ' + e.message); }
     },
 
-    viewPdf(url) { document.getElementById('pedViewPdfFrame').src = url; document.getElementById('pedViewPdfModal').classList.add('show'); },
+    viewPdf(id) { document.getElementById('pedViewPdfFrame').src = `/api/pedidos/${id}/pdf`; document.getElementById('pedViewPdfModal').classList.add('show'); },
     hideViewPdf() { document.getElementById('pedViewPdfModal').classList.remove('show'); document.getElementById('pedViewPdfFrame').src = ''; },
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); }

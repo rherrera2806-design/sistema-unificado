@@ -1,4 +1,7 @@
 const http = require('http');
+const https = require('https');
+const tls = require('tls');
+tls.DEFAULT_MIN_VERSION = 'TLSv1.2';
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
@@ -120,6 +123,32 @@ async function r2Delete(key) {
     });
     
     return response.ok;
+}
+
+function r2UploadNative(host, key, buffer, headers) {
+    return new Promise((resolve, reject) => {
+        const options = {
+            hostname: host,
+            port: 443,
+            path: '/' + key,
+            method: 'PUT',
+            headers: headers,
+            rejectUnauthorized: true,
+            secureProtocol: 'TLSv1_2_method',
+        };
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) resolve({ ok: true, status: res.statusCode });
+                else resolve({ ok: false, status: res.statusCode, body: data });
+            });
+        });
+        req.on('error', (e) => reject(e));
+        req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout')); });
+        req.write(buffer);
+        req.end();
+    });
 }
 
 // =====================================================
@@ -391,7 +420,6 @@ async function initDB() {
         fecha_revision TIMESTAMP,
         revisado_por TEXT
     )`);
-
     // SEMILLA: Usuario admin
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
@@ -1600,7 +1628,7 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // Crear nuevo pedido (subir PDF)
+    // Crear nuevo pedido
     if (urlPath === '/api/pedidos' && req.method === 'POST') {
         const body = await parseBody(req);
         const { numero_pedido, cliente, vendedor, archivo_url } = body;
@@ -1613,6 +1641,22 @@ const server = http.createServer(async (req, res) => {
             [numero_pedido, cliente, vendedor || '', archivo_url || '', 'pendiente']
         );
         json(res, result.rows[0], 201);
+        return;
+    }
+
+    // Descargar PDF de un pedido (redirige a R2)
+    const pedidoPdfMatch = urlPath.match(/^\/api\/pedidos\/(\d+)\/pdf$/);
+    if (pedidoPdfMatch && req.method === 'GET') {
+        const id = Number(pedidoPdfMatch[1]);
+        const result = await query('SELECT archivo_url, numero_pedido FROM pedidos WHERE id = $1', [id]);
+        if (result.rows.length === 0) { json(res, { error: 'Pedido no encontrado' }, 404); return; }
+        const row = result.rows[0];
+        if (row.archivo_url) {
+            res.writeHead(302, { 'Location': row.archivo_url });
+            res.end();
+        } else {
+            json(res, { error: 'PDF no disponible' }, 404);
+        }
         return;
     }
 
@@ -1665,7 +1709,7 @@ const server = http.createServer(async (req, res) => {
         
         try {
             const key = `pedidos/${fileName}`;
-            const result = r2Upload(key, null, contentType || 'application/pdf');
+            const result = await r2Upload(key, null, contentType || 'application/pdf');
             console.log(`R2: Presigned URL generada para ${key}`);
             json(res, { uploadUrl: result.url, headers: result.headers, key, url: `${R2_PUBLIC_URL}/${key}` });
         } catch(e) {
@@ -1676,7 +1720,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
-    // R2 - SUBIR ARCHIVO (proxy server-side, fallback)
+    // R2 - SUBIR ARCHIVO (proxy server-side con https nativo)
     // =====================================================
     if (urlPath === '/api/r2/direct-upload' && req.method === 'POST') {
         if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
@@ -1692,16 +1736,11 @@ const server = http.createServer(async (req, res) => {
         try {
             const key = `pedidos/${fileName}`;
             const buffer = Buffer.from(fileBase64, 'base64');
-            const result = await r2Upload(key, buffer, contentType || 'application/pdf');
+            const signResult = await r2Upload(key, buffer, contentType || 'application/pdf');
             const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-            const r2Res = await fetch(`https://${host}/${key}`, {
-                method: 'PUT',
-                headers: { ...result.headers, 'Content-Type': contentType || 'application/pdf' },
-                body: buffer,
-            });
+            const r2Res = await r2UploadNative(host, key, buffer, signResult.headers);
             if (!r2Res.ok) {
-                const errText = await r2Res.text().catch(() => '');
-                console.error('R2 direct upload error:', r2Res.status, errText);
+                console.error('R2 direct upload error:', r2Res.status, r2Res.body);
                 json(res, { error: 'Error al subir a R2: ' + r2Res.status }, 500);
                 return;
             }
