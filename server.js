@@ -684,19 +684,19 @@ async function getSigmaStats() {
 // FUNCIONES TURNOS
 // =====================================================
 async function getTurnoActual() {
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
     const result = await query('SELECT * FROM turnos WHERE fecha = $1 AND estado = $2 ORDER BY numero DESC LIMIT 1', [hoy, 'atendiendo']);
     return result.rows[0] || null;
 }
 
 async function getCola() {
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
     const result = await query('SELECT * FROM turnos WHERE fecha = $1 AND estado = $2 ORDER BY numero ASC', [hoy, 'espera']);
     return result.rows;
 }
 
 async function getTurnosStats() {
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
     const [totalR, atendidosR, enColaR, pendR] = await Promise.all([
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1', [hoy]),
         query('SELECT COUNT(*) AS n FROM turnos WHERE fecha = $1 AND estado IN ($2, $3, $4)', [hoy, 'atendido', 'derivado', 'entregado']),
@@ -1285,12 +1285,11 @@ const server = http.createServer(async (req, res) => {
         const body = await parseBody(req);
         const nombre = sanitizeString(body.nombre);
         if (!nombre) return json(res, { error: 'Nombre requerido' }, 400);
-        const hoy = new Date().toISOString().split('T')[0];
-        const now = new Date();
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         const numRow = await query('SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM turnos WHERE fecha = $1', [hoy]);
-        const numero = numRow.rows[0].next;
         const result = await query(
             'INSERT INTO turnos (nombre, numero, fecha, hora_creacion) VALUES ($1, $2, $3, $4) RETURNING *',
             [nombre, numero, hoy, hora]
@@ -1300,8 +1299,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (urlPath === '/api/turnos/siguiente' && req.method === 'POST') {
-        const hoy = new Date().toISOString().split('T')[0];
-        const now = new Date();
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         const actual = (await query('SELECT * FROM turnos WHERE fecha = $1 AND estado = $2 ORDER BY numero DESC LIMIT 1', [hoy, 'atendiendo'])).rows[0];
@@ -1324,7 +1323,7 @@ const server = http.createServer(async (req, res) => {
     // TURNOS - Historial del día
     // =====================================================
     if (urlPath === '/api/turnos/historial' && req.method === 'GET') {
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const result = await query(
             `SELECT t.*, e.estado as entrega_estado, e.pedidos, e.factura, e.tipo,
                     e.hora_registrada as bodega_recibido, e.hora_entregada as bodega_entregado
@@ -1409,7 +1408,7 @@ const server = http.createServer(async (req, res) => {
     // TURNOS - Entregas (Bodega)
     // =====================================================
     if (urlPath === '/api/turnos/entregas' && req.method === 'GET') {
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const result = await query(
             `SELECT e.*, t.numero as turno_numero
              FROM entregas e
@@ -1422,7 +1421,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (urlPath === '/api/turnos/entregas/pendientes' && req.method === 'GET') {
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const result = await query(
             `SELECT e.*, t.numero as turno_numero
              FROM entregas e
@@ -1438,8 +1437,8 @@ const server = http.createServer(async (req, res) => {
         const body = await parseBody(req);
         const { cliente_nombre, descripcion, tipo, pedidos, factura } = body;
         if (!cliente_nombre) return json(res, { error: 'Nombre requerido' }, 400);
-        const hoy = new Date().toISOString().split('T')[0];
-        const now = new Date();
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         const result = await query(
@@ -1453,7 +1452,7 @@ const server = http.createServer(async (req, res) => {
     const entregaEntregarMatch = urlPath.match(/^\/api\/turnos\/entregas\/(\d+)\/entregar$/);
     if (entregaEntregarMatch && req.method === 'POST') {
         const id = Number(entregaEntregarMatch[1]);
-        const now = new Date();
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         await query('UPDATE entregas SET estado = $1, hora_entregada = $2 WHERE id = $3', ['entregado', hora, id]);
