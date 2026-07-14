@@ -1381,9 +1381,10 @@ const server = http.createServer(async (req, res) => {
         await query('UPDATE turnos SET estado = $1, hora_fin = $2 WHERE id = $3', ['derivado', hora, turno_id]);
         const turnoRes = await query('SELECT numero FROM turnos WHERE id = $1', [turno_id]);
         const numero = turnoRes.rows.length > 0 ? turnoRes.rows[0].numero : 0;
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         await query(
-            'INSERT INTO entregas (turno_id, cliente_nombre, pedidos, factura, tipo, estado) VALUES ($1, (SELECT nombre FROM turnos WHERE id=$2), $3, $4, $5, $6)',
-            [turno_id, turno_id, pedidos || null, factura || null, 'Retira', 'pendiente']
+            'INSERT INTO entregas (turno_id, cliente_nombre, pedidos, factura, tipo, estado, fecha, hora_registrada) VALUES ($1, (SELECT nombre FROM turnos WHERE id=$2), $3, $4, $5, $6, $7, $8)',
+            [turno_id, turno_id, pedidos || null, factura || null, 'Retira', 'pendiente', hoy, hora]
         );
         json(res, { ok: true });
         return;
@@ -1511,6 +1512,32 @@ const server = http.createServer(async (req, res) => {
         } catch(e) {
             json(res, { error: 'Error al crear usuario' }, 500);
         }
+        return;
+    }
+
+    // ADMIN - Update user
+    const updateUserMatch = urlPath.match(/^\/api\/admin\/usuarios\/(\d+)$/);
+    if (updateUserMatch && req.method === 'PUT') {
+        const id = Number(updateUserMatch[1]);
+        const body = await parseBody(req);
+        const { nombre, email, password, rol, permisos } = body;
+        try {
+            if (password) {
+                await query('UPDATE usuarios SET nombre=$1, email=$2, password=$3, rol=$4, permisos=$5 WHERE id=$6', [nombre, email, hashPassword(password), rol, permisos || [], id]);
+            } else {
+                await query('UPDATE usuarios SET nombre=$1, email=$2, rol=$3, permisos=$4 WHERE id=$5', [nombre, email, rol, permisos || [], id]);
+            }
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: 'Error al actualizar' }, 500); }
+        return;
+    }
+
+    // ADMIN - Delete user
+    const deleteUserMatch = urlPath.match(/^\/api\/admin\/usuarios\/(\d+)$/);
+    if (deleteUserMatch && req.method === 'DELETE') {
+        const id = Number(deleteUserMatch[1]);
+        await query('DELETE FROM usuarios WHERE id=$1 AND rol != $2', [id, 'admin']);
+        json(res, { ok: true });
         return;
     }
 

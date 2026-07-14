@@ -356,8 +356,7 @@ function renderSidebar() {
     // ADMIN
     if (isAdmin()) {
         html += `<div class="nav-section">ADMINISTRACION</div>`;
-        html += `<div class="nav-item" onclick="window.open('/?admin=1','_blank')">
-            <span class="nav-icon">👥</span> Usuarios</div>`;
+        html += navI('usuarios', 'Usuarios', '👥');
     }
 
     // Cerrar sesion
