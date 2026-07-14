@@ -277,7 +277,8 @@
         function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
 
         // Init
-        if (getUser()) showSelector(); else showLogin();
+        if (new URLSearchParams(window.location.search).get('admin') === '1' && getUser()) openAdmin();
+        else if (getUser()) showSelector(); else showLogin();
     </script>
 </body>
 </html>

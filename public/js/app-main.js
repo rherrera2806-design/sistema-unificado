@@ -1,429 +1,178 @@
-const USER_KEY = 'unified_user';
+/* =============================================
+   SISTEMA UNIFICADO - Panel Principal
+   Sidebar unificado que carga modulos completos
+   ============================================= */
+
 let currentUser = null;
-let currentModule = null;
+let sidebarOpen = false;
 
-function getUser() { try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch(e) { return null; } }
-function getPermisos(u) { const p = (u||{}).permisos || []; return Array.isArray(p) ? p : []; }
+// ─── Auth ──────────────────────────────────────
+function getUser() {
+    try { return JSON.parse(localStorage.getItem('unified_user')); } catch { return null; }
+}
 
-// =====================================================
-// SIDEBAR NAVIGATION
-// =====================================================
-const menuConfig = [
-    {
-        id: 'sigma', label: 'MANTENCIÓN', icon: '🔧', permiso: 'sigma',
-        children: [
-            { id: 'sigma-dashboard', label: 'Dashboard', icon: '📊' },
-            { id: 'sigma-preventivo', label: 'Preventivo', icon: '📋' },
-            { id: 'sigma-correctivo', label: 'Correctivo', icon: '🔴' },
-            { id: 'sigma-calendario', label: 'Calendario', icon: '📅' },
-            { id: 'sigma-notas', label: 'Notas', icon: '📒' },
-            { id: 'sigma-maquinas', label: 'Máquinas', icon: '🏭' },
-            { id: 'sigma-componentes', label: 'Componentes', icon: '🔧' },
-            { id: 'sigma-tiposarea', label: 'Tipos de Área', icon: '⚙️' },
-            { id: 'sigma-reportes', label: 'Reportes', icon: '📈' },
-            { id: 'sigma-historial', label: 'Historial', icon: '📜' },
-            { id: 'sigma-bitacora', label: 'Bitácora', icon: '📒' }
-        ]
-    },
-    { id: 'usuarios', label: 'USUARIOS', icon: '👥', permiso: 'usuarios' },
-    { id: 'ventas', label: 'VENTAS', icon: '💰', permiso: 'pedidos' },
-    { id: 'produccion', label: 'PRODUCCIÓN', icon: '⚙️', permiso: 'produccion' },
-    {
-        id: 'stock', label: 'STOCK', icon: '📦', permiso: 'inventario',
-        children: [
-            { id: 'stock-inventario', label: 'Inventario', icon: '📋' },
-            { id: 'stock-movimientos', label: 'Movimientos', icon: '🔄', permiso: 'inventario.movimientos' },
-            { id: 'stock-historial', label: 'Historial', icon: '📜', permiso: 'inventario.historial' },
-            { id: 'stock-catalogos', label: 'Catálogos', icon: '📚', permiso: 'inventario.catalogos' }
-        ]
-    },
-    {
-        id: 'turnos', label: 'TURNOS QR', icon: '🎫', permiso: 'turnos',
-        children: [
-            { id: 'turnos-recepcion', label: 'Recepción', icon: '📋', permiso: 'turnos.recepcion' },
-            { id: 'turnos-bodega', label: 'Bodega', icon: '📦', permiso: 'turnos.bodega' },
-            { id: 'turnos-qr', label: 'Código QR', icon: '📱' }
-        ]
-    }
-];
+function doLogout() {
+    localStorage.removeItem('unified_user');
+    window.location.href = '/';
+}
+
+// ─── Init ──────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    currentUser = getUser();
+    if (!currentUser) { window.location.href = '/'; return; }
+    document.getElementById('userName').textContent = currentUser.nombre || currentUser.email;
+    document.getElementById('userAvatar').textContent = (currentUser.nombre || 'U').charAt(0).toUpperCase();
+    const now = new Date();
+    document.getElementById('currentDate').textContent = now.toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    renderSidebar();
+    renderModuleGrid();
+});
+
+// ─── Sidebar ───────────────────────────────────
+function getAreas() {
+    return currentUser.areas || (currentUser.area ? [currentUser.area] : []);
+}
+function hasArea(a) { return getAreas().includes(a); }
+function isAdmin() { return currentUser.rol === 'admin'; }
 
 function renderSidebar() {
     const nav = document.getElementById('sidebarNav');
-    const permisos = getPermisos(currentUser);
+    const areas = getAreas();
+    const isAdminOrGerencia = isAdmin() || hasArea('Gerencia');
     let html = '';
 
-    for (const item of menuConfig) {
-        if (!permisos.includes(item.permiso) && !permisos.includes('usuarios')) continue;
+    // Inicio
+    html += `<div class="nav-section">PRINCIPAL</div>`;
+    html += `<div class="nav-item active" onclick="showLauncher()" data-page="inicio">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg></span>
+        Inicio</div>`;
 
-        if (item.children) {
-            html += `<div class="nav-section">${item.label}</div>`;
-            for (const child of item.children) {
-                if (child.permiso && !permisos.includes(child.permiso) && !permisos.includes('usuarios')) continue;
-                html += `
-                    <div class="nav-item nav-sub" data-page="${child.id}" onclick="loadPage('${child.id}')">
-                        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg></span>
-                        ${child.label}
-                    </div>`;
-            }
-        } else {
-            html += `
-                <div class="nav-item" data-page="${item.id}" onclick="loadPage('${item.id}')">
-                    <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg></span>
-                    ${item.label}
-                </div>`;
-        }
+    // SIGMA
+    if (isAdminOrGerencia || hasArea('Mantencion')) {
+        html += `<div class="nav-section">SIGMA</div>`;
+        html += navItem('sigma', 'Mantenimiento Industrial', 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z');
     }
+
+    // Ventas / Pedidos
+    if (isAdminOrGerencia || hasArea('Ventas')) {
+        html += `<div class="nav-section">VENTAS</div>`;
+        html += navItem('pedidos', 'Pedidos / Ordenes', 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2');
+    }
+
+    // Stock / Inventario
+    if (isAdminOrGerencia || hasArea('Bodega')) {
+        html += `<div class="nav-section">STOCK</div>`;
+        html += navItem('inventario', 'Inventario', 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4');
+    }
+
+    // Turnos
+    if (isAdminOrGerencia || hasArea('Recepcion')) {
+        html += `<div class="nav-section">ATENCION</div>`;
+        html += navItem('turnos', 'Turnos QR', 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z');
+    }
+
+    // Admin
+    if (isAdmin()) {
+        html += `<div class="nav-section">ADMINISTRACION</div>`;
+        html += `<div class="nav-item" onclick="window.open('/?admin=1','_blank')" data-page="usuarios">
+            <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></span>
+            Usuarios</div>`;
+    }
+
+    // Cerrar sesion
+    html += `<div class="nav-section" style="margin-top:auto; padding-bottom:16px;"></div>`;
+    html += `<div class="nav-item" onclick="doLogout()" style="color:rgba(255,255,255,0.45);">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></span>
+        Cerrar Sesion</div>`;
 
     nav.innerHTML = html;
 }
 
-// =====================================================
-// PAGE LOADING
-// =====================================================
-async function loadPage(pageId) {
-    currentModule = pageId;
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const navItem = document.querySelector(`.nav-item[data-page="${pageId}"]`);
-    if (navItem) navItem.classList.add('active');
-
-    const main = document.getElementById('mainContent');
-    const headerTitle = document.getElementById('headerTitle');
-
-    // Update header
-    const titles = {
-        'sigma-dashboard': 'Dashboard', 'sigma-preventivo': 'Mantención Preventiva',
-        'sigma-correctivo': 'Mantención Correctiva', 'sigma-calendario': 'Calendario',
-        'sigma-notas': 'Notas', 'sigma-maquinas': 'Máquinas', 'sigma-componentes': 'Componentes',
-        'sigma-tiposarea': 'Tipos de Área', 'sigma-reportes': 'Reportes', 'sigma-historial': 'Historial',
-        'sigma-bitacora': 'Bitácora de Mantención',
-        'usuarios': 'Administración de Usuarios', 'ventas': 'Ventas - Pedidos',
-        'produccion': 'Producción', 'stock-inventario': 'Inventario',
-        'stock-movimientos': 'Movimientos', 'stock-historial': 'Historial de Stock',
-        'stock-catalogos': 'Catálogos', 'turnos-recepcion': 'Recepción',
-        'turnos-bodega': 'Bodega', 'turnos-qr': 'Código QR'
-    };
-    headerTitle.textContent = titles[pageId] || pageId;
-
-    // Load content
-    main.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
-
-    try {
-        if (pageId.startsWith('sigma-')) await loadSigmaModule(pageId.replace('sigma-', ''));
-        else if (pageId === 'usuarios') await loadUsuarios();
-        else if (pageId === 'ventas') await loadVentas();
-        else if (pageId === 'produccion') await loadProduccion();
-        else if (pageId.startsWith('stock-')) await loadStockModule(pageId.replace('stock-', ''));
-        else if (pageId.startsWith('turnos-')) await loadTurnosModule(pageId.replace('turnos-', ''));
-    } catch(e) {
-        main.innerHTML = `<div class="alert alert-danger">Error al cargar: ${e.message}</div>`;
-    }
+function navItem(id, label, path) {
+    return `<div class="nav-item" onclick="openModule('${id}')" data-page="${id}">
+        <span class="nav-icon"><svg viewBox="0 0 24 24">${path}</svg></span>
+        ${label}
+    </div>`;
 }
 
-// =====================================================
-// SIGMA MODULES
-// =====================================================
-async function loadSigmaModule(sub) {
-    const main = document.getElementById('mainContent');
+// ─── Module Grid (launcher cards) ──────────────
+const MODULES = [
+    { id: 'sigma',    name: 'SIGMA',          desc: 'Mantenimiento Industrial',  icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z', color: '#1a237e', url: '/sigma/' },
+    { id: 'pedidos',  name: 'Pedidos',        desc: 'Ordenes de Venta',          icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', color: '#0369a1', url: '/pedidos/' },
+    { id: 'inventario', name: 'Inventario',   desc: 'Stock y Control',           icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', color: '#1e40af', url: '/inventario/' },
+    { id: 'turnos',    name: 'Turnos QR',     desc: 'Atencion al Cliente',       icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', color: '#b45309', url: '/turnos/' },
+];
 
-    if (sub === 'dashboard') {
-        const [prev, corr, machines] = await Promise.all([
-            db.sigma.getAll('preventive_maintenance'), db.sigma.getAll('corrective_maintenance'), db.sigma.getAll('machines')
-        ]);
-        const pendientes = prev.filter(p => p.estado === 'Programada' || p.estado === 'Vencida').length;
-        const enMantencion = corr.filter(c => c.estado === 'En Mantención').length;
-        main.innerHTML = `
-            <div class="stats-grid">
-                <div class="stat-card"><div class="stat-value" style="color:var(--info)">${machines.length}</div><div class="stat-label">Máquinas</div></div>
-                <div class="stat-card"><div class="stat-value" style="color:var(--warning)">${pendientes}</div><div class="stat-label">Pendientes</div></div>
-                <div class="stat-card"><div class="stat-value" style="color:var(--danger)">${enMantencion}</div><div class="stat-label">En Mantención</div></div>
-                <div class="stat-card"><div class="stat-value" style="color:var(--success)">${prev.filter(p=>p.estado==='Realizada').length}</div><div class="stat-label">Realizadas</div></div>
+function renderModuleGrid() {
+    const grid = document.getElementById('moduleGrid');
+    const areas = getAreas();
+    const isAdminOrGerencia = isAdmin() || hasArea('Gerencia');
+
+    const visible = MODULES.filter(m => {
+        if (m.id === 'sigma')    return isAdminOrGerencia || hasArea('Mantencion');
+        if (m.id === 'pedidos')  return isAdminOrGerencia || hasArea('Ventas');
+        if (m.id === 'inventario') return isAdminOrGerencia || hasArea('Bodega');
+        if (m.id === 'turnos')   return isAdminOrGerencia || hasArea('Recepcion');
+        return false;
+    });
+
+    grid.innerHTML = visible.map(m => `
+        <div class="module-card" onclick="openModule('${m.id}')" style="--mc:${m.color}">
+            <div class="module-card-icon" style="background:${m.color}">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${m.icon}</svg>
             </div>
-            <div class="card"><div class="card-header"><h3>Últimas Mantenciones</h3></div><div class="card-body">
-                <table><thead><tr><th>Máquina</th><th>Tipo</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>
-                ${[...prev.slice(0,5).map(p=>`<tr><td>${p.maquina_id||'-'}</td><td>Preventiva</td><td><span class="badge badge-${p.estado==='Realizada'?'success':p.estado==='Vencida'?'danger':'warning'}">${p.estado}</span></td><td>${p.fecha_programada||'-'}</td></tr>`),
-                   ...corr.slice(0,5).map(c=>`<tr><td>${c.maquina_id||'-'}</td><td>Correctiva</td><td><span class="badge badge-danger">${c.estado||'En Mantención'}</span></td><td>${c.fecha_falla||'-'}</td></tr>`)].join('')}
-                </tbody></table>
-            </div></div>`;
-    } else if (sub === 'preventivo') {
-        const [registros, maquinas] = await Promise.all([db.sigma.getAll('preventive_maintenance'), db.sigma.getAll('machines')]);
-        const sorted = registros.sort((a,b) => {
-            const dA = a.fecha_programada ? new Date(a.fecha_programada+'T00:00:00') : new Date(0);
-            const dB = b.fecha_programada ? new Date(b.fecha_programada+'T00:00:00') : new Date(0);
-            return dA - dB;
-        });
-        const filtered = sorted.filter(r => r.estado === 'Programada' || r.estado === 'Vencida');
-        main.innerHTML = `
-            <div class="card"><div class="card-header"><h3>Mantención Preventiva</h3><span class="badge badge-info">${filtered.length} pendientes</span></div>
-            <div class="card-body" style="padding:0"><table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Programada</th><th>Técnico</th><th>Estado</th></tr></thead><tbody>
-            ${filtered.map(r => {
-                const maq = maquinas.find(m=>m.id===r.maquina_id);
-                return `<tr><td>${maq?maq.nombre:'-'}</td><td>${r.componente_id||'-'}</td><td>${r.fecha_programada||'-'}</td><td>${r.tecnico||'-'}</td><td><span class="badge badge-${r.estado==='Vencida'?'danger':'warning'}">${r.estado}</span></td></tr>`;
-            }).join('')}
-            </tbody></table></div></div>`;
-    } else if (sub === 'bitacora') {
-        const bitacora = await db.sigma.getBitacora();
-        main.innerHTML = `
-            <div class="card"><div class="card-header"><h3>Bitácora de Mantención</h3></div>
-            <div class="card-body" style="padding:0"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Máquina</th><th>Componente</th><th>Técnico</th><th>Estado</th></tr></thead><tbody>
-            ${bitacora.filter(b=>b.estado==='Reparada'||b.estado==='Realizada').slice(0,30).map(b => {
-                const f = b.tipo_mantencion==='Preventiva' ? (b.fecha_ejecutada||b.fecha_programada) : (b.fecha_falla||'');
-                const fc = f ? new Date(f+'T12:00:00').toLocaleDateString('es-CL') : '-';
-                return `<tr><td>${fc}</td><td><span class="badge badge-${b.tipo_mantencion==='Preventiva'?'success':'danger'}">${b.tipo_mantencion}</span></td><td>${b.maquina_nombre||'-'}</td><td>${b.componente_nombre||'-'}</td><td>${b.tecnico||'-'}</td><td><span class="badge badge-success">${b.estado}</span></td></tr>`;
-            }).join('')}
-            </tbody></table></div></div>`;
-    } else {
-        main.innerHTML = `<div class="card"><div class="card-header"><h3>${sub}</h3></div><div class="card-body"><p>Módulo en desarrollo...</p></div></div>`;
-    }
-}
-
-// =====================================================
-// USUARIOS
-// =====================================================
-async function loadUsuarios() {
-    const main = document.getElementById('mainContent');
-    const users = await db.request('GET', '/admin/usuarios');
-    main.innerHTML = `
-        <div class="card">
-            <div class="card-header"><h3>Usuarios</h3><button class="btn btn-success btn-sm" onclick="showUserForm()">+ Nuevo</button></div>
-            <div class="card-body" style="padding:0">
-                <table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Permisos</th><th>Acciones</th></tr></thead><tbody>
-                ${users.map(u => `<tr>
-                    <td><strong>${u.nombre}</strong></td><td>${u.email}</td>
-                    <td><span class="badge badge-info">${u.rol}</span></td>
-                    <td>${(u.permisos||[]).map(p=>`<span class="badge badge-success" style="margin:1px">${p}</span>`).join(' ')||'-'}</td>
-                    <td><button class="btn btn-outline btn-sm" onclick='showUserForm(${JSON.stringify(u)})'>Editar</button>
-                    ${u.rol!=='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">Eliminar</button>`:''}</td>
-                </tr>`).join('')}
-                </tbody></table>
+            <div class="module-card-info">
+                <div class="module-card-name">${m.name}</div>
+                <div class="module-card-desc">${m.desc}</div>
             </div>
-        </div>`;
-}
-
-async function showUserForm(user) {
-    const isEdit = !!user;
-    document.getElementById('modalTitle').textContent = isEdit ? 'Editar Usuario' : 'Nuevo Usuario';
-    document.getElementById('modalBody').innerHTML = `
-        <div class="form-group"><label>Nombre</label><input class="form-control" id="fNombre" value="${user?.nombre||''}"></div>
-        <div class="form-group"><label>Email</label><input class="form-control" id="fEmail" type="email" value="${user?.email||''}"></div>
-        <div class="form-group"><label>${isEdit?'Nueva contraseña (vacío = no cambiar)':'Contraseña'}</label><input class="form-control" id="fPassword" type="password"></div>
-        <div class="form-group"><label>Rol</label><select class="form-control" id="fRol">
-            <option value="usuario" ${user?.rol==='usuario'?'selected':''}>Usuario</option>
-            <option value="admin" ${user?.rol==='admin'?'selected':''}>Admin</option></select></div>
-        <div class="form-group"><label>Permisos</label><div style="display:flex;flex-wrap:wrap;gap:8px">
-            ${['sigma','inventario','inventario.movimientos','inventario.historial','inventario.catalogos','turnos','turnos.recepcion','turnos.bodega','pedidos','pedidos.autorizar','usuarios','produccion'].map(p =>
-                `<label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="perm-check" value="${p}" ${(user?.permisos||[]).includes(p)?'checked':''}> ${p}</label>`
-            ).join('')}</div></div>`;
-    document.getElementById('modalFooter').innerHTML = `
-        <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="saveUser(${user?.id||0})">${isEdit?'Actualizar':'Crear'}</button>`;
-    document.getElementById('modalOverlay').classList.add('show');
-}
-
-async function saveUser(id) {
-    const data = {
-        nombre: document.getElementById('fNombre').value.trim(),
-        email: document.getElementById('fEmail').value.trim(),
-        rol: document.getElementById('fRol').value,
-        permisos: Array.from(document.querySelectorAll('.perm-check:checked')).map(c=>c.value)
-    };
-    const pw = document.getElementById('fPassword').value;
-    if (pw) data.password = pw;
-    if (!data.nombre || !data.email) return alert('Nombre y email requeridos');
-    if (!id && !pw) return alert('Contraseña requerida');
-    try {
-        await db.request(id?'PUT':'POST', id?`/admin/usuarios/${id}`:'/admin/usuarios', data);
-        closeModal(); loadUsuarios();
-    } catch(e) { alert('Error: '+e.message); }
-}
-
-async function deleteUser(id) {
-    if (!confirm('¿Eliminar este usuario?')) return;
-    await db.request('DELETE', `/admin/usuarios/${id}`);
-    loadUsuarios();
-}
-
-// =====================================================
-// VENTAS (PEDIDOS)
-// =====================================================
-async function loadVentas() {
-    const main = document.getElementById('mainContent');
-    const permisos = getPermisos(currentUser);
-    const canAuthorize = permisos.includes('pedidos.autorizar') || permisos.includes('usuarios');
-
-    const res = await fetch('/api/pedidos', { headers: { 'X-User-Permisos': permisos.join(','), 'X-User-Email': currentUser.email||'' }});
-    const pedidos = await res.json();
-
-    main.innerHTML = `
-        <div class="stats-grid">
-            <div class="stat-card"><div class="stat-value" style="color:var(--info)">${pedidos.length}</div><div class="stat-label">Total</div></div>
-            <div class="stat-card"><div class="stat-value" style="color:var(--warning)">${pedidos.filter(p=>p.estado==='pendiente').length}</div><div class="stat-label">Pendientes</div></div>
-            <div class="stat-card"><div class="stat-value" style="color:var(--success)">${pedidos.filter(p=>p.estado==='aprobado').length}</div><div class="stat-label">Aprobados</div></div>
-            <div class="stat-card"><div class="stat-value" style="color:var(--danger)">${pedidos.filter(p=>p.estado==='rechazado').length}</div><div class="stat-label">Rechazados</div></div>
+            <div class="module-card-arrow">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>
+            </div>
         </div>
-        <div class="card">
-            <div class="card-header"><h3>Pedidos</h3><button class="btn btn-success btn-sm" onclick="showUploadPedido()">+ Nuevo Pedido</button></div>
-            <div class="card-body" style="padding:0">
-                <table><thead><tr><th>N° Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-                ${pedidos.map(p => `<tr>
-                    <td><strong>${p.numero_pedido}</strong></td><td>${p.cliente}</td><td>${p.vendedor}</td>
-                    <td>${p.fecha_subida?new Date(p.fecha_subida).toLocaleDateString('es-CL'):'-'}</td>
-                    <td><span class="badge badge-${p.estado==='aprobado'?'success':p.estado==='rechazado'?'danger':'warning'}">${p.estado}</span></td>
-                    <td>
-                        ${p.archivo_url?`<a href="${p.archivo_url}" target="_blank" class="btn btn-outline btn-sm">Ver PDF</a>`:''}
-                        ${canAuthorize&&p.estado==='pendiente'?`<button class="btn btn-success btn-sm" onclick="reviewPedido(${p.id},'aprobado')">✓</button><button class="btn btn-danger btn-sm" onclick="reviewPedido(${p.id},'rechazado')">✗</button>`:''}
-                    </td>
-                </tr>`).join('')}
-                </tbody></table>
-            </div>
-        </div>`;
+    `).join('');
 }
 
-async function showUploadPedido() {
-    document.getElementById('modalTitle').textContent = 'Nuevo Pedido';
-    document.getElementById('modalBody').innerHTML = `
-        <div class="form-group"><label>Número de Pedido *</label><input class="form-control" id="pNumero"></div>
-        <div class="form-group"><label>Cliente *</label><input class="form-control" id="pCliente"></div>
-        <div class="form-group"><label>PDF</label><input type="file" class="form-control" id="pFile" accept=".pdf"></div>`;
-    document.getElementById('modalFooter').innerHTML = `
-        <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-success" onclick="uploadPedido()">Subir</button>`;
-    document.getElementById('modalOverlay').classList.add('show');
+// ─── Module Loading (iframe) ───────────────────
+function openModule(id) {
+    const mod = MODULES.find(m => m.id === id);
+    if (!mod) return;
+
+    document.getElementById('launcherView').style.display = 'none';
+    document.getElementById('moduleView').style.display = 'flex';
+    document.getElementById('moduleLabel').textContent = mod.name;
+
+    const frame = document.getElementById('moduleFrame');
+    frame.src = mod.url;
+
+    // Update nav active state
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const navItem = document.querySelector(`.nav-item[data-page="${id}"]`);
+    if (navItem) navItem.classList.add('active');
 }
 
-async function uploadPedido() {
-    const numero = document.getElementById('pNumero').value.trim();
-    const cliente = document.getElementById('pCliente').value.trim();
-    const file = document.getElementById('pFile').files[0];
-    if (!numero || !cliente) return alert('Número y cliente requeridos');
+function closeModule() {
+    document.getElementById('moduleView').style.display = 'none';
+    document.getElementById('launcherView').style.display = 'grid';
+    document.getElementById('moduleFrame').src = 'about:blank';
 
-    let archivoUrl = '';
-    if (file) {
-        const base64 = await new Promise(r => { const reader = new FileReader(); reader.onload = () => r(reader.result.split(',')[1]); reader.readAsDataURL(file); });
-        const fileName = `${numero}_${Date.now()}.pdf`;
-        const upRes = await fetch('/api/r2/upload', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({fileName, fileContent:base64, contentType:'application/pdf'}) });
-        const upData = await upRes.json();
-        if (!upRes.ok) return alert(upData.error||'Error al subir PDF');
-        archivoUrl = upData.url;
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const homeItem = document.querySelector('.nav-item[data-page="inicio"]');
+    if (homeItem) homeItem.classList.add('active');
+}
+
+function showLauncher() {
+    closeModule();
+}
+
+// ─── Sidebar Toggle ────────────────────────────
+function toggleSidebar() {
+    sidebarOpen = !sidebarOpen;
+    document.getElementById('sidebar').classList.toggle('open', sidebarOpen);
+}
+
+document.addEventListener('click', (e) => {
+    if (sidebarOpen && !e.target.closest('.sidebar') && !e.target.closest('.menu-toggle')) {
+        sidebarOpen = false;
+        document.getElementById('sidebar').classList.remove('open');
     }
-
-    await fetch('/api/pedidos', { method:'POST', headers:{'Content-Type':'application/json','X-User-Permisos':getPermisos(currentUser).join(','),'X-User-Email':currentUser.email||''},
-        body:JSON.stringify({numero_pedido:numero, cliente, vendedor:currentUser.email||'', archivo_url:archivoUrl}) });
-    closeModal(); loadVentas();
-}
-
-async function reviewPedido(id, estado) {
-    const motivo = estado==='rechazado'?prompt('Motivo del rechazo:'):null;
-    if (estado==='rechazado' && !motivo) return;
-    await fetch(`/api/pedidos/${id}`, { method:'PUT', headers:{'Content-Type':'application/json','X-User-Permisos':getPermisos(currentUser).join(','),'X-User-Email':currentUser.email||''},
-        body:JSON.stringify({estado, motivo_rechazo:motivo, revisado_por:currentUser.email||''}) });
-    loadVentas();
-}
-
-// =====================================================
-// PRODUCCIÓN
-// =====================================================
-async function loadProduccion() {
-    document.getElementById('mainContent').innerHTML = `
-        <div class="card"><div class="card-body"><div class="empty-state">
-            <p style="font-size:48px;margin-bottom:16px">⚙️</p>
-            <h3>Producción</h3>
-            <p>Módulo en desarrollo. Próximamente se agregarán informes y formularios.</p>
-        </div></div></div>`;
-}
-
-// =====================================================
-// STOCK MODULES
-// =====================================================
-async function loadStockModule(sub) {
-    const main = document.getElementById('mainContent');
-
-    if (sub === 'inventario') {
-        const inv = await db.inv.getInventario();
-        main.innerHTML = `
-            <div class="card"><div class="card-header"><h3>Inventario de Cristales</h3></div>
-            <div class="card-body" style="padding:0"><table><thead><tr><th>Tipo</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Stock (m²)</th></tr></thead><tbody>
-            ${inv.map(i => `<tr><td>${i.tipo_cristal}</td><td>${i.espesor}mm</td><td>${i.ancho}</td><td>${i.alto}</td><td><strong>${Math.round(i.metros_cuadrados||0)}</strong></td></tr>`).join('')}
-            </tbody></table></div></div>`;
-    } else if (sub === 'movimientos') {
-        const movs = await db.inv.getMovimientos();
-        main.innerHTML = `
-            <div class="card"><div class="card-header"><h3>Movimientos</h3></div>
-            <div class="card-body" style="padding:0"><table><thead><tr><th>Fecha</th><th>Tipo</th><th> Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cant.</th><th>m²</th></tr></thead><tbody>
-            ${movs.slice(0,50).map(m => {
-                const f = m.fecha_hora ? new Date(m.fecha_hora).toLocaleDateString('es-CL') : '-';
-                return `<tr><td>${f}</td><td><span class="badge badge-${m.tipo_movimiento==='Entrada'?'success':'danger'}">${m.tipo_movimiento}</span></td><td>${m.tipo_cristal}</td><td>${m.espesor}mm</td><td>${m.ancho}×${m.alto}</td><td>${m.cantidad_planchas}</td><td>${Math.round(m.metros_cuadrados)}</td></tr>`;
-            }).join('')}
-            </tbody></table></div></div>`;
-    } else {
-        main.innerHTML = `<div class="card"><div class="card-header"><h3>${sub}</h3></div><div class="card-body"><p>Módulo en desarrollo...</p></div></div>`;
-    }
-}
-
-// =====================================================
-// TURNOS MODULES
-// =====================================================
-async function loadTurnosModule(sub) {
-    const main = document.getElementById('mainContent');
-
-    if (sub === 'recepcion') {
-        const [estado, cola] = await Promise.all([db.turnos.getEstado(), db.turnos.getCola()]);
-        main.innerHTML = `
-            <div class="stats-grid">
-                <div class="stat-card"><div class="stat-value" style="color:var(--info)">${estado.total||0}</div><div class="stat-label">Total Hoy</div></div>
-                <div class="stat-card"><div class="stat-value" style="color:var(--warning)">${estado.enCola||0}</div><div class="stat-label">En Cola</div></div>
-            </div>
-            <div class="card"><div class="card-header"><h3>Turno Actual</h3><button class="btn btn-primary btn-sm" onclick="siguienteTurno()">Siguiente →</button></div>
-            <div class="card-body">
-                <p style="font-size:24px;font-weight:700;color:var(--info)">${estado.actual?`#${estado.actual.numero} - ${estado.actual.nombre}`:'Sin turno'}</p>
-            </div></div>
-            <div class="card" style="margin-top:16px"><div class="card-header"><h3>Cola de Espera (${cola.length})</h3></div>
-            <div class="card-body" style="padding:0"><table><thead><tr><th>#</th><th>Nombre</th><th>Hora</th></tr></thead><tbody>
-            ${cola.map((c,i) => `<tr><td>${i+1}</td><td>${c.nombre}</td><td>${c.hora_creacion||'-'}</td></tr>`).join('')}
-            </tbody></table></div></div>`;
-    } else if (sub === 'qr') {
-        const estado = await db.turnos.getEstado();
-        main.innerHTML = `
-            <div class="card" style="text-align:center"><div class="card-body">
-                <h3 style="margin-bottom:16px">Código QR para Turnos</h3>
-                <div style="background:white;padding:16px;display:inline-block;border-radius:12px">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.origin+'/turnos/?view=registro')}" alt="QR">
-                </div>
-                <p style="margin-top:16px;color:var(--text-light)">Escanea para tomar turno</p>
-                <div class="stats-grid" style="margin-top:16px;justify-content:center">
-                    <div class="stat-card"><div class="stat-value" style="color:var(--info)">${estado.total||0}</div><div class="stat-label">Total hoy</div></div>
-                    <div class="stat-card"><div class="stat-value" style="color:var(--warning)">${estado.enCola||0}</div><div class="stat-label">En espera</div></div>
-                </div>
-            </div></div>`;
-    } else {
-        main.innerHTML = `<div class="card"><div class="card-header"><h3>${sub}</h3></div><div class="card-body"><p>Módulo en desarrollo...</p></div></div>`;
-    }
-}
-
-async function siguienteTurno() {
-    await db.turnos.siguiente();
-    loadTurnosModule('recepcion');
-}
-
-// =====================================================
-// UTILS
-// =====================================================
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
-function doLogout() { localStorage.removeItem(USER_KEY); window.location.href = '/'; }
-function updateDate() {
-    const el = document.getElementById('currentDate');
-    if (el) el.textContent = new Date().toLocaleDateString('es-CL', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-}
-
-// =====================================================
-// INIT
-// =====================================================
-document.addEventListener('DOMContentLoaded', () => {
-    currentUser = getUser();
-    if (!currentUser) { window.location.href = '/'; return; }
-    document.getElementById('userName').textContent = currentUser.nombre;
-    document.getElementById('userAvatar').textContent = (currentUser.nombre||'U').charAt(0).toUpperCase();
-    updateDate();
-    renderSidebar();
-    loadPage('sigma-dashboard');
 });
