@@ -13,14 +13,6 @@ App.registerModule('preventive', {
         }
         if (filterEstado) filtered = filtered.filter(r => r.estado === filterEstado);
         if (filterMaquina) filtered = filtered.filter(r => r.maquina_id === parseInt(filterMaquina));
-        
-        // Sort by fecha_programada ascending (oldest first)
-        filtered.sort((a, b) => {
-            const dateA = a.fecha_programada || '';
-            const dateB = b.fecha_programada || '';
-            return dateA.localeCompare(dateB);
-        });
-        
         const today = new Date().toISOString().split('T')[0];
 
         el.innerHTML = `
