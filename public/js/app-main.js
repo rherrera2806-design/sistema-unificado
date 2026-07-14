@@ -264,6 +264,30 @@ const App = {
             badge.textContent = count;
         } else if (badge) { badge.remove(); }
         await this.updateNotasBadge();
+        await this.updateTurnosBadges();
+    },
+
+    async updateTurnosBadges() {
+        try {
+            const [estadoRes, entregasRes] = await Promise.all([
+                fetch('/api/turnos/estado'),
+                fetch('/api/turnos/entregas/pendientes')
+            ]);
+            const estado = await estadoRes.json();
+            const entregas = await entregasRes.json();
+            this.setSidebarBadge('turnos_recepcion', estado.enCola || 0);
+            this.setSidebarBadge('turnos_bodega', entregas.length || 0);
+        } catch(e) {}
+    },
+
+    setSidebarBadge(page, count) {
+        const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+        if (!navItem) return;
+        let badge = navItem.querySelector('.badge');
+        if (count > 0) {
+            if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; navItem.appendChild(badge); }
+            badge.textContent = count;
+        } else if (badge) { badge.remove(); }
     }
 };
 
@@ -401,5 +425,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     renderSidebar();
     await App.updateNavBadge();
+    setInterval(() => App.updateTurnosBadges(), 5000);
     App.loadModule('dashboard');
 });
