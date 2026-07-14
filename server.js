@@ -1290,6 +1290,7 @@ const server = http.createServer(async (req, res) => {
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         const numRow = await query('SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM turnos WHERE fecha = $1', [hoy]);
+        const numero = numRow.rows[0].next;
         const result = await query(
             'INSERT INTO turnos (nombre, numero, fecha, hora_creacion) VALUES ($1, $2, $3, $4) RETURNING *',
             [nombre, numero, hoy, hora]
