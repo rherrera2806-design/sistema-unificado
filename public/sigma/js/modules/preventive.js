@@ -23,15 +23,9 @@ App.registerModule('preventive', {
         
         // Sort by fecha_programada ascending (oldest first)
         filtered.sort((a, b) => {
-            const parseDate = (dateStr) => {
-                if (!dateStr) return new Date(0);
-                const parts = dateStr.split('-');
-                if (parts.length === 3 && parts[0].length === 2) {
-                    return new Date(parts[2], parts[1] - 1, parts[0]);
-                }
-                return new Date(dateStr);
-            };
-            return parseDate(a.fecha_programada) - parseDate(b.fecha_programada);
+            const dateA = a.fecha_programada ? new Date(a.fecha_programada + 'T00:00:00') : new Date(0);
+            const dateB = b.fecha_programada ? new Date(b.fecha_programada + 'T00:00:00') : new Date(0);
+            return dateA - dateB;
         });
         
         const today = new Date().toISOString().split('T')[0];
