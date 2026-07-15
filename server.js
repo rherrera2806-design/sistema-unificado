@@ -191,8 +191,7 @@ async function initDB() {
         stock_critico INTEGER DEFAULT 0,
         consumo_mensual_aprox INTEGER DEFAULT 0,
         activo BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(nombre, espesor)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
     // Migracion: agregar columnas nuevas si no existen
@@ -200,7 +199,7 @@ async function initDB() {
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0").catch(() => {});
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS espesor INTEGER DEFAULT 0").catch(() => {});
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''").catch(() => {});
-    // Migracion: eliminar constraint UNIQUE viejo
+    // Migracion: eliminar todos los constraints UNIQUE viejos
     await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_key").catch(() => {});
     await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_espesor_key").catch(() => {});
     // Crear indice unico parcial: solo aplica a registros activos
