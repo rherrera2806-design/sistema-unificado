@@ -315,14 +315,29 @@ function doLogout() {
 }
 
 // ─── Sidebar Structure (permisos jerárquicos) ────
+const SIDEBAR_SECTIONS = {
+    mantencion: ['dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora'],
+    inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
+    atencion: ['turnos_recepcion','turnos_bodega','turnos_qr'],
+    ventas: ['pedidos'],
+    administracion: ['usuarios']
+};
+
 function getUserPerms() {
     const u = getUser();
     return u ? (u.permisos || []) : [];
 }
 function hasPerm(p) { return getUserPerms().includes(p); }
 function isAdmin() { const u = getUser(); return u && u.rol === 'admin'; }
-function hasSection(section) { return isAdmin() || hasPerm(section); }
-function canSeeItem(item, section) { return isAdmin() || hasPerm(section) || hasPerm(item); }
+function hasSection(section) {
+    if (isAdmin()) return true;
+    if (hasPerm(section)) return true;
+    const items = SIDEBAR_SECTIONS[section] || [];
+    return items.some(it => hasPerm(it));
+}
+function canSeeItem(item, section) {
+    return isAdmin() || hasPerm(section) || hasPerm(item);
+}
 
 function renderSidebar() {
     const nav = document.getElementById('sidebarNav');
