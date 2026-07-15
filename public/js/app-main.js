@@ -269,6 +269,16 @@ const App = {
         await this.updateNotasBadge();
         await this.updateTurnosBadges();
         await this.updateInvAlertasBadge();
+        await this.updatePedidosBadge();
+    },
+
+    async updatePedidosBadge() {
+        try {
+            const res = await fetch('/api/pedidos');
+            const pedidos = await res.json();
+            const pending = pedidos.filter(p => p.estado === 'pendiente').length;
+            this.setSidebarBadge('pedidos', pending);
+        } catch(e) {}
     },
 
     async updateTurnosBadges() {
@@ -455,5 +465,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await App.updateNavBadge();
     setInterval(() => App.updateTurnosBadges(), 5000);
     setInterval(() => App.updateInvAlertasBadge(), 30000);
+    setInterval(() => App.updatePedidosBadge(), 10000);
     App.loadModule('dashboard');
 });

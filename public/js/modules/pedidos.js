@@ -45,9 +45,9 @@ App.registerModule('pedidos', {
                 <div class="card-header"><h3>Lista de Pedidos</h3></div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr>
-                        <th>N Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fecha Subida</th><th>Estado</th><th>Acciones</th>
+                        <th>N Pedido</th><th>Cliente</th><th>Vendedor</th><th>Fecha Subida</th><th>Estado</th><th>Fecha Revision</th><th>Acciones</th>
                     </tr></thead><tbody id="pedidosTable">
-                        <tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">Cargando pedidos...</td></tr>
+                        <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando pedidos...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -149,17 +149,29 @@ App.registerModule('pedidos', {
 
     renderTable(pedidos) {
         const tbody = document.getElementById('pedidosTable');
-        if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">No hay pedidos</td></tr>'; return; }
+        if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">No hay pedidos</td></tr>'; return; }
         const isAdmin = this.canAuthorize;
+        const estadoBadge = (e) => {
+            if (e === 'aprobado') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">✓ APROBADO</span>';
+            if (e === 'rechazado') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fee2e2;color:#991b1b">✗ RECHAZADO</span>';
+            return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">⚡ PENDIENTE</span>';
+        };
         tbody.innerHTML = pedidos.map(p => `<tr>
             <td><strong>${p.numero_pedido}</strong></td><td>${p.cliente}</td><td>${p.vendedor}</td>
-            <td>${this.fmtDate(p.fecha_subida)}</td>
-            <td><span class="badge badge-${p.estado === 'pendiente' ? 'programada' : p.estado === 'aprobado' ? 'realizada' : 'vencida'}">${p.estado}</span></td>
+            <td>${this.fmtDateTime(p.fecha_subida)}</td>
+            <td>${estadoBadge(p.estado)}</td>
+            <td>${p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '-'}</td>
             <td>
                 <button class="btn btn-sm btn-outline" onclick="App.modules.pedidos.viewPdf(${p.id})">Ver PDF</button>
                 ${this.canAuthorize && p.estado === 'pendiente' ? `<button class="btn btn-sm btn-primary" style="margin-left:4px" onclick="App.modules.pedidos.showReviewModal(${p.id})">Revisar</button>` : ''}
                 ${isAdmin ? `<button class="btn btn-sm btn-outline" style="margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.pedidos.deletePedido(${p.id},'${p.numero_pedido}')">Eliminar</button>` : ''}
             </td></tr>`).join('');
+        this.updatePendingBadge(pedidos);
+    },
+
+    updatePendingBadge(pedidos) {
+        const pending = pedidos.filter(p => p.estado === 'pendiente').length;
+        App.setSidebarBadge('pedidos', pending);
     },
 
     showUploadModal() {
@@ -223,7 +235,7 @@ App.registerModule('pedidos', {
         document.getElementById('pedReviewNumero').textContent = this.currentPedido.numero_pedido;
         document.getElementById('pedReviewCliente').textContent = this.currentPedido.cliente;
         document.getElementById('pedReviewVendedor').textContent = this.currentPedido.vendedor;
-        document.getElementById('pedReviewFecha').textContent = this.fmtDate(this.currentPedido.fecha_subida);
+        document.getElementById('pedReviewFecha').textContent = this.fmtDateTime(this.currentPedido.fecha_subida);
         document.getElementById('pedReviewPdf').src = `/api/pedidos/${this.currentPedido.id}/pdf`;
         document.getElementById('pedMotivo').value = '';
         document.getElementById('pedMotivoGroup').style.display = 'none';
@@ -273,5 +285,6 @@ App.registerModule('pedidos', {
         } catch(e) { alert('Error al eliminar: ' + e.message); }
     },
 
-    fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+    fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); },
+    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }); }
 });
