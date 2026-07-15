@@ -199,71 +199,19 @@ App.registerModule('pedidos', {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const fileName = `${numero}_${Date.now()}.pdf`;
 
-            const presignRes = await fetch('/api/r2/presign-post', {
+            const presignRes = await fetch('/api/r2/presign-put', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fileName })
             });
             const presign = await presignRes.json();
             if (!presignRes.ok || !presign.url) throw new Error(presign.error || 'Error al generar URL');
 
-            await new Promise((resolve, reject) => {
-                const iframe = document.createElement('iframe');
-                iframe.name = 'r2upload_' + Date.now();
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
-
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = presign.url;
-                form.target = iframe.name;
-                form.enctype = 'multipart/form-data';
-
-                const fields = {
-                    'key': presign.key,
-                    'AWSAccessKeyId': presign.AWSAccessKeyId,
-                    'policy': presign.policy,
-                    'signature': presign.signature,
-                    'Content-Type': presign['Content-Type']
-                };
-                for (const [name, value] of Object.entries(fields)) {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = name;
-                    input.value = value;
-                    form.appendChild(input);
-                }
-
-                const fileInput = document.createElement('input');
-                fileInput.type = 'file';
-                fileInput.name = 'file';
-                fileInput.style.display = 'none';
-                form.appendChild(fileInput);
-
-                const dt = new DataTransfer();
-                dt.items.add(this.selectedFile);
-                fileInput.files = dt.files;
-
-                iframe.onload = () => {
-                    setTimeout(() => {
-                        try {
-                            const resp = iframe.contentDocument?.body?.textContent || '';
-                            if (resp.includes('AccessDenied') || resp.includes('Error')) {
-                                reject(new Error('R2 rechazo el archivo'));
-                            } else {
-                                resolve();
-                            }
-                        } catch(e) {
-                            resolve();
-                        }
-                        document.body.removeChild(iframe);
-                        document.body.removeChild(form);
-                    }, 1000);
-                };
-                iframe.onerror = () => { reject(new Error('Error de conexion')); document.body.removeChild(iframe); };
-
-                document.body.appendChild(form);
-                form.submit();
+            const uploadUrl = `${presign.url}?${presign.queryParams}`;
+            const putRes = await fetch(uploadUrl, {
+                method: 'PUT',
+                body: this.selectedFile
             });
+            if (!putRes.ok) throw new Error('R2 rechazo el archivo (HTTP ' + putRes.status + ')');
 
             const publicUrl = presign.publicUrl;
             const res = await fetch('/api/pedidos', {

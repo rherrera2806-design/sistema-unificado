@@ -1922,6 +1922,51 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // R2 - PRESIGN PUT (para subida directa desde browser)
+    if (urlPath === '/api/r2/presign-put' && req.method === 'POST') {
+        if (!R2_ACCESS_KEY_ID) { json(res, { error: 'R2 no configurado' }, 500); return; }
+        const body = await parseBody(req);
+        const { fileName } = body;
+        if (!fileName) { json(res, { error: 'fileName requerido' }, 400); return; }
+        try {
+            const key = `pedidos/${fileName}`;
+            const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+            const region = 'auto';
+            const service = 's3';
+            const now = new Date();
+            const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+            const dateStamp = amzDate.substring(0, 8);
+            const expires = 3600;
+            const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/${service}/aws4_request`;
+            const signedHeaders = 'host';
+            const canonicalUri = '/' + key.split('/').map(p => encodeURIComponent(p)).join('/');
+            const canonicalRequest = `PUT\n${canonicalUri}\n\nhost:${host}\n\nhost\nUNSIGNED-PAYLOAD`;
+            const canonicalRequestHash = crypto.createHash('sha256').update(canonicalRequest).digest('hex');
+            const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${dateStamp}/${region}/${service}/aws4_request\n${canonicalRequestHash}`;
+            const kDate = crypto.createHmac('sha256', `AWS4${R2_SECRET_ACCESS_KEY}`).update(dateStamp).digest();
+            const kRegion = crypto.createHmac('sha256', kDate).update(region).digest();
+            const kService = crypto.createHmac('sha256', kRegion).update(service).digest();
+            const kSigning = crypto.createHmac('sha256', kService).update('aws4_request').digest();
+            const signature = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+            const queryParams = [
+                'X-Amz-Algorithm=AWS4-HMAC-SHA256',
+                `X-Amz-Credential=${encodeURIComponent(credential)}`,
+                `X-Amz-Date=${amzDate}`,
+                `X-Amz-Expires=${expires}`,
+                'X-Amz-SignedHeaders=host',
+                `X-Amz-Signature=${signature}`
+            ].join('&');
+            const url = `https://${host}/${key}`;
+            const publicUrl = `${R2_PUBLIC_URL}/${key}`;
+            console.log('[R2] Presign PUT generated for:', key);
+            json(res, { url, key, publicUrl, queryParams });
+        } catch(e) {
+            console.error('[R2] Presign PUT error:', e.message);
+            json(res, { error: 'Error al generar presign PUT' }, 500);
+        }
+        return;
+    }
+
     // =====================================================
     // =====================================================
     if (urlPath === '/api/r2/download' && req.method === 'GET') {
