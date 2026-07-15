@@ -3,23 +3,19 @@ const InvMovimientos = {
     tipoSalida: '',
     allMovimientos: [],
     tiposCristal: [],
-    espesores: [],
 
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         
         try {
-            // Cargar catálogos y movimientos en paralelo
-            const [movimientos, tiposCristal, espesores] = await Promise.all([
+            const [movimientos, tiposCristal] = await Promise.all([
                 api.inv().getMovimientos(),
-                api.catalogos.getTiposCristal(),
-                api.catalogos.getEspesores()
+                api.catalogos.getTiposCristal()
             ]);
             
             this.allMovimientos = movimientos;
             this.tiposCristal = tiposCristal;
-            this.espesores = espesores;
 
             page.innerHTML = `
                 <div class="page-header">
@@ -51,14 +47,7 @@ const InvMovimientos = {
                                     <label for="tipoCristal">Tipo de Cristal *</label>
                                     <select id="tipoCristal" class="form-control" required>
                                         <option value="">Seleccionar...</option>
-                                        ${tiposCristal.map(t => `<option value="${this.escapeHtml(t.nombre)}">${this.escapeHtml(t.nombre)}</option>`).join('')}
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="espesor">Espesor (mm) *</label>
-                                    <select id="espesor" class="form-control" required>
-                                        <option value="">Seleccionar...</option>
-                                        ${espesores.map(e => `<option value="${e.valor}">${e.valor} mm</option>`).join('')}
+                                        ${tiposCristal.map(t => `<option value="${t.nombre}|${t.espesor}">${this.escapeHtml(t.nombre)} ${t.espesor}mm</option>`).join('')}
                                     </select>
                                 </div>
                             </div>
@@ -211,7 +200,14 @@ const InvMovimientos = {
             return; 
         }
 
-        // Validar dimensiones como enteros
+        const tipoCristalVal = document.getElementById('tipoCristal').value;
+        if (!tipoCristalVal) {
+            App.toast('Selecciona tipo de cristal', 'error');
+            return;
+        }
+
+        const [tipoCristal, espesor] = tipoCristalVal.split('|');
+
         const ancho = document.getElementById('ancho').value;
         const alto = document.getElementById('alto').value;
         const cantidad = document.getElementById('cantidadPlanchas').value;
@@ -230,14 +226,13 @@ const InvMovimientos = {
         }
 
         try {
-            // Obtener fecha y hora actual del sistema
             const now = new Date();
             const fechaHora = now.toISOString();
             
             await api.inv().crearMovimiento({
                 tipo_movimiento: this.tipoMovimiento,
-                tipo_cristal: document.getElementById('tipoCristal').value,
-                espesor: parseInt(document.getElementById('espesor').value),
+                tipo_cristal: tipoCristal,
+                espesor: parseInt(espesor),
                 ancho: parseInt(ancho),
                 alto: parseInt(alto),
                 cantidad_planchas: parseInt(cantidad),
