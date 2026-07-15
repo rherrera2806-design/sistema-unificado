@@ -29,10 +29,11 @@ const InvCatalogos = {
                         <div style="display:flex; gap:8px; margin-bottom:8px;">
                             <input type="text" id="nuevoTipoCristal" class="form-control" placeholder="Tipo de cristal..." style="flex:1;">
                             <input type="number" id="nuevoEspesorTC" class="form-control" placeholder="Espesor" min="0" style="width:90px;">
+                            <input type="text" id="nuevoCodigoSap" class="form-control" placeholder="Cód. SAP" style="width:120px;">
                         </div>
                         <div style="display:flex; gap:8px; margin-bottom:16px;">
                             <input type="number" id="nuevoStockCritico" class="form-control" placeholder="Stock crítico (planchas)" min="0" style="flex:1;">
-                            <input type="number" id="nuevoConsumoMensual" class="form-control" placeholder="Consumo mensual aprox" min="0" step="0.1" style="flex:1;">
+                            <input type="number" id="nuevoConsumoMensual" class="form-control" placeholder="Consumo mensual aprox" min="0" style="flex:1;">
                         </div>
                         <div style="margin-bottom:16px;">
                             <button class="btn btn-success" onclick="InvCatalogos.agregarTipoCristal()" style="width:100%;">+ Agregar</button>
@@ -62,6 +63,7 @@ const InvCatalogos = {
                     <div style="display:flex;align-items:center;gap:8px;">
                         <span class="catalog-item-name" style="font-weight:700;">${this.escapeHtml(t.nombre)}</span>
                         <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(100,116,139,0.1);color:var(--text-light);">${t.espesor}mm</span>
+                        ${t.codigo_sap ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(59,130,246,0.1);color:var(--info);">SAP: ${this.escapeHtml(t.codigo_sap)}</span>` : ''}
                     </div>
                     <div style="display:flex;gap:4px;">
                         <button class="btn btn-sm" onclick="InvCatalogos.editarTipoCristal(${t.id})" title="Editar" style="padding:4px 8px;font-size:11px;background:rgba(59,130,246,0.1);color:var(--info);">Editar</button>
@@ -86,6 +88,7 @@ const InvCatalogos = {
     async agregarTipoCristal() {
         const nombre = document.getElementById('nuevoTipoCristal').value.trim();
         const espesor = document.getElementById('nuevoEspesorTC').value;
+        const codigoSap = document.getElementById('nuevoCodigoSap').value.trim();
         const stockCritico = document.getElementById('nuevoStockCritico').value;
         const consumoMensual = document.getElementById('nuevoConsumoMensual').value;
         
@@ -98,8 +101,9 @@ const InvCatalogos = {
             await api.catalogos.crearTipoCristal({
                 nombre,
                 espesor: parseInt(espesor) || 0,
+                codigo_sap: codigoSap,
                 stock_critico: parseInt(stockCritico) || 0,
-                consumo_mensual_aprox: parseFloat(consumoMensual) || 0
+                consumo_mensual_aprox: parseInt(consumoMensual) || 0
             });
             App.toast('Tipo de cristal agregado');
             this.render();
@@ -132,12 +136,16 @@ const InvCatalogos = {
                     <input type="number" id="editTCEspesor" class="form-control" value="${t.espesor || 0}" min="0">
                 </div>
                 <div style="margin-bottom:12px;">
+                    <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Código SAP</label>
+                    <input type="text" id="editTCCodigoSap" class="form-control" value="${this.escapeHtml(t.codigo_sap || '')}">
+                </div>
+                <div style="margin-bottom:12px;">
                     <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Stock Crítico (planchas)</label>
                     <input type="number" id="editTCStockCritico" class="form-control" value="${t.stock_critico || 0}" min="0">
                 </div>
                 <div style="margin-bottom:16px;">
                     <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Consumo Mensual Aprox (planchas)</label>
-                    <input type="number" id="editTCConsumoMensual" class="form-control" value="${t.consumo_mensual_aprox || 0}" min="0" step="0.1">
+                    <input type="number" id="editTCConsumoMensual" class="form-control" value="${t.consumo_mensual_aprox || 0}" min="0">
                 </div>
                 <div style="display:flex;gap:8px;">
                     <button onclick="document.getElementById('editModalTipoCristal').remove()" class="btn btn-outline" style="flex:1;">Cancelar</button>
@@ -151,6 +159,7 @@ const InvCatalogos = {
     async guardarTipoCristal(id) {
         const nombre = document.getElementById('editTCNombre').value.trim();
         const espesor = document.getElementById('editTCEspesor').value;
+        const codigoSap = document.getElementById('editTCCodigoSap').value.trim();
         const stockCritico = document.getElementById('editTCStockCritico').value;
         const consumoMensual = document.getElementById('editTCConsumoMensual').value;
 
@@ -163,8 +172,9 @@ const InvCatalogos = {
             await api.catalogos.editarTipoCristal(id, {
                 nombre,
                 espesor: parseInt(espesor) || 0,
+                codigo_sap: codigoSap,
                 stock_critico: parseInt(stockCritico) || 0,
-                consumo_mensual_aprox: parseFloat(consumoMensual) || 0
+                consumo_mensual_aprox: parseInt(consumoMensual) || 0
             });
             document.getElementById('editModalTipoCristal').remove();
             App.toast('Tipo de cristal actualizado');

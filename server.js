@@ -187,8 +187,9 @@ async function initDB() {
         id SERIAL PRIMARY KEY,
         nombre VARCHAR(100) NOT NULL,
         espesor INTEGER NOT NULL DEFAULT 0,
+        codigo_sap VARCHAR(50) DEFAULT '',
         stock_critico INTEGER DEFAULT 0,
-        consumo_mensual_aprox DECIMAL(10,2) DEFAULT 0,
+        consumo_mensual_aprox INTEGER DEFAULT 0,
         activo BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(nombre, espesor)
@@ -196,8 +197,9 @@ async function initDB() {
 
     // Migracion: agregar columnas nuevas si no existen
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0").catch(() => {});
-    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS consumo_mensual_aprox DECIMAL(10,2) DEFAULT 0").catch(() => {});
+    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0").catch(() => {});
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS espesor INTEGER DEFAULT 0").catch(() => {});
+    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''").catch(() => {});
     // Migracion: eliminar constraint viejo de nombre unico y crear nuevo compuesto
     await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_key").catch(() => {});
     await query("ALTER TABLE catalogo_tipos_cristal ADD CONSTRAINT catalogo_tipos_cristal_nombre_espesor_key UNIQUE (nombre, espesor)").catch(() => {});
@@ -466,11 +468,12 @@ async function crearTipoCristal(data) {
     const espesor = parseInt(data.espesor) || 0;
     const exists = await query('SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1 AND espesor = $2', [nombre, espesor]);
     if (exists.rows.length > 0) throw new Error('Ya existe este tipo de cristal con ese espesor');
+    const codigoSap = sanitizeString(data.codigo_sap) || '';
     const stockCritico = parseInt(data.stock_critico) || 0;
-    const consumoMensual = parseFloat(data.consumo_mensual_aprox) || 0;
+    const consumoMensual = parseInt(data.consumo_mensual_aprox) || 0;
     const result = await query(
-        'INSERT INTO catalogo_tipos_cristal (nombre, espesor, stock_critico, consumo_mensual_aprox) VALUES ($1, $2, $3, $4) RETURNING *',
-        [nombre, espesor, stockCritico, consumoMensual]
+        'INSERT INTO catalogo_tipos_cristal (nombre, espesor, codigo_sap, stock_critico, consumo_mensual_aprox) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [nombre, espesor, codigoSap, stockCritico, consumoMensual]
     );
     return result.rows[0];
 }
@@ -483,8 +486,8 @@ async function eliminarTipoCristal(id) {
 
 async function updateTipoCristal(id, data) {
     const result = await query(
-        'UPDATE catalogo_tipos_cristal SET nombre = $1, espesor = $2, stock_critico = $3, consumo_mensual_aprox = $4 WHERE id = $5 AND activo = TRUE RETURNING *',
-        [data.nombre, parseInt(data.espesor) || 0, parseInt(data.stock_critico) || 0, parseFloat(data.consumo_mensual_aprox) || 0, id]
+        'UPDATE catalogo_tipos_cristal SET nombre = $1, espesor = $2, codigo_sap = $3, stock_critico = $4, consumo_mensual_aprox = $5 WHERE id = $6 AND activo = TRUE RETURNING *',
+        [data.nombre, parseInt(data.espesor) || 0, sanitizeString(data.codigo_sap) || '', parseInt(data.stock_critico) || 0, parseInt(data.consumo_mensual_aprox) || 0, id]
     );
     return result.rows[0] || null;
 }
