@@ -198,28 +198,82 @@ App.registerModule('pedidos', {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const fileName = `${numero}_${Date.now()}.pdf`;
-            const fileBase64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(this.selectedFile);
-            });
 
-            const r2Res = await fetch('/api/r2/direct-upload', {
+            const presignRes = await fetch('/api/r2/presign-post', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fileName, contentType: 'application/pdf', fileBase64 })
+                body: JSON.stringify({ fileName })
             });
-            const r2Data = await r2Res.json();
-            if (!r2Res.ok || !r2Data.url) throw new Error(r2Data.error || 'Error al subir PDF a R2');
+            const presign = await presignRes.json();
+            if (!presignRes.ok || !presign.url) throw new Error(presign.error || 'Error al generar URL');
 
+            await new Promise((resolve, reject) => {
+                const iframe = document.createElement('iframe');
+                iframe.name = 'r2upload_' + Date.now();
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = presign.url;
+                form.target = iframe.name;
+                form.enctype = 'multipart/form-data';
+
+                const fields = {
+                    'key': presign.key,
+                    'AWSAccessKeyId': presign.AWSAccessKeyId,
+                    'policy': presign.policy,
+                    'signature': presign.signature,
+                    'Content-Type': presign['Content-Type']
+                };
+                for (const [name, value] of Object.entries(fields)) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.name = 'file';
+                fileInput.style.display = 'none';
+                form.appendChild(fileInput);
+
+                const dt = new DataTransfer();
+                dt.items.add(this.selectedFile);
+                fileInput.files = dt.files;
+
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        try {
+                            const resp = iframe.contentDocument?.body?.textContent || '';
+                            if (resp.includes('AccessDenied') || resp.includes('Error')) {
+                                reject(new Error('R2 rechazo el archivo'));
+                            } else {
+                                resolve();
+                            }
+                        } catch(e) {
+                            resolve();
+                        }
+                        document.body.removeChild(iframe);
+                        document.body.removeChild(form);
+                    }, 1000);
+                };
+                iframe.onerror = () => { reject(new Error('Error de conexion')); document.body.removeChild(iframe); };
+
+                document.body.appendChild(form);
+                form.submit();
+            });
+
+            const publicUrl = presign.publicUrl;
             const res = await fetch('/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', archivo_url: r2Data.url })
+                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', archivo_url: publicUrl })
             });
 
             if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }
-            else { const data = await res.json(); alert(data.error || 'Error al subir pedido'); }
+            else { const data = await res.json(); alert(data.error || 'Error al guardar pedido'); }
         } catch(e) { alert('Error al subir pedido: ' + e.message); }
     },
 
