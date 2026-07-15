@@ -198,24 +198,25 @@ App.registerModule('pedidos', {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const fileName = `${numero}_${Date.now()}.pdf`;
-            const fileBase64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(this.selectedFile);
-            });
 
-            const r2Res = await fetch('/api/r2/direct-upload', {
+            const presignRes = await fetch('/api/r2/presign', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fileName, contentType: 'application/pdf', fileBase64 })
+                body: JSON.stringify({ fileName, contentType: 'application/pdf' })
             });
-            const r2Data = await r2Res.json();
-            if (!r2Res.ok || !r2Data.url) throw new Error(r2Data.error || 'Error al subir PDF a R2');
+            const presignData = await presignRes.json();
+            if (!presignRes.ok || !presignData.url) throw new Error(presignData.error || 'Error al generar URL de subida');
+
+            const uploadRes = await fetch(presignData.url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/pdf' },
+                body: this.selectedFile
+            });
+            if (!uploadRes.ok) throw new Error('Error al subir PDF a R2: ' + uploadRes.status);
 
             const res = await fetch('/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', archivo_url: r2Data.url })
+                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', archivo_url: presignData.publicUrl })
             });
 
             if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }
