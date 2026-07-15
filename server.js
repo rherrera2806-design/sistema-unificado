@@ -22,50 +22,99 @@ const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'ordenes-venta';
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-d70f793c9dc24a3fa46ef91fb4e0a45a.r2.dev';
 const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
-async function r2Request(params) {
-    const signed = aws4.sign(params, { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY });
-    const url = signed.url || `${R2_ENDPOINT}${signed.path || signed.pathname || ''}`;
-    const body = signed.body || undefined;
-    console.log('[R2] URL:', url);
-    console.log('[R2] Method:', signed.method);
-    console.log('[R2] Headers:', JSON.stringify(Object.keys(signed.headers || {})));
-    console.log('[R2] Body present:', !!body);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-    try {
-        const fetchOpts = {
-            method: signed.method || 'PUT',
-            headers: { ...signed.headers },
-            signal: controller.signal,
+function r2UploadSigned(key, fileBuffer) {
+    const crypto = require('crypto');
+    const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+    const region = 'auto';
+    const service = 's3';
+    const now = new Date();
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+    const dateStamp = amzDate.substring(0, 8);
+    const payloadHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    const canonicalUri = '/' + key.split('/').map(p => encodeURIComponent(p)).join('/');
+    const canonicalRequest = `PUT\n${canonicalUri}\n\nhost:${host}\n\nhost\n${payloadHash}`;
+    const canonicalRequestHash = crypto.createHash('sha256').update(canonicalRequest).digest('hex');
+    const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${dateStamp}/${region}/${service}/aws4_request\n${canonicalRequestHash}`;
+    const kDate = crypto.createHmac('sha256', `AWS4${R2_SECRET_ACCESS_KEY}`).update(dateStamp).digest();
+    const kRegion = crypto.createHmac('sha256', kDate).update(region).digest();
+    const kService = crypto.createHmac('sha256', kRegion).update(service).digest();
+    const kSigning = crypto.createHmac('sha256', kService).update('aws4_request').digest();
+    const signature = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+    const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/${service}/aws4_request, SignedHeaders=host, Signature=${signature}`;
+
+    return new Promise((resolve, reject) => {
+        const url = new URL(`https://${host}${canonicalUri}`);
+        const options = {
+            hostname: url.hostname,
+            port: 443,
+            path: url.pathname + url.search,
+            method: 'PUT',
+            headers: {
+                'Host': host,
+                'Content-Type': 'application/pdf',
+                'Content-Length': fileBuffer.length,
+                'x-amz-content-sha256': payloadHash,
+                'x-amz-date': amzDate,
+                'Authorization': authorization,
+            },
+            rejectUnauthorized: false,
+            secureProtocol: 'TLSv1_2_method',
         };
-        if (body) fetchOpts.body = body;
-        console.log('[R2] Calling fetch...');
-        const res = await fetch(url, fetchOpts);
-        console.log('[R2] Response status:', res.status);
-        let data = '';
-        if (!res.ok) data = await res.text();
-        return { ok: res.ok, status: res.status, body: data };
-    } catch(e) {
-        console.error('[R2] FETCH FAILED:', e.message);
-        console.error('[R2] Error name:', e.name);
-        if (e.cause) console.error('[R2] Cause:', JSON.stringify(e.cause));
-        throw new Error('R2 fetch error: ' + e.message);
-    } finally {
-        clearTimeout(timeout);
-    }
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                    console.log('[R2] Upload OK:', key, 'status:', res.statusCode);
+                    resolve({ ok: true, status: res.statusCode });
+                } else {
+                    console.error('[R2] Upload failed:', res.statusCode, data.substring(0, 200));
+                    reject(new Error('R2 upload failed: HTTP ' + res.statusCode));
+                }
+            });
+        });
+        req.on('error', (e) => {
+            console.error('[R2] Request error:', e.message);
+            reject(new Error('R2 request error: ' + e.message));
+        });
+        req.setTimeout(30000, () => { req.destroy(); reject(new Error('R2 timeout')); });
+        req.write(fileBuffer);
+        req.end();
+    });
 }
 
 async function r2Delete(key) {
     if (!R2_ACCESS_KEY_ID) return false;
     try {
-        const result = await r2Request({
-            method: 'DELETE',
-            url: `${R2_ENDPOINT}/${key}`,
-            headers: { 'Host': `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` },
+        const crypto = require('crypto');
+        const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+        const region = 'auto';
+        const service = 's3';
+        const now = new Date();
+        const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+        const dateStamp = amzDate.substring(0, 8);
+        const canonicalUri = '/' + key.split('/').map(p => encodeURIComponent(p)).join('/');
+        const canonicalRequest = `DELETE\n${canonicalUri}\n\nhost:${host}\n\nhost\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`;
+        const canonicalRequestHash = crypto.createHash('sha256').update(canonicalRequest).digest('hex');
+        const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${dateStamp}/${region}/${service}/aws4_request\n${canonicalRequestHash}`;
+        const kDate = crypto.createHmac('sha256', `AWS4${R2_SECRET_ACCESS_KEY}`).update(dateStamp).digest();
+        const kRegion = crypto.createHmac('sha256', kDate).update(region).digest();
+        const kService = crypto.createHmac('sha256', kRegion).update(service).digest();
+        const kSigning = crypto.createHmac('sha256', kService).update('aws4_request').digest();
+        const signature = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+        const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/${service}/aws4_request, SignedHeaders=host, Signature=${signature}`;
+        return new Promise((resolve) => {
+            const url = new URL(`https://${host}${canonicalUri}`);
+            const req = https.request({
+                hostname: url.hostname, port: 443, path: url.pathname, method: 'DELETE',
+                headers: { 'Host': host, 'x-amz-date': amzDate, 'x-amz-content-sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'Authorization': authorization },
+                rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method',
+            }, (res) => { res.resume(); resolve(res.statusCode < 300); });
+            req.on('error', () => resolve(false));
+            req.end();
         });
-        return result.ok;
     } catch(e) {
-        console.error('R2 delete error:', e.message);
+        console.error('[R2] Delete error:', e.message);
         return false;
     }
 }
@@ -1804,7 +1853,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
-    // R2 - SUBIR ARCHIVO (via aws4 + fetch)
+    // R2 - SUBIR ARCHIVO (via https + firma manual)
     // =====================================================
     if (urlPath === '/api/r2/direct-upload' && req.method === 'POST') {
         if (!R2_ACCESS_KEY_ID) {
@@ -1820,27 +1869,16 @@ const server = http.createServer(async (req, res) => {
         try {
             const key = `pedidos/${fileName}`;
             const buffer = Buffer.from(fileBase64, 'base64');
-            const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-            console.log('R2 upload attempt:', { key, host, bufferLen: buffer.length, bucket: R2_BUCKET_NAME, accountId: R2_ACCOUNT_ID ? R2_ACCOUNT_ID.substring(0,6)+'...' : 'MISSING' });
-            const result = await r2Request({
-                method: 'PUT',
-                url: `https://${host}/${key}`,
-                headers: {
-                    'Host': host,
-                    'Content-Type': contentType || 'application/pdf',
-                    'Content-Length': buffer.length,
-                },
-                body: buffer,
-            });
+            console.log('[R2] Upload attempt:', key, buffer.length, 'bytes');
+            const result = await r2UploadSigned(key, buffer);
             if (!result.ok) {
-                console.error('R2 upload error:', result.status, result.body);
                 json(res, { error: 'Error al subir a R2: ' + result.status }, 500);
                 return;
             }
-            console.log(`R2: Archivo subido ${key} (${buffer.length} bytes)`);
+            console.log(`[R2] Archivo subido: ${key}`);
             json(res, { key, url: `${R2_PUBLIC_URL}/${key}` });
         } catch(e) {
-            console.error('R2 upload error:', e.message);
+            console.error('[R2] Upload error:', e.message);
             json(res, { error: 'Error al subir: ' + e.message }, 500);
         }
         return;
@@ -1851,11 +1889,30 @@ const server = http.createServer(async (req, res) => {
     // =====================================================
     if (urlPath === '/api/r2/test' && req.method === 'GET') {
         try {
+            const crypto = require('crypto');
             const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-            const result = await r2Request({
-                method: 'GET',
-                url: `https://${host}/`,
-                headers: { 'Host': host },
+            const region = 'auto';
+            const service = 's3';
+            const now = new Date();
+            const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+            const dateStamp = amzDate.substring(0, 8);
+            const canonicalRequest = `GET\n/\n\nhost:${host}\n\nhost\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`;
+            const canonicalRequestHash = crypto.createHash('sha256').update(canonicalRequest).digest('hex');
+            const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${dateStamp}/${region}/${service}/aws4_request\n${canonicalRequestHash}`;
+            const kDate = crypto.createHmac('sha256', `AWS4${R2_SECRET_ACCESS_KEY}`).update(dateStamp).digest();
+            const kRegion = crypto.createHmac('sha256', kDate).update(region).digest();
+            const kService = crypto.createHmac('sha256', kRegion).update(service).digest();
+            const kSigning = crypto.createHmac('sha256', kService).update('aws4_request').digest();
+            const signature = crypto.createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+            const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/${service}/aws4_request, SignedHeaders=host, Signature=${signature}`;
+            const result = await new Promise((resolve) => {
+                const req = https.request({
+                    hostname: host, port: 443, path: '/', method: 'GET',
+                    headers: { 'Host': host, 'x-amz-date': amzDate, 'Authorization': authorization },
+                    rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method',
+                }, (res) => { let d=''; res.on('data',c=>d+=c); res.on('end',()=>resolve({ok:res.statusCode<300,status:res.statusCode,body:d})); });
+                req.on('error', (e) => resolve({ok:false,status:0,body:e.message}));
+                req.end();
             });
             json(res, { ok: result.ok, status: result.status, bucket: R2_BUCKET_NAME, accountId: R2_ACCOUNT_ID ? R2_ACCOUNT_ID.substring(0,8)+'...' : 'MISSING' });
         } catch(e) {
