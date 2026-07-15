@@ -197,27 +197,17 @@ App.registerModule('pedidos', {
 
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const fileName = `${numero}_${Date.now()}.pdf`;
-
-            const presignRes = await fetch('/api/r2/presign-put', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fileName })
+            const pdfBase64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Error al leer archivo'));
+                reader.readAsDataURL(this.selectedFile);
             });
-            const presign = await presignRes.json();
-            if (!presignRes.ok || !presign.url) throw new Error(presign.error || 'Error al generar URL');
 
-            const uploadUrl = `${presign.url}?${presign.queryParams}`;
-            const putRes = await fetch(uploadUrl, {
-                method: 'PUT',
-                body: this.selectedFile
-            });
-            if (!putRes.ok) throw new Error('R2 rechazo el archivo (HTTP ' + putRes.status + ')');
-
-            const publicUrl = presign.publicUrl;
             const res = await fetch('/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', archivo_url: publicUrl })
+                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', pdf_base64: pdfBase64 })
             });
 
             if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }

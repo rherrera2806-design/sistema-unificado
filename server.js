@@ -370,12 +370,14 @@ async function initDB() {
         cliente TEXT NOT NULL,
         vendedor TEXT NOT NULL,
         archivo_url TEXT,
+        archivo_pdf BYTEA,
         estado TEXT DEFAULT 'pendiente',
         motivo_rechazo TEXT,
         fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         fecha_revision TIMESTAMP,
         revisado_por TEXT
     )`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pedidos' AND column_name='archivo_pdf') THEN ALTER TABLE pedidos ADD COLUMN archivo_pdf BYTEA; END IF; END $$`);
     // SEMILLA: Usuario admin — permisos jerárquicos completos
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
@@ -1741,29 +1743,38 @@ const server = http.createServer(async (req, res) => {
     // Crear nuevo pedido
     if (urlPath === '/api/pedidos' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { numero_pedido, cliente, vendedor, archivo_url } = body;
+        const { numero_pedido, cliente, vendedor, archivo_url, pdf_base64 } = body;
         if (!numero_pedido || !cliente) {
             json(res, { error: 'Número de pedido y cliente son requeridos' }, 400);
             return;
         }
+        let pdfBuffer = null;
+        if (pdf_base64) {
+            const base64Data = pdf_base64.replace(/^data:application\/pdf;base64,/, '');
+            pdfBuffer = Buffer.from(base64Data, 'base64');
+        }
         const result = await query(
-            'INSERT INTO pedidos (numero_pedido, cliente, vendedor, archivo_url, estado) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [numero_pedido, cliente, vendedor || '', archivo_url || '', 'pendiente']
+            'INSERT INTO pedidos (numero_pedido, cliente, vendedor, archivo_url, archivo_pdf, estado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, numero_pedido, cliente, vendedor, archivo_url, estado, motivo_rechazo, fecha_subida, fecha_revision, revisado_por',
+            [numero_pedido, cliente, vendedor || '', archivo_url || '', pdfBuffer, 'pendiente']
         );
         json(res, result.rows[0], 201);
         return;
     }
 
-    // Descargar PDF de un pedido (redirige a R2)
+    // Descargar PDF de un pedido (sirve directo desde PostgreSQL)
     const pedidoPdfMatch = urlPath.match(/^\/api\/pedidos\/(\d+)\/pdf$/);
     if (pedidoPdfMatch && req.method === 'GET') {
         const id = Number(pedidoPdfMatch[1]);
-        const result = await query('SELECT archivo_url, numero_pedido FROM pedidos WHERE id = $1', [id]);
+        const result = await query('SELECT archivo_pdf, numero_pedido FROM pedidos WHERE id = $1', [id]);
         if (result.rows.length === 0) { json(res, { error: 'Pedido no encontrado' }, 404); return; }
         const row = result.rows[0];
-        if (row.archivo_url) {
-            res.writeHead(302, { 'Location': row.archivo_url });
-            res.end();
+        if (row.archivo_pdf) {
+            res.writeHead(200, {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `inline; filename="${row.numero_pedido}.pdf"`,
+                'Cache-Control': 'public, max-age=3600'
+            });
+            res.end(row.archivo_pdf);
         } else {
             json(res, { error: 'PDF no disponible' }, 404);
         }
