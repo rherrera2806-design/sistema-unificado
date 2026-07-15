@@ -200,6 +200,11 @@ async function initDB() {
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0").catch(() => {});
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS espesor INTEGER DEFAULT 0").catch(() => {});
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''").catch(() => {});
+    // Migracion: eliminar constraint UNIQUE viejo
+    await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_key").catch(() => {});
+    await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_espesor_key").catch(() => {});
+    // Crear indice unico parcial: solo aplica a registros activos
+    await query("CREATE UNIQUE INDEX IF NOT EXISTS idx_tipos_cristal_nombre_espesor ON catalogo_tipos_cristal (nombre, espesor) WHERE activo = TRUE").catch(() => {});
     // Migracion: eliminar constraint viejo de nombre unico y crear nuevo compuesto
     await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_key").catch(() => {});
     await query("ALTER TABLE catalogo_tipos_cristal ADD CONSTRAINT catalogo_tipos_cristal_nombre_espesor_key UNIQUE (nombre, espesor)").catch(() => {});
@@ -466,7 +471,7 @@ async function crearTipoCristal(data) {
     const nombre = sanitizeString(data.nombre || data);
     if (!nombre) throw new Error('Nombre requerido');
     const espesor = parseInt(data.espesor) || 0;
-    const exists = await query('SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1 AND espesor = $2', [nombre, espesor]);
+    const exists = await query('SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1 AND espesor = $2 AND activo = TRUE', [nombre, espesor]);
     if (exists.rows.length > 0) throw new Error('Ya existe este tipo de cristal con ese espesor');
     const codigoSap = sanitizeString(data.codigo_sap) || '';
     const stockCritico = parseInt(data.stock_critico) || 0;
