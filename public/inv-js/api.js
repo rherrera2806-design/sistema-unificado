@@ -21,7 +21,8 @@ class ApiClient {
     catalogos = {
         // Tipos de Cristal
         getTiposCristal: () => this.request('GET', '/catalogos/tipos-cristal'),
-        crearTipoCristal: (nombre) => this.request('POST', '/catalogos/tipos-cristal', { nombre }),
+        crearTipoCristal: (data) => this.request('POST', '/catalogos/tipos-cristal', data),
+        editarTipoCristal: (id, data) => this.request('PUT', `/catalogos/tipos-cristal/${id}`, data),
         eliminarTipoCristal: (id) => this.request('DELETE', `/catalogos/tipos-cristal/${id}`),
         
         // Espesores
@@ -46,6 +47,8 @@ class ApiClient {
             },
             getEstadisticas: () => self.request('GET', '/inv/estadisticas'),
             getEstadisticasPorTipo: () => self.request('GET', '/inv/estadisticas-por-tipo'),
+            getAutonomia: () => self.request('GET', '/inv/autonomia'),
+            getAlertas: () => self.request('GET', '/inv/alertas'),
             getTiposCristal: async () => {
                 const data = await self.request('GET', '/catalogos/tipos-cristal');
                 return data.map(t => t.nombre || t);

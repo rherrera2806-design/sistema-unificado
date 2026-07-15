@@ -1,23 +1,39 @@
 const InvInventario = {
+    allItems: [],
+    autonomiaData: [],
+
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         try {
-            const [items, tiposCristal, espesores] = await Promise.all([
+            const [items, tiposCristal, espesores, autonomia] = await Promise.all([
                 api.inv().getInventario(), 
                 api.inv().getTiposCristal(),
-                api.catalogos.getEspesores()
+                api.catalogos.getEspesores(),
+                api.inv().getAutonomia()
             ]);
             this.allItems = items.sort((a, b) => {
                 if (a.tipo_cristal < b.tipo_cristal) return -1;
                 if (a.tipo_cristal > b.tipo_cristal) return 1;
                 return a.espesor - b.espesor;
             });
+            this.autonomiaData = autonomia;
             
-            // Get unique espesores from items
+            const alertas = autonomia.filter(a => a.estado === 'critico' || a.estado === 'sin_stock');
+            
             const uniqueEspesores = [...new Set(items.map(i => i.espesor))].sort((a, b) => a - b);
             
             page.innerHTML = `
+                ${alertas.length > 0 ? `
+                <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+                    <span style="font-size:24px;">⚠️</span>
+                    <div>
+                        <div style="font-weight:700;color:var(--danger);font-size:14px;">Alertas de Stock Crítico</div>
+                        <div style="font-size:13px;color:var(--gray-600);">${alertas.length} tipo(s) con stock por debajo del mínimo: <strong>${alertas.map(a => a.tipo).join(', ')}</strong></div>
+                    </div>
+                </div>
+                ` : ''}
+                
                 <div class="filters-bar">
                     <label style="font-weight:500; color:var(--gray-700); font-size:13px;">Tipo Cristal:</label>
                     <select id="invFilterCristal" class="form-control" style="width:auto; min-width:180px;" onchange="InvInventario.filtrar()">
@@ -37,14 +53,40 @@ const InvInventario = {
                 <div class="card">
                     <div class="card-header">Inventario Actual <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${items.length} tipos)</span></div>
                     <div class="card-body" style="padding:0">
-                        ${items.length === 0 ? '<div class="empty-state"><div class="icon">📦</div><p>No hay items en inventario</p></div>' : `<div class="table-responsive"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(this.allItems)}</tbody></table></div>`}
+                        ${items.length === 0 ? '<div class="empty-state"><div class="icon">📦</div><p>No hay items en inventario</p></div>' : `<div class="table-responsive"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Stock</th><th>m2 Stock</th><th>Autonomía</th></tr></thead><tbody id="invBody">${this.renderRows(this.allItems)}</tbody></table></div>`}
                     </div>
                 </div>`;
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
     },
-    renderRows(items) {
-        return items.map(i => `<tr><td style="font-weight:600;">${i.tipo_cristal}</td><td><span style="background:var(--primary-light); color:var(--primary); padding:2px 10px; border-radius:12px; font-size:12px;">${i.espesor}mm</span></td><td>${parseInt(i.ancho)}</td><td>${parseInt(i.alto)}</td><td><span style="font-size:16px; font-weight:700; color:${i.stock > 0 ? 'var(--success)' : 'var(--danger)'};">${i.stock}</span></td><td>${(i.m2_entradas - i.m2_salidas).toFixed(2)} m2</td></tr>`).join('');
+
+    getAutonomiaInfo(tipoCristal) {
+        const a = this.autonomiaData.find(x => x.tipo === tipoCristal);
+        if (!a) return { texto: 'Sin datos', color: 'var(--gray-400)', bg: 'transparent' };
+        
+        if (a.estado === 'sin_stock') return { texto: 'Sin stock', color: 'var(--danger)', bg: 'rgba(239,68,68,0.08)' };
+        if (a.estado === 'critico') return { texto: `${a.autonomiaMeses}m / ${a.autonomiaSemanas}sem / ${a.autonomiaDias}d`, color: 'var(--danger)', bg: 'rgba(239,68,68,0.08)' };
+        if (a.estado === 'advertencia') return { texto: `${a.autonomiaMeses}m / ${a.autonomiaSemanas}sem / ${a.autonomiaDias}d`, color: 'var(--warning)', bg: 'rgba(245,158,11,0.08)' };
+        if (a.estado === 'sin_datos') return { texto: 'Sin datos', color: 'var(--gray-400)', bg: 'transparent' };
+        return { texto: `${a.autonomiaMeses}m / ${a.autonomiaSemanas}sem / ${a.autonomiaDias}d`, color: 'var(--success)', bg: 'rgba(34,197,94,0.08)' };
     },
+
+    renderRows(items) {
+        return items.map(i => {
+            const stock = i.stock;
+            const stockColor = stock > 0 ? 'var(--success)' : 'var(--danger)';
+            const autoInfo = this.getAutonomiaInfo(i.tipo_cristal);
+            return `<tr>
+                <td style="font-weight:600;">${i.tipo_cristal}</td>
+                <td><span style="background:var(--primary-light); color:var(--primary); padding:2px 10px; border-radius:12px; font-size:12px;">${i.espesor}mm</span></td>
+                <td>${parseInt(i.ancho)}</td>
+                <td>${parseInt(i.alto)}</td>
+                <td><span style="font-size:16px; font-weight:700; color:${stockColor};">${stock}</span></td>
+                <td>${(i.m2_entradas - i.m2_salidas).toFixed(2)} m2</td>
+                <td><span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:8px;background:${autoInfo.bg};color:${autoInfo.color};">${autoInfo.texto}</span></td>
+            </tr>`;
+        }).join('');
+    },
+
     async filtrar() {
         try {
             const cristal = document.getElementById('invFilterCristal').value;
@@ -52,13 +94,8 @@ const InvInventario = {
             
             let items = await api.inv().getInventario();
             
-            // Apply filters
-            if (cristal) {
-                items = items.filter(i => i.tipo_cristal === cristal);
-            }
-            if (espesor) {
-                items = items.filter(i => i.espesor === parseInt(espesor));
-            }
+            if (cristal) items = items.filter(i => i.tipo_cristal === cristal);
+            if (espesor) items = items.filter(i => i.espesor === parseInt(espesor));
             
             const sorted = items.sort((a, b) => {
                 if (a.tipo_cristal < b.tipo_cristal) return -1;
@@ -70,6 +107,7 @@ const InvInventario = {
             if (tbody) tbody.innerHTML = this.renderRows(sorted);
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     },
+
     exportarExcel() {
         const table = document.getElementById('invTable');
         if (!table) return;

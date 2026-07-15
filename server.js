@@ -186,9 +186,15 @@ async function initDB() {
     await query(`CREATE TABLE IF NOT EXISTS catalogo_tipos_cristal (
         id SERIAL PRIMARY KEY,
         nombre VARCHAR(100) UNIQUE NOT NULL,
+        stock_critico INTEGER DEFAULT 0,
+        consumo_mensual_aprox DECIMAL(10,2) DEFAULT 0,
         activo BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // Migracion: agregar columnas nuevas si no existen
+    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0").catch(() => {});
+    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS consumo_mensual_aprox DECIMAL(10,2) DEFAULT 0").catch(() => {});
 
     await query(`CREATE TABLE IF NOT EXISTS catalogo_espesores (
         id SERIAL PRIMARY KEY,
@@ -448,12 +454,17 @@ async function getTiposCristal() {
     return result.rows;
 }
 
-async function crearTipoCristal(nombre) {
-    const sanitized = sanitizeString(nombre);
-    if (!sanitized) throw new Error('Nombre requerido');
-    const exists = await query('SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1', [sanitized]);
+async function crearTipoCristal(data) {
+    const nombre = sanitizeString(data.nombre || data);
+    if (!nombre) throw new Error('Nombre requerido');
+    const exists = await query('SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1', [nombre]);
     if (exists.rows.length > 0) throw new Error('El tipo de cristal ya existe');
-    const result = await query('INSERT INTO catalogo_tipos_cristal (nombre) VALUES ($1) RETURNING *', [sanitized]);
+    const stockCritico = parseInt(data.stock_critico) || 0;
+    const consumoMensual = parseFloat(data.consumo_mensual_aprox) || 0;
+    const result = await query(
+        'INSERT INTO catalogo_tipos_cristal (nombre, stock_critico, consumo_mensual_aprox) VALUES ($1, $2, $3) RETURNING *',
+        [nombre, stockCritico, consumoMensual]
+    );
     return result.rows[0];
 }
 
@@ -461,6 +472,87 @@ async function eliminarTipoCristal(id) {
     // Soft delete - marcar como inactivo
     const result = await query('UPDATE catalogo_tipos_cristal SET activo = FALSE WHERE id = $1 RETURNING *', [id]);
     return result.rows[0] || null;
+}
+
+async function updateTipoCristal(id, data) {
+    const result = await query(
+        'UPDATE catalogo_tipos_cristal SET nombre = $1, stock_critico = $2, consumo_mensual_aprox = $3 WHERE id = $4 AND activo = TRUE RETURNING *',
+        [data.nombre, parseInt(data.stock_critico) || 0, parseFloat(data.consumo_mensual_aprox) || 0, id]
+    );
+    return result.rows[0] || null;
+}
+
+async function getStockPorTipo() {
+    const result = await query(`
+        SELECT tipo_cristal,
+            SUM(CASE WHEN tipo_movimiento = 'entrada' THEN cantidad_planchas ELSE 0 END) -
+            SUM(CASE WHEN tipo_movimiento = 'salida' AND tipo_salida = 'plancha_completa' THEN cantidad_planchas ELSE 0 END) as stock_planca
+        FROM movimientos
+        GROUP BY tipo_cristal
+        ORDER BY tipo_cristal
+    `);
+    return result.rows.map(r => ({ tipo: r.tipo_cristal, stock: Number(r.stock_planca) }));
+}
+
+async function getAutonomia() {
+    const [stockResult, catalogoResult] = await Promise.all([
+        query(`
+            SELECT tipo_cristal,
+                SUM(CASE WHEN tipo_movimiento = 'entrada' THEN cantidad_planchas ELSE 0 END) -
+                SUM(CASE WHEN tipo_movimiento = 'salida' AND tipo_salida = 'plancha_completa' THEN cantidad_planchas ELSE 0 END) as stock_planca
+            FROM movimientos
+            GROUP BY tipo_cristal
+        `),
+        query("SELECT nombre, stock_critico, consumo_mensual_aprox FROM catalogo_tipos_cristal WHERE activo = TRUE")
+    ]);
+
+    const catalogoMap = {};
+    catalogoResult.rows.forEach(c => { catalogoMap[c.nombre] = c; });
+
+    const todosTipos = await query("SELECT nombre FROM catalogo_tipos_cristal WHERE activo = TRUE");
+    const stockMap = {};
+    stockResult.rows.forEach(s => { stockMap[s.tipo_cristal] = Number(s.stock_planca); });
+
+    return todosTipos.rows.map(t => {
+        const nombre = t.nombre;
+        const stock = stockMap[nombre] || 0;
+        const cat = catalogoMap[nombre] || {};
+        const consumo = Number(cat.consumo_mensual_aprox) || 0;
+        const critico = Number(cat.stock_critico) || 0;
+
+        let autonomiaMeses = null;
+        let autonomiaSemanas = null;
+        let autonomiaDias = null;
+        let estado = 'ok';
+
+        if (stock <= 0) {
+            estado = 'sin_stock';
+        } else if (consumo <= 0) {
+            estado = 'sin_datos';
+        } else {
+            autonomiaMeses = stock / consumo;
+            autonomiaSemanas = Math.round(autonomiaMeses * 4.33 * 10) / 10;
+            autonomiaDias = Math.round(autonomiaMeses * 30);
+            if (stock <= critico) estado = 'critico';
+            else if (autonomiaMeses <= 1) estado = 'advertencia';
+        }
+
+        return {
+            tipo: nombre,
+            stock,
+            consumoMensual: consumo,
+            stockCritico: critico,
+            autonomiaMeses: autonomiaMeses !== null ? Math.round(autonomiaMeses * 10) / 10 : null,
+            autonomiaSemanas,
+            autonomiaDias,
+            estado
+        };
+    });
+}
+
+async function getAlertas() {
+    const autonomia = await getAutonomia();
+    return autonomia.filter(a => a.estado === 'critico' || a.estado === 'sin_stock');
 }
 
 async function getEspesores() {
@@ -860,7 +952,7 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/catalogos/tipos-cristal' && req.method === 'POST') {
         const body = await parseBody(req);
         try {
-            const item = await crearTipoCristal(body.nombre);
+            const item = await crearTipoCristal(body);
             json(res, item, 201);
         } catch(e) {
             json(res, { error: e.message }, 400);
@@ -869,6 +961,15 @@ const server = http.createServer(async (req, res) => {
     }
 
     const tipoCristalMatch = urlPath.match(/^\/api\/catalogos\/tipos-cristal\/(\d+)$/);
+    if (tipoCristalMatch && req.method === 'PUT') {
+        const id = Number(tipoCristalMatch[1]);
+        const body = await parseBody(req);
+        const item = await updateTipoCristal(id, body);
+        if (!item) return json(res, { error: 'No encontrado' }, 404);
+        json(res, item);
+        return;
+    }
+
     if (tipoCristalMatch && req.method === 'DELETE') {
         const id = Number(tipoCristalMatch[1]);
         const item = await eliminarTipoCristal(id);
@@ -945,6 +1046,16 @@ const server = http.createServer(async (req, res) => {
 
     if (urlPath === '/api/inv/estadisticas-por-tipo' && req.method === 'GET') {
         json(res, await getEstadisticasPorTipo());
+        return;
+    }
+
+    if (urlPath === '/api/inv/autonomia' && req.method === 'GET') {
+        json(res, await getAutonomia());
+        return;
+    }
+
+    if (urlPath === '/api/inv/alertas' && req.method === 'GET') {
+        json(res, await getAlertas());
         return;
     }
 

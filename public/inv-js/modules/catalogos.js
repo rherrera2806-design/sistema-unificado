@@ -32,9 +32,15 @@ const InvCatalogos = {
                             <span class="badge badge-entrada">${tiposCristal.length} tipos</span>
                         </div>
                         <div class="card-body">
-                            <div style="display:flex; gap:12px; margin-bottom:16px;">
-                                <input type="text" id="nuevoTipoCristal" class="form-control" placeholder="Nuevo tipo de cristal..." style="flex:1;">
-                                <button class="btn btn-success" onclick="InvCatalogos.agregarTipoCristal()">+ Agregar</button>
+                            <div style="display:flex; gap:8px; margin-bottom:8px;">
+                                <input type="text" id="nuevoTipoCristal" class="form-control" placeholder="Nombre..." style="flex:1;">
+                            </div>
+                            <div style="display:flex; gap:8px; margin-bottom:16px;">
+                                <input type="number" id="nuevoStockCritico" class="form-control" placeholder="Stock crítico (planchas)" min="0" style="flex:1;">
+                                <input type="number" id="nuevoConsumoMensual" class="form-control" placeholder="Consumo mensual aprox" min="0" step="0.1" style="flex:1;">
+                            </div>
+                            <div style="margin-bottom:16px;">
+                                <button class="btn btn-success" onclick="InvCatalogos.agregarTipoCristal()" style="width:100%;">+ Agregar Tipo</button>
                             </div>
                             <div id="listaTiposCristal" class="catalog-list">
                                 ${this.renderTiposCristal(tiposCristal)}
@@ -74,11 +80,18 @@ const InvCatalogos = {
             return '<div class="empty-state"><p>No hay tipos de cristal configurados</p></div>';
         }
         return `<div class="catalog-items">${tipos.map(t => `
-            <div class="catalog-item" data-id="${t.id}">
-                <span class="catalog-item-name">${this.escapeHtml(t.nombre)}</span>
-                <button class="btn btn-danger btn-sm" onclick="InvCatalogos.eliminarTipoCristal(${t.id}, '${this.escapeHtml(t.nombre)}')" title="Eliminar">
-                    ✕
-                </button>
+            <div class="catalog-item" data-id="${t.id}" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <span class="catalog-item-name" style="font-weight:700;">${this.escapeHtml(t.nombre)}</span>
+                    <div style="display:flex;gap:4px;">
+                        <button class="btn btn-sm" onclick="InvCatalogos.editarTipoCristal(${t.id})" title="Editar" style="padding:4px 8px;font-size:11px;background:rgba(59,130,246,0.1);color:var(--info);">Editar</button>
+                        <button class="btn btn-danger btn-sm" onclick="InvCatalogos.eliminarTipoCristal(${t.id}, '${this.escapeHtml(t.nombre)}')" title="Eliminar" style="padding:4px 8px;">✕</button>
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;font-size:11px;color:var(--gray-500);">
+                    <span>Stock crítico: <strong style="color:${t.stock_critico > 0 ? 'var(--warning)' : 'var(--gray-400)'};">${t.stock_critico || 0} planchas</strong></span>
+                    <span>Consumo mensual: <strong style="color:${t.consumo_mensual_aprox > 0 ? 'var(--info)' : 'var(--gray-400)'};">${t.consumo_mensual_aprox || 0} planchas</strong></span>
+                </div>
             </div>
         `).join('')}</div>`;
     },
@@ -105,8 +118,9 @@ const InvCatalogos = {
     },
 
     async agregarTipoCristal() {
-        const input = document.getElementById('nuevoTipoCristal');
-        const nombre = input.value.trim();
+        const nombre = document.getElementById('nuevoTipoCristal').value.trim();
+        const stockCritico = document.getElementById('nuevoStockCritico').value;
+        const consumoMensual = document.getElementById('nuevoConsumoMensual').value;
         
         if (!nombre) {
             App.toast('Ingresa un nombre para el tipo de cristal', 'error');
@@ -114,9 +128,73 @@ const InvCatalogos = {
         }
 
         try {
-            await api.catalogos.crearTipoCristal(nombre);
+            await api.catalogos.crearTipoCristal({
+                nombre,
+                stock_critico: parseInt(stockCritico) || 0,
+                consumo_mensual_aprox: parseFloat(consumoMensual) || 0
+            });
             App.toast('Tipo de cristal agregado');
-            input.value = '';
+            this.render();
+        } catch(err) {
+            App.toast(err.message, 'error');
+        }
+    },
+
+    async editarTipoCristal(id) {
+        let tipos;
+        try {
+            tipos = await api.catalogos.getTiposCristal();
+        } catch(e) { return; }
+        const t = tipos.find(x => x.id === id);
+        if (!t) return;
+
+        const page = document.querySelector('.page.active');
+        const modal = document.createElement('div');
+        modal.id = 'editModalTipoCristal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+        modal.innerHTML = `
+            <div style="background:white;border-radius:12px;padding:24px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+                <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Editar: ${this.escapeHtml(t.nombre)}</h3>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Nombre</label>
+                    <input type="text" id="editTCNombre" class="form-control" value="${this.escapeHtml(t.nombre)}">
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Stock Crítico (planchas)</label>
+                    <input type="number" id="editTCStockCritico" class="form-control" value="${t.stock_critico || 0}" min="0">
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Consumo Mensual Aprox (planchas)</label>
+                    <input type="number" id="editTCConsumoMensual" class="form-control" value="${t.consumo_mensual_aprox || 0}" min="0" step="0.1">
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="document.getElementById('editModalTipoCristal').remove()" class="btn btn-outline" style="flex:1;">Cancelar</button>
+                    <button onclick="InvCatalogos.guardarTipoCristal(${id})" class="btn btn-primary" style="flex:1;">Guardar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    },
+
+    async guardarTipoCristal(id) {
+        const nombre = document.getElementById('editTCNombre').value.trim();
+        const stockCritico = document.getElementById('editTCStockCritico').value;
+        const consumoMensual = document.getElementById('editTCConsumoMensual').value;
+
+        if (!nombre) {
+            App.toast('El nombre es requerido', 'error');
+            return;
+        }
+
+        try {
+            await api.catalogos.editarTipoCristal(id, {
+                nombre,
+                stock_critico: parseInt(stockCritico) || 0,
+                consumo_mensual_aprox: parseFloat(consumoMensual) || 0
+            });
+            document.getElementById('editModalTipoCristal').remove();
+            App.toast('Tipo de cristal actualizado');
             this.render();
         } catch(err) {
             App.toast(err.message, 'error');

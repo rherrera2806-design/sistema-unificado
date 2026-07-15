@@ -47,7 +47,8 @@ class InvApiClient {
     }
     catalogos = {
         getTiposCristal: () => this.request('GET', '/catalogos/tipos-cristal'),
-        crearTipoCristal: (n) => this.request('POST', '/catalogos/tipos-cristal', { nombre: n }),
+        crearTipoCristal: (data) => this.request('POST', '/catalogos/tipos-cristal', data),
+        editarTipoCristal: (id, data) => this.request('PUT', `/catalogos/tipos-cristal/${id}`, data),
         eliminarTipoCristal: (id) => this.request('DELETE', `/catalogos/tipos-cristal/${id}`),
         getEspesores: () => this.request('GET', '/catalogos/espesores'),
         crearEspesor: (v) => this.request('POST', '/catalogos/espesores', { valor: v }),
@@ -62,6 +63,8 @@ class InvApiClient {
             getInventario: (f = {}) => { const qs = new URLSearchParams(f).toString(); return self.request('GET', `/inv/inventario${qs ? '?' + qs : ''}`); },
             getEstadisticas: () => self.request('GET', '/inv/estadisticas'),
             getEstadisticasPorTipo: () => self.request('GET', '/inv/estadisticas-por-tipo'),
+            getAutonomia: () => self.request('GET', '/inv/autonomia'),
+            getAlertas: () => self.request('GET', '/inv/alertas'),
             getTiposCristal: async () => (await self.request('GET', '/catalogos/tipos-cristal')).map(t => t.nombre || t),
             getEspesores: async () => (await self.request('GET', '/catalogos/espesores')).map(e => e.valor || e)
         };
@@ -265,6 +268,7 @@ const App = {
         } else if (badge) { badge.remove(); }
         await this.updateNotasBadge();
         await this.updateTurnosBadges();
+        await this.updateInvAlertasBadge();
     },
 
     async updateTurnosBadges() {
@@ -280,6 +284,14 @@ const App = {
         } catch(e) {}
     },
 
+    async updateInvAlertasBadge() {
+        try {
+            const res = await fetch('/api/inv/alertas');
+            const alertas = await res.json();
+            this.setSidebarBadge('inv_inventario', alertas.length || 0);
+        } catch(e) {}
+    },
+
     setSidebarBadge(page, count) {
         const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
         if (!navItem) return;
@@ -287,6 +299,8 @@ const App = {
         if (count > 0) {
             if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; navItem.appendChild(badge); }
             badge.textContent = count;
+            badge.style.background = 'rgba(239,68,68,0.9)';
+            badge.style.color = 'white';
         } else if (badge) { badge.remove(); }
     }
 };
@@ -425,5 +439,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSidebar();
     await App.updateNavBadge();
     setInterval(() => App.updateTurnosBadges(), 5000);
+    setInterval(() => App.updateInvAlertasBadge(), 30000);
     App.loadModule('dashboard');
 });
