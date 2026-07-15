@@ -26,7 +26,10 @@ async function r2Request(params) {
     const signed = aws4.sign(params, { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY });
     const url = signed.url || `${R2_ENDPOINT}${signed.path || signed.pathname || ''}`;
     const body = signed.body || undefined;
-    console.log('R2 request:', { url, method: signed.method, bodyType: typeof body, bodyLen: body ? body.length : 0 });
+    console.log('[R2] URL:', url);
+    console.log('[R2] Method:', signed.method);
+    console.log('[R2] Headers:', JSON.stringify(Object.keys(signed.headers || {})));
+    console.log('[R2] Body present:', !!body);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
     try {
@@ -36,13 +39,16 @@ async function r2Request(params) {
             signal: controller.signal,
         };
         if (body) fetchOpts.body = body;
+        console.log('[R2] Calling fetch...');
         const res = await fetch(url, fetchOpts);
+        console.log('[R2] Response status:', res.status);
         let data = '';
         if (!res.ok) data = await res.text();
-        console.log('R2 response:', { status: res.status, ok: res.ok });
         return { ok: res.ok, status: res.status, body: data };
     } catch(e) {
-        console.error('R2 fetch error:', e.message, e.cause ? { cause: e.cause.message } : '');
+        console.error('[R2] FETCH FAILED:', e.message);
+        console.error('[R2] Error name:', e.name);
+        if (e.cause) console.error('[R2] Cause:', JSON.stringify(e.cause));
         throw new Error('R2 fetch error: ' + e.message);
     } finally {
         clearTimeout(timeout);
@@ -1836,6 +1842,24 @@ const server = http.createServer(async (req, res) => {
         } catch(e) {
             console.error('R2 upload error:', e.message);
             json(res, { error: 'Error al subir: ' + e.message }, 500);
+        }
+        return;
+    }
+
+    // =====================================================
+    // R2 - TEST DE CONEXION
+    // =====================================================
+    if (urlPath === '/api/r2/test' && req.method === 'GET') {
+        try {
+            const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+            const result = await r2Request({
+                method: 'GET',
+                url: `https://${host}/`,
+                headers: { 'Host': host },
+            });
+            json(res, { ok: result.ok, status: result.status, bucket: R2_BUCKET_NAME, accountId: R2_ACCOUNT_ID ? R2_ACCOUNT_ID.substring(0,8)+'...' : 'MISSING' });
+        } catch(e) {
+            json(res, { error: e.message }, 500);
         }
         return;
     }
