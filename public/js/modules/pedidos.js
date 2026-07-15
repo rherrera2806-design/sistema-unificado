@@ -242,7 +242,16 @@ App.registerModule('pedidos', {
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
                 body: JSON.stringify({ estado, motivo_rechazo: estado === 'rechazado' ? document.getElementById('pedMotivo').value.trim() : null, revisado_por: user.email || '' })
             });
-            if (res.ok) { this.hideReviewModal(); this.load(); App.toast(estado === 'aprobado' ? 'Pedido aprobado' : 'Pedido rechazado'); }
+            if (res.ok) {
+                const link = document.createElement('a');
+                link.href = `/api/pedidos/${this.currentPedido.id}/download-pdf`;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                this.hideReviewModal(); this.load();
+                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado.' : 'Pedido rechazado. PDF descargado.');
+            }
             else { const data = await res.json(); alert(data.error || 'Error al revisar pedido'); }
         } catch(e) { alert('Error al revisar pedido: ' + e.message); }
     },

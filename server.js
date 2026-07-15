@@ -1803,6 +1803,25 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // Descargar PDF y limpiar de DB (al aprobar/rechazar)
+    const pedidoDownloadMatch = urlPath.match(/^\/api\/pedidos\/(\d+)\/download-pdf$/);
+    if (pedidoDownloadMatch && req.method === 'GET') {
+        const id = Number(pedidoDownloadMatch[1]);
+        const result = await query('SELECT archivo_pdf, numero_pedido FROM pedidos WHERE id = $1', [id]);
+        if (result.rows.length === 0) { json(res, { error: 'Pedido no encontrado' }, 404); return; }
+        const row = result.rows[0];
+        if (!row.archivo_pdf) { json(res, { error: 'PDF no disponible' }, 404); return; }
+        const pdfBuffer = row.archivo_pdf;
+        await query('UPDATE pedidos SET archivo_pdf = NULL WHERE id = $1', [id]);
+        res.writeHead(200, {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${row.numero_pedido}.pdf"`,
+            'Content-Length': pdfBuffer.length
+        });
+        res.end(pdfBuffer);
+        return;
+    }
+
     // Eliminar pedido
     const deletePedidoMatch = urlPath.match(/^\/api\/pedidos\/(\d+)$/);
     if (deletePedidoMatch && req.method === 'DELETE') {
