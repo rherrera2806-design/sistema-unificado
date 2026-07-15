@@ -150,6 +150,7 @@ App.registerModule('pedidos', {
     renderTable(pedidos) {
         const tbody = document.getElementById('pedidosTable');
         if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">No hay pedidos</td></tr>'; return; }
+        const isAdmin = this.canAuthorize;
         tbody.innerHTML = pedidos.map(p => `<tr>
             <td><strong>${p.numero_pedido}</strong></td><td>${p.cliente}</td><td>${p.vendedor}</td>
             <td>${this.fmtDate(p.fecha_subida)}</td>
@@ -157,6 +158,7 @@ App.registerModule('pedidos', {
             <td>
                 <button class="btn btn-sm btn-outline" onclick="App.modules.pedidos.viewPdf(${p.id})">Ver PDF</button>
                 ${this.canAuthorize && p.estado === 'pendiente' ? `<button class="btn btn-sm btn-primary" style="margin-left:4px" onclick="App.modules.pedidos.showReviewModal(${p.id})">Revisar</button>` : ''}
+                ${isAdmin ? `<button class="btn btn-sm btn-outline" style="margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.pedidos.deletePedido(${p.id},'${p.numero_pedido}')">Eliminar</button>` : ''}
             </td></tr>`).join('');
     },
 
@@ -257,6 +259,19 @@ App.registerModule('pedidos', {
     },
 
     viewPdf(id) { window.open(`/api/pedidos/${id}/pdf`, '_blank'); },
+
+    async deletePedido(id, numero) {
+        if (!confirm(`Eliminar pedido ${numero}? Esta accion no se puede deshacer.`)) return;
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch(`/api/pedidos/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
+            });
+            if (res.ok) { this.load(); App.toast('Pedido eliminado'); }
+            else { const data = await res.json(); alert(data.error || 'Error al eliminar'); }
+        } catch(e) { alert('Error al eliminar: ' + e.message); }
+    },
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
 });

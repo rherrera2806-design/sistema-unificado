@@ -1822,9 +1822,11 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // Eliminar pedido
+    // Eliminar pedido (solo admin)
     const deletePedidoMatch = urlPath.match(/^\/api\/pedidos\/(\d+)$/);
     if (deletePedidoMatch && req.method === 'DELETE') {
+        const userPerms = (req.headers['x-user-permisos'] || '').split(',').filter(Boolean);
+        if (!userPerms.includes('usuarios')) { json(res, { error: 'Sin permisos' }, 403); return; }
         const id = Number(deletePedidoMatch[1]);
         await query('DELETE FROM pedidos WHERE id = $1', [id]);
         json(res, { ok: true });
