@@ -88,7 +88,7 @@ App.registerModule('pedidos', {
                             <div><strong>Fecha:</strong> <span id="pedReviewFecha"></span></div>
                         </div>
                         <div class="form-group" style="margin-bottom:12px"><label style="font-weight:500">PDF del Pedido</label>
-                            <iframe id="pedReviewPdf" style="width:100%;height:400px;border:1px solid #e2e8f0;border-radius:8px"></iframe></div>
+                            <embed id="pedReviewPdf" type="application/pdf" style="width:100%;height:400px;border:1px solid #e2e8f0;border-radius:8px"></embed></div>
                         <div class="form-group" id="pedMotivoGroup" style="display:none;margin-bottom:12px"><label style="font-weight:500">Motivo de Rechazo</label>
                             <textarea class="form-control" id="pedMotivo" rows="3" placeholder="Indica el motivo del rechazo..."></textarea></div>
                     </div>
@@ -149,7 +149,7 @@ App.registerModule('pedidos', {
 
     renderTable(pedidos) {
         const tbody = document.getElementById('pedidosTable');
-        if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">No hay pedidos</td></tr>'; return; }
+        if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">No hay pedidos</td></tr>'; return; }
         const isAdmin = this.canAuthorize;
         const estadoBadge = (e) => {
             if (e === 'aprobado') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">✓ APROBADO</span>';
@@ -157,9 +157,10 @@ App.registerModule('pedidos', {
             return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">⚡ PENDIENTE</span>';
         };
         tbody.innerHTML = pedidos.map(p => `<tr>
-            <td><strong>${p.numero_pedido}</strong></td><td>${p.cliente}</td><td>${p.vendedor}</td>
+            <td><strong>${p.numero_pedido}</strong></td><td>${p.cliente}</td><td>${p.vendedor_nombre || p.vendedor}</td>
             <td>${this.fmtDateTime(p.fecha_subida)}</td>
             <td>${estadoBadge(p.estado)}</td>
+            <td>${p.revisor_nombre || '-'}</td>
             <td>${p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '-'}</td>
             <td>
                 <button class="btn btn-sm btn-outline" onclick="App.modules.pedidos.viewPdf(${p.id})">Ver PDF</button>
@@ -205,7 +206,7 @@ App.registerModule('pedidos', {
 
     async upload() {
         const numero = document.getElementById('pedNumero').value.trim();
-        const cliente = document.getElementById('pedCliente').value.trim();
+        const cliente = document.getElementById('pedCliente').value.trim().replace(/\b\w/g, c => c.toUpperCase());
         if (!numero || !cliente) { alert('Numero de pedido y cliente son requeridos'); return; }
         if (!this.selectedFile) { alert('Por favor selecciona un archivo PDF'); return; }
 

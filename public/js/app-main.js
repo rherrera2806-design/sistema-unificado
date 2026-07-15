@@ -274,9 +274,14 @@ const App = {
 
     async updatePedidosBadge() {
         try {
-            const res = await fetch('/api/pedidos');
+            const user = getUser();
+            const res = await fetch('/api/pedidos', {
+                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
+            });
+            if (!res.ok) return;
             const pedidos = await res.json();
             const pending = pedidos.filter(p => p.estado === 'pendiente').length;
+            this._pedidosPending = pending;
             this.setSidebarBadge('pedidos', pending);
         } catch(e) {}
     },

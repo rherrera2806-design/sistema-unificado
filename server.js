@@ -1720,11 +1720,17 @@ const server = http.createServer(async (req, res) => {
         const userEmail = req.headers['x-user-email'] || '';
         const esAdminOsupervisor = userPerm.includes('pedidos.autorizar') || userPerm.includes('usuarios');
         
+        const joinQuery = `SELECT p.*, v.nombre AS vendedor_nombre, r.nombre AS revisor_nombre
+            FROM pedidos p
+            LEFT JOIN usuarios u ON u.email = p.vendedor
+            LEFT JOIN usuarios v ON v.email = p.vendedor
+            LEFT JOIN usuarios r ON r.email = p.revisado_por`;
+        
         let result;
         if (esAdminOsupervisor) {
-            result = await query('SELECT * FROM pedidos ORDER BY fecha_subida DESC');
+            result = await query(joinQuery + ' ORDER BY p.fecha_subida DESC');
         } else {
-            result = await query('SELECT * FROM pedidos WHERE vendedor = $1 ORDER BY fecha_subida DESC', [userEmail]);
+            result = await query(joinQuery + ' WHERE p.vendedor = $1 ORDER BY p.fecha_subida DESC', [userEmail]);
         }
         json(res, result.rows);
         return;
@@ -1765,7 +1771,7 @@ const server = http.createServer(async (req, res) => {
     const pedidoPdfMatch = urlPath.match(/^\/api\/pedidos\/(\d+)\/pdf$/);
     if (pedidoPdfMatch && req.method === 'GET') {
         const id = Number(pedidoPdfMatch[1]);
-        const result = await query('SELECT archivo_pdf, numero_pedido FROM pedidos WHERE id = $1', [id]);
+        const result = await query('SELECT archivo_pdf, archivo_url, numero_pedido FROM pedidos WHERE id = $1', [id]);
         if (result.rows.length === 0) { json(res, { error: 'Pedido no encontrado' }, 404); return; }
         const row = result.rows[0];
         if (row.archivo_pdf) {
@@ -1775,6 +1781,9 @@ const server = http.createServer(async (req, res) => {
                 'Cache-Control': 'public, max-age=3600'
             });
             res.end(row.archivo_pdf);
+        } else if (row.archivo_url) {
+            res.writeHead(302, { 'Location': row.archivo_url });
+            res.end();
         } else {
             json(res, { error: 'PDF no disponible' }, 404);
         }
