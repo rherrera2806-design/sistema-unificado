@@ -14,8 +14,8 @@ const InvDashboard = {
                 <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
                     <span style="font-size:24px;">🚨</span>
                     <div>
-                        <div style="font-weight:700;color:var(--danger);font-size:14px;">¡Quiebre de Stock!</div>
-                        <div style="font-size:13px;color:var(--gray-600);">${alertas.length} tipo(s) por debajo del stock crítico: <strong>${alertas.map(a => a.tipo).join(', ')}</strong></div>
+                    <div style="font-weight:700;color:var(--danger);font-size:14px;">¡Quiebre de Stock!</div>
+                    <div style="font-size:13px;color:var(--gray-600);">${alertas.length} tipo(s) por debajo del stock crítico: <strong>${alertas.map(a => `${a.tipo} ${a.espesor}mm`).join(', ')}</strong></div>
                     </div>
                 </div>
                 ` : ''}

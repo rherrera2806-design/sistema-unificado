@@ -29,7 +29,7 @@ const InvInventario = {
                     <span style="font-size:24px;">⚠️</span>
                     <div>
                         <div style="font-weight:700;color:var(--danger);font-size:14px;">Alertas de Stock Crítico</div>
-                        <div style="font-size:13px;color:var(--gray-600);">${alertas.length} tipo(s) con stock por debajo del mínimo: <strong>${alertas.map(a => a.tipo).join(', ')}</strong></div>
+                        <div style="font-size:13px;color:var(--gray-600);">${alertas.length} tipo(s) con stock por debajo del mínimo: <strong>${alertas.map(a => `${a.tipo} ${a.espesor}mm`).join(', ')}</strong></div>
                     </div>
                 </div>
                 ` : ''}
@@ -51,7 +51,7 @@ const InvInventario = {
                     <button onclick="window.print()" class="btn btn-outline btn-sm">Imprimir</button>
                 </div>
                 <div class="card">
-                    <div class="card-header">Inventario Actual <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${items.length} tipos)</span></div>
+                    <div class="card-header">Inventario Actual <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${items.length} registros)</span></div>
                     <div class="card-body" style="padding:0">
                         ${items.length === 0 ? '<div class="empty-state"><div class="icon">📦</div><p>No hay items en inventario</p></div>' : `<div class="table-responsive"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Stock</th><th>m2 Stock</th><th>Autonomía</th></tr></thead><tbody id="invBody">${this.renderRows(this.allItems)}</tbody></table></div>`}
                     </div>
@@ -59,8 +59,8 @@ const InvInventario = {
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
     },
 
-    getAutonomiaInfo(tipoCristal) {
-        const a = this.autonomiaData.find(x => x.tipo === tipoCristal);
+    getAutonomiaInfo(tipoCristal, espesor) {
+        const a = this.autonomiaData.find(x => x.tipo === tipoCristal && x.espesor === espesor);
         if (!a) return { texto: 'Sin datos', color: 'var(--gray-400)', bg: 'transparent' };
         
         if (a.estado === 'sin_stock') return { texto: 'Sin stock', color: 'var(--danger)', bg: 'rgba(239,68,68,0.08)' };
@@ -74,7 +74,7 @@ const InvInventario = {
         return items.map(i => {
             const stock = i.stock;
             const stockColor = stock > 0 ? 'var(--success)' : 'var(--danger)';
-            const autoInfo = this.getAutonomiaInfo(i.tipo_cristal);
+            const autoInfo = this.getAutonomiaInfo(i.tipo_cristal, i.espesor);
             return `<tr>
                 <td style="font-weight:600;">${i.tipo_cristal}</td>
                 <td><span style="background:var(--primary-light); color:var(--primary); padding:2px 10px; border-radius:12px; font-size:12px;">${i.espesor}mm</span></td>

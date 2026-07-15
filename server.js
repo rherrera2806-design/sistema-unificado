@@ -185,16 +185,22 @@ async function initDB() {
     // --- CATÁLOGOS: Tipos de Cristal y Espesores ---
     await query(`CREATE TABLE IF NOT EXISTS catalogo_tipos_cristal (
         id SERIAL PRIMARY KEY,
-        nombre VARCHAR(100) UNIQUE NOT NULL,
+        nombre VARCHAR(100) NOT NULL,
+        espesor INTEGER NOT NULL DEFAULT 0,
         stock_critico INTEGER DEFAULT 0,
         consumo_mensual_aprox DECIMAL(10,2) DEFAULT 0,
         activo BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(nombre, espesor)
     )`);
 
     // Migracion: agregar columnas nuevas si no existen
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0").catch(() => {});
     await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS consumo_mensual_aprox DECIMAL(10,2) DEFAULT 0").catch(() => {});
+    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS espesor INTEGER DEFAULT 0").catch(() => {});
+    // Migracion: eliminar constraint viejo de nombre unico y crear nuevo compuesto
+    await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_key").catch(() => {});
+    await query("ALTER TABLE catalogo_tipos_cristal ADD CONSTRAINT catalogo_tipos_cristal_nombre_espesor_key UNIQUE (nombre, espesor)").catch(() => {});
 
     await query(`CREATE TABLE IF NOT EXISTS catalogo_espesores (
         id SERIAL PRIMARY KEY,
@@ -457,13 +463,14 @@ async function getTiposCristal() {
 async function crearTipoCristal(data) {
     const nombre = sanitizeString(data.nombre || data);
     if (!nombre) throw new Error('Nombre requerido');
-    const exists = await query('SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1', [nombre]);
-    if (exists.rows.length > 0) throw new Error('El tipo de cristal ya existe');
+    const espesor = parseInt(data.espesor) || 0;
+    const exists = await query('SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1 AND espesor = $2', [nombre, espesor]);
+    if (exists.rows.length > 0) throw new Error('Ya existe este tipo de cristal con ese espesor');
     const stockCritico = parseInt(data.stock_critico) || 0;
     const consumoMensual = parseFloat(data.consumo_mensual_aprox) || 0;
     const result = await query(
-        'INSERT INTO catalogo_tipos_cristal (nombre, stock_critico, consumo_mensual_aprox) VALUES ($1, $2, $3) RETURNING *',
-        [nombre, stockCritico, consumoMensual]
+        'INSERT INTO catalogo_tipos_cristal (nombre, espesor, stock_critico, consumo_mensual_aprox) VALUES ($1, $2, $3, $4) RETURNING *',
+        [nombre, espesor, stockCritico, consumoMensual]
     );
     return result.rows[0];
 }
@@ -476,8 +483,8 @@ async function eliminarTipoCristal(id) {
 
 async function updateTipoCristal(id, data) {
     const result = await query(
-        'UPDATE catalogo_tipos_cristal SET nombre = $1, stock_critico = $2, consumo_mensual_aprox = $3 WHERE id = $4 AND activo = TRUE RETURNING *',
-        [data.nombre, parseInt(data.stock_critico) || 0, parseFloat(data.consumo_mensual_aprox) || 0, id]
+        'UPDATE catalogo_tipos_cristal SET nombre = $1, espesor = $2, stock_critico = $3, consumo_mensual_aprox = $4 WHERE id = $5 AND activo = TRUE RETURNING *',
+        [data.nombre, parseInt(data.espesor) || 0, parseInt(data.stock_critico) || 0, parseFloat(data.consumo_mensual_aprox) || 0, id]
     );
     return result.rows[0] || null;
 }
@@ -497,26 +504,27 @@ async function getStockPorTipo() {
 async function getAutonomia() {
     const [stockResult, catalogoResult] = await Promise.all([
         query(`
-            SELECT tipo_cristal,
+            SELECT tipo_cristal, espesor,
                 SUM(CASE WHEN tipo_movimiento = 'entrada' THEN cantidad_planchas ELSE 0 END) -
                 SUM(CASE WHEN tipo_movimiento = 'salida' AND tipo_salida = 'plancha_completa' THEN cantidad_planchas ELSE 0 END) as stock_planca
             FROM movimientos
-            GROUP BY tipo_cristal
+            GROUP BY tipo_cristal, espesor
         `),
-        query("SELECT nombre, stock_critico, consumo_mensual_aprox FROM catalogo_tipos_cristal WHERE activo = TRUE")
+        query("SELECT nombre, espesor, stock_critico, consumo_mensual_aprox FROM catalogo_tipos_cristal WHERE activo = TRUE")
     ]);
 
     const catalogoMap = {};
-    catalogoResult.rows.forEach(c => { catalogoMap[c.nombre] = c; });
+    catalogoResult.rows.forEach(c => { catalogoMap[`${c.nombre}_${c.espesor}`] = c; });
 
-    const todosTipos = await query("SELECT nombre FROM catalogo_tipos_cristal WHERE activo = TRUE");
     const stockMap = {};
-    stockResult.rows.forEach(s => { stockMap[s.tipo_cristal] = Number(s.stock_planca); });
+    stockResult.rows.forEach(s => { stockMap[`${s.tipo_cristal}_${s.espesor}`] = Number(s.stock_planca); });
 
-    return todosTipos.rows.map(t => {
-        const nombre = t.nombre;
-        const stock = stockMap[nombre] || 0;
-        const cat = catalogoMap[nombre] || {};
+    const allKeys = new Set([...Object.keys(stockMap), ...Object.keys(catalogoMap)]);
+
+    return Array.from(allKeys).map(key => {
+        const [nombre, espesor] = key.split('_');
+        const stock = stockMap[key] || 0;
+        const cat = catalogoMap[key] || {};
         const consumo = Number(cat.consumo_mensual_aprox) || 0;
         const critico = Number(cat.stock_critico) || 0;
 
@@ -536,6 +544,20 @@ async function getAutonomia() {
             if (stock <= critico) estado = 'critico';
             else if (autonomiaMeses <= 1) estado = 'advertencia';
         }
+
+        return {
+            tipo: nombre,
+            espesor: Number(espesor),
+            stock,
+            consumoMensual: consumo,
+            stockCritico: critico,
+            autonomiaMeses: autonomiaMeses !== null ? Math.round(autonomiaMeses * 10) / 10 : null,
+            autonomiaSemanas,
+            autonomiaDias,
+            estado
+        };
+    });
+}
 
         return {
             tipo: nombre,

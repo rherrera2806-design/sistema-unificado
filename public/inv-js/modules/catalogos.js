@@ -2,7 +2,6 @@ const InvCatalogos = {
     async render() {
         const page = document.querySelector('.page.active');
         
-        // Solo administradores pueden acceder
         if (!App.isAdmin()) {
             page.innerHTML = '<div class="alert alert-danger">No tienes permisos para acceder a esta sección</div>';
             return;
@@ -29,20 +28,21 @@ const InvCatalogos = {
                     <div class="card">
                         <div class="card-header">
                             <span>Tipos de Cristal</span>
-                            <span class="badge badge-entrada">${tiposCristal.length} tipos</span>
+                            <span class="badge badge-entrada">${tiposCristal.length} registros</span>
                         </div>
                         <div class="card-body">
                             <div style="display:flex; gap:8px; margin-bottom:8px;">
-                                <input type="text" id="nuevoTipoCristal" class="form-control" placeholder="Nombre..." style="flex:1;">
+                                <input type="text" id="nuevoTipoCristal" class="form-control" placeholder="Tipo de cristal..." style="flex:1;">
+                                <input type="number" id="nuevoEspesorTC" class="form-control" placeholder="Espesor" min="0" style="width:90px;">
                             </div>
                             <div style="display:flex; gap:8px; margin-bottom:16px;">
                                 <input type="number" id="nuevoStockCritico" class="form-control" placeholder="Stock crítico (planchas)" min="0" style="flex:1;">
                                 <input type="number" id="nuevoConsumoMensual" class="form-control" placeholder="Consumo mensual aprox" min="0" step="0.1" style="flex:1;">
                             </div>
                             <div style="margin-bottom:16px;">
-                                <button class="btn btn-success" onclick="InvCatalogos.agregarTipoCristal()" style="width:100%;">+ Agregar Tipo</button>
+                                <button class="btn btn-success" onclick="InvCatalogos.agregarTipoCristal()" style="width:100%;">+ Agregar</button>
                             </div>
-                            <div id="listaTiposCristal" class="catalog-list">
+                            <div id="listaTiposCristal" class="catalog-list" style="max-height:400px;overflow-y:auto;">
                                 ${this.renderTiposCristal(tiposCristal)}
                             </div>
                         </div>
@@ -80,12 +80,15 @@ const InvCatalogos = {
             return '<div class="empty-state"><p>No hay tipos de cristal configurados</p></div>';
         }
         return `<div class="catalog-items">${tipos.map(t => `
-            <div class="catalog-item" data-id="${t.id}" style="flex-direction:column;align-items:stretch;gap:6px;">
+            <div class="catalog-item" data-id="${t.id}" style="flex-direction:column;align-items:stretch;gap:4px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;">
-                    <span class="catalog-item-name" style="font-weight:700;">${this.escapeHtml(t.nombre)}</span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="catalog-item-name" style="font-weight:700;">${this.escapeHtml(t.nombre)}</span>
+                        <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(100,116,139,0.1);color:var(--text-light);">${t.espesor}mm</span>
+                    </div>
                     <div style="display:flex;gap:4px;">
                         <button class="btn btn-sm" onclick="InvCatalogos.editarTipoCristal(${t.id})" title="Editar" style="padding:4px 8px;font-size:11px;background:rgba(59,130,246,0.1);color:var(--info);">Editar</button>
-                        <button class="btn btn-danger btn-sm" onclick="InvCatalogos.eliminarTipoCristal(${t.id}, '${this.escapeHtml(t.nombre)}')" title="Eliminar" style="padding:4px 8px;">✕</button>
+                        <button class="btn btn-danger btn-sm" onclick="InvCatalogos.eliminarTipoCristal(${t.id}, '${this.escapeHtml(t.nombre)} ${t.espesor}mm')" title="Eliminar" style="padding:4px 8px;">✕</button>
                     </div>
                 </div>
                 <div style="display:flex;gap:12px;font-size:11px;color:var(--gray-500);">
@@ -119,6 +122,7 @@ const InvCatalogos = {
 
     async agregarTipoCristal() {
         const nombre = document.getElementById('nuevoTipoCristal').value.trim();
+        const espesor = document.getElementById('nuevoEspesorTC').value;
         const stockCritico = document.getElementById('nuevoStockCritico').value;
         const consumoMensual = document.getElementById('nuevoConsumoMensual').value;
         
@@ -130,6 +134,7 @@ const InvCatalogos = {
         try {
             await api.catalogos.crearTipoCristal({
                 nombre,
+                espesor: parseInt(espesor) || 0,
                 stock_critico: parseInt(stockCritico) || 0,
                 consumo_mensual_aprox: parseFloat(consumoMensual) || 0
             });
@@ -148,17 +153,20 @@ const InvCatalogos = {
         const t = tipos.find(x => x.id === id);
         if (!t) return;
 
-        const page = document.querySelector('.page.active');
         const modal = document.createElement('div');
         modal.id = 'editModalTipoCristal';
         modal.style.cssText = 'position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
         modal.innerHTML = `
             <div style="background:white;border-radius:12px;padding:24px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
-                <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Editar: ${this.escapeHtml(t.nombre)}</h3>
+                <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Editar: ${this.escapeHtml(t.nombre)} ${t.espesor}mm</h3>
                 <div style="margin-bottom:12px;">
                     <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Nombre</label>
                     <input type="text" id="editTCNombre" class="form-control" value="${this.escapeHtml(t.nombre)}">
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Espesor (mm)</label>
+                    <input type="number" id="editTCEspesor" class="form-control" value="${t.espesor || 0}" min="0">
                 </div>
                 <div style="margin-bottom:12px;">
                     <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Stock Crítico (planchas)</label>
@@ -179,6 +187,7 @@ const InvCatalogos = {
 
     async guardarTipoCristal(id) {
         const nombre = document.getElementById('editTCNombre').value.trim();
+        const espesor = document.getElementById('editTCEspesor').value;
         const stockCritico = document.getElementById('editTCStockCritico').value;
         const consumoMensual = document.getElementById('editTCConsumoMensual').value;
 
@@ -190,6 +199,7 @@ const InvCatalogos = {
         try {
             await api.catalogos.editarTipoCristal(id, {
                 nombre,
+                espesor: parseInt(espesor) || 0,
                 stock_critico: parseInt(stockCritico) || 0,
                 consumo_mensual_aprox: parseFloat(consumoMensual) || 0
             });
@@ -202,7 +212,7 @@ const InvCatalogos = {
     },
 
     async eliminarTipoCristal(id, nombre) {
-        if (!confirm(`¿Eliminar el tipo de cristal "${nombre}"?`)) return;
+        if (!confirm(`¿Eliminar "${nombre}"?`)) return;
         
         try {
             await api.catalogos.eliminarTipoCristal(id);
@@ -218,7 +228,7 @@ const InvCatalogos = {
         const valor = parseInt(input.value);
         
         if (isNaN(valor) || valor <= 0) {
-            App.toast('Ingresa un valor de espesor válido (número entero positivo)', 'error');
+            App.toast('Ingresa un valor de espesor válido', 'error');
             return;
         }
 

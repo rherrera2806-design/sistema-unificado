@@ -132,8 +132,43 @@ App.registerModule('bitacora', {
                 <td>${tecnico}</td>
                 <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(detalle || '').replace(/"/g, '&quot;')}">${detalle}</td>
                 <td><span class="status-badge ${App.getEstadoClass(estado)}">${estado}</span></td>
+                <td><button onclick="App.modules.bitacora.verDetalle(${JSON.stringify(r).replace(/"/g, '&quot;')})" style="background:rgba(59,130,246,0.1);color:#3b82f6;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px" title="Ver detalle">&#128065;</button></td>
             </tr>`;
         }
-        container.innerHTML = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Máquina</th><th>Componente</th><th>Técnico</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+        container.innerHTML = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Máquina</th><th>Componente</th><th>Técnico</th><th>Detalle</th><th>Estado</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    },
+
+    verDetalle(r) {
+        const fecha = r.tipo_mantencion === 'Preventiva' ? (r.fecha_ejecutada || r.fecha_programada) : (r.fecha_falla || '');
+        const tipoColor = r.tipo_mantencion === 'Preventiva' ? '#28a745' : '#dc3545';
+        const estado = r.tipo_mantencion === 'Preventiva' ? (r.estado || '-') : (r.estado || 'Reparada');
+        const modal = document.createElement('div');
+        modal.id = 'bitModalDetalle';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+        modal.innerHTML = `
+            <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:500px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                    <h3 style="font-size:16px;font-weight:700">Detalle de Mantención</h3>
+                    <button onclick="document.getElementById('bitModalDetalle').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light)">&#10005;</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--text-light)">Fecha:</span><span style="font-weight:600">${App.formatDate(fecha)}</span></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--text-light)">Tipo:</span><span style="background:${tipoColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${r.tipo_mantencion}</span></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--text-light)">Turno:</span><span style="font-weight:600">${r.turno || 'Dia'}</span></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--text-light)">Máquina:</span><span style="font-weight:600">${r.maquina_nombre || '-'}</span></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--text-light)">Componente:</span><span style="font-weight:600">${r.componente_nombre || '-'}</span></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--text-light)">Técnico:</span><span style="font-weight:600">${r.tecnico || r.responsable || '-'}</span></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--text-light)">Estado:</span><span class="status-badge ${App.getEstadoClass(estado)}">${estado}</span></div>
+                    ${r.horas_detalles ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--text-light)">Hs. Detalle:</span><span style="font-weight:600">${r.horas_detalles}</span></div>` : ''}
+                    ${r.dias ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--text-light)">Días:</span><span style="font-weight:600">${r.dias}</span></div>` : ''}
+                    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+                        <span style="color:var(--text-light);font-size:12px">Detalle:</span>
+                        <p style="margin:4px 0 0;font-weight:500;line-height:1.5">${r.detalle || '-'}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
     }
 });
