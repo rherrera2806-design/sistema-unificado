@@ -462,13 +462,14 @@ async function del(table, id) {
 // FUNCIONES DE CATÁLOGOS (TIPOS CRISTAL Y ESPESORES)
 // =====================================================
 async function getTiposCristal() {
-    const result = await query('SELECT * FROM catalogo_tipos_cristal WHERE activo = TRUE ORDER BY nombre');
+    const result = await query('SELECT * FROM catalogo_tipos_cristal WHERE activo = TRUE ORDER BY espesor, nombre');
     return result.rows;
 }
 
 async function crearTipoCristal(data) {
-    const nombre = sanitizeString(data.nombre || data);
+    let nombre = sanitizeString(data.nombre || data);
     if (!nombre) throw new Error('Nombre requerido');
+    nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
     const espesor = parseInt(data.espesor) || 0;
     const exists = await query('SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1 AND espesor = $2 AND activo = TRUE', [nombre, espesor]);
     if (exists.rows.length > 0) throw new Error('Ya existe este tipo de cristal con ese espesor');
@@ -489,6 +490,9 @@ async function eliminarTipoCristal(id) {
 }
 
 async function updateTipoCristal(id, data) {
+    let nombre = sanitizeString(data.nombre || '');
+    if (!nombre) throw new Error('Nombre requerido');
+    nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
     const result = await query(
         'UPDATE catalogo_tipos_cristal SET nombre = $1, espesor = $2, codigo_sap = $3, stock_critico = $4, consumo_mensual_aprox = $5 WHERE id = $6 AND activo = TRUE RETURNING *',
         [data.nombre, parseInt(data.espesor) || 0, sanitizeString(data.codigo_sap) || '', parseInt(data.stock_critico) || 0, parseInt(data.consumo_mensual_aprox) || 0, id]
