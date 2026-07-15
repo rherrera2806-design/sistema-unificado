@@ -2,7 +2,7 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { execFile } = require('child_process');
+const { exec } = require('child_process');
 const { Pool } = require('pg');
 const crypto = require('crypto');
 const { Server } = require('socket.io');
@@ -55,28 +55,17 @@ function r2CurlUpload(key, fileBuffer) {
         const signed = r2Sign(key, 'PUT', payloadHash);
         const tmpFile = path.join('/tmp', `r2_${Date.now()}.pdf`);
         fs.writeFileSync(tmpFile, fileBuffer);
-        const args = [
-            '-s', '-w', '%{http_code}',
-            '--connect-timeout', '30',
-            '--max-time', '120',
-            '-k',
-            '-X', 'PUT',
-            '-H', `Host: ${signed.host}`,
-            '-H', 'Content-Type: application/pdf',
-            '-H', `x-amz-content-sha256: ${signed.payloadHash}`,
-            '-H', `x-amz-date: ${signed.amzDate}`,
-            '-H', `Authorization: ${signed.authorization}`,
-            '--data-binary', `@${tmpFile}`,
-            signed.url
-        ];
-        execFile('curl', args, { timeout: 120000 }, (err, stdout, stderr) => {
+        const cmd = `curl -s -o /dev/null -w '%{http_code}' --connect-timeout 30 --max-time 120 -k -X PUT -H 'Host: ${signed.host}' -H 'Content-Type: application/pdf' -H 'x-amz-content-sha256: ${signed.payloadHash}' -H 'x-amz-date: ${signed.amzDate}' -H 'Authorization: ${signed.authorization}' --data-binary @'${tmpFile}' '${signed.url}'`;
+        exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
             try { fs.unlinkSync(tmpFile); } catch(e) {}
-            if (err) { reject(new Error('Curl error: ' + err.message)); return; }
-            const status = parseInt(stdout || '0');
+            const status = parseInt((stdout || '').trim()) || 0;
+            console.log('[R2] Curl exit:', err ? err.code : 'ok', 'status:', status, 'stderr:', (stderr || '').substring(0, 200));
             if (status >= 200 && status < 300) {
                 resolve({ ok: true, status });
+            } else if (err && status === 0) {
+                reject(new Error('Curl fallo: ' + (stderr || err.message).substring(0, 100)));
             } else {
-                reject(new Error('R2 upload failed: HTTP ' + status));
+                reject(new Error('R2 respondio HTTP ' + status));
             }
         });
     });
@@ -87,20 +76,9 @@ function r2CurlDelete(key) {
         const crypto = require('crypto');
         const payloadHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
         const signed = r2Sign(key, 'DELETE', payloadHash);
-        const args = [
-            '-s', '-w', '%{http_code}',
-            '--connect-timeout', '10',
-            '--max-time', '30',
-            '-k',
-            '-X', 'DELETE',
-            '-H', `Host: ${signed.host}`,
-            '-H', `x-amz-content-sha256: ${signed.payloadHash}`,
-            '-H', `x-amz-date: ${signed.amzDate}`,
-            '-H', `Authorization: ${signed.authorization}`,
-            signed.url
-        ];
-        execFile('curl', args, { timeout: 30000 }, (err, stdout) => {
-            try { resolve(parseInt(stdout || '0') < 300); } catch(e) { resolve(false); }
+        const cmd = `curl -s -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 30 -k -X DELETE -H 'Host: ${signed.host}' -H 'x-amz-content-sha256: ${signed.payloadHash}' -H 'x-amz-date: ${signed.amzDate}' -H 'Authorization: ${signed.authorization}' '${signed.url}'`;
+        exec(cmd, { timeout: 30000 }, (err, stdout) => {
+            try { resolve(parseInt((stdout || '').trim()) < 300); } catch(e) { resolve(false); }
         });
     });
 }
@@ -1867,7 +1845,7 @@ const server = http.createServer(async (req, res) => {
             json(res, { key, url: `${R2_PUBLIC_URL}/${key}` });
         } catch(e) {
             console.error('[R2] Upload error:', e.message);
-            json(res, { error: 'Error al subir: ' + e.message }, 500);
+            json(res, { error: 'Error al subir archivo a almacenamiento' }, 500);
         }
         return;
     }
@@ -1877,29 +1855,16 @@ const server = http.createServer(async (req, res) => {
     // =====================================================
     if (urlPath === '/api/r2/test' && req.method === 'GET') {
         try {
-            const crypto = require('crypto');
             const key = 'test-ping.txt';
-            const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-            const payloadHash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-            const signed = r2Sign(key, 'HEAD', payloadHash);
+            const signed = r2Sign(key, 'HEAD', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+            const cmd = `curl -s -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 20 -k -I -H 'Host: ${signed.host}' -H 'x-amz-date: ${signed.amzDate}' -H 'Authorization: ${signed.authorization}' '${signed.url}'`;
             const result = await new Promise((resolve) => {
-                const args = [
-                    '-s', '-w', '%{http_code}',
-                    '--connect-timeout', '10',
-                    '--max-time', '20',
-                    '-k',
-                    '-I',
-                    '-H', `Host: ${signed.host}`,
-                    '-H', `x-amz-date: ${signed.amzDate}`,
-                    '-H', `Authorization: ${signed.authorization}`,
-                    signed.url
-                ];
-                execFile('curl', args, { timeout: 20000 }, (err, stdout) => {
-                    const status = parseInt(stdout || '0');
-                    resolve({ ok: status > 0 && status < 500, status });
+                exec(cmd, { timeout: 20000 }, (err, stdout) => {
+                    const status = parseInt((stdout || '').trim()) || 0;
+                    resolve({ ok: status > 0 && status < 500, status, curlOk: !err });
                 });
             });
-            json(res, { ok: result.ok, status: result.status, bucket: R2_BUCKET_NAME, accountId: R2_ACCOUNT_ID ? R2_ACCOUNT_ID.substring(0,8)+'...' : 'MISSING' });
+            json(res, { ok: result.ok, status: result.status, bucket: R2_BUCKET_NAME });
         } catch(e) {
             json(res, { error: e.message }, 500);
         }
