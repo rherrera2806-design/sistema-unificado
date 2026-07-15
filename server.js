@@ -559,19 +559,6 @@ async function getAutonomia() {
     });
 }
 
-        return {
-            tipo: nombre,
-            stock,
-            consumoMensual: consumo,
-            stockCritico: critico,
-            autonomiaMeses: autonomiaMeses !== null ? Math.round(autonomiaMeses * 10) / 10 : null,
-            autonomiaSemanas,
-            autonomiaDias,
-            estado
-        };
-    });
-}
-
 async function getAlertas() {
     const autonomia = await getAutonomia();
     return autonomia.filter(a => a.estado === 'critico' || a.estado === 'sin_stock');
