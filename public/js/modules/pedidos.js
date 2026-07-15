@@ -224,12 +224,12 @@ App.registerModule('pedidos', {
         document.getElementById('pedReviewCliente').textContent = this.currentPedido.cliente;
         document.getElementById('pedReviewVendedor').textContent = this.currentPedido.vendedor;
         document.getElementById('pedReviewFecha').textContent = this.fmtDate(this.currentPedido.fecha_subida);
+        document.getElementById('pedReviewPdf').src = `/api/pedidos/${this.currentPedido.id}/pdf`;
         document.getElementById('pedMotivo').value = '';
         document.getElementById('pedMotivoGroup').style.display = 'none';
         document.getElementById('pedReviewModal').classList.add('show');
-        window.open(`/api/pedidos/${this.currentPedido.id}/pdf`, '_blank');
     },
-    hideReviewModal() { document.getElementById('pedReviewModal').classList.remove('show'); this.currentPedido = null; },
+    hideReviewModal() { document.getElementById('pedReviewModal').classList.remove('show'); document.getElementById('pedReviewPdf').src = ''; this.currentPedido = null; },
 
     async review(estado) {
         if (!this.currentPedido) return;
