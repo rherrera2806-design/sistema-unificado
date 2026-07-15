@@ -10,58 +10,35 @@ const InvCatalogos = {
         page.innerHTML = '<div class="empty-state"><p>Cargando catálogos...</p></div>';
         
         try {
-            const [tiposCristal, espesores] = await Promise.all([
-                api.catalogos.getTiposCristal(),
-                api.catalogos.getEspesores()
-            ]);
+            const tiposCristal = await api.catalogos.getTiposCristal();
 
             page.innerHTML = `
                 <div class="page-header">
                     <div>
                         <h2>Gestión de Catálogos</h2>
-                        <p class="subtitle">Administra los tipos de cristal y espesores disponibles</p>
+                        <p class="subtitle">Administra los tipos de cristal, espesor, stock crítico y consumo mensual</p>
                     </div>
                 </div>
 
-                <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
-                    <!-- Tipos de Cristal -->
-                    <div class="card">
-                        <div class="card-header">
-                            <span>Tipos de Cristal</span>
-                            <span class="badge badge-entrada">${tiposCristal.length} registros</span>
-                        </div>
-                        <div class="card-body">
-                            <div style="display:flex; gap:8px; margin-bottom:8px;">
-                                <input type="text" id="nuevoTipoCristal" class="form-control" placeholder="Tipo de cristal..." style="flex:1;">
-                                <input type="number" id="nuevoEspesorTC" class="form-control" placeholder="Espesor" min="0" style="width:90px;">
-                            </div>
-                            <div style="display:flex; gap:8px; margin-bottom:16px;">
-                                <input type="number" id="nuevoStockCritico" class="form-control" placeholder="Stock crítico (planchas)" min="0" style="flex:1;">
-                                <input type="number" id="nuevoConsumoMensual" class="form-control" placeholder="Consumo mensual aprox" min="0" step="0.1" style="flex:1;">
-                            </div>
-                            <div style="margin-bottom:16px;">
-                                <button class="btn btn-success" onclick="InvCatalogos.agregarTipoCristal()" style="width:100%;">+ Agregar</button>
-                            </div>
-                            <div id="listaTiposCristal" class="catalog-list" style="max-height:400px;overflow-y:auto;">
-                                ${this.renderTiposCristal(tiposCristal)}
-                            </div>
-                        </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span>Tipos de Cristal</span>
+                        <span class="badge badge-entrada">${tiposCristal.length} registros</span>
                     </div>
-
-                    <!-- Espesores -->
-                    <div class="card">
-                        <div class="card-header">
-                            <span>Espesores (mm)</span>
-                            <span class="badge badge-entrada">${espesores.length} valores</span>
+                    <div class="card-body">
+                        <div style="display:flex; gap:8px; margin-bottom:8px;">
+                            <input type="text" id="nuevoTipoCristal" class="form-control" placeholder="Tipo de cristal..." style="flex:1;">
+                            <input type="number" id="nuevoEspesorTC" class="form-control" placeholder="Espesor" min="0" style="width:90px;">
                         </div>
-                        <div class="card-body">
-                            <div style="display:flex; gap:12px; margin-bottom:16px;">
-                                <input type="number" id="nuevoEspesor" class="form-control" placeholder="Nuevo espesor (mm)..." min="1" max="100" style="flex:1;">
-                                <button class="btn btn-success" onclick="InvCatalogos.agregarEspesor()">+ Agregar</button>
-                            </div>
-                            <div id="listaEspesores" class="catalog-list">
-                                ${this.renderEspesores(espesores)}
-                            </div>
+                        <div style="display:flex; gap:8px; margin-bottom:16px;">
+                            <input type="number" id="nuevoStockCritico" class="form-control" placeholder="Stock crítico (planchas)" min="0" style="flex:1;">
+                            <input type="number" id="nuevoConsumoMensual" class="form-control" placeholder="Consumo mensual aprox" min="0" step="0.1" style="flex:1;">
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <button class="btn btn-success" onclick="InvCatalogos.agregarTipoCristal()" style="width:100%;">+ Agregar</button>
+                        </div>
+                        <div id="listaTiposCristal" class="catalog-list" style="max-height:500px;overflow-y:auto;">
+                            ${this.renderTiposCristal(tiposCristal)}
                         </div>
                     </div>
                 </div>
@@ -95,20 +72,6 @@ const InvCatalogos = {
                     <span>Stock crítico: <strong style="color:${t.stock_critico > 0 ? 'var(--warning)' : 'var(--gray-400)'};">${t.stock_critico || 0} planchas</strong></span>
                     <span>Consumo mensual: <strong style="color:${t.consumo_mensual_aprox > 0 ? 'var(--info)' : 'var(--gray-400)'};">${t.consumo_mensual_aprox || 0} planchas</strong></span>
                 </div>
-            </div>
-        `).join('')}</div>`;
-    },
-
-    renderEspesores(espesores) {
-        if (espesores.length === 0) {
-            return '<div class="empty-state"><p>No hay espesores configurados</p></div>';
-        }
-        return `<div class="catalog-items">${espesores.map(e => `
-            <div class="catalog-item" data-id="${e.id}">
-                <span class="catalog-item-name">${e.valor} mm</span>
-                <button class="btn btn-danger btn-sm" onclick="InvCatalogos.eliminarEspesor(${e.id}, ${e.valor})" title="Eliminar">
-                    ✕
-                </button>
             </div>
         `).join('')}</div>`;
     },
@@ -217,37 +180,6 @@ const InvCatalogos = {
         try {
             await api.catalogos.eliminarTipoCristal(id);
             App.toast('Tipo de cristal eliminado');
-            this.render();
-        } catch(err) {
-            App.toast(err.message, 'error');
-        }
-    },
-
-    async agregarEspesor() {
-        const input = document.getElementById('nuevoEspesor');
-        const valor = parseInt(input.value);
-        
-        if (isNaN(valor) || valor <= 0) {
-            App.toast('Ingresa un valor de espesor válido', 'error');
-            return;
-        }
-
-        try {
-            await api.catalogos.crearEspesor(valor);
-            App.toast('Espesor agregado');
-            input.value = '';
-            this.render();
-        } catch(err) {
-            App.toast(err.message, 'error');
-        }
-    },
-
-    async eliminarEspesor(id, valor) {
-        if (!confirm(`¿Eliminar el espesor de ${valor}mm?`)) return;
-        
-        try {
-            await api.catalogos.eliminarEspesor(id);
-            App.toast('Espesor eliminado');
             this.render();
         } catch(err) {
             App.toast(err.message, 'error');
