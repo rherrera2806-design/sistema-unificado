@@ -22,7 +22,7 @@ App.registerModule('usuarios', {
                 </div>
             </div>
             <div id="uModalOverlay" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)" onclick="if(event.target===this)App.modules.usuarios.closeModal()">
-                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:480px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+                <div onclick="event.stopPropagation()" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:480px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
                     <h3 id="uModalTitle" style="font-size:18px;font-weight:700;margin-bottom:16px">Nuevo Usuario</h3>
                     <div id="uModalBody"></div>
                     <div id="uModalError" style="color:var(--danger);font-size:12px;margin-top:8px;display:none"></div>
@@ -126,11 +126,11 @@ App.registerModule('usuarios', {
         document.getElementById('uModalError').style.display = 'none';
         document.getElementById('uModalBody').innerHTML = `
             <div style="margin-bottom:12px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Nombre</label>
-                <input id="fUNombre" type="text" class="input" value="${user.nombre}"></div>
+                <input id="fUNombre" type="text" class="input" autocomplete="off" value="${user.nombre}"></div>
             <div style="margin-bottom:12px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Email</label>
-                <input id="fUEmail" type="email" class="input" value="${user.email}"></div>
+                <input id="fUEmail" type="email" class="input" autocomplete="off" value="${user.email}"></div>
             <div style="margin-bottom:12px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">${id ? 'Nueva contrasena (dejar vacio para no cambiar)' : 'Contrasena'}</label>
-                <input id="fUPassword" type="password" class="input" ${id ? '' : 'required'}></div>
+                <input id="fUPassword" type="password" class="input" autocomplete="new-password" ${id ? '' : 'required'}></div>
             <div style="margin-bottom:12px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Rol</label>
                 <select id="fURol" class="input">
                     <option value="usuario" ${user.rol==='usuario'?'selected':''}>Usuario</option>
