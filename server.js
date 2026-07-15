@@ -22,28 +22,27 @@ const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'ordenes-venta';
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-d70f793c9dc24a3fa46ef91fb4e0a45a.r2.dev';
 const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
-function r2Request(params) {
-    return new Promise((resolve, reject) => {
-        const signed = aws4.sign(params, { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY });
-        const url = new URL(signed.url || `${R2_ENDPOINT}${signed.path || signed.pathname || ''}`);
-        const options = {
-            hostname: url.hostname,
-            port: 443,
-            path: url.pathname + url.search,
+async function r2Request(params) {
+    const signed = aws4.sign(params, { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY });
+    const url = signed.url || `${R2_ENDPOINT}${signed.path || signed.pathname || ''}`;
+    const body = signed.body || undefined;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+        const res = await fetch(url, {
             method: signed.method || 'PUT',
             headers: signed.headers,
-            rejectUnauthorized: false,
-        };
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', (chunk) => data += chunk);
-            res.on('end', () => resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, body: data }));
+            body: body,
+            signal: controller.signal,
         });
-        req.on('error', reject);
-        req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout')); });
-        if (signed.body) req.write(signed.body);
-        req.end();
-    });
+        let data = '';
+        if (!res.ok) data = await res.text();
+        return { ok: res.ok, status: res.status, body: data };
+    } catch(e) {
+        throw new Error('R2 fetch error: ' + e.message);
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
 async function r2Delete(key) {
@@ -1795,9 +1794,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
-    // R2 - SUBIR ARCHIVO (proxy server-side con https nativo)
-    // =====================================================
-    // R2 - SUBIR ARCHIVO (via aws4 + https)
+    // R2 - SUBIR ARCHIVO (via aws4 + fetch)
     // =====================================================
     if (urlPath === '/api/r2/direct-upload' && req.method === 'POST') {
         if (!R2_ACCESS_KEY_ID) {
