@@ -72,7 +72,7 @@ const InvCatalogos = {
                 </div>
                 <div style="display:flex;gap:12px;font-size:11px;color:var(--gray-500);">
                     <span>Stock crítico: <strong style="color:${t.stock_critico > 0 ? 'var(--warning)' : 'var(--gray-400)'};">${t.stock_critico || 0} planchas</strong></span>
-                    <span>Consumo mensual: <strong style="color:${t.consumo_mensual_aprox > 0 ? 'var(--info)' : 'var(--gray-400)'};">${t.consumo_mensual_aprox || 0} planchas</strong></span>
+                    <span>Consumo mensual: <strong style="color:${t.consumo_mensual_aprox > 0 ? 'var(--info)' : 'var(--gray-400)'};">${parseInt(t.consumo_mensual_aprox) || 0} planchas</strong></span>
                 </div>
             </div>
         `).join('')}</div>`;
