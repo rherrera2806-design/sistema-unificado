@@ -348,20 +348,28 @@ async function initDB() {
         fecha_revision TIMESTAMP,
         revisado_por TEXT
     )`);
-    // SEMILLA: Usuario admin
+    // SEMILLA: Usuario admin — permisos jerárquicos completos
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const ALL_PERMS = [
+        'mantencion','dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora',
+        'inventario','inv_inventario','inv_movimientos','inv_historial','inv_catalogos',
+        'atencion','turnos_recepcion','turnos_bodega','turnos_qr',
+        'ventas','pedidos',
+        'administracion','usuarios','pedidos.autorizar'
+    ];
     const adminCheck = await query("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
     if (adminCheck.rows.length === 0) {
         await query(
             "INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5)",
-            ['Administrador', adminEmail, hashPassword(adminPassword), 'admin', ['sigma','inventario','turnos','usuarios','pedidos','pedidos.autorizar']]
+            ['Administrador', adminEmail, hashPassword(adminPassword), 'admin', ALL_PERMS]
         );
     } else {
-        // Agregar permisos de pedidos a usuarios admin existentes
+        // Backfill: asegurar que admin tenga todos los permisos jerárquicos
         try {
-            await query("UPDATE usuarios SET permisos = array_append(permisos, 'pedidos') WHERE rol = 'admin' AND NOT ('pedidos' = ANY(permisos))");
-            await query("UPDATE usuarios SET permisos = array_append(permisos, 'pedidos.autorizar') WHERE rol = 'admin' AND NOT ('pedidos.autorizar' = ANY(permisos))");
+            for (const p of ALL_PERMS) {
+                await query("UPDATE usuarios SET permisos = array_append(permisos, $1) WHERE rol = 'admin' AND NOT ($1 = ANY(permisos))", [p]);
+            }
         } catch(e) {}
     }
 

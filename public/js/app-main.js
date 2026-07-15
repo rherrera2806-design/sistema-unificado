@@ -314,63 +314,63 @@ function doLogout() {
     window.location.href = '/';
 }
 
-// ─── Sidebar Structure ────
-function getAreas() {
+// ─── Sidebar Structure (permisos jerárquicos) ────
+function getUserPerms() {
     const u = getUser();
-    return u ? (u.areas || (u.area ? [u.area] : [])) : [];
+    return u ? (u.permisos || []) : [];
 }
-function hasArea(a) { return getAreas().includes(a); }
+function hasPerm(p) { return getUserPerms().includes(p); }
 function isAdmin() { const u = getUser(); return u && u.rol === 'admin'; }
+function hasSection(section) { return isAdmin() || hasPerm(section); }
+function canSeeItem(item, section) { return isAdmin() || hasPerm(section) || hasPerm(item); }
 
 function renderSidebar() {
     const nav = document.getElementById('sidebarNav');
-    const areas = getAreas();
-    const adm = isAdmin() || hasArea('Gerencia');
     let html = '';
 
-    // MANTENCION (todo junto)
-    if (adm || hasArea('Mantencion')) {
+    // MANTENCION
+    if (hasSection('mantencion')) {
         html += `<div class="nav-section">MANTENCION</div>`;
-        html += navI('dashboard', 'Dashboard', '📊');
-        html += navI('machineTypes', 'Tipos de Area', '⚙️');
-        html += navI('machines', 'Maquinas', '🏭');
-        html += navI('components', 'Componentes', '🔧');
-        html += navI('preventive', 'Preventivo', '📋');
-        html += navI('corrective', 'Correctivo', '🔴');
-        html += navI('calendar', 'Calendario', '📅');
-        html += navI('notas', 'Notas', '📒');
-        html += navI('reports', 'Reportes', '📈');
-        html += navI('history', 'Historial', '📜');
-        html += navI('bitacora', 'Bitacora de Mantencion', '📒');
+        if (canSeeItem('dashboard','mantencion')) html += navI('dashboard', 'Dashboard', '📊');
+        if (canSeeItem('machineTypes','mantencion')) html += navI('machineTypes', 'Tipos de Area', '⚙️');
+        if (canSeeItem('machines','mantencion')) html += navI('machines', 'Maquinas', '🏭');
+        if (canSeeItem('components','mantencion')) html += navI('components', 'Componentes', '🔧');
+        if (canSeeItem('preventive','mantencion')) html += navI('preventive', 'Preventivo', '📋');
+        if (canSeeItem('corrective','mantencion')) html += navI('corrective', 'Correctivo', '🔴');
+        if (canSeeItem('calendar','mantencion')) html += navI('calendar', 'Calendario', '📅');
+        if (canSeeItem('notas','mantencion')) html += navI('notas', 'Notas', '📒');
+        if (canSeeItem('reports','mantencion')) html += navI('reports', 'Reportes', '📈');
+        if (canSeeItem('history','mantencion')) html += navI('history', 'Historial', '📜');
+        if (canSeeItem('bitacora','mantencion')) html += navI('bitacora', 'Bitacora de Mantencion', '📒');
     }
 
     // INVENTARIO
-    if (adm || hasArea('Bodega')) {
+    if (hasSection('inventario')) {
         html += `<div class="nav-section">INVENTARIO</div>`;
-        html += navI('inv_inventario', 'Inventario', '📦');
-        html += navI('inv_movimientos', 'Movimientos', '📋');
-        html += navI('inv_historial', 'Historial Inventario', '🕐');
-        html += navI('inv_catalogos', 'Catalogos', '⚙️');
+        if (canSeeItem('inv_inventario','inventario')) html += navI('inv_inventario', 'Inventario', '📦');
+        if (canSeeItem('inv_movimientos','inventario')) html += navI('inv_movimientos', 'Movimientos', '📋');
+        if (canSeeItem('inv_historial','inventario')) html += navI('inv_historial', 'Historial Inventario', '🕐');
+        if (canSeeItem('inv_catalogos','inventario')) html += navI('inv_catalogos', 'Catalogos', '⚙️');
     }
 
     // ATENCION
-    if (adm || hasArea('Recepcion')) {
+    if (hasSection('atencion')) {
         html += `<div class="nav-section">ATENCION</div>`;
-        html += navI('turnos_recepcion', 'Recepcion y Control', '📋');
-        html += navI('turnos_bodega', 'Entrega de Bodega', '📦');
-        html += navI('turnos_qr', 'QR Clientes', '💻');
+        if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', '📋');
+        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Entrega de Bodega', '📦');
+        if (canSeeItem('turnos_qr','atencion')) html += navI('turnos_qr', 'QR Clientes', '💻');
     }
 
     // VENTAS
-    if (adm || hasArea('Ventas')) {
+    if (hasSection('ventas')) {
         html += `<div class="nav-section">VENTAS</div>`;
-        html += navI('pedidos', 'Pedidos / Ordenes', '📄');
+        if (canSeeItem('pedidos','ventas')) html += navI('pedidos', 'Pedidos / Ordenes', '📄');
     }
 
-    // ADMIN
-    if (isAdmin()) {
+    // ADMINISTRACION
+    if (hasSection('administracion')) {
         html += `<div class="nav-section">ADMINISTRACION</div>`;
-        html += navI('usuarios', 'Usuarios', '👥');
+        if (canSeeItem('usuarios','administracion')) html += navI('usuarios', 'Usuarios', '👥');
     }
 
     // Cerrar sesion

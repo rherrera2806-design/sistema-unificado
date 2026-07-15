@@ -72,6 +72,56 @@ App.registerModule('usuarios', {
             } catch(e) {}
         }
         const up = Array.isArray(user.permisos) ? user.permisos : [];
+
+        const SECTIONS = [
+            { key: 'mantencion', label: 'MANTENCION', items: [
+                { key: 'dashboard', label: 'Dashboard' },
+                { key: 'machineTypes', label: 'Tipos de Area' },
+                { key: 'machines', label: 'Maquinas' },
+                { key: 'components', label: 'Componentes' },
+                { key: 'preventive', label: 'Preventivo' },
+                { key: 'corrective', label: 'Correctivo' },
+                { key: 'calendar', label: 'Calendario' },
+                { key: 'notas', label: 'Notas' },
+                { key: 'reports', label: 'Reportes' },
+                { key: 'history', label: 'Historial' },
+                { key: 'bitacora', label: 'Bitacora' }
+            ]},
+            { key: 'inventario', label: 'INVENTARIO', items: [
+                { key: 'inv_inventario', label: 'Inventario' },
+                { key: 'inv_movimientos', label: 'Movimientos' },
+                { key: 'inv_historial', label: 'Historial Inventario' },
+                { key: 'inv_catalogos', label: 'Catalogos' }
+            ]},
+            { key: 'atencion', label: 'ATENCION', items: [
+                { key: 'turnos_recepcion', label: 'Recepcion y Control' },
+                { key: 'turnos_bodega', label: 'Entrega de Bodega' },
+                { key: 'turnos_qr', label: 'QR Clientes' }
+            ]},
+            { key: 'ventas', label: 'VENTAS', items: [
+                { key: 'pedidos', label: 'Pedidos / Ordenes' }
+            ]},
+            { key: 'administracion', label: 'ADMINISTRACION', items: [
+                { key: 'usuarios', label: 'Usuarios' }
+            ]}
+        ];
+
+        let permTreeHtml = '';
+        SECTIONS.forEach(sec => {
+            const allChecked = sec.items.every(it => up.includes(it.key));
+            const someChecked = sec.items.some(it => up.includes(it.key));
+            permTreeHtml += `<div class="perm-section" style="margin-bottom:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden">`;
+            permTreeHtml += `<div class="perm-section-header" onclick="App.modules.usuarios.toggleSection('${sec.key}')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(59,130,246,0.05);cursor:pointer;user-select:none">`;
+            permTreeHtml += `<input type="checkbox" class="perm-sec-check" data-section="${sec.key}" ${allChecked?'checked':''} ${someChecked&&!allChecked?'style="accent-color:var(--info)"':''} onclick="event.stopPropagation();App.modules.usuarios.toggleSection('${sec.key}')">`;
+            permTreeHtml += `<span style="font-size:13px;font-weight:700">${sec.label}</span>`;
+            permTreeHtml += `</div><div class="perm-items" id="permItems_${sec.key}" style="padding:4px 12px 8px 28px;display:flex;flex-wrap:wrap;gap:4px 12px">`;
+            sec.items.forEach(it => {
+                permTreeHtml += `<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" class="perm-item-check" data-section="${sec.key}" data-item="${it.key}" ${up.includes(it.key)?'checked':''}> ${it.label}</label>`;
+            });
+            permTreeHtml += `</div></div>`;
+        });
+        permTreeHtml += `<div style="margin-top:8px;padding:8px 12px;border:1px solid var(--border);border-radius:8px"><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" class="uPermCheck" value="pedidos.autorizar" ${up.includes('pedidos.autorizar')?'checked':''}> Autorizar Pedidos</label></div>`;
+
         document.getElementById('uModalTitle').textContent = id ? 'Editar Usuario' : 'Nuevo Usuario';
         document.getElementById('uModalError').style.display = 'none';
         document.getElementById('uModalBody').innerHTML = `
@@ -87,30 +137,33 @@ App.registerModule('usuarios', {
                     <option value="admin" ${user.rol==='admin'?'selected':''}>Administrador</option>
                 </select>
             </div>
-            <div style="margin-bottom:4px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px">Modulos permitidos</label>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="uPermCheck" value="sigma" ${up.includes('sigma')?'checked':''}> Mantencion (SIGMA)</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="uPermCheck" value="inventario" ${up.includes('inventario')?'checked':''}> Inventario</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="uPermCheck" value="turnos" ${up.includes('turnos')?'checked':''}> Turnos QR</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="uPermCheck" value="pedidos" ${up.includes('pedidos')?'checked':''}> Pedidos</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="uPermCheck" value="pedidos.autorizar" ${up.includes('pedidos.autorizar')?'checked':''}> Autorizar Pedidos</label>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="uPermCheck" value="usuarios" ${up.includes('usuarios')?'checked':''}> Administrar Usuarios</label>
-                </div>
+            <div style="margin-bottom:4px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px">Permisos del sistema</label>
+                ${permTreeHtml}
             </div>
         `;
         document.getElementById('uModalBtn').textContent = id ? 'Actualizar' : 'Crear';
         document.getElementById('uModalOverlay').style.display = 'flex';
     },
 
+    toggleSection(sectionKey) {
+        const secCheck = document.querySelector(`.perm-sec-check[data-section="${sectionKey}"]`);
+        const itemChecks = document.querySelectorAll(`.perm-item-check[data-section="${sectionKey}"]`);
+        const newState = !secCheck.checked;
+        secCheck.checked = newState;
+        itemChecks.forEach(cb => cb.checked = newState);
+    },
+
     closeModal() { document.getElementById('uModalOverlay').style.display = 'none'; },
 
     async save() {
         const id = this.editingId;
+        const itemPerms = Array.from(document.querySelectorAll('.perm-item-check:checked')).map(c => c.dataset.item);
+        const extraPerms = Array.from(document.querySelectorAll('.uPermCheck:checked')).map(c => c.value);
         const data = {
             nombre: document.getElementById('fUNombre').value.trim(),
             email: document.getElementById('fUEmail').value.trim(),
             rol: document.getElementById('fURol').value,
-            permisos: Array.from(document.querySelectorAll('.uPermCheck:checked')).map(c => c.value)
+            permisos: [...new Set([...itemPerms, ...extraPerms])]
         };
         const pw = document.getElementById('fUPassword').value;
         if (pw) data.password = pw;
