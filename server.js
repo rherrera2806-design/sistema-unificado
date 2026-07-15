@@ -26,19 +26,23 @@ async function r2Request(params) {
     const signed = aws4.sign(params, { accessKeyId: R2_ACCESS_KEY_ID, secretAccessKey: R2_SECRET_ACCESS_KEY });
     const url = signed.url || `${R2_ENDPOINT}${signed.path || signed.pathname || ''}`;
     const body = signed.body || undefined;
+    console.log('R2 request:', { url, method: signed.method, bodyType: typeof body, bodyLen: body ? body.length : 0 });
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
     try {
-        const res = await fetch(url, {
+        const fetchOpts = {
             method: signed.method || 'PUT',
-            headers: signed.headers,
-            body: body,
+            headers: { ...signed.headers },
             signal: controller.signal,
-        });
+        };
+        if (body) fetchOpts.body = body;
+        const res = await fetch(url, fetchOpts);
         let data = '';
         if (!res.ok) data = await res.text();
+        console.log('R2 response:', { status: res.status, ok: res.ok });
         return { ok: res.ok, status: res.status, body: data };
     } catch(e) {
+        console.error('R2 fetch error:', e.message, e.cause ? { cause: e.cause.message } : '');
         throw new Error('R2 fetch error: ' + e.message);
     } finally {
         clearTimeout(timeout);
@@ -1811,6 +1815,7 @@ const server = http.createServer(async (req, res) => {
             const key = `pedidos/${fileName}`;
             const buffer = Buffer.from(fileBase64, 'base64');
             const host = `${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+            console.log('R2 upload attempt:', { key, host, bufferLen: buffer.length, bucket: R2_BUCKET_NAME, accountId: R2_ACCOUNT_ID ? R2_ACCOUNT_ID.substring(0,6)+'...' : 'MISSING' });
             const result = await r2Request({
                 method: 'PUT',
                 url: `https://${host}/${key}`,
