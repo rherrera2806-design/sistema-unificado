@@ -284,10 +284,10 @@ App.registerModule('pedidos', {
         document.getElementById('pedReviewCliente').textContent = this.currentPedido.cliente;
         document.getElementById('pedReviewVendedor').textContent = this.currentPedido.vendedor;
         document.getElementById('pedReviewFecha').textContent = this.fmtDate(this.currentPedido.fecha_subida);
-        document.getElementById('pedReviewPdf').src = `/api/pedidos/${this.currentPedido.id}/pdf`;
         document.getElementById('pedMotivo').value = '';
         document.getElementById('pedMotivoGroup').style.display = 'none';
         document.getElementById('pedReviewModal').classList.add('show');
+        window.open(`/api/pedidos/${this.currentPedido.id}/pdf`, '_blank');
     },
     hideReviewModal() { document.getElementById('pedReviewModal').classList.remove('show'); this.currentPedido = null; },
 
@@ -309,8 +309,7 @@ App.registerModule('pedidos', {
         } catch(e) { alert('Error al revisar pedido: ' + e.message); }
     },
 
-    viewPdf(id) { document.getElementById('pedViewPdfFrame').src = `/api/pedidos/${id}/pdf`; document.getElementById('pedViewPdfModal').classList.add('show'); },
-    hideViewPdf() { document.getElementById('pedViewPdfModal').classList.remove('show'); document.getElementById('pedViewPdfFrame').src = ''; },
+    viewPdf(id) { window.open(`/api/pedidos/${id}/pdf`, '_blank'); },
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
 });
