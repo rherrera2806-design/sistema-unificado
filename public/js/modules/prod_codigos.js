@@ -17,6 +17,7 @@ App.registerModule('prod_codigos', {
                 <div style="display:flex;gap:8px">
                     <button class="btn btn-outline" onclick="App.modules.prod_codigos.importarExcel()">📥 Importar Excel</button>
                     <button class="btn btn-outline" onclick="App.modules.prod_codigos.exportarExcel()">📤 Exportar Excel</button>
+                    ${permisos.includes('usuarios') ? '<button class="btn btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.prod_codigos.deleteAll()">🗑️ Eliminar Registros</button>' : ''}
                     <button class="btn btn-primary" onclick="App.modules.prod_codigos.showCreateModal()">+ Nuevo Codigo</button>
                 </div>` : ''}
             </div>
@@ -195,6 +196,22 @@ App.registerModule('prod_codigos', {
             });
             App.toast('Codigo eliminado');
             await this.load();
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    async deleteAll() {
+        if (!confirm('ELIMINAR TODOS los codigos de producto? Esta accion no se puede deshacer.')) return;
+        if (!confirm('Seguro? Se borrarán TODOS los registros.')) return;
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch('/api/produccion/codigos/all', {
+                method: 'DELETE', headers: { 'X-User-Email': user.email || '' }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                App.toast(`${data.eliminados} codigos eliminados`);
+                await this.load();
+            } else { alert(data.error || 'Error al eliminar'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
 

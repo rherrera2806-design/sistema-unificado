@@ -2272,6 +2272,18 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // DELETE /api/produccion/codigos/all - Eliminar todos los codigos (admin only)
+    if (urlPath === '/api/produccion/codigos/all' && req.method === 'DELETE') {
+        const userEmail = req.headers['x-user-email'];
+        const userRes = await query('SELECT permisos FROM usuarios WHERE email = $1', [userEmail]);
+        if (!userRes.rows.length || !userRes.rows[0].permisos.includes('usuarios')) {
+            json(res, { error: 'Solo admin' }, 403); return;
+        }
+        const result = await query('DELETE FROM produccion_codigos');
+        json(res, { ok: true, eliminados: result.rowCount });
+        return;
+    }
+
     // POST /api/produccion/codigos
     if (urlPath === '/api/produccion/codigos' && req.method === 'POST') {
         const body = await parseBody(req);
