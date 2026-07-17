@@ -238,7 +238,6 @@ App.registerModule('pedidos', {
         document.getElementById('pedMotivo').value = '';
         document.getElementById('pedMotivoGroup').style.display = 'none';
         document.getElementById('pedReviewModal').classList.add('show');
-        window.open(`/api/pedidos/${this.currentPedido.id}/pdf`, '_blank');
     },
     hideReviewModal() { document.getElementById('pedReviewModal').classList.remove('show'); this.currentPedido = null; },
 
