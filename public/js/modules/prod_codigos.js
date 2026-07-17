@@ -36,7 +36,7 @@ App.registerModule('prod_codigos', {
                 </div></div>
                 <div class="card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--warning)" id="codBloques">0</div>
-                    <div style="color:var(--text-light);font-size:13px">Bloques de Tela</div>
+                    <div style="color:var(--text-light);font-size:13px">Con Bloqueo Tela</div>
                 </div></div>
             </div>
 
@@ -47,7 +47,7 @@ App.registerModule('prod_codigos', {
                 </div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr>
-                        <th>Codigo</th><th>Descripcion</th><th>Grupo</th><th>Familia</th><th>Bloque Tela</th><th>Creacion</th><th>Acciones</th>
+                        <th>Codigo</th><th>Descripcion</th><th>Grupo</th><th>Familia</th><th>Bloqueo Tela</th><th>Creacion</th><th>Acciones</th>
                     </tr></thead><tbody id="codTable">
                         <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
@@ -62,7 +62,12 @@ App.registerModule('prod_codigos', {
                         <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm"></div>
                         <div class="form-group"><label>Grupo</label><input class="form-control" id="codGrupo" placeholder="Ej: TEMPLADO"></div>
                         <div class="form-group"><label>Familia</label><input class="form-control" id="codFamilia" placeholder="Ej: PINTADO, LAMINADO"></div>
-                        <div class="form-group"><label>Bloque de Tela</label><input class="form-control" id="codBloque" placeholder="Ej: CRISTAL CLARO"></div>
+                        <div class="form-group"><label>Bloqueo de Tela</label>
+                            <select class="form-control" id="codBloqueo">
+                                <option value="false">No</option>
+                                <option value="true">Si</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.prod_codigos.hideCreateModal()">Cancelar</button>
@@ -84,7 +89,7 @@ App.registerModule('prod_codigos', {
                         <input type="file" id="codImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.prod_codigos.handleImportFile(event)">
                         <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-light)">
                             <strong>Columnas esperadas:</strong><br>
-                            Codigo, Descripcion, Grupo, Familia, BloqueTela<br>
+                            Codigo, Descripcion, Grupo, Familia, BloqueoTela (si/no)<br>
                             <em>Si el codigo ya existe, actualiza los datos (upsert)</em>
                         </div>
                     </div>
@@ -114,7 +119,7 @@ App.registerModule('prod_codigos', {
         const total = this.codigos.length;
         const grupos = new Set(this.codigos.map(c => c.grupo).filter(Boolean)).size;
         const familias = new Set(this.codigos.map(c => c.familia).filter(Boolean)).size;
-        const bloques = new Set(this.codigos.map(c => c.bloque_tela).filter(Boolean)).size;
+        const bloques = this.codigos.filter(c => c.bloqueo_tela).length;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('codTotal', total);
         set('codGrupos', grupos);
@@ -133,7 +138,7 @@ App.registerModule('prod_codigos', {
             <td>${c.descripcion || '-'}</td>
             <td>${c.grupo ? `<span style="padding:3px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af">${c.grupo}</span>` : '-'}</td>
             <td>${c.familia ? `<span style="padding:3px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${c.familia}</span>` : '-'}</td>
-            <td>${c.bloque_tela || '-'}</td>
+            <td>${c.bloqueo_tela ? '<span style="padding:3px 8px;border-radius:4px;font-size:11px;background:#fee2e2;color:#991b1b">Si</span>' : '<span style="padding:3px 8px;border-radius:4px;font-size:11px;background:#f1f5f9;color:#64748b">No</span>'}</td>
             <td style="font-size:12px;color:var(--text-light)">${fmtDate(c.created_at)}</td>
             <td>${puedeEditar ? `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.prod_codigos.delete(${c.id})">Eliminar</button>` : ''}</td>
         </tr>`).join('');
@@ -147,7 +152,7 @@ App.registerModule('prod_codigos', {
             (c.descripcion || '').toLowerCase().includes(search) ||
             (c.grupo || '').toLowerCase().includes(search) ||
             (c.familia || '').toLowerCase().includes(search) ||
-            (c.bloque_tela || '').toLowerCase().includes(search)
+            (c.bloqueo_tela ? 'si' : 'no').includes(search)
         );
         this.renderTable(filtered);
     },
@@ -157,7 +162,7 @@ App.registerModule('prod_codigos', {
         document.getElementById('codDescripcion').value = '';
         document.getElementById('codGrupo').value = '';
         document.getElementById('codFamilia').value = '';
-        document.getElementById('codBloque').value = '';
+        document.getElementById('codBloqueo').value = 'false';
         document.getElementById('codCreateModal').classList.add('show');
     },
     hideCreateModal() { document.getElementById('codCreateModal').classList.remove('show'); },
@@ -167,13 +172,13 @@ App.registerModule('prod_codigos', {
         const descripcion = document.getElementById('codDescripcion').value.trim();
         const grupo = document.getElementById('codGrupo').value.trim();
         const familia = document.getElementById('codFamilia').value.trim();
-        const bloque_tela = document.getElementById('codBloque').value.trim();
+        const bloqueo_tela = document.getElementById('codBloqueo').value === 'true';
         if (!codigo) { alert('Codigo requerido'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch('/api/produccion/codigos', {
                 method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ codigo, descripcion, grupo, familia, bloque_tela })
+                body: JSON.stringify({ codigo, descripcion, grupo, familia, bloqueo_tela })
             });
             const data = await res.json();
             if (res.ok) { this.hideCreateModal(); App.toast('Codigo creado'); await this.load(); }
@@ -251,7 +256,7 @@ App.registerModule('prod_codigos', {
             'Descripcion': c.descripcion || '',
             'Grupo': c.grupo || '',
             'Familia': c.familia || '',
-            'BloqueTela': c.bloque_tela || '',
+            'BloqueoTela': c.bloqueo_tela ? 'Si' : 'No',
             'FechaCreacion': c.created_at ? new Date(c.created_at).toLocaleDateString('es-CL') : ''
         }));
         const ws = XLSX.utils.json_to_sheet(rows);

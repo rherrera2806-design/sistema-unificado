@@ -436,9 +436,11 @@ async function initDB() {
         descripcion TEXT,
         grupo VARCHAR(100),
         familia VARCHAR(100),
-        bloque_tela VARCHAR(100),
+        bloqueo_tela BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    try { await query(`ALTER TABLE produccion_codigos RENAME COLUMN bloque_tela TO bloqueo_tela`); } catch(e) {}
+    try { await query(`ALTER TABLE produccion_codigos ALTER COLUMN bloqueo_tela TYPE BOOLEAN USING bloqueo_tela::text::boolean`); } catch(e) {}
     // SEMILLA: Usuario admin — permisos jerárquicos completos
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
@@ -2265,12 +2267,12 @@ const server = http.createServer(async (req, res) => {
     // POST /api/produccion/codigos
     if (urlPath === '/api/produccion/codigos' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { codigo, descripcion, grupo, familia, bloque_tela } = body;
+        const { codigo, descripcion, grupo, familia, bloqueo_tela } = body;
         if (!codigo) { json(res, { error: 'Codigo requerido' }, 400); return; }
         try {
             const result = await query(
-                'INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloque_tela) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-                [codigo, descripcion || '', grupo || '', familia || '', bloque_tela || '']
+                'INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloqueo_tela) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+                [codigo, descripcion || '', grupo || '', familia || '', bloqueo_tela === true || bloqueo_tela === 'si']
             );
             json(res, result.rows[0], 201);
         } catch(e) {
@@ -2308,14 +2310,15 @@ const server = http.createServer(async (req, res) => {
                     const descripcion = String(row['Descripcion'] || row['descripcion'] || row['ItemName'] || '').trim();
                     const grupo = String(row['Grupo'] || row['grupo'] || row['Group'] || '').trim();
                     const familia = String(row['Familia'] || row['familia'] || row['Family'] || '').trim();
-                    const bloque_tela = String(row['BloqueTela'] || row['bloque_tela'] || row['Bloque'] || '').trim();
+                    const bloqueo = String(row['BloqueoTela'] || row['bloqueo_tela'] || row['Bloqueo'] || '').toLowerCase();
+                    const bloqueo_tela = bloqueo === 'si' || bloqueo === 's' || bloqueo === '1' || bloqueo === 'true';
                     if (!codigo) { resultados.errores.push({ fila: i + 1, error: 'Sin codigo' }); continue; }
                     await query(
-                        `INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloque_tela)
+                        `INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloqueo_tela)
                          VALUES ($1, $2, $3, $4, $5) ON CONFLICT (codigo) DO UPDATE SET
                          descripcion = EXCLUDED.descripcion, grupo = EXCLUDED.grupo,
-                         familia = EXCLUDED.familia, bloque_tela = EXCLUDED.bloque_tela`,
-                        [codigo, descripcion, grupo, familia, bloque_tela]
+                         familia = EXCLUDED.familia, bloqueo_tela = EXCLUDED.bloqueo_tela`,
+                        [codigo, descripcion, grupo, familia, bloqueo_tela]
                     );
                     resultados.importados++;
                 } catch(eRow) { resultados.errores.push({ fila: i + 1, error: eRow.message }); }
