@@ -378,6 +378,57 @@ async function initDB() {
         revisado_por TEXT
     )`);
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pedidos' AND column_name='archivo_pdf') THEN ALTER TABLE pedidos ADD COLUMN archivo_pdf BYTEA; END IF; END $$`);
+
+    // =====================================================
+    // TABLAS DE PRODUCCION
+    // =====================================================
+    await query(`CREATE TABLE IF NOT EXISTS produccion_maquinas (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(100) NOT NULL,
+        codigo VARCHAR(20) UNIQUE NOT NULL,
+        estado VARCHAR(20) DEFAULT 'ACTIVA',
+        capacidad_max_m2_dia DECIMAL(8,2) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await query(`CREATE TABLE IF NOT EXISTS produccion_recetas_bom (
+        id SERIAL PRIMARY KEY,
+        codigo_sap_padre VARCHAR(30) NOT NULL,
+        codigo_materia_prima VARCHAR(30) NOT NULL,
+        descripcion TEXT,
+        espesor INTEGER,
+        cantidad INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await query(`CREATE TABLE IF NOT EXISTS produccion_ordenes (
+        id SERIAL PRIMARY KEY,
+        pedido_sap_id VARCHAR(30),
+        cliente TEXT,
+        codigo_producto VARCHAR(30) NOT NULL,
+        descripcion TEXT,
+        ancho INTEGER NOT NULL,
+        alto INTEGER NOT NULL,
+        metros_cuadrados DECIMAL(10,4),
+        es_compuesto BOOLEAN DEFAULT FALSE,
+        bom_padre_id INTEGER,
+        fecha_ingreso_sap TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_entrega_pactada DATE,
+        estado_programacion VARCHAR(20) DEFAULT 'PENDIENTE',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await query(`CREATE TABLE IF NOT EXISTS produccion_pasos (
+        id SERIAL PRIMARY KEY,
+        orden_produccion_id INTEGER NOT NULL REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+        estacion_nombre VARCHAR(50) NOT NULL,
+        orden_secuencia INTEGER NOT NULL,
+        estado VARCHAR(20) DEFAULT 'PENDIENTE',
+        hora_inicio TIMESTAMP,
+        hora_fin TIMESTAMP,
+        operario_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
     // SEMILLA: Usuario admin — permisos jerárquicos completos
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
@@ -386,6 +437,7 @@ async function initDB() {
         'inventario','inv_inventario','inv_movimientos','inv_historial','inv_catalogos',
         'atencion','turnos_recepcion','turnos_bodega','turnos_qr',
         'ventas','pedidos',
+        'produccion','prod_ordenes','prod_maquinas','prod_recetas',
         'administracion','usuarios','pedidos.autorizar'
     ];
     const adminCheck = await query("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
@@ -414,7 +466,8 @@ async function resetSequences() {
     const tables = ['usuarios', 'machine_types', 'machines', 'components', 'component_type_links', 
                     'spare_parts', 'preventive_maintenance', 'corrective_maintenance', 
                     'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
-                    'catalogo_tipos_cristal', 'catalogo_espesores'];
+                    'catalogo_tipos_cristal', 'catalogo_espesores',
+                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos'];
     for (const table of tables) {
         try {
             await query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 1))`);
@@ -2047,6 +2100,187 @@ const server = http.createServer(async (req, res) => {
         } catch(e) {
             console.error('Error deleting from R2:', e);
             json(res, { error: 'Error al eliminar archivo' }, 500);
+        }
+        return;
+    }
+
+    // =====================================================
+    // PRODUCCION - ENDPOINTS
+    // =====================================================
+
+    // GET /api/produccion/ordenes - Listar órdenes de producción
+    if (urlPath === '/api/produccion/ordenes' && req.method === 'GET') {
+        const result = await query(`
+            SELECT o.*, 
+                (SELECT COUNT(*) FROM produccion_pasos p WHERE p.orden_produccion_id = o.id) as total_pasos,
+                (SELECT COUNT(*) FROM produccion_pasos p WHERE p.orden_produccion_id = o.id AND p.estado = 'TERMINADO') as pasos_terminados
+            FROM produccion_ordenes o ORDER BY o.created_at DESC
+        `);
+        json(res, result.rows);
+        return;
+    }
+
+    // GET /api/produccion/ordenes/:id/pasos - Pasos de una orden
+    const ordenPasosMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)\/pasos$/);
+    if (ordenPasosMatch && req.method === 'GET') {
+        const id = Number(ordenPasosMatch[1]);
+        const result = await query('SELECT * FROM produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [id]);
+        json(res, result.rows);
+        return;
+    }
+
+    // GET /api/produccion/maquinas - Listar máquinas
+    if (urlPath === '/api/produccion/maquinas' && req.method === 'GET') {
+        const result = await query('SELECT * FROM produccion_maquinas ORDER BY nombre');
+        json(res, result.rows);
+        return;
+    }
+
+    // POST /api/produccion/maquinas - Crear máquina
+    if (urlPath === '/api/produccion/maquinas' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { nombre, codigo, capacidad_max_m2_dia } = body;
+        if (!nombre || !codigo) { json(res, { error: 'Nombre y código requeridos' }, 400); return; }
+        try {
+            const result = await query(
+                'INSERT INTO produccion_maquinas (nombre, codigo, capacidad_max_m2_dia) VALUES ($1, $2, $3) RETURNING *',
+                [nombre, codigo, capacidad_max_m2_dia || 0]
+            );
+            json(res, result.rows[0], 201);
+        } catch(e) { json(res, { error: 'Error al crear máquina: ' + e.message }, 500); }
+        return;
+    }
+
+    // GET /api/produccion/recetas - Listar recetas BOM
+    if (urlPath === '/api/produccion/recetas' && req.method === 'GET') {
+        const result = await query('SELECT * FROM produccion_recetas_bom ORDER BY codigo_sap_padre, codigo_materia_prima');
+        json(res, result.rows);
+        return;
+    }
+
+    // POST /api/produccion/recetas - Crear receta BOM
+    if (urlPath === '/api/produccion/recetas' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { codigo_sap_padre, codigo_materia_prima, descripcion, espesor, cantidad } = body;
+        if (!codigo_sap_padre || !codigo_materia_prima) { json(res, { error: 'Código padre y materia prima requeridos' }, 400); return; }
+        try {
+            const result = await query(
+                'INSERT INTO produccion_recetas_bom (codigo_sap_padre, codigo_materia_prima, descripcion, espesor, cantidad) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+                [codigo_sap_padre, codigo_materia_prima, descripcion || '', espesor || 0, cantidad || 1]
+            );
+            json(res, result.rows[0], 201);
+        } catch(e) { json(res, { error: 'Error al crear receta: ' + e.message }, 500); }
+        return;
+    }
+
+    // DELETE /api/produccion/recetas/:id
+    const deleteRecetaMatch = urlPath.match(/^\/api\/produccion\/recetas\/(\d+)$/);
+    if (deleteRecetaMatch && req.method === 'DELETE') {
+        const id = Number(deleteRecetaMatch[1]);
+        await query('DELETE FROM produccion_recetas_bom WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // POST /api/produccion/importar - Importar Excel de SAP
+    if (urlPath === '/api/produccion/importar' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { excel_data, file_name } = body;
+        if (!excel_data) { json(res, { error: 'Datos del archivo requeridos' }, 400); return; }
+
+        try {
+            const XLSX = require('xlsx');
+            const buffer = Buffer.from(excel_data, 'base64');
+            const workbook = XLSX.read(buffer, { type: 'buffer' });
+            const sheetName = workbook.SheetNames[0];
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+            if (!rows.length) { json(res, { error: 'El archivo Excel está vacío' }, 400); return; }
+
+            console.log('[PROD] Importando', rows.length, 'filas desde', file_name || 'excel');
+
+            const recetasResult = await query('SELECT * FROM produccion_recetas_bom');
+            const recetasMap = {};
+            recetasResult.rows.forEach(r => {
+                if (!recetasMap[r.codigo_sap_padre]) recetasMap[r.codigo_sap_padre] = [];
+                recetasMap[r.codigo_sap_padre].push(r);
+            });
+
+            const resultados = { importadas: 0, errores: [], pasos_creados: 0 };
+            const ESTACION_BASE = ['Corte', 'Pulido', 'Templado'];
+
+            for (let i = 0; i < rows.length; i++) {
+                try {
+                    const row = rows[i];
+                    const codigo = String(row['Codigo'] || row['codigo'] || row['ItemCode'] || row['CodigoSAP'] || '').trim();
+                    const pedido = String(row['Pedido'] || row['pedido'] || row['DocEntry'] || row['PedidoSAP'] || '').trim();
+                    const cliente = String(row['Cliente'] || row['cliente'] || row['CardName'] || '').trim();
+                    const descripcion = String(row['Descripcion'] || row['descripcion'] || row['ItemName'] || '').trim();
+                    const ancho = Number(row['Ancho'] || row['ancho'] || row['Width'] || 0);
+                    const alto = Number(row['Alto'] || row['alto'] || row['Height'] || 0);
+                    const tiene_perforaciones = Number(row['Perforaciones'] || row['perforaciones'] || row['Holes'] || row['CobroPerforaciones'] || 0) > 0;
+                    const es_pintado = String(row['Familia'] || row['familia'] || row['Family'] || '').toLowerCase().includes('pint');
+
+                    if (!codigo || !ancho || !alto) {
+                        resultados.errores.push({ fila: i + 1, error: 'Faltan datos: código, ancho o alto' });
+                        continue;
+                    }
+
+                    const m2 = (ancho / 1000) * (alto / 1000);
+                    const es_compuesto = recetasMap[codigo] && recetasMap[codigo].length > 0;
+
+                    if (es_compuesto) {
+                        const componentes = recetasMap[codigo];
+                        for (const comp of componentes) {
+                            const result = await query(
+                                `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, bom_padre_id)
+                                 VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8) RETURNING id`,
+                                [pedido, cliente, comp.codigo_materia_prima, comp.descripcion || descripcion, ancho, alto, m2, comp.id]
+                            );
+                            const ordenId = result.rows[0].id;
+                            const estaciones = [...ESTACION_BASE];
+                            if (tiene_perforaciones && !estaciones.includes('Mecanizado')) estaciones.splice(2, 0, 'Mecanizado');
+                            if (es_pintado && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
+
+                            for (let s = 0; s < estaciones.length; s++) {
+                                await query(
+                                    'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
+                                    [ordenId, estaciones[s], s + 1, 'PENDIENTE']
+                                );
+                                resultados.pasos_creados++;
+                            }
+                            resultados.importadas++;
+                        }
+                    } else {
+                        const result = await query(
+                            `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE) RETURNING id`,
+                            [pedido, cliente, codigo, descripcion, ancho, alto, m2]
+                        );
+                        const ordenId = result.rows[0].id;
+                        const estaciones = [...ESTACION_BASE];
+                        if (tiene_perforaciones && !estaciones.includes('Mecanizado')) estaciones.splice(2, 0, 'Mecanizado');
+                        if (es_pintado && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
+
+                        for (let s = 0; s < estaciones.length; s++) {
+                            await query(
+                                'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
+                                [ordenId, estaciones[s], s + 1, 'PENDIENTE']
+                            );
+                            resultados.pasos_creados++;
+                        }
+                        resultados.importadas++;
+                    }
+                } catch(eRow) {
+                    resultados.errores.push({ fila: i + 1, error: eRow.message });
+                }
+            }
+
+            console.log('[PROD] Importación completada:', resultados);
+            json(res, resultados);
+        } catch(e) {
+            console.error('[PROD] Error importación:', e.message);
+            json(res, { error: 'Error al procesar archivo: ' + e.message }, 500);
         }
         return;
     }

@@ -397,6 +397,12 @@ function renderSidebar() {
         if (canSeeItem('pedidos','ventas')) html += navI('pedidos', 'Pedidos / Ordenes', '📄');
     }
 
+    // PRODUCCION
+    if (hasSection('produccion')) {
+        html += `<div class="nav-section">PRODUCCION</div>`;
+        if (canSeeItem('prod_ordenes','produccion')) html += navI('produccion', 'Produccion', '🏭');
+    }
+
     // ADMINISTRACION
     if (hasSection('administracion')) {
         html += `<div class="nav-section">ADMINISTRACION</div>`;
