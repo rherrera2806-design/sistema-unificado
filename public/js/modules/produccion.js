@@ -16,7 +16,13 @@ App.registerModule('produccion', {
                     <h2 style="margin:0">Produccion</h2>
                     <div class="subtitle">Gestion de ordenes de produccion y planificacion</div>
                 </div>
-                ${puedeImportar ? '<button class="btn btn-primary" onclick="App.modules.produccion.showImportModal()">+ Importar SAP</button>' : ''}
+                ${puedeImportar ? `
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-primary" onclick="App.modules.produccion.showImportModal()">+ Importar SAP</button>
+                        <button class="btn btn-outline" onclick="App.modules.produccion.showRecetaModal()">+ Receta BOM</button>
+                        <button class="btn btn-outline" onclick="App.modules.produccion.showMaquinaModal()">+ Maquina</button>
+                    </div>
+                ` : ''}
             </div>
 
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
