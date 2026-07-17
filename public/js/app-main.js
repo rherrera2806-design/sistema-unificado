@@ -401,6 +401,7 @@ function renderSidebar() {
     if (hasSection('produccion')) {
         html += `<div class="nav-section">PRODUCCION</div>`;
         if (canSeeItem('prod_ordenes','produccion')) html += navI('produccion', 'Produccion', '🏭');
+        if (canSeeItem('prod_codigos','produccion')) html += navI('prod_codigos', 'Codigos', '🏷️');
         if (canSeeItem('prod_maquinas','produccion')) html += navI('prod_maquinas', 'Maquinas', '⚙️');
         if (canSeeItem('prod_recetas','produccion')) html += navI('prod_recetas', 'Recetas BOM', '📦');
     }

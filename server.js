@@ -429,6 +429,16 @@ async function initDB() {
         operario_id INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    await query(`CREATE TABLE IF NOT EXISTS produccion_codigos (
+        id SERIAL PRIMARY KEY,
+        codigo VARCHAR(30) UNIQUE NOT NULL,
+        descripcion TEXT,
+        grupo VARCHAR(100),
+        familia VARCHAR(100),
+        bloque_tela VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
     // SEMILLA: Usuario admin — permisos jerárquicos completos
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
@@ -467,7 +477,7 @@ async function resetSequences() {
                     'spare_parts', 'preventive_maintenance', 'corrective_maintenance', 
                     'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
                     'catalogo_tipos_cristal', 'catalogo_espesores',
-                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos'];
+                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos'];
     for (const table of tables) {
         try {
             await query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 1))`);
@@ -2234,6 +2244,80 @@ const server = http.createServer(async (req, res) => {
                         [codigo_padre, codigo_mp, desc, espesor, cantidad]
                     );
                     resultados.importadas++;
+                } catch(eRow) { resultados.errores.push({ fila: i + 1, error: eRow.message }); }
+            }
+            json(res, resultados);
+        } catch(e) { json(res, { error: 'Error al procesar: ' + e.message }, 500); }
+        return;
+    }
+
+    // =====================================================
+    // PRODUCCION - CODIGOS SAP
+    // =====================================================
+
+    // GET /api/produccion/codigos
+    if (urlPath === '/api/produccion/codigos' && req.method === 'GET') {
+        const result = await query('SELECT * FROM produccion_codigos ORDER BY codigo');
+        json(res, result.rows);
+        return;
+    }
+
+    // POST /api/produccion/codigos
+    if (urlPath === '/api/produccion/codigos' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { codigo, descripcion, grupo, familia, bloque_tela } = body;
+        if (!codigo) { json(res, { error: 'Codigo requerido' }, 400); return; }
+        try {
+            const result = await query(
+                'INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloque_tela) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+                [codigo, descripcion || '', grupo || '', familia || '', bloque_tela || '']
+            );
+            json(res, result.rows[0], 201);
+        } catch(e) {
+            if (e.code === '23505') { json(res, { error: 'El codigo ya existe' }, 400); return; }
+            json(res, { error: 'Error al crear: ' + e.message }, 500);
+        }
+        return;
+    }
+
+    // DELETE /api/produccion/codigos/:id
+    const deleteCodigoMatch = urlPath.match(/^\/api\/produccion\/codigos\/(\d+)$/);
+    if (deleteCodigoMatch && req.method === 'DELETE') {
+        const id = Number(deleteCodigoMatch[1]);
+        await query('DELETE FROM produccion_codigos WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // POST /api/produccion/codigos/importar - Importar desde Excel
+    if (urlPath === '/api/produccion/codigos/importar' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { excel_data } = body;
+        if (!excel_data) { json(res, { error: 'Datos del archivo requeridos' }, 400); return; }
+        try {
+            const XLSX = require('xlsx');
+            const buffer = Buffer.from(excel_data, 'base64');
+            const workbook = XLSX.read(buffer, { type: 'buffer' });
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            if (!rows.length) { json(res, { error: 'Archivo vacio' }, 400); return; }
+            const resultados = { importados: 0, errores: [] };
+            for (let i = 0; i < rows.length; i++) {
+                try {
+                    const row = rows[i];
+                    const codigo = String(row['Codigo'] || row['codigo'] || row['ItemCode'] || '').trim();
+                    const descripcion = String(row['Descripcion'] || row['descripcion'] || row['ItemName'] || '').trim();
+                    const grupo = String(row['Grupo'] || row['grupo'] || row['Group'] || '').trim();
+                    const familia = String(row['Familia'] || row['familia'] || row['Family'] || '').trim();
+                    const bloque_tela = String(row['BloqueTela'] || row['bloque_tela'] || row['Bloque'] || '').trim();
+                    if (!codigo) { resultados.errores.push({ fila: i + 1, error: 'Sin codigo' }); continue; }
+                    await query(
+                        `INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloque_tela)
+                         VALUES ($1, $2, $3, $4, $5) ON CONFLICT (codigo) DO UPDATE SET
+                         descripcion = EXCLUDED.descripcion, grupo = EXCLUDED.grupo,
+                         familia = EXCLUDED.familia, bloque_tela = EXCLUDED.bloque_tela`,
+                        [codigo, descripcion, grupo, familia, bloque_tela]
+                    );
+                    resultados.importados++;
                 } catch(eRow) { resultados.errores.push({ fila: i + 1, error: eRow.message }); }
             }
             json(res, resultados);
