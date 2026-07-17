@@ -58,7 +58,7 @@ App.registerModule('prod_codigos', {
                 <div class="modal" style="max-width:500px">
                     <div class="modal-header"><h3>Nuevo Codigo</h3><button class="modal-close" onclick="App.modules.prod_codigos.hideCreateModal()">&times;</button></div>
                     <div class="modal-body">
-                        <div class="form-group"><label>Codigo SAP *</label><input class="form-control" id="codCodigo" placeholder="Ej: 659"></div>
+                        <div class="form-group"><label>Codigo SAP *</label><input class="form-control" id="codCodigo" placeholder="Ej: V659, 100, P123"></div>
                         <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm"></div>
                         <div class="form-group"><label>Grupo</label><input class="form-control" id="codGrupo" placeholder="Ej: TEMPLADO"></div>
                         <div class="form-group"><label>Familia</label><input class="form-control" id="codFamilia" placeholder="Ej: PINTADO, LAMINADO"></div>
