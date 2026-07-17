@@ -163,7 +163,7 @@ App.registerModule('pedidos', {
             <td>${p.revisor_nombre || '-'}</td>
             <td>${p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '-'}</td>
             <td>
-                <button class="btn btn-sm btn-outline" onclick="App.modules.pedidos.viewPdf(${p.id})">Ver PDF</button>
+                ${p.estado === 'pendiente' ? `<button class="btn btn-sm btn-outline" onclick="App.modules.pedidos.viewPdf(${p.id})">Ver PDF</button>` : ''}
                 ${this.canAuthorize && p.estado === 'pendiente' ? `<button class="btn btn-sm btn-primary" style="margin-left:4px" onclick="App.modules.pedidos.showReviewModal(${p.id})">Revisar</button>` : ''}
                 ${isAdmin ? `<button class="btn btn-sm btn-outline" style="margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.pedidos.deletePedido(${p.id},'${p.numero_pedido}')">Eliminar</button>` : ''}
             </td></tr>`).join('');
