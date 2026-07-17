@@ -87,8 +87,6 @@ App.registerModule('pedidos', {
                             <div><strong>Vendedor:</strong> <span id="pedReviewVendedor"></span></div>
                             <div><strong>Fecha:</strong> <span id="pedReviewFecha"></span></div>
                         </div>
-                        <div class="form-group" style="margin-bottom:12px"><label style="font-weight:500">PDF del Pedido</label>
-                            <embed id="pedReviewPdf" type="application/pdf" style="width:100%;height:400px;border:1px solid #e2e8f0;border-radius:8px"></embed></div>
                         <div class="form-group" id="pedMotivoGroup" style="display:none;margin-bottom:12px"><label style="font-weight:500">Motivo de Rechazo</label>
                             <textarea class="form-control" id="pedMotivo" rows="3" placeholder="Indica el motivo del rechazo..."></textarea></div>
                     </div>
@@ -235,14 +233,14 @@ App.registerModule('pedidos', {
         if (!this.currentPedido) return;
         document.getElementById('pedReviewNumero').textContent = this.currentPedido.numero_pedido;
         document.getElementById('pedReviewCliente').textContent = this.currentPedido.cliente;
-        document.getElementById('pedReviewVendedor').textContent = this.currentPedido.vendedor;
+        document.getElementById('pedReviewVendedor').textContent = this.currentPedido.vendedor_nombre || this.currentPedido.vendedor;
         document.getElementById('pedReviewFecha').textContent = this.fmtDateTime(this.currentPedido.fecha_subida);
-        document.getElementById('pedReviewPdf').src = `/api/pedidos/${this.currentPedido.id}/pdf`;
         document.getElementById('pedMotivo').value = '';
         document.getElementById('pedMotivoGroup').style.display = 'none';
         document.getElementById('pedReviewModal').classList.add('show');
+        window.open(`/api/pedidos/${this.currentPedido.id}/pdf`, '_blank');
     },
-    hideReviewModal() { document.getElementById('pedReviewModal').classList.remove('show'); document.getElementById('pedReviewPdf').src = ''; this.currentPedido = null; },
+    hideReviewModal() { document.getElementById('pedReviewModal').classList.remove('show'); this.currentPedido = null; },
 
     async review(estado) {
         if (!this.currentPedido) return;
