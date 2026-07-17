@@ -441,8 +441,14 @@ async function initDB() {
     )`);
     try { await query(`ALTER TABLE produccion_codigos ADD COLUMN IF NOT EXISTS bloqueo_tela BOOLEAN DEFAULT FALSE`); } catch(e) {}
     try { await query(`ALTER TABLE produccion_codigos RENAME COLUMN bloque_tela TO bloqueo_tela`); } catch(e) {}
-    try { await query(`UPDATE produccion_codigos SET bloqueo_tela = CASE WHEN bloqueo_tela::text IN ('si','s','1','true','Si','SI') THEN TRUE ELSE FALSE END WHERE bloqueo_tela IS NOT NULL AND bloqueo_tela::text NOT IN ('true','false','t','f')`); } catch(e) {}
-    try { await query(`ALTER TABLE produccion_codigos ALTER COLUMN bloqueo_tela TYPE BOOLEAN USING bloqueo_tela::text::boolean`); } catch(e) {}
+    try {
+        await query(`DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_codigos' AND column_name='bloqueo_tela' AND data_type='character varying') THEN
+                UPDATE produccion_codigos SET bloqueo_tela = CASE WHEN bloqueo_tela IN ('si','s','1','true','Si','SI') THEN 'true'::boolean ELSE 'false'::boolean END;
+                ALTER TABLE produccion_codigos ALTER COLUMN bloqueo_tela TYPE BOOLEAN USING bloqueo_tela::text::boolean;
+            END IF;
+        END $$`);
+    } catch(e) {}
     // SEMILLA: Usuario admin — permisos jerárquicos completos
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
@@ -2312,15 +2318,15 @@ const server = http.createServer(async (req, res) => {
                     const descripcion = String(row['Descripcion'] || row['descripcion'] || row['ItemName'] || '').trim();
                     const grupo = String(row['Grupo'] || row['grupo'] || row['Group'] || '').trim();
                     const familia = String(row['Familia'] || row['familia'] || row['Family'] || '').trim();
-                    const bloqueo = String(row['BloqueoTela'] || row['bloqueo_tela'] || row['Bloqueo'] || '').toLowerCase();
-                    const bloqueo_tela = bloqueo === 'si' || bloqueo === 's' || bloqueo === '1' || bloqueo === 'true';
+                    const bloqueo = String(row['BloqueoTela'] || row['bloqueo_tela'] || row['Bloqueo'] || '').toLowerCase().trim();
+                    const bloqueo_tela_val = bloqueo === 'si' || bloqueo === 's' || bloqueo === '1' || bloqueo === 'true';
                     if (!codigo) { resultados.errores.push({ fila: i + 1, error: 'Sin codigo' }); continue; }
                     await query(
                         `INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloqueo_tela)
                          VALUES ($1, $2, $3, $4, $5) ON CONFLICT (codigo) DO UPDATE SET
                          descripcion = EXCLUDED.descripcion, grupo = EXCLUDED.grupo,
-                         familia = EXCLUDED.familia, bloqueo_tela = EXCLUDED.bloqueo_tela`,
-                        [codigo, descripcion, grupo, familia, bloqueo_tela]
+                         familia = EXCLUDED.familia, bloqueo_tela = $5`,
+                        [codigo, descripcion, grupo, familia, bloqueo_tela_val]
                     );
                     resultados.importados++;
                 } catch(eRow) { resultados.errores.push({ fila: i + 1, error: eRow.message }); }
