@@ -2330,8 +2330,17 @@ const server = http.createServer(async (req, res) => {
                     const descripcion = String(row['Descripcion'] || row['descripcion'] || row['ItemName'] || '').trim();
                     const grupo = String(row['Grupo'] || row['grupo'] || row['Group'] || '').trim();
                     const familia = String(row['Familia'] || row['familia'] || row['Family'] || '').trim();
-                    const bloqueo = String(row['BloqueoTela'] || row['bloqueo_tela'] || row['Bloqueo'] || '').toLowerCase().trim();
-                    const bloqueo_tela_val = bloqueo === 'si' || bloqueo === 's' || bloqueo === '1' || bloqueo === 'true';
+                    // Buscar valor de bloqueo en cualquier columna que contenga "bloqueo" o "bloque" o "tela"
+                    let bloqueoRaw = '';
+                    for (const key of Object.keys(row)) {
+                        const kl = key.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        if (kl.includes('bloqueo') || kl.includes('bloque') || kl.includes('tela')) {
+                            bloqueoRaw = String(row[key] || '').trim();
+                            break;
+                        }
+                    }
+                    const bloqueo = bloqueoRaw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    const bloqueo_tela_val = bloqueo === 'si' || bloqueo === 's' || bloqueo === '1' || bloqueo === 'true' || bloqueo === 'x';
                     if (!codigo) { resultados.errores.push({ fila: i + 1, error: 'Sin codigo' }); continue; }
                     await query(
                         `INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloqueo_tela)
