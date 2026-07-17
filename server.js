@@ -439,7 +439,9 @@ async function initDB() {
         bloqueo_tela BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    try { await query(`ALTER TABLE produccion_codigos ADD COLUMN IF NOT EXISTS bloqueo_tela BOOLEAN DEFAULT FALSE`); } catch(e) {}
     try { await query(`ALTER TABLE produccion_codigos RENAME COLUMN bloque_tela TO bloqueo_tela`); } catch(e) {}
+    try { await query(`UPDATE produccion_codigos SET bloqueo_tela = CASE WHEN bloqueo_tela::text IN ('si','s','1','true','Si','SI') THEN TRUE ELSE FALSE END WHERE bloqueo_tela IS NOT NULL AND bloqueo_tela::text NOT IN ('true','false','t','f')`); } catch(e) {}
     try { await query(`ALTER TABLE produccion_codigos ALTER COLUMN bloqueo_tela TYPE BOOLEAN USING bloqueo_tela::text::boolean`); } catch(e) {}
     // SEMILLA: Usuario admin — permisos jerárquicos completos
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
