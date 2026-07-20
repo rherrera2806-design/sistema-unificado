@@ -1085,10 +1085,11 @@ initDB().then(() => {
     console.error('Error DB:', e.message);
 });
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://sistema-unified-production.up.railway.app,http://localhost:3000').split(',').map(s => s.trim());
+
 const server = http.createServer(async (req, res) => {
     setSecurityHeaders(res);
     const origin = req.headers.origin || '';
-    const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://sistema-unified-production.up.railway.app,http://localhost:3000').split(',').map(s => s.trim());
     if (ALLOWED_ORIGINS.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
     }
