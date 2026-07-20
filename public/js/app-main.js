@@ -487,8 +487,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     renderSidebar();
     await App.updateNavBadge();
-    setInterval(() => App.updateTurnosBadges(), 5000);
+    setInterval(() => App.updateTurnosBadges(), 15000);
     setInterval(() => App.updateInvAlertasBadge(), 30000);
-    setInterval(() => App.updatePedidosBadge(), 10000);
+    setInterval(() => App.updatePedidosBadge(), 15000);
     App.loadModule('dashboard');
 });

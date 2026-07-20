@@ -104,7 +104,7 @@ App.registerModule('turnos', {
             </div>
         `;
         await this.rCargar();
-        this.interval = setInterval(() => this.rCargar(), 3000);
+        this.interval = setInterval(() => this.rCargar(), 15000);
     },
 
     async rCargar() {
@@ -243,7 +243,7 @@ App.registerModule('turnos', {
             </div>
         `;
         await this.bCargar();
-        this.interval = setInterval(() => this.bCargar(), 3000);
+        this.interval = setInterval(() => this.bCargar(), 15000);
     },
 
     toggleFormBodega() {
@@ -322,7 +322,7 @@ App.registerModule('turnos', {
         `;
         this.generateQR(registroUrl);
         this.qrCargar();
-        this.interval = setInterval(() => this.qrCargar(), 3000);
+        this.interval = setInterval(() => this.qrCargar(), 15000);
     },
 
     generateQR(text) {
