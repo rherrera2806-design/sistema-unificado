@@ -205,7 +205,7 @@ async function query(text, params = []) {
     return result;
 }
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const BCRYPT_ROUNDS = 12;
 
 function hashPassword(password) {
