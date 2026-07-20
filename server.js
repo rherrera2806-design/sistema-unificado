@@ -110,6 +110,27 @@ function recordLoginAttempt(ip) {
     loginAttempts.set(ip, attempts);
 }
 
+const globalRequests = new Map();
+const GLOBAL_RATE_MAX = 100;
+const GLOBAL_RATE_WINDOW = 60 * 1000;
+
+function checkGlobalRateLimit(ip) {
+    const now = Date.now();
+    const requests = globalRequests.get(ip) || [];
+    const recent = requests.filter(t => now - t < GLOBAL_RATE_WINDOW);
+    globalRequests.set(ip, recent);
+    return recent.length < GLOBAL_RATE_MAX;
+}
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, requests] of globalRequests) {
+        const recent = requests.filter(t => now - t < GLOBAL_RATE_WINDOW);
+        if (recent.length === 0) globalRequests.delete(ip);
+        else globalRequests.set(ip, recent);
+    }
+}, 5 * 60 * 1000);
+
 // =====================================================
 // SEGURIDAD: Headers de seguridad
 // =====================================================
@@ -184,8 +205,24 @@ async function query(text, params = []) {
     return result;
 }
 
+const bcrypt = require('bcrypt');
+const BCRYPT_ROUNDS = 12;
+
 function hashPassword(password) {
-    return crypto.createHash('sha256').update(password).digest('hex');
+    return bcrypt.hashSync(password, BCRYPT_ROUNDS);
+}
+
+function verifyPassword(password, hash) {
+    if (!hash) return false;
+    if (hash.length === 64 && /^[a-f0-9]+$/.test(hash)) {
+        const sha256 = crypto.createHash('sha256').update(password).digest('hex');
+        if (sha256 === hash) {
+            const newHash = bcrypt.hashSync(password, BCRYPT_ROUNDS);
+            return { migrated: true, newHash };
+        }
+        return false;
+    }
+    return bcrypt.compareSync(password, hash);
 }
 
 function logEvent(type, details) {
@@ -457,7 +494,7 @@ async function initDB() {
         'inventario','inv_inventario','inv_movimientos','inv_historial','inv_catalogos',
         'atencion','turnos_recepcion','turnos_bodega','turnos_qr',
         'ventas','pedidos',
-        'produccion','prod_ordenes','prod_maquinas','prod_recetas',
+        'produccion','prod_ordenes','prod_maquinas','prod_recetas','prod_codigos',
         'administracion','usuarios','pedidos.autorizar'
     ];
     const adminCheck = await query("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
@@ -847,7 +884,11 @@ async function login(email, password) {
     const result = await query("SELECT * FROM usuarios WHERE email = $1 AND activo = TRUE", [email]);
     if (result.rows.length === 0) return null;
     const user = result.rows[0];
-    if (user.password !== hashPassword(password)) return null;
+    const verification = verifyPassword(password, user.password);
+    if (!verification) return null;
+    if (verification.migrated) {
+        await query("UPDATE usuarios SET password = $1 WHERE id = $2", [verification.newHash, user.id]);
+    }
     return { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol, permisos: Array.isArray(user.permisos) ? user.permisos : [] };
 }
 
@@ -938,14 +979,26 @@ async function getTurnosStats() {
 // =====================================================
 // SERVIDOR HTTP
 // =====================================================
+const MAX_BODY_SIZE = 10 * 1024 * 1024;
+
 function parseBody(req) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         let body = '';
-        req.on('data', chunk => body += chunk);
+        let size = 0;
+        req.on('data', chunk => {
+            size += chunk.length;
+            if (size > MAX_BODY_SIZE) {
+                reject(new Error('Body too large'));
+                req.destroy();
+                return;
+            }
+            body += chunk;
+        });
         req.on('end', () => {
             try { resolve(JSON.parse(body)); }
             catch(e) { resolve({}); }
         });
+        req.on('error', () => resolve({}));
     });
 }
 
@@ -1034,10 +1087,22 @@ initDB().then(() => {
 
 const server = http.createServer(async (req, res) => {
     setSecurityHeaders(res);
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin || '';
+    const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://sistema-unified-production.up.railway.app,http://localhost:3000').split(',').map(s => s.trim());
+    if (ALLOWED_ORIGINS.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-User-Permisos, X-User-Email');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Permisos, X-User-Email');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    if (req.url !== '/api/health' && req.url !== '/api/auth/login') {
+        if (!checkGlobalRateLimit(clientIp)) {
+            json(res, { error: 'Demasiadas peticiones. Espera 1 minuto.' }, 429);
+            return;
+        }
+    }
 
     if (!dbReady && !dbError) { json(res, { error: 'Base de datos inicializando...' }, 503); return; }
     if (dbError) { json(res, { error: dbError }, 500); return; }
@@ -1492,11 +1557,21 @@ const server = http.createServer(async (req, res) => {
     // SIGMA - Export / Import / Reset
     // =====================================================
     if (urlPath === '/api/sigma/export' && req.method === 'GET') {
+        const userEmail = req.headers['x-user-email'];
+        const userRes = await query('SELECT permisos FROM usuarios WHERE email = $1', [userEmail]);
+        if (!userRes.rows.length || !userRes.rows[0].permisos.includes('usuarios')) {
+            json(res, { error: 'Solo admin' }, 403); return;
+        }
         json(res, await exportJSON());
         return;
     }
 
     if (urlPath === '/api/sigma/import' && req.method === 'POST') {
+        const userEmail = req.headers['x-user-email'];
+        const userRes = await query('SELECT permisos FROM usuarios WHERE email = $1', [userEmail]);
+        if (!userRes.rows.length || !userRes.rows[0].permisos.includes('usuarios')) {
+            json(res, { error: 'Solo admin' }, 403); return;
+        }
         const body = await parseBody(req);
         await importJSON(body.data || body);
         json(res, { ok: true });
@@ -1504,12 +1579,22 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (urlPath === '/api/sigma/clear' && req.method === 'POST') {
+        const userEmail = req.headers['x-user-email'];
+        const userRes = await query('SELECT permisos FROM usuarios WHERE email = $1', [userEmail]);
+        if (!userRes.rows.length || !userRes.rows[0].permisos.includes('usuarios')) {
+            json(res, { error: 'Solo admin' }, 403); return;
+        }
         await clearAllSigma();
         json(res, { ok: true });
         return;
     }
 
     if (urlPath === '/api/sigma/reset' && req.method === 'POST') {
+        const userEmail = req.headers['x-user-email'];
+        const userRes = await query('SELECT permisos FROM usuarios WHERE email = $1', [userEmail]);
+        if (!userRes.rows.length || !userRes.rows[0].permisos.includes('usuarios')) {
+            json(res, { error: 'Solo admin' }, 403); return;
+        }
         await clearAllSigma();
         json(res, { ok: true, message: 'Base de datos reiniciada' });
         return;
@@ -2467,7 +2552,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 const io = new Server(server, {
-    cors: { origin: '*', methods: ['GET', 'POST'] }
+    cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] }
 });
 
 io.on('connection', (socket) => {

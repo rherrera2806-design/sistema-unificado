@@ -179,9 +179,9 @@ App.registerModule('produccion', {
         tbody.innerHTML = ordenes.map(o => {
             const progreso = o.total_pasos > 0 ? `${o.pasos_terminados}/${o.total_pasos}` : '-';
             return `<tr>
-                <td><strong>${o.pedido_sap_id || '-'}</strong></td>
-                <td>${o.cliente || '-'}</td>
-                <td><strong>${o.codigo_producto}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
+                <td><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
+                <td>${escapeHtml(o.cliente || '-')}</td>
+                <td><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
                 <td>${o.ancho} x ${o.alto} mm</td>
                 <td>${o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-'}</td>
                 <td>${progreso}</td>

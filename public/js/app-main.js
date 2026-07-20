@@ -82,6 +82,16 @@ window.db = new SigmaApiClient();
 window.api = new InvApiClient();
 
 // ─── Unified App Object ────
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 const App = {
     modules: {},
     currentPage: null,

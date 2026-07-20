@@ -47,8 +47,8 @@ App.registerModule('usuarios', {
             tbody.innerHTML = users.map(u => {
                 const permisos = (u.permisos || []).map(p => `<span class="badge" style="background:rgba(59,130,246,0.1);color:var(--info);font-size:10px">${p}</span>`).join(' ');
                 return `<tr>
-                    <td><strong>${u.nombre}</strong></td>
-                    <td style="font-size:13px">${u.email}</td>
+                    <td><strong>${escapeHtml(u.nombre)}</strong></td>
+                    <td style="font-size:13px">${escapeHtml(u.email)}</td>
                     <td><span class="badge" style="background:${u.rol==='admin'?'rgba(168,85,247,0.15)':'rgba(100,116,139,0.1)'};color:${u.rol==='admin'?'#a855f7':'var(--text-light)'}">${u.rol}</span></td>
                     <td>${permisos || '<span style="color:var(--text-light);font-size:12px">Sin permisos</span>'}</td>
                     <td><span class="badge" style="background:${u.activo!==false?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)'};color:${u.activo!==false?'var(--success)':'var(--danger)'}">${u.activo!==false?'Activo':'Inactivo'}</span></td>

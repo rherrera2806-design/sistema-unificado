@@ -155,15 +155,15 @@ App.registerModule('pedidos', {
             return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">⚡ PENDIENTE</span>';
         };
         tbody.innerHTML = pedidos.map(p => `<tr>
-            <td><strong>${p.numero_pedido}</strong></td><td>${p.cliente}</td><td>${p.vendedor_nombre || p.vendedor}</td>
+            <td><strong>${escapeHtml(p.numero_pedido)}</strong></td><td>${escapeHtml(p.cliente)}</td><td>${escapeHtml(p.vendedor_nombre || p.vendedor)}</td>
             <td>${this.fmtDateTime(p.fecha_subida)}</td>
             <td>${estadoBadge(p.estado)}</td>
-            <td>${p.revisor_nombre || '-'}</td>
+            <td>${escapeHtml(p.revisor_nombre || '-')}</td>
             <td>${p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '-'}</td>
             <td>
                 ${p.estado === 'pendiente' ? `<button class="btn btn-sm btn-outline" onclick="App.modules.pedidos.viewPdf(${p.id})">Ver PDF</button>` : ''}
                 ${this.canAuthorize && p.estado === 'pendiente' ? `<button class="btn btn-sm btn-primary" style="margin-left:4px" onclick="App.modules.pedidos.showReviewModal(${p.id})">Revisar</button>` : ''}
-                ${isAdmin ? `<button class="btn btn-sm btn-outline" style="margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.pedidos.deletePedido(${p.id},'${p.numero_pedido}')">Eliminar</button>` : ''}
+                ${isAdmin ? `<button class="btn btn-sm btn-outline" style="margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.pedidos.deletePedido(${p.id},'${escapeHtml(p.numero_pedido)}')">Eliminar</button>` : ''}
             </td></tr>`).join('');
         this.updatePendingBadge(pedidos);
     },
