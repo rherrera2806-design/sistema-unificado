@@ -57,7 +57,7 @@ App.registerModule('bitacora', {
     populateTecnicos() {
         const tecnicos = [...new Set(this._data.map(r => r.tecnico || r.responsable).filter(t => t && t !== '-'))];
         const select = document.getElementById('bitTecnico');
-        select.innerHTML = '<option value="">Todos</option>' + tecnicos.sort().map(t => `<option value="${t}">${t}</option>`).join('');
+        select.innerHTML = '<option value="">Todos</option>' + tecnicos.sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
     },
 
     applyFilters() {
@@ -96,11 +96,11 @@ App.registerModule('bitacora', {
             const estado = r.tipo_mantencion === 'Preventiva' ? (r.estado || '-') : (r.estado || 'Reparada');
             rows += `<tr>
                 <td>${App.formatDate(fecha)}</td>
-                <td><span style="background:${tipoColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${r.tipo_mantencion}</span></td>
-                <td>${turno}</td>
-                <td>${tecnico}</td>
-                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(detalle || '').replace(/"/g, '&quot;')}">${detalle}</td>
-                <td><span class="status-badge ${App.getEstadoClass(estado)}">${estado}</span></td>
+                <td><span style="background:${tipoColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${escapeHtml(r.tipo_mantencion)}</span></td>
+                <td>${escapeHtml(turno)}</td>
+                <td>${escapeHtml(tecnico)}</td>
+                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(detalle)}">${escapeHtml(detalle)}</td>
+                <td><span class="status-badge ${App.getEstadoClass(estado)}">${escapeHtml(estado)}</span></td>
             </tr>`;
         }
         container.innerHTML = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Técnico</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;

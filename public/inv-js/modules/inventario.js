@@ -76,13 +76,13 @@ const InvInventario = {
             const stockColor = stock > 0 ? 'var(--success)' : 'var(--danger)';
             const autoInfo = this.getAutonomiaInfo(i.tipo_cristal, i.espesor);
             return `<tr>
-                <td style="font-weight:600;">${i.tipo_cristal}</td>
+                <td style="font-weight:600;">${escapeHtml(i.tipo_cristal)}</td>
                 <td><span style="background:#e2e8f0; color:#334155; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:500;">${i.espesor}mm</span></td>
                 <td>${parseInt(i.ancho)}</td>
                 <td>${parseInt(i.alto)}</td>
                 <td><span style="font-size:16px; font-weight:700; color:${stockColor};">${stock}</span></td>
                 <td>${(i.m2_entradas - i.m2_salidas).toFixed(2)} m2</td>
-                <td><span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:8px;background:${autoInfo.bg};color:${autoInfo.color};">${autoInfo.texto}</span></td>
+                <td><span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:8px;background:${autoInfo.bg};color:${autoInfo.color};">${escapeHtml(autoInfo.texto)}</span></td>
             </tr>`;
         }).join('');
     },

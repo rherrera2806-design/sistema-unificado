@@ -3,6 +3,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
-COPY . .
+RUN chown -R node:node /app
+COPY --chown=node:node . .
+USER node
 EXPOSE 8080
 CMD ["node", "server.js"]

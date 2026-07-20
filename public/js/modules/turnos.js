@@ -131,7 +131,7 @@ App.registerModule('turnos', {
                 if (btnD) btnD.style.display = 'none';
             }
             const cl = document.getElementById('tRColaList');
-            if (cl) cl.innerHTML = c.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay personas en cola</div>' : c.map((t, i) => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><span style="color:var(--text-light);font-size:13px">${i+1}</span><span style="color:var(--accent);font-weight:900;font-size:16px">#${t.numero}</span><span style="font-weight:600">${t.nombre}</span></div><span style="color:var(--text-light);font-size:11px">${this.fmtTime(t.hora_creacion)}</span></div>`).join('');
+            if (cl) cl.innerHTML = c.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay personas en cola</div>' : c.map((t, i) => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><span style="color:var(--text-light);font-size:13px">${i+1}</span><span style="color:var(--accent);font-weight:900;font-size:16px">#${escapeHtml(String(t.numero))}</span><span style="font-weight:600">${escapeHtml(t.nombre)}</span></div><span style="color:var(--text-light);font-size:11px">${this.fmtTime(t.hora_creacion)}</span></div>`).join('');
             const hb = document.getElementById('tRHistBadge'); if (hb) hb.textContent = h.length;
             const hl = document.getElementById('tRHistList');
             if (hl) hl.innerHTML = h.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin registros</div>' : h.map(t => this.renderHistItem(t)).join('');
@@ -143,8 +143,8 @@ App.registerModule('turnos', {
         const tipoLabel = t.tipo || 'Retira';
         const tipoColor = tipoLabel === 'Despacho' ? 'var(--warning)' : 'var(--success)';
         let info = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">`;
-        if (isBodega) { info += `<span style="font-weight:900">${t.nombre}</span>`; }
-        else { info += `<span style="color:var(--accent);font-weight:900">#${t.numero}</span><span style="font-weight:600">${t.nombre}</span>`; }
+        if (isBodega) { info += `<span style="font-weight:900">${escapeHtml(t.nombre)}</span>`; }
+        else { info += `<span style="color:var(--accent);font-weight:900">#${escapeHtml(String(t.numero))}</span><span style="font-weight:600">${escapeHtml(t.nombre)}</span>`; }
         info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${tipoLabel==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${tipoColor}">${tipoLabel}</span>`;
         if (t.entrega_estado === 'entregado') { info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.1);color:var(--success)">&#10003; Entregado</span>`; }
         else if (t.entrega_estado === 'pendiente') { info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(245,158,11,0.1);color:var(--warning)">Pendiente bodega</span>`; }
@@ -270,9 +270,9 @@ App.registerModule('turnos', {
             }).join('');
             const el = document.getElementById('tBEntregList');
             if (el) el.innerHTML = ent.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin entregas hoy</div>' : ent.map(e => {
-                let info = `<span style="font-weight:900">${e.cliente_nombre}</span>`;
-                if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${e.pedidos}</span>`;
-                if (e.factura) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7">Factura: ${e.factura}</span>`;
+                let info = `<span style="font-weight:900">${escapeHtml(e.cliente_nombre)}</span>`;
+                if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${escapeHtml(e.pedidos)}</span>`;
+                if (e.factura) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7">Factura: ${escapeHtml(e.factura)}</span>`;
                 return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px"><div>${info}</div><div style="font-size:11px"><span style="font-weight:700;color:var(--success)">&#10003; Entregado: ${this.fmtTime(e.hora_entregada)}</span></div></div><div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div>`;
             }).join('');
         } catch(e) {}

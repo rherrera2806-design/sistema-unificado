@@ -140,15 +140,15 @@ const InvMovimientos = {
             <tr>
                 <td>${fechaStr} <span style="color:#1e3a8a; font-weight:500;">${horaStr}</span></td>
                 <td>
-                    <span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>
+                    <span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${escapeHtml(m.tipo_movimiento)}</span>
                     ${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}
                 </td>
-                <td>${this.escapeHtml(m.tipo_cristal)}</td>
+                <td>${escapeHtml(m.tipo_cristal)}</td>
                 <td>${m.espesor}mm</td>
                 <td>${parseInt(m.ancho)} x ${parseInt(m.alto)} mm</td>
                 <td>${m.cantidad_planchas}</td>
                 <td>${Number(m.metros_cuadrados).toFixed(2)}</td>
-                <td>${m.proveedor || '-'}</td>
+                <td>${escapeHtml(m.proveedor || '-')}</td>
                 <td>
                     <button class="btn btn-danger btn-sm" onclick="InvMovimientos.eliminar(${m.id})">Eliminar</button>
                 </td>

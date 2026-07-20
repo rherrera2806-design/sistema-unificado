@@ -66,7 +66,7 @@ App.registerModule('bitacora', {
     populateTecnicos() {
         const tecnicos = [...new Set(this._data.map(r => r.tecnico || r.responsable).filter(t => t && t !== '-'))];
         const select = document.getElementById('bitTecnico');
-        select.innerHTML = '<option value="">Todos</option>' + tecnicos.sort().map(t => `<option value="${t}">${t}</option>`).join('');
+        select.innerHTML = '<option value="">Todos</option>' + tecnicos.sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
     },
 
     applyFilters() {
@@ -125,13 +125,13 @@ App.registerModule('bitacora', {
             const estado = r.tipo_mantencion === 'Preventiva' ? (r.estado || '-') : (r.estado || 'Reparada');
             rows += `<tr>
                 <td>${App.formatDate(fecha)}</td>
-                <td><span style="background:${tipoColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${r.tipo_mantencion}</span></td>
-                <td>${turno}</td>
-                <td>${maquina}</td>
-                <td>${componente}</td>
-                <td>${tecnico}</td>
-                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(detalle || '').replace(/"/g, '&quot;')}">${detalle}</td>
-                <td><span class="status-badge ${App.getEstadoClass(estado)}">${estado}</span></td>
+                <td><span style="background:${tipoColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${escapeHtml(r.tipo_mantencion)}</span></td>
+                <td>${escapeHtml(turno)}</td>
+                <td>${escapeHtml(maquina)}</td>
+                <td>${escapeHtml(componente)}</td>
+                <td>${escapeHtml(tecnico)}</td>
+                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(detalle)}">${escapeHtml(detalle)}</td>
+                <td><span class="status-badge ${App.getEstadoClass(estado)}">${escapeHtml(estado)}</span></td>
                 <td><button onclick="App.modules.bitacora.verDetalle(${JSON.stringify(r).replace(/"/g, '&quot;')})" style="background:rgba(59,130,246,0.1);color:#3b82f6;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px" title="Ver detalle">&#128065;</button></td>
             </tr>`;
         }
