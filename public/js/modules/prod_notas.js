@@ -1,10 +1,30 @@
 App.registerModule('prod_notas', {
     async render() {
         const el = document.getElementById('page-prod_notas');
+
+        const user = JSON.parse(localStorage.getItem('unified_user'));
+        const res = await fetch('/api/produccion/notas', {
+            headers: { 'X-User-Email': user.email || '' }
+        });
+        const data = await res.json();
+
+        const totalPendientes = data.filter(n => n.estado === 'pendiente').length;
+        const totalRealizados = data.filter(n => n.estado === 'realizado').length;
+
         el.innerHTML = `
             <div class="page-header">
                 <div><h2>Mis Pendientes</h2><div class="subtitle">Notas personales de produccion</div></div>
                 <button class="btn btn-primary" onclick="App.modules.prod_notas.showForm()">+ Nuevo Pendiente</button>
+            </div>
+            <div class="stats-grid" style="margin-bottom:20px">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fef3c7;color:#f59e0b">⏳</div>
+                    <div class="stat-info"><h4>${totalPendientes}</h4><p>Pendientes</p></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#dcfce7;color:#22c55e">✅</div>
+                    <div class="stat-info"><h4>${totalRealizados}</h4><p>Realizados</p></div>
+                </div>
             </div>
             <div class="card">
                 <div class="card-body" style="padding:0" id="prodNotasContent">
@@ -12,16 +32,18 @@ App.registerModule('prod_notas', {
                 </div>
             </div>
         `;
-        await this.loadNotas();
+        await this.loadNotas(data);
     },
 
-    async loadNotas() {
+    async loadNotas(data) {
         try {
-            const user = JSON.parse(localStorage.getItem('unified_user'));
-            const res = await fetch('/api/produccion/notas', {
-                headers: { 'X-User-Email': user.email || '' }
-            });
-            const data = await res.json();
+            if (!data) {
+                const user = JSON.parse(localStorage.getItem('unified_user'));
+                const res = await fetch('/api/produccion/notas', {
+                    headers: { 'X-User-Email': user.email || '' }
+                });
+                data = await res.json();
+            }
             const container = document.getElementById('prodNotasContent');
 
             if (!data || data.length === 0) {
