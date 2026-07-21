@@ -40,10 +40,22 @@ App.registerModule('calendar', {
     async getEvents() {
         const events = [];
         const today = new Date().toISOString().split('T')[0];
-        const preventivos = await db.getAll('preventive_maintenance');
+
+        const [preventivos, correctivos, maquinas, componentes] = await Promise.all([
+            db.getAll('preventive_maintenance'),
+            db.getAll('corrective_maintenance'),
+            db.getAll('machines'),
+            db.getAll('components')
+        ]);
+
+        const maqMap = {};
+        maquinas.forEach(m => { maqMap[m.id] = m; });
+        const compMap = {};
+        componentes.forEach(c => { compMap[c.id] = c; });
+
         for (const r of preventivos) {
-            const maq = await db.getById('machines', r.maquina_id).catch(() => null);
-            const comp = await db.getById('components', r.componente_id).catch(() => null);
+            const maq = maqMap[r.maquina_id];
+            const comp = compMap[r.componente_id];
             const label = `${maq ? maq.codigo : ''}: ${comp ? comp.nombre : ''}`;
             if (r.fecha_programada) {
                 let status = r.estado;
@@ -55,10 +67,10 @@ App.registerModule('calendar', {
             if (r.fecha_ejecutada && r.fecha_ejecutada !== r.fecha_programada)
                 events.push({ date: r.fecha_ejecutada, title: `✅ ${label}`, status: 'Realizada' });
         }
-        const correctivos = await db.getAll('corrective_maintenance');
+
         for (const r of correctivos) {
-            const maq = await db.getById('machines', r.maquina_id).catch(() => null);
-            const comp = await db.getById('components', r.componente_id).catch(() => null);
+            const maq = maqMap[r.maquina_id];
+            const comp = compMap[r.componente_id];
             if (r.fecha_falla) {
                 const status = r.estado === 'Reparada' ? 'Realizada' : 'Vencida';
                 const icon = r.estado === 'Reparada' ? '✅' : '🔴';
