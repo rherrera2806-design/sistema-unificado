@@ -78,7 +78,18 @@ body {
     text-transform: uppercase;
     letter-spacing: 1px;
     color: rgba(255,255,255,0.35);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: color 0.15s;
 }
+.nav-section:hover { color: rgba(255,255,255,0.6); }
+.nav-section .toggle-icon { font-size: 12px; transition: transform 0.2s; }
+.nav-section.collapsed .toggle-icon { transform: rotate(-90deg); }
+.nav-section-group { overflow: hidden; transition: max-height 0.3s ease; max-height: 500px; }
+.nav-section-group.collapsed { max-height: 0 !important; }
 .nav-item {
     display: flex;
     align-items: center;
