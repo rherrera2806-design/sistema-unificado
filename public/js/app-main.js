@@ -280,6 +280,7 @@ const App = {
         await this.updateTurnosBadges();
         await this.updateInvAlertasBadge();
         await this.updatePedidosBadge();
+        await this.updateProdNotasBadge();
     },
 
     async updatePedidosBadge() {
@@ -327,6 +328,20 @@ const App = {
             badge.style.background = 'rgba(239,68,68,0.9)';
             badge.style.color = 'white';
         } else if (badge) { badge.remove(); }
+    },
+
+    async updateProdNotasBadge() {
+        try {
+            const user = getUser();
+            if (!user) return;
+            const res = await fetch('/api/produccion/notas', {
+                headers: { 'X-User-Email': user.email || '' }
+            });
+            if (!res.ok) return;
+            const notas = await res.json();
+            const pending = notas.filter(n => n.estado === 'pendiente').length;
+            this.setSidebarBadge('prod_notas', pending);
+        } catch(e) {}
     }
 };
 
@@ -521,5 +536,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setInterval(() => App.updateTurnosBadges(), 15000);
     setInterval(() => App.updateInvAlertasBadge(), 30000);
     setInterval(() => App.updatePedidosBadge(), 15000);
+    setInterval(() => App.updateProdNotasBadge(), 15000);
     App.loadModule('dashboard');
 });
