@@ -495,6 +495,17 @@ async function initDB() {
             END IF;
         END $$`);
     } catch(e) {}
+
+    // Tabla de notas de produccion (personal por usuario)
+    await query(`CREATE TABLE IF NOT EXISTS prod_notas (
+        id SERIAL PRIMARY KEY,
+        usuario_email VARCHAR(255) NOT NULL,
+        nota TEXT NOT NULL,
+        estado VARCHAR(20) DEFAULT 'pendiente',
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_completado TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
     // SEMILLA: Usuario admin — permisos jerárquicos completos
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
@@ -503,7 +514,7 @@ async function initDB() {
         'inventario','inv_inventario','inv_movimientos','inv_historial','inv_catalogos',
         'atencion','turnos_recepcion','turnos_bodega','turnos_qr',
         'ventas','pedidos',
-        'produccion','prod_ordenes','prod_maquinas','prod_recetas','prod_codigos',
+        'produccion','prod_ordenes','prod_maquinas','prod_recetas','prod_codigos','prod_notas',
         'administracion','usuarios','pedidos.autorizar'
     ];
     const adminCheck = await query("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
@@ -533,7 +544,7 @@ async function resetSequences() {
                     'spare_parts', 'preventive_maintenance', 'corrective_maintenance', 
                     'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
                     'catalogo_tipos_cristal', 'catalogo_espesores',
-                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos'];
+                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos', 'prod_notas'];
     for (const table of tables) {
         try {
             await query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 1))`);
@@ -2653,6 +2664,79 @@ const server = http.createServer(async (req, res) => {
             console.error('[PROD] Error importación:', e.message);
             json(res, { error: 'Error al procesar archivo: ' + e.message }, 500);
         }
+        return;
+    }
+
+    // =====================================================
+    // PRODUCCION - Notas personales por usuario
+    // =====================================================
+
+    // GET /api/produccion/notas - Obtener notas del usuario
+    if (urlPath === '/api/produccion/notas' && req.method === 'GET') {
+        const userEmail = req.headers['x-user-email'];
+        if (!userEmail) { json(res, { error: 'Usuario requerido' }, 401); return; }
+        try {
+            const result = await query(
+                'SELECT * FROM prod_notas WHERE usuario_email = $1 ORDER BY fecha_creacion DESC',
+                [userEmail]
+            );
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/produccion/notas - Crear nota
+    if (urlPath === '/api/produccion/notas' && req.method === 'POST') {
+        const userEmail = req.headers['x-user-email'];
+        if (!userEmail) { json(res, { error: 'Usuario requerido' }, 401); return; }
+        const body = await parseBody(req);
+        const { nota } = body;
+        if (!nota || !nota.trim()) { json(res, { error: 'Nota requerida' }, 400); return; }
+        try {
+            const result = await query(
+                'INSERT INTO prod_notas (usuario_email, nota, estado) VALUES ($1, $2, $3) RETURNING *',
+                [userEmail, nota.trim(), 'pendiente']
+            );
+            json(res, result.rows[0]);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // PUT /api/produccion/notas/:id - Actualizar nota (cambiar estado)
+    if (urlPath.match(/^\/api\/produccion\/notas\/\d+$/) && req.method === 'PUT') {
+        const userEmail = req.headers['x-user-email'];
+        if (!userEmail) { json(res, { error: 'Usuario requerido' }, 401); return; }
+        const id = parseInt(urlPath.split('/').pop());
+        const body = await parseBody(req);
+        const { estado } = body;
+        try {
+            let result;
+            if (estado === 'realizado') {
+                result = await query(
+                    'UPDATE prod_notas SET estado = $1, fecha_completado = CURRENT_TIMESTAMP WHERE id = $2 AND usuario_email = $3 RETURNING *',
+                    [estado, id, userEmail]
+                );
+            } else {
+                result = await query(
+                    'UPDATE prod_notas SET estado = $1, fecha_completado = NULL WHERE id = $2 AND usuario_email = $3 RETURNING *',
+                    [estado, id, userEmail]
+                );
+            }
+            if (result.rows.length === 0) { json(res, { error: 'Nota no encontrada' }, 404); return; }
+            json(res, result.rows[0]);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // DELETE /api/produccion/notas/:id - Eliminar nota
+    if (urlPath.match(/^\/api\/produccion\/notas\/\d+$/) && req.method === 'DELETE') {
+        const userEmail = req.headers['x-user-email'];
+        if (!userEmail) { json(res, { error: 'Usuario requerido' }, 401); return; }
+        const id = parseInt(urlPath.split('/').pop());
+        try {
+            await query('DELETE FROM prod_notas WHERE id = $1 AND usuario_email = $2', [id, userEmail]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
 
