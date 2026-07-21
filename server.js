@@ -2378,6 +2378,28 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // POST /api/produccion/maquinas/import - Importar máquinas masivamente
+    if (urlPath === '/api/produccion/maquinas/import' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { maquinas } = body;
+        if (!Array.isArray(maquinas) || maquinas.length === 0) { json(res, { error: 'No hay máquinas para importar' }, 400); return; }
+        let inserted = 0, skipped = 0, errors = [];
+        for (const m of maquinas) {
+            if (!m.codigo || !m.nombre) { skipped++; continue; }
+            try {
+                const existing = await query('SELECT id FROM produccion_maquinas WHERE codigo = $1', [m.codigo]);
+                if (existing.rows.length > 0) { skipped++; continue; }
+                await query(
+                    'INSERT INTO produccion_maquinas (nombre, codigo, capacidad_max_m2_dia, estado) VALUES ($1, $2, $3, $4)',
+                    [m.nombre, m.codigo, Number(m.capacidad_max_m2_dia) || 0, m.estado || 'ACTIVA']
+                );
+                inserted++;
+            } catch(e) { errors.push(m.codigo + ': ' + e.message); }
+        }
+        json(res, { inserted, skipped, errors, total: maquinas.length });
+        return;
+    }
+
     // PUT /api/produccion/maquinas/:id - Editar máquina
     const editMaquinaMatch = urlPath.match(/^\/api\/produccion\/maquinas\/(\d+)$/);
     if (editMaquinaMatch && req.method === 'PUT') {

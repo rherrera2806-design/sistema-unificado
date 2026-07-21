@@ -14,7 +14,10 @@ App.registerModule('prod_maquinas', {
                     <h2 style="margin:0">Maquinas</h2>
                     <div class="subtitle">Capacidad de producción por máquina (m²/día)</div>
                 </div>
-                ${puedeEditar ? '<button class="btn btn-primary" onclick="App.modules.prod_maquinas.showCreateModal()">+ Nueva Maquina</button>' : ''}
+                ${puedeEditar ? `<div style="display:flex;gap:8px">
+                    <button class="btn btn-primary" onclick="App.modules.prod_maquinas.showCreateModal()">+ Nueva Maquina</button>
+                    <button class="btn btn-success" onclick="App.modules.prod_maquinas.showImportModal()">📥 Importar Excel</button>
+                </div>` : ''}
             </div>
 
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
@@ -166,5 +169,91 @@ App.registerModule('prod_maquinas', {
             App.toast('Maquina eliminada');
             await this.load();
         } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    showImportModal() {
+        let overlay = document.getElementById('mqImportModal');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'mqImportModal';
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `
+                <div class="modal" style="max-width:550px">
+                    <div class="modal-header"><h3>Importar Maquinas desde Excel</h3><button class="modal-close" onclick="App.modules.prod_maquinas.hideImportModal()">&times;</button></div>
+                    <div class="modal-body">
+                        <p style="color:var(--text-light);font-size:13px;margin-bottom:12px">El archivo debe tener columnas: <strong>Codigo, Nombre, Capacidad_max_m2_dia, Estado</strong></p>
+                        <p style="color:var(--text-light);font-size:12px;margin-bottom:16px">Los codigos duplicados seran omitidos. Estado puede ser: ACTIVA, INACTIVA, MANTENCION</p>
+                        <input type="file" id="mqImportFile" accept=".xlsx,.xls,.csv" style="margin-bottom:12px" onchange="App.modules.prod_maquinas.previewImport(event)">
+                        <div id="mqImportPreview" style="max-height:250px;overflow-y:auto"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline" onclick="App.modules.prod_maquinas.hideImportModal()">Cancelar</button>
+                        <button class="btn btn-success" id="mqImportBtn" onclick="App.modules.prod_maquinas.executeImport()" disabled>Importar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+        overlay.classList.add('show');
+        this._importData = [];
+        document.getElementById('mqImportFile').value = '';
+        document.getElementById('mqImportPreview').innerHTML = '';
+        document.getElementById('mqImportBtn').disabled = true;
+    },
+
+    hideImportModal() {
+        const overlay = document.getElementById('mqImportModal');
+        if (overlay) overlay.classList.remove('show');
+        this._importData = [];
+    },
+
+    previewImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const wb = XLSX.read(e.target.result, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(ws);
+                if (rows.length === 0) { alert('El archivo esta vacio'); return; }
+                this._importData = rows.map(r => ({
+                    codigo: (r.Codigo || r.codigo || r.CODIGO || '').toString().trim(),
+                    nombre: (r.Nombre || r.nombre || r.NOMBRE || '').toString().trim(),
+                    capacidad_max_m2_dia: Number(r.Capacidad_max_m2_dia || r.capacidad || r.Capacidad || 0),
+                    estado: (r.Estado || r.estado || r.ESTADO || 'ACTIVA').toString().trim().toUpperCase()
+                })).filter(m => m.codigo && m.nombre);
+                const preview = document.getElementById('mqImportPreview');
+                preview.innerHTML = `<div style="margin-bottom:8px;font-size:13px"><strong>${this._importData.length}</strong> maquinas encontradas</div>
+                    <table style="width:100%;font-size:12px"><thead><tr><th>Codigo</th><th>Nombre</th><th>Capacidad</th><th>Estado</th></tr></thead><tbody>
+                    ${this._importData.slice(0, 20).map(m => `<tr><td>${m.codigo}</td><td>${m.nombre}</td><td>${m.capacidad_max_m2_dia}</td><td>${m.estado}</td></tr>`).join('')}
+                    ${this._importData.length > 20 ? `<tr><td colspan="4" style="text-align:center;color:var(--text-light)">... y ${this._importData.length - 20} mas</td></tr>` : ''}
+                    </tbody></table>`;
+                document.getElementById('mqImportBtn').disabled = this._importData.length === 0;
+            } catch(err) { alert('Error al leer el archivo: ' + err.message); }
+        };
+        reader.readAsArrayBuffer(file);
+    },
+
+    async executeImport() {
+        if (!this._importData || this._importData.length === 0) return;
+        const btn = document.getElementById('mqImportBtn');
+        btn.disabled = true;
+        btn.textContent = 'Importando...';
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
+            const res = await fetch('/api/produccion/maquinas/import', { method: 'POST', headers, body: JSON.stringify({ maquinas: this._importData }) });
+            const result = await res.json();
+            if (res.ok) {
+                App.toast(`Importados: ${result.inserted}, Omitidos: ${result.skipped}${result.errors.length ? ', Errores: ' + result.errors.length : ''}`);
+                this.hideImportModal();
+                await this.load();
+            } else {
+                alert('Error: ' + (result.error || 'Error desconocido'));
+            }
+        } catch(e) { alert('Error al importar: ' + e.message); }
+        btn.disabled = false;
+        btn.textContent = 'Importar';
     }
 });
