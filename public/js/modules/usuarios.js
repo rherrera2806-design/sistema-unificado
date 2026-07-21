@@ -52,9 +52,11 @@ App.registerModule('usuarios', {
                     <td><span class="badge" style="background:${u.rol==='admin'?'rgba(168,85,247,0.15)':'rgba(100,116,139,0.1)'};color:${u.rol==='admin'?'#a855f7':'var(--text-light)'}">${u.rol}</span></td>
                     <td>${permisos || '<span style="color:var(--text-light);font-size:12px">Sin permisos</span>'}</td>
                     <td><span class="badge" style="background:${u.activo!==false?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)'};color:${u.activo!==false?'var(--success)':'var(--danger)'}">${u.activo!==false?'Activo':'Inactivo'}</span></td>
-                    <td>
-                        <button onclick="App.modules.usuarios.showForm(${u.id})" class="btn btn-sm" style="padding:4px 10px;font-size:11px;background:var(--border);color:var(--text)">Editar</button>
-                        ${u.rol !== 'admin' ? `<button onclick="App.modules.usuarios.remove(${u.id})" class="btn btn-sm" style="padding:4px 10px;font-size:11px;background:rgba(239,68,68,0.1);color:var(--danger)">Eliminar</button>` : ''}
+                    <td style="white-space:nowrap">
+                        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+                            <button onclick="App.modules.usuarios.showForm(${u.id})" class="btn btn-sm" style="padding:4px 12px;font-size:11px;background:var(--border);color:var(--text);width:100%">Editar</button>
+                            ${u.rol !== 'admin' ? `<button onclick="App.modules.usuarios.remove(${u.id})" class="btn btn-sm" style="padding:4px 12px;font-size:11px;background:rgba(239,68,68,0.08);color:var(--danger);border:1px solid rgba(239,68,68,0.2);width:100%">Eliminar</button>` : ''}
+                        </div>
                     </td>
                 </tr>`;
             }).join('');
