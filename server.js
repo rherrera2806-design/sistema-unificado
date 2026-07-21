@@ -1265,6 +1265,46 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // SIGMA - Calendar data (single endpoint)
+    if (urlPath === '/api/sigma/calendar-data' && req.method === 'GET') {
+        try {
+            const [preventivos, correctivos, maquinas, componentes] = await Promise.all([
+                query('SELECT * FROM preventive_maintenance ORDER BY id'),
+                query('SELECT * FROM corrective_maintenance ORDER BY id'),
+                query('SELECT * FROM machines ORDER BY id'),
+                query('SELECT * FROM components ORDER BY id')
+            ]);
+            json(res, {
+                preventivos: preventivos.rows,
+                correctivos: correctivos.rows,
+                maquinas: maquinas.rows,
+                componentes: componentes.rows
+            });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // SIGMA - Dashboard data (single endpoint)
+    if (urlPath === '/api/sigma/dashboard-data' && req.method === 'GET') {
+        try {
+            const [stats, preventivos, correctivos, maquinas, componentes] = await Promise.all([
+                getSigmaStats(),
+                query('SELECT * FROM preventive_maintenance ORDER BY id'),
+                query('SELECT * FROM corrective_maintenance ORDER BY id'),
+                query('SELECT * FROM machines ORDER BY id'),
+                query('SELECT * FROM components ORDER BY id')
+            ]);
+            json(res, {
+                stats,
+                preventivos: preventivos.rows,
+                correctivos: correctivos.rows,
+                maquinas: maquinas.rows,
+                componentes: componentes.rows
+            });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // =====================================================
     // SIGMA - Stats
     // =====================================================

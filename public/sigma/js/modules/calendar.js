@@ -41,19 +41,14 @@ App.registerModule('calendar', {
         const events = [];
         const today = new Date().toISOString().split('T')[0];
 
-        const [preventivos, correctivos, maquinas, componentes] = await Promise.all([
-            db.getAll('preventive_maintenance'),
-            db.getAll('corrective_maintenance'),
-            db.getAll('machines'),
-            db.getAll('components')
-        ]);
+        const data = await fetch('/api/sigma/calendar-data').then(r => r.json()).catch(() => ({ preventivos: [], correctivos: [], maquinas: [], componentes: [] }));
 
         const maqMap = {};
-        maquinas.forEach(m => { maqMap[m.id] = m; });
+        (data.maquinas || []).forEach(m => { maqMap[m.id] = m; });
         const compMap = {};
-        componentes.forEach(c => { compMap[c.id] = c; });
+        (data.componentes || []).forEach(c => { compMap[c.id] = c; });
 
-        for (const r of preventivos) {
+        for (const r of (data.preventivos || [])) {
             const maq = maqMap[r.maquina_id];
             const comp = compMap[r.componente_id];
             const label = `${maq ? maq.codigo : ''}: ${comp ? comp.nombre : ''}`;
@@ -68,7 +63,7 @@ App.registerModule('calendar', {
                 events.push({ date: r.fecha_ejecutada, title: `✅ ${label}`, status: 'Realizada' });
         }
 
-        for (const r of correctivos) {
+        for (const r of (data.correctivos || [])) {
             const maq = maqMap[r.maquina_id];
             const comp = compMap[r.componente_id];
             if (r.fecha_falla) {
