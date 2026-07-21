@@ -41,7 +41,7 @@ App.registerModule('calendar', {
         const events = [];
         const today = new Date().toISOString().split('T')[0];
 
-        const data = await fetch('/api/sigma/calendar-data').then(r => r.json()).catch(() => ({ preventivos: [], correctivos: [], maquinas: [], componentes: [] }));
+        const data = await fetch(`/api/sigma/calendar-data?month=${this.currentMonth + 1}&year=${this.currentYear}`).then(r => r.json()).catch(() => ({ preventivos: [], correctivos: [], maquinas: [], componentes: [] }));
 
         const maqMap = {};
         (data.maquinas || []).forEach(m => { maqMap[m.id] = m; });

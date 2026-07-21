@@ -1268,11 +1268,18 @@ const server = http.createServer(async (req, res) => {
     // SIGMA - Calendar data (single endpoint)
     if (urlPath === '/api/sigma/calendar-data' && req.method === 'GET') {
         try {
+            const urlObj = new URL(req.url, `http://${req.headers.host}`);
+            const month = parseInt(urlObj.searchParams.get('month')) || new Date().getMonth() + 1;
+            const year = parseInt(urlObj.searchParams.get('year')) || new Date().getFullYear();
+            const startDate = `${year}-${String(month).padStart(2,'0')}-01`;
+            const endDate = `${year}-${String(month + 1).padStart(2,'0')}-01`;
+            const prevEndDate = startDate;
+
             const [preventivos, correctivos, maquinas, componentes] = await Promise.all([
-                query('SELECT * FROM preventive_maintenance ORDER BY id'),
-                query('SELECT * FROM corrective_maintenance ORDER BY id'),
-                query('SELECT * FROM machines ORDER BY id'),
-                query('SELECT * FROM components ORDER BY id')
+                query(`SELECT * FROM preventive_maintenance WHERE (fecha_programada >= $1 AND fecha_programada < $2) OR (fecha_ejecutada >= $1 AND fecha_ejecutada < $2) OR fecha_programada < $3 ORDER BY id`, [startDate, endDate, prevEndDate]),
+                query(`SELECT * FROM corrective_maintenance WHERE fecha_falla >= $1 AND fecha_falla < $2 ORDER BY id`, [startDate, endDate]),
+                query('SELECT id, codigo, nombre FROM machines ORDER BY id'),
+                query('SELECT id, nombre FROM components ORDER BY id')
             ]);
             json(res, {
                 preventivos: preventivos.rows,
