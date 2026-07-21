@@ -1347,6 +1347,25 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // SIGMA - Machine types data (single endpoint for N+1 fix)
+    if (urlPath === '/api/sigma/machine-types-data' && req.method === 'GET') {
+        try {
+            const [tipos, componentes, machineTypeLinks, maquinas] = await Promise.all([
+                query('SELECT * FROM machine_types ORDER BY id'),
+                query('SELECT id, nombre FROM components ORDER BY nombre'),
+                query('SELECT * FROM component_type_links'),
+                query('SELECT id, tipo_id FROM machines')
+            ]);
+            json(res, {
+                tipos: tipos.rows,
+                componentes: componentes.rows,
+                links: machineTypeLinks.rows,
+                maquinas: maquinas.rows
+            });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // =====================================================
     // SIGMA - Stats
     // =====================================================

@@ -1,23 +1,40 @@
 App.registerModule('machineTypes', {
     async render() {
         const el = document.getElementById('page-machineTypes');
-        const tipos = await db.getAll('machine_types');
-        let rows = '';
-        for (const t of tipos) {
-            const raw = await db.getComponentsByType(t.id);
-            const comps = raw.filter((c, i, a) => a.findIndex(x => x.id === c.id) === i);
-            const maqs = await db.query('machines', m => m.tipo_id === t.id);
-            rows += `<tr>
+        const data = await fetch('/api/sigma/machine-types-data').then(r => r.json()).catch(() => ({ tipos: [], componentes: [], links: [], maquinas: [] }));
+        const tipos = data.tipos || [];
+        const allComps = data.componentes || [];
+        const links = data.links || [];
+        const allMaqs = data.maquinas || [];
+
+        const linksByTipo = {};
+        links.forEach(l => {
+            if (!linksByTipo[l.tipo_id]) linksByTipo[l.tipo_id] = new Set();
+            linksByTipo[l.tipo_id].add(l.componente_id);
+        });
+        const maqsByTipo = {};
+        allMaqs.forEach(m => {
+            if (!maqsByTipo[m.tipo_id]) maqsByTipo[m.tipo_id] = 0;
+            maqsByTipo[m.tipo_id]++;
+        });
+        const compMap = {};
+        allComps.forEach(c => { compMap[c.id] = c; });
+
+        let rows = tipos.map(t => {
+            const compIds = linksByTipo[t.id] ? Array.from(linksByTipo[t.id]) : [];
+            const comps = compIds.map(id => compMap[id]).filter(Boolean);
+            const maqsCount = maqsByTipo[t.id] || 0;
+            return `<tr>
                 <td>${t.id}</td>
                 <td><strong>${t.nombre}</strong></td>
                 <td>${comps.map(c => `<span class="status-badge status-programada" style="margin:1px">${c.nombre}</span>`).join(' ') || '<span class="text-muted">Sin componentes</span>'}</td>
-                <td>${maqs.length}</td>
+                <td>${maqsCount}</td>
                 <td class="table-actions">
                     <button class="btn btn-sm btn-outline" onclick="App.modules.machineTypes.showForm(${t.id})">✏️</button>
                     <button class="btn btn-sm btn-danger" onclick="App.modules.machineTypes.delete(${t.id})">🗑️</button>
                 </td>
             </tr>`;
-        }
+        }).join('');
         el.innerHTML = `
             <div class="page-header">
                 <div>
