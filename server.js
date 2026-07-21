@@ -1603,7 +1603,7 @@ const server = http.createServer(async (req, res) => {
              LEFT JOIN machines m ON pm.maquina_id = m.id
              LEFT JOIN components c ON pm.componente_id = c.id
              WHERE pm.estado = 'Realizada' AND pm.fecha_ejecutada IS NOT NULL
-             ORDER BY pm.fecha_ejecutada DESC LIMIT 10`
+             ORDER BY pm.fecha_ejecutada DESC LIMIT 5`
         );
         json(res, result.rows);
         return;
