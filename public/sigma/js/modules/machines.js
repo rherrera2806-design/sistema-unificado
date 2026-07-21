@@ -30,7 +30,10 @@ App.registerModule('machines', {
         el.innerHTML = `
             <div class="page-header">
                 <div><h2>Máquinas</h2><div class="subtitle">Registro y control de equipos industriales</div></div>
-                <button class="btn btn-primary" onclick="App.modules.machines.showForm()">+ Nueva Máquina</button>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="btn btn-primary" onclick="App.modules.machines.showForm()">+ Nueva Máquina</button>
+                    <button class="btn btn-success" onclick="App.modules.machines.exportExcel()">📥 Exportar Excel</button>
+                </div>
             </div>
             <div class="card">
                 <div class="card-header">
@@ -226,5 +229,30 @@ App.registerModule('machines', {
             App.showAlert('Máquina eliminada');
             this.render();
         } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); }
+    },
+
+    async exportExcel() {
+        try {
+            const maquinas = await db.getAll('machines');
+            const tipos = await db.getAll('machine_types');
+            const rows = maquinas.map(m => {
+                const tipo = tipos.find(t => t.id === m.tipo_id);
+                return {
+                    'Codigo': m.codigo || '',
+                    'Nombre': m.nombre || '',
+                    'Tipo': tipo ? tipo.nombre : '',
+                    'Marca': m.marca || '',
+                    'Modelo': m.modelo || '',
+                    'Ubicacion': m.ubicacion || '',
+                    'Estado': m.estado_operativo || '',
+                    'Descripcion': m.descripcion || ''
+                };
+            });
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Maquinas');
+            XLSX.writeFile(wb, 'Maquinas_VitroFlow.xlsx');
+            App.showAlert('Excel exportado correctamente');
+        } catch(e) { App.showAlert('Error al exportar: ' + e.message, 'danger'); }
     }
 });
