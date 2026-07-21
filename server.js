@@ -1313,6 +1313,40 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // SIGMA - Preventive data (single endpoint for N+1 fix)
+    if (urlPath === '/api/sigma/preventive-data' && req.method === 'GET') {
+        try {
+            const [preventivos, maquinas, componentes] = await Promise.all([
+                query('SELECT * FROM preventive_maintenance ORDER BY id'),
+                query('SELECT id, codigo, nombre, tipo_id FROM machines ORDER BY id'),
+                query('SELECT id, nombre FROM components ORDER BY id')
+            ]);
+            json(res, {
+                preventivos: preventivos.rows,
+                maquinas: maquinas.rows,
+                componentes: componentes.rows
+            });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // SIGMA - Corrective data (single endpoint for N+1 fix)
+    if (urlPath === '/api/sigma/corrective-data' && req.method === 'GET') {
+        try {
+            const [correctivos, maquinas, componentes] = await Promise.all([
+                query('SELECT * FROM corrective_maintenance ORDER BY id'),
+                query('SELECT id, codigo, nombre, tipo_id FROM machines ORDER BY id'),
+                query('SELECT id, nombre FROM components ORDER BY id')
+            ]);
+            json(res, {
+                correctivos: correctivos.rows,
+                maquinas: maquinas.rows,
+                componentes: componentes.rows
+            });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // =====================================================
     // SIGMA - Stats
     // =====================================================

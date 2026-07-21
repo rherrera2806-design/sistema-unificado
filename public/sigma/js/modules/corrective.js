@@ -1,15 +1,21 @@
 App.registerModule('corrective', {
     async render() {
         const el = document.getElementById('page-corrective');
-        const registros = await db.getAll('corrective_maintenance');
-        const maquinas = await db.getAll('machines');
         const filterMaquina = document.getElementById('filterCorrMaq')?.value || '';
-        let filtered = [];
-        for (const r of registros) {
-            const maq = await db.getById('machines', r.maquina_id).catch(() => null);
-            const comp = await db.getById('components', r.componente_id).catch(() => null);
-            filtered.push({ ...r, maquinaNombre: maq ? maq.nombre : '', componenteNombre: comp ? comp.nombre : '' });
-        }
+
+        const data = await fetch('/api/sigma/corrective-data').then(r => r.json()).catch(() => ({ correctivos: [], maquinas: [], componentes: [] }));
+        const registros = data.correctivos || [];
+        const maquinas = data.maquinas || [];
+        const maqMap = {};
+        (data.maquinas || []).forEach(m => { maqMap[m.id] = m; });
+        const compMap = {};
+        (data.componentes || []).forEach(c => { compMap[c.id] = c; });
+
+        let filtered = registros.map(r => ({
+            ...r,
+            maquinaNombre: maqMap[r.maquina_id] ? maqMap[r.maquina_id].nombre : '',
+            componenteNombre: compMap[r.componente_id] ? compMap[r.componente_id].nombre : ''
+        }));
         if (filterMaquina) filtered = filtered.filter(r => r.maquina_id === parseInt(filterMaquina));
         filtered.sort((a, b) => (b.fecha_falla || '').localeCompare(a.fecha_falla || ''));
 

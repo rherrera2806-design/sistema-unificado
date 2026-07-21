@@ -1,16 +1,22 @@
 App.registerModule('preventive', {
     async render() {
         const el = document.getElementById('page-preventive');
-        const registros = await db.getAll('preventive_maintenance');
-        const maquinas = await db.getAll('machines');
         const filterEstado = document.getElementById('filterPrevEstado')?.value || 'activas';
         const filterMaquina = document.getElementById('filterPrevMaq')?.value || '';
-        let filtered = [];
-        for (const r of registros) {
-            const maq = await db.getById('machines', r.maquina_id).catch(() => null);
-            const comp = await db.getById('components', r.componente_id).catch(() => null);
-            filtered.push({ ...r, maquinaNombre: maq ? maq.nombre : '', componenteNombre: comp ? comp.nombre : '' });
-        }
+
+        const data = await fetch('/api/sigma/preventive-data').then(r => r.json()).catch(() => ({ preventivos: [], maquinas: [], componentes: [] }));
+        const registros = data.preventivos || [];
+        const maquinas = data.maquinas || [];
+        const maqMap = {};
+        (data.maquinas || []).forEach(m => { maqMap[m.id] = m; });
+        const compMap = {};
+        (data.componentes || []).forEach(c => { compMap[c.id] = c; });
+
+        let filtered = registros.map(r => ({
+            ...r,
+            maquinaNombre: maqMap[r.maquina_id] ? maqMap[r.maquina_id].nombre : '',
+            componenteNombre: compMap[r.componente_id] ? compMap[r.componente_id].nombre : ''
+        }));
         
         // Default filter: show Programada and Vencida
         if (filterEstado === 'activas') {
