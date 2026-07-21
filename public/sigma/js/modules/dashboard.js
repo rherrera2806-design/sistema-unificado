@@ -21,24 +21,24 @@ App.registerModule('dashboard', {
         el.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon blue">🏭</div>
-                    <div class="stat-info"><h4>${stats.totalMachines}</h4><p>Máquinas registradas</p></div>
+                    <div class="stat-icon blue">🔧</div>
+                    <div class="stat-info"><h4>${(stats.completedMaintenance || 0) + (stats.totalFailures || 0)}</h4><p>Total mantenciones</p></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon green">✅</div>
-                    <div class="stat-info"><h4>${stats.completedMaintenance}</h4><p>Mantenciones preventivas realizadas</p></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon orange">📅</div>
-                    <div class="stat-info"><h4>${stats.upcomingMaintenance}</h4><p>Próximas (15 días)</p></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon red">⚠️</div>
-                    <div class="stat-info"><h4>${stats.overdueMaintenance}</h4><p>Mantenciones vencidas</p></div>
+                    <div class="stat-info"><h4>${stats.completedMaintenance}</h4><p>Preventivas realizadas</p></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon red">🔴</div>
-                    <div class="stat-info"><h4>${stats.totalFailures}</h4><p>Fallas registradas</p><p style="font-size:11px;color:var(--success)">✅ ${stats.failuresReparadas} reparadas</p><p style="font-size:11px;color:var(--danger)">🔧 ${stats.failuresEnMantencion} en mantención</p></div>
+                    <div class="stat-info"><h4>${stats.totalFailures}</h4><p>Fallas registradas</p></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">⚠️</div>
+                    <div class="stat-info"><h4>${stats.overdueMaintenance}</h4><p>Vencidas</p></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed">📅</div>
+                    <div class="stat-info"><h4>${stats.upcomingMaintenance}</h4><p>Próximas (15 días)</p></div>
                 </div>
             </div>
             <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
