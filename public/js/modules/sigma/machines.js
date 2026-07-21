@@ -30,10 +30,7 @@ App.registerModule('machines', {
         el.innerHTML = `
             <div class="page-header">
                 <div><h2>Máquinas</h2><div class="subtitle">Registro y control de equipos industriales</div></div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <button class="btn btn-primary" onclick="App.modules.machines.showForm()">+ Nueva Máquina</button>
-                    <button class="btn btn-success" onclick="App.modules.machines.exportExcel()">📥 Exportar Excel</button>
-                </div>
+                <button class="btn btn-primary" onclick="App.modules.machines.showForm()" style="white-space:nowrap">+ Nueva Máquina</button>
             </div>
             <div class="card">
                 <div class="card-header">
@@ -52,6 +49,7 @@ App.registerModule('machines', {
                             <option value="En mantención" ${filterEstado === 'En mantención' ? 'selected' : ''}>En mantención</option>
                             <option value="Detenido" ${filterEstado === 'Detenido' ? 'selected' : ''}>Detenido</option>
                         </select>
+                        <button class="btn btn-success" onclick="App.modules.machines.exportExcel()" style="white-space:nowrap;margin-left:auto">📥 Exportar Excel</button>
                     </div>
                     <span class="text-muted">${filtered.length} de ${maquinas.length}</span>
                 </div>
