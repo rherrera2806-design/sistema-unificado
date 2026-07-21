@@ -39,9 +39,9 @@ App.registerModule('prod_maquinas', {
                 <div class="card-header"><h3 style="margin:0">Listado de Maquinas</h3></div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr>
-                        <th>Codigo</th><th>Nombre</th><th>Estado</th><th>Capacidad m²/dia</th><th>Acciones</th>
+                        <th>Codigo</th><th>Nombre</th><th>Tipo Proceso</th><th>N° Op</th><th>Estado</th><th>Capacidad m²/dia</th><th>Acciones</th>
                     </tr></thead><tbody id="mqTable">
-                        <tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -52,6 +52,8 @@ App.registerModule('prod_maquinas', {
                     <div class="modal-body">
                         <div class="form-group"><label>Nombre *</label><input class="form-control" id="mqNombre" placeholder="Ej: Cortadora CNC"></div>
                         <div class="form-group"><label>Codigo *</label><input class="form-control" id="mqCodigo" placeholder="Ej: COR-01"></div>
+                        <div class="form-group"><label>Tipo Proceso</label><input class="form-control" id="mqTipoProceso" placeholder="Ej: Corte, Pulido"></div>
+                        <div class="form-group"><label>N° Operacion</label><input class="form-control" id="mqNumOp" type="number" min="0"></div>
                         <div class="form-group"><label>Capacidad Maxima m²/dia</label><input class="form-control" id="mqCapacidadInput" type="number" step="0.01" value="50"></div>
                         <div class="form-group"><label>Estado</label>
                             <select class="form-control" id="mqEstado">
@@ -94,7 +96,7 @@ App.registerModule('prod_maquinas', {
 
     renderTable() {
         const tbody = document.getElementById('mqTable');
-        if (!this.maquinas.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">No hay maquinas registradas</td></tr>'; return; }
+        if (!this.maquinas.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">No hay maquinas registradas</td></tr>'; return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
         const estadoBadge = (e) => {
@@ -104,6 +106,8 @@ App.registerModule('prod_maquinas', {
         tbody.innerHTML = this.maquinas.map(m => `<tr>
             <td><strong>${m.codigo}</strong></td>
             <td>${m.nombre}</td>
+            <td>${m.tipo_proceso || '-'}</td>
+            <td>${m.num_operacion || '-'}</td>
             <td>${estadoBadge(m.estado)}</td>
             <td><strong>${Number(m.capacidad_max_m2_dia).toFixed(1)}</strong></td>
             <td>
@@ -120,6 +124,8 @@ App.registerModule('prod_maquinas', {
         document.getElementById('mqModalTitle').textContent = 'Nueva Maquina';
         document.getElementById('mqNombre').value = '';
         document.getElementById('mqCodigo').value = '';
+        document.getElementById('mqTipoProceso').value = '';
+        document.getElementById('mqNumOp').value = '';
         document.getElementById('mqCapacidadInput').value = '50';
         document.getElementById('mqEstado').value = 'ACTIVA';
         document.getElementById('mqCreateModal').classList.add('show');
@@ -132,6 +138,8 @@ App.registerModule('prod_maquinas', {
         document.getElementById('mqModalTitle').textContent = 'Editar Maquina';
         document.getElementById('mqNombre').value = m.nombre;
         document.getElementById('mqCodigo').value = m.codigo;
+        document.getElementById('mqTipoProceso').value = m.tipo_proceso || '';
+        document.getElementById('mqNumOp').value = m.num_operacion || '';
         document.getElementById('mqCapacidadInput').value = m.capacidad_max_m2_dia;
         document.getElementById('mqEstado').value = m.estado;
         document.getElementById('mqCreateModal').classList.add('show');
@@ -142,16 +150,19 @@ App.registerModule('prod_maquinas', {
     async save() {
         const nombre = document.getElementById('mqNombre').value.trim();
         const codigo = document.getElementById('mqCodigo').value.trim();
+        const tipo_proceso = document.getElementById('mqTipoProceso').value.trim();
+        const num_operacion = Number(document.getElementById('mqNumOp').value) || null;
         const capacidad = Number(document.getElementById('mqCapacidadInput').value) || 0;
         const estado = document.getElementById('mqEstado').value;
         if (!nombre || !codigo) { alert('Nombre y codigo requeridos'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
+            const data = { nombre, codigo, capacidad_max_m2_dia: capacidad, estado, tipo_proceso, num_operacion };
             if (this.editingId) {
-                await fetch(`/api/produccion/maquinas/${this.editingId}`, { method: 'PUT', headers, body: JSON.stringify({ nombre, codigo, capacidad_max_m2_dia: capacidad, estado }) });
+                await fetch(`/api/produccion/maquinas/${this.editingId}`, { method: 'PUT', headers, body: JSON.stringify(data) });
             } else {
-                await fetch('/api/produccion/maquinas', { method: 'POST', headers, body: JSON.stringify({ nombre, codigo, capacidad_max_m2_dia: capacidad, estado }) });
+                await fetch('/api/produccion/maquinas', { method: 'POST', headers, body: JSON.stringify(data) });
             }
             this.hideCreateModal();
             App.toast(this.editingId ? 'Maquina actualizada' : 'Maquina creada');
@@ -181,7 +192,7 @@ App.registerModule('prod_maquinas', {
                 <div class="modal" style="max-width:550px">
                     <div class="modal-header"><h3>Importar Maquinas desde Excel</h3><button class="modal-close" onclick="App.modules.prod_maquinas.hideImportModal()">&times;</button></div>
                     <div class="modal-body">
-                        <p style="color:var(--text-light);font-size:13px;margin-bottom:12px">El archivo debe tener columnas: <strong>Codigo, Nombre, Capacidad_max_m2_dia, Estado</strong></p>
+                        <p style="color:var(--text-light);font-size:13px;margin-bottom:12px">El archivo debe tener columnas: <strong>Codigo, Nombre, Tipo_proceso, n_operacion, capacidad_max_m2_dia, Estado</strong></p>
                         <p style="color:var(--text-light);font-size:12px;margin-bottom:16px">Los codigos duplicados seran omitidos. Estado puede ser: ACTIVA, INACTIVA, MANTENCION</p>
                         <input type="file" id="mqImportFile" accept=".xlsx,.xls,.csv" style="margin-bottom:12px" onchange="App.modules.prod_maquinas.previewImport(event)">
                         <div id="mqImportPreview" style="max-height:250px;overflow-y:auto"></div>
@@ -218,16 +229,18 @@ App.registerModule('prod_maquinas', {
                 const rows = XLSX.utils.sheet_to_json(ws);
                 if (rows.length === 0) { alert('El archivo esta vacio'); return; }
                 this._importData = rows.map(r => ({
-                    codigo: (r.Codigo || r.codigo || r.CODIGO || '').toString().trim(),
+                    codigo: (r.Codigo || r.codigo || r.CODIGO || r.Código || '').toString().trim(),
                     nombre: (r.Nombre || r.nombre || r.NOMBRE || '').toString().trim(),
-                    capacidad_max_m2_dia: Number(r.Capacidad_max_m2_dia || r.capacidad || r.Capacidad || 0),
+                    tipo_proceso: (r.Tipo_proceso || r.tipo_proceso || r['Tipo proceso'] || '').toString().trim(),
+                    num_operacion: Number(r.n_operacion || r.num_operacion || r['nº operación'] || r['n° operacion'] || 0) || null,
+                    capacidad_max_m2_dia: Number(r.capacidad_max_m2_dia || r.capacidad || r.Capacidad || 0),
                     estado: (r.Estado || r.estado || r.ESTADO || 'ACTIVA').toString().trim().toUpperCase()
                 })).filter(m => m.codigo && m.nombre);
                 const preview = document.getElementById('mqImportPreview');
                 preview.innerHTML = `<div style="margin-bottom:8px;font-size:13px"><strong>${this._importData.length}</strong> maquinas encontradas</div>
-                    <table style="width:100%;font-size:12px"><thead><tr><th>Codigo</th><th>Nombre</th><th>Capacidad</th><th>Estado</th></tr></thead><tbody>
-                    ${this._importData.slice(0, 20).map(m => `<tr><td>${m.codigo}</td><td>${m.nombre}</td><td>${m.capacidad_max_m2_dia}</td><td>${m.estado}</td></tr>`).join('')}
-                    ${this._importData.length > 20 ? `<tr><td colspan="4" style="text-align:center;color:var(--text-light)">... y ${this._importData.length - 20} mas</td></tr>` : ''}
+                    <table style="width:100%;font-size:12px"><thead><tr><th>Codigo</th><th>Nombre</th><th>Tipo Proceso</th><th>N° Op</th><th>Capacidad</th><th>Estado</th></tr></thead><tbody>
+                    ${this._importData.slice(0, 20).map(m => `<tr><td>${m.codigo}</td><td>${m.nombre}</td><td>${m.tipo_proceso}</td><td>${m.num_operacion || '-'}</td><td>${m.capacidad_max_m2_dia}</td><td>${m.estado}</td></tr>`).join('')}
+                    ${this._importData.length > 20 ? `<tr><td colspan="6" style="text-align:center;color:var(--text-light)">... y ${this._importData.length - 20} mas</td></tr>` : ''}
                     </tbody></table>`;
                 document.getElementById('mqImportBtn').disabled = this._importData.length === 0;
             } catch(err) { alert('Error al leer el archivo: ' + err.message); }

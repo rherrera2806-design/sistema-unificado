@@ -434,8 +434,13 @@ async function initDB() {
         codigo VARCHAR(20) UNIQUE NOT NULL,
         estado VARCHAR(20) DEFAULT 'ACTIVA',
         capacidad_max_m2_dia DECIMAL(8,2) DEFAULT 0,
+        tipo_proceso VARCHAR(50),
+        num_operacion INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS tipo_proceso VARCHAR(50)`);
+    await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS num_operacion INTEGER`);
 
     await query(`CREATE TABLE IF NOT EXISTS produccion_recetas_bom (
         id SERIAL PRIMARY KEY,
@@ -2366,12 +2371,12 @@ const server = http.createServer(async (req, res) => {
     // POST /api/produccion/maquinas - Crear máquina
     if (urlPath === '/api/produccion/maquinas' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { nombre, codigo, capacidad_max_m2_dia, estado } = body;
+        const { nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion } = body;
         if (!nombre || !codigo) { json(res, { error: 'Nombre y código requeridos' }, 400); return; }
         try {
             const result = await query(
-                'INSERT INTO produccion_maquinas (nombre, codigo, capacidad_max_m2_dia, estado) VALUES ($1, $2, $3, $4) RETURNING *',
-                [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA']
+                'INSERT INTO produccion_maquinas (nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+                [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA', tipo_proceso || null, num_operacion || null]
             );
             json(res, result.rows[0], 201);
         } catch(e) { json(res, { error: 'Error al crear máquina: ' + e.message }, 500); }
@@ -2390,8 +2395,8 @@ const server = http.createServer(async (req, res) => {
                 const existing = await query('SELECT id FROM produccion_maquinas WHERE codigo = $1', [m.codigo]);
                 if (existing.rows.length > 0) { skipped++; continue; }
                 await query(
-                    'INSERT INTO produccion_maquinas (nombre, codigo, capacidad_max_m2_dia, estado) VALUES ($1, $2, $3, $4)',
-                    [m.nombre, m.codigo, Number(m.capacidad_max_m2_dia) || 0, m.estado || 'ACTIVA']
+                    'INSERT INTO produccion_maquinas (nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion) VALUES ($1, $2, $3, $4, $5, $6)',
+                    [m.nombre, m.codigo, Number(m.capacidad_max_m2_dia) || 0, m.estado || 'ACTIVA', m.tipo_proceso || null, m.num_operacion || null]
                 );
                 inserted++;
             } catch(e) { errors.push(m.codigo + ': ' + e.message); }
@@ -2405,11 +2410,11 @@ const server = http.createServer(async (req, res) => {
     if (editMaquinaMatch && req.method === 'PUT') {
         const id = Number(editMaquinaMatch[1]);
         const body = await parseBody(req);
-        const { nombre, codigo, capacidad_max_m2_dia, estado } = body;
+        const { nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion } = body;
         try {
             await query(
-                'UPDATE produccion_maquinas SET nombre=$1, codigo=$2, capacidad_max_m2_dia=$3, estado=$4 WHERE id=$5',
-                [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA', id]
+                'UPDATE produccion_maquinas SET nombre=$1, codigo=$2, capacidad_max_m2_dia=$3, estado=$4, tipo_proceso=$5, num_operacion=$6 WHERE id=$7',
+                [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA', tipo_proceso || null, num_operacion || null, id]
             );
             json(res, { ok: true });
         } catch(e) { json(res, { error: 'Error al actualizar: ' + e.message }, 500); }
