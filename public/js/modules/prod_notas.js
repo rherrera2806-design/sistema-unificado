@@ -60,60 +60,56 @@ App.registerModule('prod_notas', {
 
         let html = '<div style="padding:0">';
         for (const n of data) {
-                const esPendiente = n.estado === 'pendiente';
-                const bgColor = esPendiente ? '#fffbeb' : '#f0fdf4';
-                const borderLeft = esPendiente ? '3px solid #f59e0b' : '3px solid #22c55e';
+            const esPendiente = n.estado === 'pendiente';
+            const bgColor = esPendiente ? '#fffbeb' : '#f0fdf4';
+            const borderLeft = esPendiente ? '3px solid #f59e0b' : '3px solid #22c55e';
 
-                let tiempoTranscurrido = '';
-                if (n.fecha_completado) {
-                    const inicio = new Date(n.fecha_creacion);
-                    const fin = new Date(n.fecha_completado);
-                    const diffMs = fin - inicio;
-                    const dias = Math.floor(diffMs / 86400000);
-                    const horas = Math.floor((diffMs % 86400000) / 3600000);
-                    const mins = Math.floor((diffMs % 3600000) / 60000);
-                    if (dias > 0) tiempoTranscurrido = `${dias}d ${horas}h ${mins}m`;
-                    else if (horas > 0) tiempoTranscurrido = `${horas}h ${mins}m`;
-                    else tiempoTranscurrido = `${mins}m`;
-                } else if (esPendiente) {
-                    const inicio = new Date(n.fecha_creacion);
-                    const ahora = new Date();
-                    const diffMs = ahora - inicio;
-                    const dias = Math.floor(diffMs / 86400000);
-                    const horas = Math.floor((diffMs % 86400000) / 3600000);
-                    const mins = Math.floor((diffMs % 3600000) / 60000);
-                    if (dias > 0) tiempoTranscurrido = `${dias}d ${horas}h ${mins}m (en curso)`;
-                    else if (horas > 0) tiempoTranscurrido = `${horas}h ${mins}m (en curso)`;
-                    else tiempoTranscurrido = `${mins}m (en curso)`;
-                }
-
-                const fechaCreacion = new Date(n.fecha_creacion).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const fechaCompletado = n.fecha_completado ? new Date(n.fecha_completado).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-
-                html += `
-                    <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;gap:16px;align-items:flex-start;background:${bgColor};border-left:${borderLeft}" id="prodnota-${n.id}">
-                        <div style="flex:1">
-                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
-                                ${esPendiente ? '<span style="background:#f59e0b;color:#fff;font-size:9px;padding:2px 6px;border-radius:10px;font-weight:bold">PENDIENTE</span>' : '<span style="background:#22c55e;color:#fff;font-size:9px;padding:2px 6px;border-radius:10px;font-weight:bold">REALIZADO</span>'}
-                                <span style="font-size:11px;color:var(--text-light)">Creado: ${fechaCreacion}</span>
-                                ${n.fecha_completado ? `<span style="font-size:11px;color:var(--text-light)">Completado: ${fechaCompletado}</span>` : ''}
-                                ${tiempoTranscurrido ? `<span style="font-size:11px;color:${esPendiente ? '#f59e0b' : '#22c55e'};font-weight:bold">⏱ ${tiempoTranscurrido}</span>` : ''}
-                            </div>
-                            <p style="margin:0;color:var(--text);white-space:pre-wrap">${escapeHtml(n.nota || '')}</p>
-                        </div>
-                        <div style="display:flex;gap:4px;flex-shrink:0;align-items:flex-start">
-                            ${esPendiente ? `<button class="btn btn-sm btn-accent" onclick="App.modules.prod_notas.marcarRealizado(${n.id})" title="Marcar como realizado">✓ Realizado</button>` : `<button class="btn btn-sm btn-outline" onclick="App.modules.prod_notas.marcarPendiente(${n.id})" title="Volver a pendiente">↩ Pendiente</button>`}
-                            <button class="btn btn-sm btn-outline" onclick="App.modules.prod_notas.showForm(${n.id})">✏️</button>
-                            <button class="btn btn-sm btn-danger" onclick="App.modules.prod_notas.delete(${n.id})">🗑️</button>
-                        </div>
-                    </div>`;
+            let tiempoTranscurrido = '';
+            if (n.fecha_completado) {
+                const inicio = new Date(n.fecha_creacion);
+                const fin = new Date(n.fecha_completado);
+                const diffMs = fin - inicio;
+                const dias = Math.floor(diffMs / 86400000);
+                const horas = Math.floor((diffMs % 86400000) / 3600000);
+                const mins = Math.floor((diffMs % 3600000) / 60000);
+                if (dias > 0) tiempoTranscurrido = `${dias}d ${horas}h ${mins}m`;
+                else if (horas > 0) tiempoTranscurrido = `${horas}h ${mins}m`;
+                else tiempoTranscurrido = `${mins}m`;
+            } else if (esPendiente) {
+                const inicio = new Date(n.fecha_creacion);
+                const ahora = new Date();
+                const diffMs = ahora - inicio;
+                const dias = Math.floor(diffMs / 86400000);
+                const horas = Math.floor((diffMs % 86400000) / 3600000);
+                const mins = Math.floor((diffMs % 3600000) / 60000);
+                if (dias > 0) tiempoTranscurrido = `${dias}d ${horas}h ${mins}m (en curso)`;
+                else if (horas > 0) tiempoTranscurrido = `${horas}h ${mins}m (en curso)`;
+                else tiempoTranscurrido = `${mins}m (en curso)`;
             }
-            html += '</div>';
-            container.innerHTML = html;
-        } catch(e) {
-            console.error('Error loading prod_notas:', e);
-            document.getElementById('prodNotasContent').innerHTML = '<div class="empty-state"><p>Error al cargar pendientes</p></div>';
+
+            const fechaCreacion = new Date(n.fecha_creacion).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const fechaCompletado = n.fecha_completado ? new Date(n.fecha_completado).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+            html += `
+                <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;gap:16px;align-items:flex-start;background:${bgColor};border-left:${borderLeft}" id="prodnota-${n.id}">
+                    <div style="flex:1">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+                            ${esPendiente ? '<span style="background:#f59e0b;color:#fff;font-size:9px;padding:2px 6px;border-radius:10px;font-weight:bold">PENDIENTE</span>' : '<span style="background:#22c55e;color:#fff;font-size:9px;padding:2px 6px;border-radius:10px;font-weight:bold">REALIZADO</span>'}
+                            <span style="font-size:11px;color:var(--text-light)">Creado: ${fechaCreacion}</span>
+                            ${n.fecha_completado ? `<span style="font-size:11px;color:var(--text-light)">Completado: ${fechaCompletado}</span>` : ''}
+                            ${tiempoTranscurrido ? `<span style="font-size:11px;color:${esPendiente ? '#f59e0b' : '#22c55e'};font-weight:bold">⏱ ${tiempoTranscurrido}</span>` : ''}
+                        </div>
+                        <p style="margin:0;color:var(--text);white-space:pre-wrap">${escapeHtml(n.nota || '')}</p>
+                    </div>
+                    <div style="display:flex;gap:4px;flex-shrink:0;align-items:flex-start">
+                        ${esPendiente ? `<button class="btn btn-sm btn-accent" onclick="App.modules.prod_notas.marcarRealizado(${n.id})" title="Marcar como realizado">✓ Realizado</button>` : `<button class="btn btn-sm btn-outline" onclick="App.modules.prod_notas.marcarPendiente(${n.id})" title="Volver a pendiente">↩ Pendiente</button>`}
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_notas.showForm(${n.id})">✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick="App.modules.prod_notas.delete(${n.id})">🗑️</button>
+                    </div>
+                </div>`;
         }
+        html += '</div>';
+        container.innerHTML = html;
     },
 
     async refresh() {
