@@ -30,7 +30,7 @@ App.registerModule('machines', {
         el.innerHTML = `
             <div class="page-header">
                 <div><h2>Máquinas</h2><div class="subtitle">Registro y control de equipos industriales</div></div>
-                <div class="flex gap-8">
+                <div style="display:flex;gap:8px;align-items:center">
                     <button class="btn btn-primary" onclick="App.modules.machines.showForm()">+ Nueva Máquina</button>
                     <button class="btn btn-success" onclick="App.modules.machines.exportExcel()">📥 Exportar Excel</button>
                 </div>
