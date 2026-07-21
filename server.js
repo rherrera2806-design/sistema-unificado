@@ -1272,14 +1272,15 @@ const server = http.createServer(async (req, res) => {
             const month = parseInt(urlObj.searchParams.get('month')) || new Date().getMonth() + 1;
             const year = parseInt(urlObj.searchParams.get('year')) || new Date().getFullYear();
             const startDate = `${year}-${String(month).padStart(2,'0')}-01`;
-            const endDate = `${year}-${String(month + 1).padStart(2,'0')}-01`;
-            const prevEndDate = startDate;
+            const nextMonth = month === 12 ? 1 : month + 1;
+            const nextYear = month === 12 ? year + 1 : year;
+            const endDate = `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`;
 
             const [preventivos, correctivos, maquinas, componentes] = await Promise.all([
-                query(`SELECT * FROM preventive_maintenance WHERE (fecha_programada >= $1 AND fecha_programada < $2) OR (fecha_ejecutada >= $1 AND fecha_ejecutada < $2) OR fecha_programada < $3 ORDER BY id`, [startDate, endDate, prevEndDate]),
-                query(`SELECT * FROM corrective_maintenance WHERE fecha_falla >= $1 AND fecha_falla < $2 ORDER BY id`, [startDate, endDate]),
-                query('SELECT id, codigo, nombre FROM machines ORDER BY id'),
-                query('SELECT id, nombre FROM components ORDER BY id')
+                query(`SELECT id, maquina_id, componente_id, fecha_programada, fecha_ejecutada, estado FROM preventive_maintenance WHERE fecha_programada >= $1 AND fecha_programada < $2`, [startDate, endDate]),
+                query(`SELECT id, maquina_id, componente_id, fecha_falla, estado FROM corrective_maintenance WHERE fecha_falla >= $1 AND fecha_falla < $2`, [startDate, endDate]),
+                query('SELECT id, codigo, nombre FROM machines'),
+                query('SELECT id, nombre FROM components')
             ]);
             json(res, {
                 preventivos: preventivos.rows,
