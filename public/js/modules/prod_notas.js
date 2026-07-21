@@ -1,4 +1,6 @@
 App.registerModule('prod_notas', {
+    _data: [],
+
     async render() {
         const el = document.getElementById('page-prod_notas');
 
@@ -6,10 +8,10 @@ App.registerModule('prod_notas', {
         const res = await fetch('/api/produccion/notas', {
             headers: { 'X-User-Email': user.email || '' }
         });
-        const data = await res.json();
+        this._data = await res.json();
 
-        const totalPendientes = data.filter(n => n.estado === 'pendiente').length;
-        const totalRealizados = data.filter(n => n.estado === 'realizado').length;
+        const totalPendientes = this._data.filter(n => n.estado === 'pendiente').length;
+        const totalRealizados = this._data.filter(n => n.estado === 'realizado').length;
 
         el.innerHTML = `
             <div class="page-header">
@@ -27,32 +29,37 @@ App.registerModule('prod_notas', {
                 </div>
             </div>
             <div class="card">
+                <div class="card-header">
+                    <input type="text" class="form-control" id="prodNotaSearch" placeholder="Buscar pendiente..." oninput="App.modules.prod_notas.filter()" style="max-width:300px">
+                </div>
                 <div class="card-body" style="padding:0" id="prodNotasContent">
                     <div class="empty-state"><p>Cargando...</p></div>
                 </div>
             </div>
         `;
-        await this.loadNotas(data);
+        this.renderList(this._data);
     },
 
-    async loadNotas(data) {
-        try {
-            if (!data) {
-                const user = JSON.parse(localStorage.getItem('unified_user'));
-                const res = await fetch('/api/produccion/notas', {
-                    headers: { 'X-User-Email': user.email || '' }
-                });
-                data = await res.json();
-            }
-            const container = document.getElementById('prodNotasContent');
+    filter() {
+        const q = (document.getElementById('prodNotaSearch')?.value || '').toLowerCase().trim();
+        if (!q) { this.renderList(this._data); return; }
+        const filtered = this._data.filter(n =>
+            (n.nota || '').toLowerCase().includes(q) ||
+            (n.estado || '').toLowerCase().includes(q)
+        );
+        this.renderList(filtered);
+    },
 
-            if (!data || data.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><h4>Sin pendientes</h4><p>Crea tu primer pendiente</p></div>';
-                return;
-            }
+    renderList(data) {
+        const container = document.getElementById('prodNotasContent');
 
-            let html = '<div style="padding:0">';
-            for (const n of data) {
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><h4>Sin resultados</h4><p>No se encontraron pendientes</p></div>';
+            return;
+        }
+
+        let html = '<div style="padding:0">';
+        for (const n of data) {
                 const esPendiente = n.estado === 'pendiente';
                 const bgColor = esPendiente ? '#fffbeb' : '#f0fdf4';
                 const borderLeft = esPendiente ? '3px solid #f59e0b' : '3px solid #22c55e';
@@ -109,6 +116,25 @@ App.registerModule('prod_notas', {
         }
     },
 
+    async refresh() {
+        const user = JSON.parse(localStorage.getItem('unified_user'));
+        const res = await fetch('/api/produccion/notas', {
+            headers: { 'X-User-Email': user.email || '' }
+        });
+        this._data = await res.json();
+        const totalPendientes = this._data.filter(n => n.estado === 'pendiente').length;
+        const totalRealizados = this._data.filter(n => n.estado === 'realizado').length;
+        const statsGrid = document.querySelector('.stats-grid');
+        if (statsGrid) {
+            const h4s = statsGrid.querySelectorAll('h4');
+            if (h4s[0]) h4s[0].textContent = totalPendientes;
+            if (h4s[1]) h4s[1].textContent = totalRealizados;
+        }
+        const searchVal = document.getElementById('prodNotaSearch')?.value || '';
+        if (searchVal) this.filter();
+        else this.renderList(this._data);
+    },
+
     async marcarRealizado(id) {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user'));
@@ -118,7 +144,7 @@ App.registerModule('prod_notas', {
                 body: JSON.stringify({ estado: 'realizado' })
             });
             App.showAlert('Marcado como realizado');
-            await this.loadNotas();
+            await this.refresh();
         } catch(e) { App.showAlert('Error al actualizar', 'danger'); }
     },
 
@@ -131,7 +157,7 @@ App.registerModule('prod_notas', {
                 body: JSON.stringify({ estado: 'pendiente' })
             });
             App.showAlert('Vuelto a pendiente');
-            await this.loadNotas();
+            await this.refresh();
         } catch(e) { App.showAlert('Error al actualizar', 'danger'); }
     },
 
@@ -176,7 +202,7 @@ App.registerModule('prod_notas', {
             }
             App.hideModal();
             App.showAlert(id === 0 ? 'Pendiente creado' : 'Pendiente actualizado');
-            this.loadNotas();
+            this.refresh();
         } catch(e) { App.showAlert('Error al guardar: ' + e.message, 'danger'); }
     },
 
@@ -190,7 +216,7 @@ App.registerModule('prod_notas', {
                 headers: { 'X-User-Email': user.email || '' }
             });
             App.showAlert('Pendiente eliminado');
-            this.loadNotas();
+            this.refresh();
         } catch(e) { App.showAlert('Error al eliminar', 'danger'); }
     }
 });
