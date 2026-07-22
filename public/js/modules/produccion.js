@@ -213,7 +213,7 @@ App.registerModule('produccion', {
                 <td style="padding:6px 12px"><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
                 <td style="padding:6px 12px">${o.item_numero || '-'}</td>
                 <td style="padding:6px 12px">${escapeHtml(o.cliente || '-')}</td>
-                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${escapeHtml(o.nombre_codigo_padre || '-')}</td>
+                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${o.codigo_padre ? escapeHtml(o.codigo_padre) + (o.nombre_codigo_padre ? ' - ' + escapeHtml(o.nombre_codigo_padre) : '') : '-'}</td>
                 <td style="padding:6px 12px"><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
                 <td style="padding:6px 12px;font-size:11px;color:#6b7280">${escapeHtml(o.nombre_mp || o.descripcion || '-')}</td>
                 <td style="padding:6px 12px">${o.ancho} x ${o.alto} mm</td>

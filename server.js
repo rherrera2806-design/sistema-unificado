@@ -596,6 +596,7 @@ async function initDB() {
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_venta VARCHAR(50) DEFAULT 'Normal'`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER DEFAULT 1`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cantidad INTEGER DEFAULT 1`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS codigo_padre VARCHAR(30)`);
 
     // SEMILLA: Estaciones maestras por defecto
     const estCount = await query('SELECT COUNT(*) as c FROM estaciones_maestras');
@@ -2516,10 +2517,10 @@ const server = http.createServer(async (req, res) => {
             SELECT o.*, 
                 (SELECT COUNT(*) FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id) as total_pasos,
                 (SELECT COUNT(*) FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id AND p.estado = 'TERMINADO') as pasos_terminados,
-                CASE WHEN o.es_compuesto AND o.bom_padre_id IS NOT NULL THEN
+                CASE WHEN o.codigo_padre IS NOT NULL THEN
                     COALESCE(
-                        (SELECT cb.descripcion FROM recetas_bom rb JOIN produccion_codigos cb ON cb.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
-                        (SELECT cb.descripcion FROM produccion_recetas_bom rb JOIN produccion_codigos cb ON cb.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                        (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                        o.codigo_padre
                     )
                 ELSE NULL END as nombre_codigo_padre,
                 (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp
@@ -2621,10 +2622,10 @@ const server = http.createServer(async (req, res) => {
                     const mpNombre = comp.mp_nombre || descripcion || '';
                     const result = await query(
                         `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
-                         es_compuesto, tipo_venta, item_numero, cantidad, familia_id, created_at)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12) RETURNING id`,
+                         es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre, created_at)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13) RETURNING id`,
                         [pedido_sap_id, cliente || null, mpCodigo, mpNombre, ancho, alto, m2,
-                         tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, fecha_creacion || new Date().toISOString()]
+                         tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, codigo, fecha_creacion || new Date().toISOString()]
                     );
                     const ordenId = result.rows[0].id;
                     ids.push(ordenId);
@@ -3375,11 +3376,11 @@ const server = http.createServer(async (req, res) => {
 
                         const result = await query(
                             `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
-                             es_compuesto, bom_padre_id, tipo_venta, item_numero, cantidad, familia_id,
+                             es_compuesto, bom_padre_id, tipo_venta, item_numero, cantidad, familia_id, codigo_padre,
                              costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado, created_at)
-                             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id`,
+                             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
                             [r.pedido, r.cliente, mp.codigo_mp, mp.nombre || r.descripcion, r.ancho, r.alto, m2,
-                             comp.id, r.tipo_venta, r.item, r.cantidad, familia?.id || null,
+                             comp.id, r.tipo_venta, r.item, r.cantidad, familia?.id || null, r.codigo,
                              costo_hh, costo_energia, costo_mp_total, costo_total, r.precio_unitario, margen, r.fecha_creacion || new Date().toISOString()]
                         );
                         const ordenId = result.rows[0].id;
