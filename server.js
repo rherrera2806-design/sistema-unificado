@@ -597,6 +597,10 @@ async function initDB() {
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER DEFAULT 1`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cantidad INTEGER DEFAULT 1`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS codigo_padre VARCHAR(30)`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS nota TEXT`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS posicion VARCHAR(100)`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS orden_compra VARCHAR(50)`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_entrega VARCHAR(20) DEFAULT 'Despacho'`);
 
     // SEMILLA: Estaciones maestras por defecto
     const estCount = await query('SELECT COUNT(*) as c FROM estaciones_maestras');
@@ -2533,7 +2537,7 @@ const server = http.createServer(async (req, res) => {
     // POST /api/produccion/ordenes - Crear orden manual (con explosión BOM)
     if (urlPath === '/api/produccion/ordenes' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, item_numero, cantidad, fecha_creacion } = body;
+        const { pedido_sap_id, cliente, codigo_producto, ancho, alto, perforaciones, pintado, tipo_venta, item_numero, cantidad, fecha_creacion, tipo_entrega, orden_compra, posicion, nota } = body;
         if (!pedido_sap_id || !codigo_producto || !ancho || !alto) { json(res, { error: 'Pedido, codigo, ancho y alto requeridos' }, 400); return; }
         try {
             const cant = Number(cantidad) || 1;
@@ -2619,13 +2623,14 @@ const server = http.createServer(async (req, res) => {
                 // Explosión BOM: crear una orden por componente
                 for (const comp of recetas) {
                     const mpCodigo = comp.codigo_mp || codigo;
-                    const mpNombre = comp.mp_nombre || descripcion || '';
+                    const mpNombre = comp.mp_nombre || '';
                     const result = await query(
                         `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
-                         es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre, created_at)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13) RETURNING id`,
+                         es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre, nota, posicion, orden_compra, tipo_entrega, created_at)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
                         [pedido_sap_id, cliente || null, mpCodigo, mpNombre, ancho, alto, m2,
-                         tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, codigo, fecha_creacion || new Date().toISOString()]
+                         tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, codigo,
+                         nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString()]
                     );
                     const ordenId = result.rows[0].id;
                     ids.push(ordenId);
@@ -2637,10 +2642,11 @@ const server = http.createServer(async (req, res) => {
                 // Sin receta BOM: orden directa
                 const result = await query(
                     `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
-                     tipo_venta, item_numero, cantidad, familia_id, created_at)
-                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-                    [pedido_sap_id, cliente || null, codigo, descripcion || null, ancho, alto, m2,
-                     tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, fecha_creacion || new Date().toISOString()]
+                     tipo_venta, item_numero, cantidad, familia_id, nota, posicion, orden_compra, tipo_entrega, created_at)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+                    [pedido_sap_id, cliente || null, codigo, null, ancho, alto, m2,
+                     tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null,
+                     nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString()]
                 );
                 const orden = result.rows[0];
                 ids.push(orden.id);
@@ -3378,7 +3384,7 @@ const server = http.createServer(async (req, res) => {
                             `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
                              es_compuesto, bom_padre_id, tipo_venta, item_numero, cantidad, familia_id, codigo_padre,
                              costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado, created_at)
-                             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
+                             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id`,
                             [r.pedido, r.cliente, mp.codigo_mp, mp.nombre || r.descripcion, r.ancho, r.alto, m2,
                              comp.id, r.tipo_venta, r.item, r.cantidad, familia?.id || null, r.codigo,
                              costo_hh, costo_energia, costo_mp_total, costo_total, r.precio_unitario, margen, r.fecha_creacion || new Date().toISOString()]

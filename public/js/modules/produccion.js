@@ -105,11 +105,14 @@ App.registerModule('produccion', {
                 <div class="modal" style="max-width:500px">
                     <div class="modal-header"><h3>Nueva Orden Manual</h3><button class="modal-close" onclick="App.modules.produccion.hideNewOrderModal()">&times;</button></div>
                     <div class="modal-body">
-                        <div class="form-group"><label>Pedido *</label><input class="form-control" id="newOrdPedido" placeholder="Ej: PED-001"></div>
-                        <div class="form-group"><label>Item</label><input class="form-control" id="newOrdItem" type="number" value="1" min="1"></div>
-                        <div class="form-group"><label>Cliente</label><input class="form-control" id="newOrdCliente" placeholder="Nombre del cliente"></div>
-                        <div class="form-group"><label>Codigo Producto *</label><input class="form-control" id="newOrdCodigo" placeholder="Ej: 100, V659"></div>
-                        <div class="form-group"><label>Descripcion</label><input class="form-control" id="newOrdDescripcion" placeholder="Descripcion del producto"></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div class="form-group"><label>Pedido *</label><input class="form-control" id="newOrdPedido" placeholder="Ej: 100500"></div>
+                            <div class="form-group"><label>Item</label><input class="form-control" id="newOrdItem" type="number" value="1" min="1"></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div class="form-group"><label>Cliente</label><input class="form-control" id="newOrdCliente" placeholder="NOMBRE DEL CLIENTE" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+                            <div class="form-group"><label>Codigo Producto *</label><input class="form-control" id="newOrdCodigo" placeholder="Ej: 1240, 730"></div>
+                        </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                             <div class="form-group"><label>Ancho (mm) *</label><input class="form-control" id="newOrdAncho" type="number" value="0"></div>
                             <div class="form-group"><label>Alto (mm) *</label><input class="form-control" id="newOrdAlto" type="number" value="0"></div>
@@ -133,7 +136,20 @@ App.registerModule('produccion', {
                             </div>
                             <div class="form-group"><label>Cantidad</label><input class="form-control" id="newOrdCantidad" type="number" value="1" min="1"></div>
                         </div>
-                        <div class="form-group"><label>Fecha Creacion</label><input class="form-control" id="newOrdFechaCreacion" type="date"></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div class="form-group"><label>Tipo de Entrega</label>
+                                <select class="form-control" id="newOrdTipoEntrega">
+                                    <option value="Despacho">Despacho</option>
+                                    <option value="Retira">Retira</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Orden de Compra</label><input class="form-control" id="newOrdOC" placeholder="OC-001"></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div class="form-group"><label>Posicion</label><input class="form-control" id="newOrdPosicion" placeholder="Ej: 1, 2, A1"></div>
+                            <div class="form-group"><label>Fecha Creacion</label><input class="form-control" id="newOrdFechaCreacion" type="date"></div>
+                        </div>
+                        <div class="form-group"><label>Nota</label><textarea class="form-control" id="newOrdNota" rows="2" placeholder="Observaciones..."></textarea></div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.produccion.hideNewOrderModal()">Cancelar</button>
@@ -394,9 +410,8 @@ App.registerModule('produccion', {
     async saveNewOrder() {
         const pedido = document.getElementById('newOrdPedido').value.trim();
         const item = Number(document.getElementById('newOrdItem').value) || 1;
-        const cliente = document.getElementById('newOrdCliente').value.trim();
+        const cliente = document.getElementById('newOrdCliente').value.trim().toUpperCase();
         const codigo = document.getElementById('newOrdCodigo').value.trim();
-        const descripcion = document.getElementById('newOrdDescripcion').value.trim();
         const ancho = Number(document.getElementById('newOrdAncho').value) || 0;
         const alto = Number(document.getElementById('newOrdAlto').value) || 0;
         const perforaciones = document.getElementById('newOrdPerforaciones').value === '1';
@@ -404,17 +419,21 @@ App.registerModule('produccion', {
         const tipo_venta = document.getElementById('newOrdTipoVenta').value;
         const cantidad = Number(document.getElementById('newOrdCantidad').value) || 1;
         const fecha_creacion = document.getElementById('newOrdFechaCreacion').value || null;
+        const tipo_entrega = document.getElementById('newOrdTipoEntrega').value;
+        const orden_compra = document.getElementById('newOrdOC').value.trim();
+        const posicion = document.getElementById('newOrdPosicion').value.trim();
+        const nota = document.getElementById('newOrdNota').value.trim();
         if (!pedido || !codigo || !ancho || !alto) { alert('Pedido, codigo, ancho y alto son requeridos'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const res = await fetch('/api/produccion/ordenes', {
                 method: 'POST', headers,
-                body: JSON.stringify({ pedido_sap_id: pedido, item_numero: item, cliente, codigo_producto: codigo, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, cantidad, fecha_creacion })
+                body: JSON.stringify({ pedido_sap_id: pedido, item_numero: item, cliente, codigo_producto: codigo, ancho, alto, perforaciones, pintado, tipo_venta, cantidad, fecha_creacion, tipo_entrega, orden_compra, posicion, nota })
             });
             const data = await res.json();
             if (res.ok) {
-                const msg = data.ordenes_creadas > 1 ? `${data.ordenes_creadas} ordenes creadas (explosión BOM)` : `Orden creada: ${codigo}`;
+                const msg = data.ordenes_creadas > 1 ? `${data.ordenes_creadas} ordenes creadas (explosion BOM)` : `Orden creada: ${codigo}`;
                 App.toast(msg);
                 this.hideNewOrderModal();
                 await this.load();
