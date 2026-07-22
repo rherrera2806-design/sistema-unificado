@@ -19,8 +19,7 @@ App.registerModule('produccion', {
                 ${puedeImportar ? `
                     <div style="display:flex;gap:8px">
                         <button class="btn btn-primary" onclick="App.modules.produccion.showImportModal()">+ Importar SAP</button>
-                        <button class="btn btn-outline" onclick="App.modules.produccion.showRecetaModal()">+ Receta BOM</button>
-                        <button class="btn btn-outline" onclick="App.modules.produccion.showMaquinaModal()">+ Maquina</button>
+                        <button class="btn btn-outline" onclick="App.modules.produccion.showNewOrderModal()">+ Nueva Orden</button>
                     </div>
                 ` : ''}
             </div>
@@ -99,34 +98,29 @@ App.registerModule('produccion', {
                 </div>
             </div>
 
-            <div class="modal-overlay" id="prodMaquinaModal">
-                <div class="modal" style="max-width:400px">
-                    <div class="modal-header"><h3>Nueva Maquina</h3><button class="modal-close" onclick="App.modules.produccion.hideMaquinaModal()">&times;</button></div>
-                    <div class="modal-body">
-                        <div class="form-group"><label>Nombre</label><input class="form-control" id="prodMaqNombre" placeholder="Ej: Cortadora 1"></div>
-                        <div class="form-group"><label>Codigo</label><input class="form-control" id="prodMaqCodigo" placeholder="Ej: COR-01"></div>
-                        <div class="form-group"><label>Capacidad Max m2/dia</label><input class="form-control" id="prodMaqCapacidad" type="number" step="0.01" value="0"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="App.modules.produccion.hideMaquinaModal()">Cancelar</button>
-                        <button class="btn btn-primary" onclick="App.modules.produccion.saveMaquina()">Guardar</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-overlay" id="prodRecetaModal">
+            <div class="modal-overlay" id="prodNewOrderModal">
                 <div class="modal" style="max-width:500px">
-                    <div class="modal-header"><h3>Nueva Receta BOM</h3><button class="modal-close" onclick="App.modules.produccion.hideRecetaModal()">&times;</button></div>
+                    <div class="modal-header"><h3>Nueva Orden Manual</h3><button class="modal-close" onclick="App.modules.produccion.hideNewOrderModal()">&times;</button></div>
                     <div class="modal-body">
-                        <div class="form-group"><label>Codigo SAP Padre</label><input class="form-control" id="prodRecCodigoPadre" placeholder="Ej: 500"></div>
-                        <div class="form-group"><label>Codigo Materia Prima</label><input class="form-control" id="prodRecCodigoMP" placeholder="Ej: VID-4MM"></div>
-                        <div class="form-group"><label>Descripcion</label><input class="form-control" id="prodRecDescripcion" placeholder="Vidrio 4mm templado"></div>
-                        <div class="form-group"><label>Espesor (mm)</label><input class="form-control" id="prodRecEspesor" type="number" value="4"></div>
-                        <div class="form-group"><label>Cantidad</label><input class="form-control" id="prodRecCantidad" type="number" value="1"></div>
+                        <div class="form-group"><label>Pedido *</label><input class="form-control" id="newOrdPedido" placeholder="Ej: PED-001"></div>
+                        <div class="form-group"><label>Cliente</label><input class="form-control" id="newOrdCliente" placeholder="Nombre del cliente"></div>
+                        <div class="form-group"><label>Codigo Producto *</label><input class="form-control" id="newOrdCodigo" placeholder="Ej: 100, V659"></div>
+                        <div class="form-group"><label>Descripcion</label><input class="form-control" id="newOrdDescripcion" placeholder="Descripcion del producto"></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div class="form-group"><label>Ancho (mm) *</label><input class="form-control" id="newOrdAncho" type="number" value="0"></div>
+                            <div class="form-group"><label>Alto (mm) *</label><input class="form-control" id="newOrdAlto" type="number" value="0"></div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div class="form-group"><label>Perforaciones</label>
+                                <select class="form-control" id="newOrdPerforaciones"><option value="0">No</option><option value="1">Si</option></select>
+                            </div>
+                            <div class="form-group"><label>Familia</label><input class="form-control" id="newOrdFamilia" placeholder="Ej: Templado"></div>
+                        </div>
+                        <div class="form-group"><label>Cantidad</label><input class="form-control" id="newOrdCantidad" type="number" value="1" min="1"></div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="App.modules.produccion.hideRecetaModal()">Cancelar</button>
-                        <button class="btn btn-primary" onclick="App.modules.produccion.saveReceta()">Guardar</button>
+                        <button class="btn btn-outline" onclick="App.modules.produccion.hideNewOrderModal()">Cancelar</button>
+                        <button class="btn btn-primary" onclick="App.modules.produccion.saveNewOrder()">Crear Orden</button>
                     </div>
                 </div>
             </div>
@@ -285,45 +279,44 @@ App.registerModule('produccion', {
     showImportModal() { document.getElementById('prodImportModal').classList.add('show'); this.selectedImportFile = null; },
     hideImportModal() { document.getElementById('prodImportModal').classList.remove('show'); this.selectedImportFile = null; document.getElementById('prodImportName').style.display = 'none'; document.getElementById('prodImportBtn').disabled = true; },
 
-    showMaquinaModal() { document.getElementById('prodMaquinaModal').classList.add('show'); },
-    hideMaquinaModal() { document.getElementById('prodMaquinaModal').classList.remove('show'); },
-
-    async saveMaquina() {
-        const nombre = document.getElementById('prodMaqNombre').value.trim();
-        const codigo = document.getElementById('prodMaqCodigo').value.trim();
-        const capacidad = Number(document.getElementById('prodMaqCapacidad').value) || 0;
-        if (!nombre || !codigo) { alert('Nombre y codigo requeridos'); return; }
-        try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            await fetch('/api/produccion/maquinas', {
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ nombre, codigo, capacidad_max_m2_dia: capacidad })
-            });
-            this.hideMaquinaModal();
-            App.toast('Maquina creada');
-            await this.load();
-        } catch(e) { alert('Error: ' + e.message); }
+    showNewOrderModal() {
+        document.getElementById('newOrdPedido').value = '';
+        document.getElementById('newOrdCliente').value = '';
+        document.getElementById('newOrdCodigo').value = '';
+        document.getElementById('newOrdDescripcion').value = '';
+        document.getElementById('newOrdAncho').value = '0';
+        document.getElementById('newOrdAlto').value = '0';
+        document.getElementById('newOrdPerforaciones').value = '0';
+        document.getElementById('newOrdFamilia').value = '';
+        document.getElementById('newOrdCantidad').value = '1';
+        document.getElementById('prodNewOrderModal').classList.add('show');
     },
+    hideNewOrderModal() { document.getElementById('prodNewOrderModal').classList.remove('show'); },
 
-    showRecetaModal() { document.getElementById('prodRecetaModal').classList.add('show'); },
-    hideRecetaModal() { document.getElementById('prodRecetaModal').classList.remove('show'); },
-
-    async saveReceta() {
-        const codigo_sap_padre = document.getElementById('prodRecCodigoPadre').value.trim();
-        const codigo_materia_prima = document.getElementById('prodRecCodigoMP').value.trim();
-        const descripcion = document.getElementById('prodRecDescripcion').value.trim();
-        const espesor = Number(document.getElementById('prodRecEspesor').value) || 0;
-        const cantidad = Number(document.getElementById('prodRecCantidad').value) || 1;
-        if (!codigo_sap_padre || !codigo_materia_prima) { alert('Codigos requeridos'); return; }
+    async saveNewOrder() {
+        const pedido = document.getElementById('newOrdPedido').value.trim();
+        const cliente = document.getElementById('newOrdCliente').value.trim();
+        const codigo = document.getElementById('newOrdCodigo').value.trim();
+        const descripcion = document.getElementById('newOrdDescripcion').value.trim();
+        const ancho = Number(document.getElementById('newOrdAncho').value) || 0;
+        const alto = Number(document.getElementById('newOrdAlto').value) || 0;
+        const perforaciones = document.getElementById('newOrdPerforaciones').value === '1';
+        const familia = document.getElementById('newOrdFamilia').value.trim();
+        const cantidad = Number(document.getElementById('newOrdCantidad').value) || 1;
+        if (!pedido || !codigo || !ancho || !alto) { alert('Pedido, codigo, ancho y alto son requeridos'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            await fetch('/api/produccion/recetas', {
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ codigo_sap_padre, codigo_materia_prima, descripcion, espesor, cantidad })
+            const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
+            const res = await fetch('/api/produccion/ordenes', {
+                method: 'POST', headers,
+                body: JSON.stringify({ pedido_sap_id: pedido, cliente, codigo_producto: codigo, descripcion, ancho, alto, perforaciones, familia, cantidad })
             });
-            this.hideRecetaModal();
-            App.toast('Receta BOM creada');
-            await this.load();
+            const data = await res.json();
+            if (res.ok) {
+                App.toast(`Orden ${data.codigo_producto} creada`);
+                this.hideNewOrderModal();
+                await this.load();
+            } else { alert(data.error || 'Error al crear orden'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
 

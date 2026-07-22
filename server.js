@@ -2352,6 +2352,30 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // POST /api/produccion/ordenes - Crear orden manual
+    if (urlPath === '/api/produccion/ordenes' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, perforaciones, familia, cantidad } = body;
+        if (!pedido_sap_id || !codigo_producto || !ancho || !alto) { json(res, { error: 'Pedido, codigo, ancho y alto requeridos' }, 400); return; }
+        try {
+            const m2 = (Number(ancho) * Number(alto)) / 1000000;
+            const result = await query(
+                'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+                [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2]
+            );
+            const orden = result.rows[0];
+            const cant = Number(cantidad) || 1;
+            for (let i = 0; i < cant; i++) {
+                await query(
+                    'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
+                    [orden.id, 'Pendiente', i + 1, 'PENDIENTE']
+                );
+            }
+            json(res, orden, 201);
+        } catch(e) { json(res, { error: 'Error al crear orden: ' + e.message }, 500); }
+        return;
+    }
+
     // GET /api/produccion/ordenes/:id/pasos - Pasos de una orden
     const ordenPasosMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)\/pasos$/);
     if (ordenPasosMatch && req.method === 'GET') {
