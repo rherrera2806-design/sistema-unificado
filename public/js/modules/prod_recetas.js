@@ -22,9 +22,17 @@ App.registerModule('prod_recetas', {
             </div>
 
             <div class="card">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <h3 style="margin:0">Listado de Recetas</h3>
-                    <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar codigo..." oninput="App.modules.prod_recetas.filter()" style="width:200px">
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <select class="form-control" id="recFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_recetas.filter()">
+                            <option value="">Todos los grupos</option>
+                        </select>
+                        <select class="form-control" id="recFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_recetas.filter()">
+                            <option value="">Todas las familias</option>
+                        </select>
+                        <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar codigo..." oninput="App.modules.prod_recetas.filter()" style="width:200px;font-size:12px;padding:4px 8px">
+                    </div>
                 </div>
                 <div class="card-body" style="padding:0">
                     <table style="font-size:13px"><thead><tr>
@@ -92,6 +100,7 @@ App.registerModule('prod_recetas', {
             ]);
             this.recetas = await recRes.json();
             this.codigos = await codRes.json();
+            this.populateFilters();
             this.renderTable(this.recetas);
         } catch(e) { console.error('Error loading recetas:', e); }
     },
@@ -131,10 +140,41 @@ App.registerModule('prod_recetas', {
         tbody.innerHTML = html;
     },
 
+    populateFilters() {
+        const grupos = [...new Set((this.codigos || []).map(c => c.grupo).filter(Boolean))].sort();
+        const familias = [...new Set((this.codigos || []).map(c => c.familia).filter(Boolean))].sort();
+        const grupoSel = document.getElementById('recFilterGrupo');
+        const familiaSel = document.getElementById('recFilterFamilia');
+        if (grupoSel && !grupoSel._populated) {
+            grupos.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; grupoSel.appendChild(o); });
+            grupoSel._populated = true;
+        }
+        if (familiaSel && !familiaSel._populated) {
+            familias.forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; familiaSel.appendChild(o); });
+            familiaSel._populated = true;
+        }
+    },
+
     filter() {
         const search = (document.getElementById('recFilterSearch')?.value || '').toLowerCase();
-        if (!search) { this.renderTable(this.recetas); return; }
-        const filtered = this.recetas.filter(r => (r.codigo_sap_padre || '').toLowerCase().includes(search) || (r.codigo_materia_prima || '').toLowerCase().includes(search) || (r.descripcion || '').toLowerCase().includes(search));
+        const grupo = document.getElementById('recFilterGrupo')?.value || '';
+        const familia = document.getElementById('recFilterFamilia')?.value || '';
+        let filtered = this.recetas;
+        if (grupo || familia) {
+            const codigosFiltrados = (this.codigos || []).filter(c => {
+                if (grupo && c.grupo !== grupo) return false;
+                if (familia && c.familia !== familia) return false;
+                return true;
+            }).map(c => String(c.codigo));
+            filtered = filtered.filter(r => codigosFiltrados.includes(String(r.codigo_sap_padre)));
+        }
+        if (search) {
+            filtered = filtered.filter(r =>
+                (r.codigo_sap_padre || '').toLowerCase().includes(search) ||
+                (r.codigo_materia_prima || '').toLowerCase().includes(search) ||
+                (r.descripcion || '').toLowerCase().includes(search)
+            );
+        }
         this.renderTable(filtered);
     },
 
