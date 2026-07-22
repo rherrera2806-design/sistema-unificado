@@ -360,6 +360,7 @@ const SIDEBAR_SECTIONS = {
     inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
     atencion: ['turnos_recepcion','turnos_bodega','turnos_qr'],
     ventas: ['pedidos'],
+    produccion: ['prod_ordenes','prod_codigos','prod_maquinas','prod_recetas','prod_notas','prod_config'],
     administracion: ['usuarios']
 };
 
