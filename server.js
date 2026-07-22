@@ -442,6 +442,11 @@ async function initDB() {
     await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS tipo_proceso VARCHAR(50)`);
     await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS num_operacion INTEGER`);
 
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_venta VARCHAR(30) DEFAULT 'Normal'`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS pintado BOOLEAN DEFAULT FALSE`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS perforaciones INTEGER DEFAULT 0`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER`);
+
     await query(`CREATE TABLE IF NOT EXISTS produccion_recetas_bom (
         id SERIAL PRIMARY KEY,
         codigo_sap_padre VARCHAR(30) NOT NULL,
@@ -2355,21 +2360,26 @@ const server = http.createServer(async (req, res) => {
     // POST /api/produccion/ordenes - Crear orden manual
     if (urlPath === '/api/produccion/ordenes' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, perforaciones, familia, cantidad } = body;
+        const { pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, cantidad } = body;
         if (!pedido_sap_id || !codigo_producto || !ancho || !alto) { json(res, { error: 'Pedido, codigo, ancho y alto requeridos' }, 400); return; }
         try {
             const m2 = (Number(ancho) * Number(alto)) / 1000000;
             const result = await query(
-                'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-                [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2]
+                'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, pintado, perforaciones, tipo_venta) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+                [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2, !!pintado, perforaciones ? 4 : 0, tipo_venta || 'Normal']
             );
             const orden = result.rows[0];
             const cant = Number(cantidad) || 1;
-            for (let i = 0; i < cant; i++) {
-                await query(
-                    'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
-                    [orden.id, 'Pendiente', i + 1, 'PENDIENTE']
-                );
+            const estaciones = ['Corte', 'Pulido', 'Templado'];
+            if (perforaciones) estaciones.splice(2, 0, 'Mecanizado');
+            if (pintado) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
+            for (let c = 0; c < cant; c++) {
+                for (let s = 0; s < estaciones.length; s++) {
+                    await query(
+                        'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
+                        [orden.id, estaciones[s], s + 1, 'PENDIENTE']
+                    );
+                }
             }
             json(res, orden, 201);
         } catch(e) { json(res, { error: 'Error al crear orden: ' + e.message }, 500); }
@@ -2629,50 +2639,56 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // POST /api/produccion/importar - Importar Excel de SAP
+    // POST /api/produccion/importar - Importar desde Excel
     if (urlPath === '/api/produccion/importar' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { excel_data, file_name } = body;
-        if (!excel_data) { json(res, { error: 'Datos del archivo requeridos' }, 400); return; }
+        const { rows: clientRows, excel_data, file_name } = body;
 
-        try {
-            const XLSX = require('xlsx');
-            const buffer = Buffer.from(excel_data, 'base64');
-            const workbook = XLSX.read(buffer, { type: 'buffer' });
-            const sheetName = workbook.SheetNames[0];
-            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        let rows = clientRows;
+        if (!rows && excel_data) {
+            try {
+                const XLSX = require('xlsx');
+                const buffer = Buffer.from(excel_data, 'base64');
+                const workbook = XLSX.read(buffer, { type: 'buffer' });
+                rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            } catch(e) { json(res, { error: 'Error al parsear Excel: ' + e.message }, 400); return; }
+        }
 
-            if (!rows.length) { json(res, { error: 'El archivo Excel está vacío' }, 400); return; }
+        if (!Array.isArray(rows) || !rows.length) { json(res, { error: 'El archivo Excel esta vacio' }, 400); return; }
 
-            console.log('[PROD] Importando', rows.length, 'filas desde', file_name || 'excel');
+        console.log('[PROD] Importando', rows.length, 'filas desde', file_name || 'excel');
 
-            const recetasResult = await query('SELECT * FROM produccion_recetas_bom');
-            const recetasMap = {};
-            recetasResult.rows.forEach(r => {
-                if (!recetasMap[r.codigo_sap_padre]) recetasMap[r.codigo_sap_padre] = [];
-                recetasMap[r.codigo_sap_padre].push(r);
-            });
+        const recetasResult = await query('SELECT * FROM produccion_recetas_bom');
+        const recetasMap = {};
+        recetasResult.rows.forEach(r => {
+            if (!recetasMap[r.codigo_sap_padre]) recetasMap[r.codigo_sap_padre] = [];
+            recetasMap[r.codigo_sap_padre].push(r);
+        });
 
-            const resultados = { importadas: 0, errores: [], pasos_creados: 0 };
-            const ESTACION_BASE = ['Corte', 'Pulido', 'Templado'];
+        const resultados = { importadas: 0, errores: [], pasos_creados: 0 };
+        const ESTACION_BASE = ['Corte', 'Pulido', 'Templado'];
 
-            for (let i = 0; i < rows.length; i++) {
-                try {
-                    const row = rows[i];
-                    const codigo = String(row['Codigo'] || row['codigo'] || row['ItemCode'] || row['CodigoSAP'] || '').trim();
-                    const pedido = String(row['Pedido'] || row['pedido'] || row['DocEntry'] || row['PedidoSAP'] || '').trim();
-                    const cliente = String(row['Cliente'] || row['cliente'] || row['CardName'] || '').trim();
-                    const descripcion = String(row['Descripcion'] || row['descripcion'] || row['ItemName'] || '').trim();
-                    const ancho = Number(row['Ancho'] || row['ancho'] || row['Width'] || 0);
-                    const alto = Number(row['Alto'] || row['alto'] || row['Height'] || 0);
-                    const tiene_perforaciones = Number(row['Perforaciones'] || row['perforaciones'] || row['Holes'] || row['CobroPerforaciones'] || 0) > 0;
-                    const es_pintado = String(row['Familia'] || row['familia'] || row['Family'] || '').toLowerCase().includes('pint');
+        for (let i = 0; i < rows.length; i++) {
+            try {
+                const row = rows[i];
+                const codigo = String(row['codigo'] || row['Codigo'] || row['CODIGO'] || row['ItemCode'] || '').trim();
+                const pedido = String(row['pedido'] || row['Pedido'] || row['PEDIDO'] || row['DocEntry'] || '').trim();
+                const cliente = String(row['cliente'] || row['Cliente'] || row['CLIENTE'] || row['CardName'] || '').trim();
+                const descripcion = String(row['descripcion'] || row['Descripcion'] || row['ItemName'] || '').trim();
+                const cantidad = Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || 1);
+                const ancho = Number(row['anho'] || row['ancho'] || row['Ancho'] || row['ANHO'] || row['ANCHO'] || row['Width'] || 0);
+                const alto = Number(row['alto'] || row['Alto'] || row['ALTO'] || row['Height'] || 0);
+                const tiene_perforaciones = Number(row['perforaciones'] || row['Perforaciones'] || row['PERFORACIONES'] || row['Holes'] || 0) > 0;
+                const es_pintado = Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1;
+                const tipo_venta = String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || row['Normal'] || 'Normal').trim();
+                const item_numero = Number(row['item'] || row['Item'] || row['ITEM'] || i + 1);
 
-                    if (!codigo || !ancho || !alto) {
-                        resultados.errores.push({ fila: i + 1, error: 'Faltan datos: código, ancho o alto' });
-                        continue;
-                    }
+                if (!codigo || !ancho || !alto) {
+                    resultados.errores.push({ fila: i + 1, error: 'Faltan datos: codigo, ancho o alto' });
+                    continue;
+                }
 
+                for (let c = 0; c < cantidad; c++) {
                     const m2 = (ancho / 1000) * (alto / 1000);
                     const es_compuesto = recetasMap[codigo] && recetasMap[codigo].length > 0;
 
@@ -2680,9 +2696,9 @@ const server = http.createServer(async (req, res) => {
                         const componentes = recetasMap[codigo];
                         for (const comp of componentes) {
                             const result = await query(
-                                `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, bom_padre_id)
-                                 VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8) RETURNING id`,
-                                [pedido, cliente, comp.codigo_materia_prima, comp.descripcion || descripcion, ancho, alto, m2, comp.id]
+                                `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, bom_padre_id, tipo_venta, pintado, perforaciones, item_numero)
+                                 VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, $9, $10, $11, $12) RETURNING id`,
+                                [pedido, cliente, comp.codigo_materia_prima, comp.descripcion || descripcion, ancho, alto, m2, comp.id, tipo_venta, es_pintado, tiene_perforaciones ? 4 : 0, item_numero]
                             );
                             const ordenId = result.rows[0].id;
                             const estaciones = [...ESTACION_BASE];
@@ -2700,9 +2716,9 @@ const server = http.createServer(async (req, res) => {
                         }
                     } else {
                         const result = await query(
-                            `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE) RETURNING id`,
-                            [pedido, cliente, codigo, descripcion, ancho, alto, m2]
+                            `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, tipo_venta, pintado, perforaciones, item_numero)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9, $10, $11) RETURNING id`,
+                            [pedido, cliente, codigo, descripcion, ancho, alto, m2, tipo_venta, es_pintado, tiene_perforaciones ? 4 : 0, item_numero]
                         );
                         const ordenId = result.rows[0].id;
                         const estaciones = [...ESTACION_BASE];
@@ -2718,17 +2734,14 @@ const server = http.createServer(async (req, res) => {
                         }
                         resultados.importadas++;
                     }
-                } catch(eRow) {
-                    resultados.errores.push({ fila: i + 1, error: eRow.message });
                 }
+            } catch(eRow) {
+                resultados.errores.push({ fila: i + 1, error: eRow.message });
             }
-
-            console.log('[PROD] Importación completada:', resultados);
-            json(res, resultados);
-        } catch(e) {
-            console.error('[PROD] Error importación:', e.message);
-            json(res, { error: 'Error al procesar archivo: ' + e.message }, 500);
         }
+
+        console.log('[PROD] Importacion completada:', resultados);
+        json(res, resultados);
         return;
     }
 

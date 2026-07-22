@@ -57,20 +57,20 @@ App.registerModule('produccion', {
                     </div>
                 </div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr>
-                        <th>Pedido</th><th>Cliente</th><th>Codigo</th><th>Dimensiones</th><th>m2</th><th>Ruta</th><th>Estado</th><th>Acciones</th>
+                    <table style="font-size:13px"><thead><tr>
+                        <th style="padding:6px 12px">Pedido</th><th style="padding:6px 12px">Cliente</th><th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Dimensiones</th><th style="padding:6px 12px">m2</th><th style="padding:6px 12px">Tipo Venta</th><th style="padding:6px 12px">Ruta</th><th style="padding:6px 12px">Estado</th><th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="prodTable">
-                        <tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
 
             <div class="modal-overlay" id="prodImportModal">
                 <div class="modal" style="max-width:500px">
-                    <div class="modal-header"><h3>Importar desde SAP</h3><button class="modal-close" onclick="App.modules.produccion.hideImportModal()">&times;</button></div>
+                    <div class="modal-header"><h3>Importar desde Excel</h3><button class="modal-close" onclick="App.modules.produccion.hideImportModal()">&times;</button></div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label style="font-weight:500">Archivo Excel de SAP</label>
+                            <label style="font-weight:500">Archivo Excel</label>
                             <div id="prodImportArea" style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all .2s"
                                  onclick="document.getElementById('prodImportFile').click()">
                                 <div style="font-size:32px;margin-bottom:8px">📊</div>
@@ -80,9 +80,11 @@ App.registerModule('produccion', {
                             <input type="file" id="prodImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.produccion.handleImportFile(event)">
                         </div>
                         <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-light)">
-                            <strong>Columnas esperadas del Excel:</strong><br>
-                            Codigo, Pedido, Cliente, Descripcion, Ancho, Alto, Perforaciones (0/1), Familia
+                            <strong>Columnas esperadas:</strong><br>
+                            codigo, pedido, item, cliente, descripcion, cantidad, anho, alto, perforaciones, pintado, tipo de venta<br>
+                            <em>Cada fila = 1 item. Cantidad indica cuantas ordenes crear por fila.</em>
                         </div>
+                        <div id="prodImportPreview" style="max-height:200px;overflow-y:auto;margin-top:12px"></div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.produccion.hideImportModal()">Cancelar</button>
@@ -114,9 +116,21 @@ App.registerModule('produccion', {
                             <div class="form-group"><label>Perforaciones</label>
                                 <select class="form-control" id="newOrdPerforaciones"><option value="0">No</option><option value="1">Si</option></select>
                             </div>
-                            <div class="form-group"><label>Familia</label><input class="form-control" id="newOrdFamilia" placeholder="Ej: Templado"></div>
+                            <div class="form-group"><label>Pintado</label>
+                                <select class="form-control" id="newOrdPintado"><option value="0">No (0)</option><option value="1">Si (1)</option></select>
+                            </div>
                         </div>
-                        <div class="form-group"><label>Cantidad</label><input class="form-control" id="newOrdCantidad" type="number" value="1" min="1"></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div class="form-group"><label>Tipo de Venta</label>
+                                <select class="form-control" id="newOrdTipoVenta">
+                                    <option value="Normal">Normal</option>
+                                    <option value="Express">Express</option>
+                                    <option value="Vta Region">Vta Region</option>
+                                    <option value="Urgencia">Urgencia</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Cantidad</label><input class="form-control" id="newOrdCantidad" type="number" value="1" min="1"></div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.produccion.hideNewOrderModal()">Cancelar</button>
@@ -161,7 +175,7 @@ App.registerModule('produccion', {
 
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
-        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
+        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
 
         const estadoBadge = (e) => {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">✓ TERMINADO</span>';
@@ -170,17 +184,23 @@ App.registerModule('produccion', {
             return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">⏳ PENDIENTE</span>';
         };
 
+        const tipoBadge = (t) => {
+            const styles = { 'Express': 'background:#fee2e2;color:#991b1b', 'Urgencia': 'background:#fecaca;color:#991b1b', 'Vta Region': 'background:#dbeafe;color:#1e40af' };
+            return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;${styles[t] || 'background:#f1f5f9;color:#64748b'}">${t || 'Normal'}</span>`;
+        };
+
         tbody.innerHTML = ordenes.map(o => {
             const progreso = o.total_pasos > 0 ? `${o.pasos_terminados}/${o.total_pasos}` : '-';
-            return `<tr>
-                <td><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
-                <td>${escapeHtml(o.cliente || '-')}</td>
-                <td><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
-                <td>${o.ancho} x ${o.alto} mm</td>
-                <td>${o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-'}</td>
-                <td>${progreso}</td>
-                <td>${estadoBadge(o.estado_programacion)}</td>
-                <td><button class="btn btn-sm btn-outline" onclick="App.modules.produccion.verPasos(${o.id})">Ver Pasos</button></td>
+            return `<tr style="line-height:1.3">
+                <td style="padding:6px 12px"><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
+                <td style="padding:6px 12px">${escapeHtml(o.cliente || '-')}</td>
+                <td style="padding:6px 12px"><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
+                <td style="padding:6px 12px">${o.ancho} x ${o.alto} mm</td>
+                <td style="padding:6px 12px">${o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-'}</td>
+                <td style="padding:6px 12px">${tipoBadge(o.tipo_venta)}</td>
+                <td style="padding:6px 12px">${progreso}</td>
+                <td style="padding:6px 12px">${estadoBadge(o.estado_programacion)}</td>
+                <td style="padding:6px 12px"><button class="btn btn-sm btn-outline" onclick="App.modules.produccion.verPasos(${o.id})" style="padding:2px 8px;font-size:11px">Ver Pasos</button></td>
             </tr>`;
         }).join('');
     },
@@ -211,6 +231,33 @@ App.registerModule('produccion', {
         document.getElementById('prodImportName').textContent = file.name;
         document.getElementById('prodImportName').style.display = 'block';
         document.getElementById('prodImportBtn').disabled = false;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const wb = XLSX.read(ev.target.result, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(ws);
+                this._importRows = rows;
+                const preview = document.getElementById('prodImportPreview');
+                preview.innerHTML = `<div style="font-size:12px;margin-bottom:4px"><strong>${rows.length}</strong> items encontrados</div>
+                    <table style="width:100%;font-size:11px"><thead><tr><th style="padding:4px 8px">Codigo</th><th style="padding:4px 8px">Pedido</th><th style="padding:4px 8px">Item</th><th style="padding:4px 8px">Cliente</th><th style="padding:4px 8px">Cant</th><th style="padding:4px 8px">Ancho</th><th style="padding:4px 8px">Alto</th><th style="padding:4px 8px">Pint</th><th style="padding:4px 8px">Tipo Venta</th></tr></thead><tbody>
+                    ${rows.slice(0, 10).map(r => {
+                        const cod = r.codigo || r.Codigo || r.CODIGO || '';
+                        const ped = r.pedido || r.Pedido || r.PEDIDO || '';
+                        const it = r.item || r.Item || r.ITEM || '';
+                        const cli = r.cliente || r.Cliente || '';
+                        const cant = r.cantidad || r.Cantidad || 1;
+                        const ancho = r.anho || r.ancho || r.Ancho || r.ANCHO || 0;
+                        const alto = r.alto || r.Alto || r.ALTO || 0;
+                        const pint = r.pintado || r.Pintado || r.PINTADO || 0;
+                        const tipo = r['tipo de venta'] || r.tipo_de_venta || r.TipoVenta || 'Normal';
+                        return `<tr><td style="padding:4px 8px">${cod}</td><td style="padding:4px 8px">${ped}</td><td style="padding:4px 8px">${it}</td><td style="padding:4px 8px">${cli}</td><td style="padding:4px 8px">${cant}</td><td style="padding:4px 8px">${ancho}</td><td style="padding:4px 8px">${alto}</td><td style="padding:4px 8px">${pint}</td><td style="padding:4px 8px">${tipo}</td></tr>`;
+                    }).join('')}
+                    ${rows.length > 10 ? `<tr><td colspan="9" style="text-align:center;padding:4px;color:var(--text-light)">... y ${rows.length - 10} mas</td></tr>` : ''}
+                    </tbody></table>`;
+            } catch(err) { document.getElementById('prodImportPreview').innerHTML = '<span style="color:red">Error al leer archivo</span>'; }
+        };
+        reader.readAsArrayBuffer(file);
     },
 
     async importar() {
@@ -220,29 +267,37 @@ App.registerModule('produccion', {
         btn.disabled = true;
 
         try {
-            const base64 = await new Promise((resolve, reject) => {
+            const data = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onload = () => {
+                    try {
+                        const wb = XLSX.read(reader.result, { type: 'array' });
+                        const ws = wb.Sheets[wb.SheetNames[0]];
+                        resolve(XLSX.utils.sheet_to_json(ws));
+                    } catch(e) { reject(e); }
+                };
                 reader.onerror = () => reject(new Error('Error al leer archivo'));
-                reader.readAsDataURL(this.selectedImportFile);
+                reader.readAsArrayBuffer(this.selectedImportFile);
             });
+
+            if (!data.length) { alert('El archivo esta vacio'); btn.textContent = 'Importar'; btn.disabled = false; return; }
 
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch('/api/produccion/importar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ excel_data: base64, file_name: this.selectedImportFile.name })
+                body: JSON.stringify({ rows: data })
             });
 
-            const data = await res.json();
+            const result = await res.json();
             if (res.ok) {
-                let msg = `Importadas: ${data.importadas} ordenes, ${data.pasos_creados} pasos creados.`;
-                if (data.errores && data.errores.length) msg += ` Errores: ${data.errores.length}`;
+                let msg = `Importadas: ${result.importadas} ordenes, ${result.pasos_creados} pasos.`;
+                if (result.errores && result.errores.length) msg += ` Errores: ${result.errores.length}`;
                 App.toast(msg);
                 this.hideImportModal();
                 await this.load();
             } else {
-                alert(data.error || 'Error al importar');
+                alert(result.error || 'Error al importar');
             }
         } catch(e) { alert('Error: ' + e.message); }
 
@@ -287,7 +342,8 @@ App.registerModule('produccion', {
         document.getElementById('newOrdAncho').value = '0';
         document.getElementById('newOrdAlto').value = '0';
         document.getElementById('newOrdPerforaciones').value = '0';
-        document.getElementById('newOrdFamilia').value = '';
+        document.getElementById('newOrdPintado').value = '0';
+        document.getElementById('newOrdTipoVenta').value = 'Normal';
         document.getElementById('newOrdCantidad').value = '1';
         document.getElementById('prodNewOrderModal').classList.add('show');
     },
@@ -301,7 +357,8 @@ App.registerModule('produccion', {
         const ancho = Number(document.getElementById('newOrdAncho').value) || 0;
         const alto = Number(document.getElementById('newOrdAlto').value) || 0;
         const perforaciones = document.getElementById('newOrdPerforaciones').value === '1';
-        const familia = document.getElementById('newOrdFamilia').value.trim();
+        const pintado = document.getElementById('newOrdPintado').value === '1';
+        const tipo_venta = document.getElementById('newOrdTipoVenta').value;
         const cantidad = Number(document.getElementById('newOrdCantidad').value) || 1;
         if (!pedido || !codigo || !ancho || !alto) { alert('Pedido, codigo, ancho y alto son requeridos'); return; }
         try {
@@ -309,7 +366,7 @@ App.registerModule('produccion', {
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const res = await fetch('/api/produccion/ordenes', {
                 method: 'POST', headers,
-                body: JSON.stringify({ pedido_sap_id: pedido, cliente, codigo_producto: codigo, descripcion, ancho, alto, perforaciones, familia, cantidad })
+                body: JSON.stringify({ pedido_sap_id: pedido, cliente, codigo_producto: codigo, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, cantidad })
             });
             const data = await res.json();
             if (res.ok) {
