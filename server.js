@@ -2743,6 +2743,41 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // DELETE /api/produccion/pasos/:id - Eliminar un paso
+    if (pasoUpdateMatch && req.method === 'DELETE') {
+        const id = Number(pasoUpdateMatch[1]);
+        try {
+            await query('DELETE FROM cola_produccion_pasos WHERE id = $1', [id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/produccion/ordenes/:id/pasos - Agregar paso a una orden
+    const ordenPasoPostMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)\/pasos$/);
+    if (ordenPasoPostMatch && req.method === 'POST') {
+        const ordenId = Number(ordenPasoPostMatch[1]);
+        const body = await parseBody(req);
+        const { estacion_id } = body;
+        if (!estacion_id) { json(res, { error: 'Estacion requerida' }, 400); return; }
+        try {
+            const maxSeq = await query('SELECT COALESCE(MAX(orden_secuencia), 0) as max_seq FROM cola_produccion_pasos WHERE orden_produccion_id = $1', [ordenId]);
+            const nextSeq = Number(maxSeq.rows[0].max_seq) + 1;
+            await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [ordenId, estacion_id, nextSeq, 'PENDIENTE']);
+            // Reordenar todos los pasos
+            await query(`
+                UPDATE cola_produccion_pasos SET orden_secuencia = sub.nueva_seq
+                FROM (
+                    SELECT id, ROW_NUMBER() OVER (ORDER BY orden_secuencia) as nueva_seq
+                    FROM cola_produccion_pasos WHERE orden_produccion_id = $1
+                ) sub
+                WHERE cola_produccion_pasos.id = sub.id
+            `, [ordenId]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/produccion/maquinas - Listar máquinas
     if (urlPath === '/api/produccion/maquinas' && req.method === 'GET') {
         const result = await query('SELECT * FROM produccion_maquinas ORDER BY num_operacion ASC NULLS LAST, nombre ASC');

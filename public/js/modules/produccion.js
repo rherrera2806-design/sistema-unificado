@@ -363,11 +363,17 @@ App.registerModule('produccion', {
 
     async verPasos(ordenId) {
         try {
-            const res = await fetch(`/api/produccion/ordenes/${ordenId}/pasos`);
-            const pasos = await res.json();
+            const [pasosRes, estacionesRes] = await Promise.all([
+                fetch(`/api/produccion/ordenes/${ordenId}/pasos`),
+                fetch('/api/produccion/estaciones')
+            ]);
+            const pasos = await pasosRes.json();
+            const todasEstaciones = await estacionesRes.json();
             const orden = this.ordenes.find(o => o.id === ordenId);
             const body = document.getElementById('prodPasosBody');
             const estadoEstilo = { PENDIENTE: 'background:#fef9c3;color:#854d0e', EN_PROCESO: 'background:#dbeafe;color:#1e40af', TERMINADO: 'background:#dcfce7;color:#166534', MERMADO: 'background:#fee2e2;color:#991b1b' };
+            const estIdsActuales = pasos.map(p => p.estacion_id);
+            const estDisponibles = todasEstaciones.filter(e => e.activa && !estIdsActuales.includes(e.id));
             body.innerHTML = `
                 <div style="margin-bottom:12px"><strong>Pedido:</strong> ${orden?.pedido_sap_id || '-'} | <strong>Codigo:</strong> ${orden?.codigo_producto} | <strong>${orden?.ancho}x${orden?.alto}mm</strong></div>
                 ${pasos.length === 0 ? '<div style="color:var(--text-light);text-align:center;padding:20px">Sin pasos definidos</div>' :
@@ -376,7 +382,7 @@ App.registerModule('produccion', {
                         <td>${p.orden_secuencia}</td>
                         <td><strong>${p.nombre_estacion || p.estacion_nombre}</strong></td>
                         <td>
-                            <select class="form-control" style="width:140px;padding:4px 8px;font-size:12px;font-weight:600;${estadoEstilo[p.estado] || ''}" onchange="App.modules.produccion.updatePaso(${p.id}, this.value, ${ordenId})">
+                            <select class="form-control" style="width:140px;padding:4px 8px;font-size:12px" onchange="App.modules.produccion.updatePaso(${p.id}, this.value, ${ordenId})">
                                 <option value="PENDIENTE" ${p.estado==='PENDIENTE'?'selected':''}>PENDIENTE</option>
                                 <option value="EN_PROCESO" ${p.estado==='EN_PROCESO'?'selected':''}>EN PROCESO</option>
                                 <option value="TERMINADO" ${p.estado==='TERMINADO'?'selected':''}>TERMINADO</option>
@@ -385,8 +391,17 @@ App.registerModule('produccion', {
                         </td>
                         <td>${p.hora_inicio ? new Date(p.hora_inicio).toLocaleString('es-CL') : '-'}</td>
                         <td>${p.hora_fin ? new Date(p.hora_fin).toLocaleString('es-CL') : '-'}</td>
+                        <td><button class="btn btn-sm" style="color:#ef4444;border:none;padding:2px 6px;font-size:11px" onclick="App.modules.produccion.eliminarPaso(${p.id}, ${ordenId})" title="Quitar estacion">✕</button></td>
                     </tr>`;
                 }).join('')}</tbody></table>`}
+                ${estDisponibles.length > 0 ? `
+                <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+                    <select id="addEstacion_${ordenId}" class="form-control" style="flex:1;padding:6px;font-size:12px">
+                        <option value="">-- Agregar estacion --</option>
+                        ${estDisponibles.map(e => `<option value="${e.id}">${e.nombre_estacion}</option>`).join('')}
+                    </select>
+                    <button class="btn btn-primary btn-sm" style="padding:6px 12px;font-size:12px" onclick="App.modules.produccion.agregarPaso(${ordenId})">+ Agregar</button>
+                </div>` : ''}
             `;
             document.getElementById('prodPasosModal').classList.add('show');
         } catch(e) { alert('Error al cargar pasos: ' + e.message); }
@@ -403,10 +418,41 @@ App.registerModule('produccion', {
             });
             const data = await res.json();
             if (res.ok) {
-                App.toast(`Paso actualizado a ${nuevoEstado}`);
                 await this.verPasos(ordenId);
                 await this.load();
             } else { alert(data.error || 'Error al actualizar'); }
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    async agregarPaso(ordenId) {
+        const select = document.getElementById(`addEstacion_${ordenId}`);
+        const estacionId = Number(select?.value);
+        if (!estacionId) return;
+        try {
+            const res = await fetch(`/api/produccion/ordenes/${ordenId}/pasos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estacion_id: estacionId })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                App.toast('Estacion agregada');
+                await this.verPasos(ordenId);
+                await this.load();
+            } else { alert(data.error || 'Error al agregar'); }
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    async eliminarPaso(pasoId, ordenId) {
+        if (!confirm('Quitar esta estacion de la ruta?')) return;
+        try {
+            const res = await fetch(`/api/produccion/pasos/${pasoId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok) {
+                App.toast('Estacion eliminada');
+                await this.verPasos(ordenId);
+                await this.load();
+            } else { alert(data.error || 'Error al eliminar'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
 
