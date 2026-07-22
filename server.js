@@ -2537,30 +2537,87 @@ const server = http.createServer(async (req, res) => {
         try {
             const cant = Number(cantidad) || 1;
             const m2 = ((Number(ancho) * Number(alto)) / 1000000) * cant;
+            const codigo = String(codigo_producto).trim();
 
-            // Buscar receta BOM (nueva tabla primero, luego antigua)
-            let recetas = await query('SELECT rb.*, mp.codigo_mp, mp.nombre as mp_nombre, mp.costo_unitario_mp FROM recetas_bom rb LEFT JOIN materias_primas mp ON rb.materia_prima_id = mp.id WHERE rb.codigo_sap_padre = $1', [codigo_producto]);
-            if (recetas.rows.length === 0) {
-                recetas = await query('SELECT *, codigo_materia_prima as codigo_mp, descripcion as mp_nombre, 0 as costo_unitario_mp FROM produccion_recetas_bom WHERE codigo_sap_padre = $1', [codigo_producto]);
-            }
-
-            // Buscar familia del código
+            // 1) Buscar familia desde produccion_codigos.familia → familias_producto
             let familia = null;
-            const famRes = await query('SELECT * FROM familias_producto WHERE UPPER(codigo_familia) = UPPER($1) OR UPPER(nombre_familia) ILIKE $2', [codigo_producto, '%' + codigo_producto + '%']);
-            if (famRes.rows.length > 0) familia = famRes.rows[0];
-
-            // Buscar estaciones base de la familia
-            let estacionesBase = ['Corte', 'Pulido', 'Templado'];
-            if (familia) {
-                const febRes = await query('SELECT array_agg(e.nombre_estacion ORDER BY e.orden_secuencia_defecto) as estaciones FROM familia_estaciones_base feb JOIN estaciones_maestras e ON feb.estacion_id = e.id WHERE feb.familia_id = $1', [familia.id]);
-                if (febRes.rows.length > 0 && febRes.rows[0].estaciones) estacionesBase = febRes.rows[0].estaciones;
+            const codInfo = await query('SELECT familia FROM produccion_codigos WHERE codigo = $1', [codigo]);
+            if (codInfo.rows.length && codInfo.rows[0].familia) {
+                const nombreFam = codInfo.rows[0].familia;
+                const famRes = await query('SELECT * FROM familias_producto WHERE UPPER(nombre_familia) = UPPER($1) OR UPPER(codigo_familia) = UPPER($1)', [nombreFam]);
+                if (famRes.rows.length > 0) familia = famRes.rows[0];
             }
+
+            // 2) Buscar estaciones base de la familia
+            let estacionesBaseIds = [];
+            if (familia) {
+                const febRes = await query(`
+                    SELECT feb.estacion_id FROM familia_estaciones_base feb
+                    JOIN estaciones_maestras e ON feb.estacion_id = e.id
+                    WHERE feb.familia_id = $1 ORDER BY e.orden_secuencia_defecto
+                `, [familia.id]);
+                estacionesBaseIds = febRes.rows.map(r => r.estacion_id);
+            }
+            // Fallback: Corte→Pulido→Templado
+            if (estacionesBaseIds.length === 0) {
+                const defRes = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion IN ('Corte','Pulido','Templado') ORDER BY orden_secuencia_defecto");
+                estacionesBaseIds = defRes.rows.map(r => r.id);
+            }
+
+            // 3) Agregar extras según banderas
+            if (perforaciones) {
+                const mec = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Mecanizado'");
+                if (mec.rows.length && !estacionesBaseIds.includes(mec.rows[0].id)) {
+                    const templadoIdx = estacionesBaseIds.findIndex(id => {
+                        // find templado position
+                        return estacionesBaseIds.indexOf(id) >= 0;
+                    });
+                    // Insertar Mecanizado antes de Templado (id 7)
+                    const pos = estacionesBaseIds.findIndex(async id => {
+                        const e = await query('SELECT orden_secuencia_defecto FROM estaciones_maestras WHERE id = $1', [id]);
+                        return e.rows[0]?.orden_secuencia_defecto >= 7;
+                    });
+                    estacionesBaseIds.splice(Math.max(0, estacionesBaseIds.length - 1), 0, mec.rows[0].id);
+                }
+            }
+            if (pintado) {
+                const pint = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Pintado'");
+                if (pint.rows.length && !estacionesBaseIds.includes(pint.rows[0].id)) {
+                    estacionesBaseIds.splice(Math.max(0, estacionesBaseIds.length - 1), 0, pint.rows[0].id);
+                }
+            }
+
+            // Re-ordenar por orden_secuencia_defecto
+            if (estacionesBaseIds.length > 0) {
+                const ordenRes = await query(`SELECT id, orden_secuencia_defecto FROM estaciones_maestras WHERE id = ANY($1) ORDER BY orden_secuencia_defecto`, [estacionesBaseIds]);
+                estacionesBaseIds = ordenRes.rows.map(r => r.id);
+            }
+
+            // 4) Buscar receta BOM
+            let recetas = [];
+            const bomNew = await query(`
+                SELECT rb.*, mp.codigo_mp, mp.nombre as mp_nombre
+                FROM recetas_bom rb
+                LEFT JOIN materias_primas mp ON rb.materia_prima_id = mp.id
+                WHERE rb.codigo_sap_padre = $1
+            `, [codigo]);
+            if (bomNew.rows.length > 0) {
+                recetas = bomNew.rows;
+            } else {
+                const bomOld = await query(`
+                    SELECT *, codigo_materia_prima as codigo_mp, descripcion as mp_nombre
+                    FROM produccion_recetas_bom WHERE codigo_sap_padre = $1
+                `, [codigo]);
+                recetas = bomOld.rows;
+            }
+
+            console.log('[PROD] Manual:', codigo, 'familia:', familia?.nombre_familia, 'BOM:', recetas.length, 'estaciones:', estacionesBaseIds.length);
 
             const ids = [];
-            if (recetas.rows.length > 0) {
+            if (recetas.length > 0) {
                 // Explosión BOM: crear una orden por componente
-                for (const comp of recetas.rows) {
-                    const mpCodigo = comp.codigo_mp || codigo_producto;
+                for (const comp of recetas) {
+                    const mpCodigo = comp.codigo_mp || codigo;
                     const mpNombre = comp.mp_nombre || descripcion || '';
                     const result = await query(
                         `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
@@ -2571,48 +2628,30 @@ const server = http.createServer(async (req, res) => {
                     );
                     const ordenId = result.rows[0].id;
                     ids.push(ordenId);
-
-                    // Estaciones con extras
-                    let estaciones = [...estacionesBase];
-                    if (pintado) {
-                        const pintEst = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Pintado'");
-                        if (pintEst.rows.length && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
-                    }
-
-                    for (let s = 0; s < estaciones.length; s++) {
-                        const est = await query('SELECT id FROM estaciones_maestras WHERE nombre_estacion = $1', [estaciones[s]]);
-                        if (est.rows.length) {
-                            await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [ordenId, est.rows[0].id, s + 1, 'PENDIENTE']);
-                        }
+                    for (let s = 0; s < estacionesBaseIds.length; s++) {
+                        await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1,$2,$3,$4)', [ordenId, estacionesBaseIds[s], s + 1, 'PENDIENTE']);
                     }
                 }
             } else {
                 // Sin receta BOM: orden directa
                 const result = await query(
-                    'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, tipo_venta, item_numero, cantidad, familia_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *',
-                    [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2, tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, fecha_creacion || new Date().toISOString()]
+                    `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
+                     tipo_venta, item_numero, cantidad, familia_id, created_at)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+                    [pedido_sap_id, cliente || null, codigo, descripcion || null, ancho, alto, m2,
+                     tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, fecha_creacion || new Date().toISOString()]
                 );
                 const orden = result.rows[0];
                 ids.push(orden.id);
-
-                let estaciones = [...estacionesBase];
-                if (perforaciones) {
-                    const mecEst = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Mecanizado'");
-                    if (mecEst.rows.length) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Mecanizado');
-                }
-                if (pintado) {
-                    const pintEst = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Pintado'");
-                    if (pintEst.rows.length) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
-                }
-                for (let s = 0; s < estaciones.length; s++) {
-                    const est = await query('SELECT id FROM estaciones_maestras WHERE nombre_estacion = $1', [estaciones[s]]);
-                    if (est.rows.length) {
-                        await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [orden.id, est.rows[0].id, s + 1, 'PENDIENTE']);
-                    }
+                for (let s = 0; s < estacionesBaseIds.length; s++) {
+                    await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1,$2,$3,$4)', [orden.id, estacionesBaseIds[s], s + 1, 'PENDIENTE']);
                 }
             }
             json(res, { ok: true, ordenes_creadas: ids.length, ids }, 201);
-        } catch(e) { json(res, { error: 'Error al crear orden: ' + e.message }, 500); }
+        } catch(e) {
+            console.error('[PROD] Error crear orden manual:', e.message);
+            json(res, { error: 'Error al crear orden: ' + e.message }, 500);
+        }
         return;
     }
 
@@ -3263,12 +3302,18 @@ const server = http.createServer(async (req, res) => {
                 }
                 // Intentar mapear por código SAP si no se especificó familia
                 if (!familia) {
-                    // Buscar en descripción
                     for (const f of familias) {
                         if (r.descripcion && r.descripcion.toLowerCase().includes(f.nombre_familia.toLowerCase())) {
                             familia = f;
                             break;
                         }
+                    }
+                }
+                // Fallback: buscar familia en produccion_codigos.familia
+                if (!familia) {
+                    const codFam = await query('SELECT familia FROM produccion_codigos WHERE codigo = $1', [r.codigo]);
+                    if (codFam.rows.length && codFam.rows[0].familia) {
+                        familia = familias.find(f => f.nombre_familia.toLowerCase() === codFam.rows[0].familia.toLowerCase()) || null;
                     }
                 }
 
