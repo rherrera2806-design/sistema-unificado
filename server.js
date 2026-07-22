@@ -661,7 +661,7 @@ async function initDB() {
         'inventario','inv_inventario','inv_movimientos','inv_historial','inv_catalogos',
         'atencion','turnos_recepcion','turnos_bodega','turnos_qr',
         'ventas','pedidos',
-        'produccion','prod_ordenes','prod_maquinas','prod_recetas','prod_codigos','prod_notas',
+        'produccion','prod_ordenes','prod_maquinas','prod_recetas','prod_codigos','prod_notas','prod_config',
         'administracion','usuarios','pedidos.autorizar'
     ];
     const adminCheck = await query("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);

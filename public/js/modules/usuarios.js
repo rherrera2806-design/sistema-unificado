@@ -108,7 +108,8 @@ App.registerModule('usuarios', {
                 { key: 'prod_codigos', label: 'Codigos' },
                 { key: 'prod_maquinas', label: 'Maquinas' },
                 { key: 'prod_recetas', label: 'Recetas BOM' },
-                { key: 'prod_notas', label: 'Mis Pendientes' }
+                { key: 'prod_notas', label: 'Mis Pendientes' },
+                { key: 'prod_config', label: 'Configuracion' }
             ]},
             { key: 'administracion', label: 'ADMINISTRACION', items: [
                 { key: 'usuarios', label: 'Usuarios' }

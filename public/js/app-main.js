@@ -439,6 +439,7 @@ function renderSidebar() {
         if (canSeeItem('prod_maquinas','produccion')) html += navI('prod_maquinas', 'Maquinas', '⚙️');
         if (canSeeItem('prod_recetas','produccion')) html += navI('prod_recetas', 'Recetas BOM', '📦');
         if (canSeeItem('prod_notas','produccion')) html += navI('prod_notas', 'Mis Pendientes', '📋');
+        if (canSeeItem('prod_config','produccion')) html += navI('prod_config', 'Configuracion', '⚙️');
         html += `</div>`;
     }
 
