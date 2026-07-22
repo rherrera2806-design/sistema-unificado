@@ -203,24 +203,32 @@ App.registerModule('prod_recetas', {
         btn.textContent = 'Procesando...';
         btn.disabled = true;
         try {
-            const base64 = await new Promise((resolve, reject) => {
+            const data = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onload = () => {
+                    try {
+                        const wb = XLSX.read(reader.result, { type: 'array' });
+                        const ws = wb.Sheets[wb.SheetNames[0]];
+                        resolve(XLSX.utils.sheet_to_json(ws));
+                    } catch(e) { reject(e); }
+                };
                 reader.onerror = () => reject(new Error('Error al leer archivo'));
-                reader.readAsDataURL(this.selectedImportFile);
+                reader.readAsArrayBuffer(this.selectedImportFile);
             });
+            if (!data.length) { alert('El archivo esta vacio'); btn.textContent = 'Importar'; btn.disabled = false; return; }
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const res = await fetch('/api/produccion/recetas/importar', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ excel_data: base64, file_name: this.selectedImportFile.name })
+                headers,
+                body: JSON.stringify({ rows: data })
             });
-            const data = await res.json();
+            const result = await res.json();
             if (res.ok) {
-                App.toast(`Importadas: ${data.importadas} recetas. Errores: ${data.errores?.length || 0}`);
+                App.toast(`Importadas: ${result.importadas} recetas. Errores: ${result.errores?.length || 0}`);
                 this.hideImportModal();
                 await this.load();
-            } else { alert(data.error || 'Error al importar'); }
+            } else { alert(result.error || 'Error al importar'); }
         } catch(e) { alert('Error: ' + e.message); }
         btn.textContent = 'Importar';
         btn.disabled = false;

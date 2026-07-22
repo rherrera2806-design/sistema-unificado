@@ -2464,34 +2464,35 @@ const server = http.createServer(async (req, res) => {
     // POST /api/produccion/recetas/importar - Importar recetas BOM desde Excel
     if (urlPath === '/api/produccion/recetas/importar' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { excel_data, file_name } = body;
-        if (!excel_data) { json(res, { error: 'Datos del archivo requeridos' }, 400); return; }
-        try {
-            const XLSX = require('xlsx');
-            const buffer = Buffer.from(excel_data, 'base64');
-            const workbook = XLSX.read(buffer, { type: 'buffer' });
-            const sheetName = workbook.SheetNames[0];
-            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-            if (!rows.length) { json(res, { error: 'El archivo esta vacio' }, 400); return; }
-            const resultados = { importadas: 0, errores: [] };
-            for (let i = 0; i < rows.length; i++) {
-                try {
-                    const row = rows[i];
-                    const codigo_padre = String(row['CodigoPadre'] || row['codigo_padre'] || row['Codigo'] || '').trim();
-                    const codigo_mp = String(row['CodigoMateriaPrima'] || row['codigo_mp'] || row['MateriaPrima'] || '').trim();
-                    const desc = String(row['Descripcion'] || row['descripcion'] || '').trim();
-                    const espesor = Number(row['Espesor'] || row['espesor'] || 0);
-                    const cantidad = Number(row['Cantidad'] || row['cantidad'] || 1);
-                    if (!codigo_padre || !codigo_mp) { resultados.errores.push({ fila: i + 1, error: 'Faltan codigos' }); continue; }
-                    await query(
-                        'INSERT INTO produccion_recetas_bom (codigo_sap_padre, codigo_materia_prima, descripcion, espesor, cantidad) VALUES ($1, $2, $3, $4, $5)',
-                        [codigo_padre, codigo_mp, desc, espesor, cantidad]
-                    );
-                    resultados.importadas++;
-                } catch(eRow) { resultados.errores.push({ fila: i + 1, error: eRow.message }); }
-            }
-            json(res, resultados);
-        } catch(e) { json(res, { error: 'Error al procesar: ' + e.message }, 500); }
+        const { rows, excel_data } = body;
+        let parsedRows = rows;
+        if (!parsedRows && excel_data) {
+            try {
+                const XLSX = require('xlsx');
+                const buffer = Buffer.from(excel_data, 'base64');
+                const workbook = XLSX.read(buffer, { type: 'buffer' });
+                parsedRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            } catch(e) { json(res, { error: 'Error al parsear Excel: ' + e.message }, 400); return; }
+        }
+        if (!Array.isArray(parsedRows) || !parsedRows.length) { json(res, { error: 'No hay datos para importar' }, 400); return; }
+        const resultados = { importadas: 0, errores: [] };
+        for (let i = 0; i < parsedRows.length; i++) {
+            try {
+                const row = parsedRows[i];
+                const codigo_padre = String(row['CodigoPadre'] || row['codigo_padre'] || row['Codigo'] || '').trim();
+                const codigo_mp = String(row['CodigoMateriaPrima'] || row['codigo_mp'] || row['MateriaPrima'] || '').trim();
+                const desc = String(row['Descripcion'] || row['descripcion'] || '').trim();
+                const espesor = Number(row['Espesor'] || row['espesor'] || 0);
+                const cantidad = Number(row['Cantidad'] || row['cantidad'] || 1);
+                if (!codigo_padre || !codigo_mp) { resultados.errores.push({ fila: i + 1, error: 'Faltan codigos' }); continue; }
+                await query(
+                    'INSERT INTO produccion_recetas_bom (codigo_sap_padre, codigo_materia_prima, descripcion, espesor, cantidad) VALUES ($1, $2, $3, $4, $5)',
+                    [codigo_padre, codigo_mp, desc, espesor, cantidad]
+                );
+                resultados.importadas++;
+            } catch(eRow) { resultados.errores.push({ fila: i + 1, error: eRow.message }); }
+        }
+        json(res, resultados);
         return;
     }
 
