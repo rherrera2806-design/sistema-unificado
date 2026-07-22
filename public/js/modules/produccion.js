@@ -381,24 +381,17 @@ App.registerModule('produccion', {
                     return `<tr>
                         <td>${p.orden_secuencia}</td>
                         <td><strong>${p.nombre_estacion || p.estacion_nombre}</strong></td>
-                        <td>
-                            <select class="form-control" style="width:140px;padding:4px 8px;font-size:12px" onchange="App.modules.produccion.updatePaso(${p.id}, this.value, ${ordenId})">
-                                <option value="PENDIENTE" ${p.estado==='PENDIENTE'?'selected':''}>PENDIENTE</option>
-                                <option value="EN_PROCESO" ${p.estado==='EN_PROCESO'?'selected':''}>EN PROCESO</option>
-                                <option value="TERMINADO" ${p.estado==='TERMINADO'?'selected':''}>TERMINADO</option>
-                                <option value="MERMADO" ${p.estado==='MERMADO'?'selected':''}>MERMADO</option>
-                            </select>
-                        </td>
+                        <td><span style="padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;${estadoEstilo[p.estado] || ''}">${p.estado}</span></td>
                         <td>${p.hora_inicio ? new Date(p.hora_inicio).toLocaleString('es-CL') : '-'}</td>
                         <td>${p.hora_fin ? new Date(p.hora_fin).toLocaleString('es-CL') : '-'}</td>
-                        <td><button class="btn btn-sm" style="color:#ef4444;border:none;padding:2px 6px;font-size:11px" onclick="App.modules.produccion.eliminarPaso(${p.id}, ${ordenId})" title="Quitar estacion">✕</button></td>
+                        <td>${p.estado === 'PENDIENTE' ? `<button class="btn btn-sm" style="color:#ef4444;border:none;padding:2px 6px;font-size:11px" onclick="App.modules.produccion.eliminarPaso(${p.id}, ${ordenId})" title="Quitar estacion">✕</button>` : ''}</td>
                     </tr>`;
                 }).join('')}</tbody></table>`}
                 ${estDisponibles.length > 0 ? `
                 <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
                     <select id="addEstacion_${ordenId}" class="form-control" style="flex:1;padding:6px;font-size:12px">
                         <option value="">-- Agregar estacion --</option>
-                        ${estDisponibles.map(e => `<option value="${e.id}">${e.nombre_estacion}</option>`).join('')}
+                        ${estDisponibles.map(e => `<option value="${e.id}">${e.orden_secuencia_defecto || '?'}° ${e.nombre_estacion}</option>`).join('')}
                     </select>
                     <button class="btn btn-primary btn-sm" style="padding:6px 12px;font-size:12px" onclick="App.modules.produccion.agregarPaso(${ordenId})">+ Agregar</button>
                 </div>` : ''}

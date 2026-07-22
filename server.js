@@ -2761,15 +2761,19 @@ const server = http.createServer(async (req, res) => {
         const { estacion_id } = body;
         if (!estacion_id) { json(res, { error: 'Estacion requerida' }, 400); return; }
         try {
-            const maxSeq = await query('SELECT COALESCE(MAX(orden_secuencia), 0) as max_seq FROM cola_produccion_pasos WHERE orden_produccion_id = $1', [ordenId]);
-            const nextSeq = Number(maxSeq.rows[0].max_seq) + 1;
-            await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [ordenId, estacion_id, nextSeq, 'PENDIENTE']);
-            // Reordenar todos los pasos
+            // Verificar que no exista ya
+            const existente = await query('SELECT id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND estacion_id = $2', [ordenId, estacion_id]);
+            if (existente.rows.length > 0) { json(res, { error: 'Esa estacion ya esta en la ruta' }, 400); return; }
+            // Insertar paso temporal
+            await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, 0, $3)', [ordenId, estacion_id, 'PENDIENTE']);
+            // Reordenar TODOS los pasos por orden_secuencia_defecto de la estacion
             await query(`
                 UPDATE cola_produccion_pasos SET orden_secuencia = sub.nueva_seq
                 FROM (
-                    SELECT id, ROW_NUMBER() OVER (ORDER BY orden_secuencia) as nueva_seq
-                    FROM cola_produccion_pasos WHERE orden_produccion_id = $1
+                    SELECT p.id, ROW_NUMBER() OVER (ORDER BY e.orden_secuencia_defecto ASC NULLS LAST) as nueva_seq
+                    FROM cola_produccion_pasos p
+                    JOIN estaciones_maestras e ON p.estacion_id = e.id
+                    WHERE p.orden_produccion_id = $1
                 ) sub
                 WHERE cola_produccion_pasos.id = sub.id
             `, [ordenId]);
