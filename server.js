@@ -3060,7 +3060,9 @@ const server = http.createServer(async (req, res) => {
 
     // POST /api/produccion/importar - Importar desde Excel (Nueva Arquitectura)
     if (urlPath === '/api/produccion/importar' && req.method === 'POST') {
+        console.log('[PROD] >>> Endpoint /api/produccion/importar HIT');
         const body = await parseBody(req);
+        console.log('[PROD] Body recibido, rows type:', typeof body.rows, 'isArray:', Array.isArray(body.rows), 'length:', body.rows?.length);
         const { rows: clientRows, excel_data, file_name } = body;
 
         let rows = clientRows;

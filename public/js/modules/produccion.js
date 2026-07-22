@@ -288,7 +288,8 @@ App.registerModule('produccion', {
     },
 
     async importar() {
-        if (!this.selectedImportFile) return;
+        console.log('[IMPORT] Iniciando importar, selectedImportFile:', this.selectedImportFile);
+        if (!this.selectedImportFile) { console.log('[IMPORT] No hay archivo seleccionado'); return; }
         const btn = document.getElementById('prodImportBtn');
         btn.textContent = 'Procesando...';
         btn.disabled = true;
@@ -300,8 +301,10 @@ App.registerModule('produccion', {
                     try {
                         const wb = XLSX.read(reader.result, { type: 'array' });
                         const ws = wb.Sheets[wb.SheetNames[0]];
-                        resolve(XLSX.utils.sheet_to_json(ws));
-                    } catch(e) { reject(e); }
+                        const rows = XLSX.utils.sheet_to_json(ws);
+                        console.log('[IMPORT] Excel parseado:', rows.length, 'filas');
+                        resolve(rows);
+                    } catch(e) { console.error('[IMPORT] Error parseando XLSX:', e); reject(e); }
                 };
                 reader.onerror = () => reject(new Error('Error al leer archivo'));
                 reader.readAsArrayBuffer(this.selectedImportFile);
@@ -310,13 +313,17 @@ App.registerModule('produccion', {
             if (!data.length) { alert('El archivo esta vacio'); btn.textContent = 'Importar'; btn.disabled = false; return; }
 
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const payload = JSON.stringify({ rows: data });
+            console.log('[IMPORT] Enviando payload:', payload.length, 'bytes');
             const res = await fetch('/api/produccion/importar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ rows: data })
+                body: payload
             });
 
+            console.log('[IMPORT] Response status:', res.status);
             const result = await res.json();
+            console.log('[IMPORT] Resultado:', JSON.stringify(result).substring(0, 500));
             if (res.ok) {
                 let msg = `Importadas: ${result.importadas} ordenes, ${result.pasos_creados} pasos.`;
                 if (result.fusiones > 0) msg += ` Fusiones: ${result.fusiones} filas combinadas.`;
