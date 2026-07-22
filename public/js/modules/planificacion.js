@@ -11,6 +11,7 @@ App.modules.planificacion = {
 
     calcSemana(fecha) {
         const d = new Date(fecha);
+        if (isNaN(d.getTime())) { d = new Date(); }
         const dia = d.getDay();
         const diffLunes = dia === 0 ? -6 : 1 - dia;
         this.semanaInicio = new Date(d);
@@ -20,6 +21,7 @@ App.modules.planificacion = {
     },
 
     async render() {
+        if (!this.semanaInicio) this.calcSemana(new Date());
         const page = document.getElementById('page-planificacion');
         if (!page) return;
         page.innerHTML = `
