@@ -105,6 +105,7 @@ App.registerModule('produccion', {
                     <div class="modal-header"><h3>Nueva Orden Manual</h3><button class="modal-close" onclick="App.modules.produccion.hideNewOrderModal()">&times;</button></div>
                     <div class="modal-body">
                         <div class="form-group"><label>Pedido *</label><input class="form-control" id="newOrdPedido" placeholder="Ej: PED-001"></div>
+                        <div class="form-group"><label>Item</label><input class="form-control" id="newOrdItem" type="number" value="1" min="1"></div>
                         <div class="form-group"><label>Cliente</label><input class="form-control" id="newOrdCliente" placeholder="Nombre del cliente"></div>
                         <div class="form-group"><label>Codigo Producto *</label><input class="form-control" id="newOrdCodigo" placeholder="Ej: 100, V659"></div>
                         <div class="form-group"><label>Descripcion</label><input class="form-control" id="newOrdDescripcion" placeholder="Descripcion del producto"></div>
@@ -336,6 +337,7 @@ App.registerModule('produccion', {
 
     showNewOrderModal() {
         document.getElementById('newOrdPedido').value = '';
+        document.getElementById('newOrdItem').value = '1';
         document.getElementById('newOrdCliente').value = '';
         document.getElementById('newOrdCodigo').value = '';
         document.getElementById('newOrdDescripcion').value = '';
@@ -351,6 +353,7 @@ App.registerModule('produccion', {
 
     async saveNewOrder() {
         const pedido = document.getElementById('newOrdPedido').value.trim();
+        const item = Number(document.getElementById('newOrdItem').value) || 1;
         const cliente = document.getElementById('newOrdCliente').value.trim();
         const codigo = document.getElementById('newOrdCodigo').value.trim();
         const descripcion = document.getElementById('newOrdDescripcion').value.trim();
@@ -366,7 +369,7 @@ App.registerModule('produccion', {
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const res = await fetch('/api/produccion/ordenes', {
                 method: 'POST', headers,
-                body: JSON.stringify({ pedido_sap_id: pedido, cliente, codigo_producto: codigo, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, cantidad })
+                body: JSON.stringify({ pedido_sap_id: pedido, item_numero: item, cliente, codigo_producto: codigo, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, cantidad })
             });
             const data = await res.json();
             if (res.ok) {

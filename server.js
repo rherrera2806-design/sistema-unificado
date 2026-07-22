@@ -2360,13 +2360,13 @@ const server = http.createServer(async (req, res) => {
     // POST /api/produccion/ordenes - Crear orden manual
     if (urlPath === '/api/produccion/ordenes' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, cantidad } = body;
+        const { pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, item_numero, cantidad } = body;
         if (!pedido_sap_id || !codigo_producto || !ancho || !alto) { json(res, { error: 'Pedido, codigo, ancho y alto requeridos' }, 400); return; }
         try {
             const m2 = (Number(ancho) * Number(alto)) / 1000000;
             const result = await query(
-                'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, pintado, perforaciones, tipo_venta) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-                [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2, !!pintado, perforaciones ? 4 : 0, tipo_venta || 'Normal']
+                'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, pintado, perforaciones, tipo_venta, item_numero) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+                [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2, !!pintado, perforaciones ? 4 : 0, tipo_venta || 'Normal', item_numero || 1]
             );
             const orden = result.rows[0];
             const cant = Number(cantidad) || 1;
