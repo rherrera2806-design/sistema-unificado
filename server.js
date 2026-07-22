@@ -3526,37 +3526,46 @@ const server = http.createServer(async (req, res) => {
         const fin = params.get('fin');
         if (!inicio || !fin) { json(res, { error: 'Fechas inicio y fin requeridas' }, 400); return; }
         try {
-            const estRes = await query('SELECT * FROM estaciones_maestras WHERE activa = TRUE ORDER BY orden_secuencia_defecto');
+            const estRes = await query('SELECT id, nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia FROM estaciones_maestras WHERE activa = TRUE ORDER BY orden_secuencia_defecto');
             const estaciones = estRes.rows;
-            const cargaRes = await query(`
-                SELECT p.estacion_id, p.fecha_programada, SUM(o.metros_cuadrados) as m2_total, COUNT(*) as ordenes
-                FROM cola_produccion_pasos p
-                JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
-                WHERE p.fecha_programada BETWEEN $1 AND $2
-                AND p.estado != 'MERMADO'
-                GROUP BY p.estacion_id, p.fecha_programada
-            `, [inicio, fin]);
+            let cargaRows = [];
+            try {
+                const cargaRes = await query(`
+                    SELECT p.estacion_id, p.fecha_programada::text as fecha_str, SUM(o.metros_cuadrados) as m2_total, COUNT(*) as ordenes
+                    FROM cola_produccion_pasos p
+                    JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                    WHERE p.fecha_programada::text BETWEEN $1 AND $2
+                    AND p.estado != 'MERMADO'
+                    GROUP BY p.estacion_id, p.fecha_programada
+                `, [inicio, fin]);
+                cargaRows = cargaRes.rows;
+            } catch(e) { console.log('carga-semanal query error (continuing with empty):', e.message); }
             const cargaMap = {};
-            cargaRes.rows.forEach(r => {
-                const key = `${r.estacion_id}|${r.fecha_programada}`;
+            cargaRows.forEach(r => {
+                const fechaStr = r.fecha_str ? r.fecha_str.split('T')[0] : '';
+                const key = `${r.estacion_id}|${fechaStr}`;
                 cargaMap[key] = { m2: Number(r.m2_total), ordenes: Number(r.ordenes) };
             });
             const resultado = estaciones.map(e => {
                 const dias = [];
-                const fechas = new Date(inicio);
-                while (fechas <= new Date(fin)) {
-                    const fechaStr = fechas.toISOString().split('T')[0];
+                const inicioDate = new Date(inicio + 'T12:00:00');
+                const finDate = new Date(fin + 'T12:00:00');
+                const current = new Date(inicioDate);
+                while (current <= finDate) {
+                    const mm = String(current.getMonth() + 1).padStart(2, '0');
+                    const dd = String(current.getDate()).padStart(2, '0');
+                    const fechaStr = `${current.getFullYear()}-${mm}-${dd}`;
                     const key = `${e.id}|${fechaStr}`;
                     const datos = cargaMap[key] || { m2: 0, ordenes: 0 };
                     const capacidad = Number(e.capacidad_max_m2_dia) || 100;
                     const pct = capacidad > 0 ? Math.round((datos.m2 / capacidad) * 100) : 0;
                     dias.push({ fecha: fechaStr, m2: datos.m2, ordenes: datos.ordenes, capacidad, pct_ocupacion: pct });
-                    fechas.setDate(fechas.getDate() + 1);
+                    current.setDate(current.getDate() + 1);
                 }
-                return { estacion_id: e.id, nombre: e.nombre_estacion, orden: e.orden_secuencia_defecto, capacidad_dia: Number(e.capacidad_max_m2_dia), dias };
+                return { estacion_id: e.id, nombre: e.nombre_estacion, orden: e.orden_secuencia_defecto, capacidad_dia: Number(e.capacidad_max_m2_dia) || 100, dias };
             });
             json(res, resultado);
-        } catch(e) { json(res, { error: e.message }, 500); }
+        } catch(e) { console.error('carga-semanal fatal:', e.message); json(res, { error: e.message }, 500); }
         return;
     }
 

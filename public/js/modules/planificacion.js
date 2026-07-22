@@ -51,11 +51,16 @@ App.modules.planificacion = {
                 fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`),
                 fetch('/api/produccion/planificacion/pendientes')
             ]);
-            this.cargaSemanal = await cargaRes.json();
-            this.pendientes = await pendRes.json();
+            if (cargaRes.ok) this.cargaSemanal = await cargaRes.json();
+            else { console.error('carga-semanal error:', cargaRes.status); this.cargaSemanal = []; }
+            if (pendRes.ok) this.pendientes = await pendRes.json();
+            else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
             this.renderPendientes();
             this.renderCalendario();
-        } catch(e) { console.error('Error cargando planificacion:', e); }
+        } catch(e) {
+            console.error('Error cargando planificacion:', e);
+            document.getElementById('planPendientes').innerHTML = '<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;color:#991b1b">Error al cargar datos de planificacion. Verifique la conexion.</div>';
+        }
     },
 
     renderPendientes() {
