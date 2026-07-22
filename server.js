@@ -446,6 +446,7 @@ async function initDB() {
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS pintado BOOLEAN DEFAULT FALSE`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS perforaciones INTEGER DEFAULT 0`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cerrado_nota TEXT`);
 
     await query(`CREATE TABLE IF NOT EXISTS produccion_recetas_bom (
         id SERIAL PRIMARY KEY,
@@ -2383,6 +2384,31 @@ const server = http.createServer(async (req, res) => {
             }
             json(res, orden, 201);
         } catch(e) { json(res, { error: 'Error al crear orden: ' + e.message }, 500); }
+        return;
+    }
+
+    // PUT /api/produccion/ordenes/:id/cerrar - Cerrar orden con nota
+    const cerrarOrdenMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)\/cerrar$/);
+    if (cerrarOrdenMatch && req.method === 'PUT') {
+        const id = Number(cerrarOrdenMatch[1]);
+        const body = await parseBody(req);
+        const { nota } = body;
+        if (!nota) { json(res, { error: 'Motivo de cierre requerido' }, 400); return; }
+        try {
+            await query('UPDATE produccion_ordenes SET estado_programacion = $1, cerrado_nota = $2 WHERE id = $3', ['CERRADO', nota, id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // DELETE /api/produccion/ordenes/:id - Eliminar orden
+    const deleteOrdenMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)$/);
+    if (deleteOrdenMatch && req.method === 'DELETE') {
+        const id = Number(deleteOrdenMatch[1]);
+        try {
+            await query('DELETE FROM produccion_ordenes WHERE id = $1', [id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
 

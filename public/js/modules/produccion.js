@@ -53,6 +53,7 @@ App.registerModule('produccion', {
                             <option value="PENDIENTE">Pendientes</option>
                             <option value="EN_PROCESO">En Proceso</option>
                             <option value="TERMINADO">Terminados</option>
+                            <option value="CERRADO">Cerrados</option>
                         </select>
                     </div>
                 </div>
@@ -139,6 +140,20 @@ App.registerModule('produccion', {
                     </div>
                 </div>
             </div>
+
+            <div class="modal-overlay" id="prodCerrarModal">
+                <div class="modal" style="max-width:400px">
+                    <div class="modal-header"><h3>Cerrar Orden</h3><button class="modal-close" onclick="App.modules.produccion.hideCerrarModal()">&times;</button></div>
+                    <div class="modal-body">
+                        <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Indica el motivo por el cual se cierra esta linea:</p>
+                        <textarea class="form-control" id="cerrarNota" rows="3" placeholder="Ej: Cliente cancelo el pedido..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline" onclick="App.modules.produccion.hideCerrarModal()">Cancelar</button>
+                        <button class="btn btn-primary" onclick="App.modules.produccion.confirmCerrar()">Cerrar Orden</button>
+                    </div>
+                </div>
+            </div>
         `;
 
         await this.load();
@@ -182,6 +197,7 @@ App.registerModule('produccion', {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">✓ TERMINADO</span>';
             if (e === 'EN_PROCESO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dbeafe;color:#1e40af">⚙ EN PROCESO</span>';
             if (e === 'MERMADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fee2e2;color:#991b1b">✗ MERMADO</span>';
+            if (e === 'CERRADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#e5e7eb;color:#374151">✕ CERRADO</span>';
             return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">⏳ PENDIENTE</span>';
         };
 
@@ -200,8 +216,12 @@ App.registerModule('produccion', {
                 <td style="padding:6px 12px">${o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-'}</td>
                 <td style="padding:6px 12px">${tipoBadge(o.tipo_venta)}</td>
                 <td style="padding:6px 12px">${progreso}</td>
-                <td style="padding:6px 12px">${estadoBadge(o.estado_programacion)}</td>
-                <td style="padding:6px 12px"><button class="btn btn-sm btn-outline" onclick="App.modules.produccion.verPasos(${o.id})" style="padding:2px 8px;font-size:11px">Ver Pasos</button></td>
+                <td style="padding:6px 12px">${estadoBadge(o.estado_programacion)}${o.cerrado_nota ? ` <span title="${o.cerrado_nota.replace(/"/g, '&quot;')}" style="cursor:pointer;font-size:10px">ℹ️</span>` : ''}</td>
+                <td style="padding:6px 12px">
+                    <button class="btn btn-sm btn-outline" onclick="App.modules.produccion.verPasos(${o.id})" style="padding:2px 8px;font-size:11px">Ver Pasos</button>
+                    ${o.estado_programacion !== 'CERRADO' ? `<button class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:11px;margin-left:4px" onclick="App.modules.produccion.cerrarOrden(${o.id})">Cerrar</button>` : ''}
+                    <button class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:11px;margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.produccion.eliminarOrden(${o.id})">Eliminar</button>
+                </td>
             </tr>`;
         }).join('');
     },
@@ -377,6 +397,49 @@ App.registerModule('produccion', {
                 this.hideNewOrderModal();
                 await this.load();
             } else { alert(data.error || 'Error al crear orden'); }
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    _cerrarId: null,
+
+    cerrarOrden(id) {
+        this._cerrarId = id;
+        document.getElementById('cerrarNota').value = '';
+        document.getElementById('prodCerrarModal').classList.add('show');
+    },
+
+    hideCerrarModal() {
+        document.getElementById('prodCerrarModal').classList.remove('show');
+        this._cerrarId = null;
+    },
+
+    async confirmCerrar() {
+        const nota = document.getElementById('cerrarNota').value.trim();
+        if (!nota) { alert('Debes indicar el motivo del cierre'); return; }
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch(`/api/produccion/ordenes/${this._cerrarId}/cerrar`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ nota })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                App.toast('Orden cerrada');
+                this.hideCerrarModal();
+                await this.load();
+            } else { alert(data.error || 'Error al cerrar'); }
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    async eliminarOrden(id) {
+        if (!confirm('Eliminar esta orden de produccion? Esta accion no se puede deshacer.')) return;
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            await fetch(`/api/produccion/ordenes/${id}`, {
+                method: 'DELETE', headers: { 'X-User-Email': user.email || '' }
+            });
+            App.toast('Orden eliminada');
+            await this.load();
         } catch(e) { alert('Error: ' + e.message); }
     },
 
