@@ -602,6 +602,11 @@ async function initDB() {
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS orden_compra VARCHAR(50)`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_entrega VARCHAR(20) DEFAULT 'Despacho'`);
 
+    // Columnas para planificacion
+    await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS capacidad_max_m2_dia DECIMAL(10,2) DEFAULT 100`);
+    await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
+    await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`);
+
     // SEMILLA: Estaciones maestras por defecto
     const estCount = await query('SELECT COUNT(*) as c FROM estaciones_maestras');
     if (Number(estCount.rows[0].c) === 0) {
@@ -3507,6 +3512,160 @@ const server = http.createServer(async (req, res) => {
 
         console.log('[PROD] Importacion completada:', resultados);
         json(res, resultados);
+        return;
+    }
+
+    // =====================================================
+    // PRODUCCION - Planificacion y Backwards Scheduling
+    // =====================================================
+
+    // GET /api/produccion/planificacion/carga-semanal?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
+    if (urlPath.startsWith('/api/produccion/planificacion/carga-semanal') && req.method === 'GET') {
+        const params = new URL(url, 'http://localhost').searchParams;
+        const inicio = params.get('inicio');
+        const fin = params.get('fin');
+        if (!inicio || !fin) { json(res, { error: 'Fechas inicio y fin requeridas' }, 400); return; }
+        try {
+            const estRes = await query('SELECT * FROM estaciones_maestras WHERE activa = TRUE ORDER BY orden_secuencia_defecto');
+            const estaciones = estRes.rows;
+            const cargaRes = await query(`
+                SELECT p.estacion_id, p.fecha_programada, SUM(o.metros_cuadrados) as m2_total, COUNT(*) as ordenes
+                FROM cola_produccion_pasos p
+                JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                WHERE p.fecha_programada BETWEEN $1 AND $2
+                AND p.estado != 'MERMADO'
+                GROUP BY p.estacion_id, p.fecha_programada
+            `, [inicio, fin]);
+            const cargaMap = {};
+            cargaRes.rows.forEach(r => {
+                const key = `${r.estacion_id}|${r.fecha_programada}`;
+                cargaMap[key] = { m2: Number(r.m2_total), ordenes: Number(r.ordenes) };
+            });
+            const resultado = estaciones.map(e => {
+                const dias = [];
+                const fechas = new Date(inicio);
+                while (fechas <= new Date(fin)) {
+                    const fechaStr = fechas.toISOString().split('T')[0];
+                    const key = `${e.id}|${fechaStr}`;
+                    const datos = cargaMap[key] || { m2: 0, ordenes: 0 };
+                    const capacidad = Number(e.capacidad_max_m2_dia) || 100;
+                    const pct = capacidad > 0 ? Math.round((datos.m2 / capacidad) * 100) : 0;
+                    dias.push({ fecha: fechaStr, m2: datos.m2, ordenes: datos.ordenes, capacidad, pct_ocupacion: pct });
+                    fechas.setDate(fechas.getDate() + 1);
+                }
+                return { estacion_id: e.id, nombre: e.nombre_estacion, orden: e.orden_secuencia_defecto, capacidad_dia: Number(e.capacidad_max_m2_dia), dias };
+            });
+            json(res, resultado);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/produccion/planificacion/pendientes - Ordenes pendientes de programar
+    if (urlPath === '/api/produccion/planificacion/pendientes' && req.method === 'GET') {
+        try {
+            const result = await query(`
+                SELECT o.*,
+                    (SELECT COUNT(*) FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id) as total_pasos,
+                    (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp
+                FROM produccion_ordenes o
+                WHERE o.estado_programacion = 'PENDIENTE'
+                ORDER BY o.created_at ASC
+            `);
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/produccion/planificacion/programar - Validar y programar orden (backwards scheduling)
+    if (urlPath === '/api/produccion/planificacion/programar' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { orden_id, fecha_entrega_propuesta } = body;
+        if (!orden_id || !fecha_entrega_propuesta) { json(res, { error: 'orden_id y fecha_entrega_propuesta requeridos' }, 400); return; }
+        try {
+            const ordenRes = await query('SELECT * FROM produccion_ordenes WHERE id = $1', [orden_id]);
+            if (ordenRes.rows.length === 0) { json(res, { error: 'Orden no encontrada' }, 404); return; }
+            const orden = ordenRes.rows[0];
+            if (orden.estado_programacion !== 'PENDIENTE') { json(res, { error: 'La orden ya esta programada' }, 400); return; }
+
+            const pasosRes = await query(`
+                SELECT p.*, e.orden_secuencia_defecto
+                FROM cola_produccion_pasos p
+                JOIN estaciones_maestras e ON p.estacion_id = e.id
+                WHERE p.orden_produccion_id = $1
+                ORDER BY p.orden_secuencia
+            `, [orden_id]);
+            const pasos = pasosRes.rows;
+            if (pasos.length === 0) { json(res, { error: 'La orden no tiene pasos definidos' }, 400); return; }
+
+            const m2 = Number(orden.metros_cuadrados) || 0;
+            const fechaEntrega = new Date(fecha_entrega_propuesta);
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+
+            // Backwards scheduling: empezar desde la fecha de entrega y retroceder 1 dia por estacion
+            const fechaActual = new Date(fechaEntrega);
+            const asignaciones = [];
+            const conflictos = [];
+
+            for (let i = pasos.length - 1; i >= 0; i--) {
+                const paso = pasos[i];
+                const estacionId = paso.estacion_id;
+                const fechaStr = fechaActual.toISOString().split('T')[0];
+
+                // Validar capacidad en esa fecha
+                const cargaRes = await query(`
+                    SELECT COALESCE(SUM(o.metros_cuadrados), 0) as m2_ocupados
+                    FROM cola_produccion_pasos p
+                    JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                    WHERE p.estacion_id = $1 AND p.fecha_programada = $2
+                    AND p.estado != 'MERMADO' AND p.orden_produccion_id != $3
+                `, [estacionId, fechaStr, orden_id]);
+                const m2Ocupados = Number(cargaRes.rows[0].m2_ocupados);
+
+                const capRes = await query('SELECT capacidad_max_m2_dia FROM estaciones_maestras WHERE id = $1', [estacionId]);
+                const capacidad = Number(capRes.rows[0]?.capacidad_max_m2_dia) || 100;
+                const disponible = capacidad - m2Ocupados;
+
+                if (disponible < m2) {
+                    conflictos.push({
+                        estacion_id: estacionId,
+                        fecha: fechaStr,
+                        m2_necesarios: m2,
+                        m2_disponibles: Math.max(0, disponible),
+                        capacidad,
+                        m2_ocupados: m2Ocupados
+                    });
+                }
+
+                asignaciones.push({ paso_id: paso.id, estacion_id: estacionId, fecha: fechaStr, m2 });
+                fechaActual.setDate(fechaActual.getDate() - 1);
+            }
+
+            if (conflictos.length > 0) {
+                const primero = conflictos[0];
+                const estNombre = (await query('SELECT nombre_estacion FROM estaciones_maestras WHERE id = $1', [primero.estacion_id])).rows[0]?.nombre_estacion || 'Desconocida';
+                json(res, {
+                    error: `Estacion saturada: ${estNombre} el ${primero.fecha}. Disponibles: ${Number(primero.m2_disponibles).toFixed(2)} m², necesarios: ${primero.m2_necesarios} m²`,
+                    conflictos: conflictos.map(c => ({
+                        estacion_id: c.estacion_id,
+                        fecha: c.fecha,
+                        capacidad: c.capacidad,
+                        ocupados: c.m2_ocupados,
+                        disponibles: c.m2_disponibles,
+                        necesarios: c.m2_necesarios
+                    }))
+                }, 400);
+                return;
+            }
+
+            // Todo valido: actualizar pasos y orden
+            for (const a of asignaciones) {
+                await query('UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE id = $3', [a.fecha, a.m2, a.paso_id]);
+            }
+            await query('UPDATE produccion_ordenes SET estado_programacion = $1, fecha_entrega_pactada = $2 WHERE id = $3', ['PROGRAMADO', fecha_entrega_propuesta, orden_id]);
+
+            json(res, { ok: true, mensaje: `Orden programada. Entrega: ${fecha_entrega_propuesta}`, asignaciones });
+        } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
 

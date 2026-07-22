@@ -360,7 +360,7 @@ const SIDEBAR_SECTIONS = {
     inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
     atencion: ['turnos_recepcion','turnos_bodega','turnos_qr'],
     ventas: ['pedidos'],
-    produccion: ['prod_ordenes','prod_codigos','prod_maquinas','prod_recetas','prod_notas','prod_config'],
+    produccion: ['prod_ordenes','prod_codigos','prod_maquinas','prod_recetas','prod_notas','prod_config','planificacion'],
     administracion: ['usuarios']
 };
 
@@ -441,6 +441,7 @@ function renderSidebar() {
         if (canSeeItem('prod_recetas','produccion')) html += navI('prod_recetas', 'Recetas BOM', '📦');
         if (canSeeItem('prod_notas','produccion')) html += navI('prod_notas', 'Mis Pendientes', '📋');
         if (canSeeItem('prod_config','produccion')) html += navI('prod_config', 'Configuracion', '⚙️');
+        if (canSeeItem('planificacion','produccion')) html += navI('planificacion', 'Planificacion', '📅');
         html += `</div>`;
     }
 
