@@ -27,10 +27,10 @@ App.registerModule('prod_recetas', {
                     <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar codigo..." oninput="App.modules.prod_recetas.filter()" style="width:200px">
                 </div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr>
-                        <th>Codigo Padre</th><th>Materia Prima</th><th>Descripcion</th><th>Espesor</th><th>Cantidad</th><th>Acciones</th>
+                    <table style="font-size:13px"><thead><tr>
+                        <th style="padding:6px 12px">Materia Prima</th><th style="padding:6px 12px">Descripcion</th><th style="padding:6px 12px">Espesor</th><th style="padding:6px 12px">Cantidad</th><th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="recTable">
-                        <tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -98,7 +98,7 @@ App.registerModule('prod_recetas', {
 
     renderTable(recetas) {
         const tbody = document.getElementById('recTable');
-        if (!recetas.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">No hay recetas BOM creadas</td></tr>'; return; }
+        if (!recetas.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">No hay recetas BOM creadas</td></tr>'; return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
 
@@ -117,10 +117,9 @@ App.registerModule('prod_recetas', {
         let html = '';
         for (const [padre, items] of Object.entries(grupos)) {
             const desc = getDesc(padre);
-            html += `<tr style="background:#f8fafc;line-height:1.3"><td colspan="6" style="padding:6px 12px"><strong style="color:var(--primary)">Codigo: ${padre}</strong> ${desc ? `<span style="font-size:12px;color:var(--text)"> - ${desc}</span>` : ''} <span style="font-size:11px;color:var(--text-light)">(${items.length} componentes)</span></td></tr>`;
+            html += `<tr style="background:#f8fafc;line-height:1.3"><td colspan="5" style="padding:6px 12px"><strong style="color:var(--primary)">Codigo: ${padre}</strong> ${desc ? `<span style="font-size:12px;color:var(--text)"> - ${desc}</span>` : ''} <span style="font-size:11px;color:var(--text-light)">(${items.length} componentes)</span></td></tr>`;
             items.forEach(r => {
                 html += `<tr style="line-height:1.3">
-                    <td style="padding:6px 12px;color:var(--text-light);font-size:12px">${r.codigo_sap_padre}</td>
                     <td style="padding:6px 12px"><strong>${r.codigo_materia_prima}</strong></td>
                     <td style="padding:6px 12px">${r.descripcion || '-'}</td>
                     <td style="padding:6px 12px">${r.espesor}mm</td>
