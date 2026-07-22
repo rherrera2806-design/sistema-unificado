@@ -508,7 +508,142 @@ async function initDB() {
         END $$`);
     } catch(e) {}
 
-    // Tabla de notas de produccion (personal por usuario)
+    // =====================================================
+    // MÓDULO DE PRODUCCIÓN - Nueva Arquitectura
+    // Estaciones Maestras, Familias, Materias Primas, Recetas
+    // =====================================================
+
+    // TABLA MAESTRA 1: Estaciones de la planta (secuencia obligatoria)
+    await query(`CREATE TABLE IF NOT EXISTS estaciones_maestras (
+        id SERIAL PRIMARY KEY,
+        nombre_estacion VARCHAR(50) UNIQUE NOT NULL,
+        orden_secuencia_defecto INTEGER UNIQUE NOT NULL,
+        activa BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // TABLA MAESTRA 2: Familias de producto
+    await query(`CREATE TABLE IF NOT EXISTS familias_producto (
+        id SERIAL PRIMARY KEY,
+        codigo_familia VARCHAR(30) UNIQUE NOT NULL,
+        nombre_familia VARCHAR(100) NOT NULL,
+        costo_hh DECIMAL(12,2) DEFAULT 0,
+        costo_energia DECIMAL(12,2) DEFAULT 0,
+        activa BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // TABLA INTERMEDIA: Estaciones base por familia
+    await query(`CREATE TABLE IF NOT EXISTS familia_estaciones_base (
+        id SERIAL PRIMARY KEY,
+        familia_id INTEGER NOT NULL REFERENCES familias_producto(id) ON DELETE CASCADE,
+        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id) ON DELETE CASCADE,
+        UNIQUE(familia_id, estacion_id)
+    )`);
+
+    // TABLA MAESTRA 3: Materias primas (vidrios)
+    await query(`CREATE TABLE IF NOT EXISTS materias_primas (
+        id SERIAL PRIMARY KEY,
+        codigo_mp VARCHAR(30) UNIQUE NOT NULL,
+        nombre VARCHAR(150) NOT NULL,
+        espesor_mm DECIMAL(6,2) DEFAULT 0,
+        costo_unitario_mp DECIMAL(12,2) DEFAULT 0,
+        observacion TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // TABLA DE RECETAS BOM: Explosión de materiales
+    await query(`CREATE TABLE IF NOT EXISTS recetas_bom (
+        id SERIAL PRIMARY KEY,
+        codigo_sap_padre VARCHAR(30) NOT NULL,
+        materia_prima_id INTEGER NOT NULL REFERENCES materias_primas(id) ON DELETE CASCADE,
+        cantidad DECIMAL(10,4) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_padre ON recetas_bom(codigo_sap_padre)`);
+
+    // TABLA: Reglas de procesos extras (banderas del Excel)
+    await query(`CREATE TABLE IF NOT EXISTS reglas_procesos_extras (
+        id SERIAL PRIMARY KEY,
+        nombre_flag VARCHAR(50) UNIQUE NOT NULL,
+        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id) ON DELETE CASCADE,
+        activa BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // TABLA: Cola de producción con enrutamiento dinámico
+    await query(`CREATE TABLE IF NOT EXISTS cola_produccion_pasos (
+        id SERIAL PRIMARY KEY,
+        orden_produccion_id INTEGER NOT NULL REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id),
+        orden_secuencia INTEGER NOT NULL,
+        estado VARCHAR(20) DEFAULT 'PENDIENTE',
+        hora_inicio TIMESTAMP,
+        hora_fin TIMESTAMP,
+        operario_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_cola_pasos_orden ON cola_produccion_pasos(orden_produccion_id)`);
+
+    // Columnas nuevas en produccion_ordenes para costos
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id)`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_hh DECIMAL(12,2) DEFAULT 0`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_energia DECIMAL(12,2) DEFAULT 0`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_materia_prima DECIMAL(12,2) DEFAULT 0`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_total_estimado DECIMAL(12,2) DEFAULT 0`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS precio_unitario_sap DECIMAL(12,2) DEFAULT 0`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS margen_estimado DECIMAL(12,2) DEFAULT 0`);
+
+    // SEMILLA: Estaciones maestras por defecto
+    const estCount = await query('SELECT COUNT(*) as c FROM estaciones_maestras');
+    if (Number(estCount.rows[0].c) === 0) {
+        const estacionesDefault = [
+            ['Corte', 1], ['Pulido', 2], ['Radio', 3], ['Mecanizado', 4],
+            ['Ventana', 5], ['Pintado', 6], ['Templado', 7], ['Armado', 8]
+        ];
+        for (const [nombre, orden] of estacionesDefault) {
+            await query('INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto) VALUES ($1, $2)', [nombre, orden]);
+        }
+        console.log('[PROD] Estaciones maestras creadas por defecto');
+    }
+
+    // SEMILLA: Reglas de procesos extras por defecto
+    const regCount = await query('SELECT COUNT(*) as c FROM reglas_procesos_extras');
+    if (Number(regCount.rows[0].c) === 0) {
+        const reglasDefault = [
+            ['radio', 'Radio'], ['pulido', 'Pulido'], ['mecanizado', 'Mecanizado'],
+            ['ventana', 'Ventana'], ['pintado', 'Pintado']
+        ];
+        for (const [flag, estNombre] of reglasDefault) {
+            const est = await query('SELECT id FROM estaciones_maestras WHERE nombre_estacion = $1', [estNombre]);
+            if (est.rows.length > 0) {
+                await query('INSERT INTO reglas_procesos_extras (nombre_flag, estacion_id) VALUES ($1, $2)', [flag, est.rows[0].id]);
+            }
+        }
+        console.log('[PROD] Reglas de procesos extras creadas por defecto');
+    }
+
+    // SEMILLA: Familias de producto por defecto
+    const famCount = await query('SELECT COUNT(*) as c FROM familias_producto');
+    if (Number(famCount.rows[0].c) === 0) {
+        const familiasDefault = [
+            ['CRUDO_SP', 'Crudo sin pulir', 1500, 500],
+            ['CRUDO_P', 'Crudo pulido', 2000, 600],
+            ['TEMPLADO', 'Templado', 2500, 700],
+            ['TERMO', 'Termopanel', 3000, 800],
+            ['TERMO_TC1', 'Termopanel temp 1 cara', 3500, 850],
+            ['TERMO_TC2', 'Termopanel temp 2 caras', 4000, 900],
+            ['LAM_SP', 'Laminado sin pulir', 2200, 650],
+            ['LAM_P', 'Laminado pulido', 2800, 750],
+            ['CARROCERO', 'Carrocero', 3200, 800]
+        ];
+        for (const [codigo, nombre, hh, energia] of familiasDefault) {
+            await query('INSERT INTO familias_producto (codigo_familia, nombre_familia, costo_hh, costo_energia) VALUES ($1, $2, $3, $4)', [codigo, nombre, hh, energia]);
+        }
+        console.log('[PROD] Familias de producto creadas por defecto');
+    }
+
+    // SEMILLA: Tabla de notas de produccion (personal por usuario)
     await query(`CREATE TABLE IF NOT EXISTS prod_notas (
         id SERIAL PRIMARY KEY,
         usuario_email VARCHAR(255) NOT NULL,
@@ -2688,7 +2823,211 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // POST /api/produccion/importar - Importar desde Excel
+    // =====================================================
+    // CRUD: Estaciones Maestras
+    // =====================================================
+    if (urlPath === '/api/produccion/estaciones' && req.method === 'GET') {
+        const result = await query('SELECT * FROM estaciones_maestras ORDER BY orden_secuencia_defecto');
+        json(res, result.rows);
+        return;
+    }
+    if (urlPath === '/api/produccion/estaciones' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { nombre_estacion, orden_secuencia_defecto, activa } = body;
+        if (!nombre_estacion || !orden_secuencia_defecto) { json(res, { error: 'Nombre y orden requeridos' }, 400); return; }
+        const result = await query(
+            'INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, activa) VALUES ($1, $2, $3) RETURNING *',
+            [nombre_estacion.trim(), orden_secuencia_defecto, activa !== false]
+        );
+        json(res, result.rows[0]);
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/estaciones\/\d+$/) && req.method === 'PUT') {
+        const id = parseInt(urlPath.split('/').pop());
+        const body = await parseBody(req);
+        const { nombre_estacion, orden_secuencia_defecto, activa } = body;
+        const result = await query(
+            'UPDATE estaciones_maestras SET nombre_estacion=$1, orden_secuencia_defecto=$2, activa=$3 WHERE id=$4 RETURNING *',
+            [nombre_estacion, orden_secuencia_defecto, activa, id]
+        );
+        json(res, result.rows[0] || { error: 'No encontrado' }, result.rows[0] ? 200 : 404);
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/estaciones\/\d+$/) && req.method === 'DELETE') {
+        const id = parseInt(urlPath.split('/').pop());
+        await query('DELETE FROM estaciones_maestras WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // CRUD: Familias de Producto
+    // =====================================================
+    if (urlPath === '/api/produccion/familias' && req.method === 'GET') {
+        const result = await query(`
+            SELECT f.*,
+                COALESCE(json_agg(json_build_object('estacion_id', feb.estacion_id, 'nombre_estacion', em.nombre_estacion, 'orden', em.orden_secuencia_defecto)
+                ORDER BY em.orden_secuencia_defecto) FILTER (WHERE feb.estacion_id IS NOT NULL), '[]') as estaciones_base
+            FROM familias_producto f
+            LEFT JOIN familia_estaciones_base feb ON f.id = feb.familia_id
+            LEFT JOIN estaciones_maestras em ON feb.estacion_id = em.id
+            GROUP BY f.id ORDER BY f.codigo_familia
+        `);
+        json(res, result.rows);
+        return;
+    }
+    if (urlPath === '/api/produccion/familias' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { codigo_familia, nombre_familia, costo_hh, costo_energia, estacion_ids } = body;
+        if (!codigo_familia || !nombre_familia) { json(res, { error: 'Código y nombre requeridos' }, 400); return; }
+        const result = await query(
+            'INSERT INTO familias_producto (codigo_familia, nombre_familia, costo_hh, costo_energia) VALUES ($1, $2, $3, $4) RETURNING *',
+            [codigo_familia.trim(), nombre_familia.trim(), costo_hh || 0, costo_energia || 0]
+        );
+        const fam = result.rows[0];
+        if (Array.isArray(estacion_ids)) {
+            for (const eid of estacion_ids) {
+                await query('INSERT INTO familia_estaciones_base (familia_id, estacion_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [fam.id, eid]);
+            }
+        }
+        json(res, fam);
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/familias\/\d+$/) && req.method === 'PUT') {
+        const id = parseInt(urlPath.split('/').pop());
+        const body = await parseBody(req);
+        const { codigo_familia, nombre_familia, costo_hh, costo_energia, estacion_ids } = body;
+        await query(
+            'UPDATE familias_producto SET codigo_familia=$1, nombre_familia=$2, costo_hh=$3, costo_energia=$4 WHERE id=$5',
+            [codigo_familia, nombre_familia, costo_hh, costo_energia, id]
+        );
+        if (Array.isArray(estacion_ids)) {
+            await query('DELETE FROM familia_estaciones_base WHERE familia_id = $1', [id]);
+            for (const eid of estacion_ids) {
+                await query('INSERT INTO familia_estaciones_base (familia_id, estacion_id) VALUES ($1, $2)', [id, eid]);
+            }
+        }
+        json(res, { ok: true });
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/familias\/\d+$/) && req.method === 'DELETE') {
+        const id = parseInt(urlPath.split('/').pop());
+        await query('DELETE FROM familias_producto WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // CRUD: Materias Primas
+    // =====================================================
+    if (urlPath === '/api/produccion/materias-primas' && req.method === 'GET') {
+        const result = await query('SELECT * FROM materias_primas ORDER BY codigo_mp');
+        json(res, result.rows);
+        return;
+    }
+    if (urlPath === '/api/produccion/materias-primas' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { codigo_mp, nombre, espesor_mm, costo_unitario_mp, observacion } = body;
+        if (!codigo_mp || !nombre) { json(res, { error: 'Código y nombre requeridos' }, 400); return; }
+        const result = await query(
+            'INSERT INTO materias_primas (codigo_mp, nombre, espesor_mm, costo_unitario_mp, observacion) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [codigo_mp.trim(), nombre.trim(), espesor_mm || 0, costo_unitario_mp || 0, observacion || '']
+        );
+        json(res, result.rows[0]);
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/materias-primas\/\d+$/) && req.method === 'PUT') {
+        const id = parseInt(urlPath.split('/').pop());
+        const body = await parseBody(req);
+        const { codigo_mp, nombre, espesor_mm, costo_unitario_mp, observacion } = body;
+        const result = await query(
+            'UPDATE materias_primas SET codigo_mp=$1, nombre=$2, espesor_mm=$3, costo_unitario_mp=$4, observacion=$5 WHERE id=$6 RETURNING *',
+            [codigo_mp, nombre, espesor_mm, costo_unitario_mp, observacion, id]
+        );
+        json(res, result.rows[0] || { error: 'No encontrado' }, result.rows[0] ? 200 : 404);
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/materias-primas\/\d+$/) && req.method === 'DELETE') {
+        const id = parseInt(urlPath.split('/').pop());
+        await query('DELETE FROM materias_primas WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // CRUD: Recetas BOM (nueva tabla)
+    // =====================================================
+    if (urlPath === '/api/produccion/recetas-bom' && req.method === 'GET') {
+        const result = await query(`
+            SELECT r.*, m.codigo_mp, m.nombre as mp_nombre, m.espesor_mm, m.costo_unitario_mp
+            FROM recetas_bom r
+            LEFT JOIN materias_primas m ON r.materia_prima_id = m.id
+            ORDER BY r.codigo_sap_padre, m.codigo_mp
+        `);
+        json(res, result.rows);
+        return;
+    }
+    if (urlPath === '/api/produccion/recetas-bom' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { codigo_sap_padre, materia_prima_id, cantidad } = body;
+        if (!codigo_sap_padre || !materia_prima_id) { json(res, { error: 'Código SAP y materia prima requeridos' }, 400); return; }
+        const result = await query(
+            'INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad) VALUES ($1, $2, $3) RETURNING *',
+            [codigo_sap_padre.trim(), materia_prima_id, cantidad || 1]
+        );
+        json(res, result.rows[0]);
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/recetas-bom\/\d+$/) && req.method === 'DELETE') {
+        const id = parseInt(urlPath.split('/').pop());
+        await query('DELETE FROM recetas_bom WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // CRUD: Reglas Procesos Extras
+    // =====================================================
+    if (urlPath === '/api/produccion/reglas-extras' && req.method === 'GET') {
+        const result = await query(`
+            SELECT r.*, e.nombre_estacion, e.orden_secuencia_defecto
+            FROM reglas_procesos_extras r
+            LEFT JOIN estaciones_maestras e ON r.estacion_id = e.id
+            ORDER BY r.nombre_flag
+        `);
+        json(res, result.rows);
+        return;
+    }
+    if (urlPath === '/api/produccion/reglas-extras' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { nombre_flag, estacion_id } = body;
+        if (!nombre_flag || !estacion_id) { json(res, { error: 'Flag y estación requeridos' }, 400); return; }
+        const result = await query(
+            'INSERT INTO reglas_procesos_extras (nombre_flag, estacion_id) VALUES ($1, $2) RETURNING *',
+            [nombre_flag.trim().toLowerCase(), estacion_id]
+        );
+        json(res, result.rows[0]);
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/reglas-extras\/\d+$/) && req.method === 'PUT') {
+        const id = parseInt(urlPath.split('/').pop());
+        const body = await parseBody(req);
+        const { nombre_flag, estacion_id, activa } = body;
+        await query(
+            'UPDATE reglas_procesos_extras SET nombre_flag=$1, estacion_id=$2, activa=$3 WHERE id=$4',
+            [nombre_flag, estacion_id, activa, id]
+        );
+        json(res, { ok: true });
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/reglas-extras\/\d+$/) && req.method === 'DELETE') {
+        const id = parseInt(urlPath.split('/').pop());
+        await query('DELETE FROM reglas_procesos_extras WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // POST /api/produccion/importar - Importar desde Excel (Nueva Arquitectura)
     if (urlPath === '/api/produccion/importar' && req.method === 'POST') {
         const body = await parseBody(req);
         const { rows: clientRows, excel_data, file_name } = body;
@@ -2707,16 +3046,51 @@ const server = http.createServer(async (req, res) => {
 
         console.log('[PROD] Importando', rows.length, 'filas desde', file_name || 'excel');
 
-        const recetasResult = await query('SELECT * FROM produccion_recetas_bom');
-        const recetasMap = {};
-        recetasResult.rows.forEach(r => {
-            if (!recetasMap[r.codigo_sap_padre]) recetasMap[r.codigo_sap_padre] = [];
-            recetasMap[r.codigo_sap_padre].push(r);
+        // ── Cargar datos maestros en memoria ──
+        const [estacionesRes, familiasRes, reglasRes, recetasBomRes, materiasRes] = await Promise.all([
+            query('SELECT * FROM estaciones_maestras WHERE activa = TRUE'),
+            query('SELECT * FROM familias_producto WHERE activa = TRUE'),
+            query('SELECT * FROM reglas_procesos_extras WHERE activa = TRUE'),
+            query('SELECT * FROM recetas_bom'),
+            query('SELECT * FROM materias_primas')
+        ]);
+
+        const estacionesMaestras = estacionesRes.rows;
+        const familias = familiasRes.rows;
+        const reglasExtras = reglasRes.rows;
+        const recetasBom = recetasBomRes.rows;
+        const materiasPrimas = materiasRes.rows;
+
+        // Mapas de búsqueda
+        const estacionMap = {};
+        estacionesMaestras.forEach(e => { estacionMap[e.nombre_estacion] = e; });
+
+        const familiaMap = {};
+        familias.forEach(f => { familiaMap[f.codigo_familia] = f; });
+
+        const reglaMap = {};
+        reglasExtras.forEach(r => { reglaMap[r.nombre_flag] = r; });
+
+        const recetaBomMap = {};
+        recetasBom.forEach(r => {
+            if (!recetaBomMap[r.codigo_sap_padre]) recetaBomMap[r.codigo_sap_padre] = [];
+            recetaBomMap[r.codigo_sap_padre].push(r);
         });
 
-        const ESTACION_BASE = ['Corte', 'Pulido', 'Templado'];
+        const materiaPrimaMap = {};
+        materiasPrimas.forEach(m => { materiaPrimaMap[m.id] = m; });
 
-        // Merge identical rows (same pedido+item+codigo) summing quantities
+        // Familia estaciones base
+        const famEstRes = await query(`
+            SELECT feb.familia_id, array_agg(feb.estacion_id ORDER BY em.orden_secuencia_defecto) as estacion_ids
+            FROM familia_estaciones_base feb
+            JOIN estaciones_maestras em ON feb.estacion_id = em.id
+            GROUP BY feb.familia_id
+        `);
+        const familiaEstacionesMap = {};
+        famEstRes.rows.forEach(r => { familiaEstacionesMap[r.familia_id] = r.estacion_ids; });
+
+        // ── Merge filas idénticas (pedido+item+codigo) ──
         const merged = {};
         const mergeOrder = [];
         for (let i = 0; i < rows.length; i++) {
@@ -2735,9 +3109,15 @@ const server = http.createServer(async (req, res) => {
                     descripcion: String(row['descripcion'] || row['Descripcion'] || row['ItemName'] || '').trim(),
                     ancho, alto,
                     cantidad: Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || 1),
-                    tiene_perforaciones: Number(row['perforaciones'] || row['Perforaciones'] || row['PERFORACIONES'] || row['Holes'] || 0) > 0,
-                    es_pintado: Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1,
+                    precio_unitario: Number(row['precio'] || row['Precio'] || row['precio_unitario'] || row['Price'] || 0),
+                    // Banderas de procesos extras
+                    radio: Number(row['radio'] || row['Radio'] || row['RADIO'] || 0) === 1,
+                    pulido: Number(row['pulido'] || row['Pulido'] || row['PULIDO'] || 0) === 1,
+                    mecanizado: Number(row['mecanizado'] || row['Mecanizado'] || row['MECANIZADO'] || row['perforaciones'] || row['Perforaciones'] || 0) > 0,
+                    ventana: Number(row['ventana'] || row['Ventana'] || row['VENTANA'] || 0) === 1,
+                    pintado: Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1,
                     tipo_venta: String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || 'Normal').trim(),
+                    familia_codigo: String(row['familia'] || row['Familia'] || row['FAMILIA'] || row['grupo'] || row['Grupo'] || '').trim(),
                     fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || null
                 };
                 mergeOrder.push(key);
@@ -2746,55 +3126,136 @@ const server = http.createServer(async (req, res) => {
             }
         }
 
-        const resultados = { importadas: 0, errores: [], pasos_creados: 0, fusiones: rows.length - mergeOrder.length };
+        const resultados = { importadas: 0, errores: [], pasos_creados: 0, fusiones: rows.length - mergeOrder.length, costos_calculados: 0 };
 
+        // ── Procesar cada fila mergeada ──
         for (const key of mergeOrder) {
             try {
                 const r = merged[key];
                 const m2 = ((r.ancho / 1000) * (r.alto / 1000)) * r.cantidad;
-                const es_compuesto = recetasMap[r.codigo] && recetasMap[r.codigo].length > 0;
+
+                // ── Buscar familia del producto ──
+                let familia = null;
+                if (r.familia_codigo) {
+                    familia = familiaMap[r.familia_codigo] || null;
+                    // Buscar por nombre también
+                    if (!familia) {
+                        familia = familias.find(f => f.nombre_familia.toLowerCase().includes(r.familia_codigo.toLowerCase()));
+                    }
+                }
+                // Intentar mapear por código SAP si no se especificó familia
+                if (!familia) {
+                    // Buscar en descripción
+                    for (const f of familias) {
+                        if (r.descripcion && r.descripcion.toLowerCase().includes(f.nombre_familia.toLowerCase())) {
+                            familia = f;
+                            break;
+                        }
+                    }
+                }
+
+                // ── B) Enrutamiento Dinámico ──
+                let estacionesFinales = [];
+
+                if (familia && familiaEstacionesMap[familia.id]) {
+                    // Usar estaciones base de la familia
+                    estacionesFinales = [...familiaEstacionesMap[familia.id]];
+                } else {
+                    // Fallback: Corte → Pulido → Templado
+                    estacionesFinales = [
+                        estacionMap['Corte']?.id,
+                        estacionMap['Pulido']?.id,
+                        estacionMap['Templado']?.id
+                    ].filter(Boolean);
+                }
+
+                // Agregar estaciones extras según banderas del Excel
+                const flagsMap = { radio: 'radio', pulido: 'pulido', mecanizado: 'mecanizado', ventana: 'ventana', pintado: 'pintado' };
+                for (const [flag, nombre] of Object.entries(flagsMap)) {
+                    if (r[flag] && reglaMap[nombre]) {
+                        const estId = reglaMap[nombre].estacion_id;
+                        if (!estacionesFinales.includes(estId)) {
+                            estacionesFinales.push(estId);
+                        }
+                    }
+                }
+
+                // Ordenar estrictamente por orden_secuencia_defecto
+                estacionesFinales.sort((a, b) => {
+                    const ea = estacionesMaestras.find(e => e.id === a);
+                    const eb = estacionesMaestras.find(e => e.id === b);
+                    return (ea?.orden_secuencia_defecto || 99) - (eb?.orden_secuencia_defecto || 99);
+                });
+
+                // ── A) Explosión de Materiales (BOM) ──
+                const es_compuesto = recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0;
 
                 if (es_compuesto) {
-                    const componentes = recetasMap[r.codigo];
+                    const componentes = recetaBomMap[r.codigo];
                     for (const comp of componentes) {
+                        const mp = materiaPrimaMap[comp.materia_prima_id];
+                        if (!mp) continue;
+
+                        // ── C) Costos ──
+                        const costo_hh = familia ? Number(familia.costo_hh) : 0;
+                        const costo_energia = familia ? Number(familia.costo_energia) : 0;
+                        const costo_mp_unit = Number(mp.costo_unitario_mp) || 0;
+                        const cantidad_mp = Number(comp.cantidad) || 1;
+                        const costo_mp_total = costo_mp_unit * cantidad_mp * m2;
+                        const costo_total = (costo_hh + costo_energia + costo_mp_total);
+                        const precio_sap = r.precio_unitario * r.cantidad;
+                        const margen = precio_sap - costo_total;
+
                         const result = await query(
-                            `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, bom_padre_id, tipo_venta, pintado, perforaciones, item_numero, cantidad, created_at)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
-                            [r.pedido, r.cliente, comp.codigo_materia_prima, comp.descripcion || r.descripcion, r.ancho, r.alto, m2, comp.id, r.tipo_venta, r.es_pintado, r.tiene_perforaciones ? 4 : 0, r.item, r.cantidad, r.fecha_creacion || new Date().toISOString()]
+                            `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
+                             es_compuesto, bom_padre_id, tipo_venta, item_numero, cantidad, familia_id,
+                             costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado, created_at)
+                             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id`,
+                            [r.pedido, r.cliente, mp.codigo_mp, mp.nombre || r.descripcion, r.ancho, r.alto, m2,
+                             comp.id, r.tipo_venta, r.item, r.cantidad, familia?.id || null,
+                             costo_hh, costo_energia, costo_mp_total, costo_total, r.precio_unitario, margen, r.fecha_creacion || new Date().toISOString()]
                         );
                         const ordenId = result.rows[0].id;
-                        const estaciones = [...ESTACION_BASE];
-                        if (r.tiene_perforaciones && !estaciones.includes('Mecanizado')) estaciones.splice(2, 0, 'Mecanizado');
-                        if (r.es_pintado && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
 
-                        for (let s = 0; s < estaciones.length; s++) {
+                        // Insertar pasos en cola_produccion_pasos
+                        for (let s = 0; s < estacionesFinales.length; s++) {
                             await query(
-                                'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
-                                [ordenId, estaciones[s], s + 1, 'PENDIENTE']
+                                'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
+                                [ordenId, estacionesFinales[s], s + 1, 'PENDIENTE']
                             );
                             resultados.pasos_creados++;
                         }
                         resultados.importadas++;
+                        resultados.costos_calculados++;
                     }
                 } else {
+                    // Sin receta BOM → orden directa
+                    const costo_hh = familia ? Number(familia.costo_hh) : 0;
+                    const costo_energia = familia ? Number(familia.costo_energia) : 0;
+                    const precio_sap = r.precio_unitario * r.cantidad;
+                    const costo_total = costo_hh + costo_energia;
+                    const margen = precio_sap - costo_total;
+
                     const result = await query(
-                        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, tipo_venta, pintado, perforaciones, item_numero, cantidad, created_at)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9, $10, $11, $12, $13) RETURNING id`,
-                        [r.pedido, r.cliente, r.codigo, r.descripcion, r.ancho, r.alto, m2, r.tipo_venta, r.es_pintado, r.tiene_perforaciones ? 4 : 0, r.item, r.cantidad, r.fecha_creacion || new Date().toISOString()]
+                        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
+                         es_compuesto, tipo_venta, item_numero, cantidad, familia_id,
+                         costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado, created_at)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id`,
+                        [r.pedido, r.cliente, r.codigo, r.descripcion, r.ancho, r.alto, m2,
+                         r.tipo_venta, r.item, r.cantidad, familia?.id || null,
+                         costo_hh, costo_energia, 0, costo_total, r.precio_unitario, margen, r.fecha_creacion || new Date().toISOString()]
                     );
                     const ordenId = result.rows[0].id;
-                    const estaciones = [...ESTACION_BASE];
-                    if (r.tiene_perforaciones && !estaciones.includes('Mecanizado')) estaciones.splice(2, 0, 'Mecanizado');
-                    if (r.es_pintado && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
 
-                    for (let s = 0; s < estaciones.length; s++) {
+                    for (let s = 0; s < estacionesFinales.length; s++) {
                         await query(
-                            'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
-                            [ordenId, estaciones[s], s + 1, 'PENDIENTE']
+                            'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
+                            [ordenId, estacionesFinales[s], s + 1, 'PENDIENTE']
                         );
                         resultados.pasos_creados++;
                     }
                     resultados.importadas++;
+                    if (familia) resultados.costos_calculados++;
                 }
             } catch(eRow) {
                 resultados.errores.push({ fila: key, error: eRow.message });
