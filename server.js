@@ -2363,7 +2363,7 @@ const server = http.createServer(async (req, res) => {
 
     // GET /api/produccion/maquinas - Listar máquinas
     if (urlPath === '/api/produccion/maquinas' && req.method === 'GET') {
-        const result = await query('SELECT * FROM produccion_maquinas ORDER BY nombre');
+        const result = await query('SELECT * FROM produccion_maquinas ORDER BY num_operacion ASC NULLS LAST, nombre ASC');
         json(res, result.rows);
         return;
     }

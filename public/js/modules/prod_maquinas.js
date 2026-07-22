@@ -79,6 +79,7 @@ App.registerModule('prod_maquinas', {
             const headers = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const res = await fetch('/api/produccion/maquinas', { headers });
             this.maquinas = await res.json();
+            this.maquinas.sort((a, b) => (a.num_operacion || 9999) - (b.num_operacion || 9999) || a.nombre.localeCompare(b.nombre));
             this.renderStats();
             this.renderTable();
         } catch(e) { console.error('Error loading maquinas:', e); }
