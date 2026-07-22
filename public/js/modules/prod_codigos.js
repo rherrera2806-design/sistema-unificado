@@ -47,8 +47,8 @@ App.registerModule('prod_codigos', {
                     <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo..." oninput="App.modules.prod_codigos.filter()" style="width:220px">
                 </div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr>
-                        <th>Codigo</th><th>Descripcion</th><th>Grupo</th><th>Familia</th><th>Bloqueo Tela</th><th>Creacion</th><th>Acciones</th>
+                    <table style="font-size:13px"><thead><tr>
+                        <th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Descripcion</th><th style="padding:6px 12px">Grupo</th><th style="padding:6px 12px">Familia</th><th style="padding:6px 12px">Bloqueo Tela</th><th style="padding:6px 12px">Creacion</th><th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="codTable">
                         <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
@@ -134,14 +134,15 @@ App.registerModule('prod_codigos', {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
         const fmtDate = (d) => { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
-        tbody.innerHTML = codigos.map(c => `<tr>
-            <td><strong>${c.codigo}</strong></td>
-            <td>${c.descripcion || '-'}</td>
-            <td>${c.grupo ? `<span style="padding:3px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af">${c.grupo}</span>` : '-'}</td>
-            <td>${c.familia ? `<span style="padding:3px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${c.familia}</span>` : '-'}</td>
-            <td>${c.bloqueo_tela ? '<span style="padding:3px 8px;border-radius:4px;font-size:11px;background:#fee2e2;color:#991b1b">Si</span>' : '<span style="padding:3px 8px;border-radius:4px;font-size:11px;background:#f1f5f9;color:#64748b">No</span>'}</td>
-            <td style="font-size:12px;color:var(--text-light)">${fmtDate(c.created_at)}</td>
-            <td>${puedeEditar ? `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.prod_codigos.delete(${c.id})">Eliminar</button>` : ''}</td>
+        const td = 'padding:6px 12px';
+        tbody.innerHTML = codigos.map(c => `<tr style="line-height:1.3">
+            <td style="${td}"><strong>${c.codigo}</strong></td>
+            <td style="${td}">${c.descripcion || '-'}</td>
+            <td style="${td}">${c.grupo ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af">${c.grupo}</span>` : '-'}</td>
+            <td style="${td}">${c.familia ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${c.familia}</span>` : '-'}</td>
+            <td style="${td}">${c.bloqueo_tela ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#fee2e2;color:#991b1b">Si</span>' : '<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#f1f5f9;color:#64748b">No</span>'}</td>
+            <td style="${td};font-size:12px;color:var(--text-light)">${fmtDate(c.created_at)}</td>
+            <td style="${td}">${puedeEditar ? `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:2px 8px;font-size:11px" onclick="App.modules.prod_codigos.delete(${c.id})">Eliminar</button>` : ''}</td>
         </tr>`).join('');
     },
 
