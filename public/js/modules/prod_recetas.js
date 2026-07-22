@@ -86,8 +86,12 @@ App.registerModule('prod_recetas', {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
-            const res = await fetch('/api/produccion/recetas', { headers });
-            this.recetas = await res.json();
+            const [recRes, codRes] = await Promise.all([
+                fetch('/api/produccion/recetas', { headers }),
+                fetch('/api/produccion/codigos', { headers })
+            ]);
+            this.recetas = await recRes.json();
+            this.codigos = await codRes.json();
             this.renderTable(this.recetas);
         } catch(e) { console.error('Error loading recetas:', e); }
     },
@@ -105,9 +109,15 @@ App.registerModule('prod_recetas', {
             grupos[r.codigo_sap_padre].push(r);
         });
 
+        const getDesc = (codigo) => {
+            const c = (this.codigos || []).find(x => String(x.codigo) === String(codigo));
+            return c && c.descripcion ? c.descripcion : '';
+        };
+
         let html = '';
         for (const [padre, items] of Object.entries(grupos)) {
-            html += `<tr style="background:#f8fafc;line-height:1.3"><td colspan="6" style="padding:6px 12px"><strong style="color:var(--primary)">Codigo: ${padre}</strong> <span style="font-size:11px;color:var(--text-light)">(${items.length} componentes)</span></td></tr>`;
+            const desc = getDesc(padre);
+            html += `<tr style="background:#f8fafc;line-height:1.3"><td colspan="6" style="padding:6px 12px"><strong style="color:var(--primary)">Codigo: ${padre}</strong> ${desc ? `<span style="font-size:12px;color:var(--text)"> - ${desc}</span>` : ''} <span style="font-size:11px;color:var(--text-light)">(${items.length} componentes)</span></td></tr>`;
             items.forEach(r => {
                 html += `<tr style="line-height:1.3">
                     <td style="padding:6px 12px;color:var(--text-light);font-size:12px">${r.codigo_sap_padre}</td>
