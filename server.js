@@ -2479,11 +2479,11 @@ const server = http.createServer(async (req, res) => {
         for (let i = 0; i < parsedRows.length; i++) {
             try {
                 const row = parsedRows[i];
-                const codigo_padre = String(row['CodigoPadre'] || row['codigo_padre'] || row['Codigo'] || '').trim();
-                const codigo_mp = String(row['CodigoMateriaPrima'] || row['codigo_mp'] || row['MateriaPrima'] || '').trim();
+                const codigo_padre = String(row['CodigoPadre'] || row['codigo_padre'] || row['codigopadre'] || row['Codigo'] || '').trim();
+                const codigo_mp = String(row['CodigoMateriaPrima'] || row['codigo_materiaprima'] || row['codigomateriaprima'] || row['codigo_mp'] || row['MateriaPrima'] || '').trim();
                 const desc = String(row['Descripcion'] || row['descripcion'] || '').trim();
                 const espesor = Number(row['Espesor'] || row['espesor'] || 0);
-                const cantidad = Number(row['Cantidad'] || row['cantidad'] || 1);
+                const cantidad = Number(row['Cantidad'] || row['cantidad'] || row['Cantdad'] || row['cantdad'] || 1);
                 if (!codigo_padre || !codigo_mp) { resultados.errores.push({ fila: i + 1, error: 'Faltan codigos' }); continue; }
                 await query(
                     'INSERT INTO produccion_recetas_bom (codigo_sap_padre, codigo_materia_prima, descripcion, espesor, cantidad) VALUES ($1, $2, $3, $4, $5)',
