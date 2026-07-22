@@ -38,8 +38,8 @@ App.registerModule('prod_maquinas', {
             <div class="card">
                 <div class="card-header"><h3 style="margin:0">Listado de Maquinas</h3></div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr>
-                        <th>Codigo</th><th>Nombre</th><th>Tipo Proceso</th><th>N° Op</th><th>Estado</th><th>Capacidad m²/dia</th><th>Acciones</th>
+                    <table style="font-size:13px"><thead><tr>
+                        <th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Nombre</th><th style="padding:6px 12px">Tipo Proceso</th><th style="padding:6px 12px">N° Op</th><th style="padding:6px 12px">Estado</th><th style="padding:6px 12px">Capacidad m²/dia</th><th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="mqTable">
                         <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
@@ -102,16 +102,17 @@ App.registerModule('prod_maquinas', {
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
         const estadoBadge = (e) => {
             const cols = { ACTIVA: 'background:#dcfce7;color:#166534', INACTIVA: 'background:#f1f5f9;color:#64748b', MANTENCION: 'background:#fef9c3;color:#854d0e' };
-            return `<span style="padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;${cols[e] || ''}">${e}</span>`;
+            return `<span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;${cols[e] || ''}">${e}</span>`;
         };
-        tbody.innerHTML = this.maquinas.map(m => `<tr>
-            <td><strong>${m.codigo}</strong></td>
-            <td>${m.nombre}</td>
-            <td>${m.tipo_proceso || '-'}</td>
-            <td>${m.num_operacion || '-'}</td>
-            <td>${estadoBadge(m.estado)}</td>
-            <td><strong>${Number(m.capacidad_max_m2_dia).toFixed(1)}</strong></td>
-            <td>
+        const td = 'padding:6px 12px';
+        tbody.innerHTML = this.maquinas.map(m => `<tr style="line-height:1.3">
+            <td style="${td}"><strong>${m.codigo}</strong></td>
+            <td style="${td}">${m.nombre}</td>
+            <td style="${td}">${m.tipo_proceso || '-'}</td>
+            <td style="${td}">${m.num_operacion || '-'}</td>
+            <td style="${td}">${estadoBadge(m.estado)}</td>
+            <td style="${td}"><strong>${Number(m.capacidad_max_m2_dia).toFixed(1)}</strong></td>
+            <td style="${td}">
                 ${puedeEditar ? `<button class="btn btn-sm btn-outline" onclick="App.modules.prod_maquinas.edit(${m.id})">Editar</button>
                 <button class="btn btn-sm btn-outline" style="margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.prod_maquinas.delete(${m.id})">Eliminar</button>` : ''}
             </td>
