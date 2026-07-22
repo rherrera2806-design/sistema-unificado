@@ -593,6 +593,9 @@ async function initDB() {
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_total_estimado DECIMAL(12,2) DEFAULT 0`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS precio_unitario_sap DECIMAL(12,2) DEFAULT 0`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS margen_estimado DECIMAL(12,2) DEFAULT 0`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_venta VARCHAR(50) DEFAULT 'Normal'`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER DEFAULT 1`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cantidad INTEGER DEFAULT 1`);
 
     // SEMILLA: Estaciones maestras por defecto
     const estCount = await query('SELECT COUNT(*) as c FROM estaciones_maestras');
@@ -3160,7 +3163,7 @@ const server = http.createServer(async (req, res) => {
                     cliente: String(row['cliente'] || row['Cliente'] || row['CLIENTE'] || row['CardName'] || '').trim(),
                     descripcion: String(row['descripcion'] || row['Descripcion'] || row['ItemName'] || '').trim(),
                     ancho, alto,
-                    cantidad: Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || 1),
+                    cantidad: Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || row['cant'] || row['Cant'] || row['CANT'] || 1),
                     precio_unitario: Number(row['precio'] || row['Precio'] || row['precio_unitario'] || row['Price'] || 0),
                     // Banderas de procesos extras
                     radio: Number(row['radio'] || row['Radio'] || row['RADIO'] || 0) === 1,
@@ -3168,7 +3171,7 @@ const server = http.createServer(async (req, res) => {
                     mecanizado: Number(row['mecanizado'] || row['Mecanizado'] || row['MECANIZADO'] || row['perforaciones'] || row['Perforaciones'] || 0) > 0,
                     ventana: Number(row['ventana'] || row['Ventana'] || row['VENTANA'] || 0) === 1,
                     pintado: Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1,
-                    tipo_venta: String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || 'Normal').trim(),
+                    tipo_venta: String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || row['TIPO VENTA'] || row['TIPO_DE_VENTA'] || 'Normal').trim(),
                     familia_codigo: String(row['familia'] || row['Familia'] || row['FAMILIA'] || row['grupo'] || row['Grupo'] || '').trim(),
                     fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || null
                 };
