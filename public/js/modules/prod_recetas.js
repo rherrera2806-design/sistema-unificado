@@ -107,15 +107,15 @@ App.registerModule('prod_recetas', {
 
         let html = '';
         for (const [padre, items] of Object.entries(grupos)) {
-            html += `<tr style="background:#f8fafc"><td colspan="6"><strong style="color:var(--primary)">Codigo: ${padre}</strong> <span style="font-size:11px;color:var(--text-light)">(${items.length} componentes)</span></td></tr>`;
+            html += `<tr style="background:#f8fafc;line-height:1.3"><td colspan="6" style="padding:6px 12px"><strong style="color:var(--primary)">Codigo: ${padre}</strong> <span style="font-size:11px;color:var(--text-light)">(${items.length} componentes)</span></td></tr>`;
             items.forEach(r => {
-                html += `<tr>
-                    <td></td>
-                    <td><strong>${r.codigo_materia_prima}</strong></td>
-                    <td>${r.descripcion || '-'}</td>
-                    <td>${r.espesor}mm</td>
-                    <td>${r.cantidad}</td>
-                    <td>${puedeEditar ? `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.prod_recetas.delete(${r.id})">Eliminar</button>` : ''}</td>
+                html += `<tr style="line-height:1.3">
+                    <td style="padding:6px 12px;color:var(--text-light);font-size:12px">${r.codigo_sap_padre}</td>
+                    <td style="padding:6px 12px"><strong>${r.codigo_materia_prima}</strong></td>
+                    <td style="padding:6px 12px">${r.descripcion || '-'}</td>
+                    <td style="padding:6px 12px">${r.espesor}mm</td>
+                    <td style="padding:6px 12px">${r.cantidad}</td>
+                    <td style="padding:6px 12px">${puedeEditar ? `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:2px 8px;font-size:11px" onclick="App.modules.prod_recetas.delete(${r.id})">Eliminar</button>` : ''}</td>
                 </tr>`;
             });
         }
