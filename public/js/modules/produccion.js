@@ -82,7 +82,7 @@ App.registerModule('produccion', {
                         </div>
                         <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-light)">
                             <strong>Columnas esperadas:</strong><br>
-                            codigo, pedido, item, cliente, descripcion, cantidad, anho, alto, perforaciones, pintado, tipo de venta, fecha_creacion<br>
+                            codigo, pedido, item, cliente, descripcion, cantidad, anho, alto, perforaciones, pintado, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>
                             <em>Filas iguales (pedido+item+codigo) se fusionan sumando cantidad. Cada fila = 1 item.</em>
                         </div>
                         <div id="prodImportPreview" style="max-height:200px;overflow-y:auto;margin-top:12px"></div>

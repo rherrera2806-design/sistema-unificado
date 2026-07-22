@@ -3342,7 +3342,11 @@ const server = http.createServer(async (req, res) => {
                     pintado: Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1,
                     tipo_venta: String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || row['TIPO VENTA'] || row['TIPO_DE_VENTA'] || 'Normal').trim(),
                     familia_codigo: String(row['familia'] || row['Familia'] || row['FAMILIA'] || row['grupo'] || row['Grupo'] || '').trim(),
-                    fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || null
+                    fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || null,
+                    nota: String(row['nota'] || row['Nota'] || row['NOTA'] || row['observacion'] || row['Observacion'] || '').trim() || null,
+                    posicion: String(row['posicion'] || row['Posicion'] || row['POSICION'] || row['position'] || '').trim() || null,
+                    orden_compra: String(row['orden de compra'] || row['orden_compra'] || row['OrdenCompra'] || row['ORDEN DE COMPRA'] || row['OC'] || row['oc'] || '').trim() || null,
+                    tipo_entrega: String(row['tipo de entrega'] || row['tipo_entrega'] || row['TipoEntrega'] || row['TIPO DE ENTREGA'] || 'Despacho').trim()
                 };
                 mergeOrder.push(key);
             } else {
@@ -3443,11 +3447,13 @@ const server = http.createServer(async (req, res) => {
                         const result = await query(
                             `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
                              es_compuesto, bom_padre_id, tipo_venta, item_numero, cantidad, familia_id, codigo_padre,
-                             costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado, created_at)
-                             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id`,
+                             costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado,
+                             nota, posicion, orden_compra, tipo_entrega, created_at)
+                             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id`,
                             [r.pedido, r.cliente, mp.codigo_mp, mp.nombre || r.descripcion, r.ancho, r.alto, m2,
                              comp.id, r.tipo_venta, r.item, r.cantidad, familia?.id || null, r.codigo,
-                             costo_hh, costo_energia, costo_mp_total, costo_total, r.precio_unitario, margen, r.fecha_creacion || new Date().toISOString()]
+                             costo_hh, costo_energia, costo_mp_total, costo_total, r.precio_unitario, margen,
+                             r.nota, r.posicion, r.orden_compra, r.tipo_entrega, r.fecha_creacion || new Date().toISOString()]
                         );
                         const ordenId = result.rows[0].id;
 
@@ -3472,12 +3478,14 @@ const server = http.createServer(async (req, res) => {
 
                     const result = await query(
                         `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
-                         es_compuesto, tipo_venta, item_numero, cantidad, familia_id,
-                         costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado, created_at)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id`,
+                         es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre,
+                         costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado,
+                         nota, posicion, orden_compra, tipo_entrega, created_at)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
                         [r.pedido, r.cliente, r.codigo, r.descripcion, r.ancho, r.alto, m2,
-                         r.tipo_venta, r.item, r.cantidad, familia?.id || null,
-                         costo_hh, costo_energia, 0, costo_total, r.precio_unitario, margen, r.fecha_creacion || new Date().toISOString()]
+                         r.tipo_venta, r.item, r.cantidad, familia?.id || null, r.codigo,
+                         costo_hh, costo_energia, 0, costo_total, r.precio_unitario, margen,
+                         r.nota, r.posicion, r.orden_compra, r.tipo_entrega, r.fecha_creacion || new Date().toISOString()]
                     );
                     const ordenId = result.rows[0].id;
 
