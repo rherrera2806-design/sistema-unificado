@@ -2622,9 +2622,9 @@ const server = http.createServer(async (req, res) => {
                     const result = await query(
                         `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
                          es_compuesto, tipo_venta, item_numero, cantidad, familia_id, created_at)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$1,$10,$11,$12) RETURNING id`,
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12) RETURNING id`,
                         [pedido_sap_id, cliente || null, mpCodigo, mpNombre, ancho, alto, m2,
-                         tipo_venta || 'Normal', item_numero || 1, familia?.id || null, fecha_creacion || new Date().toISOString()]
+                         tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, fecha_creacion || new Date().toISOString()]
                     );
                     const ordenId = result.rows[0].id;
                     ids.push(ordenId);
