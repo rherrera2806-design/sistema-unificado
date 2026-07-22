@@ -42,9 +42,17 @@ App.registerModule('prod_codigos', {
             </div>
 
             <div class="card">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <h3 style="margin:0">Listado de Codigos</h3>
-                    <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo..." oninput="App.modules.prod_codigos.filter()" style="width:220px">
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <select class="form-control" id="codFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.filter()">
+                            <option value="">Todos los grupos</option>
+                        </select>
+                        <select class="form-control" id="codFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.filter()">
+                            <option value="">Todas las familias</option>
+                        </select>
+                        <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo..." oninput="App.modules.prod_codigos.filter()" style="width:200px;font-size:12px;padding:4px 8px">
+                    </div>
                 </div>
                 <div class="card-body" style="padding:0">
                     <table style="font-size:13px"><thead><tr>
@@ -112,8 +120,24 @@ App.registerModule('prod_codigos', {
             const res = await fetch('/api/produccion/codigos', { headers });
             this.codigos = await res.json();
             this.renderStats();
+            this.populateFilters();
             this.renderTable(this.codigos);
         } catch(e) { console.error('Error loading codigos:', e); }
+    },
+
+    populateFilters() {
+        const grupos = [...new Set(this.codigos.map(c => c.grupo).filter(Boolean))].sort();
+        const familias = [...new Set(this.codigos.map(c => c.familia).filter(Boolean))].sort();
+        const grupoSel = document.getElementById('codFilterGrupo');
+        const familiaSel = document.getElementById('codFilterFamilia');
+        if (grupoSel && !grupoSel._populated) {
+            grupos.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; grupoSel.appendChild(o); });
+            grupoSel._populated = true;
+        }
+        if (familiaSel && !familiaSel._populated) {
+            familias.forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; familiaSel.appendChild(o); });
+            familiaSel._populated = true;
+        }
     },
 
     renderStats() {
@@ -148,14 +172,20 @@ App.registerModule('prod_codigos', {
 
     filter() {
         const search = (document.getElementById('codFilterSearch')?.value || '').toLowerCase();
-        if (!search) { this.renderTable(this.codigos); return; }
-        const filtered = this.codigos.filter(c =>
-            (c.codigo || '').toLowerCase().includes(search) ||
-            (c.descripcion || '').toLowerCase().includes(search) ||
-            (c.grupo || '').toLowerCase().includes(search) ||
-            (c.familia || '').toLowerCase().includes(search) ||
-            (c.bloqueo_tela ? 'si' : 'no').includes(search)
-        );
+        const grupo = document.getElementById('codFilterGrupo')?.value || '';
+        const familia = document.getElementById('codFilterFamilia')?.value || '';
+        let filtered = this.codigos;
+        if (grupo) filtered = filtered.filter(c => c.grupo === grupo);
+        if (familia) filtered = filtered.filter(c => c.familia === familia);
+        if (search) {
+            filtered = filtered.filter(c =>
+                (c.codigo || '').toLowerCase().includes(search) ||
+                (c.descripcion || '').toLowerCase().includes(search) ||
+                (c.grupo || '').toLowerCase().includes(search) ||
+                (c.familia || '').toLowerCase().includes(search) ||
+                (c.bloqueo_tela ? 'si' : 'no').includes(search)
+            );
+        }
         this.renderTable(filtered);
     },
 
