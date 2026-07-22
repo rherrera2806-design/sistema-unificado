@@ -3521,48 +3521,32 @@ const server = http.createServer(async (req, res) => {
 
     // GET /api/produccion/planificacion/carga-semanal?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
     if (urlPath.startsWith('/api/produccion/planificacion/carga-semanal') && req.method === 'GET') {
-        const params = new URL(url, 'http://localhost').searchParams;
-        const inicio = params.get('inicio');
-        const fin = params.get('fin');
+        const inicio = q.inicio;
+        const fin = q.fin;
         if (!inicio || !fin) { json(res, { error: 'Fechas inicio y fin requeridas' }, 400); return; }
         try {
             const estRes = await query('SELECT id, nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia FROM estaciones_maestras WHERE activa = TRUE ORDER BY orden_secuencia_defecto');
-            const estaciones = estRes.rows;
-            let cargaMap = {};
+            const estaciones = estRes.rows || [];
+            const cargaMap = {};
             try {
-                const cargaRes = await query(`
-                    SELECT p.estacion_id, 
-                           to_char(p.fecha_programada, 'YYYY-MM-DD') as fecha_str, 
-                           SUM(o.metros_cuadrados) as m2_total, 
-                           COUNT(*)::int as ordenes
-                    FROM cola_produccion_pasos p
-                    JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
-                    WHERE p.fecha_programada >= $1::date AND p.fecha_programada <= $2::date
-                    AND p.estado != 'MERMADO'
-                    GROUP BY p.estacion_id, p.fecha_programada
-                `, [inicio, fin]);
-                cargaRes.rows.forEach(r => {
-                    const key = r.estacion_id + '|' + r.fecha_str;
-                    cargaMap[key] = { m2: Number(r.m2_total), ordenes: r.ordenes };
-                });
-            } catch(e) { console.log('carga-semanal query error:', e.message); }
-            const resultado = estaciones.map(e => {
+                const cargaRes = await query('SELECT p.estacion_id, to_char(p.fecha_programada, \'YYYY-MM-DD\') as fs, SUM(o.metros_cuadrados) as m2, COUNT(*) as oc FROM cola_produccion_pasos p JOIN produccion_ordenes o ON p.orden_produccion_id = o.id WHERE p.fecha_programada >= $1::date AND p.fecha_programada <= $2::date AND p.estado <> \'MERMADO\' GROUP BY p.estacion_id, p.fecha_programada', [inicio, fin]);
+                for (const r of cargaRes.rows) { cargaMap[r.estacion_id + '|' + r.fs] = { m2: Number(r.m2), ordenes: Number(r.oc) }; }
+            } catch(innerErr) { console.error('carga query err:', innerErr.message); }
+            const resultado = [];
+            for (const e of estaciones) {
                 const dias = [];
-                const parts = inicio.split('-');
-                let year = parseInt(parts[0]), month = parseInt(parts[1]) - 1, day = parseInt(parts[2]);
+                const p = inicio.split('-');
                 for (let i = 0; i < 14; i++) {
-                    const d = new Date(year, month, day + i);
-                    const fechaStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-                    const key = e.id + '|' + fechaStr;
-                    const datos = cargaMap[key] || { m2: 0, ordenes: 0 };
-                    const capacidad = Number(e.capacidad_max_m2_dia) || 100;
-                    const pct = capacidad > 0 ? Math.round((datos.m2 / capacidad) * 100) : 0;
-                    dias.push({ fecha: fechaStr, m2: datos.m2, ordenes: datos.ordenes, capacidad: capacidad, pct_ocupacion: pct });
+                    const dt = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]) + i);
+                    const fs = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+                    const cap = Number(e.capacidad_max_m2_dia) || 100;
+                    const datos = cargaMap[e.id + '|' + fs] || { m2: 0, ordenes: 0 };
+                    dias.push({ fecha: fs, m2: datos.m2, ordenes: datos.ordenes, capacidad: cap, pct_ocupacion: cap > 0 ? Math.round((datos.m2 / cap) * 100) : 0 });
                 }
-                return { estacion_id: e.id, nombre: e.nombre_estacion, orden: e.orden_secuencia_defecto, capacidad_dia: Number(e.capacidad_max_m2_dia) || 100, dias: dias };
-            });
+                resultado.push({ estacion_id: e.id, nombre: e.nombre_estacion, orden: e.orden_secuencia_defecto, capacidad_dia: Number(e.capacidad_max_m2_dia) || 100, dias: dias });
+            }
             json(res, resultado);
-        } catch(e) { console.error('carga-semanal fatal:', e.message); json(res, { error: e.message }, 500); }
+        } catch(e) { console.error('carga fatal:', e.message || e); res.writeHead(500, {'Content-Type':'application/json'}); res.end(JSON.stringify({error: String(e.message || e)})); }
         return;
     }
 
