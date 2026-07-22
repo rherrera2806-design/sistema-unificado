@@ -5,6 +5,10 @@ App.modules.planificacion = {
     semanaInicio: null,
     semanaFin: null,
 
+    fmtDate(d) {
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    },
+
     init() {
         this.calcSemana(new Date());
     },
@@ -17,7 +21,7 @@ App.modules.planificacion = {
         this.semanaInicio = new Date(d);
         this.semanaInicio.setDate(d.getDate() + diffLunes);
         this.semanaFin = new Date(this.semanaInicio);
-        this.semanaFin.setDate(this.semanaFin.getDate() + 6);
+        this.semanaFin.setDate(this.semanaFin.getDate() + 13);
     },
 
     async render() {
@@ -44,8 +48,8 @@ App.modules.planificacion = {
     },
 
     async cargarDatos() {
-        const inicio = this.semanaInicio.toISOString().split('T')[0];
-        const fin = this.semanaFin.toISOString().split('T')[0];
+        const inicio = this.fmtDate(this.semanaInicio);
+        const fin = this.fmtDate(this.semanaFin);
         try {
             const [cargaRes, pendRes] = await Promise.all([
                 fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`),
@@ -124,7 +128,7 @@ App.modules.planificacion = {
                     <h3 style="margin:0;font-size:16px">Carga Semanal de Planta</h3>
                     <div style="display:flex;gap:8px;align-items:center">
                         <button class="btn btn-outline btn-sm" onclick="App.modules.planificacion.cambiarSemana(-1)">◀</button>
-                        <span style="font-size:13px;font-weight:600">${inicio.toISOString().split('T')[0]} al ${fechas[6].toISOString().split('T')[0]}</span>
+                        <span style="font-size:13px;font-weight:600">${this.fmtDate(inicio)} al ${this.fmtDate(fechas[6])}</span>
                         <button class="btn btn-outline btn-sm" onclick="App.modules.planificacion.cambiarSemana(1)">▶</button>
                     </div>
                 </div>
