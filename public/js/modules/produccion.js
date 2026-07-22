@@ -457,13 +457,16 @@ App.registerModule('produccion', {
         document.getElementById('newOrdItem').value = '1';
         document.getElementById('newOrdCliente').value = '';
         document.getElementById('newOrdCodigo').value = '';
-        document.getElementById('newOrdDescripcion').value = '';
         document.getElementById('newOrdAncho').value = '0';
         document.getElementById('newOrdAlto').value = '0';
         document.getElementById('newOrdPerforaciones').value = '0';
         document.getElementById('newOrdPintado').value = '0';
         document.getElementById('newOrdTipoVenta').value = 'Normal';
         document.getElementById('newOrdCantidad').value = '1';
+        document.getElementById('newOrdTipoEntrega').value = 'Despacho';
+        document.getElementById('newOrdOC').value = '';
+        document.getElementById('newOrdPosicion').value = '';
+        document.getElementById('newOrdNota').value = '';
         document.getElementById('newOrdFechaCreacion').value = new Date().toISOString().split('T')[0];
         document.getElementById('prodNewOrderModal').classList.add('show');
     },
