@@ -346,7 +346,7 @@ App.registerModule('produccion', {
                     const estadoEstilo = { PENDIENTE: 'background:#fef9c3;color:#854d0e', EN_PROCESO: 'background:#dbeafe;color:#1e40af', TERMINADO: 'background:#dcfce7;color:#166534', MERMADO: 'background:#fee2e2;color:#991b1b' };
                     return `<tr>
                         <td>${p.orden_secuencia}</td>
-                        <td><strong>${p.estacion_nombre}</strong></td>
+                        <td><strong>${p.nombre_estacion || p.estacion_nombre}</strong></td>
                         <td><span style="padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;${estadoEstilo[p.estado] || ''}">${p.estado}</span></td>
                         <td>${p.hora_inicio ? new Date(p.hora_inicio).toLocaleString('es-CL') : '-'}</td>
                         <td>${p.hora_fin ? new Date(p.hora_fin).toLocaleString('es-CL') : '-'}</td>

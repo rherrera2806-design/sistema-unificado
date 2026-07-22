@@ -643,6 +643,31 @@ async function initDB() {
         console.log('[PROD] Familias de producto creadas por defecto');
     }
 
+    // MIGRACIÓN: Copiar datos de produccion_recetas_bom (antigua) a recetas_bom (nueva)
+    const rbCount = await query('SELECT COUNT(*) as c FROM recetas_bom');
+    const prbCount = await query('SELECT COUNT(*) as c FROM produccion_recetas_bom');
+    if (Number(rbCount.rows[0].c) === 0 && Number(prbCount.rows[0].c) > 0) {
+        console.log('[PROD] Migrando recetas de produccion_recetas_bom a recetas_bom...');
+        const oldRecetas = await query('SELECT DISTINCT codigo_sap_padre, codigo_materia_prima, descripcion, espesor, cantidad FROM produccion_recetas_bom');
+        for (const r of oldRecetas.rows) {
+            // Crear materia prima si no existe
+            let mp = await query('SELECT id FROM materias_primas WHERE codigo_mp = $1', [r.codigo_materia_prima]);
+            if (mp.rows.length === 0) {
+                const mpResult = await query(
+                    'INSERT INTO materias_primas (codigo_mp, nombre, espesor_mm) VALUES ($1, $2, $3) RETURNING id',
+                    [r.codigo_materia_prima, r.descripcion || r.codigo_materia_prima, r.espesor || 0]
+                );
+                mp = mpResult;
+            }
+            const mpId = mp.rows[0].id;
+            await query(
+                'INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                [r.codigo_sap_padre, mpId, r.cantidad || 1]
+            );
+        }
+        console.log('[PROD] Recetas migradas:', oldRecetas.rows.length);
+    }
+
     // SEMILLA: Tabla de notas de produccion (personal por usuario)
     await query(`CREATE TABLE IF NOT EXISTS prod_notas (
         id SERIAL PRIMARY KEY,
@@ -2486,8 +2511,8 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/produccion/ordenes' && req.method === 'GET') {
         const result = await query(`
             SELECT o.*, 
-                (SELECT COUNT(*) FROM produccion_pasos p WHERE p.orden_produccion_id = o.id) as total_pasos,
-                (SELECT COUNT(*) FROM produccion_pasos p WHERE p.orden_produccion_id = o.id AND p.estado = 'TERMINADO') as pasos_terminados,
+                (SELECT COUNT(*) FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id) as total_pasos,
+                (SELECT COUNT(*) FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id AND p.estado = 'TERMINADO') as pasos_terminados,
                 CASE WHEN o.es_compuesto AND o.bom_padre_id IS NOT NULL THEN
                     (SELECT cb.descripcion FROM produccion_recetas_bom rb JOIN produccion_codigos cb ON cb.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
                 ELSE NULL END as nombre_codigo_padre,
@@ -2574,7 +2599,13 @@ const server = http.createServer(async (req, res) => {
     const ordenPasosMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)\/pasos$/);
     if (ordenPasosMatch && req.method === 'GET') {
         const id = Number(ordenPasosMatch[1]);
-        const result = await query('SELECT * FROM produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [id]);
+        const result = await query(`
+            SELECT p.*, e.nombre_estacion, e.orden_secuencia_defecto
+            FROM cola_produccion_pasos p
+            LEFT JOIN estaciones_maestras e ON p.estacion_id = e.id
+            WHERE p.orden_produccion_id = $1
+            ORDER BY p.orden_secuencia
+        `, [id]);
         json(res, result.rows);
         return;
     }
@@ -3047,12 +3078,13 @@ const server = http.createServer(async (req, res) => {
         console.log('[PROD] Importando', rows.length, 'filas desde', file_name || 'excel');
 
         // ── Cargar datos maestros en memoria ──
-        const [estacionesRes, familiasRes, reglasRes, recetasBomRes, materiasRes] = await Promise.all([
+        const [estacionesRes, familiasRes, reglasRes, recetasBomRes, materiasRes, oldRecetasRes] = await Promise.all([
             query('SELECT * FROM estaciones_maestras WHERE activa = TRUE'),
             query('SELECT * FROM familias_producto WHERE activa = TRUE'),
             query('SELECT * FROM reglas_procesos_extras WHERE activa = TRUE'),
             query('SELECT * FROM recetas_bom'),
-            query('SELECT * FROM materias_primas')
+            query('SELECT * FROM materias_primas'),
+            query('SELECT * FROM produccion_recetas_bom')
         ]);
 
         const estacionesMaestras = estacionesRes.rows;
@@ -3076,6 +3108,24 @@ const server = http.createServer(async (req, res) => {
             if (!recetaBomMap[r.codigo_sap_padre]) recetaBomMap[r.codigo_sap_padre] = [];
             recetaBomMap[r.codigo_sap_padre].push(r);
         });
+
+        // Fallback: si recetas_bom está vacío, usar tabla antigua
+        const oldRecetas = oldRecetasRes.rows;
+        if (Object.keys(recetaBomMap).length === 0 && oldRecetas.length > 0) {
+            console.log('[PROD] Usando recetas de produccion_recetas_bom (tabla antigua)');
+            oldRecetas.forEach(r => {
+                const codigo = r.codigo_sap_padre;
+                if (!recetaBomMap[codigo]) recetaBomMap[codigo] = [];
+                recetaBomMap[codigo].push({
+                    codigo_sap_padre: codigo,
+                    materia_prima_id: null,
+                    cantidad: r.cantidad || 1,
+                    old_codigo: r.codigo_materia_prima,
+                    old_descripcion: r.descripcion,
+                    old_espesor: r.espesor
+                });
+            });
+        }
 
         const materiaPrimaMap = {};
         materiasPrimas.forEach(m => { materiaPrimaMap[m.id] = m; });
@@ -3193,7 +3243,11 @@ const server = http.createServer(async (req, res) => {
                 if (es_compuesto) {
                     const componentes = recetaBomMap[r.codigo];
                     for (const comp of componentes) {
-                        const mp = materiaPrimaMap[comp.materia_prima_id];
+                        // Soportar formato nuevo (materia_prima_id) y antiguo (old_codigo)
+                        let mp = comp.materia_prima_id ? materiaPrimaMap[comp.materia_prima_id] : null;
+                        if (!mp && comp.old_codigo) {
+                            mp = materiasPrimas.find(m => m.codigo_mp === comp.old_codigo);
+                        }
                         if (!mp) continue;
 
                         // ── C) Costos ──
