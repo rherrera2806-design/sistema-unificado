@@ -414,7 +414,8 @@ App.registerModule('produccion', {
             });
             const data = await res.json();
             if (res.ok) {
-                App.toast(`Orden ${data.codigo_producto} creada`);
+                const msg = data.ordenes_creadas > 1 ? `${data.ordenes_creadas} ordenes creadas (explosión BOM)` : `Orden creada: ${codigo}`;
+                App.toast(msg);
                 this.hideNewOrderModal();
                 await this.load();
             } else { alert(data.error || 'Error al crear orden'); }

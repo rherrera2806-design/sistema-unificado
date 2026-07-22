@@ -2517,7 +2517,10 @@ const server = http.createServer(async (req, res) => {
                 (SELECT COUNT(*) FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id) as total_pasos,
                 (SELECT COUNT(*) FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id AND p.estado = 'TERMINADO') as pasos_terminados,
                 CASE WHEN o.es_compuesto AND o.bom_padre_id IS NOT NULL THEN
-                    (SELECT cb.descripcion FROM produccion_recetas_bom rb JOIN produccion_codigos cb ON cb.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                    COALESCE(
+                        (SELECT cb.descripcion FROM recetas_bom rb JOIN produccion_codigos cb ON cb.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+                        (SELECT cb.descripcion FROM produccion_recetas_bom rb JOIN produccion_codigos cb ON cb.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                    )
                 ELSE NULL END as nombre_codigo_padre,
                 (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp
             FROM produccion_ordenes o ORDER BY o.created_at DESC
@@ -2526,7 +2529,7 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // POST /api/produccion/ordenes - Crear orden manual
+    // POST /api/produccion/ordenes - Crear orden manual (con explosión BOM)
     if (urlPath === '/api/produccion/ordenes' && req.method === 'POST') {
         const body = await parseBody(req);
         const { pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, item_numero, cantidad, fecha_creacion } = body;
@@ -2534,21 +2537,81 @@ const server = http.createServer(async (req, res) => {
         try {
             const cant = Number(cantidad) || 1;
             const m2 = ((Number(ancho) * Number(alto)) / 1000000) * cant;
-            const result = await query(
-                'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, pintado, perforaciones, tipo_venta, item_numero, cantidad, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
-                [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2, !!pintado, perforaciones ? 4 : 0, tipo_venta || 'Normal', item_numero || 1, cant, fecha_creacion || new Date().toISOString()]
-            );
-            const orden = result.rows[0];
-            const estaciones = ['Corte', 'Pulido', 'Templado'];
-            if (perforaciones) estaciones.splice(2, 0, 'Mecanizado');
-            if (pintado) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
-            for (let s = 0; s < estaciones.length; s++) {
-                await query(
-                    'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
-                    [orden.id, estaciones[s], s + 1, 'PENDIENTE']
-                );
+
+            // Buscar receta BOM (nueva tabla primero, luego antigua)
+            let recetas = await query('SELECT rb.*, mp.codigo_mp, mp.nombre as mp_nombre, mp.costo_unitario_mp FROM recetas_bom rb LEFT JOIN materias_primas mp ON rb.materia_prima_id = mp.id WHERE rb.codigo_sap_padre = $1', [codigo_producto]);
+            if (recetas.rows.length === 0) {
+                recetas = await query('SELECT *, codigo_materia_prima as codigo_mp, descripcion as mp_nombre, 0 as costo_unitario_mp FROM produccion_recetas_bom WHERE codigo_sap_padre = $1', [codigo_producto]);
             }
-            json(res, orden, 201);
+
+            // Buscar familia del código
+            let familia = null;
+            const famRes = await query('SELECT * FROM familias_producto WHERE UPPER(codigo_familia) = UPPER($1) OR UPPER(nombre_familia) ILIKE $2', [codigo_producto, '%' + codigo_producto + '%']);
+            if (famRes.rows.length > 0) familia = famRes.rows[0];
+
+            // Buscar estaciones base de la familia
+            let estacionesBase = ['Corte', 'Pulido', 'Templado'];
+            if (familia) {
+                const febRes = await query('SELECT array_agg(e.nombre_estacion ORDER BY e.orden_secuencia_defecto) as estaciones FROM familia_estaciones_base feb JOIN estaciones_maestras e ON feb.estacion_id = e.id WHERE feb.familia_id = $1', [familia.id]);
+                if (febRes.rows.length > 0 && febRes.rows[0].estaciones) estacionesBase = febRes.rows[0].estaciones;
+            }
+
+            const ids = [];
+            if (recetas.rows.length > 0) {
+                // Explosión BOM: crear una orden por componente
+                for (const comp of recetas.rows) {
+                    const mpCodigo = comp.codigo_mp || codigo_producto;
+                    const mpNombre = comp.mp_nombre || descripcion || '';
+                    const result = await query(
+                        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
+                         es_compuesto, tipo_venta, item_numero, cantidad, familia_id, created_at)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$1,$10,$11,$12) RETURNING id`,
+                        [pedido_sap_id, cliente || null, mpCodigo, mpNombre, ancho, alto, m2,
+                         tipo_venta || 'Normal', item_numero || 1, familia?.id || null, fecha_creacion || new Date().toISOString()]
+                    );
+                    const ordenId = result.rows[0].id;
+                    ids.push(ordenId);
+
+                    // Estaciones con extras
+                    let estaciones = [...estacionesBase];
+                    if (pintado) {
+                        const pintEst = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Pintado'");
+                        if (pintEst.rows.length && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
+                    }
+
+                    for (let s = 0; s < estaciones.length; s++) {
+                        const est = await query('SELECT id FROM estaciones_maestras WHERE nombre_estacion = $1', [estaciones[s]]);
+                        if (est.rows.length) {
+                            await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [ordenId, est.rows[0].id, s + 1, 'PENDIENTE']);
+                        }
+                    }
+                }
+            } else {
+                // Sin receta BOM: orden directa
+                const result = await query(
+                    'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, tipo_venta, item_numero, cantidad, familia_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *',
+                    [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2, tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, fecha_creacion || new Date().toISOString()]
+                );
+                const orden = result.rows[0];
+                ids.push(orden.id);
+
+                let estaciones = [...estacionesBase];
+                if (perforaciones) {
+                    const mecEst = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Mecanizado'");
+                    if (mecEst.rows.length) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Mecanizado');
+                }
+                if (pintado) {
+                    const pintEst = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Pintado'");
+                    if (pintEst.rows.length) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
+                }
+                for (let s = 0; s < estaciones.length; s++) {
+                    const est = await query('SELECT id FROM estaciones_maestras WHERE nombre_estacion = $1', [estaciones[s]]);
+                    if (est.rows.length) {
+                        await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [orden.id, est.rows[0].id, s + 1, 'PENDIENTE']);
+                    }
+                }
+            }
+            json(res, { ok: true, ordenes_creadas: ids.length, ids }, 201);
         } catch(e) { json(res, { error: 'Error al crear orden: ' + e.message }, 500); }
         return;
     }
