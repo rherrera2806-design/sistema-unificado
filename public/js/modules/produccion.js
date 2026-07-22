@@ -367,15 +367,22 @@ App.registerModule('produccion', {
             const pasos = await res.json();
             const orden = this.ordenes.find(o => o.id === ordenId);
             const body = document.getElementById('prodPasosBody');
+            const estadoEstilo = { PENDIENTE: 'background:#fef9c3;color:#854d0e', EN_PROCESO: 'background:#dbeafe;color:#1e40af', TERMINADO: 'background:#dcfce7;color:#166534', MERMADO: 'background:#fee2e2;color:#991b1b' };
             body.innerHTML = `
                 <div style="margin-bottom:12px"><strong>Pedido:</strong> ${orden?.pedido_sap_id || '-'} | <strong>Codigo:</strong> ${orden?.codigo_producto} | <strong>${orden?.ancho}x${orden?.alto}mm</strong></div>
                 ${pasos.length === 0 ? '<div style="color:var(--text-light);text-align:center;padding:20px">Sin pasos definidos</div>' :
-                `<table><thead><tr><th>#</th><th>Estacion</th><th>Estado</th><th>Inicio</th><th>Fin</th></tr></thead><tbody>${pasos.map(p => {
-                    const estadoEstilo = { PENDIENTE: 'background:#fef9c3;color:#854d0e', EN_PROCESO: 'background:#dbeafe;color:#1e40af', TERMINADO: 'background:#dcfce7;color:#166534', MERMADO: 'background:#fee2e2;color:#991b1b' };
+                `<table><thead><tr><th>#</th><th>Estacion</th><th>Estado</th><th>Inicio</th><th>Fin</th><th></th></tr></thead><tbody>${pasos.map(p => {
                     return `<tr>
                         <td>${p.orden_secuencia}</td>
                         <td><strong>${p.nombre_estacion || p.estacion_nombre}</strong></td>
-                        <td><span style="padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;${estadoEstilo[p.estado] || ''}">${p.estado}</span></td>
+                        <td>
+                            <select class="form-control" style="width:140px;padding:4px 8px;font-size:12px;font-weight:600;${estadoEstilo[p.estado] || ''}" onchange="App.modules.produccion.updatePaso(${p.id}, this.value, ${ordenId})">
+                                <option value="PENDIENTE" ${p.estado==='PENDIENTE'?'selected':''}>PENDIENTE</option>
+                                <option value="EN_PROCESO" ${p.estado==='EN_PROCESO'?'selected':''}>EN PROCESO</option>
+                                <option value="TERMINADO" ${p.estado==='TERMINADO'?'selected':''}>TERMINADO</option>
+                                <option value="MERMADO" ${p.estado==='MERMADO'?'selected':''}>MERMADO</option>
+                            </select>
+                        </td>
                         <td>${p.hora_inicio ? new Date(p.hora_inicio).toLocaleString('es-CL') : '-'}</td>
                         <td>${p.hora_fin ? new Date(p.hora_fin).toLocaleString('es-CL') : '-'}</td>
                     </tr>`;
@@ -386,6 +393,22 @@ App.registerModule('produccion', {
     },
 
     hidePasosModal() { document.getElementById('prodPasosModal').classList.remove('show'); },
+
+    async updatePaso(pasoId, nuevoEstado, ordenId) {
+        try {
+            const res = await fetch(`/api/produccion/pasos/${pasoId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: nuevoEstado })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                App.toast(`Paso actualizado a ${nuevoEstado}`);
+                await this.verPasos(ordenId);
+                await this.load();
+            } else { alert(data.error || 'Error al actualizar'); }
+        } catch(e) { alert('Error: ' + e.message); }
+    },
 
     showImportModal() { document.getElementById('prodImportModal').classList.add('show'); this.selectedImportFile = null; },
     hideImportModal() { document.getElementById('prodImportModal').classList.remove('show'); this.selectedImportFile = null; document.getElementById('prodImportName').style.display = 'none'; document.getElementById('prodImportBtn').disabled = true; },

@@ -2722,6 +2722,27 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // PUT /api/produccion/pasos/:id - Actualizar estado de un paso
+    const pasoUpdateMatch = urlPath.match(/^\/api\/produccion\/pasos\/(\d+)$/);
+    if (pasoUpdateMatch && req.method === 'PUT') {
+        const id = Number(pasoUpdateMatch[1]);
+        const body = await parseBody(req);
+        const { estado, operario_id } = body;
+        if (!estado) { json(res, { error: 'Estado requerido' }, 400); return; }
+        try {
+            const updates = ['estado = $1'];
+            const params = [estado];
+            let idx = 2;
+            if (estado === 'EN_PROCESO') { updates.push(`hora_inicio = COALESCE(hora_inicio, NOW())`); }
+            if (estado === 'TERMINADO') { updates.push(`hora_fin = NOW()`); }
+            if (operario_id !== undefined) { updates.push(`operario_id = $${idx}`); params.push(operario_id); idx++; }
+            params.push(id);
+            await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx}`, params);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/produccion/maquinas - Listar máquinas
     if (urlPath === '/api/produccion/maquinas' && req.method === 'GET') {
         const result = await query('SELECT * FROM produccion_maquinas ORDER BY num_operacion ASC NULLS LAST, nombre ASC');
