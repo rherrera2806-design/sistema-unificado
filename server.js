@@ -3312,6 +3312,7 @@ const server = http.createServer(async (req, res) => {
                     if (familia) resultados.costos_calculados++;
                 }
             } catch(eRow) {
+                console.error('[PROD] Error en fila', key, ':', eRow.message, eRow.stack);
                 resultados.errores.push({ fila: key, error: eRow.message });
             }
         }

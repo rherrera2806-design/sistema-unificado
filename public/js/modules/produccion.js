@@ -320,7 +320,12 @@ App.registerModule('produccion', {
             if (res.ok) {
                 let msg = `Importadas: ${result.importadas} ordenes, ${result.pasos_creados} pasos.`;
                 if (result.fusiones > 0) msg += ` Fusiones: ${result.fusiones} filas combinadas.`;
-                if (result.errores && result.errores.length) msg += ` Errores: ${result.errores.length}`;
+                if (result.costos_calculados > 0) msg += ` Costos calculados: ${result.costos_calculados}.`;
+                if (result.errores && result.errores.length) {
+                    msg += `\n\nErrores (${result.errores.length}):\n`;
+                    result.errores.slice(0, 5).forEach(e => msg += `• Fila ${e.fila}: ${e.error}\n`);
+                    if (result.errores.length > 5) msg += `... y ${result.errores.length - 5} mas`;
+                }
                 App.toast(msg);
                 this.hideImportModal();
                 await this.load();
