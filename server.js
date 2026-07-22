@@ -2452,6 +2452,19 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // DELETE /api/produccion/recetas/all - Eliminar todas las recetas (admin only)
+    if (urlPath === '/api/produccion/recetas/all' && req.method === 'DELETE') {
+        const userEmail = req.headers['x-user-email'];
+        const userRes = await query('SELECT permisos FROM usuarios WHERE email = $1', [userEmail]);
+        if (!userRes.rows.length || !userRes.rows[0].permisos.includes('usuarios')) {
+            json(res, { error: 'No autorizado' }, 403); return;
+        }
+        const count = await query('SELECT COUNT(*) as total FROM produccion_recetas_bom');
+        await query('DELETE FROM produccion_recetas_bom');
+        json(res, { eliminados: Number(count.rows[0].total) });
+        return;
+    }
+
     // DELETE /api/produccion/recetas/:id
     const deleteRecetaMatch = urlPath.match(/^\/api\/produccion\/recetas\/(\d+)$/);
     if (deleteRecetaMatch && req.method === 'DELETE') {

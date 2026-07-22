@@ -17,6 +17,7 @@ App.registerModule('prod_recetas', {
                 <div style="display:flex;gap:8px">
                     <button class="btn btn-outline" onclick="App.modules.prod_recetas.importarExcel()">📥 Importar Excel</button>
                     <button class="btn btn-outline" onclick="App.modules.prod_recetas.exportarExcel()">📤 Exportar Excel</button>
+                    ${permisos.includes('usuarios') ? '<button class="btn btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.prod_recetas.deleteAll()">🗑️ Eliminar Registros</button>' : ''}
                     <button class="btn btn-primary" onclick="App.modules.prod_recetas.showCreateModal()">+ Nueva Receta</button>
                 </div>` : ''}
             </div>
@@ -221,6 +222,22 @@ App.registerModule('prod_recetas', {
             });
             App.toast('Receta eliminada');
             await this.load();
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    async deleteAll() {
+        if (!confirm('ELIMINAR TODAS las recetas BOM? Esta accion no se puede deshacer.')) return;
+        if (!confirm('Seguro? Se borrarán TODOS los registros.')) return;
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch('/api/produccion/recetas/all', {
+                method: 'DELETE', headers: { 'X-User-Email': user.email || '' }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                App.toast(`${data.eliminados} recetas eliminadas`);
+                await this.load();
+            } else { alert(data.error || 'Error al eliminar'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
 
