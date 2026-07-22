@@ -59,9 +59,9 @@ App.registerModule('produccion', {
                 </div>
                 <div class="card-body" style="padding:0">
                     <table style="font-size:13px"><thead><tr>
-                        <th style="padding:6px 12px">Pedido</th><th style="padding:6px 12px">Item</th><th style="padding:6px 12px">Cliente</th><th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Dimensiones</th><th style="padding:6px 12px">m2</th><th style="padding:6px 12px">Tipo Venta</th><th style="padding:6px 12px">Ruta</th><th style="padding:6px 12px">Estado</th><th style="padding:6px 12px">Acciones</th>
+                        <th style="padding:6px 12px">Pedido</th><th style="padding:6px 12px">Item</th><th style="padding:6px 12px">Cliente</th><th style="padding:6px 12px">Cod. Padre</th><th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Nombre MP</th><th style="padding:6px 12px">Dimensiones</th><th style="padding:6px 12px">m2</th><th style="padding:6px 12px">Cant.</th><th style="padding:6px 12px">Tipo Venta</th><th style="padding:6px 12px">Ruta</th><th style="padding:6px 12px">Estado</th><th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="prodTable">
-                        <tr><td colspan="10" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="13" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -82,8 +82,8 @@ App.registerModule('produccion', {
                         </div>
                         <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-light)">
                             <strong>Columnas esperadas:</strong><br>
-                            codigo, pedido, item, cliente, descripcion, cantidad, anho, alto, perforaciones, pintado, tipo de venta<br>
-                            <em>Cada fila = 1 item. Cantidad indica cuantas ordenes crear por fila.</em>
+                            codigo, pedido, item, cliente, descripcion, cantidad, anho, alto, perforaciones, pintado, tipo de venta, fecha_creacion<br>
+                            <em>Filas iguales (pedido+item+codigo) se fusionan sumando cantidad. Cada fila = 1 item.</em>
                         </div>
                         <div id="prodImportPreview" style="max-height:200px;overflow-y:auto;margin-top:12px"></div>
                     </div>
@@ -133,6 +133,7 @@ App.registerModule('produccion', {
                             </div>
                             <div class="form-group"><label>Cantidad</label><input class="form-control" id="newOrdCantidad" type="number" value="1" min="1"></div>
                         </div>
+                        <div class="form-group"><label>Fecha Creacion</label><input class="form-control" id="newOrdFechaCreacion" type="date"></div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.produccion.hideNewOrderModal()">Cancelar</button>
@@ -191,7 +192,7 @@ App.registerModule('produccion', {
 
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
-        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
+        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
 
         const estadoBadge = (e) => {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">✓ TERMINADO</span>';
@@ -212,9 +213,12 @@ App.registerModule('produccion', {
                 <td style="padding:6px 12px"><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
                 <td style="padding:6px 12px">${o.item_numero || '-'}</td>
                 <td style="padding:6px 12px">${escapeHtml(o.cliente || '-')}</td>
+                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${escapeHtml(o.nombre_codigo_padre || '-')}</td>
                 <td style="padding:6px 12px"><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
+                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${escapeHtml(o.nombre_mp || o.descripcion || '-')}</td>
                 <td style="padding:6px 12px">${o.ancho} x ${o.alto} mm</td>
                 <td style="padding:6px 12px">${o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-'}</td>
+                <td style="padding:6px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(${o.id}, ${o.cantidad || 1})"><strong>${o.cantidad || 1}</strong></td>
                 <td style="padding:6px 12px">${tipoBadge(o.tipo_venta)}</td>
                 <td style="padding:6px 12px">${progreso}</td>
                 <td style="padding:6px 12px">${estadoBadge(o.estado_programacion)}${o.cerrado_nota ? ` <span title="${o.cerrado_nota.replace(/"/g, '&quot;')}" style="cursor:pointer;font-size:10px">ℹ️</span>` : ''}</td>
@@ -231,7 +235,7 @@ App.registerModule('produccion', {
         const search = (document.getElementById('prodFilterSearch')?.value || '').toLowerCase();
         const estado = document.getElementById('prodFilterEstado')?.value || 'todos';
         let filtered = this.ordenes;
-        if (search) filtered = filtered.filter(o => (o.codigo_producto || '').toLowerCase().includes(search) || (o.pedido_sap_id || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search));
+        if (search) filtered = filtered.filter(o => (o.codigo_producto || '').toLowerCase().includes(search) || (o.pedido_sap_id || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search) || (o.nombre_codigo_padre || '').toLowerCase().includes(search) || (o.nombre_mp || '').toLowerCase().includes(search));
         if (estado !== 'todos') filtered = filtered.filter(o => o.estado_programacion === estado);
         this.renderTable(filtered);
     },
@@ -262,7 +266,7 @@ App.registerModule('produccion', {
                 this._importRows = rows;
                 const preview = document.getElementById('prodImportPreview');
                 preview.innerHTML = `<div style="font-size:12px;margin-bottom:4px"><strong>${rows.length}</strong> items encontrados</div>
-                    <table style="width:100%;font-size:11px"><thead><tr><th style="padding:4px 8px">Codigo</th><th style="padding:4px 8px">Pedido</th><th style="padding:4px 8px">Item</th><th style="padding:4px 8px">Cliente</th><th style="padding:4px 8px">Cant</th><th style="padding:4px 8px">Ancho</th><th style="padding:4px 8px">Alto</th><th style="padding:4px 8px">Pint</th><th style="padding:4px 8px">Tipo Venta</th></tr></thead><tbody>
+                    <table style="width:100%;font-size:11px"><thead><tr><th style="padding:4px 8px">Codigo</th><th style="padding:4px 8px">Pedido</th><th style="padding:4px 8px">Item</th><th style="padding:4px 8px">Cliente</th><th style="padding:4px 8px">Cant</th><th style="padding:4px 8px">Ancho</th><th style="padding:4px 8px">Alto</th><th style="padding:4px 8px">Pint</th><th style="padding:4px 8px">Tipo Venta</th><th style="padding:4px 8px">Fecha</th></tr></thead><tbody>
                     ${rows.slice(0, 10).map(r => {
                         const cod = r.codigo || r.Codigo || r.CODIGO || '';
                         const ped = r.pedido || r.Pedido || r.PEDIDO || '';
@@ -273,9 +277,10 @@ App.registerModule('produccion', {
                         const alto = r.alto || r.Alto || r.ALTO || 0;
                         const pint = r.pintado || r.Pintado || r.PINTADO || 0;
                         const tipo = r['tipo de venta'] || r.tipo_de_venta || r.TipoVenta || 'Normal';
-                        return `<tr><td style="padding:4px 8px">${cod}</td><td style="padding:4px 8px">${ped}</td><td style="padding:4px 8px">${it}</td><td style="padding:4px 8px">${cli}</td><td style="padding:4px 8px">${cant}</td><td style="padding:4px 8px">${ancho}</td><td style="padding:4px 8px">${alto}</td><td style="padding:4px 8px">${pint}</td><td style="padding:4px 8px">${tipo}</td></tr>`;
+                        const fecha = r.fecha_creacion || r.FechaCreacion || r.fecha || r.Fecha || '';
+                        return `<tr><td style="padding:4px 8px">${cod}</td><td style="padding:4px 8px">${ped}</td><td style="padding:4px 8px">${it}</td><td style="padding:4px 8px">${cli}</td><td style="padding:4px 8px">${cant}</td><td style="padding:4px 8px">${ancho}</td><td style="padding:4px 8px">${alto}</td><td style="padding:4px 8px">${pint}</td><td style="padding:4px 8px">${tipo}</td><td style="padding:4px 8px">${fecha}</td></tr>`;
                     }).join('')}
-                    ${rows.length > 10 ? `<tr><td colspan="9" style="text-align:center;padding:4px;color:var(--text-light)">... y ${rows.length - 10} mas</td></tr>` : ''}
+                    ${rows.length > 10 ? `<tr><td colspan="10" style="text-align:center;padding:4px;color:var(--text-light)">... y ${rows.length - 10} mas</td></tr>` : ''}
                     </tbody></table>`;
             } catch(err) { document.getElementById('prodImportPreview').innerHTML = '<span style="color:red">Error al leer archivo</span>'; }
         };
@@ -314,6 +319,7 @@ App.registerModule('produccion', {
             const result = await res.json();
             if (res.ok) {
                 let msg = `Importadas: ${result.importadas} ordenes, ${result.pasos_creados} pasos.`;
+                if (result.fusiones > 0) msg += ` Fusiones: ${result.fusiones} filas combinadas.`;
                 if (result.errores && result.errores.length) msg += ` Errores: ${result.errores.length}`;
                 App.toast(msg);
                 this.hideImportModal();
@@ -368,6 +374,7 @@ App.registerModule('produccion', {
         document.getElementById('newOrdPintado').value = '0';
         document.getElementById('newOrdTipoVenta').value = 'Normal';
         document.getElementById('newOrdCantidad').value = '1';
+        document.getElementById('newOrdFechaCreacion').value = new Date().toISOString().split('T')[0];
         document.getElementById('prodNewOrderModal').classList.add('show');
     },
     hideNewOrderModal() { document.getElementById('prodNewOrderModal').classList.remove('show'); },
@@ -384,13 +391,14 @@ App.registerModule('produccion', {
         const pintado = document.getElementById('newOrdPintado').value === '1';
         const tipo_venta = document.getElementById('newOrdTipoVenta').value;
         const cantidad = Number(document.getElementById('newOrdCantidad').value) || 1;
+        const fecha_creacion = document.getElementById('newOrdFechaCreacion').value || null;
         if (!pedido || !codigo || !ancho || !alto) { alert('Pedido, codigo, ancho y alto son requeridos'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const res = await fetch('/api/produccion/ordenes', {
                 method: 'POST', headers,
-                body: JSON.stringify({ pedido_sap_id: pedido, item_numero: item, cliente, codigo_producto: codigo, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, cantidad })
+                body: JSON.stringify({ pedido_sap_id: pedido, item_numero: item, cliente, codigo_producto: codigo, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, cantidad, fecha_creacion })
             });
             const data = await res.json();
             if (res.ok) {
@@ -398,6 +406,26 @@ App.registerModule('produccion', {
                 this.hideNewOrderModal();
                 await this.load();
             } else { alert(data.error || 'Error al crear orden'); }
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    async editCantidad(id, current) {
+        const nueva = prompt('Nueva cantidad:', current);
+        if (nueva === null || isNaN(Number(nueva)) || Number(nueva) < 1) return;
+        const cant = Number(nueva);
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const orden = this.ordenes.find(o => o.id === id);
+            const ancho = orden?.ancho || 0;
+            const alto = orden?.alto || 0;
+            const m2 = ((ancho * alto) / 1000000) * cant;
+            const res = await fetch(`/api/produccion/ordenes/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ cantidad: cant, metros_cuadrados: m2 })
+            });
+            if (res.ok) { App.toast('Cantidad actualizada'); await this.load(); }
+            else { const d = await res.json(); alert(d.error || 'Error'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
 

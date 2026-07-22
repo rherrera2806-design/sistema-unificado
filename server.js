@@ -447,6 +447,7 @@ async function initDB() {
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS perforaciones INTEGER DEFAULT 0`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cerrado_nota TEXT`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cantidad INTEGER DEFAULT 1`);
 
     await query(`CREATE TABLE IF NOT EXISTS produccion_recetas_bom (
         id SERIAL PRIMARY KEY,
@@ -2351,7 +2352,11 @@ const server = http.createServer(async (req, res) => {
         const result = await query(`
             SELECT o.*, 
                 (SELECT COUNT(*) FROM produccion_pasos p WHERE p.orden_produccion_id = o.id) as total_pasos,
-                (SELECT COUNT(*) FROM produccion_pasos p WHERE p.orden_produccion_id = o.id AND p.estado = 'TERMINADO') as pasos_terminados
+                (SELECT COUNT(*) FROM produccion_pasos p WHERE p.orden_produccion_id = o.id AND p.estado = 'TERMINADO') as pasos_terminados,
+                CASE WHEN o.es_compuesto AND o.bom_padre_id IS NOT NULL THEN
+                    (SELECT cb.descripcion FROM produccion_recetas_bom rb JOIN produccion_codigos cb ON cb.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                ELSE NULL END as nombre_codigo_padre,
+                (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp
             FROM produccion_ordenes o ORDER BY o.created_at DESC
         `);
         json(res, result.rows);
@@ -2361,26 +2366,24 @@ const server = http.createServer(async (req, res) => {
     // POST /api/produccion/ordenes - Crear orden manual
     if (urlPath === '/api/produccion/ordenes' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, item_numero, cantidad } = body;
+        const { pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, perforaciones, pintado, tipo_venta, item_numero, cantidad, fecha_creacion } = body;
         if (!pedido_sap_id || !codigo_producto || !ancho || !alto) { json(res, { error: 'Pedido, codigo, ancho y alto requeridos' }, 400); return; }
         try {
-            const m2 = (Number(ancho) * Number(alto)) / 1000000;
+            const cant = Number(cantidad) || 1;
+            const m2 = ((Number(ancho) * Number(alto)) / 1000000) * cant;
             const result = await query(
-                'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, pintado, perforaciones, tipo_venta, item_numero) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-                [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2, !!pintado, perforaciones ? 4 : 0, tipo_venta || 'Normal', item_numero || 1]
+                'INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, pintado, perforaciones, tipo_venta, item_numero, cantidad, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+                [pedido_sap_id, cliente || null, codigo_producto, descripcion || null, ancho, alto, m2, !!pintado, perforaciones ? 4 : 0, tipo_venta || 'Normal', item_numero || 1, cant, fecha_creacion || new Date().toISOString()]
             );
             const orden = result.rows[0];
-            const cant = Number(cantidad) || 1;
             const estaciones = ['Corte', 'Pulido', 'Templado'];
             if (perforaciones) estaciones.splice(2, 0, 'Mecanizado');
             if (pintado) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
-            for (let c = 0; c < cant; c++) {
-                for (let s = 0; s < estaciones.length; s++) {
-                    await query(
-                        'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
-                        [orden.id, estaciones[s], s + 1, 'PENDIENTE']
-                    );
-                }
+            for (let s = 0; s < estaciones.length; s++) {
+                await query(
+                    'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
+                    [orden.id, estaciones[s], s + 1, 'PENDIENTE']
+                );
             }
             json(res, orden, 201);
         } catch(e) { json(res, { error: 'Error al crear orden: ' + e.message }, 500); }
@@ -2397,6 +2400,26 @@ const server = http.createServer(async (req, res) => {
         try {
             await query('UPDATE produccion_ordenes SET estado_programacion = $1, cerrado_nota = $2 WHERE id = $3', ['CERRADO', nota, id]);
             json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // PUT /api/produccion/ordenes/:id - Editar orden (cantidad, etc.)
+    const editOrdenMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)$/);
+    if (editOrdenMatch && req.method === 'PUT') {
+        const id = Number(editOrdenMatch[1]);
+        const body = await parseBody(req);
+        try {
+            const fields = [];
+            const values = [];
+            let idx = 1;
+            if (body.cantidad !== undefined) { fields.push(`cantidad = $${idx++}`); values.push(Number(body.cantidad) || 1); }
+            if (body.metros_cuadrados !== undefined) { fields.push(`metros_cuadrados = $${idx++}`); values.push(Number(body.metros_cuadrados)); }
+            if (fields.length === 0) { json(res, { error: 'Sin campos para actualizar' }, 400); return; }
+            values.push(id);
+            await query(`UPDATE produccion_ordenes SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+            const result = await query('SELECT * FROM produccion_ordenes WHERE id = $1', [id]);
+            json(res, result.rows[0] || { ok: true });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
@@ -2691,65 +2714,58 @@ const server = http.createServer(async (req, res) => {
             recetasMap[r.codigo_sap_padre].push(r);
         });
 
-        const resultados = { importadas: 0, errores: [], pasos_creados: 0 };
         const ESTACION_BASE = ['Corte', 'Pulido', 'Templado'];
 
+        // Merge identical rows (same pedido+item+codigo) summing quantities
+        const merged = {};
+        const mergeOrder = [];
         for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const codigo = String(row['codigo'] || row['Codigo'] || row['CODIGO'] || row['ItemCode'] || '').trim();
+            const pedido = String(row['pedido'] || row['Pedido'] || row['PEDIDO'] || row['DocEntry'] || '').trim();
+            const item = Number(row['item'] || row['Item'] || row['ITEM'] || i + 1);
+            const key = `${pedido}|${item}|${codigo}`;
+            const ancho = Number(row['anho'] || row['ancho'] || row['Ancho'] || row['ANHO'] || row['ANCHO'] || row['Width'] || 0);
+            const alto = Number(row['alto'] || row['Alto'] || row['ALTO'] || row['Height'] || 0);
+            if (!codigo || !ancho || !alto) continue;
+            if (!merged[key]) {
+                merged[key] = {
+                    codigo, pedido, item,
+                    cliente: String(row['cliente'] || row['Cliente'] || row['CLIENTE'] || row['CardName'] || '').trim(),
+                    descripcion: String(row['descripcion'] || row['Descripcion'] || row['ItemName'] || '').trim(),
+                    ancho, alto,
+                    cantidad: Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || 1),
+                    tiene_perforaciones: Number(row['perforaciones'] || row['Perforaciones'] || row['PERFORACIONES'] || row['Holes'] || 0) > 0,
+                    es_pintado: Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1,
+                    tipo_venta: String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || 'Normal').trim(),
+                    fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || null
+                };
+                mergeOrder.push(key);
+            } else {
+                merged[key].cantidad += Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || 1);
+            }
+        }
+
+        const resultados = { importadas: 0, errores: [], pasos_creados: 0, fusiones: rows.length - mergeOrder.length };
+
+        for (const key of mergeOrder) {
             try {
-                const row = rows[i];
-                const codigo = String(row['codigo'] || row['Codigo'] || row['CODIGO'] || row['ItemCode'] || '').trim();
-                const pedido = String(row['pedido'] || row['Pedido'] || row['PEDIDO'] || row['DocEntry'] || '').trim();
-                const cliente = String(row['cliente'] || row['Cliente'] || row['CLIENTE'] || row['CardName'] || '').trim();
-                const descripcion = String(row['descripcion'] || row['Descripcion'] || row['ItemName'] || '').trim();
-                const cantidad = Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || 1);
-                const ancho = Number(row['anho'] || row['ancho'] || row['Ancho'] || row['ANHO'] || row['ANCHO'] || row['Width'] || 0);
-                const alto = Number(row['alto'] || row['Alto'] || row['ALTO'] || row['Height'] || 0);
-                const tiene_perforaciones = Number(row['perforaciones'] || row['Perforaciones'] || row['PERFORACIONES'] || row['Holes'] || 0) > 0;
-                const es_pintado = Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1;
-                const tipo_venta = String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || row['Normal'] || 'Normal').trim();
-                const item_numero = Number(row['item'] || row['Item'] || row['ITEM'] || i + 1);
+                const r = merged[key];
+                const m2 = ((r.ancho / 1000) * (r.alto / 1000)) * r.cantidad;
+                const es_compuesto = recetasMap[r.codigo] && recetasMap[r.codigo].length > 0;
 
-                if (!codigo || !ancho || !alto) {
-                    resultados.errores.push({ fila: i + 1, error: 'Faltan datos: codigo, ancho o alto' });
-                    continue;
-                }
-
-                for (let c = 0; c < cantidad; c++) {
-                    const m2 = (ancho / 1000) * (alto / 1000);
-                    const es_compuesto = recetasMap[codigo] && recetasMap[codigo].length > 0;
-
-                    if (es_compuesto) {
-                        const componentes = recetasMap[codigo];
-                        for (const comp of componentes) {
-                            const result = await query(
-                                `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, bom_padre_id, tipo_venta, pintado, perforaciones, item_numero)
-                                 VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, $9, $10, $11, $12) RETURNING id`,
-                                [pedido, cliente, comp.codigo_materia_prima, comp.descripcion || descripcion, ancho, alto, m2, comp.id, tipo_venta, es_pintado, tiene_perforaciones ? 4 : 0, item_numero]
-                            );
-                            const ordenId = result.rows[0].id;
-                            const estaciones = [...ESTACION_BASE];
-                            if (tiene_perforaciones && !estaciones.includes('Mecanizado')) estaciones.splice(2, 0, 'Mecanizado');
-                            if (es_pintado && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
-
-                            for (let s = 0; s < estaciones.length; s++) {
-                                await query(
-                                    'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
-                                    [ordenId, estaciones[s], s + 1, 'PENDIENTE']
-                                );
-                                resultados.pasos_creados++;
-                            }
-                            resultados.importadas++;
-                        }
-                    } else {
+                if (es_compuesto) {
+                    const componentes = recetasMap[r.codigo];
+                    for (const comp of componentes) {
                         const result = await query(
-                            `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, tipo_venta, pintado, perforaciones, item_numero)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9, $10, $11) RETURNING id`,
-                            [pedido, cliente, codigo, descripcion, ancho, alto, m2, tipo_venta, es_pintado, tiene_perforaciones ? 4 : 0, item_numero]
+                            `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, bom_padre_id, tipo_venta, pintado, perforaciones, item_numero, cantidad, created_at)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+                            [r.pedido, r.cliente, comp.codigo_materia_prima, comp.descripcion || r.descripcion, r.ancho, r.alto, m2, comp.id, r.tipo_venta, r.es_pintado, r.tiene_perforaciones ? 4 : 0, r.item, r.cantidad, r.fecha_creacion || new Date().toISOString()]
                         );
                         const ordenId = result.rows[0].id;
                         const estaciones = [...ESTACION_BASE];
-                        if (tiene_perforaciones && !estaciones.includes('Mecanizado')) estaciones.splice(2, 0, 'Mecanizado');
-                        if (es_pintado && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
+                        if (r.tiene_perforaciones && !estaciones.includes('Mecanizado')) estaciones.splice(2, 0, 'Mecanizado');
+                        if (r.es_pintado && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
 
                         for (let s = 0; s < estaciones.length; s++) {
                             await query(
@@ -2760,9 +2776,28 @@ const server = http.createServer(async (req, res) => {
                         }
                         resultados.importadas++;
                     }
+                } else {
+                    const result = await query(
+                        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, tipo_venta, pintado, perforaciones, item_numero, cantidad, created_at)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9, $10, $11, $12, $13) RETURNING id`,
+                        [r.pedido, r.cliente, r.codigo, r.descripcion, r.ancho, r.alto, m2, r.tipo_venta, r.es_pintado, r.tiene_perforaciones ? 4 : 0, r.item, r.cantidad, r.fecha_creacion || new Date().toISOString()]
+                    );
+                    const ordenId = result.rows[0].id;
+                    const estaciones = [...ESTACION_BASE];
+                    if (r.tiene_perforaciones && !estaciones.includes('Mecanizado')) estaciones.splice(2, 0, 'Mecanizado');
+                    if (r.es_pintado && !estaciones.includes('Pintado')) estaciones.splice(estaciones.indexOf('Templado'), 0, 'Pintado');
+
+                    for (let s = 0; s < estaciones.length; s++) {
+                        await query(
+                            'INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
+                            [ordenId, estaciones[s], s + 1, 'PENDIENTE']
+                        );
+                        resultados.pasos_creados++;
+                    }
+                    resultados.importadas++;
                 }
             } catch(eRow) {
-                resultados.errores.push({ fila: i + 1, error: eRow.message });
+                resultados.errores.push({ fila: key, error: eRow.message });
             }
         }
 
