@@ -115,6 +115,9 @@ App.registerModule('usuarios', {
                 { key: 'prod_config', label: 'Configuracion' },
                 { key: 'planificacion', label: 'Planificacion' }
             ]},
+            { key: 'instalaciones', label: 'INSTALACIONES', items: [
+                { key: 'instalaciones', label: 'Instalaciones' }
+            ]},
             { key: 'administracion', label: 'ADMINISTRACION', items: [
                 { key: 'usuarios', label: 'Usuarios' }
             ]}

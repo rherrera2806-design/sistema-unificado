@@ -659,6 +659,41 @@ async function initDB() {
         }
     } catch(calErr) { console.error('[PROD] Error calendario:', calErr.message); }
 
+    // Tablas modulo Instalaciones
+    await query(`CREATE TABLE IF NOT EXISTS instalaciones (
+        id SERIAL PRIMARY KEY,
+        cliente VARCHAR(200) NOT NULL,
+        direccion TEXT NOT NULL,
+        descripcion TEXT DEFAULT '',
+        fecha_programada DATE NOT NULL,
+        hora_programada TIME DEFAULT '09:00',
+        tecnico VARCHAR(200) DEFAULT '',
+        estado VARCHAR(30) DEFAULT 'PROGRAMADA',
+        notas_previas TEXT DEFAULT '',
+        notas_cierre TEXT DEFAULT '',
+        firma_cliente TEXT DEFAULT '',
+        creado_por VARCHAR(200) DEFAULT '',
+        cerrado_por VARCHAR(200) DEFAULT '',
+        fecha_cierre TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query(`CREATE TABLE IF NOT EXISTS instalaciones_historial (
+        id SERIAL PRIMARY KEY,
+        instalacion_id INTEGER REFERENCES instalaciones(id) ON DELETE CASCADE,
+        accion VARCHAR(100) NOT NULL,
+        detalle TEXT DEFAULT '',
+        usuario VARCHAR(200) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query(`CREATE TABLE IF NOT EXISTS instalaciones_fotos (
+        id SERIAL PRIMARY KEY,
+        instalacion_id INTEGER REFERENCES instalaciones(id) ON DELETE CASCADE,
+        foto BYTEA,
+        descripcion TEXT DEFAULT '',
+        orden INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     // SEMILLA: Familias de producto por defecto
     const famCount = await query('SELECT COUNT(*) as c FROM familias_producto');
     if (Number(famCount.rows[0].c) === 0) {
@@ -3845,6 +3880,178 @@ const server = http.createServer(async (req, res) => {
         const id = parseInt(urlPath.split('/').pop());
         try {
             await query('DELETE FROM prod_notas WHERE id = $1 AND usuario_email = $2', [id, userEmail]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // =====================================================
+    // INSTALACIONES
+    // =====================================================
+
+    // GET /api/instalaciones - Listar todas
+    if (urlPath === '/api/instalaciones' && req.method === 'GET') {
+        try {
+            const result = await query('SELECT * FROM instalaciones ORDER BY fecha_programada DESC, hora_programada ASC');
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/instalaciones/calendario?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
+    if (urlPath === '/api/instalaciones/calendario' && req.method === 'GET') {
+        const inicio = q.inicio;
+        const fin = q.fin;
+        if (!inicio || !fin) { json(res, { error: 'Fechas requeridas' }, 400); return; }
+        try {
+            const result = await query('SELECT * FROM instalaciones WHERE fecha_programada >= $1::date AND fecha_programada <= $2::date ORDER BY fecha_programada, hora_programada', [inicio, fin]);
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/instalaciones/:id - Detalle
+    const instDetailMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)$/);
+    if (instDetailMatch && req.method === 'GET') {
+        const id = parseInt(instDetailMatch[1]);
+        try {
+            const result = await query('SELECT * FROM instalaciones WHERE id = $1', [id]);
+            if (result.rows.length === 0) { json(res, { error: 'No encontrada' }, 404); return; }
+            json(res, result.rows[0]);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/instalaciones - Crear
+    if (urlPath === '/api/instalaciones' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas } = body;
+        if (!cliente || !direccion || !fecha_programada) { json(res, { error: 'Cliente, dirección y fecha requeridos' }, 400); return; }
+        const userEmail = req.headers['x-user-email'] || 'Sistema';
+        try {
+            const result = await query(
+                `INSERT INTO instalaciones (cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas, estado, creado_por)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'PROGRAMADA', $8) RETURNING *`,
+                [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', notas_previas || '', userEmail]
+            );
+            const inst = result.rows[0];
+            await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [inst.id, 'CREADA', 'Instalación programada', userEmail]);
+            json(res, inst, 201);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // PUT /api/instalaciones/:id - Editar
+    const instEditMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)$/);
+    if (instEditMatch && req.method === 'PUT') {
+        const id = parseInt(instEditMatch[1]);
+        const body = await parseBody(req);
+        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas } = body;
+        const userEmail = req.headers['x-user-email'] || 'Sistema';
+        try {
+            await query(
+                `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, notas_previas=$7 WHERE id=$8`,
+                [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas, id]
+            );
+            await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [id, 'EDITADA', 'Datos actualizados', userEmail]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // PUT /api/instalaciones/:id/estado - Cambiar estado
+    const instEstadoMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/estado$/);
+    if (instEstadoMatch && req.method === 'PUT') {
+        const id = parseInt(instEstadoMatch[1]);
+        const body = await parseBody(req);
+        const { estado } = body;
+        const userEmail = req.headers['x-user-email'] || 'Sistema';
+        const estadosValidos = ['PROGRAMADA', 'EN_CAMINO', 'EN_CURSO', 'COMPLETADA', 'CON_NOVEDADES', 'CANCELADA'];
+        if (!estadosValidos.includes(estado)) { json(res, { error: 'Estado inválido' }, 400); return; }
+        try {
+            await query('UPDATE instalaciones SET estado=$1 WHERE id=$2', [estado, id]);
+            await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [id, 'CAMBIO_ESTADO', 'Estado cambiado a: ' + estado, userEmail]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // PUT /api/instalaciones/:id/cerrar - Cerrar instalación
+    const instCerrarMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/cerrar$/);
+    if (instCerrarMatch && req.method === 'PUT') {
+        const id = parseInt(instCerrarMatch[1]);
+        const body = await parseBody(req);
+        const { notas_cierre, firma_cliente } = body;
+        const userEmail = req.headers['x-user-email'] || 'Sistema';
+        try {
+            await query('UPDATE instalaciones SET estado=$1, notas_cierre=$2, firma_cliente=$3, cerrado_por=$4, fecha_cierre=NOW() WHERE id=$5', ['COMPLETADA', notas_cierre || '', firma_cliente || '', userEmail, id]);
+            await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [id, 'CERRADA', 'Instalación cerrada. ' + (notas_cierre || ''), userEmail]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/instalaciones/:id/fotos - Subir fotos
+    const instFotoMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/fotos$/);
+    if (instFotoMatch && req.method === 'POST') {
+        const id = parseInt(instFotoMatch[1]);
+        const body = await parseBody(req);
+        const { fotos } = body;
+        if (!fotos || !Array.isArray(fotos)) { json(res, { error: 'fotos array requerido' }, 400); return; }
+        const userEmail = req.headers['x-user-email'] || 'Sistema';
+        try {
+            for (let i = 0; i < fotos.length; i++) {
+                const { base64, descripcion } = fotos[i];
+                const buffer = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+                await query('INSERT INTO instalaciones_fotos (instalacion_id, foto, descripcion, orden) VALUES ($1, $2, $3, $4)', [id, buffer, descripcion || '', i + 1]);
+            }
+            await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [id, 'FOTOS_SUBIDAS', fotos.length + ' foto(s) subida(s)', userEmail]);
+            json(res, { ok: true, count: fotos.length });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/instalaciones/:id/fotos - Obtener fotos
+    const instGetFotosMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/fotos$/);
+    if (instGetFotosMatch && req.method === 'GET') {
+        const id = parseInt(instGetFotosMatch[1]);
+        try {
+            const result = await query('SELECT id, descripcion, orden, created_at FROM instalaciones_fotos WHERE instalacion_id = $1 ORDER BY orden', [id]);
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/instalaciones/:id/foto/:fotoId - Obtener imagen
+    const instGetFotoMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/foto\/(\d+)$/);
+    if (instGetFotoMatch && req.method === 'GET') {
+        const fotoId = parseInt(instGetFotoMatch[2]);
+        try {
+            const result = await query('SELECT foto FROM instalaciones_fotos WHERE id = $1', [fotoId]);
+            if (result.rows.length === 0 || !result.rows[0].foto) { json(res, { error: 'Foto no encontrada' }, 404); return; }
+            res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=3600' });
+            res.end(result.rows[0].foto);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/instalaciones/:id/historial - Historial
+    const instHistMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/historial$/);
+    if (instHistMatch && req.method === 'GET') {
+        const id = parseInt(instHistMatch[1]);
+        try {
+            const result = await query('SELECT * FROM instalaciones_historial WHERE instalacion_id = $1 ORDER BY created_at DESC', [id]);
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // DELETE /api/instalaciones/:id - Eliminar
+    const instDelMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)$/);
+    if (instDelMatch && req.method === 'DELETE') {
+        const id = parseInt(instDelMatch[1]);
+        try {
+            await query('DELETE FROM instalaciones WHERE id = $1', [id]);
             json(res, { ok: true });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
