@@ -412,13 +412,16 @@ App.registerModule('prod_config', {
     },
 
     async toggleDia(fecha) {
-        const entry = this._calendario.find(c => c.fecha === fecha);
+        const entry = this._calendario.find(c => c.fecha && c.fecha.substring(0, 10) === fecha);
         const actualEsLaboral = entry ? entry.es_laboral : true;
-        await fetch('/api/produccion/calendario', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, es_laboral: !actualEsLaboral, motivo: !actualEsLaboral ? '' : '' })
-        });
-        await this.loadCalendario();
+        try {
+            const res = await fetch('/api/produccion/calendario', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fecha: fecha, es_laboral: !actualEsLaboral, motivo: '' })
+            });
+            if (!res.ok) { const err = await res.json(); App.showAlert('Error: ' + (err.error || res.status), 'danger'); return; }
+            await this.loadCalendario();
+        } catch(e) { App.showAlert('Error de conexion: ' + e.message, 'danger'); }
     }
 });
