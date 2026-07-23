@@ -3445,7 +3445,8 @@ const server = http.createServer(async (req, res) => {
                     nota: String(row['nota'] || row['Nota'] || row['NOTA'] || row['observacion'] || row['Observacion'] || '').trim() || null,
                     posicion: String(row['posicion'] || row['Posicion'] || row['POSICION'] || row['position'] || '').trim() || null,
                     orden_compra: String(row['orden de compra'] || row['orden_compra'] || row['OrdenCompra'] || row['ORDEN DE COMPRA'] || row['OC'] || row['oc'] || '').trim() || null,
-                    tipo_entrega: String(row['tipo de entrega'] || row['tipo_entrega'] || row['TipoEntrega'] || row['TIPO DE ENTREGA'] || 'Despacho').trim()
+                    tipo_entrega: String(row['tipo de entrega'] || row['tipo_entrega'] || row['TipoEntrega'] || row['TIPO DE ENTREGA'] || 'Despacho').trim(),
+                    kilos: Number(row['kilos'] || row['Kilos'] || row['KILOS'] || row['peso'] || row['Peso'] || row['PESO'] || 0)
                 };
                 mergeOrder.push(key);
             } else {
@@ -3547,12 +3548,13 @@ const server = http.createServer(async (req, res) => {
                             `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
                              es_compuesto, bom_padre_id, tipo_venta, item_numero, cantidad, familia_id, codigo_padre,
                              costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado,
-                             nota, posicion, orden_compra, tipo_entrega, created_at)
-                             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id`,
+                             nota, posicion, orden_compra, tipo_entrega, kilos, created_at)
+                             VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25) RETURNING id`,
                             [r.pedido, r.cliente, mp.codigo_mp, mp.nombre || r.descripcion, r.ancho, r.alto, m2,
                              comp.id, r.tipo_venta, r.item, r.cantidad, familia?.id || null, r.codigo,
                              costo_hh, costo_energia, costo_mp_total, costo_total, r.precio_unitario, margen,
-                             r.nota, r.posicion, r.orden_compra, r.tipo_entrega, r.fecha_creacion || new Date().toISOString()]
+                             r.nota, r.posicion, r.orden_compra, r.tipo_entrega, Number(r.kilos || 0),
+                             r.fecha_creacion || new Date().toISOString()]
                         );
                         const ordenId = result.rows[0].id;
 
@@ -3579,12 +3581,13 @@ const server = http.createServer(async (req, res) => {
                         `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
                          es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre,
                          costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado,
-                         nota, posicion, orden_compra, tipo_entrega, created_at)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
+                         nota, posicion, orden_compra, tipo_entrega, kilos, created_at)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id`,
                         [r.pedido, r.cliente, r.codigo, r.descripcion, r.ancho, r.alto, m2,
                          r.tipo_venta, r.item, r.cantidad, familia?.id || null, r.codigo,
                          costo_hh, costo_energia, 0, costo_total, r.precio_unitario, margen,
-                         r.nota, r.posicion, r.orden_compra, r.tipo_entrega, r.fecha_creacion || new Date().toISOString()]
+                         r.nota, r.posicion, r.orden_compra, r.tipo_entrega, Number(r.kilos || 0),
+                         r.fecha_creacion || new Date().toISOString()]
                     );
                     const ordenId = result.rows[0].id;
 
@@ -3709,7 +3712,7 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/produccion/planificacion/programar' && req.method === 'POST') {
         const body = await parseBody(req);
         const { orden_id, fecha_entrega_propuesta } = body;
-        if (!orden_id || !fecha_entrega_propuesta) { json(res, { error: 'orden_id y fecha_entrega_propuesta requeridos' }, 400); return; }
+        if (!orden_id) { json(res, { error: 'orden_id requerido' }, 400); return; }
         try {
             const ordenRes = await query('SELECT * FROM produccion_ordenes WHERE id = $1', [orden_id]);
             if (ordenRes.rows.length === 0) { json(res, { error: 'Orden no encontrada' }, 404); return; }
@@ -3727,7 +3730,7 @@ const server = http.createServer(async (req, res) => {
             if (pasos.length === 0) { json(res, { error: 'La orden no tiene pasos definidos' }, 400); return; }
 
             const m2 = Number(orden.metros_cuadrados) || 0;
-            const fechaEntrega = new Date(fecha_entrega_propuesta + 'T12:00:00');
+            const fechaEntrega = fecha_entrega_propuesta ? new Date(fecha_entrega_propuesta + 'T12:00:00') : null;
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
 
@@ -3742,33 +3745,52 @@ const server = http.createServer(async (req, res) => {
                 const d = new Date(fechaStr + 'T12:00:00');
                 return d.getDay() !== 0 && d.getDay() !== 6;
             }
-            function diaAnteriorLaboral(fecha) {
+            function diaSiguienteLaboral(fecha) {
                 const d = new Date(fecha);
-                do { d.setDate(d.getDate() - 1); } while (!esDiaLaboral(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')));
+                do { d.setDate(d.getDate() + 1); } while (!esDiaLaboral(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')));
                 return d;
             }
-
-            // Backwards scheduling: empezar desde la fecha de entrega y retroceder
-            const fechaActual = new Date(fechaEntrega);
-            const fechaActualStr = fechaActual.getFullYear() + '-' + String(fechaActual.getMonth()+1).padStart(2,'0') + '-' + String(fechaActual.getDate()).padStart(2,'0');
-            if (!esDiaLaboral(fechaActualStr)) {
-                const prev = diaAnteriorLaboral(fechaActual);
-                fechaActual.setTime(prev.getTime());
+            function fmtDateLocal(d) {
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
             }
+
+            // Forwards scheduling: empezar desde hoy y llenar capacidad disponible por estacion
+            // Para cada estacion (en orden), buscar el primer dia con capacidad disponible
+            const fechaInicio = new Date();
+            fechaInicio.setHours(0, 0, 0, 0);
+            if (!esDiaLaboral(this.fmtDateLocal(fechaInicio))) {
+                const next = diaSiguienteLaboral(fechaInicio);
+                fechaInicio.setTime(next.getTime());
+            }
+
+            // Pre-cargar capacidades de todas las estaciones
+            const capEstaciones = {};
+            for (const paso of pasos) {
+                if (paso.estacion_id && !capEstaciones[paso.estacion_id]) {
+                    const capRes = await query('SELECT capacidad_max_m2_dia FROM estaciones_maestras WHERE id = $1', [paso.estacion_id]);
+                    capEstaciones[paso.estacion_id] = Number(capRes.rows[0]?.capacidad_max_m2_dia) || 100;
+                }
+            }
+
             const asignaciones = [];
-
-            for (let i = pasos.length - 1; i >= 0; i--) {
-                const paso = pasos[i];
+            // Para cada estacion en orden, asignar m2 en los dias disponibles
+            for (const paso of pasos) {
                 const estacionId = paso.estacion_id;
+                if (!estacionId) continue;
+                const capacidad = capEstaciones[estacionId];
                 let m2Restante = m2;
+                let fechaCursor = new Date(fechaInicio);
+                let intentos = 0;
+                const MAX_INTENTOS = 90;
 
-                while (m2Restante > 0) {
-                    const fsY = fechaActual.getFullYear();
-                    const fsM = String(fechaActual.getMonth() + 1).padStart(2, '0');
-                    const fsD = String(fechaActual.getDate()).padStart(2, '0');
+                while (m2Restante > 0.01 && intentos < MAX_INTENTOS) {
+                    intentos++;
+                    const fsY = fechaCursor.getFullYear();
+                    const fsM = String(fechaCursor.getMonth() + 1).padStart(2, '0');
+                    const fsD = String(fechaCursor.getDate()).padStart(2, '0');
                     const fechaStr = fsY + '-' + fsM + '-' + fsD;
 
-                    // Consultar capacidad ocupada en esa fecha
+                    // Consultar capacidad ocupada en esa fecha para esta estacion
                     const cargaRes = await query(`
                         SELECT COALESCE(SUM(o.metros_cuadrados), 0) as m2_ocupados
                         FROM cola_produccion_pasos p
@@ -3776,16 +3798,13 @@ const server = http.createServer(async (req, res) => {
                         WHERE p.estacion_id = $1 AND p.fecha_programada = $2
                         AND p.estado != 'MERMADO' AND p.orden_produccion_id != $3
                     `, [estacionId, fechaStr, orden_id]);
-                    const m2Ocupados = Number(cargaRes.rows[0].m2_ocupados);
-
-                    const capRes = await query('SELECT capacidad_max_m2_dia FROM estaciones_maestras WHERE id = $1', [estacionId]);
-                    const capacidad = Number(capRes.rows[0]?.capacidad_max_m2_dia) || 100;
+                    const m2Ocupados = Number(cargaRes.rows[0]?.m2_ocupados) || 0;
                     const disponible = Math.max(0, capacidad - m2Ocupados);
 
                     if (disponible <= 0) {
-                        // Dia lleno, retroceder al anterior laboral
-                        const prev = diaAnteriorLaboral(fechaActual);
-                        fechaActual.setTime(prev.getTime());
+                        // Dia lleno, pasar al siguiente dia laboral
+                        const next = diaSiguienteLaboral(fechaCursor);
+                        fechaCursor.setTime(next.getTime());
                         continue;
                     }
 
@@ -3793,15 +3812,12 @@ const server = http.createServer(async (req, res) => {
                     asignaciones.push({ paso_id: paso.id, estacion_id: estacionId, fecha: fechaStr, m2: m2Asignar });
                     m2Restante -= m2Asignar;
 
-                    if (m2Restante > 0) {
-                        // Aun queda m², retroceder al dia anterior laboral
-                        const prev = diaAnteriorLaboral(fechaActual);
-                        fechaActual.setTime(prev.getTime());
+                    if (m2Restante > 0.01) {
+                        // Aun queda m², pasar al siguiente dia laboral
+                        const next = diaSiguienteLaboral(fechaCursor);
+                        fechaCursor.setTime(next.getTime());
                     }
                 }
-                // Mover al dia anterior para la siguiente estacion
-                const prev = diaAnteriorLaboral(fechaActual);
-                fechaActual.setTime(prev.getTime());
             }
 
             // Todo valido: actualizar pasos y orden
@@ -3824,9 +3840,10 @@ const server = http.createServer(async (req, res) => {
                     }
                 }
             }
-            await query('UPDATE produccion_ordenes SET estado_programacion = $1, fecha_entrega_pactada = $2 WHERE id = $3', ['PROGRAMADO', fecha_entrega_propuesta, orden_id]);
+            const fechaFinal = fecha_entrega_propuesta || (asignaciones.length > 0 ? asignaciones.reduce((max, a) => a.fecha > max ? a.fecha : max, asignaciones[0].fecha) : null);
+            await query('UPDATE produccion_ordenes SET estado_programacion = $1, fecha_entrega_pactada = $2 WHERE id = $3', ['PROGRAMADO', fechaFinal, orden_id]);
 
-            json(res, { ok: true, mensaje: `Orden programada. Entrega: ${fecha_entrega_propuesta}`, asignaciones });
+            json(res, { ok: true, mensaje: `Orden programada${fechaFinal ? '. Entrega: ' + fechaFinal : ''}`, asignaciones });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
