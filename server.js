@@ -637,28 +637,31 @@ async function initDB() {
     }
 
     // Tabla calendario de produccion
-    await query(`CREATE TABLE IF NOT EXISTS calendario_produccion (
-        id SERIAL PRIMARY KEY,
-        fecha DATE UNIQUE NOT NULL,
-        es_laboral BOOLEAN DEFAULT TRUE,
-        motivo TEXT DEFAULT '',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    // Seed: domingos del año actual como no laborales
-    const calCount = await query('SELECT COUNT(*) as c FROM calendario_produccion');
-    if (Number(calCount.rows[0].c) === 0) {
-        const year = new Date().getFullYear();
-        for (let m = 0; m < 12; m++) {
-            for (let d = 1; d <= 31; d++) {
-                const dt = new Date(year, m, d);
-                if (dt.getFullYear() === year && dt.getDay() === 0) {
-                    const fs = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                    await query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, 'Domingo']);
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS calendario_produccion (
+            id SERIAL PRIMARY KEY,
+            fecha DATE UNIQUE NOT NULL,
+            es_laboral BOOLEAN DEFAULT TRUE,
+            motivo TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+        const calCount = await query('SELECT COUNT(*) as c FROM calendario_produccion');
+        if (Number(calCount.rows[0].c) === 0) {
+            const year = new Date().getFullYear();
+            const inserts = [];
+            for (let m = 0; m < 12; m++) {
+                for (let d = 1; d <= 31; d++) {
+                    const dt = new Date(year, m, d);
+                    if (dt.getFullYear() === year && dt.getDay() === 0) {
+                        const fs = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                        inserts.push(query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, 'Domingo']));
+                    }
                 }
             }
+            await Promise.all(inserts);
+            console.log('[PROD] Domingos del año marcados como no laborales (' + inserts.length + ' dias)');
         }
-        console.log('[PROD] Domingos del año marcados como no laborales');
-    }
+    } catch(calErr) { console.error('[PROD] Error calendario:', calErr.message); }
 
     // SEMILLA: Familias de producto por defecto
     const famCount = await query('SELECT COUNT(*) as c FROM familias_producto');
