@@ -361,7 +361,7 @@ const SIDEBAR_SECTIONS = {
     atencion: ['turnos_recepcion','turnos_bodega','turnos_qr'],
     ventas: ['pedidos'],
     produccion: ['prod_ordenes','prod_codigos','prod_maquinas','prod_recetas','prod_notas','prod_config','planificacion'],
-    instalaciones: ['instalaciones'],
+    instalaciones: ['instalaciones','inst_historial'],
     administracion: ['usuarios']
 };
 
@@ -451,6 +451,7 @@ function renderSidebar() {
         html += `<div class="nav-section" onclick="toggleSection('instalaciones')"><span>INSTALACIONES</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-instalaciones">`;
         if (canSeeItem('instalaciones','instalaciones')) html += navI('instalaciones', 'Instalaciones', '🔧');
+        if (canSeeItem('inst_historial','instalaciones')) html += navI('inst_historial', 'Historial', '📜');
         html += `</div>`;
     }
 

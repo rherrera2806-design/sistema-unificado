@@ -116,7 +116,8 @@ App.registerModule('usuarios', {
                 { key: 'planificacion', label: 'Planificacion' }
             ]},
             { key: 'instalaciones', label: 'INSTALACIONES', items: [
-                { key: 'instalaciones', label: 'Instalaciones' }
+                { key: 'instalaciones', label: 'Instalaciones' },
+                { key: 'inst_historial', label: 'Historial' }
             ]},
             { key: 'administracion', label: 'ADMINISTRACION', items: [
                 { key: 'usuarios', label: 'Usuarios' }
