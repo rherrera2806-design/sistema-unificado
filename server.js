@@ -652,14 +652,30 @@ async function initDB() {
             for (let m = 0; m < 12; m++) {
                 for (let d = 1; d <= 31; d++) {
                     const dt = new Date(year, m, d);
-                    if (dt.getFullYear() === year && dt.getDay() === 0) {
+                    if (dt.getFullYear() === year && (dt.getDay() === 0 || dt.getDay() === 6)) {
                         const fs = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                        inserts.push(query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, 'Domingo']));
+                        const motivo = dt.getDay() === 0 ? 'Domingo' : 'Sabado';
+                        inserts.push(query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, motivo]));
                     }
                 }
             }
             await Promise.all(inserts);
-            console.log('[PROD] Domingos del año marcados como no laborales (' + inserts.length + ' dias)');
+            console.log('[PROD] Sabados y domingos marcados como no laborales (' + inserts.length + ' dias)');
+        } else {
+            // Rellenar fines de semana faltantes del año actual
+            const year = new Date().getFullYear();
+            const inserts = [];
+            for (let m = 0; m < 12; m++) {
+                for (let d = 1; d <= 31; d++) {
+                    const dt = new Date(year, m, d);
+                    if (dt.getFullYear() === year && (dt.getDay() === 0 || dt.getDay() === 6)) {
+                        const fs = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                        const motivo = dt.getDay() === 0 ? 'Domingo' : 'Sabado';
+                        inserts.push(query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, motivo]));
+                    }
+                }
+            }
+            await Promise.all(inserts);
         }
     } catch(calErr) { console.error('[PROD] Error calendario:', calErr.message); }
 
@@ -3611,7 +3627,7 @@ const server = http.createServer(async (req, res) => {
                     const cap = Number(e.capacidad_max_m2_dia) || 100;
                     const datos = cargaMap[e.id + '|' + fs] || { m2: 0, ordenes: 0 };
                     const cal = calendarioMap[fs];
-                    const es_laboral = cal ? cal.es_laboral : (dt.getDay() !== 0);
+                    const es_laboral = cal ? cal.es_laboral : (dt.getDay() !== 0 && dt.getDay() !== 6);
                     const motivo = cal ? cal.motivo : '';
                     dias.push({ fecha: fs, m2: es_laboral ? datos.m2 : 0, ordenes: es_laboral ? datos.ordenes : 0, capacidad: cap, pct_ocupacion: es_laboral ? (cap > 0 ? Math.round((datos.m2 / cap) * 100) : 0) : 0, es_laboral: es_laboral, motivo: motivo });
                 }
@@ -3673,7 +3689,7 @@ const server = http.createServer(async (req, res) => {
             function esDiaLaboral(fechaStr) {
                 if (calendarioMap.hasOwnProperty(fechaStr)) return calendarioMap[fechaStr];
                 const d = new Date(fechaStr + 'T12:00:00');
-                return d.getDay() !== 0;
+                return d.getDay() !== 0 && d.getDay() !== 6;
             }
             function diaAnteriorLaboral(fecha) {
                 const d = new Date(fecha);

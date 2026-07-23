@@ -404,12 +404,11 @@ App.registerModule('prod_config', {
 
     async toggleDia(fecha) {
         const entry = this._calendario.find(c => c.fecha === fecha);
-        const esNoLaboral = entry ? !entry.es_laboral : true;
-        const motivo = esNoLaboral ? (prompt('Motivo (opcional):') || '') : '';
+        const actualEsLaboral = entry ? entry.es_laboral : true;
         await fetch('/api/produccion/calendario', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, es_laboral: !esNoLaboral, motivo })
+            body: JSON.stringify({ fecha, es_laboral: !actualEsLaboral, motivo: !actualEsLaboral ? '' : '' })
         });
         await this.loadCalendario();
     }
