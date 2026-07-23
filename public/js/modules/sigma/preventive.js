@@ -205,7 +205,7 @@ App.registerModule('preventive', {
                         componente_id: comp.id,
                         fecha_programada: dateStr,
                         estado: 'Programada',
-                        checklist: checklist
+                        checklist: ''
                     });
                     created++;
                 }

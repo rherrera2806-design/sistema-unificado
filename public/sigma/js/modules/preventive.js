@@ -220,14 +220,13 @@ App.registerModule('preventive', {
                     const comps = await db.getComponentsByType(maq.tipo_id).catch(() => []);
                     if (comps.length === 0) continue;
                     const comp = comps[Math.floor(Math.random() * comps.length)];
-                    const checklist = this.getDefaultChecklist(maq.tipo_id);
 
                     await db.insert('preventive_maintenance', {
                         maquina_id: maq.id,
                         componente_id: comp.id,
                         fecha_programada: dateStr,
                         estado: 'Programada',
-                        checklist: checklist
+                        checklist: ''
                     });
                     created++;
                 }
