@@ -141,15 +141,15 @@ App.registerModule('instalaciones', {
         App.showModal(`
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div class="form-group"><label>Cliente *</label><input class="form-control" id="instCliente" value="${inst ? escapeHtml(inst.cliente) : ''}" placeholder="Nombre del cliente" style="text-transform:uppercase"></div>
-                <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${inst ? escapeHtml(inst.tecnico) : ''}" placeholder="Nombre del tecnico"></div>
+                <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${inst ? escapeHtml(inst.tecnico) : ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize"></div>
             </div>
-            <div class="form-group"><label>Direccion *</label><input class="form-control" id="instDireccion" value="${inst ? escapeHtml(inst.direccion) : ''}" placeholder="Direccion de la instalacion"></div>
-            <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="instDescripcion" rows="2" placeholder="Detalle de vidrios o estructuras a instalar">${inst ? escapeHtml(inst.descripcion) : ''}</textarea></div>
+            <div class="form-group"><label>Direccion *</label><input class="form-control" id="instDireccion" value="${inst ? escapeHtml(inst.direccion) : ''}" placeholder="Direccion de la instalacion" style="text-transform:capitalize"></div>
+            <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="instDescripcion" rows="2" placeholder="Detalle de vidrios o estructuras a instalar" style="text-transform:capitalize">${inst ? escapeHtml(inst.descripcion) : ''}</textarea></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div class="form-group"><label>Fecha Programada *</label><input type="date" class="form-control" id="instFecha" value="${inst ? inst.fecha_programada.substring(0, 10) : hoy}"></div>
                 <div class="form-group"><label>Hora</label><input type="time" class="form-control" id="instHora" value="${inst ? inst.hora_programada : '09:00'}"></div>
             </div>
-            <div class="form-group"><label>Notas Previas</label><textarea class="form-control" id="instNotas" rows="2" placeholder="Notas o instrucciones previas">${inst ? escapeHtml(inst.notas_previas) : ''}</textarea></div>
+            <div class="form-group"><label>Notas Previas</label><textarea class="form-control" id="instNotas" rows="2" placeholder="Notas o instrucciones previas" style="text-transform:capitalize">${inst ? escapeHtml(inst.notas_previas) : ''}</textarea></div>
         `, { title: inst ? 'Editar Instalacion' : 'Nueva Instalacion' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
@@ -158,14 +158,15 @@ App.registerModule('instalaciones', {
     },
 
     async guardar(id) {
+        const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
         const data = {
             cliente: document.getElementById('instCliente').value.trim().toUpperCase(),
-            direccion: document.getElementById('instDireccion').value.trim(),
-            descripcion: document.getElementById('instDescripcion').value.trim(),
+            direccion: capitalize(document.getElementById('instDireccion').value.trim()),
+            descripcion: capitalize(document.getElementById('instDescripcion').value.trim()),
             fecha_programada: document.getElementById('instFecha').value,
             hora_programada: document.getElementById('instHora').value,
-            tecnico: document.getElementById('instTecnico').value.trim(),
-            notas_previas: document.getElementById('instNotas').value.trim()
+            tecnico: capitalize(document.getElementById('instTecnico').value.trim()),
+            notas_previas: capitalize(document.getElementById('instNotas').value.trim())
         };
         if (!data.cliente || !data.direccion || !data.fecha_programada) { App.showAlert('Cliente, direccion y fecha requeridos', 'danger'); return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
@@ -270,8 +271,8 @@ App.registerModule('instalaciones', {
 
     showCerrar(id) {
         App.showModal(`
-            <div class="form-group"><label>Notas de Cierre</label><textarea class="form-control" id="instCierreNotas" rows="3" placeholder="Observaciones finales de la instalacion"></textarea></div>
-            <div class="form-group"><label>Firma / Conformidad Cliente</label><input class="form-control" id="instCierreFirma" placeholder="Nombre de quien recibe"></div>
+            <div class="form-group"><label>Notas de Cierre</label><textarea class="form-control" id="instCierreNotas" rows="3" placeholder="Observaciones finales de la instalacion" style="text-transform:capitalize"></textarea></div>
+            <div class="form-group"><label>Firma / Conformidad Cliente</label><input class="form-control" id="instCierreFirma" placeholder="Nombre de quien recibe" style="text-transform:capitalize"></div>
         `, { title: 'Cerrar Instalacion #' + id });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
@@ -281,9 +282,10 @@ App.registerModule('instalaciones', {
 
     async cerrar(id) {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
         const data = {
-            notas_cierre: document.getElementById('instCierreNotas').value.trim(),
-            firma_cliente: document.getElementById('instCierreFirma').value.trim()
+            notas_cierre: capitalize(document.getElementById('instCierreNotas').value.trim()),
+            firma_cliente: capitalize(document.getElementById('instCierreFirma').value.trim())
         };
         try {
             await fetch(`/api/instalaciones/${id}/cerrar`, {
