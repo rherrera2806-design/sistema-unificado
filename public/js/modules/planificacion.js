@@ -85,6 +85,7 @@ App.modules.planificacion = {
                             <th style="padding:8px;text-align:left">Codigo</th>
                             <th style="padding:8px;text-align:left">Descripcion</th>
                             <th style="padding:8px;text-align:right">M2</th>
+                            <th style="padding:8px;text-align:right">Kilos</th>
                             <th style="padding:8px;text-align:center">Ruta</th>
                             <th style="padding:8px;text-align:center">Accion</th>
                         </tr></thead>
@@ -97,6 +98,7 @@ App.modules.planificacion = {
                                 <td style="padding:8px"><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
                                 <td style="padding:8px;font-size:12px;color:var(--text-light)">${escapeHtml(o.descripcion || o.nombre_mp || '-')}</td>
                                 <td style="padding:8px;text-align:right;font-weight:600">${Number(o.metros_cuadrados || 0).toFixed(2)}</td>
+                                <td style="padding:8px;text-align:right;font-weight:600">${Number(o.kilos || 0).toFixed(2)}</td>
                                 <td style="padding:8px;text-align:center">${progreso}</td>
                                 <td style="padding:8px;text-align:center"><button class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:12px" onclick="App.modules.planificacion.abrirModal(${o.id})">Asignar Fecha</button></td>
                             </tr>`;
@@ -199,6 +201,7 @@ App.modules.planificacion = {
                     <div><strong>Item:</strong> ${orden.item_numero}</div>
                     <div><strong>Codigo:</strong> ${orden.codigo_producto}</div>
                     <div><strong>M2:</strong> ${Number(orden.metros_cuadrados || 0).toFixed(2)}</div>
+                    <div><strong>Kilos:</strong> ${Number(orden.kilos || 0).toFixed(2)}</div>
                     <div><strong>Cliente:</strong> ${escapeHtml(orden.cliente || '-')}</div>
                     <div><strong>Ruta:</strong> ${orden.total_pasos} estaciones</div>
                 </div>

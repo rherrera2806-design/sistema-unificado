@@ -602,6 +602,7 @@ async function initDB() {
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS posicion VARCHAR(100)`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS orden_compra VARCHAR(50)`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_entrega VARCHAR(20) DEFAULT 'Despacho'`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS kilos DECIMAL(10,2) DEFAULT 0`);
 
     // Columnas para planificacion
     await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS capacidad_max_m2_dia DECIMAL(10,2) DEFAULT 100`);
@@ -3747,76 +3748,81 @@ const server = http.createServer(async (req, res) => {
                 return d;
             }
 
-            // Backwards scheduling: empezar desde la fecha de entrega y retroceder 1 dia por estacion
+            // Backwards scheduling: empezar desde la fecha de entrega y retroceder
             const fechaActual = new Date(fechaEntrega);
-            // Si la entrega cae en dia no laboral, retroceder al anterior laboral
             const fechaActualStr = fechaActual.getFullYear() + '-' + String(fechaActual.getMonth()+1).padStart(2,'0') + '-' + String(fechaActual.getDate()).padStart(2,'0');
             if (!esDiaLaboral(fechaActualStr)) {
                 const prev = diaAnteriorLaboral(fechaActual);
                 fechaActual.setTime(prev.getTime());
             }
             const asignaciones = [];
-            const conflictos = [];
 
             for (let i = pasos.length - 1; i >= 0; i--) {
                 const paso = pasos[i];
                 const estacionId = paso.estacion_id;
-                const fsY = fechaActual.getFullYear();
-                const fsM = String(fechaActual.getMonth() + 1).padStart(2, '0');
-                const fsD = String(fechaActual.getDate()).padStart(2, '0');
-                const fechaStr = fsY + '-' + fsM + '-' + fsD;
+                let m2Restante = m2;
 
-                // Validar capacidad en esa fecha
-                const cargaRes = await query(`
-                    SELECT COALESCE(SUM(o.metros_cuadrados), 0) as m2_ocupados
-                    FROM cola_produccion_pasos p
-                    JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
-                    WHERE p.estacion_id = $1 AND p.fecha_programada = $2
-                    AND p.estado != 'MERMADO' AND p.orden_produccion_id != $3
-                `, [estacionId, fechaStr, orden_id]);
-                const m2Ocupados = Number(cargaRes.rows[0].m2_ocupados);
+                while (m2Restante > 0) {
+                    const fsY = fechaActual.getFullYear();
+                    const fsM = String(fechaActual.getMonth() + 1).padStart(2, '0');
+                    const fsD = String(fechaActual.getDate()).padStart(2, '0');
+                    const fechaStr = fsY + '-' + fsM + '-' + fsD;
 
-                const capRes = await query('SELECT capacidad_max_m2_dia FROM estaciones_maestras WHERE id = $1', [estacionId]);
-                const capacidad = Number(capRes.rows[0]?.capacidad_max_m2_dia) || 100;
-                const disponible = capacidad - m2Ocupados;
+                    // Consultar capacidad ocupada en esa fecha
+                    const cargaRes = await query(`
+                        SELECT COALESCE(SUM(o.metros_cuadrados), 0) as m2_ocupados
+                        FROM cola_produccion_pasos p
+                        JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                        WHERE p.estacion_id = $1 AND p.fecha_programada = $2
+                        AND p.estado != 'MERMADO' AND p.orden_produccion_id != $3
+                    `, [estacionId, fechaStr, orden_id]);
+                    const m2Ocupados = Number(cargaRes.rows[0].m2_ocupados);
 
-                if (disponible < m2) {
-                    conflictos.push({
-                        estacion_id: estacionId,
-                        fecha: fechaStr,
-                        m2_necesarios: m2,
-                        m2_disponibles: Math.max(0, disponible),
-                        capacidad,
-                        m2_ocupados: m2Ocupados
-                    });
+                    const capRes = await query('SELECT capacidad_max_m2_dia FROM estaciones_maestras WHERE id = $1', [estacionId]);
+                    const capacidad = Number(capRes.rows[0]?.capacidad_max_m2_dia) || 100;
+                    const disponible = Math.max(0, capacidad - m2Ocupados);
+
+                    if (disponible <= 0) {
+                        // Dia lleno, retroceder al anterior laboral
+                        const prev = diaAnteriorLaboral(fechaActual);
+                        fechaActual.setTime(prev.getTime());
+                        continue;
+                    }
+
+                    const m2Asignar = Math.min(m2Restante, disponible);
+                    asignaciones.push({ paso_id: paso.id, estacion_id: estacionId, fecha: fechaStr, m2: m2Asignar });
+                    m2Restante -= m2Asignar;
+
+                    if (m2Restante > 0) {
+                        // Aun queda m², retroceder al dia anterior laboral
+                        const prev = diaAnteriorLaboral(fechaActual);
+                        fechaActual.setTime(prev.getTime());
+                    }
                 }
-
-                asignaciones.push({ paso_id: paso.id, estacion_id: estacionId, fecha: fechaStr, m2 });
-                // Retroceder al dia laboral anterior
+                // Mover al dia anterior para la siguiente estacion
                 const prev = diaAnteriorLaboral(fechaActual);
                 fechaActual.setTime(prev.getTime());
             }
 
-            if (conflictos.length > 0) {
-                const primero = conflictos[0];
-                const estNombre = (await query('SELECT nombre_estacion FROM estaciones_maestras WHERE id = $1', [primero.estacion_id])).rows[0]?.nombre_estacion || 'Desconocida';
-                json(res, {
-                    error: `Estacion saturada: ${estNombre} el ${primero.fecha}. Disponibles: ${Number(primero.m2_disponibles).toFixed(2)} m², necesarios: ${primero.m2_necesarios} m²`,
-                    conflictos: conflictos.map(c => ({
-                        estacion_id: c.estacion_id,
-                        fecha: c.fecha,
-                        capacidad: c.capacidad,
-                        ocupados: c.m2_ocupados,
-                        disponibles: c.m2_disponibles,
-                        necesarios: c.m2_necesarios
-                    }))
-                }, 400);
-                return;
-            }
-
             // Todo valido: actualizar pasos y orden
+            // Actualizar pasos: primero actualiza el existente, luego crea nuevos para splits
+            const pasosActualizados = new Set();
             for (const a of asignaciones) {
-                await query('UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE id = $3', [a.fecha, a.m2, a.paso_id]);
+                if (!pasosActualizados.has(a.paso_id)) {
+                    // Primer asignacion para este paso: actualizar el existente
+                    await query('UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE id = $3', [a.fecha, a.m2, a.paso_id]);
+                    pasosActualizados.add(a.paso_id);
+                } else {
+                    // Paso adicional (split): crear nuevo registro
+                    const pasoOrig = await query('SELECT * FROM cola_produccion_pasos WHERE id = $1', [a.paso_id]);
+                    if (pasoOrig.rows.length > 0) {
+                        const p = pasoOrig.rows[0];
+                        await query(
+                            'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_nombre, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+                            [p.orden_produccion_id, p.estacion_nombre, a.estacion_id, p.orden_secuencia, 'PENDIENTE', a.fecha, a.m2]
+                        );
+                    }
+                }
             }
             await query('UPDATE produccion_ordenes SET estado_programacion = $1, fecha_entrega_pactada = $2 WHERE id = $3', ['PROGRAMADO', fecha_entrega_propuesta, orden_id]);
 
