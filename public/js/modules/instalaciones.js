@@ -33,6 +33,7 @@ App.registerModule('instalaciones', {
             <div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px"></div>
             <div id="instCalendario"></div>
             <div id="instDetalle" style="display:none"></div>
+            <div id="instHistorial" style="margin-top:24px"></div>
         `;
         await this.loadData();
     },
@@ -41,10 +42,15 @@ App.registerModule('instalaciones', {
         const inicio = this.fmtDate(this.calInicio);
         const fin = this.fmtDate(this.calFin);
         try {
-            const res = await fetch(`/api/instalaciones/calendario?inicio=${inicio}&fin=${fin}`);
-            this.instalaciones = await res.json();
+            const [calRes, allRes] = await Promise.all([
+                fetch(`/api/instalaciones/calendario?inicio=${inicio}&fin=${fin}`),
+                fetch('/api/instalaciones')
+            ]);
+            this.instalaciones = await calRes.json();
+            this.todasInstalaciones = await allRes.json();
             this.renderStats();
             this.renderCalendario();
+            this.renderHistorial();
         } catch(e) { console.error('Error cargando instalaciones:', e); }
     },
 
@@ -127,6 +133,89 @@ App.registerModule('instalaciones', {
         }
         html += `</div></div></div>`;
         div.innerHTML = html;
+    },
+
+    renderHistorial() {
+        const div = document.getElementById('instHistorial');
+        if (!div || !this.todasInstalaciones || this.todasInstalaciones.length === 0) { if (div) div.innerHTML = ''; return; }
+        const estadoColor = { 'PROGRAMADA': '#3b82f6', 'EN_CAMINO': '#f59e0b', 'EN_CURSO': '#f59e0b', 'COMPLETADA': '#22c55e', 'CON_NOVEDADES': '#ef4444', 'CANCELADA': '#94a3b8' };
+        const estadoIcon = { 'PROGRAMADA': '📅', 'EN_CAMINO': '🚗', 'EN_CURSO': '⚙', 'COMPLETADA': '✓', 'CON_NOVEDADES': '⚠', 'CANCELADA': '✕' };
+        let html = `
+            <div class="card">
+                <div class="card-header" style="justify-content:space-between">
+                    <h3 style="margin:0">Historial de Instalaciones (${this.todasInstalaciones.length})</h3>
+                    <div style="display:flex;gap:8px">
+                        <input type="text" id="instHistSearch" placeholder="Buscar cliente, direccion..." oninput="App.modules.instalaciones.filtrarHistorial()" class="form-control" style="width:250px;font-size:13px">
+                        <select id="instHistEstado" onchange="App.modules.instalaciones.filtrarHistorial()" class="form-control" style="width:140px;font-size:13px">
+                            <option value="todos">Todos</option>
+                            <option value="PROGRAMADA">Programadas</option>
+                            <option value="EN_CAMINO">En Camino</option>
+                            <option value="EN_CURSO">En Curso</option>
+                            <option value="COMPLETADA">Completadas</option>
+                            <option value="CON_NOVEDADES">Novedades</option>
+                            <option value="CANCELADA">Canceladas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body" style="padding:0;overflow-x:auto">
+                    <table style="width:100%;font-size:13px">
+                        <thead><tr style="border-bottom:2px solid var(--border)">
+                            <th style="padding:10px 12px;text-align:left">Fecha</th>
+                            <th style="padding:10px 12px;text-align:left">Cliente</th>
+                            <th style="padding:10px 12px;text-align:left">Direccion</th>
+                            <th style="padding:10px 12px;text-align:left">Tecnico</th>
+                            <th style="padding:10px 12px;text-align:center">Estado</th>
+                            <th style="padding:10px 12px;text-align:center">Accion</th>
+                        </tr></thead>
+                        <tbody id="instHistBody">
+        `;
+        for (const inst of this.todasInstalaciones) {
+            const color = estadoColor[inst.estado] || '#3b82f6';
+            const icon = estadoIcon[inst.estado] || '📅';
+            const fecha = inst.fecha_programada ? inst.fecha_programada.substring(0, 10) : '-';
+            html += `
+                <tr style="border-bottom:1px solid var(--border)">
+                    <td style="padding:10px 12px"><strong>${fecha}</strong> ${inst.hora_programada || ''}</td>
+                    <td style="padding:10px 12px">${escapeHtml(inst.cliente)}</td>
+                    <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${escapeHtml(inst.direccion)}</td>
+                    <td style="padding:10px 12px">${escapeHtml(inst.tecnico || '-')}</td>
+                    <td style="padding:10px 12px;text-align:center"><span style="background:${color};color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600">${icon} ${inst.estado}</span></td>
+                    <td style="padding:10px 12px;text-align:center"><button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.verDetalle(${inst.id})">Ver</button></td>
+                </tr>
+            `;
+        }
+        html += `</tbody></table></div></div>`;
+        div.innerHTML = html;
+    },
+
+    filtrarHistorial() {
+        const search = (document.getElementById('instHistSearch')?.value || '').toLowerCase();
+        const estado = document.getElementById('instHistEstado')?.value || 'todos';
+        let filtered = this.todasInstalaciones || [];
+        if (search) filtered = filtered.filter(i => 
+            (i.cliente || '').toLowerCase().includes(search) || 
+            (i.direccion || '').toLowerCase().includes(search) || 
+            (i.tecnico || '').toLowerCase().includes(search)
+        );
+        if (estado !== 'todos') filtered = filtered.filter(i => i.estado === estado);
+        const tbody = document.getElementById('instHistBody');
+        if (!tbody) return;
+        const estadoColor = { 'PROGRAMADA': '#3b82f6', 'EN_CAMINO': '#f59e0b', 'EN_CURSO': '#f59e0b', 'COMPLETADA': '#22c55e', 'CON_NOVEDADES': '#ef4444', 'CANCELADA': '#94a3b8' };
+        const estadoIcon = { 'PROGRAMADA': '📅', 'EN_CAMINO': '🚗', 'EN_CURSO': '⚙', 'COMPLETADA': '✓', 'CON_NOVEDADES': '⚠', 'CANCELADA': '✕' };
+        if (filtered.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-light)">No hay instalaciones</td></tr>'; return; }
+        tbody.innerHTML = filtered.map(inst => {
+            const color = estadoColor[inst.estado] || '#3b82f6';
+            const icon = estadoIcon[inst.estado] || '📅';
+            const fecha = inst.fecha_programada ? inst.fecha_programada.substring(0, 10) : '-';
+            return `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 12px"><strong>${fecha}</strong> ${inst.hora_programada || ''}</td>
+                <td style="padding:10px 12px">${escapeHtml(inst.cliente)}</td>
+                <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${escapeHtml(inst.direccion)}</td>
+                <td style="padding:10px 12px">${escapeHtml(inst.tecnico || '-')}</td>
+                <td style="padding:10px 12px;text-align:center"><span style="background:${color};color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600">${icon} ${inst.estado}</span></td>
+                <td style="padding:10px 12px;text-align:center"><button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.verDetalle(${inst.id})">Ver</button></td>
+            </tr>`;
+        }).join('');
     },
 
     cambiarSemana(dir) {
