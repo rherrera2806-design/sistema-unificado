@@ -352,8 +352,10 @@ App.registerModule('prod_config', {
         const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const diasLaborales = this._calendario.filter(c => c.es_laboral).map(c => c.fecha);
-        const diasNoLaborales = this._calendario.filter(c => !c.es_laboral).map(c => c.fecha);
+        const noLabSet = new Set();
+        for (const c of this._calendario) {
+            if (!c.es_laboral) noLabSet.add(c.fecha.substring(0, 10));
+        }
         const startOffset = firstDay === 0 ? 6 : firstDay - 1;
         let html = `
             <div class="card">
@@ -369,7 +371,7 @@ App.registerModule('prod_config', {
                     <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--text-light)">
                         <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dcfce7;vertical-align:middle"></span> Laboral</span>
                         <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fee2e2;vertical-align:middle"></span> No Laboral</span>
-                        <span style="margin-left:auto"><strong>${diasNoLaborales.length}</strong> días bloqueados este mes</span>
+                        <span style="margin-left:auto"><strong id="calBloqueados">0</strong> días bloqueados este mes</span>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center">
                         <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Lun</div>
@@ -382,8 +384,8 @@ App.registerModule('prod_config', {
         for (let i = 0; i < startOffset; i++) html += '<div></div>';
         for (let d = 1; d <= daysInMonth; d++) {
             const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-            const esNoLaboral = diasNoLaborales.includes(fs);
-            const calEntry = this._calendario.find(c => c.fecha === fs);
+            const esNoLaboral = noLabSet.has(fs);
+            const calEntry = this._calendario.find(c => c.fecha && c.fecha.substring(0, 10) === fs);
             const motivo = calEntry ? calEntry.motivo : '';
             const bgColor = esNoLaboral ? '#fee2e2' : '#dcfce7';
             const borderColor = esNoLaboral ? '#ef4444' : '#22c55e';
@@ -393,6 +395,13 @@ App.registerModule('prod_config', {
         }
         html += `</div></div></div>`;
         container.innerHTML = html;
+        let countNoLab = 0;
+        for (let d = 1; d <= daysInMonth; d++) {
+            const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            if (noLabSet.has(fs)) countNoLab++;
+        }
+        const el = document.getElementById('calBloqueados');
+        if (el) el.textContent = countNoLab;
     },
 
     calCambiar(dir) {
