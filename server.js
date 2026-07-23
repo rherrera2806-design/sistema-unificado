@@ -585,6 +585,10 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     await query(`CREATE INDEX IF NOT EXISTS idx_cola_pasos_orden ON cola_produccion_pasos(orden_produccion_id)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_cola_pasos_estacion_fecha ON cola_produccion_pasos(estacion_id, fecha_programada) WHERE fecha_programada IS NOT NULL`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON produccion_ordenes(estado_programacion, created_at DESC)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_ordenes_pedido ON produccion_ordenes(pedido_sap_id, item_numero, codigo_producto)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_fam_estaciones_estacion ON familia_estaciones_base(estacion_id)`);
 
     // Columnas nuevas en produccion_ordenes para costos
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id)`);
@@ -3662,7 +3666,7 @@ const server = http.createServer(async (req, res) => {
             const estaciones = estRes.rows || [];
             const cargaMap = {};
             try {
-                const cargaRes = await query('SELECT p.estacion_id, to_char(p.fecha_programada, \'YYYY-MM-DD\') as fs, SUM(o.metros_cuadrados) as m2, COUNT(*) as oc FROM cola_produccion_pasos p JOIN produccion_ordenes o ON p.orden_produccion_id = o.id WHERE p.fecha_programada >= $1::date AND p.fecha_programada <= $2::date AND p.estado <> \'MERMADO\' GROUP BY p.estacion_id, p.fecha_programada', [inicio, fin]);
+                const cargaRes = await query('SELECT p.estacion_id, to_char(p.fecha_programada, \'YYYY-MM-DD\') as fs, COALESCE(SUM(p.m2_asignados), 0) as m2, COUNT(*) as oc FROM cola_produccion_pasos p WHERE p.fecha_programada >= $1::date AND p.fecha_programada <= $2::date AND p.estado <> \'MERMADO\' GROUP BY p.estacion_id, p.fecha_programada', [inicio, fin]);
                 for (const r of cargaRes.rows) { cargaMap[r.estacion_id + '|' + r.fs] = { m2: Number(r.m2), ordenes: Number(r.oc) }; }
             } catch(innerErr) { console.error('carga query err:', innerErr.message); }
             // Cargar calendario de produccion
@@ -3758,7 +3762,7 @@ const server = http.createServer(async (req, res) => {
             // Para cada estacion (en orden), buscar el primer dia con capacidad disponible
             const fechaInicio = new Date();
             fechaInicio.setHours(0, 0, 0, 0);
-            if (!esDiaLaboral(this.fmtDateLocal(fechaInicio))) {
+            if (!esDiaLaboral(fmtDateLocal(fechaInicio))) {
                 const next = diaSiguienteLaboral(fechaInicio);
                 fechaInicio.setTime(next.getTime());
             }
@@ -3792,9 +3796,8 @@ const server = http.createServer(async (req, res) => {
 
                     // Consultar capacidad ocupada en esa fecha para esta estacion
                     const cargaRes = await query(`
-                        SELECT COALESCE(SUM(o.metros_cuadrados), 0) as m2_ocupados
+                        SELECT COALESCE(SUM(p.m2_asignados), 0) as m2_ocupados
                         FROM cola_produccion_pasos p
-                        JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
                         WHERE p.estacion_id = $1 AND p.fecha_programada = $2
                         AND p.estado != 'MERMADO' AND p.orden_produccion_id != $3
                     `, [estacionId, fechaStr, orden_id]);
@@ -3834,10 +3837,12 @@ const server = http.createServer(async (req, res) => {
                     if (pasoOrig.rows.length > 0) {
                         const p = pasoOrig.rows[0];
                         await query(
-                            'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_nombre, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-                            [p.orden_produccion_id, p.estacion_nombre, a.estacion_id, p.orden_secuencia, 'PENDIENTE', a.fecha, a.m2]
+                            'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+                            [p.orden_produccion_id, a.estacion_id, p.orden_secuencia, 'PENDIENTE', a.fecha, a.m2]
                         );
                     }
+                }
+            }
                 }
             }
             const fechaFinal = fecha_entrega_propuesta || (asignaciones.length > 0 ? asignaciones.reduce((max, a) => a.fecha > max ? a.fecha : max, asignaciones[0].fecha) : null);
