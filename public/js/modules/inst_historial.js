@@ -74,7 +74,7 @@ App.registerModule('inst_historial', {
                 <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${escapeHtml(inst.direccion)}</td>
                 <td style="padding:10px 12px">${escapeHtml(inst.tecnico || '-')}</td>
                 <td style="padding:10px 12px;text-align:center"><span style="background:${color};color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600">${icon} ${inst.estado}</span></td>
-                <td style="padding:10px 12px;text-align:center"><button class="btn btn-sm btn-outline" onclick="App.loadModule('instalaciones');setTimeout(()=>App.modules.instalaciones.verDetalle(${inst.id}),300)">Ver</button></td>
+                <td style="padding:10px 12px;text-align:center"><button class="btn btn-sm btn-outline" onclick="App.modules.inst_detalle.abrir(${inst.id})">Ver</button></td>
             </tr>`;
         }).join('');
     },

@@ -369,7 +369,7 @@ const SIDEBAR_SECTIONS = {
     atencion: ['turnos_recepcion','turnos_bodega','turnos_qr'],
     ventas: ['pedidos'],
     produccion: ['prod_ordenes','prod_codigos','prod_maquinas','prod_recetas','prod_notas','prod_config','planificacion'],
-    instalaciones: ['instalaciones','inst_historial'],
+    instalaciones: ['instalaciones','inst_detalle','inst_historial'],
     administracion: ['usuarios']
 };
 
