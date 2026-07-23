@@ -645,37 +645,16 @@ async function initDB() {
             motivo TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
-        const calCount = await query('SELECT COUNT(*) as c FROM calendario_produccion');
-        if (Number(calCount.rows[0].c) === 0) {
-            const year = new Date().getFullYear();
-            const inserts = [];
-            for (let m = 0; m < 12; m++) {
-                for (let d = 1; d <= 31; d++) {
-                    const dt = new Date(year, m, d);
-                    if (dt.getFullYear() === year && (dt.getDay() === 0 || dt.getDay() === 6)) {
-                        const fs = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                        const motivo = dt.getDay() === 0 ? 'Domingo' : 'Sabado';
-                        inserts.push(query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, motivo]));
-                    }
+        const year = new Date().getFullYear();
+        for (let m = 0; m < 12; m++) {
+            for (let d = 1; d <= 31; d++) {
+                const dt = new Date(year, m, d);
+                if (dt.getFullYear() === year && (dt.getDay() === 0 || dt.getDay() === 6)) {
+                    const fs = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                    const motivo = dt.getDay() === 0 ? 'Domingo' : 'Sabado';
+                    await query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, motivo]);
                 }
             }
-            await Promise.all(inserts);
-            console.log('[PROD] Sabados y domingos marcados como no laborales (' + inserts.length + ' dias)');
-        } else {
-            // Rellenar fines de semana faltantes del año actual
-            const year = new Date().getFullYear();
-            const inserts = [];
-            for (let m = 0; m < 12; m++) {
-                for (let d = 1; d <= 31; d++) {
-                    const dt = new Date(year, m, d);
-                    if (dt.getFullYear() === year && (dt.getDay() === 0 || dt.getDay() === 6)) {
-                        const fs = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-                        const motivo = dt.getDay() === 0 ? 'Domingo' : 'Sabado';
-                        inserts.push(query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, motivo]));
-                    }
-                }
-            }
-            await Promise.all(inserts);
         }
     } catch(calErr) { console.error('[PROD] Error calendario:', calErr.message); }
 
