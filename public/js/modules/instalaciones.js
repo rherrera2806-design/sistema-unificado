@@ -210,7 +210,8 @@ App.registerModule('instalaciones', {
                             ${inst.estado === 'PROGRAMADA' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.instalaciones.cambiarEstado(${id},'EN_CAMINO')">🚗 En Camino</button>` : ''}
                             ${inst.estado === 'EN_CAMINO' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.instalaciones.cambiarEstado(${id},'EN_CURSO')">⚙ En Curso</button>` : ''}
                             ${inst.estado === 'EN_CURSO' ? `<button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="App.modules.instalaciones.showCerrar(${id})">✓ Completar</button>` : ''}
-                            ${inst.estado === 'EN_CURSO' ? `<button class="btn btn-sm" style="background:#ef4444;color:#fff" onclick="App.modules.instalaciones.cambiarEstado(${id},'CON_NOVEDADES')">⚠ Novedad</button>` : ''}
+                            ${inst.estado === 'EN_CURSO' ? `<button class="btn btn-sm" style="background:#ef4444;color:#fff" onclick="App.modules.instalaciones.showNovedad(${id})">⚠ Novedad</button>` : ''}
+                            ${inst.estado === 'CON_NOVEDADES' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.instalaciones.cambiarEstado(${id},'EN_CURSO')">↩ Reanudar</button>` : ''}
                             <button class="btn btn-sm btn-outline" onclick="document.getElementById('instDetalle').style.display='none'">✕ Cerrar</button>
                         </div>
                     </div>
@@ -278,6 +279,43 @@ App.registerModule('instalaciones', {
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.instalaciones.cerrar(${id})">Completar Instalacion</button>
         `;
+    },
+
+    showNovedad(id) {
+        App.showModal(`
+            <div class="form-group"><label>Descripcion de la Novedad *</label><textarea class="form-control" id="instNovedadDesc" rows="4" placeholder="Describe que sucedio: material dañado, falta de insumos, problema en terreno, etc." style="text-transform:capitalize"></textarea></div>
+            <div class="form-group"><label>Fotos de la Novedad (opcional)</label><input type="file" id="instNovedadFotos" accept="image/*" multiple style="font-size:13px"></div>
+        `, { title: 'Registrar Novedad #' + id });
+        document.querySelector('#modalOverlay .modal-footer').innerHTML = `
+            <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
+            <button class="btn btn-danger" onclick="App.modules.instalaciones.registrarNovedad(${id})">Registrar Novedad</button>
+        `;
+    },
+
+    async registrarNovedad(id) {
+        const desc = document.getElementById('instNovedadDesc').value.trim();
+        if (!desc) { App.showAlert('Describe la novedad', 'danger'); return; }
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const headers = { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' };
+        try {
+            await fetch(`/api/instalaciones/${id}/estado`, {
+                method: 'PUT', headers,
+                body: JSON.stringify({ estado: 'CON_NOVEDADES', detalle: desc })
+            });
+            const fotosInput = document.getElementById('instNovedadFotos');
+            if (fotosInput && fotosInput.files.length > 0) {
+                const fotos = [];
+                for (const file of fotosInput.files) {
+                    const base64 = await new Promise(r => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.readAsDataURL(file); });
+                    fotos.push({ base64, descripcion: '[Novedad] ' + file.name });
+                }
+                await fetch(`/api/instalaciones/${id}/fotos`, { method: 'POST', headers, body: JSON.stringify({ fotos }) });
+            }
+            App.hideModal();
+            App.showAlert('Novedad registrada');
+            await this.loadData();
+            await this.verDetalle(id);
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     async cerrar(id) {

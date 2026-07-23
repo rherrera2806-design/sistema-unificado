@@ -3964,13 +3964,14 @@ const server = http.createServer(async (req, res) => {
     if (instEstadoMatch && req.method === 'PUT') {
         const id = parseInt(instEstadoMatch[1]);
         const body = await parseBody(req);
-        const { estado } = body;
+        const { estado, detalle } = body;
         const userEmail = req.headers['x-user-email'] || 'Sistema';
         const estadosValidos = ['PROGRAMADA', 'EN_CAMINO', 'EN_CURSO', 'COMPLETADA', 'CON_NOVEDADES', 'CANCELADA'];
         if (!estadosValidos.includes(estado)) { json(res, { error: 'Estado inválido' }, 400); return; }
         try {
             await query('UPDATE instalaciones SET estado=$1 WHERE id=$2', [estado, id]);
-            await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [id, 'CAMBIO_ESTADO', 'Estado cambiado a: ' + estado, userEmail]);
+            const histDetalle = detalle ? 'Novedad: ' + detalle : 'Estado cambiado a: ' + estado;
+            await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [id, estado === 'CON_NOVEDADES' ? 'NOVEDAD' : 'CAMBIO_ESTADO', histDetalle, userEmail]);
             json(res, { ok: true });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
