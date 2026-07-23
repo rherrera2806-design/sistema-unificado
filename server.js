@@ -3843,8 +3843,6 @@ const server = http.createServer(async (req, res) => {
                     }
                 }
             }
-                }
-            }
             const fechaFinal = fecha_entrega_propuesta || (asignaciones.length > 0 ? asignaciones.reduce((max, a) => a.fecha > max ? a.fecha : max, asignaciones[0].fecha) : null);
             await query('UPDATE produccion_ordenes SET estado_programacion = $1, fecha_entrega_pactada = $2 WHERE id = $3', ['PROGRAMADO', fechaFinal, orden_id]);
 
