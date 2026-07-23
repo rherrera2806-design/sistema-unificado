@@ -4,18 +4,22 @@ App.registerModule('prod_config', {
     _familias: [],
     _materias: [],
     _reglas: [],
+    _calendario: [],
+    _calMonth: new Date().getMonth(),
+    _calYear: new Date().getFullYear(),
 
     async render() {
         const el = document.getElementById('page-prod_config');
         el.innerHTML = `
             <div class="page-header">
-                <div><h2>Configuracion de Produccion</h2><div class="subtitle">Estaciones, Familias, Materias Primas y Reglas</div></div>
+                <div><h2>Configuracion de Produccion</h2><div class="subtitle">Estaciones, Familias, Materias Primas, Reglas y Calendario</div></div>
             </div>
             <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0">
                 <button class="btn btn-sm ${this._tab==='estaciones'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('estaciones')">⚙️ Estaciones</button>
                 <button class="btn btn-sm ${this._tab==='familias'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('familias')">📦 Familias</button>
                 <button class="btn btn-sm ${this._tab==='materias'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('materias')">🪟 Materias Primas</button>
                 <button class="btn btn-sm ${this._tab==='reglas'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('reglas')">🏷️ Reglas Extras</button>
+                <button class="btn btn-sm ${this._tab==='calendario'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('calendario')">📅 Calendario</button>
             </div>
             <div id="prodConfigContent"></div>
         `;
@@ -35,6 +39,7 @@ App.registerModule('prod_config', {
             case 'familias': await this.loadFamilias(); break;
             case 'materias': await this.loadMaterias(); break;
             case 'reglas': await this.loadReglas(); break;
+            case 'calendario': await this.loadCalendario(); break;
         }
     },
 
@@ -52,10 +57,11 @@ App.registerModule('prod_config', {
                     <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showEstacionForm()">+ Nueva Estacion</button>
                 </div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr><th>Orden</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <table><thead><tr><th>Orden</th><th>Nombre</th><th>Cap. Max m²/día</th><th>Estado</th><th>Acciones</th></tr></thead>
                     <tbody>${this._estaciones.map(e => `<tr>
                         <td><strong style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px">${e.orden_secuencia_defecto}</strong></td>
                         <td>${escapeHtml(e.nombre_estacion)}</td>
+                        <td><strong>${Number(e.capacidad_max_m2_dia || 100).toFixed(0)}</strong> m²</td>
                         <td>${e.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
                         <td class="table-actions">
                             <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showEstacionForm(${e.id})">✏️</button>
@@ -71,6 +77,7 @@ App.registerModule('prod_config', {
         App.showModal(`
             <div class="form-group"><label>Nombre de Estacion *</label><input class="form-control" id="estNombre" value="${est ? est.nombre_estacion : ''}" placeholder="Ej: Corte, Pulido, Templado..."></div>
             <div class="form-group"><label>Orden de Secuencia *</label><input type="number" class="form-control" id="estOrden" value="${est ? est.orden_secuencia_defecto : (this._estaciones.length + 1)}" min="1"></div>
+            <div class="form-group"><label>Capacidad Maxima (m²/dia) *</label><input type="number" class="form-control" id="estCapacidad" value="${est ? (est.capacidad_max_m2_dia || 100) : 100}" min="1" step="0.01"></div>
             <div class="form-group"><label><input type="checkbox" id="estActiva" ${!est || est.activa ? 'checked' : ''}> Activa</label></div>
         `, { title: est ? 'Editar Estacion' : 'Nueva Estacion' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
@@ -82,6 +89,7 @@ App.registerModule('prod_config', {
         const data = {
             nombre_estacion: document.getElementById('estNombre').value.trim(),
             orden_secuencia_defecto: parseInt(document.getElementById('estOrden').value),
+            capacidad_max_m2_dia: parseFloat(document.getElementById('estCapacidad').value) || 100,
             activa: document.getElementById('estActiva').checked
         };
         if (!data.nombre_estacion || !data.orden_secuencia_defecto) { App.showAlert('Nombre y orden requeridos', 'danger'); return; }
@@ -325,5 +333,84 @@ App.registerModule('prod_config', {
         await fetch(`/api/produccion/reglas-extras/${id}`, { method:'DELETE' });
         App.showAlert('Regla eliminada');
         this.loadReglas();
+    },
+
+    // ═══════════════════════════════════════════
+    // CALENDARIO DE PRODUCCION
+    // ═══════════════════════════════════════════
+
+    async loadCalendario() {
+        const res = await fetch('/api/produccion/calendario');
+        this._calendario = await res.json();
+        this.renderCalendario();
+    },
+
+    renderCalendario() {
+        const container = document.getElementById('prodConfigContent');
+        const year = this._calYear;
+        const month = this._calMonth;
+        const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const diasLaborales = this._calendario.filter(c => c.es_laboral).map(c => c.fecha);
+        const diasNoLaborales = this._calendario.filter(c => !c.es_laboral).map(c => c.fecha);
+        const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+        let html = `
+            <div class="card">
+                <div class="card-header" style="justify-content:space-between">
+                    <h3 style="margin:0">Calendario de Produccion</h3>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(-1)">◀</button>
+                        <strong>${monthNames[month]} ${year}</strong>
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(1)">▶</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--text-light)">
+                        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dcfce7;vertical-align:middle"></span> Laboral</span>
+                        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fee2e2;vertical-align:middle"></span> No Laboral</span>
+                        <span style="margin-left:auto"><strong>${diasNoLaborales.length}</strong> días bloqueados este mes</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center">
+                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Lun</div>
+                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Mar</div>
+                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Mie</div>
+                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Jue</div>
+                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Vie</div>
+                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Sab</div>
+                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Dom</div>`;
+        for (let i = 0; i < startOffset; i++) html += '<div></div>';
+        for (let d = 1; d <= daysInMonth; d++) {
+            const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            const esNoLaboral = diasNoLaborales.includes(fs);
+            const calEntry = this._calendario.find(c => c.fecha === fs);
+            const motivo = calEntry ? calEntry.motivo : '';
+            const bgColor = esNoLaboral ? '#fee2e2' : '#dcfce7';
+            const borderColor = esNoLaboral ? '#ef4444' : '#22c55e';
+            const textColor = esNoLaboral ? '#991b1b' : '#166534';
+            const title = esNoLaboral ? (motivo || 'No laboral') : 'Laboral';
+            html += `<div onclick="App.modules.prod_config.toggleDia('${fs}')" title="${title}" style="cursor:pointer;padding:8px 4px;border-radius:8px;border:1px solid ${borderColor};background:${bgColor};color:${textColor};font-weight:600;font-size:13px;transition:all .15s" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">${d}</div>`;
+        }
+        html += `</div></div></div>`;
+        container.innerHTML = html;
+    },
+
+    calCambiar(dir) {
+        this._calMonth += dir;
+        if (this._calMonth > 11) { this._calMonth = 0; this._calYear++; }
+        if (this._calMonth < 0) { this._calMonth = 11; this._calYear--; }
+        this.renderCalendario();
+    },
+
+    async toggleDia(fecha) {
+        const entry = this._calendario.find(c => c.fecha === fecha);
+        const esNoLaboral = entry ? !entry.es_laboral : true;
+        const motivo = esNoLaboral ? (prompt('Motivo (opcional):') || '') : '';
+        await fetch('/api/produccion/calendario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fecha, es_laboral: !esNoLaboral, motivo })
+        });
+        await this.loadCalendario();
     }
 });

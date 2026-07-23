@@ -110,7 +110,8 @@ App.modules.planificacion = {
     renderCalendario() {
         const div = document.getElementById('planCalendario');
         const diasSemana = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
-        const colores = (pct) => {
+        const colores = (pct, esLaboral) => {
+            if (!esLaboral) return { bg: '#f1f5f9', border: '#cbd5e1', text: '#94a3b8', bar: '#cbd5e1' };
             if (pct > 95) return { bg: '#fee2e2', border: '#ef4444', text: '#991b1b', bar: '#ef4444' };
             if (pct >= 75) return { bg: '#fef9c3', border: '#eab308', text: '#854d0e', bar: '#eab308' };
             return { bg: '#dcfce7', border: '#22c55e', text: '#166534', bar: '#22c55e' };
@@ -137,14 +138,28 @@ App.modules.planificacion = {
                         <thead><tr style="border-bottom:2px solid var(--border)">
                             <th style="padding:8px;text-align:left;min-width:120px">Estacion</th>
                             <th style="padding:8px;text-align:center;min-width:60px">Cap/ Dia</th>
-                            ${fechas.map((f, i) => `<th style="padding:8px;text-align:center"><div>${diasSemana[i]}</div><div style="font-weight:400;font-size:11px">${f.getDate()}/${f.getMonth()+1}</div></th>`).join('')}
+                            ${fechas.map((f, i) => {
+                                const dStr = this.fmtDate(f);
+                                const esLaboral = this.cargaSemanal.length > 0 ? this.cargaSemanal[0].dias[i]?.es_laboral !== false : (f.getDay() !== 0);
+                                const headerBg = esLaboral ? '' : 'background:#f1f5f9;';
+                                const headerColor = esLaboral ? '' : 'color:#94a3b8;';
+                                return `<th style="padding:8px;text-align:center;${headerBg}${headerColor}"><div>${diasSemana[i]}</div><div style="font-weight:400;font-size:11px">${f.getDate()}/${f.getMonth()+1}</div>${!esLaboral ? '<div style="font-size:9px;color:#ef4444">NO LABORAL</div>' : ''}</th>`;
+                            }).join('')}
                         </tr></thead>
                         <tbody>${this.cargaSemanal.map(est => {
                             return `<tr style="border-bottom:1px solid var(--border)">
                                 <td style="padding:8px"><strong>${escapeHtml(est.nombre)}</strong></td>
                                 <td style="padding:8px;text-align:center;font-size:11px;color:var(--text-light)">${est.capacidad_dia} m²</td>
                                 ${est.dias.map(d => {
-                                    const c = colores(d.pct_ocupacion);
+                                    const c = colores(d.pct_ocupacion, d.es_laboral);
+                                    if (!d.es_laboral) {
+                                        return `<td style="padding:6px;text-align:center">
+                                            <div style="background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:6px;padding:6px 4px">
+                                                <div style="font-weight:600;font-size:12px;color:#94a3b8">✕</div>
+                                                <div style="font-size:9px;color:#94a3b8">${d.motivo || 'No laboral'}</div>
+                                            </div>
+                                        </td>`;
+                                    }
                                     return `<td style="padding:6px;text-align:center">
                                         <div style="background:${c.bg};border:1px solid ${c.border};border-radius:6px;padding:6px 4px">
                                             <div style="font-weight:700;font-size:14px;color:${c.text}">${d.pct_ocupacion}%</div>
@@ -161,6 +176,7 @@ App.modules.planificacion = {
                     <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dcfce7;vertical-align:middle"></span> &lt;75% Normal</span>
                     <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fef9c3;vertical-align:middle"></span> 75-95% Alerta</span>
                     <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fee2e2;vertical-align:middle"></span> &gt;95% Saturado</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f1f5f9;border:1px dashed #cbd5e1;vertical-align:middle"></span> No Laboral</span>
                 </div>
             </div>
         `;

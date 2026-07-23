@@ -636,6 +636,30 @@ async function initDB() {
         console.log('[PROD] Reglas de procesos extras creadas por defecto');
     }
 
+    // Tabla calendario de produccion
+    await query(`CREATE TABLE IF NOT EXISTS calendario_produccion (
+        id SERIAL PRIMARY KEY,
+        fecha DATE UNIQUE NOT NULL,
+        es_laboral BOOLEAN DEFAULT TRUE,
+        motivo TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    // Seed: domingos del año actual como no laborales
+    const calCount = await query('SELECT COUNT(*) as c FROM calendario_produccion');
+    if (Number(calCount.rows[0].c) === 0) {
+        const year = new Date().getFullYear();
+        for (let m = 0; m < 12; m++) {
+            for (let d = 1; d <= 31; d++) {
+                const dt = new Date(year, m, d);
+                if (dt.getFullYear() === year && dt.getDay() === 0) {
+                    const fs = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                    await query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, 'Domingo']);
+                }
+            }
+        }
+        console.log('[PROD] Domingos del año marcados como no laborales');
+    }
+
     // SEMILLA: Familias de producto por defecto
     const famCount = await query('SELECT COUNT(*) as c FROM familias_producto');
     if (Number(famCount.rows[0].c) === 0) {
@@ -3053,10 +3077,10 @@ const server = http.createServer(async (req, res) => {
     if (urlPath.match(/^\/api\/produccion\/estaciones\/\d+$/) && req.method === 'PUT') {
         const id = parseInt(urlPath.split('/').pop());
         const body = await parseBody(req);
-        const { nombre_estacion, orden_secuencia_defecto, activa } = body;
+        const { nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia } = body;
         const result = await query(
-            'UPDATE estaciones_maestras SET nombre_estacion=$1, orden_secuencia_defecto=$2, activa=$3 WHERE id=$4 RETURNING *',
-            [nombre_estacion, orden_secuencia_defecto, activa, id]
+            'UPDATE estaciones_maestras SET nombre_estacion=$1, orden_secuencia_defecto=$2, activa=$3, capacidad_max_m2_dia=$4 WHERE id=$5 RETURNING *',
+            [nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia || 100, id]
         );
         json(res, result.rows[0] || { error: 'No encontrado' }, result.rows[0] ? 200 : 404);
         return;
@@ -3519,6 +3543,42 @@ const server = http.createServer(async (req, res) => {
     // PRODUCCION - Planificacion y Backwards Scheduling
     // =====================================================
 
+    // GET /api/produccion/calendario - Dias del calendario de produccion
+    if (urlPath === '/api/produccion/calendario' && req.method === 'GET') {
+        try {
+            const result = await query('SELECT * FROM calendario_produccion ORDER BY fecha ASC');
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/produccion/calendario - Marcar/desmarcar dia
+    if (urlPath === '/api/produccion/calendario' && req.method === 'POST') {
+        try {
+            const body = await parseBody(req);
+            const { fecha, es_laboral, motivo } = body;
+            if (!fecha) { json(res, { error: 'fecha requerida' }, 400); return; }
+            const existing = await query('SELECT id FROM calendario_produccion WHERE fecha = $1', [fecha]);
+            if (existing.rows.length > 0) {
+                await query('UPDATE calendario_produccion SET es_laboral = $1, motivo = $2 WHERE fecha = $3', [es_laboral !== false, motivo || '', fecha]);
+            } else {
+                await query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, $2, $3)', [fecha, es_laboral !== false, motivo || '']);
+            }
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // DELETE /api/produccion/calendario/:id - Eliminar marca
+    if (urlPath.match(/^\/api\/produccion\/calendario\/\d+$/) && req.method === 'DELETE') {
+        const id = parseInt(urlPath.split('/').pop());
+        try {
+            await query('DELETE FROM calendario_produccion WHERE id = $1', [id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/produccion/planificacion/carga-semanal?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
     if (urlPath.startsWith('/api/produccion/planificacion/carga-semanal') && req.method === 'GET') {
         const inicio = q.inicio;
@@ -3532,6 +3592,12 @@ const server = http.createServer(async (req, res) => {
                 const cargaRes = await query('SELECT p.estacion_id, to_char(p.fecha_programada, \'YYYY-MM-DD\') as fs, SUM(o.metros_cuadrados) as m2, COUNT(*) as oc FROM cola_produccion_pasos p JOIN produccion_ordenes o ON p.orden_produccion_id = o.id WHERE p.fecha_programada >= $1::date AND p.fecha_programada <= $2::date AND p.estado <> \'MERMADO\' GROUP BY p.estacion_id, p.fecha_programada', [inicio, fin]);
                 for (const r of cargaRes.rows) { cargaMap[r.estacion_id + '|' + r.fs] = { m2: Number(r.m2), ordenes: Number(r.oc) }; }
             } catch(innerErr) { console.error('carga query err:', innerErr.message); }
+            // Cargar calendario de produccion
+            const calendarioMap = {};
+            try {
+                const calRes = await query('SELECT to_char(fecha, \'YYYY-MM-DD\') as fs, es_laboral, motivo FROM calendario_produccion WHERE fecha >= $1::date AND fecha <= $2::date', [inicio, fin]);
+                for (const c of calRes.rows) { calendarioMap[c.fs] = { es_laboral: c.es_laboral, motivo: c.motivo }; }
+            } catch(calErr) { console.error('calendario query err:', calErr.message); }
             const resultado = [];
             for (const e of estaciones) {
                 const dias = [];
@@ -3541,7 +3607,10 @@ const server = http.createServer(async (req, res) => {
                     const fs = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
                     const cap = Number(e.capacidad_max_m2_dia) || 100;
                     const datos = cargaMap[e.id + '|' + fs] || { m2: 0, ordenes: 0 };
-                    dias.push({ fecha: fs, m2: datos.m2, ordenes: datos.ordenes, capacidad: cap, pct_ocupacion: cap > 0 ? Math.round((datos.m2 / cap) * 100) : 0 });
+                    const cal = calendarioMap[fs];
+                    const es_laboral = cal ? cal.es_laboral : (dt.getDay() !== 0);
+                    const motivo = cal ? cal.motivo : '';
+                    dias.push({ fecha: fs, m2: es_laboral ? datos.m2 : 0, ordenes: es_laboral ? datos.ordenes : 0, capacidad: cap, pct_ocupacion: es_laboral ? (cap > 0 ? Math.round((datos.m2 / cap) * 100) : 0) : 0, es_laboral: es_laboral, motivo: motivo });
                 }
                 resultado.push({ estacion_id: e.id, nombre: e.nombre_estacion, orden: e.orden_secuencia_defecto, capacidad_dia: Number(e.capacidad_max_m2_dia) || 100, dias: dias });
             }
@@ -3588,19 +3657,45 @@ const server = http.createServer(async (req, res) => {
             if (pasos.length === 0) { json(res, { error: 'La orden no tiene pasos definidos' }, 400); return; }
 
             const m2 = Number(orden.metros_cuadrados) || 0;
-            const fechaEntrega = new Date(fecha_entrega_propuesta);
+            const fechaEntrega = new Date(fecha_entrega_propuesta + 'T12:00:00');
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
 
+            // Cargar calendario para validar dias laborales
+            const calendarioMap = {};
+            try {
+                const calRes = await query('SELECT to_char(fecha, \'YYYY-MM-DD\') as fs, es_laboral FROM calendario_produccion');
+                for (const c of calRes.rows) { calendarioMap[c.fs] = c.es_laboral; }
+            } catch(calErr) { console.error('calendario err:', calErr.message); }
+            function esDiaLaboral(fechaStr) {
+                if (calendarioMap.hasOwnProperty(fechaStr)) return calendarioMap[fechaStr];
+                const d = new Date(fechaStr + 'T12:00:00');
+                return d.getDay() !== 0;
+            }
+            function diaAnteriorLaboral(fecha) {
+                const d = new Date(fecha);
+                do { d.setDate(d.getDate() - 1); } while (!esDiaLaboral(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')));
+                return d;
+            }
+
             // Backwards scheduling: empezar desde la fecha de entrega y retroceder 1 dia por estacion
             const fechaActual = new Date(fechaEntrega);
+            // Si la entrega cae en dia no laboral, retroceder al anterior laboral
+            const fechaActualStr = fechaActual.getFullYear() + '-' + String(fechaActual.getMonth()+1).padStart(2,'0') + '-' + String(fechaActual.getDate()).padStart(2,'0');
+            if (!esDiaLaboral(fechaActualStr)) {
+                const prev = diaAnteriorLaboral(fechaActual);
+                fechaActual.setTime(prev.getTime());
+            }
             const asignaciones = [];
             const conflictos = [];
 
             for (let i = pasos.length - 1; i >= 0; i--) {
                 const paso = pasos[i];
                 const estacionId = paso.estacion_id;
-                const fechaStr = fechaActual.toISOString().split('T')[0];
+                const fsY = fechaActual.getFullYear();
+                const fsM = String(fechaActual.getMonth() + 1).padStart(2, '0');
+                const fsD = String(fechaActual.getDate()).padStart(2, '0');
+                const fechaStr = fsY + '-' + fsM + '-' + fsD;
 
                 // Validar capacidad en esa fecha
                 const cargaRes = await query(`
@@ -3628,7 +3723,9 @@ const server = http.createServer(async (req, res) => {
                 }
 
                 asignaciones.push({ paso_id: paso.id, estacion_id: estacionId, fecha: fechaStr, m2 });
-                fechaActual.setDate(fechaActual.getDate() - 1);
+                // Retroceder al dia laboral anterior
+                const prev = diaAnteriorLaboral(fechaActual);
+                fechaActual.setTime(prev.getTime());
             }
 
             if (conflictos.length > 0) {

@@ -24,7 +24,7 @@ App.registerModule('produccion', {
                 ` : ''}
             </div>
 
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px">
                 <div class="card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--primary)" id="prodTotal">0</div>
                     <div style="color:var(--text-light);font-size:13px">Total Ordenes</div>
@@ -32,6 +32,10 @@ App.registerModule('produccion', {
                 <div class="card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--warning)" id="prodPendientes">0</div>
                     <div style="color:var(--text-light);font-size:13px">Pendientes</div>
+                </div></div>
+                <div class="card" style="text-align:center"><div class="card-body">
+                    <div style="font-size:28px;font-weight:700;color:#3b82f6" id="prodProgramadas">0</div>
+                    <div style="color:var(--text-light);font-size:13px">Programadas</div>
                 </div></div>
                 <div class="card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--info)" id="prodProceso">0</div>
@@ -51,6 +55,7 @@ App.registerModule('produccion', {
                         <select class="form-control" id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="width:140px">
                             <option value="todos">Todos</option>
                             <option value="PENDIENTE">Pendientes</option>
+                            <option value="PROGRAMADO">Programadas</option>
                             <option value="EN_PROCESO">En Proceso</option>
                             <option value="TERMINADO">Terminados</option>
                             <option value="CERRADO">Cerrados</option>
@@ -197,11 +202,13 @@ App.registerModule('produccion', {
     renderStats() {
         const total = this.ordenes.length;
         const pendientes = this.ordenes.filter(o => o.estado_programacion === 'PENDIENTE').length;
+        const programadas = this.ordenes.filter(o => o.estado_programacion === 'PROGRAMADO').length;
         const enProceso = this.ordenes.filter(o => o.estado_programacion === 'EN_PROCESO').length;
         const terminadas = this.ordenes.filter(o => o.estado_programacion === 'TERMINADO').length;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('prodTotal', total);
         set('prodPendientes', pendientes);
+        set('prodProgramadas', programadas);
         set('prodProceso', enProceso);
         set('prodTerminadas', terminadas);
     },
@@ -212,6 +219,7 @@ App.registerModule('produccion', {
 
         const estadoBadge = (e) => {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">✓ TERMINADO</span>';
+            if (e === 'PROGRAMADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dbeafe;color:#1e40af">📅 PROGRAMADO</span>';
             if (e === 'EN_PROCESO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dbeafe;color:#1e40af">⚙ EN PROCESO</span>';
             if (e === 'MERMADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fee2e2;color:#991b1b">✗ MERMADO</span>';
             if (e === 'CERRADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#e5e7eb;color:#374151">✕ CERRADO</span>';
