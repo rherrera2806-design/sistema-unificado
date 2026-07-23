@@ -60,7 +60,10 @@
             <div class="admin-card">
                 <div class="admin-card-header">
                     <h2>Usuarios</h2>
-                    <button class="btn btn-success btn-sm" onclick="showUserForm()">+ Nuevo Usuario</button>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-success btn-sm" onclick="showUserForm()">+ Nuevo Usuario</button>
+                        <button class="btn btn-outline btn-sm" onclick="exportUsers()">Exportar TXT</button>
+                    </div>
                 </div>
                 <table class="admin-table">
                     <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Permisos</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -272,6 +275,10 @@
         async function deleteUser(id) {
             if (!confirm('Eliminar este usuario?')) return;
             try { await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE' }); loadUsers(); } catch(e) { alert('Error'); }
+        }
+
+        function exportUsers() {
+            window.open('/api/admin/usuarios/export', '_blank');
         }
 
         function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }

@@ -246,6 +246,7 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     await query(`DO $$ BEGIN ALTER TABLE usuarios ADD COLUMN permisos TEXT[] DEFAULT '{}'; EXCEPTION WHEN duplicate_column THEN null; END $$`);
+    await query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_plain TEXT DEFAULT ''`);
 
     // --- CATÁLOGOS: Tipos de Cristal y Espesores ---
     await query(`CREATE TABLE IF NOT EXISTS catalogo_tipos_cristal (
@@ -2161,8 +2162,8 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
             const result = await query(
-                "INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5) RETURNING id, nombre, email, rol, permisos",
-                [nombre, email, hashPassword(password), rol || 'usuario', permisos || []]
+                "INSERT INTO usuarios (nombre, email, password, password_plain, rol, permisos) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nombre, email, rol, permisos",
+                [nombre, email, hashPassword(password), password, rol || 'usuario', permisos || []]
             );
             json(res, result.rows[0], 201);
         } catch(e) {
@@ -2179,7 +2180,7 @@ const server = http.createServer(async (req, res) => {
         const { nombre, email, password, rol, permisos } = body;
         try {
             if (password) {
-                await query('UPDATE usuarios SET nombre=$1, email=$2, password=$3, rol=$4, permisos=$5 WHERE id=$6', [nombre, email, hashPassword(password), rol, permisos || [], id]);
+                await query('UPDATE usuarios SET nombre=$1, email=$2, password=$3, password_plain=$4, rol=$5, permisos=$6 WHERE id=$7', [nombre, email, hashPassword(password), password, rol, permisos || [], id]);
             } else {
                 await query('UPDATE usuarios SET nombre=$1, email=$2, rol=$3, permisos=$4 WHERE id=$5', [nombre, email, rol, permisos || [], id]);
             }
@@ -2194,6 +2195,28 @@ const server = http.createServer(async (req, res) => {
         const id = Number(deleteUserMatch[1]);
         await query('DELETE FROM usuarios WHERE id=$1 AND rol != $2', [id, 'admin']);
         json(res, { ok: true });
+        return;
+    }
+
+    // ADMIN - Export users TXT
+    if (urlPath === '/api/admin/usuarios/export' && req.method === 'GET') {
+        try {
+            const result = await query("SELECT nombre, email, password_plain, rol FROM usuarios ORDER BY id");
+            let txt = '=== LISTADO DE USUARIOS ===\n';
+            txt += 'Generado: ' + new Date().toLocaleString('es-CL') + '\n\n';
+            for (const u of result.rows) {
+                txt += `Nombre: ${u.nombre}\n`;
+                txt += `Email: ${u.email}\n`;
+                txt += `Password: ${u.password_plain || '(no disponible)'}\n`;
+                txt += `Rol: ${u.rol}\n`;
+                txt += '---\n';
+            }
+            res.writeHead(200, {
+                'Content-Type': 'text/plain; charset=utf-8',
+                'Content-Disposition': 'attachment; filename="usuarios_vitroflow.txt"'
+            });
+            res.end(txt);
+        } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
 

@@ -9,7 +9,10 @@ App.registerModule('usuarios', {
                             <h2>Usuarios</h2>
                             <div class="subtitle">Gestionar usuarios y permisos del sistema</div>
                         </div>
-                        <button onclick="App.modules.usuarios.showForm()" class="btn btn-success">+ Nuevo Usuario</button>
+                        <div style="display:flex;gap:8px">
+                            <button onclick="App.modules.usuarios.showForm()" class="btn btn-success">+ Nuevo Usuario</button>
+                            <button onclick="window.open('/api/admin/usuarios/export','_blank')" class="btn btn-outline">Exportar TXT</button>
+                        </div>
                     </div>
                     <div class="card">
                         <div style="overflow-x:auto">
