@@ -250,6 +250,14 @@ const App = {
         const overlay = document.getElementById('sidebarOverlay');
         if (overlay) overlay.classList.remove('show');
     },
+    toggleSidebarCollapse() {
+        const layout = document.querySelector('.app-layout');
+        const btn = document.querySelector('.sidebar-collapse-btn');
+        layout.classList.toggle('sidebar-collapsed');
+        const collapsed = layout.classList.contains('sidebar-collapsed');
+        btn.textContent = collapsed ? '▶' : '◀';
+        try { localStorage.setItem('sidebar_collapsed_state', collapsed ? '1' : '0'); } catch(e) {}
+    },
 
     // ── Notas badge ──
     async updateNotasBadge() {
@@ -545,6 +553,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('userAvatar').textContent = (user.nombre || 'U').charAt(0).toUpperCase();
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     renderSidebar();
+    // Restaurar estado del sidebar colapsado
+    try {
+        const collapsed = localStorage.getItem('sidebar_collapsed_state');
+        if (collapsed === '1') {
+            document.querySelector('.app-layout').classList.add('sidebar-collapsed');
+            const btn = document.querySelector('.sidebar-collapse-btn');
+            if (btn) btn.textContent = '▶';
+        }
+    } catch(e) {}
     await App.updateNavBadge();
     setInterval(() => App.updateTurnosBadges(), 15000);
     setInterval(() => App.updateInvAlertasBadge(), 30000);

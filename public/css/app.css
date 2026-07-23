@@ -315,6 +315,22 @@ tr:hover { background: #f8fafc; }
 .module-label { color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 500; }
 .module-view iframe { flex: 1; width: 100%; border: none; background: white; }
 
+/* ─── Sidebar Collapsed ─── */
+.app-layout.sidebar-collapsed {
+    grid-template-columns: 0px 1fr;
+}
+.app-layout.sidebar-collapsed .sidebar {
+    overflow: hidden;
+    width: 0;
+    padding: 0;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+.app-layout.sidebar-collapsed .sidebar .sidebar-header,
+.app-layout.sidebar-collapsed .sidebar .sidebar-nav {
+    display: none;
+}
+
 /* ─── Responsive ─── */
 .menu-toggle { display: none; background: none; border: none; color: var(--text); font-size: 20px; cursor: pointer; }
 @media (max-width: 768px) {
