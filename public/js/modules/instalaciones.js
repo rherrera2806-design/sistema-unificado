@@ -33,7 +33,6 @@ App.registerModule('instalaciones', {
             <div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px"></div>
             <div id="instCalendario"></div>
             <div id="instDetalle" style="display:none"></div>
-            <div id="instHistorial" style="margin-top:24px"></div>
         `;
         await this.loadData();
     },
@@ -42,15 +41,10 @@ App.registerModule('instalaciones', {
         const inicio = this.fmtDate(this.calInicio);
         const fin = this.fmtDate(this.calFin);
         try {
-            const [calRes, allRes] = await Promise.all([
-                fetch(`/api/instalaciones/calendario?inicio=${inicio}&fin=${fin}`),
-                fetch('/api/instalaciones')
-            ]);
-            this.instalaciones = await calRes.json();
-            this.todasInstalaciones = await allRes.json();
+            const res = await fetch(`/api/instalaciones/calendario?inicio=${inicio}&fin=${fin}`);
+            this.instalaciones = await res.json();
             this.renderStats();
             this.renderCalendario();
-            this.renderHistorial();
         } catch(e) { console.error('Error cargando instalaciones:', e); }
     },
 
