@@ -51,7 +51,7 @@ App.registerModule('prod_codigos', {
                         <select class="form-control" id="codFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.filter()">
                             <option value="">Todas las familias</option>
                         </select>
-                        <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo..." oninput="App.modules.prod_codigos.filter()" style="width:200px;font-size:12px;padding:4px 8px">
+                        <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo... (min 2 caracteres)" oninput="App.modules.prod_codigos.filter()" style="width:200px;font-size:12px;padding:4px 8px">
                     </div>
                 </div>
                 <div class="card-body" style="padding:0">
@@ -113,11 +113,14 @@ App.registerModule('prod_codigos', {
         this.setupDragDrop();
     },
 
-    async load() {
+    async load(search) {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
-            const res = await fetch('/api/produccion/codigos', { headers });
+            const params = new URLSearchParams();
+            if (search) params.set('search', search);
+            params.set('limit', '500');
+            const res = await fetch('/api/produccion/codigos?' + params.toString(), { headers });
             this.codigos = await res.json();
             this.renderStats();
             this.populateFilters();
@@ -170,23 +173,25 @@ App.registerModule('prod_codigos', {
         </tr>`).join('');
     },
 
+    _filterTimer: null,
     filter() {
-        const search = (document.getElementById('codFilterSearch')?.value || '').toLowerCase();
-        const grupo = document.getElementById('codFilterGrupo')?.value || '';
-        const familia = document.getElementById('codFilterFamilia')?.value || '';
-        let filtered = this.codigos;
-        if (grupo) filtered = filtered.filter(c => c.grupo === grupo);
-        if (familia) filtered = filtered.filter(c => c.familia === familia);
-        if (search) {
-            filtered = filtered.filter(c =>
-                (c.codigo || '').toLowerCase().includes(search) ||
-                (c.descripcion || '').toLowerCase().includes(search) ||
-                (c.grupo || '').toLowerCase().includes(search) ||
-                (c.familia || '').toLowerCase().includes(search) ||
-                (c.bloqueo_tela ? 'si' : 'no').includes(search)
-            );
-        }
-        this.renderTable(filtered);
+        clearTimeout(this._filterTimer);
+        this._filterTimer = setTimeout(() => {
+            const search = (document.getElementById('codFilterSearch')?.value || '').trim();
+            if (search.length >= 2) {
+                this.load(search);
+            } else if (search.length === 0) {
+                this.load();
+            } else {
+                // Less than 2 chars, filter client-side from current data
+                const grupo = document.getElementById('codFilterGrupo')?.value || '';
+                const familia = document.getElementById('codFilterFamilia')?.value || '';
+                let filtered = this.codigos;
+                if (grupo) filtered = filtered.filter(c => c.grupo === grupo);
+                if (familia) filtered = filtered.filter(c => c.familia === familia);
+                this.renderTable(filtered);
+            }
+        }, 300);
     },
 
     showCreateModal() {

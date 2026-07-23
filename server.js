@@ -3021,7 +3021,20 @@ const server = http.createServer(async (req, res) => {
 
     // GET /api/produccion/codigos
     if (urlPath === '/api/produccion/codigos' && req.method === 'GET') {
-        const result = await query('SELECT * FROM produccion_codigos ORDER BY codigo');
+        const search = q.search || '';
+        const limit = parseInt(q.limit) || 0;
+        let sql = 'SELECT * FROM produccion_codigos';
+        const params = [];
+        if (search) {
+            sql += ' WHERE codigo ILIKE $1 OR descripcion ILIKE $1 OR grupo ILIKE $1 OR familia ILIKE $1';
+            params.push('%' + search + '%');
+        }
+        sql += ' ORDER BY codigo';
+        if (limit > 0) {
+            sql += ' LIMIT $' + (params.length + 1);
+            params.push(limit);
+        }
+        const result = await query(sql, params);
         json(res, result.rows);
         return;
     }
