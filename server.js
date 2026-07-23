@@ -4036,12 +4036,29 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // DELETE /api/instalaciones/:id/foto/:fotoId - Eliminar foto
+    const instDelFotoMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/foto\/(\d+)$/);
+    if (instDelFotoMatch && req.method === 'DELETE') {
+        const fotoId = parseInt(instDelFotoMatch[2]);
+        const instId = parseInt(instDelFotoMatch[1]);
+        const userEmail = req.headers['x-user-email'] || 'Sistema';
+        try {
+            await query('DELETE FROM instalaciones_fotos WHERE id = $1', [fotoId]);
+            await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [instId, 'FOTO_ELIMINADA', 'Foto eliminada', userEmail]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/instalaciones/:id/historial - Historial
     const instHistMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/historial$/);
     if (instHistMatch && req.method === 'GET') {
         const id = parseInt(instHistMatch[1]);
         try {
-            const result = await query('SELECT * FROM instalaciones_historial WHERE instalacion_id = $1 ORDER BY created_at DESC', [id]);
+            const result = await query(`SELECT h.*, COALESCE(u.nombre, h.usuario) as usuario_nombre 
+                FROM instalaciones_historial h 
+                LEFT JOIN usuarios u ON u.email = h.usuario 
+                WHERE h.instalacion_id = $1 ORDER BY h.created_at DESC`, [id]);
             json(res, result.rows);
         } catch(e) { json(res, { error: e.message }, 500); }
         return;

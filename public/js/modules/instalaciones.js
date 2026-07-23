@@ -228,7 +228,7 @@ App.registerModule('instalaciones', {
                         ${fotos.length > 0 ? `
                             <h4 style="margin:12px 0 8px">Fotografias (${fotos.length})</h4>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-                                ${fotos.map(f => `<img src="/api/instalaciones/${id}/foto/${f.id}" style="width:120px;height:90px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="App.modules.instalaciones.verFoto(${id},${f.id})" title="${escapeHtml(f.descripcion || '')}">`).join('')}
+                                ${fotos.map(f => `<div style="position:relative;display:inline-block"><img src="/api/instalaciones/${id}/foto/${f.id}" style="width:120px;height:90px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="App.modules.instalaciones.verFoto(${id},${f.id})" title="${escapeHtml(f.descripcion || '')}"><button onclick="event.stopPropagation();App.modules.instalaciones.eliminarFoto(${id},${f.id})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Eliminar foto">✕</button></div>`).join('')}
                             </div>
                         ` : ''}
                         ${inst.estado === 'EN_CURSO' || inst.estado === 'COMPLETADA' ? `
@@ -245,7 +245,7 @@ App.registerModule('instalaciones', {
                                     <span style="color:var(--text-light);min-width:140px">${h.created_at ? new Date(h.created_at).toLocaleString('es-CL') : '-'}</span>
                                     <span style="font-weight:600;min-width:120px">${h.accion}</span>
                                     <span>${escapeHtml(h.detalle || '')}</span>
-                                    <span style="color:var(--text-light);margin-left:auto">${escapeHtml(h.usuario)}</span>
+                                    <span style="color:var(--text-light);margin-left:auto">${escapeHtml(h.usuario_nombre || h.usuario)}</span>
                                 </div>
                             `).join('')}
                         </div>
@@ -364,6 +364,19 @@ App.registerModule('instalaciones', {
             App.showAlert(fotos.length + ' foto(s) subida(s)');
             this.selectedFotos = [];
             await this.verDetalle(id);
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async eliminarFoto(instId, fotoId) {
+        if (!confirm('Eliminar esta foto?')) return;
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        try {
+            await fetch(`/api/instalaciones/${instId}/foto/${fotoId}`, {
+                method: 'DELETE',
+                headers: { 'X-User-Email': user.email || '' }
+            });
+            App.showAlert('Foto eliminada');
+            await this.verDetalle(instId);
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
