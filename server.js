@@ -616,6 +616,17 @@ async function initDB() {
     // Planificacion por grupo (kg/dia) - vista simplificada
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS grupo VARCHAR(100)`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS espesor_mm INTEGER DEFAULT 6`);
+
+    // Backfill espesor_mm para ordenes existentes: BOM desde recetas, no-BOM default 6mm
+    await query(`
+        UPDATE produccion_ordenes o
+        SET espesor_mm = COALESCE(
+            (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+            6
+        )
+        WHERE (o.espesor_mm IS NULL OR o.espesor_mm = 0)
+    `);
     await query(`CREATE TABLE IF NOT EXISTS produccion_capacidad_grupo (
         id SERIAL PRIMARY KEY,
         grupo VARCHAR(100) UNIQUE NOT NULL,

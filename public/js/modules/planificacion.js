@@ -22,7 +22,13 @@ App.modules.planificacion = {
     async cargarGrupo() {
         try {
             const res = await fetch(`/api/produccion/planificacion-grupo?fecha=${this.fechaGrupo}`);
-            if (!res.ok) { console.error('planificacion-grupo error:', res.status); return; }
+            if (!res.ok) {
+                const txt = await res.text();
+                console.error('planificacion-grupo error:', res.status, txt);
+                const elC = document.getElementById('planGrupoCards');
+                if (elC) elC.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:12px;color:#991b1b;font-size:13px">Error ${res.status} al cargar planificacion-grupo. Revisa la consola.</div>`;
+                return;
+            }
             const data = await res.json();
             this.capacidadGrupo = data.capacidad || [];
             this.cargaGrupo = data.carga || [];
@@ -30,7 +36,11 @@ App.modules.planificacion = {
             this.renderGrupoResumen();
             this.renderGrupoCards();
             this.renderGrupoPendientes();
-        } catch(e) { console.error('Error cargarGrupo:', e); }
+        } catch(e) {
+            console.error('Error cargarGrupo:', e);
+            const elC = document.getElementById('planGrupoCards');
+            if (elC) elC.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:12px;color:#991b1b;font-size:13px">Error: ${e.message}</div>`;
+        }
     },
 
     renderGrupoResumen() {
