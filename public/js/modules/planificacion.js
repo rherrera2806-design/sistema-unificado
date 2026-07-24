@@ -405,7 +405,7 @@ App.modules.planificacion = {
         const finD = new Date(this.semanaFin);
 
         // Construir headers de dias desde this.diasSemana
-        const diasInfo = this.diasSemana.map(f => {
+        let diasInfo = this.diasSemana.map(f => {
             const d = new Date(f + 'T00:00:00');
             const dow = d.getDay();
             const diff = dow === 0 ? -6 : 1 - dow;
@@ -413,6 +413,14 @@ App.modules.planificacion = {
             lunes.setDate(d.getDate() + diff);
             const isThisWeek = lunes.getTime() === new Date(inicio).getTime();
             return { fecha: f, dia: diasSemana[(dow + 6) % 7], fechaCorta: d.getDate() + '/' + (d.getMonth()+1), isThisWeek };
+        });
+
+        // Filtrar solo los dias que tienen datos en ALGUN grupo
+        diasInfo = diasInfo.filter(d => {
+            return this.gruposSemana.some(g => {
+                const cell = g.dias.find(x => x.fecha === d.fecha) || {};
+                return (cell.m2 || cell.m_lineales || cell.kilos) > 0;
+            });
         });
 
         // Color de fondo segun capacidad kg/dia usada
@@ -453,7 +461,6 @@ App.modules.planificacion = {
                                     ${!laboral ? '<div style="font-size:9px;color:#ef4444">NO LAB</div>' : ''}
                                 </th>`;
                             }).join('')}
-                            <th style="padding:8px;text-align:center;min-width:90px;background:#f8fafc">Total Sem.</th>
                         </tr></thead>
                         <tbody>${this.gruposSemana.map(g => {
                             const colorBorde = g.color || '#3b82f6';
@@ -485,12 +492,6 @@ App.modules.planificacion = {
                                         </div>
                                     </td>`;
                                 }).join('')}
-                                <td style="padding:6px;text-align:center;background:#f8fafc">
-                                    <div style="font-size:12px;font-weight:700;color:${colorBorde}">${Number(g.total.kilos || 0).toFixed(0)} kg</div>
-                                    <div style="font-size:10px;color:var(--text-light)">${Number(g.total.m2 || 0).toFixed(1)} m²</div>
-                                    <div style="font-size:10px;color:var(--text-light)">${Number(g.total.m_lineales || 0).toFixed(1)} mL</div>
-                                    <div style="font-size:9px;color:var(--text-light)">${g.total.ordenes || 0} ord.</div>
-                                </td>
                             </tr>`;
                         }).join('')}</tbody>
                     </table>
