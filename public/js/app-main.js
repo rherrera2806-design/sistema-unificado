@@ -464,9 +464,7 @@ function renderSidebar() {
         html += `<div class="nav-section" onclick="toggleSection('produccion')"><span>PRODUCCION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-produccion">`;
         if (canSeeItem('prod_ordenes','produccion')) html += navI('produccion', 'Produccion', '🏭');
-        if (canSeeItem('prod_codigos','produccion')) html += navI('prod_codigos', 'Codigos', '🏷️');
-        if (canSeeItem('prod_maquinas','produccion')) html += navI('prod_maquinas', 'Maquinas', '⚙️');
-        if (canSeeItem('prod_recetas','produccion')) html += navI('prod_recetas', 'Recetas BOM', '📦');
+        if (canSeeItem('prod_planificacion','produccion')) html += navI('planificacion', 'Planificacion', '📅');
         if (canSeeItem('prod_notas','produccion')) html += navI('prod_notas', 'Mis Pendientes', '📋');
         if (canSeeItem('prod_config','produccion')) html += navI('prod_config', 'Configuracion', '⚙️');
         if (canSeeItem('planificacion','produccion')) html += navI('planificacion', 'Planificacion', '📅');

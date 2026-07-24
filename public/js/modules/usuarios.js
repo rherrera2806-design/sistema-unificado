@@ -108,12 +108,8 @@ App.registerModule('usuarios', {
             ]},
             { key: 'produccion', label: 'PRODUCCION', items: [
                 { key: 'prod_ordenes', label: 'Produccion' },
-                { key: 'prod_codigos', label: 'Codigos' },
-                { key: 'prod_maquinas', label: 'Maquinas' },
-                { key: 'prod_recetas', label: 'Recetas BOM' },
-                { key: 'prod_notas', label: 'Mis Pendientes' },
-                { key: 'prod_config', label: 'Configuracion' },
-                { key: 'planificacion', label: 'Planificacion' }
+                { key: 'prod_planificacion', label: 'Planificacion' },
+                { key: 'prod_notas', label: 'Mis Pendientes' }
             ]},
             { key: 'instalaciones', label: 'INSTALACIONES', items: [
                 { key: 'instalaciones', label: 'Instalaciones' },
