@@ -457,9 +457,8 @@ App.modules.planificacion = {
                                 const laboral = this.gruposSemana[0]?.dias.find(x => x.fecha === d.fecha)?.es_laboral !== false;
                                 const headerBg = laboral ? '' : 'background:#f1f5f9;';
                                 const headerColor = laboral ? '' : 'color:#94a3b8;';
-                                return `<th style="padding:4px;text-align:center;min-width:70px;${headerBg}${headerColor}">
-                                    <div style="font-weight:600;font-size:11px">${d.dia}</div>
-                                    <div style="font-weight:400;font-size:9px">${d.fechaCorta}</div>
+                                return `<th style="padding:4px;text-align:center;min-width:60px;${headerBg}${headerColor}">
+                                    <div style="font-weight:600;font-size:11px">${d.fechaCorta}</div>
                                     ${!laboral ? '<div style="font-size:8px;color:#ef4444">NO LAB</div>' : ''}
                                 </th>`;
                             }).join('')}
