@@ -131,7 +131,7 @@ App.modules.planificacion = {
         const td = 'padding:5px 8px';
         let html = `<div style="background:#fef3c7;padding:8px 12px;font-size:12px;display:flex;justify-content:space-between;border-radius:8px 8px 0 0">
             <strong>${sinAsignar.length} pendientes sin asignar · ${kgTotal.toLocaleString('es-CL', {maximumFractionDigits:1})} kg${sinGrupo ? ` · <span style="color:#ef4444">${sinGrupo} sin grupo</span>` : ''}</strong>
-            <span>Click "Asignar" para mover a ${this.fechaGrupo}</span>
+            <span>Usa ⚡ Auto-Asignar para programar todas</span>
         </div>`;
         html += `<div style="max-height:300px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr style="background:#f8fafc">
             <th style="${td}">Pedido</th><th style="${td}">Cliente</th><th style="${td}">Codigo</th>
@@ -151,7 +151,7 @@ App.modules.planificacion = {
                 <td style="${td}">${o.cantidad || 1}</td>
                 <td style="${td}"><strong>${Number(o.kilos || 0).toFixed(1)}</strong></td>
                 <td style="${td}"><span style="padding:1px 6px;border-radius:3px;font-size:10px;background:${grupoColor};color:${grupoText}">${o.grupo || 'sin grupo'}</span></td>
-                <td style="${td}">${o.grupo ? `<button class="btn btn-sm btn-primary" style="padding:2px 8px;font-size:10px" onclick="App.modules.planificacion.asignarGrupo(${o.id})">Asignar</button>` : '<span style="font-size:10px;color:#ef4444">requiere grupo</span>'}</td>
+                <td style="${td}">${o.grupo ? `<span style="font-size:10px;color:#6b7280">usa ⚡ Auto-Asignar</span>` : '<span style="font-size:10px;color:#ef4444">requiere grupo</span>'}</td>
             </tr>`;
         }).join('');
         html += '</tbody></table></div>';
@@ -318,19 +318,7 @@ App.modules.planificacion = {
                 </div>
             </div>
 
-            <!-- VISTA SEMANAL (m² por estacion) - existente -->
-            <div class="card" style="margin-bottom:20px">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc">
-                    <div>
-                        <h3 style="margin:0;font-size:16px">📅 Vista Semanal (m² por Estacion)</h3>
-                        <div style="font-size:12px;color:var(--text-light)">Backwards Scheduling - Capacidad por estacion y dia</div>
-                    </div>
-                </div>
-                <div class="card-body" style="padding:16px">
-                    <div id="planPendientes" style="margin-bottom:16px"></div>
-                    <div id="planCalendario"></div>
-                </div>
-            </div>
+            <!-- VISTA SEMANAL (m² por estacion) - removida: se usa auto-asignar siempre -->
 
             <div class="modal-overlay" id="planAsignarModal">
                 <div class="modal" style="max-width:500px">
@@ -339,7 +327,7 @@ App.modules.planificacion = {
                 </div>
             </div>
         `;
-        await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
+        await this.cargarGrupo();
     },
 
     async cargarDatos() {
