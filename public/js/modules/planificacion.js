@@ -328,7 +328,7 @@ App.modules.planificacion = {
                 </div>
             </div>
         `;
-        await this.cargarGrupo();
+        await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
     },
 
     async cargarDatos() {
@@ -349,12 +349,11 @@ App.modules.planificacion = {
             else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
             if (cargaEstRes.ok) this.cargaSemanal = await cargaEstRes.json();
             else { console.error('carga-semanal error:', cargaEstRes.status); this.cargaSemanal = []; }
-            this.renderCalendario();
         } catch(e) {
             console.error('Error cargando planificacion:', e);
-            const calEl = document.getElementById('planCalendario');
-            if (calEl) calEl.innerHTML = '<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;color:#991b1b">Error al cargar calendario. Revisa la consola.</div>';
         }
+        // SIEMPRE renderizar el calendario (incluso si hubo error)
+        this.renderCalendario();
     },
 
     renderPendientes() {
