@@ -449,18 +449,18 @@ App.modules.planificacion = {
                     </div>
                 </div>
                 <div style="overflow-x:auto">
-                    <table style="width:100%;font-size:11px;border-collapse:collapse;min-width:800px">
+                    <table style="width:100%;font-size:10px;border-collapse:collapse;min-width:1200px">
                         <thead><tr style="border-bottom:2px solid var(--border)">
-                            <th style="padding:8px;text-align:left;min-width:120px">Grupo</th>
-                            <th style="padding:8px;text-align:center;min-width:80px">Cap kg/dia</th>
+                            <th style="padding:6px;text-align:left;min-width:100px">Grupo</th>
+                            <th style="padding:6px;text-align:center;min-width:60px">Cap kg/dia</th>
                             ${diasInfo.map(d => {
                                 const laboral = this.gruposSemana[0]?.dias.find(x => x.fecha === d.fecha)?.es_laboral !== false;
                                 const headerBg = laboral ? '' : 'background:#f1f5f9;';
                                 const headerColor = laboral ? '' : 'color:#94a3b8;';
-                                return `<th style="padding:8px;text-align:center;min-width:90px;${headerBg}${headerColor}">
-                                    <div style="font-weight:600">${d.dia}</div>
-                                    <div style="font-weight:400;font-size:10px">${d.fechaCorta}</div>
-                                    ${!laboral ? '<div style="font-size:9px;color:#ef4444">NO LAB</div>' : ''}
+                                return `<th style="padding:4px;text-align:center;min-width:70px;${headerBg}${headerColor}">
+                                    <div style="font-weight:600;font-size:11px">${d.dia}</div>
+                                    <div style="font-weight:400;font-size:9px">${d.fechaCorta}</div>
+                                    ${!laboral ? '<div style="font-size:8px;color:#ef4444">NO LAB</div>' : ''}
                                 </th>`;
                             }).join('')}
                         </tr></thead>
@@ -470,27 +470,25 @@ App.modules.planificacion = {
                                 <td style="padding:8px;border-left:3px solid ${colorBorde}">
                                     <strong>${escapeHtml(g.grupo)}</strong>
                                 </td>
-                                <td style="padding:8px;text-align:center;font-size:11px;color:var(--text-light)">${g.capacidad_kg_dia.toLocaleString('es-CL')}</td>
+                                <td style="padding:6px;text-align:center;font-size:10px;color:var(--text-light)">${g.capacidad_kg_dia.toLocaleString('es-CL')}</td>
                                 ${diasInfo.map(d => {
                                     const cell = g.dias.find(x => x.fecha === d.fecha) || {};
                                     const c = colorCelda(cell.kilos || 0, g.capacidad_kg_dia, cell.es_laboral !== false);
                                     if (cell.es_laboral === false) {
-                                        return `<td style="padding:6px;text-align:center">
-                                            <div style="background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:6px;padding:6px 4px">
-                                                <div style="font-weight:600;font-size:11px;color:#94a3b8">✕</div>
-                                                <div style="font-size:8px;color:#94a3b8">${cell.motivo || ''}</div>
+                                        return `<td style="padding:3px;text-align:center">
+                                            <div style="background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:4px;padding:4px 2px">
+                                                <div style="font-weight:600;font-size:10px;color:#94a3b8">✕</div>
                                             </div>
                                         </td>`;
                                     }
                                     const hasData = (cell.m2 || cell.m_lineales || cell.kilos) > 0;
-                                    return `<td style="padding:4px;text-align:center">
-                                        <div style="background:${hasData ? c.bg : '#f8fafc'};border:1px solid ${hasData ? c.border : '#e2e8f0'};border-radius:6px;padding:6px 4px;min-height:50px">
+                                    return `<td style="padding:2px;text-align:center">
+                                        <div style="background:${hasData ? c.bg : '#f8fafc'};border:1px solid ${hasData ? c.border : '#e2e8f0'};border-radius:4px;padding:4px 2px;min-height:42px">
                                             ${hasData ? `
-                                                <div style="font-size:11px;color:${c.text};font-weight:600">${Number(cell.m2 || 0).toFixed(1)} m²</div>
-                                                <div style="font-size:10px;color:${c.text}">${Number(cell.m_lineales || 0).toFixed(1)} mL</div>
-                                                <div style="font-size:11px;color:${c.text};font-weight:700">${Number(cell.kilos || 0).toFixed(0)} kg</div>
-                                                <div style="font-size:9px;color:${c.text}">${cell.ordenes || 0} ord.</div>
-                                            ` : '<div style="font-size:10px;color:#cbd5e1">-</div>'}
+                                                <div style="font-size:10px;color:${c.text};font-weight:600;line-height:1.2">${Number(cell.m2 || 0).toFixed(0)}m²</div>
+                                                <div style="font-size:9px;color:${c.text};line-height:1.2">${Number(cell.m_lineales || 0).toFixed(0)}mL</div>
+                                                <div style="font-size:10px;color:${c.text};font-weight:700;line-height:1.2">${Number(cell.kilos || 0).toFixed(0)}kg</div>
+                                            ` : '<div style="font-size:9px;color:#cbd5e1">-</div>'}
                                         </div>
                                     </td>`;
                                 }).join('')}
