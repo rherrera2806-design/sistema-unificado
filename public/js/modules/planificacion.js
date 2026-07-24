@@ -449,15 +449,15 @@ App.modules.planificacion = {
                     </div>
                 </div>
                 <div style="overflow-x:auto">
-                    <table style="width:100%;font-size:10px;border-collapse:collapse;min-width:1200px">
+                    <table style="width:100%;font-size:10px;border-collapse:collapse">
                         <thead><tr style="border-bottom:2px solid var(--border)">
-                            <th style="padding:6px;text-align:left;min-width:100px">Grupo</th>
-                            <th style="padding:6px;text-align:center;min-width:60px">Cap kg/dia</th>
+                            <th style="padding:6px;text-align:left;width:120px">Grupo</th>
+                            <th style="padding:6px;text-align:center;width:70px">Cap kg/dia</th>
                             ${diasInfo.map(d => {
                                 const laboral = this.gruposSemana[0]?.dias.find(x => x.fecha === d.fecha)?.es_laboral !== false;
                                 const headerBg = laboral ? '' : 'background:#f1f5f9;';
                                 const headerColor = laboral ? '' : 'color:#94a3b8;';
-                                return `<th style="padding:4px;text-align:center;min-width:60px;${headerBg}${headerColor}">
+                                return `<th style="padding:4px;text-align:center;${headerBg}${headerColor}">
                                     <div style="font-weight:600;font-size:11px">${d.fechaCorta}</div>
                                     ${!laboral ? '<div style="font-size:8px;color:#ef4444">NO LAB</div>' : ''}
                                 </th>`;
@@ -482,7 +482,7 @@ App.modules.planificacion = {
                                     }
                                     const hasData = (cell.m2 || cell.m_lineales || cell.kilos) > 0;
                                     return `<td style="padding:2px;text-align:center">
-                                        <div style="background:${hasData ? c.bg : '#f8fafc'};border:1px solid ${hasData ? c.border : '#e2e8f0'};border-radius:4px;padding:4px 2px;min-height:42px">
+                                        <div style="background:${hasData ? c.bg : '#f8fafc'};border:1px solid ${hasData ? c.border : '#e2e8f0'};border-radius:4px;padding:4px 2px">
                                             ${hasData ? `
                                                 <div style="font-size:10px;color:${c.text};font-weight:600;line-height:1.2">${Number(cell.m2 || 0).toFixed(0)}m²</div>
                                                 <div style="font-size:9px;color:${c.text};line-height:1.2">${Number(cell.m_lineales || 0).toFixed(0)}mL</div>
