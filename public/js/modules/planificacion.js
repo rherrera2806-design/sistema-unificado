@@ -135,6 +135,7 @@ App.modules.planificacion = {
         </div>`;
         html += `<div style="max-height:300px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr style="background:#f8fafc">
             <th style="${td}">Pedido</th><th style="${td}">Cliente</th><th style="${td}">Codigo</th>
+            <th style="${td}">Padre</th><th style="${td}">Producto</th>
             <th style="${td}">Dim</th><th style="${td}">Cant</th><th style="${td}">kg</th><th style="${td}">Grupo</th><th style="${td}">Accion</th>
         </tr></thead><tbody>`;
         html += sinAsignar.map(o => {
@@ -143,7 +144,9 @@ App.modules.planificacion = {
             return `<tr style="line-height:1.3;border-bottom:1px solid var(--border)">
                 <td style="${td}"><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
                 <td style="${td}">${escapeHtml(o.cliente || '-')}</td>
-                <td style="${td}"><strong>${escapeHtml(o.codigo_producto)}</strong></td>
+                <td style="${td}"><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
+                <td style="${td};font-size:11px"><strong>${escapeHtml(o.codigo_padre || '-')}</strong></td>
+                <td style="${td};font-size:11px;color:#6b7280">${escapeHtml(o.nombre_padre || '-')}</td>
                 <td style="${td}">${o.ancho}x${o.alto}</td>
                 <td style="${td}">${o.cantidad || 1}</td>
                 <td style="${td}"><strong>${Number(o.kilos || 0).toFixed(1)}</strong></td>
