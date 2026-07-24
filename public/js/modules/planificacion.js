@@ -318,7 +318,8 @@ App.modules.planificacion = {
                 </div>
             </div>
 
-            <!-- VISTA SEMANAL (m² por estacion) - removida: se usa auto-asignar siempre -->
+            <!-- VISTA SEMANAL POR GRUPO (la nueva util) -->
+            <div id="planCalendario"><div style="text-align:center;padding:20px;color:#64748b">Cargando calendario...</div></div>
 
             <div class="modal-overlay" id="planAsignarModal">
                 <div class="modal" style="max-width:500px">
