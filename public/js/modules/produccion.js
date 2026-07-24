@@ -53,10 +53,16 @@ App.registerModule('produccion', {
                         <span>Ordenes de Produccion</span>
                         <span id="prodTotales" style="display:inline-flex;gap:8px;font-size:12px;font-weight:500"></span>
                     </h3>
-                    <div style="display:flex;gap:8px">
-                        <input type="text" class="form-control" id="prodFilterSearch" placeholder="Buscar codigo, pedido..." oninput="App.modules.produccion.filter()" style="width:200px">
-                        <input type="date" class="form-control" id="prodFilterFecha" onchange="App.modules.produccion.filter()" style="width:150px" title="Filtrar por fecha programada">
-                        <select class="form-control" id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="width:140px">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <input type="text" class="form-control" id="prodFilterSearch" placeholder="Buscar codigo, pedido..." oninput="App.modules.produccion.filter()" style="width:180px">
+                        <input type="date" class="form-control" id="prodFilterFecha" onchange="App.modules.produccion.filter()" style="width:140px" title="Filtrar por fecha programada">
+                        <select class="form-control" id="prodFilterGrupo" onchange="App.modules.produccion.filter()" style="width:130px">
+                            <option value="todos">Todos Grupos</option>
+                        </select>
+                        <select class="form-control" id="prodFilterFamilia" onchange="App.modules.produccion.filter()" style="width:140px">
+                            <option value="todos">Todas Familias</option>
+                        </select>
+                        <select class="form-control" id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="width:130px">
                             <option value="todos">Todos</option>
                             <option value="PENDIENTE">Pendientes</option>
                             <option value="PROGRAMADO">Programadas</option>
@@ -200,7 +206,17 @@ App.registerModule('produccion', {
             this.recetas = await recetasRes.json();
             this.renderStats();
             this.renderTable(this.ordenes);
+            this.populateFilters();
         } catch(e) { console.error('Error loading produccion:', e); }
+    },
+
+    populateFilters() {
+        const grupos = [...new Set(this.ordenes.map(o => o.grupo).filter(Boolean))].sort();
+        const familias = [...new Set(this.ordenes.map(o => o.familia_nombre).filter(Boolean))].sort();
+        const gSel = document.getElementById('prodFilterGrupo');
+        const fSel = document.getElementById('prodFilterFamilia');
+        if (gSel) { const cur = gSel.value; gSel.innerHTML = '<option value="todos">Todos Grupos</option>' + grupos.map(g => `<option value="${g}" ${g===cur?'selected':''}>${g}</option>`).join(''); }
+        if (fSel) { const cur = fSel.value; fSel.innerHTML = '<option value="todos">Todas Familias</option>' + familias.map(f => `<option value="${f}" ${f===cur?'selected':''}>${f}</option>`).join(''); }
     },
 
     renderStats() {
@@ -266,10 +282,14 @@ App.registerModule('produccion', {
         const search = (document.getElementById('prodFilterSearch')?.value || '').toLowerCase();
         const estado = document.getElementById('prodFilterEstado')?.value || 'todos';
         const fechaFilter = document.getElementById('prodFilterFecha')?.value || '';
+        const grupo = document.getElementById('prodFilterGrupo')?.value || 'todos';
+        const familia = document.getElementById('prodFilterFamilia')?.value || 'todos';
         let filtered = this.ordenes;
         if (search) filtered = filtered.filter(o => (o.codigo_producto || '').toLowerCase().includes(search) || (o.pedido_sap_id || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search) || (o.nombre_codigo_padre || '').toLowerCase().includes(search) || (o.nombre_mp || '').toLowerCase().includes(search));
         if (estado !== 'todos') filtered = filtered.filter(o => o.estado_programacion === estado);
         if (fechaFilter) filtered = filtered.filter(o => { const f = o.fecha_programada; if (!f) return false; const d = new Date(f); const fs = d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); return fs === fechaFilter; });
+        if (grupo !== 'todos') filtered = filtered.filter(o => o.grupo === grupo);
+        if (familia !== 'todos') filtered = filtered.filter(o => o.familia_nombre === familia);
         this.renderTable(filtered);
     },
 

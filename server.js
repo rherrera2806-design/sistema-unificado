@@ -2652,7 +2652,8 @@ const server = http.createServer(async (req, res) => {
                         o.codigo_padre
                     )
                 ELSE NULL END as nombre_codigo_padre,
-                (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp
+                (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp,
+                (SELECT f.nombre_familia FROM familias_producto f WHERE f.id = o.familia_id) as familia_nombre
             FROM produccion_ordenes o ORDER BY o.created_at DESC
         `);
         json(res, result.rows);
