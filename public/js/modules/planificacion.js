@@ -180,7 +180,7 @@ App.modules.planificacion = {
             });
             if (res.ok) {
                 App.toast('Orden asignada');
-                await this.cargarGrupo();
+        await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
                 await this.cargarDatos();
             }
         } catch(e) { alert('Error: ' + e.message); }

@@ -12,11 +12,14 @@ App.registerModule('prod_config', {
         const el = document.getElementById('page-prod_config');
         el.innerHTML = `
             <div class="page-header">
-                <div><h2>Configuracion de Produccion</h2><div class="subtitle">Estaciones, Familias, Materias Primas, Reglas y Calendario</div></div>
+                <div><h2>Configuracion de Produccion</h2><div class="subtitle">Estaciones, Codigos, Maquinas, Recetas BOM, Familias, Materias Primas y Calendario</div></div>
             </div>
-            <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0">
+            <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;flex-wrap:wrap">
                 <button class="btn btn-sm ${this._tab==='estaciones'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('estaciones')">⚙️ Estaciones</button>
-                <button class="btn btn-sm ${this._tab==='familias'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('familias')">📦 Familias</button>
+                <button class="btn btn-sm ${this._tab==='codigos'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('codigos')">🏷️ Codigos</button>
+                <button class="btn btn-sm ${this._tab==='maquinas'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('maquinas')">⚙️ Maquinas</button>
+                <button class="btn btn-sm ${this._tab==='recetas'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('recetas')">📦 Recetas BOM</button>
+                <button class="btn btn-sm ${this._tab==='familias'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('familias')">📋 Familias</button>
                 <button class="btn btn-sm ${this._tab==='materias'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('materias')">🪟 Materias Primas</button>
                 <button class="btn btn-sm ${this._tab==='reglas'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('reglas')">🏷️ Reglas Extras</button>
                 <button class="btn btn-sm ${this._tab==='calendario'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('calendario')">📅 Calendario</button>
@@ -34,12 +37,39 @@ App.registerModule('prod_config', {
     async loadTab() {
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light)">Cargando...</div>';
+        // Tabs que delegan a modulos originales (Codigos, Maquinas, Recetas)
+        if (this._tab === 'codigos' || this._tab === 'maquinas' || this._tab === 'recetas') {
+            await this.loadDelegated(this._tab);
+            return;
+        }
         switch(this._tab) {
             case 'estaciones': await this.loadEstaciones(); break;
             case 'familias': await this.loadFamilias(); break;
             case 'materias': await this.loadMaterias(); break;
             case 'reglas': await this.loadReglas(); break;
             case 'calendario': await this.loadCalendario(); break;
+        }
+    },
+
+    async loadDelegated(tab) {
+        const container = document.getElementById('prodConfigContent');
+        container.innerHTML = '';
+        const moduleMap = { codigos: 'prod_codigos', maquinas: 'prod_maquinas', recetas: 'prod_recetas' };
+        const moduleName = moduleMap[tab];
+        const pageId = 'page-' + moduleName;
+        // Crear page temporal para que el modulo original pueda renderizar
+        let tempPage = document.getElementById(pageId);
+        if (!tempPage) {
+            tempPage = document.createElement('div');
+            tempPage.id = pageId;
+            tempPage.className = 'page active';
+            container.appendChild(tempPage);
+        }
+        // Llamar render del modulo original
+        if (App.modules[moduleName] && typeof App.modules[moduleName].render === 'function') {
+            try { await App.modules[moduleName].render(); } catch(e) { console.error('Error render ' + moduleName, e); }
+        } else {
+            container.innerHTML = '<div style="background:#fee2e2;border-radius:8px;padding:12px;color:#991b1b">Modulo ' + moduleName + ' no encontrado</div>';
         }
     },
 
