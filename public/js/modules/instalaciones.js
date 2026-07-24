@@ -124,13 +124,17 @@ App.registerModule('instalaciones', {
         this.loadData();
     },
 
-    showForm(id) {
+    async showForm(id) {
         const inst = id ? this.instalaciones.find(i => i.id === id) : null;
         const hoy = this.fmtDate(new Date());
+        let tecnicos = [];
+        try { tecnicos = await fetch('/api/instalaciones/tecnicos').then(r => r.json()); } catch(e) {}
+        const datalistHtml = `<datalist id="tecnicosList">${(tecnicos || []).map(t => `<option value="${escapeHtml(t)}">`).join('')}</datalist>`;
         App.showModal(`
+            ${datalistHtml}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div class="form-group"><label>Cliente *</label><input class="form-control" id="instCliente" value="${inst ? escapeHtml(inst.cliente) : ''}" placeholder="Nombre del cliente" style="text-transform:uppercase"></div>
-                <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${inst ? escapeHtml(inst.tecnico) : ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize"></div>
+                <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${inst ? escapeHtml(inst.tecnico) : ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize" list="tecnicosList"></div>
             </div>
             <div class="form-group"><label>Direccion *</label>
                 <div style="display:flex;gap:6px;align-items:center">

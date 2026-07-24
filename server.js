@@ -4519,6 +4519,15 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // GET /api/instalaciones/tecnicos - Lista única de técnicos
+    if (urlPath === '/api/instalaciones/tecnicos' && req.method === 'GET') {
+        try {
+            const result = await query("SELECT DISTINCT tecnico FROM instalaciones WHERE tecnico IS NOT NULL AND tecnico != '' ORDER BY tecnico");
+            json(res, result.rows.map(r => r.tecnico));
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/instalaciones/:id - Detalle
     const instDetailMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)$/);
     if (instDetailMatch && req.method === 'GET') {
