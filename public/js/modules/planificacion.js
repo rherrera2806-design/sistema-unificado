@@ -357,12 +357,38 @@ App.modules.planificacion = {
             else { console.error('carga-semanal error:', cargaEstRes.status); this.cargaSemanal = []; }
             if (grupoChartRes.ok) this.cargaPorGrupo = await grupoChartRes.json();
             else { console.error('carga-por-grupo error:', grupoChartRes.status); this.cargaPorGrupo = null; }
+
+            // Primera carga: ajustar rango al primer dia con carga + 10 dias
+            if (!this._dataLoaded) {
+                this._dataLoaded = true;
+                const primerDia = this._findFirstDayWithData();
+                if (primerDia) {
+                    const d = new Date(primerDia + 'T00:00:00');
+                    const curInicio = new Date(this.semanaInicio);
+                    if (d.getTime() !== curInicio.getTime()) {
+                        this.semanaInicio = d;
+                        this.semanaFin = new Date(d);
+                        this.semanaFin.setDate(this.semanaFin.getDate() + 9);
+                        await this.cargarDatos();
+                        return;
+                    }
+                }
+            }
         } catch(e) {
             console.error('Error cargando planificacion:', e);
         }
-        // SIEMPRE renderizar el calendario y chart (incluso si hubo error)
         this.renderCalendario();
         this.renderChart();
+    },
+
+    _findFirstDayWithData() {
+        // Buscar en gruposSemana el primer dia con kilos > 0
+        for (const g of this.gruposSemana) {
+            for (const d of (g.dias || [])) {
+                if ((d.kilos || 0) > 0) return d.fecha;
+            }
+        }
+        return null;
     },
 
     renderPendientes() {
@@ -515,8 +541,9 @@ App.modules.planificacion = {
     },
 
     cambiarSemana(dir) {
-        this.semanaInicio.setDate(this.semanaInicio.getDate() + (dir * 7));
-        this.semanaFin.setDate(this.semanaFin.getDate() + (dir * 7));
+        this.semanaInicio.setDate(this.semanaInicio.getDate() + (dir * 10));
+        this.semanaFin.setDate(this.semanaFin.getDate() + (dir * 10));
+        this._dataLoaded = false;
         this.cargarDatos();
     },
 
