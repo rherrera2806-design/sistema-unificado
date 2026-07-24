@@ -262,34 +262,13 @@ const App = {
     showWelcome() {
         const user = getUser();
         const nombre = user ? (user.nombre || user.email) : 'Usuario';
-        const permisos = getUserPerms();
-        const modulos = [
-            { key: 'mantencion', icon: '🔧', label: 'Mantenimiento', desc: 'Preventivo, correctivo y maquinaria', color: '#10b981' },
-            { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock de cristales y movimientos', color: '#3b82f6' },
-            { key: 'ventas', icon: '📄', label: 'Pedidos', desc: 'Gestion de pedidos y ordenes', color: '#ec4899' },
-            { key: 'produccion', icon: '🏭', label: 'Produccion', desc: 'Ordenes, planificacion y calendario', color: '#f59e0b' },
-            { key: 'instalaciones', icon: '🔧', label: 'Instalaciones', desc: 'Trabajos en terreno y calendario', color: '#8b5cf6' },
-            { key: 'atencion', icon: '👥', label: 'Turnos', desc: 'Sistema de turnos QR', color: '#f59e0b' },
-            { key: 'administracion', icon: '👤', label: 'Usuarios', desc: 'Gestion de usuarios y permisos', color: '#64748b' }
-        ];
-        const visibles = modulos.filter(m => hasSection(m.key));
-        let html = `
-            <div style="max-width:700px;margin:60px auto;text-align:center">
+        const html = `
+            <div style="max-width:600px;margin:80px auto;text-align:center">
                 <div style="font-size:48px;margin-bottom:12px">👋</div>
-                <h2 style="margin:0 0 4px">Bienvenido, ${escapeHtml(nombre)}</h2>
-                <p style="color:var(--text-light);margin-bottom:32px">Selecciona un modulo para comenzar</p>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+                <h2 style="margin:0 0 8px">Bienvenido, ${escapeHtml(nombre)}</h2>
+                <p style="color:var(--text-light);font-size:14px">Usa el menu lateral para navegar entre los modulos</p>
+            </div>
         `;
-        for (const m of visibles) {
-            html += `
-                <div onclick="App.loadModule('${this.getFirstModule(m.key)}')" style="cursor:pointer;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;transition:all .2s" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-                    <div style="font-size:32px;margin-bottom:8px">${m.icon}</div>
-                    <div style="font-weight:600;font-size:15px;margin-bottom:4px">${m.label}</div>
-                    <div style="font-size:12px;color:var(--text-light)">${m.desc}</div>
-                </div>
-            `;
-        }
-        html += '</div></div>';
         document.getElementById('mainContent').innerHTML = `<div class="page active" id="page-welcome">${html}</div>`;
     },
 
@@ -408,7 +387,7 @@ const SIDEBAR_SECTIONS = {
     inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
     atencion: ['turnos_recepcion','turnos_bodega','turnos_qr'],
     ventas: ['pedidos'],
-    produccion: ['prod_ordenes','prod_codigos','prod_maquinas','prod_recetas','prod_notas','prod_config','planificacion'],
+    produccion: ['prod_ordenes','prod_planificacion','prod_notas','prod_config'],
     instalaciones: ['instalaciones','inst_detalle','inst_historial'],
     administracion: ['usuarios']
 };
@@ -485,12 +464,9 @@ function renderSidebar() {
         html += `<div class="nav-section" onclick="toggleSection('produccion')"><span>PRODUCCION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-produccion">`;
         if (canSeeItem('prod_ordenes','produccion')) html += navI('produccion', 'Produccion', '🏭');
-        if (canSeeItem('prod_codigos','produccion')) html += navI('prod_codigos', 'Codigos', '🏷️');
-        if (canSeeItem('prod_maquinas','produccion')) html += navI('prod_maquinas', 'Maquinas', '⚙️');
-        if (canSeeItem('prod_recetas','produccion')) html += navI('prod_recetas', 'Recetas BOM', '📦');
+        if (canSeeItem('prod_planificacion','produccion')) html += navI('planificacion', 'Planificacion', '📅');
         if (canSeeItem('prod_notas','produccion')) html += navI('prod_notas', 'Mis Pendientes', '📋');
         if (canSeeItem('prod_config','produccion')) html += navI('prod_config', 'Configuracion', '⚙️');
-        if (canSeeItem('planificacion','produccion')) html += navI('planificacion', 'Planificacion', '📅');
         html += `</div>`;
     }
 

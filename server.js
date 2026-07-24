@@ -613,6 +613,41 @@ async function initDB() {
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`);
 
+    // Planificacion por grupo (kg/dia) - vista simplificada
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS grupo VARCHAR(100)`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS espesor_mm INTEGER DEFAULT 6`);
+
+    // Backfill espesor_mm para ordenes existentes: BOM desde recetas, no-BOM default 6mm
+    await query(`
+        UPDATE produccion_ordenes o
+        SET espesor_mm = COALESCE(
+            (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+            6
+        )
+        WHERE (o.espesor_mm IS NULL OR o.espesor_mm = 0)
+    `);
+    await query(`CREATE TABLE IF NOT EXISTS produccion_capacidad_grupo (
+        id SERIAL PRIMARY KEY,
+        grupo VARCHAR(100) UNIQUE NOT NULL,
+        capacidad_kg_dia DECIMAL(10,2) DEFAULT 0,
+        activo BOOLEAN DEFAULT TRUE,
+        color VARCHAR(20) DEFAULT '#3b82f6',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    const capacidadesSeed = [
+        { grupo: 'Arquitectura', capacidad: 6500, color: '#3b82f6' },
+        { grupo: 'Laminado', capacidad: 1500, color: '#10b981' },
+        { grupo: 'Termopanel', capacidad: 1600, color: '#f59e0b' },
+        { grupo: 'Carroceros', capacidad: 1500, color: '#8b5cf6' }
+    ];
+    for (const c of capacidadesSeed) {
+        await query(
+            'INSERT INTO produccion_capacidad_grupo (grupo, capacidad_kg_dia, color) VALUES ($1, $2, $3) ON CONFLICT (grupo) DO NOTHING',
+            [c.grupo, c.capacidad, c.color]
+        );
+    }
+
     // SEMILLA: Estaciones maestras por defecto
     const estCount = await query('SELECT COUNT(*) as c FROM estaciones_maestras');
     if (Number(estCount.rows[0].c) === 0) {
@@ -2617,7 +2652,8 @@ const server = http.createServer(async (req, res) => {
                         o.codigo_padre
                     )
                 ELSE NULL END as nombre_codigo_padre,
-                (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp
+                (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp,
+                (SELECT f.nombre_familia FROM familias_producto f WHERE f.id = o.familia_id) as familia_nombre
             FROM produccion_ordenes o ORDER BY o.created_at DESC
         `);
         json(res, result.rows);
@@ -2780,6 +2816,10 @@ const server = http.createServer(async (req, res) => {
             if (fields.length === 0) { json(res, { error: 'Sin campos para actualizar' }, 400); return; }
             values.push(id);
             await query(`UPDATE produccion_ordenes SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+            // Recalcular kilos cada vez que cambia cantidad o m2 (m2 * 2.5 * espesor_mm)
+            // Para BOM, tomar espesor desde recetas_bom (cada componente tiene su espesor)
+            await query(`UPDATE produccion_ordenes o SET espesor_mm = COALESCE((SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id), o.espesor_mm, 6) WHERE o.id = $1`, [id]);
+            await query('UPDATE produccion_ordenes SET kilos = ROUND(COALESCE(metros_cuadrados,0) * 2.5 * COALESCE(espesor_mm,6)::numeric, 2) WHERE id = $1', [id]);
             const result = await query('SELECT * FROM produccion_ordenes WHERE id = $1', [id]);
             json(res, result.rows[0] || { ok: true });
         } catch(e) { json(res, { error: e.message }, 500); }
@@ -3927,6 +3967,473 @@ const server = http.createServer(async (req, res) => {
             await query('UPDATE produccion_ordenes SET estado_programacion = $1, fecha_entrega_pactada = $2 WHERE id = $3', ['PROGRAMADO', fechaFinal, orden_id]);
 
             json(res, { ok: true, mensaje: `Orden programada${fechaFinal ? '. Entrega: ' + fechaFinal : ''}`, asignaciones });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // =====================================================
+    // PRODUCCION - Planificacion por GRUPO (kg/dia) - Vista simplificada
+    // =====================================================
+
+    // GET /api/produccion/capacidad-grupo - Listar capacidad por grupo
+    if (urlPath === '/api/produccion/capacidad-grupo' && req.method === 'GET') {
+        try {
+            const result = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE ORDER BY grupo');
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // PUT /api/produccion/capacidad-grupo/:id - Actualizar capacidad
+    const capGrupoMatch = urlPath.match(/^\/api\/produccion\/capacidad-grupo\/(\d+)$/);
+    if (capGrupoMatch && req.method === 'PUT') {
+        const id = Number(capGrupoMatch[1]);
+        const body = await parseBody(req);
+        try {
+            const { capacidad_kg_dia, color, activo } = body;
+            const fields = [];
+            const values = [];
+            let idx = 1;
+            if (capacidad_kg_dia !== undefined) { fields.push(`capacidad_kg_dia = $${idx++}`); values.push(Number(capacidad_kg_dia) || 0); }
+            if (color !== undefined) { fields.push(`color = $${idx++}`); values.push(color); }
+            if (activo !== undefined) { fields.push(`activo = $${idx++}`); values.push(!!activo); }
+            if (!fields.length) { json(res, { error: 'Sin campos' }, 400); return; }
+            values.push(id);
+            await query(`UPDATE produccion_capacidad_grupo SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+            const result = await query('SELECT * FROM produccion_capacidad_grupo WHERE id = $1', [id]);
+            json(res, result.rows[0]);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/produccion/planificacion-grupo/semana?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
+    // Carga por grupo y dia con m2, metros lineales y kilos
+    if (urlPath === '/api/produccion/planificacion-grupo/semana' && req.method === 'GET') {
+        try {
+            const urlObj = new URL(req.url, 'http://localhost');
+            const inicio = urlObj.searchParams.get('inicio');
+            const fin = urlObj.searchParams.get('fin');
+            if (!inicio || !fin) { json(res, { error: 'inicio y fin requeridos' }, 400); return; }
+
+            // Para ordenes BOM: forzar espesor_mm desde recetas_bom (cada componente tiene su espesor)
+            await query(`
+                UPDATE produccion_ordenes o
+                SET espesor_mm = COALESCE(
+                    (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+                    o.espesor_mm,
+                    6
+                )
+                WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+            `);
+            // Recalcular kilos siempre (por si cambiaron cantidades)
+            await query(`
+                UPDATE produccion_ordenes
+                SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
+                WHERE metros_cuadrados > 0
+            `);
+
+            // Calendario laboral
+            const calMap = {};
+            try {
+                const calRes = await query('SELECT to_char(fecha, \'YYYY-MM-DD\') as fs, es_laboral, motivo FROM calendario_produccion WHERE fecha BETWEEN $1 AND $2', [inicio, fin]);
+                calRes.rows.forEach(c => { calMap[c.fs] = { es_laboral: c.es_laboral, motivo: c.motivo }; });
+            } catch(calErr) {}
+
+            const esLaboral = (fStr) => {
+                if (calMap.hasOwnProperty(fStr)) return calMap[fStr].es_laboral;
+                const d = new Date(fStr + 'T12:00:00');
+                return d.getDay() !== 0 && d.getDay() !== 6;
+            };
+            const motivo = (fStr) => calMap[fStr]?.motivo || null;
+
+            const capacidadRes = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE ORDER BY grupo');
+            const grupos = capacidadRes.rows;
+
+            // Carga agrupada
+            const cargaRes = await query(`
+                SELECT
+                    o.fecha_programada::text as fecha,
+                    COALESCE(o.grupo, '(sin grupo)') as grupo,
+                    COALESCE(SUM(o.metros_cuadrados), 0) as m2,
+                    COALESCE(SUM(2.0 * (COALESCE(o.ancho,0) + COALESCE(o.alto,0)) / 1000.0 * COALESCE(o.cantidad, 1)), 0) as m_lineales,
+                    COALESCE(SUM(o.kilos), 0) as kilos,
+                    COUNT(*) as ordenes
+                FROM produccion_ordenes o
+                WHERE o.fecha_programada BETWEEN $1 AND $2
+                  AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+                GROUP BY o.fecha_programada, o.grupo
+                ORDER BY o.fecha_programada
+            `, [inicio, fin]);
+
+            // Generar estructura: cada grupo x cada dia del rango
+            const inicioD = new Date(inicio + 'T00:00:00');
+            const finD = new Date(fin + 'T00:00:00');
+            const dias = [];
+            for (let d = new Date(inicioD); d <= finD; d.setDate(d.getDate() + 1)) {
+                dias.push(d.toISOString().split('T')[0]);
+            }
+
+            const data = grupos.map(g => {
+                const diasMap = dias.map(f => {
+                    const fData = cargaRes.rows.find(r => r.fecha === f && r.grupo === g.grupo);
+                    return {
+                        fecha: f,
+                        es_laboral: esLaboral(f),
+                        motivo: motivo(f),
+                        m2: Number(fData?.m2) || 0,
+                        m_lineales: Number(fData?.m_lineales) || 0,
+                        kilos: Number(fData?.kilos) || 0,
+                        ordenes: Number(fData?.ordenes) || 0
+                    };
+                });
+                const tot = diasMap.reduce((acc, d) => ({
+                    m2: acc.m2 + d.m2, m_lineales: acc.m_lineales + d.m_lineales, kilos: acc.kilos + d.kilos, ordenes: acc.ordenes + d.ordenes
+                }), { m2: 0, m_lineales: 0, kilos: 0, ordenes: 0 });
+                return { grupo: g.grupo, color: g.color, capacidad_kg_dia: Number(g.capacidad_kg_dia) || 0, dias: diasMap, total: tot };
+            });
+
+            json(res, { grupos: data, dias });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/produccion/planificacion-grupo?fecha=YYYY-MM-DD
+    // Retorna carga por grupo para una fecha + ordenes pendientes sin asignar
+    if (urlPath === '/api/produccion/planificacion-grupo' && req.method === 'GET') {
+        try {
+            const urlObj = new URL(req.url, 'http://localhost');
+            const fecha = urlObj.searchParams.get('fecha');
+
+            const capacidadRes = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE ORDER BY grupo');
+            const capacidad = capacidadRes.rows;
+
+            // Backfill grupo + kilos en ordenes existentes (BOM -> grupo del padre; kilos = m2 * 2.5 * espesor)
+            // Para BOM usar o.codigo_padre (poblado por el usuario con codigos correctos), fallback a recetas_bom
+            await query(`
+                UPDATE produccion_ordenes o
+                SET grupo = CASE
+                    WHEN o.es_compuesto = TRUE THEN COALESCE(
+                        (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                        (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                    )
+                    ELSE
+                        (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto)
+                END
+                WHERE o.grupo IS NULL OR (o.es_compuesto = TRUE AND o.grupo = (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto))
+            `);
+            // Forzar re-resolucion para todas las ordenes BOM usando o.codigo_padre primero
+            await query(`
+                UPDATE produccion_ordenes o
+                SET grupo = COALESCE(
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                    (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                )
+                WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+            `);
+            // Para ordenes BOM: forzar espesor_mm desde recetas_bom (cada componente tiene su espesor)
+            await query(`
+                UPDATE produccion_ordenes o
+                SET espesor_mm = COALESCE(
+                    (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+                    o.espesor_mm,
+                    6
+                )
+                WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+            `);
+            // SIEMPRE recalcular kilos en cada consulta (no solo si es 0) por si cambiaron cantidades
+            await query(`
+                UPDATE produccion_ordenes
+                SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
+                WHERE metros_cuadrados > 0
+            `);
+            await query(`
+                UPDATE produccion_ordenes
+                SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
+                WHERE (kilos IS NULL OR kilos = 0) AND metros_cuadrados > 0
+            `);
+
+            // Carga por grupo y fecha (solo PENDIENTE y EN_PROCESO)
+            let cargaRes;
+            if (fecha) {
+                cargaRes = await query(`
+                    SELECT COALESCE(o.grupo, '(sin grupo)') as grupo, COALESCE(SUM(o.kilos), 0) as kg_total, COUNT(*) as ordenes
+                    FROM produccion_ordenes o
+                    WHERE o.fecha_programada = $1 AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+                    GROUP BY o.grupo
+                `, [fecha]);
+            } else {
+                cargaRes = await query(`
+                    SELECT o.fecha_programada, COALESCE(o.grupo, '(sin grupo)') as grupo, COALESCE(SUM(o.kilos), 0) as kg_total, COUNT(*) as ordenes
+                    FROM produccion_ordenes o
+                    WHERE o.fecha_programada IS NOT NULL AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+                    GROUP BY o.fecha_programada, o.grupo
+                    ORDER BY o.fecha_programada
+                `);
+            }
+
+            // Ordenes pendientes sin programar (con grupo del codigo_padre para BOM)
+            // Prioridad: o.codigo_padre (poblado por usuario) > rb.codigo_sap_padre (de recetas)
+            const pendRes = await query(`
+                SELECT o.id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion, o.codigo_padre as codigo_padre_orden,
+                       o.ancho, o.alto, o.cantidad, o.kilos, o.grupo, o.es_compuesto, o.bom_padre_id, o.created_at,
+                       (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp,
+                       (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as grupo_codigo,
+                       COALESCE(
+                         (SELECT cc.codigo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                         (SELECT rb.codigo_sap_padre FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id)
+                       ) as codigo_padre,
+                       COALESCE(
+                         (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                         (SELECT cc2.descripcion FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                       ) as nombre_padre,
+                       COALESCE(
+                         (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                         (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                       ) as grupo_padre
+                FROM produccion_ordenes o
+                WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL
+                ORDER BY o.created_at ASC
+            `);
+
+            // Resolver grupo final en JS (BOM usa grupo_padre, no-BOM usa grupo_codigo)
+            const pendientes = pendRes.rows.map(o => {
+                let grupoFinal;
+                if (o.es_compuesto && o.bom_padre_id) grupoFinal = o.grupo_padre;
+                else grupoFinal = o.grupo || o.grupo_codigo;
+                return { ...o, grupo: grupoFinal };
+            });
+
+            json(res, { capacidad, carga: cargaRes.rows, pendientes, fecha });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/produccion/planificacion-grupo/asignar - Asignar orden a fecha
+    if (urlPath === '/api/produccion/planificacion-grupo/asignar' && req.method === 'POST') {
+        try {
+            const body = await parseBody(req);
+            const { orden_id, fecha } = body;
+            if (!orden_id) { json(res, { error: 'orden_id requerido' }, 400); return; }
+            if (fecha) {
+                await query('UPDATE produccion_ordenes SET fecha_programada = $1, estado_programacion = $2 WHERE id = $3', [fecha, 'PROGRAMADO', orden_id]);
+            } else {
+                // Si desasignan (fecha null), volver a PENDIENTE
+                await query('UPDATE produccion_ordenes SET fecha_programada = NULL, estado_programacion = $1 WHERE id = $2', ['PENDIENTE', orden_id]);
+            }
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/produccion/planificacion-grupo/auto-asignar - Auto-asignar PENDIENTES
+    if (urlPath === '/api/produccion/planificacion-grupo/auto-asignar' && req.method === 'POST') {
+        try {
+            const body = await parseBody(req);
+            const dias = Number(body.dias) || 14;
+            const inicio = body.inicio || new Date().toISOString().split('T')[0];
+
+            const capRes = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE');
+            const capMap = {};
+            capRes.rows.forEach(c => { capMap[c.grupo] = Number(c.capacidad_kg_dia) || 0; });
+
+            // Backfill grupo: BOM usa grupo del codigo_padre (prioridad) o recetas_bom (fallback), no-BOM usa grupo del codigo_producto
+            await query(`
+                UPDATE produccion_ordenes o
+                SET grupo = CASE
+                    WHEN o.es_compuesto = TRUE THEN COALESCE(
+                        (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                        (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                    )
+                    ELSE
+                        (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto)
+                END
+                WHERE o.grupo IS NULL
+            `);
+            // Re-resolver para todas las BOM
+            await query(`
+                UPDATE produccion_ordenes o
+                SET grupo = COALESCE(
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                    (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                )
+                WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+            `);
+            // Para ordenes BOM: forzar espesor_mm desde recetas_bom (cada componente tiene su espesor)
+            await query(`
+                UPDATE produccion_ordenes o
+                SET espesor_mm = COALESCE(
+                    (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+                    o.espesor_mm,
+                    6
+                )
+                WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+            `);
+            // Backfill kilos para ordenes que no lo tengan calculado
+            await query(`
+                UPDATE produccion_ordenes
+                SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
+                WHERE (kilos IS NULL OR kilos = 0) AND metros_cuadrados > 0
+            `);
+
+            const pendRes = await query(`
+                SELECT o.* FROM produccion_ordenes o
+                WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL
+                ORDER BY o.created_at
+            `);
+
+            // Para BOM, resolver grupo del padre en JS (mas robusto)
+            // Prioridad: o.codigo_padre (poblado por usuario) > rb.codigo_sap_padre (de recetas)
+            const padreGrupoRes = await query(`
+                SELECT o.id as orden_id, o.bom_padre_id, o.codigo_padre, COALESCE(
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                    (SELECT cc2.grupo FROM produccion_recetas_bom rb2 JOIN produccion_codigos cc2 ON cc2.codigo = rb2.codigo_sap_padre WHERE rb2.id = o.bom_padre_id)
+                ) as grupo_padre
+                FROM produccion_ordenes o
+                WHERE o.es_compuesto = TRUE
+            `);
+            const padreGrupoMap = {};
+            padreGrupoRes.rows.forEach(r => { if (r.bom_padre_id) padreGrupoMap[r.bom_padre_id] = r.grupo_padre; });
+
+            // Carga actual
+            const cargaRes = await query(`
+                SELECT fecha_programada, grupo, COALESCE(SUM(kilos),0) as kg
+                FROM produccion_ordenes
+                WHERE fecha_programada IS NOT NULL AND estado_programacion NOT IN ('CERRADO','TERMINADO')
+                GROUP BY fecha_programada, grupo
+            `);
+            const cargaMap = {};
+            cargaRes.rows.forEach(r => {
+                if (!cargaMap[r.fecha_programada]) cargaMap[r.fecha_programada] = {};
+                cargaMap[r.fecha_programada][r.grupo] = Number(r.kg) || 0;
+            });
+
+            // Calendario laboral
+            const calMap = {};
+            try {
+                const calRes = await query('SELECT to_char(fecha, \'YYYY-MM-DD\') as fs, es_laboral FROM calendario_produccion');
+                calRes.rows.forEach(c => { calMap[c.fs] = c.es_laboral; });
+            } catch(calErr) {}
+
+            const esLaboral = (fStr) => {
+                if (calMap.hasOwnProperty(fStr)) return calMap[fStr];
+                const d = new Date(fStr + 'T12:00:00');
+                return d.getDay() !== 0 && d.getDay() !== 6;
+            };
+            const fmt = (d) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            const inicioDate = new Date(inicio + 'T00:00:00');
+            // targetPct removido: ahora se calcula dinamicamente por dia segun carga existente
+            const findDateWithCapacity = (grupo, kg) => {
+                const capGrupo = capMap[grupo] || 0;
+                for (let d = 0; d < dias; d++) {
+                    const f = new Date(inicioDate);
+                    f.setDate(f.getDate() + d);
+                    const fStr = fmt(f);
+                    if (!esLaboral(fStr)) continue;
+                    const usado = (cargaMap[fStr] && cargaMap[fStr][grupo]) || 0;
+                    if (usado + kg <= capGrupo) {
+                        return fStr;
+                    }
+                }
+                return null;
+            };
+
+            // Calcula cuantas unidades ENTERAS caben en el primer dia con capacidad
+            // (cabe en el dia mas proximo que tenga espacio)
+            const calcUnitsForDay = (grupo, kgPorUnidad) => {
+                const capGrupo = capMap[grupo] || 0;
+                for (let d = 0; d < dias; d++) {
+                    const f = new Date(inicioDate);
+                    f.setDate(f.getDate() + d);
+                    const fStr = fmt(f);
+                    if (!esLaboral(fStr)) continue;
+                    const usado = (cargaMap[fStr] && cargaMap[fStr][grupo]) || 0;
+                    const libre = capGrupo - usado;
+                    if (libre <= 0) continue;
+                    // Unidades enteras que caben en libre (sin pasar la capacidad del dia)
+                    const unitsFit = Math.floor(libre / kgPorUnidad);
+                    if (unitsFit >= 1) return { units: unitsFit, fecha: fStr };
+                }
+                return { units: 0, fecha: null };
+            };
+
+            const addToCarga = (fecha, grupo, kg) => {
+                if (!cargaMap[fecha]) cargaMap[fecha] = {};
+                cargaMap[fecha][grupo] = (cargaMap[fecha][grupo] || 0) + kg;
+            };
+
+            const asignados = [];
+            const noAsignados = [];
+
+            for (const o of pendRes.rows) {
+                let grupo = o.grupo;
+                if (!grupo && o.es_compuesto && o.bom_padre_id) grupo = padreGrupoMap[o.bom_padre_id];
+                const capacidad = grupo ? capMap[grupo] : null;
+                const kgTotal = Number(o.kilos) || 0;
+                if (!grupo) { noAsignados.push({ id: o.id, motivo: 'sin grupo' }); continue; }
+                if (!capacidad) { noAsignados.push({ id: o.id, motivo: 'capacidad no configurada para ' + grupo }); continue; }
+
+                const totalUnidades = Number(o.cantidad) || 1;
+                const kgPorUnidad = kgTotal / totalUnidades;
+                const m2PorUnidad = Number(o.metros_cuadrados || 0) / totalUnidades;
+
+                // Si 1 sola unidad ya excede la capacidad, no se puede dividir mas
+                if (kgPorUnidad > capacidad) {
+                    noAsignados.push({ id: o.id, motivo: '1 unidad (' + kgPorUnidad.toFixed(1) + ' kg) excede capacidad de ' + grupo + ' (' + capacidad + ' kg/dia)' });
+                    continue;
+                }
+
+                // Sufijo
+                let basePedido = String(o.pedido_sap_id || '');
+                let startCharCode = 65;
+                const m = basePedido.match(/^(.+?)([A-Z])$/);
+                if (m) { basePedido = m[1]; startCharCode = m[2].charCodeAt(0) + 1; }
+
+                let remaining = totalUnidades;
+                let suffix = String.fromCharCode(startCharCode);
+
+                // 1ra pieza: actualizar el original con lo que cabe en el primer dia con capacidad
+                let { units: firstUnits, fecha: firstDate } = calcUnitsForDay(grupo, kgPorUnidad);
+                if (!firstDate || firstUnits < 1) { noAsignados.push({ id: o.id, motivo: 'no hay capacidad en ' + dias + ' dias habiles' }); continue; }
+
+                firstUnits = Math.min(firstUnits, remaining);
+                const firstKg = +(firstUnits * kgPorUnidad).toFixed(2);
+                const firstM2 = +(firstUnits * m2PorUnidad).toFixed(4);
+                const newPedido = basePedido + suffix;
+                await query(
+                    'UPDATE produccion_ordenes SET pedido_sap_id=$1, cantidad=$2, kilos=$3, metros_cuadrados=$4, fecha_programada=$5, estado_programacion=$6, grupo=$7 WHERE id=$8',
+                    [newPedido, firstUnits, firstKg, firstM2, firstDate, 'PROGRAMADO', grupo, o.id]
+                );
+                addToCarga(firstDate, grupo, firstKg);
+                asignados.push({ id: o.id, pedido: newPedido, fecha: firstDate, grupo, kg: firstKg, unidades: firstUnits });
+                remaining -= firstUnits;
+                suffix = String.fromCharCode(suffix.charCodeAt(0) + 1);
+
+                // Piezas siguientes
+                while (remaining > 0) {
+                    const { units, fecha } = calcUnitsForDay(grupo, kgPorUnidad);
+                    if (!fecha || units < 1) { noAsignados.push({ id: o.id, motivo: 'resto (' + remaining + ' un) no cabe en ' + dias + ' dias habiles' }); break; }
+                    const u = Math.min(units, remaining);
+                    const kg = +(u * kgPorUnidad).toFixed(2);
+                    const m2 = +(u * m2PorUnidad).toFixed(4);
+                    const newPedidoSplit = basePedido + suffix;
+                    const ins = await query(
+                        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, bom_padre_id, codigo_padre, tipo_venta, pintado, perforaciones, item_numero, cantidad, espesor_mm, kilos, grupo, fecha_programada, estado_programacion, created_at)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
+                        [newPedidoSplit, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, m2, o.es_compuesto, o.bom_padre_id, o.codigo_padre, o.tipo_venta, o.pintado, o.perforaciones, o.item_numero, u, o.espesor_mm, kg, grupo, fecha, 'PROGRAMADO', new Date().toISOString()]
+                    );
+                    const newId = ins.rows[0].id;
+                    const pasosRes = await query('SELECT estacion_nombre, orden_secuencia FROM produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [o.id]);
+                    for (const p of pasosRes.rows) {
+                        await query('INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [newId, p.estacion_nombre, p.orden_secuencia, 'PENDIENTE']);
+                    }
+                    addToCarga(fecha, grupo, kg);
+                    asignados.push({ id: newId, pedido: newPedidoSplit, fecha, grupo, kg, unidades: u });
+                    remaining -= u;
+                    suffix = String.fromCharCode(suffix.charCodeAt(0) + 1);
+                }
+            }
+
+            json(res, { asignados: asignados.length, no_asignados: noAsignados.length, detalle: { asignados: asignados.slice(0, 100), noAsignados: noAsignados.slice(0, 50) } });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }

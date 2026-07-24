@@ -48,11 +48,21 @@ App.registerModule('produccion', {
             </div>
 
             <div class="card">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-                    <h3 style="margin:0">Ordenes de Produccion</h3>
-                    <div style="display:flex;gap:8px">
-                        <input type="text" class="form-control" id="prodFilterSearch" placeholder="Buscar codigo, pedido..." oninput="App.modules.produccion.filter()" style="width:200px">
-                        <select class="form-control" id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="width:140px">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                    <h3 style="margin:0;display:flex;align-items:center;gap:12px">
+                        <span>Ordenes de Produccion</span>
+                        <span id="prodTotales" style="display:inline-flex;gap:8px;font-size:12px;font-weight:500"></span>
+                    </h3>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <input type="text" class="form-control" id="prodFilterSearch" placeholder="Buscar codigo, pedido..." oninput="App.modules.produccion.filter()" style="width:180px">
+                        <input type="date" class="form-control" id="prodFilterFecha" onchange="App.modules.produccion.filter()" style="width:140px" title="Filtrar por fecha programada">
+                        <select class="form-control" id="prodFilterGrupo" onchange="App.modules.produccion.filter()" style="width:130px">
+                            <option value="todos">Todos Grupos</option>
+                        </select>
+                        <select class="form-control" id="prodFilterFamilia" onchange="App.modules.produccion.filter()" style="width:140px">
+                            <option value="todos">Todas Familias</option>
+                        </select>
+                        <select class="form-control" id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="width:130px">
                             <option value="todos">Todos</option>
                             <option value="PENDIENTE">Pendientes</option>
                             <option value="PROGRAMADO">Programadas</option>
@@ -64,9 +74,9 @@ App.registerModule('produccion', {
                 </div>
                 <div class="card-body" style="padding:0">
                     <table style="font-size:13px"><thead><tr>
-                        <th style="padding:6px 12px">Pedido</th><th style="padding:6px 12px">Item</th><th style="padding:6px 12px">Cliente</th><th style="padding:6px 12px">Cod. Padre</th><th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Nombre MP</th><th style="padding:6px 12px">Dimensiones</th><th style="padding:6px 12px">m2</th><th style="padding:6px 12px">Cant.</th><th style="padding:6px 12px">Tipo Venta</th><th style="padding:6px 12px">Ruta</th><th style="padding:6px 12px">Estado</th><th style="padding:6px 12px">Acciones</th>
+                        <th style="padding:6px 12px">Pedido</th><th style="padding:6px 12px">Item</th><th style="padding:6px 12px">Cliente</th><th style="padding:6px 12px">Cod. Padre</th><th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Nombre MP</th><th style="padding:6px 12px">Dimensiones</th><th style="padding:6px 12px">m2</th><th style="padding:6px 12px">Kilos</th><th style="padding:6px 12px">Cant.</th><th style="padding:6px 12px">Tipo Venta</th><th style="padding:6px 12px">F. Programado</th><th style="padding:6px 12px">Ruta</th><th style="padding:6px 12px">Estado</th><th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="prodTable">
-                        <tr><td colspan="13" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="15" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -196,7 +206,17 @@ App.registerModule('produccion', {
             this.recetas = await recetasRes.json();
             this.renderStats();
             this.renderTable(this.ordenes);
+            this.populateFilters();
         } catch(e) { console.error('Error loading produccion:', e); }
+    },
+
+    populateFilters() {
+        const grupos = [...new Set(this.ordenes.map(o => o.grupo).filter(Boolean))].sort();
+        const familias = [...new Set(this.ordenes.map(o => o.familia_nombre).filter(Boolean))].sort();
+        const gSel = document.getElementById('prodFilterGrupo');
+        const fSel = document.getElementById('prodFilterFamilia');
+        if (gSel) { const cur = gSel.value; gSel.innerHTML = '<option value="todos">Todos Grupos</option>' + grupos.map(g => `<option value="${g}" ${g===cur?'selected':''}>${g}</option>`).join(''); }
+        if (fSel) { const cur = fSel.value; fSel.innerHTML = '<option value="todos">Todas Familias</option>' + familias.map(f => `<option value="${f}" ${f===cur?'selected':''}>${f}</option>`).join(''); }
     },
 
     renderStats() {
@@ -215,7 +235,8 @@ App.registerModule('produccion', {
 
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
-        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
+        this.renderTotales(ordenes);
+        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
 
         const estadoBadge = (e) => {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">✓ TERMINADO</span>';
@@ -242,8 +263,10 @@ App.registerModule('produccion', {
                 <td style="padding:6px 12px;font-size:11px;color:#6b7280">${escapeHtml(o.nombre_mp || o.descripcion || '-')}</td>
                 <td style="padding:6px 12px">${o.ancho} x ${o.alto} mm</td>
                 <td style="padding:6px 12px">${o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-'}</td>
+                <td style="padding:6px 12px;font-weight:600">${o.kilos ? Number(o.kilos).toFixed(1) : '-'}</td>
                 <td style="padding:6px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(${o.id}, ${o.cantidad || 1})"><strong>${o.cantidad || 1}</strong></td>
                 <td style="padding:6px 12px">${tipoBadge(o.tipo_venta)}</td>
+                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${(() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })()}</td>
                 <td style="padding:6px 12px">${progreso}</td>
                 <td style="padding:6px 12px">${estadoBadge(o.estado_programacion)}${o.cerrado_nota ? ` <span title="${o.cerrado_nota.replace(/"/g, '&quot;')}" style="cursor:pointer;font-size:10px">ℹ️</span>` : ''}</td>
                 <td style="padding:6px 12px">
@@ -258,10 +281,30 @@ App.registerModule('produccion', {
     filter() {
         const search = (document.getElementById('prodFilterSearch')?.value || '').toLowerCase();
         const estado = document.getElementById('prodFilterEstado')?.value || 'todos';
+        const fechaFilter = document.getElementById('prodFilterFecha')?.value || '';
+        const grupo = document.getElementById('prodFilterGrupo')?.value || 'todos';
+        const familia = document.getElementById('prodFilterFamilia')?.value || 'todos';
         let filtered = this.ordenes;
         if (search) filtered = filtered.filter(o => (o.codigo_producto || '').toLowerCase().includes(search) || (o.pedido_sap_id || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search) || (o.nombre_codigo_padre || '').toLowerCase().includes(search) || (o.nombre_mp || '').toLowerCase().includes(search));
         if (estado !== 'todos') filtered = filtered.filter(o => o.estado_programacion === estado);
+        if (fechaFilter) filtered = filtered.filter(o => { const f = o.fecha_programada; if (!f) return false; const d = new Date(f); const fs = d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); return fs === fechaFilter; });
+        if (grupo !== 'todos') filtered = filtered.filter(o => o.grupo === grupo);
+        if (familia !== 'todos') filtered = filtered.filter(o => o.familia_nombre === familia);
         this.renderTable(filtered);
+    },
+
+    renderTotales(ordenes) {
+        const el = document.getElementById('prodTotales');
+        if (!el) return;
+        const totalM2 = ordenes.reduce((s, o) => s + Number(o.metros_cuadrados || 0), 0);
+        const totalKg = ordenes.reduce((s, o) => s + Number(o.kilos || 0), 0);
+        const totalCant = ordenes.reduce((s, o) => s + Number(o.cantidad || 0), 0);
+        el.innerHTML = `
+            <span style="padding:3px 8px;border-radius:4px;background:#dbeafe;color:#1e40af">${ordenes.length} ordenes</span>
+            <span style="padding:3px 8px;border-radius:4px;background:#fef3c7;color:#854d0e">${totalCant} und</span>
+            <span style="padding:3px 8px;border-radius:4px;background:#e0e7ff;color:#3730a3">${totalM2.toLocaleString('es-CL', {maximumFractionDigits:2})} m²</span>
+            <span style="padding:3px 8px;border-radius:4px;background:#dcfce7;color:#166534"><strong>${totalKg.toLocaleString('es-CL', {maximumFractionDigits:1})} kg</strong></span>
+        `;
     },
 
     setupDragDrop() {
