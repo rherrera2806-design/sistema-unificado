@@ -9,10 +9,13 @@ App.registerModule('instalaciones', {
 
     async render() {
         const el = document.getElementById('page-instalaciones');
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const permisos = user.permisos || [];
+        const puedeCrear = permisos.includes('instalaciones.nueva') || permisos.includes('usuarios');
         el.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
                 <div><h2 style="margin:0">Instalaciones</h2><div class="subtitle">Calendario mensual de trabajos en terreno</div></div>
-                <button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()">+ Nueva Instalacion</button>
+                ${puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()">+ Nueva Instalacion</button>' : ''}
             </div>
             <div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px"></div>
             <div id="instCalendario"></div>
