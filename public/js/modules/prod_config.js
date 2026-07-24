@@ -23,7 +23,6 @@ App.registerModule('prod_config', {
                 <button class="btn btn-sm ${this._tab==='materias'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('materias')">🪟 Materias Primas</button>
                 <button class="btn btn-sm ${this._tab==='reglas'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('reglas')">🏷️ Reglas Extras</button>
                 <button class="btn btn-sm ${this._tab==='calendario'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('calendario')">📅 Calendario</button>
-                <button class="btn btn-sm ${this._tab==='tecnicos'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('tecnicos')">👷 Tecnicos</button>
             </div>
             <div id="prodConfigContent"></div>
         `;
@@ -49,7 +48,6 @@ App.registerModule('prod_config', {
             case 'materias': await this.loadMaterias(); break;
             case 'reglas': await this.loadReglas(); break;
             case 'calendario': await this.loadCalendario(); break;
-            case 'tecnicos': await this.loadTecnicos(); break;
         }
     },
 
@@ -455,68 +453,5 @@ App.registerModule('prod_config', {
             if (!res.ok) { const err = await res.json(); App.showAlert('Error: ' + (err.error || res.status), 'danger'); return; }
             await this.loadCalendario();
         } catch(e) { App.showAlert('Error de conexion: ' + e.message, 'danger'); }
-    },
-
-    async loadTecnicos() {
-        const container = document.getElementById('prodConfigContent');
-        try {
-            const res = await fetch('/api/produccion/tecnicos');
-            const data = await res.json();
-            const list = Array.isArray(data) ? data : [];
-            container.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                    <h3 style="margin:0">Tecnicos de Instalacion (${list.length})</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.formTecnico()">+ Nuevo Tecnico</button>
-                </div>
-                <div id="tecnicoForm"></div>
-                <table class="data-table" style="width:100%">
-                    <thead><tr><th>Nombre</th><th>Estado</th><th>Creado</th><th>Acciones</th></tr></thead>
-                    <tbody>${list.length === 0 ? '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-light)">No hay tecnicos registrados</td></tr>' :
-                    list.map(t => `
-                        <tr>
-                            <td style="font-weight:600">${escapeHtml(t.nombre)}</td>
-                            <td><span class="status-badge ${t.activo ? 'status-completada' : 'status-cancelada'}">${t.activo ? 'Activo' : 'Inactivo'}</span></td>
-                            <td style="font-size:12px;color:var(--text-light)">${t.created_at ? new Date(t.created_at).toLocaleDateString('es-CO') : '-'}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.formTecnico(${t.id},'${escapeHtml(t.nombre).replace(/'/g,"\\'")}',${t.activo})" style="margin-right:4px">✏️</button>
-                                <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.eliminarTecnico(${t.id})" style="color:var(--danger)">🗑️</button>
-                            </td>
-                        </tr>
-                    `).join('')}</tbody>
-                </table>`;
-        } catch(e) { container.innerHTML = '<div style="color:var(--danger)">Error: ' + e.message + '</div>'; }
-    },
-
-    formTecnico(id, nombre, activo) {
-        const el = document.getElementById('tecnicoForm');
-        if (el) el.innerHTML = `
-            <div style="display:flex;gap:8px;align-items:end;margin-bottom:16px;padding:12px;background:rgba(59,130,246,0.05);border-radius:8px;border:1px solid var(--border)">
-                <div style="flex:1"><label style="font-size:12px;font-weight:600">Nombre</label>
-                    <input class="form-control" id="tecNombre" value="${nombre || ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize"></div>
-                <div style="flex:0"><label style="font-size:12px;font-weight:600">Activo</label>
-                    <select class="form-control" id="tecActivo"><option value="true" ${activo !== false ? 'selected' : ''}>Si</option><option value="false" ${activo === false ? 'selected' : ''}>No</option></select></div>
-                <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.guardarTecnico(${id || 0})">Guardar</button>
-                <button class="btn btn-sm btn-outline" onclick="document.getElementById('tecnicoForm').innerHTML=''">Cancelar</button>
-            </div>`;
-    },
-
-    async guardarTecnico(id) {
-        const nombre = (document.getElementById('tecNombre').value || '').trim();
-        const activo = document.getElementById('tecActivo').value === 'true';
-        if (!nombre) { App.showAlert('Nombre requerido', 'danger'); return; }
-        const data = { nombre, activo };
-        try {
-            if (id === 0) await fetch('/api/produccion/tecnicos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-            else await fetch(`/api/produccion/tecnicos/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-            await this.loadTecnicos();
-        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
-    },
-
-    async eliminarTecnico(id) {
-        if (!confirm('Eliminar este tecnico?')) return;
-        try {
-            await fetch(`/api/produccion/tecnicos/${id}`, { method: 'DELETE' });
-            await this.loadTecnicos();
-        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     }
 });
