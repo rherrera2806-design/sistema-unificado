@@ -1,9 +1,11 @@
 App.modules.planificacion = {
     nombre: 'Planificacion',
     cargaSemanal: [],
+    cargaPorGrupo: null,
     pendientes: [],
     semanaInicio: null,
     semanaFin: null,
+    _chartInstance: null,
 
     fmtDate(d) {
         return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -37,6 +39,7 @@ App.modules.planificacion = {
             </div>
             <div id="planPendientes" style="margin-bottom:24px"></div>
             <div id="planCalendario"></div>
+            <div id="planChart" style="margin-top:24px"></div>
             <div class="modal-overlay" id="planAsignarModal">
                 <div class="modal" style="max-width:500px">
                     <div class="modal-header"><h3>Asignar Fecha de Entrega</h3><button class="modal-close" onclick="App.modules.planificacion.cerrarModal()">&times;</button></div>
@@ -51,16 +54,20 @@ App.modules.planificacion = {
         const inicio = this.fmtDate(this.semanaInicio);
         const fin = this.fmtDate(this.semanaFin);
         try {
-            const [cargaRes, pendRes] = await Promise.all([
+            const [cargaRes, pendRes, grupoRes] = await Promise.all([
                 fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`),
-                fetch('/api/produccion/planificacion/pendientes')
+                fetch('/api/produccion/planificacion/pendientes'),
+                fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${fin}`)
             ]);
             if (cargaRes.ok) this.cargaSemanal = await cargaRes.json();
             else { console.error('carga-semanal error:', cargaRes.status); this.cargaSemanal = []; }
             if (pendRes.ok) this.pendientes = await pendRes.json();
             else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
+            if (grupoRes.ok) this.cargaPorGrupo = await grupoRes.json();
+            else { console.error('carga-por-grupo error:', grupoRes.status); this.cargaPorGrupo = null; }
             this.renderPendientes();
             this.renderCalendario();
+            this.renderChart();
         } catch(e) {
             console.error('Error cargando planificacion:', e);
             document.getElementById('planPendientes').innerHTML = '<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;color:#991b1b">Error al cargar datos de planificacion. Verifique la conexion.</div>';
@@ -249,5 +256,112 @@ App.modules.planificacion = {
         } catch(e) { alert('Error: ' + e.message); }
         btn.textContent = 'Programar';
         btn.disabled = false;
+    },
+
+    renderChart() {
+        const div = document.getElementById('planChart');
+        if (!div) return;
+        if (!this.cargaPorGrupo || !this.cargaPorGrupo.familias || this.cargaPorGrupo.familias.length === 0) {
+            div.innerHTML = '';
+            return;
+        }
+        const data = this.cargaPorGrupo;
+        const colores = [
+            { bg: 'rgba(34,197,94,0.85)', border: 'rgba(34,197,94,1)' },
+            { bg: 'rgba(30,64,175,0.85)', border: 'rgba(30,64,175,1)' },
+            { bg: 'rgba(124,58,237,0.85)', border: 'rgba(124,58,237,1)' },
+            { bg: 'rgba(234,179,8,0.85)', border: 'rgba(234,179,8,1)' },
+            { bg: 'rgba(239,68,68,0.85)', border: 'rgba(239,68,68,1)' },
+            { bg: 'rgba(6,182,212,0.85)', border: 'rgba(6,182,212,1)' },
+            { bg: 'rgba(249,115,22,0.85)', border: 'rgba(249,115,22,1)' },
+            { bg: 'rgba(168,85,247,0.85)', border: 'rgba(168,85,247,1)' }
+        ];
+
+        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+        const labels = data.fechas.map(f => {
+            const d = new Date(f + 'T12:00:00');
+            const nombreDia = diasSemana[d.getDay()];
+            const dia = d.getDate();
+            const mes = d.getMonth() + 1;
+            return `${nombreDia}, ${dia}/${mes}`;
+        });
+
+        const datasets = data.familias.map((fam, i) => ({
+            label: fam,
+            data: data.fechas.map(f => data.datos[fam][f] || 0),
+            backgroundColor: colores[i % colores.length].bg,
+            borderColor: colores[i % colores.length].border,
+            borderWidth: 1,
+            borderRadius: 2
+        }));
+
+        // Linea de capacidad promedio por dia
+        const capacidades = data.fechas.map(f => data.capacidad_por_dia[f] || 0);
+        const capacidadPromedio = capacidades.reduce((a, b) => a + b, 0) / capacidades.length;
+        datasets.push({
+            label: 'Capacidad Produccion',
+            data: data.fechas.map(() => Math.round(capacidadPromedio * 100) / 100),
+            type: 'line',
+            borderColor: 'rgba(239,68,68,1)',
+            borderWidth: 2,
+            borderDash: [6, 3],
+            pointRadius: 0,
+            fill: false,
+            order: -1
+        });
+
+        div.innerHTML = `
+            <div style="background:var(--card-bg);border-radius:12px;padding:16px;border:1px solid var(--border)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                    <h3 style="margin:0;font-size:16px">Carga por Grupo</h3>
+                    <div style="font-size:12px;color:var(--text-light)">
+                        Capacidad promedio: <strong>${Math.round(capacidadPromedio * 100) / 100} m²/día</strong>
+                    </div>
+                </div>
+                <div style="position:relative;height:300px">
+                    <canvas id="chartCargaGrupo"></canvas>
+                </div>
+                <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--text-light)">
+                    ${data.familias.map((fam, i) => `<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${colores[i % colores.length].bg};vertical-align:middle"></span> ${fam}</span>`).join('')}
+                    <span><span style="display:inline-block;width:12px;height:2px;background:rgba(239,68,68,1);vertical-align:middle;border-top:2px dashed rgba(239,68,68,1)"></span> Capacidad Promedio</span>
+                </div>
+            </div>
+        `;
+
+        if (this._chartInstance) { this._chartInstance.destroy(); this._chartInstance = null; }
+        const ctx = document.getElementById('chartCargaGrupo');
+        if (!ctx) return;
+        this._chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                if (ctx.dataset.type === 'line') return `Capacidad: ${ctx.parsed.y} m²`;
+                                return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} m²`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { color: 'rgba(148,163,184,0.15)' },
+                        ticks: { font: { size: 11 } }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148,163,184,0.15)' },
+                        title: { display: true, text: 'm²', font: { size: 12 } }
+                    }
+                }
+            }
+        });
     }
 };

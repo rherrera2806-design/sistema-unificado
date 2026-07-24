@@ -3696,6 +3696,86 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // GET /api/produccion/planificacion/carga-por-grupo?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
+    if (urlPath.startsWith('/api/produccion/planificacion/carga-por-grupo') && req.method === 'GET') {
+        const inicio = q.inicio;
+        const fin = q.fin;
+        if (!inicio || !fin) { json(res, { error: 'Fechas inicio y fin requeridas' }, 400); return; }
+        try {
+            // Obtener carga agrupada por familia y fecha
+            const cargaRes = await query(`
+                SELECT
+                    fp.id as familia_id,
+                    fp.nombre_familia,
+                    to_char(cp.fecha_programada, 'YYYY-MM-DD') as fecha,
+                    COALESCE(SUM(cp.m2_asignados), 0) as m2
+                FROM cola_produccion_pasos cp
+                JOIN produccion_ordenes po ON cp.orden_produccion_id = po.id
+                JOIN familias_producto fp ON po.familia_id = fp.id
+                WHERE cp.fecha_programada >= $1::date
+                  AND cp.fecha_programada <= $2::date
+                  AND cp.estado <> 'MERMADO'
+                  AND cp.m2_asignados > 0
+                GROUP BY fp.id, fp.nombre_familia, cp.fecha_programada
+                ORDER BY cp.fecha_programada, fp.nombre_familia
+            `, [inicio, fin]);
+
+            // Obtener capacidad total de todas las estaciones por dia
+            const capRes = await query(`
+                SELECT
+                    to_char(cp.fecha_programada, 'YYYY-MM-DD') as fecha,
+                    COALESCE(SUM(e.capacidad_max_m2_dia), 0) as capacidad_total
+                FROM (
+                    SELECT DISTINCT fecha_programada FROM cola_produccion_pasos
+                    WHERE fecha_programada >= $1::date AND fecha_programada <= $2::date
+                ) cp
+                CROSS JOIN estaciones_maestras e
+                WHERE e.activa = TRUE
+                GROUP BY cp.fecha_programada
+            `, [inicio, fin]);
+
+            // Obtener calendario para dias laborales
+            const calendarioMap = {};
+            try {
+                const calRes = await query('SELECT to_char(fecha, \'YYYY-MM-DD\') as fs, es_laboral FROM calendario_produccion WHERE fecha >= $1::date AND fecha <= $2::date', [inicio, fin]);
+                for (const c of calRes.rows) { calendarioMap[c.fs] = c.es_laboral; }
+            } catch(calErr) {}
+
+            // Construir mapa de capacidad por fecha
+            const capMap = {};
+            for (const r of capRes.rows) { capMap[r.fecha] = Number(r.capacidad_total); }
+
+            // Agrupar por familia
+            const familiasMap = {};
+            const fechasSet = new Set();
+            for (const r of cargaRes.rows) {
+                if (!familiasMap[r.nombre_familia]) familiasMap[r.nombre_familia] = {};
+                familiasMap[r.nombre_familia][r.fecha] = Number(r.m2);
+                fechasSet.add(r.fecha);
+            }
+
+            // Completar fechas faltantes (0 para familias sin carga)
+            const todasFamilias = Object.keys(familiasMap);
+            for (const fam of todasFamilias) {
+                for (const fs of fechasSet) {
+                    if (familiasMap[fam][fs] === undefined) familiasMap[fam][fs] = 0;
+                }
+            }
+
+            // Generar array de fechas ordenadas
+            const fechas = Array.from(fechasSet).sort();
+
+            json(res, {
+                familias: todasFamilias,
+                fechas,
+                datos: familiasMap,
+                capacidad_por_dia: capMap,
+                calendario: calendarioMap
+            });
+        } catch(e) { console.error('carga-por-grupo error:', e.message); json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/produccion/planificacion/pendientes - Ordenes pendientes de programar
     if (urlPath === '/api/produccion/planificacion/pendientes' && req.method === 'GET') {
         try {
