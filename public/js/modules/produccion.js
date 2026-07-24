@@ -250,7 +250,7 @@ App.registerModule('produccion', {
                 <td style="padding:6px 12px;font-weight:600">${o.kilos ? Number(o.kilos).toFixed(1) : '-'}</td>
                 <td style="padding:6px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(${o.id}, ${o.cantidad || 1})"><strong>${o.cantidad || 1}</strong></td>
                 <td style="padding:6px 12px">${tipoBadge(o.tipo_venta)}</td>
-                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${o.fecha_programada ? new Date(o.fecha_programada + 'T12:00:00').toLocaleDateString('es-CL', {day:'2-digit',month:'2-digit',year:'2-digit'}) : '<span style="color:#cbd5e1">-</span>'}</td>
+                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${(() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const parts = String(f).split('-'); if (parts.length === 3) return parts[2].replace(/ .*/,'') + '/' + parts[1]; return '<span style="color:#cbd5e1">-</span>'; })()}</td>
                 <td style="padding:6px 12px">${progreso}</td>
                 <td style="padding:6px 12px">${estadoBadge(o.estado_programacion)}${o.cerrado_nota ? ` <span title="${o.cerrado_nota.replace(/"/g, '&quot;')}" style="cursor:pointer;font-size:10px">ℹ️</span>` : ''}</td>
                 <td style="padding:6px 12px">
