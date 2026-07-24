@@ -2815,6 +2815,8 @@ const server = http.createServer(async (req, res) => {
             if (fields.length === 0) { json(res, { error: 'Sin campos para actualizar' }, 400); return; }
             values.push(id);
             await query(`UPDATE produccion_ordenes SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+            // Recalcular kilos cada vez que cambia cantidad o m2 (m2 * 2.5 * espesor_mm)
+            await query('UPDATE produccion_ordenes SET kilos = ROUND(COALESCE(metros_cuadrados,0) * 2.5 * COALESCE(espesor_mm,6)::numeric, 2) WHERE id = $1', [id]);
             const result = await query('SELECT * FROM produccion_ordenes WHERE id = $1', [id]);
             json(res, result.rows[0] || { ok: true });
         } catch(e) { json(res, { error: e.message }, 500); }
