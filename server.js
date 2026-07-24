@@ -692,8 +692,9 @@ async function initDB() {
             fecha DATE UNIQUE NOT NULL,
             es_laboral BOOLEAN DEFAULT TRUE,
             motivo TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='numero_orden') THEN ALTER TABLE instalaciones ADD COLUMN numero_orden VARCHAR(50) DEFAULT ''; END IF; END $$`);
         const year = new Date().getFullYear();
         for (let m = 0; m < 12; m++) {
             for (let d = 1; d <= 31; d++) {
@@ -4551,14 +4552,14 @@ const server = http.createServer(async (req, res) => {
     // POST /api/instalaciones - Crear
     if (urlPath === '/api/instalaciones' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas } = body;
+        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden, notas_previas } = body;
         if (!cliente || !direccion || !fecha_programada) { json(res, { error: 'Cliente, dirección y fecha requeridos' }, 400); return; }
         const userEmail = req.headers['x-user-email'] || 'Sistema';
         try {
             const result = await query(
-                `INSERT INTO instalaciones (cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas, estado, creado_por)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'PROGRAMADA', $8) RETURNING *`,
-                [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', notas_previas || '', userEmail]
+                `INSERT INTO instalaciones (cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden, notas_previas, estado, creado_por)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PROGRAMADA', $9) RETURNING *`,
+                [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', numero_orden || '', notas_previas || '', userEmail]
             );
             const inst = result.rows[0];
             await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [inst.id, 'CREADA', 'Instalación programada', userEmail]);
@@ -4572,12 +4573,12 @@ const server = http.createServer(async (req, res) => {
     if (instEditMatch && req.method === 'PUT') {
         const id = parseInt(instEditMatch[1]);
         const body = await parseBody(req);
-        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas } = body;
+        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden, notas_previas } = body;
         const userEmail = req.headers['x-user-email'] || 'Sistema';
         try {
             await query(
-                `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, notas_previas=$7 WHERE id=$8`,
-                [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas, id]
+                `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, numero_orden=$7, notas_previas=$8 WHERE id=$9`,
+                [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden || '', notas_previas, id]
             );
             await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [id, 'EDITADA', 'Datos actualizados', userEmail]);
             json(res, { ok: true });

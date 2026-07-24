@@ -107,7 +107,7 @@ App.registerModule('instalaciones', {
             for (const inst of instDia) {
                 const color = estadoColor(inst.estado);
                 html += `<div onclick="App.modules.inst_detalle.abrir(${inst.id})" style="cursor:pointer;margin:1px 0;padding:3px 5px;border-radius:4px;border-left:3px solid ${color};font-size:10px;line-height:1.3;transition:all .15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background=''">
-                    <div style="font-weight:600;color:${color}">${estadoIcon(inst.estado)} ${inst.hora_programada || '09:00'}</div>
+                    <div style="font-weight:600;color:${color}">${estadoIcon(inst.estado)} ${inst.hora_programada || '09:00'}${inst.numero_orden ? ' • ' + escapeHtml(inst.numero_orden) : ''}</div>
                     <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(inst.cliente)}</div>
                 </div>`;
             }
@@ -139,6 +139,7 @@ App.registerModule('instalaciones', {
                 <div class="form-group"><label>Cliente *</label><input class="form-control" id="instCliente" value="${inst ? escapeHtml(inst.cliente) : ''}" placeholder="Nombre del cliente" style="text-transform:uppercase"></div>
                 <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${inst ? escapeHtml(inst.tecnico) : ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize" list="tecnicosList"></div>
             </div>
+            <div class="form-group"><label>Numero de Orden</label><input class="form-control" id="instNumeroOrden" value="${inst ? escapeHtml(inst.numero_orden || '') : ''}" placeholder="Numero de orden" style="text-transform:uppercase"></div>
             <div class="form-group"><label>Direccion *</label>
                 <div style="display:flex;gap:6px;align-items:center">
                     <input class="form-control" id="instDireccion" value="${inst ? escapeHtml(inst.direccion) : ''}" placeholder="Direccion de la instalacion" style="text-transform:capitalize;flex:1">
@@ -168,6 +169,7 @@ App.registerModule('instalaciones', {
             fecha_programada: document.getElementById('instFecha').value,
             hora_programada: document.getElementById('instHora').value,
             tecnico: capitalize(document.getElementById('instTecnico').value.trim()),
+            numero_orden: document.getElementById('instNumeroOrden').value.trim().toUpperCase(),
             notas_previas: capitalize(document.getElementById('instNotas').value.trim())
         };
         if (!data.cliente || !data.direccion || !data.fecha_programada) { App.showAlert('Cliente, direccion y fecha requeridos', 'danger'); return; }
