@@ -269,7 +269,7 @@ App.registerModule('produccion', {
         let filtered = this.ordenes;
         if (search) filtered = filtered.filter(o => (o.codigo_producto || '').toLowerCase().includes(search) || (o.pedido_sap_id || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search) || (o.nombre_codigo_padre || '').toLowerCase().includes(search) || (o.nombre_mp || '').toLowerCase().includes(search));
         if (estado !== 'todos') filtered = filtered.filter(o => o.estado_programacion === estado);
-        if (fechaFilter) filtered = filtered.filter(o => o.fecha_programada === fechaFilter);
+        if (fechaFilter) filtered = filtered.filter(o => { const f = o.fecha_programada; if (!f) return false; const d = new Date(f); const fs = d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); return fs === fechaFilter; });
         this.renderTable(filtered);
     },
 
