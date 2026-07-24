@@ -2816,6 +2816,8 @@ const server = http.createServer(async (req, res) => {
             values.push(id);
             await query(`UPDATE produccion_ordenes SET ${fields.join(', ')} WHERE id = $${idx}`, values);
             // Recalcular kilos cada vez que cambia cantidad o m2 (m2 * 2.5 * espesor_mm)
+            // Para BOM, tomar espesor desde recetas_bom (cada componente tiene su espesor)
+            await query(`UPDATE produccion_ordenes o SET espesor_mm = COALESCE((SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id), o.espesor_mm, 6) WHERE o.id = $1`, [id]);
             await query('UPDATE produccion_ordenes SET kilos = ROUND(COALESCE(metros_cuadrados,0) * 2.5 * COALESCE(espesor_mm,6)::numeric, 2) WHERE id = $1', [id]);
             const result = await query('SELECT * FROM produccion_ordenes WHERE id = $1', [id]);
             json(res, result.rows[0] || { ok: true });
@@ -3932,6 +3934,16 @@ const server = http.createServer(async (req, res) => {
             const fin = urlObj.searchParams.get('fin');
             if (!inicio || !fin) { json(res, { error: 'inicio y fin requeridos' }, 400); return; }
 
+            // Para ordenes BOM: forzar espesor_mm desde recetas_bom (cada componente tiene su espesor)
+            await query(`
+                UPDATE produccion_ordenes o
+                SET espesor_mm = COALESCE(
+                    (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+                    o.espesor_mm,
+                    6
+                )
+                WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+            `);
             // Recalcular kilos siempre (por si cambiaron cantidades)
             await query(`
                 UPDATE produccion_ordenes
@@ -4034,6 +4046,16 @@ const server = http.createServer(async (req, res) => {
                 SET grupo = COALESCE(
                     (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
                     (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                )
+                WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+            `);
+            // Para ordenes BOM: forzar espesor_mm desde recetas_bom (cada componente tiene su espesor)
+            await query(`
+                UPDATE produccion_ordenes o
+                SET espesor_mm = COALESCE(
+                    (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+                    o.espesor_mm,
+                    6
                 )
                 WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
             `);
@@ -4152,6 +4174,16 @@ const server = http.createServer(async (req, res) => {
                 SET grupo = COALESCE(
                     (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
                     (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                )
+                WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+            `);
+            // Para ordenes BOM: forzar espesor_mm desde recetas_bom (cada componente tiene su espesor)
+            await query(`
+                UPDATE produccion_ordenes o
+                SET espesor_mm = COALESCE(
+                    (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+                    o.espesor_mm,
+                    6
                 )
                 WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
             `);
