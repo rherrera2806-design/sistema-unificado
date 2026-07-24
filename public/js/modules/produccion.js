@@ -64,9 +64,9 @@ App.registerModule('produccion', {
                 </div>
                 <div class="card-body" style="padding:0">
                     <table style="font-size:13px"><thead><tr>
-                        <th style="padding:6px 12px">Pedido</th><th style="padding:6px 12px">Item</th><th style="padding:6px 12px">Cliente</th><th style="padding:6px 12px">Cod. Padre</th><th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Nombre MP</th><th style="padding:6px 12px">Dimensiones</th><th style="padding:6px 12px">m2</th><th style="padding:6px 12px">Cant.</th><th style="padding:6px 12px">Tipo Venta</th><th style="padding:6px 12px">Ruta</th><th style="padding:6px 12px">Estado</th><th style="padding:6px 12px">Acciones</th>
+                        <th style="padding:6px 12px">Pedido</th><th style="padding:6px 12px">Item</th><th style="padding:6px 12px">Cliente</th><th style="padding:6px 12px">Cod. Padre</th><th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Nombre MP</th><th style="padding:6px 12px">Dimensiones</th><th style="padding:6px 12px">m2</th><th style="padding:6px 12px">Kilos</th><th style="padding:6px 12px">Cant.</th><th style="padding:6px 12px">Tipo Venta</th><th style="padding:6px 12px">Ruta</th><th style="padding:6px 12px">Estado</th><th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="prodTable">
-                        <tr><td colspan="13" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="14" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -215,7 +215,7 @@ App.registerModule('produccion', {
 
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
-        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
+        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
 
         const estadoBadge = (e) => {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">✓ TERMINADO</span>';
@@ -242,6 +242,7 @@ App.registerModule('produccion', {
                 <td style="padding:6px 12px;font-size:11px;color:#6b7280">${escapeHtml(o.nombre_mp || o.descripcion || '-')}</td>
                 <td style="padding:6px 12px">${o.ancho} x ${o.alto} mm</td>
                 <td style="padding:6px 12px">${o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-'}</td>
+                <td style="padding:6px 12px;font-weight:600">${o.kilos ? Number(o.kilos).toFixed(1) : '-'}</td>
                 <td style="padding:6px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(${o.id}, ${o.cantidad || 1})"><strong>${o.cantidad || 1}</strong></td>
                 <td style="padding:6px 12px">${tipoBadge(o.tipo_venta)}</td>
                 <td style="padding:6px 12px">${progreso}</td>
