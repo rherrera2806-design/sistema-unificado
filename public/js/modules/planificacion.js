@@ -1,6 +1,9 @@
 App.modules.planificacion = {
     nombre: 'Planificacion',
     cargaSemanal: [],
+    cargaGrupoSemana: [],
+    gruposSemana: [],
+    diasSemana: [],
     pendientes: [],
     semanaInicio: null,
     semanaFin: null,
@@ -339,14 +342,20 @@ App.modules.planificacion = {
         const inicio = this.fmtDate(this.semanaInicio);
         const fin = this.fmtDate(this.semanaFin);
         try {
-            const [cargaRes, pendRes] = await Promise.all([
-                fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`),
-                fetch('/api/produccion/planificacion/pendientes')
+            const [cargaGrupoRes, pendRes, cargaEstRes] = await Promise.all([
+                fetch(`/api/produccion/planificacion-grupo/semana?inicio=${inicio}&fin=${fin}`),
+                fetch('/api/produccion/planificacion/pendientes'),
+                fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`)
             ]);
-            if (cargaRes.ok) this.cargaSemanal = await cargaRes.json();
-            else { console.error('carga-semanal error:', cargaRes.status); this.cargaSemanal = []; }
+            if (cargaGrupoRes.ok) {
+                const data = await cargaGrupoRes.json();
+                this.gruposSemana = data.grupos || [];
+                this.diasSemana = data.dias || [];
+            } else { console.error('carga-grupo-semana error:', cargaGrupoRes.status); this.gruposSemana = []; this.diasSemana = []; }
             if (pendRes.ok) this.pendientes = await pendRes.json();
             else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
+            if (cargaEstRes.ok) this.cargaSemanal = await cargaEstRes.json();
+            else { console.error('carga-semanal error:', cargaEstRes.status); this.cargaSemanal = []; }
             this.renderPendientes();
             this.renderCalendario();
         } catch(e) {
@@ -400,73 +409,105 @@ App.modules.planificacion = {
     renderCalendario() {
         const div = document.getElementById('planCalendario');
         const diasSemana = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
-        const colores = (pct, esLaboral) => {
-            if (!esLaboral) return { bg: '#f1f5f9', border: '#cbd5e1', text: '#94a3b8', bar: '#cbd5e1' };
-            if (pct > 95) return { bg: '#fee2e2', border: '#ef4444', text: '#991b1b', bar: '#ef4444' };
-            if (pct >= 75) return { bg: '#fef9c3', border: '#eab308', text: '#854d0e', bar: '#eab308' };
-            return { bg: '#dcfce7', border: '#22c55e', text: '#166534', bar: '#22c55e' };
-        };
         const inicio = this.semanaInicio;
-        const fechas = [];
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(inicio);
-            d.setDate(inicio.getDate() + i);
-            fechas.push(d);
-        }
+        const finD = new Date(this.semanaFin);
+
+        // Construir headers de dias desde this.diasSemana
+        const diasInfo = this.diasSemana.map(f => {
+            const d = new Date(f + 'T00:00:00');
+            const dow = d.getDay();
+            const diff = dow === 0 ? -6 : 1 - dow;
+            const lunes = new Date(d);
+            lunes.setDate(d.getDate() + diff);
+            const isThisWeek = lunes.getTime() === new Date(inicio).getTime();
+            return { fecha: f, dia: diasSemana[(dow + 6) % 7], fechaCorta: d.getDate() + '/' + (d.getMonth()+1), isThisWeek };
+        });
+
+        // Color de fondo segun capacidad kg/dia usada
+        const colorCelda = (kg, capacidad, esLaboral) => {
+            if (!esLaboral) return { bg: '#f1f5f9', border: '#cbd5e1', text: '#94a3b8' };
+            const pct = capacidad > 0 ? (kg / capacidad) * 100 : 0;
+            if (pct > 100) return { bg: '#fee2e2', border: '#ef4444', text: '#991b1b' };
+            if (pct >= 85) return { bg: '#fef3c7', border: '#f59e0b', text: '#854d0e' };
+            if (pct > 0) return { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' };
+            return { bg: '#f8fafc', border: '#e2e8f0', text: '#94a3b8' };
+        };
+
         div.innerHTML = `
             <div style="background:var(--card-bg);border-radius:12px;padding:16px;border:1px solid var(--border)">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                    <h3 style="margin:0;font-size:16px">Carga Semanal de Planta</h3>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+                    <div>
+                        <h3 style="margin:0;font-size:16px">Carga Semanal por Grupo</h3>
+                        <div style="font-size:12px;color:var(--text-light)">m², metros lineales y kilos por dia y grupo</div>
+                    </div>
                     <div style="display:flex;gap:8px;align-items:center">
                         <button class="btn btn-outline btn-sm" onclick="App.modules.planificacion.cambiarSemana(-1)">◀</button>
-                        <span style="font-size:13px;font-weight:600">${this.fmtDate(inicio)} al ${this.fmtDate(fechas[6])}</span>
+                        <span style="font-size:13px;font-weight:600">${this.fmtDate(inicio)} al ${this.fmtDate(finD)}</span>
                         <button class="btn btn-outline btn-sm" onclick="App.modules.planificacion.cambiarSemana(1)">▶</button>
                     </div>
                 </div>
                 <div style="overflow-x:auto">
-                    <table style="width:100%;font-size:12px;border-collapse:collapse;min-width:700px">
+                    <table style="width:100%;font-size:11px;border-collapse:collapse;min-width:800px">
                         <thead><tr style="border-bottom:2px solid var(--border)">
-                            <th style="padding:8px;text-align:left;min-width:120px">Estacion</th>
-                            <th style="padding:8px;text-align:center;min-width:60px">Cap/ Dia</th>
-                            ${fechas.map((f, i) => {
-                                const dStr = this.fmtDate(f);
-                                const esLaboral = this.cargaSemanal.length > 0 ? this.cargaSemanal[0].dias[i]?.es_laboral !== false : (f.getDay() !== 0);
-                                const headerBg = esLaboral ? '' : 'background:#f1f5f9;';
-                                const headerColor = esLaboral ? '' : 'color:#94a3b8;';
-                                return `<th style="padding:8px;text-align:center;${headerBg}${headerColor}"><div>${diasSemana[i]}</div><div style="font-weight:400;font-size:11px">${f.getDate()}/${f.getMonth()+1}</div>${!esLaboral ? '<div style="font-size:9px;color:#ef4444">NO LABORAL</div>' : ''}</th>`;
+                            <th style="padding:8px;text-align:left;min-width:120px">Grupo</th>
+                            <th style="padding:8px;text-align:center;min-width:80px">Cap kg/dia</th>
+                            ${diasInfo.map(d => {
+                                const laboral = this.gruposSemana[0]?.dias.find(x => x.fecha === d.fecha)?.es_laboral !== false;
+                                const headerBg = laboral ? '' : 'background:#f1f5f9;';
+                                const headerColor = laboral ? '' : 'color:#94a3b8;';
+                                return `<th style="padding:8px;text-align:center;min-width:90px;${headerBg}${headerColor}">
+                                    <div style="font-weight:600">${d.dia}</div>
+                                    <div style="font-weight:400;font-size:10px">${d.fechaCorta}</div>
+                                    ${!laboral ? '<div style="font-size:9px;color:#ef4444">NO LAB</div>' : ''}
+                                </th>`;
                             }).join('')}
+                            <th style="padding:8px;text-align:center;min-width:90px;background:#f8fafc">Total Sem.</th>
                         </tr></thead>
-                        <tbody>${this.cargaSemanal.map(est => {
+                        <tbody>${this.gruposSemana.map(g => {
+                            const colorBorde = g.color || '#3b82f6';
                             return `<tr style="border-bottom:1px solid var(--border)">
-                                <td style="padding:8px"><strong>${escapeHtml(est.nombre)}</strong></td>
-                                <td style="padding:8px;text-align:center;font-size:11px;color:var(--text-light)">${est.capacidad_dia} m²</td>
-                                ${est.dias.map(d => {
-                                    const c = colores(d.pct_ocupacion, d.es_laboral);
-                                    if (!d.es_laboral) {
+                                <td style="padding:8px;border-left:3px solid ${colorBorde}">
+                                    <strong>${escapeHtml(g.grupo)}</strong>
+                                </td>
+                                <td style="padding:8px;text-align:center;font-size:11px;color:var(--text-light)">${g.capacidad_kg_dia.toLocaleString('es-CL')}</td>
+                                ${diasInfo.map(d => {
+                                    const cell = g.dias.find(x => x.fecha === d.fecha) || {};
+                                    const c = colorCelda(cell.kilos || 0, g.capacidad_kg_dia, cell.es_laboral !== false);
+                                    if (cell.es_laboral === false) {
                                         return `<td style="padding:6px;text-align:center">
                                             <div style="background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:6px;padding:6px 4px">
-                                                <div style="font-weight:600;font-size:12px;color:#94a3b8">✕</div>
-                                                <div style="font-size:9px;color:#94a3b8">${d.motivo || 'No laboral'}</div>
+                                                <div style="font-weight:600;font-size:11px;color:#94a3b8">✕</div>
+                                                <div style="font-size:8px;color:#94a3b8">${cell.motivo || ''}</div>
                                             </div>
                                         </td>`;
                                     }
-                                    return `<td style="padding:6px;text-align:center">
-                                        <div style="background:${c.bg};border:1px solid ${c.border};border-radius:6px;padding:6px 4px">
-                                            <div style="font-weight:700;font-size:14px;color:${c.text}">${d.pct_ocupacion}%</div>
-                                            <div style="font-size:10px;color:${c.text}">${Number(d.m2).toFixed(1)} / ${d.capacidad} m²</div>
-                                            ${d.ordenes > 0 ? `<div style="font-size:10px;color:${c.text}">${d.ordenes} ord.</div>` : ''}
+                                    const hasData = (cell.m2 || cell.m_lineales || cell.kilos) > 0;
+                                    return `<td style="padding:4px;text-align:center">
+                                        <div style="background:${hasData ? c.bg : '#f8fafc'};border:1px solid ${hasData ? c.border : '#e2e8f0'};border-radius:6px;padding:6px 4px;min-height:50px">
+                                            ${hasData ? `
+                                                <div style="font-size:11px;color:${c.text};font-weight:600">${Number(cell.m2 || 0).toFixed(1)} m²</div>
+                                                <div style="font-size:10px;color:${c.text}">${Number(cell.m_lineales || 0).toFixed(1)} mL</div>
+                                                <div style="font-size:11px;color:${c.text};font-weight:700">${Number(cell.kilos || 0).toFixed(0)} kg</div>
+                                                <div style="font-size:9px;color:${c.text}">${cell.ordenes || 0} ord.</div>
+                                            ` : '<div style="font-size:10px;color:#cbd5e1">-</div>'}
                                         </div>
                                     </td>`;
                                 }).join('')}
+                                <td style="padding:6px;text-align:center;background:#f8fafc">
+                                    <div style="font-size:12px;font-weight:700;color:${colorBorde}">${Number(g.total.kilos || 0).toFixed(0)} kg</div>
+                                    <div style="font-size:10px;color:var(--text-light)">${Number(g.total.m2 || 0).toFixed(1)} m²</div>
+                                    <div style="font-size:10px;color:var(--text-light)">${Number(g.total.m_lineales || 0).toFixed(1)} mL</div>
+                                    <div style="font-size:9px;color:var(--text-light)">${g.total.ordenes || 0} ord.</div>
+                                </td>
                             </tr>`;
                         }).join('')}</tbody>
                     </table>
                 </div>
-                <div style="margin-top:12px;display:flex;gap:16px;font-size:11px;color:var(--text-light)">
-                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dcfce7;vertical-align:middle"></span> &lt;75% Normal</span>
-                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fef9c3;vertical-align:middle"></span> 75-95% Alerta</span>
-                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fee2e2;vertical-align:middle"></span> &gt;95% Saturado</span>
-                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f1f5f9;border:1px dashed #cbd5e1;vertical-align:middle"></span> No Laboral</span>
+                <div style="margin-top:12px;display:flex;gap:14px;font-size:11px;color:var(--text-light);flex-wrap:wrap">
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#dbeafe;vertical-align:middle"></span> Con carga</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fef3c7;vertical-align:middle"></span> 85-100% capacidad</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fee2e2;vertical-align:middle"></span> Sobrecargado</span>
+                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f1f5f9;border:1px dashed #cbd5e1;vertical-align:middle"></span> No Laboral</span>
                 </div>
             </div>
         `;

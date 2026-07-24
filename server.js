@@ -3921,6 +3921,80 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // GET /api/produccion/planificacion-grupo/semana?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
+    // Carga por grupo y dia con m2, metros lineales y kilos
+    if (urlPath === '/api/produccion/planificacion-grupo/semana' && req.method === 'GET') {
+        try {
+            const urlObj = new URL(req.url, 'http://localhost');
+            const inicio = urlObj.searchParams.get('inicio');
+            const fin = urlObj.searchParams.get('fin');
+            if (!inicio || !fin) { json(res, { error: 'inicio y fin requeridos' }, 400); return; }
+
+            // Calendario laboral
+            const calMap = {};
+            try {
+                const calRes = await query('SELECT to_char(fecha, \'YYYY-MM-DD\') as fs, es_laboral, motivo FROM calendario_produccion WHERE fecha BETWEEN $1 AND $2', [inicio, fin]);
+                calRes.rows.forEach(c => { calMap[c.fs] = { es_laboral: c.es_laboral, motivo: c.motivo }; });
+            } catch(calErr) {}
+
+            const esLaboral = (fStr) => {
+                if (calMap.hasOwnProperty(fStr)) return calMap[fStr].es_laboral;
+                const d = new Date(fStr + 'T12:00:00');
+                return d.getDay() !== 0 && d.getDay() !== 6;
+            };
+            const motivo = (fStr) => calMap[fStr]?.motivo || null;
+
+            const capacidadRes = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE ORDER BY grupo');
+            const grupos = capacidadRes.rows;
+
+            // Carga agrupada
+            const cargaRes = await query(`
+                SELECT
+                    o.fecha_programada::text as fecha,
+                    COALESCE(o.grupo, '(sin grupo)') as grupo,
+                    COALESCE(SUM(o.metros_cuadrados), 0) as m2,
+                    COALESCE(SUM(2.0 * (COALESCE(o.ancho,0) + COALESCE(o.alto,0)) / 1000.0 * COALESCE(o.cantidad, 1)), 0) as m_lineales,
+                    COALESCE(SUM(o.kilos), 0) as kilos,
+                    COUNT(*) as ordenes
+                FROM produccion_ordenes o
+                WHERE o.fecha_programada BETWEEN $1 AND $2
+                  AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+                GROUP BY o.fecha_programada, o.grupo
+                ORDER BY o.fecha_programada
+            `, [inicio, fin]);
+
+            // Generar estructura: cada grupo x cada dia del rango
+            const inicioD = new Date(inicio + 'T00:00:00');
+            const finD = new Date(fin + 'T00:00:00');
+            const dias = [];
+            for (let d = new Date(inicioD); d <= finD; d.setDate(d.getDate() + 1)) {
+                dias.push(d.toISOString().split('T')[0]);
+            }
+
+            const data = grupos.map(g => {
+                const diasMap = dias.map(f => {
+                    const fData = cargaRes.rows.find(r => r.fecha === f && r.grupo === g.grupo);
+                    return {
+                        fecha: f,
+                        es_laboral: esLaboral(f),
+                        motivo: motivo(f),
+                        m2: Number(fData?.m2) || 0,
+                        m_lineales: Number(fData?.m_lineales) || 0,
+                        kilos: Number(fData?.kilos) || 0,
+                        ordenes: Number(fData?.ordenes) || 0
+                    };
+                });
+                const tot = diasMap.reduce((acc, d) => ({
+                    m2: acc.m2 + d.m2, m_lineales: acc.m_lineales + d.m_lineales, kilos: acc.kilos + d.kilos, ordenes: acc.ordenes + d.ordenes
+                }), { m2: 0, m_lineales: 0, kilos: 0, ordenes: 0 });
+                return { grupo: g.grupo, color: g.color, capacidad_kg_dia: Number(g.capacidad_kg_dia) || 0, dias: diasMap, total: tot };
+            });
+
+            json(res, { grupos: data, dias });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/produccion/planificacion-grupo?fecha=YYYY-MM-DD
     // Retorna carga por grupo para una fecha + ordenes pendientes sin asignar
     if (urlPath === '/api/produccion/planificacion-grupo' && req.method === 'GET') {
