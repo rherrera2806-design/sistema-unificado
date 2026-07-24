@@ -4006,20 +4006,26 @@ const server = http.createServer(async (req, res) => {
             const capacidad = capacidadRes.rows;
 
             // Backfill grupo + kilos en ordenes existentes (BOM -> grupo del padre; kilos = m2 * 2.5 * espesor)
+            // Para BOM usar o.codigo_padre (poblado por el usuario con codigos correctos), fallback a recetas_bom
             await query(`
                 UPDATE produccion_ordenes o
                 SET grupo = CASE
-                    WHEN o.es_compuesto = TRUE THEN
+                    WHEN o.es_compuesto = TRUE THEN COALESCE(
+                        (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
                         (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                    )
                     ELSE
                         (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto)
                 END
                 WHERE o.grupo IS NULL OR (o.es_compuesto = TRUE AND o.grupo = (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto))
             `);
-            // Forzar re-resolucion para todas las ordenes BOM (por si tienen grupo de materia prima)
+            // Forzar re-resolucion para todas las ordenes BOM usando o.codigo_padre primero
             await query(`
                 UPDATE produccion_ordenes o
-                SET grupo = (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                SET grupo = COALESCE(
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                    (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                )
                 WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
             `);
             await query(`
@@ -4048,14 +4054,24 @@ const server = http.createServer(async (req, res) => {
             }
 
             // Ordenes pendientes sin programar (con grupo del codigo_padre para BOM)
+            // Prioridad: o.codigo_padre (poblado por usuario) > rb.codigo_sap_padre (de recetas)
             const pendRes = await query(`
-                SELECT o.id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion,
+                SELECT o.id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion, o.codigo_padre as codigo_padre_orden,
                        o.ancho, o.alto, o.cantidad, o.kilos, o.grupo, o.es_compuesto, o.bom_padre_id, o.created_at,
                        (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp,
                        (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as grupo_codigo,
-                       (SELECT rb.codigo_sap_padre FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id) as codigo_padre,
-                       (SELECT cc2.descripcion FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id) as nombre_padre,
-                       (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id) as grupo_padre
+                       COALESCE(
+                         (SELECT cc.codigo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                         (SELECT rb.codigo_sap_padre FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id)
+                       ) as codigo_padre,
+                       COALESCE(
+                         (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                         (SELECT cc2.descripcion FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                       ) as nombre_padre,
+                       COALESCE(
+                         (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                         (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                       ) as grupo_padre
                 FROM produccion_ordenes o
                 WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL
                 ORDER BY o.created_at ASC
@@ -4097,21 +4113,26 @@ const server = http.createServer(async (req, res) => {
             const capMap = {};
             capRes.rows.forEach(c => { capMap[c.grupo] = Number(c.capacidad_kg_dia) || 0; });
 
-            // Backfill grupo: BOM usa grupo del codigo_padre, no-BOM usa grupo del codigo_producto
+            // Backfill grupo: BOM usa grupo del codigo_padre (prioridad) o recetas_bom (fallback), no-BOM usa grupo del codigo_producto
             await query(`
                 UPDATE produccion_ordenes o
                 SET grupo = CASE
-                    WHEN o.es_compuesto = TRUE THEN
+                    WHEN o.es_compuesto = TRUE THEN COALESCE(
+                        (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
                         (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                    )
                     ELSE
                         (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto)
                 END
                 WHERE o.grupo IS NULL
             `);
-            // Re-resolver para todas las BOM (por si quedaron con grupo de materia prima)
+            // Re-resolver para todas las BOM
             await query(`
                 UPDATE produccion_ordenes o
-                SET grupo = (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                SET grupo = COALESCE(
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                    (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+                )
                 WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
             `);
             // Backfill kilos para ordenes que no lo tengan calculado
@@ -4128,13 +4149,17 @@ const server = http.createServer(async (req, res) => {
             `);
 
             // Para BOM, resolver grupo del padre en JS (mas robusto)
+            // Prioridad: o.codigo_padre (poblado por usuario) > rb.codigo_sap_padre (de recetas)
             const padreGrupoRes = await query(`
-                SELECT rb.id as bom_id, cc.grupo as grupo_padre
-                FROM produccion_recetas_bom rb
-                JOIN produccion_codigos cc ON cc.codigo = rb.codigo_sap_padre
+                SELECT o.id as orden_id, o.bom_padre_id, o.codigo_padre, COALESCE(
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                    (SELECT cc2.grupo FROM produccion_recetas_bom rb2 JOIN produccion_codigos cc2 ON cc2.codigo = rb2.codigo_sap_padre WHERE rb2.id = o.bom_padre_id)
+                ) as grupo_padre
+                FROM produccion_ordenes o
+                WHERE o.es_compuesto = TRUE
             `);
             const padreGrupoMap = {};
-            padreGrupoRes.rows.forEach(r => { padreGrupoMap[r.bom_id] = r.grupo_padre; });
+            padreGrupoRes.rows.forEach(r => { if (r.bom_padre_id) padreGrupoMap[r.bom_padre_id] = r.grupo_padre; });
 
             // Carga actual
             const cargaRes = await query(`
