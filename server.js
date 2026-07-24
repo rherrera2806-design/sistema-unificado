@@ -4243,13 +4243,14 @@ const server = http.createServer(async (req, res) => {
             const targetPct = 0.85; // 80-90% de capacidad
 
             const findDateWithCapacity = (grupo, kg) => {
+                const capGrupo = capMap[grupo] || 0;
                 for (let d = 0; d < dias; d++) {
                     const f = new Date(inicioDate);
                     f.setDate(f.getDate() + d);
                     const fStr = fmt(f);
                     if (!esLaboral(fStr)) continue;
                     const usado = (cargaMap[fStr] && cargaMap[fStr][grupo]) || 0;
-                    if (usado + kg <= capacidad) {
+                    if (usado + kg <= capGrupo) {
                         return fStr;
                     }
                 }
