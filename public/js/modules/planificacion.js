@@ -349,16 +349,17 @@ App.modules.planificacion = {
             else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
             if (cargaEstRes.ok) this.cargaSemanal = await cargaEstRes.json();
             else { console.error('carga-semanal error:', cargaEstRes.status); this.cargaSemanal = []; }
-            this.renderPendientes();
             this.renderCalendario();
         } catch(e) {
             console.error('Error cargando planificacion:', e);
-            document.getElementById('planPendientes').innerHTML = '<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;color:#991b1b">Error al cargar datos de planificacion. Verifique la conexion.</div>';
+            const calEl = document.getElementById('planCalendario');
+            if (calEl) calEl.innerHTML = '<div style="background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:16px;color:#991b1b">Error al cargar calendario. Revisa la consola.</div>';
         }
     },
 
     renderPendientes() {
         const div = document.getElementById('planPendientes');
+        if (!div) return;
         if (this.pendientes.length === 0) {
             div.innerHTML = '<div style="background:var(--card-bg);border-radius:12px;padding:20px;text-align:center;color:var(--text-light)">No hay ordenes pendientes de programar</div>';
             return;
@@ -401,6 +402,7 @@ App.modules.planificacion = {
 
     renderCalendario() {
         const div = document.getElementById('planCalendario');
+        if (!div) { console.warn('planCalendario div no existe'); return; }
         const diasSemana = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
         const inicio = this.semanaInicio;
         const finD = new Date(this.semanaFin);
