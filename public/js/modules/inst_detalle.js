@@ -47,6 +47,8 @@ App.registerModule('inst_detalle', {
                     <span style="background:${color};color:#fff;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600">${inst.estado}</span>
                 </div>
                 <div style="display:flex;gap:8px">
+                    ${(() => { const user = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = user.permisos || []; return (p.includes('instalaciones.eliminar') || p.includes('usuarios')) ?
+                        `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.inst_detalle.eliminarInstalacion(${inst.id})">🗑️ Eliminar</button>` : ''; })()}
                     ${inst.estado === 'PROGRAMADA' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.inst_detalle.cambiarEstado(${inst.id},'EN_CAMINO')">🚗 En Camino</button>` : ''}
                     ${inst.estado === 'EN_CAMINO' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.inst_detalle.cambiarEstado(${inst.id},'EN_CURSO')">⚙ En Curso</button>` : ''}
                     ${inst.estado === 'EN_CURSO' ? `<button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="App.modules.inst_detalle.showCerrar(${inst.id})">✓ Completar</button>` : ''}
@@ -105,7 +107,8 @@ App.registerModule('inst_detalle', {
                         ${this.fotos.map(f => `
                             <div style="position:relative;display:inline-block">
                                 <img src="/api/instalaciones/${inst.id}/foto/${f.id}" style="width:140px;height:105px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="App.modules.inst_detalle.verFoto(${inst.id},${f.id})" title="${escapeHtml(f.descripcion || '')}">
-                                <button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(${inst.id},${f.id})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Eliminar">✕</button>
+                                ${(() => { const user = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = user.permisos || []; return (p.includes('instalaciones.eliminar') || p.includes('usuarios')) ?
+                                `<button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(${inst.id},${f.id})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Eliminar">✕</button>` : ''; })()}
                             </div>
                         `).join('')}
                     </div>
@@ -223,6 +226,19 @@ App.registerModule('inst_detalle', {
             });
             App.showAlert('Foto eliminada');
             await this.cargarYRenderizar(instId);
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async eliminarInstalacion(id) {
+        if (!confirm('Eliminar esta instalacion y todo su historial? Esta accion no se puede deshacer.')) return;
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        try {
+            await fetch(`/api/instalaciones/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-User-Email': user.email || '' }
+            });
+            App.showAlert('Instalacion eliminada');
+            App.loadModule('instalaciones');
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 

@@ -62,6 +62,9 @@ App.registerModule('inst_historial', {
     filasHtml(lista) {
         const estadoColor = { 'PROGRAMADA': '#3b82f6', 'EN_CAMINO': '#f59e0b', 'EN_CURSO': '#f59e0b', 'COMPLETADA': '#22c55e', 'CON_NOVEDADES': '#ef4444', 'CANCELADA': '#94a3b8' };
         const estadoIcon = { 'PROGRAMADA': '📅', 'EN_CAMINO': '🚗', 'EN_CURSO': '⚙', 'COMPLETADA': '✓', 'CON_NOVEDADES': '⚠', 'CANCELADA': '✕' };
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const perm = user.permisos || [];
+        const puedeEliminar = perm.includes('instalaciones.eliminar') || perm.includes('usuarios');
         if (lista.length === 0) return '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-light)">No hay instalaciones</td></tr>';
         return lista.map(inst => {
             const color = estadoColor[inst.estado] || '#3b82f6';
@@ -74,7 +77,10 @@ App.registerModule('inst_historial', {
                 <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${escapeHtml(inst.direccion)}</td>
                 <td style="padding:10px 12px">${escapeHtml(inst.tecnico || '-')}</td>
                 <td style="padding:10px 12px;text-align:center"><span style="background:${color};color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600">${icon} ${inst.estado}</span></td>
-                <td style="padding:10px 12px;text-align:center"><button class="btn btn-sm btn-outline" onclick="App.modules.inst_detalle.abrir(${inst.id})">Ver</button></td>
+                <td style="padding:10px 12px;text-align:center;white-space:nowrap">
+                    <button class="btn btn-sm btn-outline" onclick="App.modules.inst_detalle.abrir(${inst.id})">Ver</button>
+                    ${puedeEliminar ? `<button class="btn btn-sm btn-outline" style="margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.inst_historial.eliminar(${inst.id})">🗑️</button>` : ''}
+                </td>
             </tr>`;
         }).join('');
     },
@@ -90,5 +96,18 @@ App.registerModule('inst_historial', {
         );
         if (estado !== 'todos') filtered = filtered.filter(i => i.estado === estado);
         document.getElementById('iHistBody').innerHTML = this.filasHtml(filtered);
+    },
+
+    async eliminar(id) {
+        if (!confirm('Eliminar esta instalacion y todo su historial? Esta accion no se puede deshacer.')) return;
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        try {
+            await fetch(`/api/instalaciones/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-User-Email': user.email || '' }
+            });
+            App.showAlert('Instalacion eliminada');
+            await this.render();
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     }
 });
