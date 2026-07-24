@@ -3746,11 +3746,11 @@ const server = http.createServer(async (req, res) => {
                 SELECT
                     COALESCE(o.grupo, '(sin grupo)') as nombre_familia,
                     o.fecha_programada::text as fecha,
-                    COALESCE(SUM(o.metros_cuadrados), 0) as m2
+                    COALESCE(SUM(o.kilos), 0) as kilos
                 FROM produccion_ordenes o
                 WHERE o.fecha_programada BETWEEN $1 AND $2
                   AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
-                  AND o.metros_cuadrados > 0
+                  AND o.kilos > 0
                 GROUP BY o.grupo, o.fecha_programada
                 ORDER BY o.fecha_programada, o.grupo
             `, [inicio, fin]);
@@ -3758,14 +3758,14 @@ const server = http.createServer(async (req, res) => {
             const capRes = await query(`
                 SELECT
                     o.fecha_programada::text as fecha,
-                    COALESCE(SUM(e.capacidad_max_m2_dia), 0) as capacidad_total
+                    COALESCE(SUM(pg.capacidad_kg_dia), 0) as capacidad_total
                 FROM (
                     SELECT DISTINCT fecha_programada FROM produccion_ordenes
                     WHERE fecha_programada BETWEEN $1 AND $2
                       AND estado_programacion NOT IN ('CERRADO','TERMINADO')
                 ) o
-                CROSS JOIN estaciones_maestras e
-                WHERE e.activa = TRUE
+                CROSS JOIN produccion_capacidad_grupo pg
+                WHERE pg.activo = TRUE
                 GROUP BY o.fecha_programada
             `, [inicio, fin]);
 
@@ -3776,7 +3776,7 @@ const server = http.createServer(async (req, res) => {
             const fechasSet = new Set();
             for (const r of cargaRes.rows) {
                 if (!familiasMap[r.nombre_familia]) familiasMap[r.nombre_familia] = {};
-                familiasMap[r.nombre_familia][r.fecha] = Number(r.m2);
+                familiasMap[r.nombre_familia][r.fecha] = Number(r.kilos);
                 fechasSet.add(r.fecha);
             }
 

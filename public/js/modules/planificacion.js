@@ -637,7 +637,7 @@ App.modules.planificacion = {
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                     <h3 style="margin:0;font-size:16px">Carga por Grupo</h3>
                     <div style="font-size:12px;color:var(--text-light)">
-                        Capacidad promedio: <strong>${Math.round(capacidadPromedio * 100) / 100} m²/día</strong>
+                        Capacidad promedio: <strong>${Math.round(capacidadPromedio).toLocaleString('es-CL')} kg/día</strong>
                     </div>
                 </div>
                 <div style="position:relative;height:300px">
@@ -656,16 +656,29 @@ App.modules.planificacion = {
         this._chartInstance = new Chart(ctx, {
             type: 'bar',
             data: { labels, datasets },
+            plugins: [ChartDataLabels],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
+                    datalabels: {
+                        display: function(ctx) {
+                            return ctx.dataset.type !== 'line' && ctx.parsed.y > 0;
+                        },
+                        color: '#fff',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value >= 1000 ? (value / 1000).toFixed(1) + 'k' : Math.round(value);
+                        },
+                        anchor: 'center',
+                        align: 'center'
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(ctx) {
-                                if (ctx.dataset.type === 'line') return `Capacidad: ${ctx.parsed.y} m²`;
-                                return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} m²`;
+                                if (ctx.dataset.type === 'line') return `Capacidad: ${ctx.parsed.y.toLocaleString('es-CL')} kg`;
+                                return `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('es-CL', {maximumFractionDigits:1})} kg`;
                             }
                         }
                     }
@@ -680,7 +693,7 @@ App.modules.planificacion = {
                         stacked: true,
                         beginAtZero: true,
                         grid: { color: 'rgba(148,163,184,0.15)' },
-                        title: { display: true, text: 'm²', font: { size: 12 } }
+                        title: { display: true, text: 'kg', font: { size: 12 } }
                     }
                 }
             }
