@@ -101,7 +101,8 @@ App.registerModule('usuarios', {
             { key: 'atencion', label: 'ATENCION', items: [
                 { key: 'turnos_recepcion', label: 'Recepcion y Control' },
                 { key: 'turnos_bodega', label: 'Entrega de Bodega' },
-                { key: 'turnos_qr', label: 'QR Clientes' }
+                { key: 'turnos_qr', label: 'QR Clientes' },
+                { key: 'atencion.eliminar', label: 'Eliminar' }
             ]},
             { key: 'ventas', label: 'VENTAS', items: [
                 { key: 'pedidos', label: 'Pedidos / Ordenes' }

@@ -395,6 +395,15 @@ async function initDB() {
         hora_entregada TIME
     )`);
 
+    await query(`CREATE TABLE IF NOT EXISTS turnos_adjuntos (
+        id SERIAL PRIMARY KEY,
+        turno_id INTEGER REFERENCES turnos(id) ON DELETE CASCADE,
+        nombre VARCHAR(255) NOT NULL,
+        archivo BYTEA,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut') THEN ALTER TABLE turnos ADD COLUMN rut VARCHAR(20) DEFAULT ''; END IF; END $$`);
+
     await query(`CREATE TABLE IF NOT EXISTS movimientos (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER REFERENCES usuarios(id),
@@ -2025,6 +2034,7 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/turnos/crear' && req.method === 'POST') {
         const body = await parseBody(req);
         const nombre = sanitizeString(body.nombre);
+        const rut = sanitizeString(body.rut || '');
         if (!nombre) return json(res, { error: 'Nombre requerido' }, 400);
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
@@ -2033,8 +2043,8 @@ const server = http.createServer(async (req, res) => {
         const numRow = await query('SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM turnos WHERE fecha = $1', [hoy]);
         const numero = numRow.rows[0].next;
         const result = await query(
-            'INSERT INTO turnos (nombre, numero, fecha, hora_creacion) VALUES ($1, $2, $3, $4) RETURNING *',
-            [nombre, numero, hoy, hora]
+            'INSERT INTO turnos (nombre, numero, fecha, hora_creacion, rut) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [nombre, numero, hoy, hora, rut]
         );
         json(res, result.rows[0], 201);
         return;
@@ -2114,7 +2124,7 @@ const server = http.createServer(async (req, res) => {
     // =====================================================
     if (urlPath === '/api/turnos/derivar-bodega' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { turno_id, pedidos, factura } = body;
+        const { turno_id, pedidos, factura, adjuntos } = body;
         if (!turno_id) return json(res, { error: 'turno_id requerido' }, 400);
         const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
@@ -2127,7 +2137,42 @@ const server = http.createServer(async (req, res) => {
             'INSERT INTO entregas (turno_id, cliente_nombre, pedidos, factura, tipo, estado, fecha, hora_registrada) VALUES ($1, (SELECT nombre FROM turnos WHERE id=$2), $3, $4, $5, $6, $7, $8)',
             [turno_id, turno_id, pedidos || null, factura || null, 'Retira', 'pendiente', hoy, hora]
         );
+        if (Array.isArray(adjuntos) && adjuntos.length > 0) {
+            for (const adj of adjuntos) {
+                const buf = Buffer.from(adj.base64, 'base64');
+                await query('INSERT INTO turnos_adjuntos (turno_id, nombre, archivo) VALUES ($1, $2, $3)', [turno_id, adj.nombre || 'archivo.pdf', buf]);
+            }
+        }
         json(res, { ok: true });
+        return;
+    }
+
+    // GET /api/turnos/:id/adjuntos - Listar adjuntos de un turno
+    const adjuntosMatch = urlPath.match(/^\/api\/turnos\/(\d+)\/adjuntos$/);
+    if (adjuntosMatch && req.method === 'GET') {
+        const turnoId = parseInt(adjuntosMatch[1]);
+        try {
+            const result = await query('SELECT id, nombre, created_at FROM turnos_adjuntos WHERE turno_id = $1 ORDER BY created_at', [turnoId]);
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/turnos/adjunto/:id - Descargar PDF
+    const adjuntoPdfMatch = urlPath.match(/^\/api\/turnos\/adjunto\/(\d+)$/);
+    if (adjuntoPdfMatch && req.method === 'GET') {
+        const adjId = parseInt(adjuntoPdfMatch[1]);
+        try {
+            const result = await query('SELECT nombre, archivo FROM turnos_adjuntos WHERE id = $1', [adjId]);
+            if (result.rows.length === 0) { json(res, { error: 'No encontrado' }, 404); return; }
+            const row = result.rows[0];
+            res.writeHead(200, {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `inline; filename="${row.nombre}"`,
+                'Content-Length': row.archivo.length
+            });
+            res.end(row.archivo);
+        } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
 
@@ -2153,7 +2198,8 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/turnos/entregas' && req.method === 'GET') {
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const result = await query(
-            `SELECT e.*, t.numero as turno_numero
+            `SELECT e.*, t.numero as turno_numero,
+                (SELECT COUNT(*) FROM turnos_adjuntos ta WHERE ta.turno_id = e.turno_id) as adjuntos_count
              FROM entregas e
              LEFT JOIN turnos t ON e.turno_id = t.id
              WHERE e.fecha = $1
@@ -2166,7 +2212,8 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/turnos/entregas/pendientes' && req.method === 'GET') {
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const result = await query(
-            `SELECT e.*, t.numero as turno_numero
+            `SELECT e.*, t.numero as turno_numero,
+                (SELECT COUNT(*) FROM turnos_adjuntos ta WHERE ta.turno_id = e.turno_id) as adjuntos_count
              FROM entregas e
              LEFT JOIN turnos t ON e.turno_id = t.id
              WHERE e.fecha = $1 AND e.estado = 'pendiente'

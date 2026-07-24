@@ -363,6 +363,8 @@ function getTurnosUser() {
             <p class="text-slate-400 mt-2 text-sm">Ingresa tu nombre para tomar turno</p>
         </div>
         <div class="card" style="width:100%;max-width:400px">
+            <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">RUT</label>
+            <input id="cRut" type="text" class="input mb-4" placeholder="Ej: 12.345.678-9" maxlength="12">
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Tu nombre</label>
             <input id="cNombre" type="text" class="input mb-4" placeholder="Ej: Juan Pérez">
             <button onclick="cCrear()" class="btn btn-amber" id="cBtn">TOMAR TURNO</button>
@@ -380,6 +382,7 @@ function getTurnosUser() {
             <p class="text-xs uppercase tracking-widest text-slate-400 mb-1">Tu número</p>
             <div id="tNumero" class="text-6xl font-black text-amber-400"></div>
             <p id="tNombre" class="text-slate-300 text-base mt-1"></p>
+            <p id="tRut" class="text-slate-500 text-sm"></p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:12px">
             <div class="card">
@@ -432,6 +435,7 @@ function renderHistorialItem(t) {
         html += `<span class="text-amber-400 font-black">${t.nombre}</span>`;
     } else {
         html += `<span class="text-amber-400 font-black">#${t.numero}</span><span class="text-slate-300 font-semibold">${t.nombre}</span>`;
+        if (t.rut) html += `<span class="text-slate-500" style="font-size:11px;margin-left:4px">${t.rut}</span>`;
     }
     html += `<span class="tag ${tipoClass}">${tipoLabel}</span>`;
     if (t.entrega_estado === 'entregado') {
@@ -443,7 +447,10 @@ function renderHistorialItem(t) {
     } else if (!isDirecto) {
         html += estadoTag(t.estado);
     }
-    if (delFn) html += `<button class="btn-delete" onclick="${delFn}">&#10005;</button>`;
+    const user = getTurnosUser();
+    const perm = (user && user.permisos) ? user.permisos : [];
+    const puedeEliminar = perm.includes('atencion.eliminar') || perm.includes('usuarios');
+    if (delFn && puedeEliminar) html += `<button class="btn-delete" onclick="${delFn}">&#10005;</button>`;
     html += `</div>`;
     html += `<span class="text-slate-500 text-xs">${t.fecha_fmt||''}</span></div>`;
 
@@ -589,12 +596,20 @@ async function bCargar() {
         const ent = a.filter(e=>e.estado==='entregado');
         document.getElementById('bPendBadge').textContent = p.length;
         document.getElementById('bEntregBadge').textContent = ent.length;
-        document.getElementById('bPendList').innerHTML = p.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">No hay entregas pendientes</div>' : p.map(e=>`<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:6px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><button onclick="bEntregar(${e.id})" class="btn btn-green btn-sm">ENTREGADO</button></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`).join('');
+        document.getElementById('bPendList').innerHTML = p.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">No hay entregas pendientes</div>' : p.map(e=>{
+            const adjBtn = Number(e.adjuntos_count) > 0 ? `<button onclick="verAdjuntosTurno(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">PDF (${e.adjuntos_count})</button>` : '';
+            return `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:6px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><div style="display:flex;gap:6px;align-items:center">${adjBtn}<button onclick="bEntregar(${e.id})" class="btn btn-green btn-sm">ENTREGADO</button></div></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`;
+        }).join('');
+        const user2 = getTurnosUser();
+        const perm2 = (user2 && user2.permisos) ? user2.permisos : [];
+        const puedeEliminar2 = perm2.includes('atencion.eliminar') || perm2.includes('usuarios');
         document.getElementById('bEntregList').innerHTML = ent.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin entregas hoy</div>' : ent.map(e=>{
             const esDespacho = e.tipo === 'Despacho';
             const estadoLabel = esDespacho ? '&#10003; Despachado' : '&#10003; Entregado';
             const estadoColor = esDespacho ? 'color:#fbbf24' : 'color:#4ade80';
-            return `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:4px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><div class="text-right" style="font-size:11px"><div style="font-weight:700;${estadoColor}">${estadoLabel}: ${e.hora_entregada||'-'}</div><div class="text-slate-500">Tiempo: ${fmtTimeDiff(e.hora_registrada, e.hora_entregada)}</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#94a3b8"><span>Recibido: ${e.hora_registrada||'-'}</span><button class="btn-delete" onclick="eliminarEntrega(${e.id})">&#10005; Eliminar</button></div></div>`;
+            const adjBtn2 = Number(e.adjuntos_count) > 0 ? `<button onclick="verAdjuntosTurno(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">PDF (${e.adjuntos_count})</button>` : '';
+            const delBtn = puedeEliminar2 ? `<button class="btn-delete" onclick="eliminarEntrega(${e.id})">&#10005; Eliminar</button>` : '';
+            return `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:4px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><div class="text-right" style="font-size:11px"><div style="font-weight:700;${estadoColor}">${estadoLabel}: ${e.hora_entregada||'-'}</div><div class="text-slate-500">Tiempo: ${fmtTimeDiff(e.hora_registrada, e.hora_entregada)}</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#94a3b8"><span>Recibido: ${e.hora_registrada||'-'}</span><div style="display:flex;gap:6px;align-items:center">${adjBtn2}${delBtn}</div></div></div>`;
         }).join('');
     } catch(e) {}
 }
@@ -630,10 +645,11 @@ async function qrLoad() {
 // ═══════ CLIENTE: REGISTRO ═══════
 async function cCrear() {
     const n = document.getElementById('cNombre').value.trim();
+    const rut = document.getElementById('cRut').value.trim();
     if(!n){document.getElementById('cError').textContent='Ingresa tu nombre';document.getElementById('cError').classList.remove('hidden');return;}
     const btn = document.getElementById('cBtn'); btn.disabled=true; btn.textContent='REGISTRANDO...';
     try {
-        const r = await fetch('/api/turnos/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n})});
+        const r = await fetch('/api/turnos/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n, rut})});
         const d = await r.json();
         if(r.ok && d.id) window.location.href=`${BASE}?view=ticket&id=${d.id}`;
         else { const e=document.getElementById('cError'); if(e){e.textContent=d.error||'Error';e.classList.remove('hidden');} btn.disabled=false; btn.textContent='TOMAR TURNO'; }
@@ -651,6 +667,7 @@ async function tCargar() {
         const {turno,posicion,estimado,esSuTurno,actualNumero}=d;
         const e0=document.getElementById('tNumero');if(e0)e0.textContent=turno.numero;
         const el2=document.getElementById('tNombre');if(el2)el2.textContent=turno.nombre;
+        const el2b=document.getElementById('tRut');if(el2b)el2b.textContent=turno.rut ? 'RUT: ' + turno.rut : '';
         const el3=document.getElementById('tActual');if(el3)el3.textContent=actualNumero||'-';
         const el4=document.getElementById('tActualInfo');if(el4)el4.textContent=actualNumero===turno.numero?'¡Es tu turno!':(actualNumero?`Atendiendo #${actualNumero}`:'Sin turno');
         const el5=document.getElementById('tPosicion');if(el5)el5.textContent=posicion;
@@ -676,6 +693,20 @@ async function eliminarTurno(id) {
 async function eliminarEntrega(id) {
     if (!confirm('¿Eliminar este registro del historial?')) return;
     try { await fetch(`/api/turnos/eliminar-entrega/${id}`, { method: 'DELETE' }); rCargar(); bCargar(); } catch(e) {}
+}
+
+async function verAdjuntosTurno(turnoId) {
+    try {
+        const r = await fetch(`/api/turnos/${turnoId}/adjuntos`);
+        const adjuntos = await r.json();
+        if (!Array.isArray(adjuntos) || adjuntos.length === 0) { alert('No hay archivos adjuntos'); return; }
+        const html = adjuntos.map(a => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border-bottom:1px solid #334155"><span style="font-size:13px;color:#e2e8f0">&#128196; ${a.nombre}</span><a href="/api/turnos/adjunto/${a.id}" target="_blank" style="padding:4px 12px;border-radius:6px;font-size:12px;background:rgba(59,130,246,0.2);color:#60a5fa;border:1px solid #3b82f6;text-decoration:none">Ver PDF</a></div>`).join('');
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7)';
+        overlay.innerHTML = `<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;width:90%;max-width:400px"><h3 style="color:#f8fafc;font-size:16px;margin-bottom:12px">Archivos Adjuntos</h3>${html}<div style="text-align:right;margin-top:12px"><button onclick="this.closest('div[style*=fixed]').remove()" style="padding:6px 16px;border-radius:6px;background:#334155;color:#e2e8f0;border:none;cursor:pointer;font-size:13px">Cerrar</button></div></div>`;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    } catch(e) { alert('Error al cargar adjuntos'); }
 }
 
 // ═══════ ROUTER ═══════
