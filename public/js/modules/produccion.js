@@ -48,8 +48,11 @@ App.registerModule('produccion', {
             </div>
 
             <div class="card">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-                    <h3 style="margin:0">Ordenes de Produccion</h3>
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                    <h3 style="margin:0;display:flex;align-items:center;gap:12px">
+                        <span>Ordenes de Produccion</span>
+                        <span id="prodTotales" style="display:inline-flex;gap:8px;font-size:12px;font-weight:500"></span>
+                    </h3>
                     <div style="display:flex;gap:8px">
                         <input type="text" class="form-control" id="prodFilterSearch" placeholder="Buscar codigo, pedido..." oninput="App.modules.produccion.filter()" style="width:200px">
                         <select class="form-control" id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="width:140px">
@@ -215,6 +218,7 @@ App.registerModule('produccion', {
 
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
+        this.renderTotales(ordenes);
         if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
 
         const estadoBadge = (e) => {
@@ -263,6 +267,20 @@ App.registerModule('produccion', {
         if (search) filtered = filtered.filter(o => (o.codigo_producto || '').toLowerCase().includes(search) || (o.pedido_sap_id || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search) || (o.nombre_codigo_padre || '').toLowerCase().includes(search) || (o.nombre_mp || '').toLowerCase().includes(search));
         if (estado !== 'todos') filtered = filtered.filter(o => o.estado_programacion === estado);
         this.renderTable(filtered);
+    },
+
+    renderTotales(ordenes) {
+        const el = document.getElementById('prodTotales');
+        if (!el) return;
+        const totalM2 = ordenes.reduce((s, o) => s + Number(o.metros_cuadrados || 0), 0);
+        const totalKg = ordenes.reduce((s, o) => s + Number(o.kilos || 0), 0);
+        const totalCant = ordenes.reduce((s, o) => s + Number(o.cantidad || 0), 0);
+        el.innerHTML = `
+            <span style="padding:3px 8px;border-radius:4px;background:#dbeafe;color:#1e40af">${ordenes.length} ordenes</span>
+            <span style="padding:3px 8px;border-radius:4px;background:#fef3c7;color:#854d0e">${totalCant} und</span>
+            <span style="padding:3px 8px;border-radius:4px;background:#e0e7ff;color:#3730a3">${totalM2.toLocaleString('es-CL', {maximumFractionDigits:2})} m²</span>
+            <span style="padding:3px 8px;border-radius:4px;background:#dcfce7;color:#166534"><strong>${totalKg.toLocaleString('es-CL', {maximumFractionDigits:1})} kg</strong></span>
+        `;
     },
 
     setupDragDrop() {
