@@ -534,6 +534,14 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // TABLA MAESTRA: Tecnicos de instalacion
+    await query(`CREATE TABLE IF NOT EXISTS tecnicos (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(150) NOT NULL,
+        activo BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     // TABLA INTERMEDIA: Estaciones base por familia
     await query(`CREATE TABLE IF NOT EXISTS familia_estaciones_base (
         id SERIAL PRIMARY KEY,
@@ -4519,11 +4527,11 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    // GET /api/instalaciones/tecnicos - Lista única de técnicos
+    // GET /api/instalaciones/tecnicos - Lista de tecnicos
     if (urlPath === '/api/instalaciones/tecnicos' && req.method === 'GET') {
         try {
-            const result = await query("SELECT DISTINCT tecnico FROM instalaciones WHERE tecnico IS NOT NULL AND tecnico != '' ORDER BY tecnico");
-            json(res, result.rows.map(r => r.tecnico));
+            const result = await query("SELECT nombre FROM tecnicos WHERE activo = true ORDER BY nombre");
+            json(res, result.rows.map(r => r.nombre));
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
@@ -4688,6 +4696,45 @@ const server = http.createServer(async (req, res) => {
         const id = parseInt(instDelMatch[1]);
         try {
             await query('DELETE FROM instalaciones WHERE id = $1', [id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // =====================================================
+    // CRUD: Tecnicos de Instalacion
+    // =====================================================
+    if (urlPath === '/api/produccion/tecnicos' && req.method === 'GET') {
+        try {
+            const result = await query('SELECT * FROM tecnicos ORDER BY nombre');
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+    if (urlPath === '/api/produccion/tecnicos' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { nombre } = body;
+        if (!nombre || !nombre.trim()) { json(res, { error: 'Nombre requerido' }, 400); return; }
+        try {
+            const result = await query('INSERT INTO tecnicos (nombre) VALUES ($1) RETURNING *', [nombre.trim()]);
+            json(res, result.rows[0]);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/tecnicos\/\d+$/) && req.method === 'PUT') {
+        const id = parseInt(urlPath.split('/').pop());
+        const body = await parseBody(req);
+        const { nombre, activo } = body;
+        try {
+            await query('UPDATE tecnicos SET nombre=$1, activo=$2 WHERE id=$3', [nombre, activo !== false, id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/tecnicos\/\d+$/) && req.method === 'DELETE') {
+        const id = parseInt(urlPath.split('/').pop());
+        try {
+            await query('DELETE FROM tecnicos WHERE id = $1', [id]);
             json(res, { ok: true });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
