@@ -3932,6 +3932,13 @@ const server = http.createServer(async (req, res) => {
             const fin = urlObj.searchParams.get('fin');
             if (!inicio || !fin) { json(res, { error: 'inicio y fin requeridos' }, 400); return; }
 
+            // Recalcular kilos siempre (por si cambiaron cantidades)
+            await query(`
+                UPDATE produccion_ordenes
+                SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
+                WHERE metros_cuadrados > 0
+            `);
+
             // Calendario laboral
             const calMap = {};
             try {
@@ -4029,6 +4036,12 @@ const server = http.createServer(async (req, res) => {
                     (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
                 )
                 WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+            `);
+            // SIEMPRE recalcular kilos en cada consulta (no solo si es 0) por si cambiaron cantidades
+            await query(`
+                UPDATE produccion_ordenes
+                SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
+                WHERE metros_cuadrados > 0
             `);
             await query(`
                 UPDATE produccion_ordenes
