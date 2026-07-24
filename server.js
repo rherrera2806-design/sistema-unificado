@@ -613,6 +613,30 @@ async function initDB() {
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`);
 
+    // Planificacion por grupo (kg/dia) - vista simplificada
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS grupo VARCHAR(100)`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
+    await query(`CREATE TABLE IF NOT EXISTS produccion_capacidad_grupo (
+        id SERIAL PRIMARY KEY,
+        grupo VARCHAR(100) UNIQUE NOT NULL,
+        capacidad_kg_dia DECIMAL(10,2) DEFAULT 0,
+        activo BOOLEAN DEFAULT TRUE,
+        color VARCHAR(20) DEFAULT '#3b82f6',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    const capacidadesSeed = [
+        { grupo: 'Arquitectura', capacidad: 6500, color: '#3b82f6' },
+        { grupo: 'Laminado', capacidad: 1500, color: '#10b981' },
+        { grupo: 'Termopanel', capacidad: 1600, color: '#f59e0b' },
+        { grupo: 'Carroceros', capacidad: 1500, color: '#8b5cf6' }
+    ];
+    for (const c of capacidadesSeed) {
+        await query(
+            'INSERT INTO produccion_capacidad_grupo (grupo, capacidad_kg_dia, color) VALUES ($1, $2, $3) ON CONFLICT (grupo) DO NOTHING',
+            [c.grupo, c.capacidad, c.color]
+        );
+    }
+
     // SEMILLA: Estaciones maestras por defecto
     const estCount = await query('SELECT COUNT(*) as c FROM estaciones_maestras');
     if (Number(estCount.rows[0].c) === 0) {
@@ -3847,6 +3871,185 @@ const server = http.createServer(async (req, res) => {
             await query('UPDATE produccion_ordenes SET estado_programacion = $1, fecha_entrega_pactada = $2 WHERE id = $3', ['PROGRAMADO', fechaFinal, orden_id]);
 
             json(res, { ok: true, mensaje: `Orden programada${fechaFinal ? '. Entrega: ' + fechaFinal : ''}`, asignaciones });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // =====================================================
+    // PRODUCCION - Planificacion por GRUPO (kg/dia) - Vista simplificada
+    // =====================================================
+
+    // GET /api/produccion/capacidad-grupo - Listar capacidad por grupo
+    if (urlPath === '/api/produccion/capacidad-grupo' && req.method === 'GET') {
+        try {
+            const result = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE ORDER BY grupo');
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // PUT /api/produccion/capacidad-grupo/:id - Actualizar capacidad
+    const capGrupoMatch = urlPath.match(/^\/api\/produccion\/capacidad-grupo\/(\d+)$/);
+    if (capGrupoMatch && req.method === 'PUT') {
+        const id = Number(capGrupoMatch[1]);
+        const body = await parseBody(req);
+        try {
+            const { capacidad_kg_dia, color, activo } = body;
+            const fields = [];
+            const values = [];
+            let idx = 1;
+            if (capacidad_kg_dia !== undefined) { fields.push(`capacidad_kg_dia = $${idx++}`); values.push(Number(capacidad_kg_dia) || 0); }
+            if (color !== undefined) { fields.push(`color = $${idx++}`); values.push(color); }
+            if (activo !== undefined) { fields.push(`activo = $${idx++}`); values.push(!!activo); }
+            if (!fields.length) { json(res, { error: 'Sin campos' }, 400); return; }
+            values.push(id);
+            await query(`UPDATE produccion_capacidad_grupo SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+            const result = await query('SELECT * FROM produccion_capacidad_grupo WHERE id = $1', [id]);
+            json(res, result.rows[0]);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/produccion/planificacion-grupo?fecha=YYYY-MM-DD
+    // Retorna carga por grupo para una fecha + ordenes pendientes sin asignar
+    if (urlPath === '/api/produccion/planificacion-grupo' && req.method === 'GET') {
+        try {
+            const urlObj = new URL(req.url, 'http://localhost');
+            const fecha = urlObj.searchParams.get('fecha');
+
+            const capacidadRes = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE ORDER BY grupo');
+            const capacidad = capacidadRes.rows;
+
+            // Carga por grupo y fecha (solo PENDIENTE y EN_PROCESO)
+            let cargaRes;
+            if (fecha) {
+                cargaRes = await query(`
+                    SELECT COALESCE(o.grupo, '(sin grupo)') as grupo, COALESCE(SUM(o.kilos), 0) as kg_total, COUNT(*) as ordenes
+                    FROM produccion_ordenes o
+                    WHERE o.fecha_programada = $1 AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+                    GROUP BY o.grupo
+                `, [fecha]);
+            } else {
+                cargaRes = await query(`
+                    SELECT o.fecha_programada, COALESCE(o.grupo, '(sin grupo)') as grupo, COALESCE(SUM(o.kilos), 0) as kg_total, COUNT(*) as ordenes
+                    FROM produccion_ordenes o
+                    WHERE o.fecha_programada IS NOT NULL AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+                    GROUP BY o.fecha_programada, o.grupo
+                    ORDER BY o.fecha_programada
+                `);
+            }
+
+            // Ordenes pendientes sin programar
+            const pendRes = await query(`
+                SELECT o.id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion,
+                       o.ancho, o.alto, o.cantidad, o.kilos, o.grupo, o.created_at,
+                       (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp,
+                       (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as grupo_codigo
+                FROM produccion_ordenes o
+                WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL
+                ORDER BY o.created_at ASC
+            `);
+
+            json(res, { capacidad, carga: cargaRes.rows, pendientes: pendRes.rows, fecha });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/produccion/planificacion-grupo/asignar - Asignar orden a fecha
+    if (urlPath === '/api/produccion/planificacion-grupo/asignar' && req.method === 'POST') {
+        try {
+            const body = await parseBody(req);
+            const { orden_id, fecha } = body;
+            if (!orden_id) { json(res, { error: 'orden_id requerido' }, 400); return; }
+            await query('UPDATE produccion_ordenes SET fecha_programada = $1 WHERE id = $2', [fecha || null, orden_id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/produccion/planificacion-grupo/auto-asignar - Auto-asignar PENDIENTES
+    if (urlPath === '/api/produccion/planificacion-grupo/auto-asignar' && req.method === 'POST') {
+        try {
+            const body = await parseBody(req);
+            const dias = Number(body.dias) || 14;
+            const inicio = body.inicio || new Date().toISOString().split('T')[0];
+
+            const capRes = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE');
+            const capMap = {};
+            capRes.rows.forEach(c => { capMap[c.grupo] = Number(c.capacidad_kg_dia) || 0; });
+
+            // Backfill grupo from produccion_codigos si esta null
+            await query(`
+                UPDATE produccion_ordenes o
+                SET grupo = (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto)
+                WHERE o.grupo IS NULL AND o.estado_programacion = 'PENDIENTE'
+            `);
+
+            const pendRes = await query(`
+                SELECT o.id, o.kilos, o.grupo FROM produccion_ordenes o
+                WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL AND o.grupo IS NOT NULL
+                ORDER BY o.created_at
+            `);
+
+            // Carga actual
+            const cargaRes = await query(`
+                SELECT fecha_programada, grupo, COALESCE(SUM(kilos),0) as kg
+                FROM produccion_ordenes
+                WHERE fecha_programada IS NOT NULL AND estado_programacion NOT IN ('CERRADO','TERMINADO')
+                GROUP BY fecha_programada, grupo
+            `);
+            const cargaMap = {};
+            cargaRes.rows.forEach(r => {
+                if (!cargaMap[r.fecha_programada]) cargaMap[r.fecha_programada] = {};
+                cargaMap[r.fecha_programada][r.grupo] = Number(r.kg) || 0;
+            });
+
+            // Calendario laboral
+            const calMap = {};
+            try {
+                const calRes = await query('SELECT to_char(fecha, \'YYYY-MM-DD\') as fs, es_laboral FROM calendario_produccion');
+                calRes.rows.forEach(c => { calMap[c.fs] = c.es_laboral; });
+            } catch(calErr) {}
+
+            const esLaboral = (fStr) => {
+                if (calMap.hasOwnProperty(fStr)) return calMap[fStr];
+                const d = new Date(fStr + 'T12:00:00');
+                return d.getDay() !== 0 && d.getDay() !== 6;
+            };
+            const fmt = (d) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            const inicioDate = new Date(inicio + 'T00:00:00');
+
+            const asignados = [];
+            const noAsignados = [];
+
+            for (const o of pendRes.rows) {
+                const grupo = o.grupo;
+                const capacidad = capMap[grupo];
+                const kg = Number(o.kilos) || 0;
+                if (!capacidad) { noAsignados.push({ id: o.id, motivo: 'capacidad no configurada' }); continue; }
+                let asignado = null;
+                for (let d = 0; d < dias; d++) {
+                    const f = new Date(inicioDate);
+                    f.setDate(f.getDate() + d);
+                    const fStr = fmt(f);
+                    if (!esLaboral(fStr)) continue;
+                    const usado = (cargaMap[fStr] && cargaMap[fStr][grupo]) || 0;
+                    if (usado + kg <= capacidad) {
+                        asignado = fStr;
+                        if (!cargaMap[fStr]) cargaMap[fStr] = {};
+                        cargaMap[fStr][grupo] = usado + kg;
+                        break;
+                    }
+                }
+                if (asignado) {
+                    await query('UPDATE produccion_ordenes SET fecha_programada = $1 WHERE id = $2', [asignado, o.id]);
+                    asignados.push({ id: o.id, fecha: asignado, grupo, kg });
+                } else {
+                    noAsignados.push({ id: o.id, motivo: 'no cabe en ' + dias + ' dias habiles' });
+                }
+            }
+
+            json(res, { asignados: asignados.length, no_asignados: noAsignados.length, detalle: { asignados: asignados.length, noAsignados: noAsignados.length } });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
