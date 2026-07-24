@@ -4111,7 +4111,12 @@ const server = http.createServer(async (req, res) => {
             const body = await parseBody(req);
             const { orden_id, fecha } = body;
             if (!orden_id) { json(res, { error: 'orden_id requerido' }, 400); return; }
-            await query('UPDATE produccion_ordenes SET fecha_programada = $1 WHERE id = $2', [fecha || null, orden_id]);
+            if (fecha) {
+                await query('UPDATE produccion_ordenes SET fecha_programada = $1, estado_programacion = $2 WHERE id = $3', [fecha, 'PROGRAMADO', orden_id]);
+            } else {
+                // Si desasignan (fecha null), volver a PENDIENTE
+                await query('UPDATE produccion_ordenes SET fecha_programada = NULL, estado_programacion = $1 WHERE id = $2', ['PENDIENTE', orden_id]);
+            }
             json(res, { ok: true });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
@@ -4229,7 +4234,7 @@ const server = http.createServer(async (req, res) => {
                     }
                 }
                 if (asignado) {
-                    await query('UPDATE produccion_ordenes SET fecha_programada = $1, grupo = $2 WHERE id = $3', [asignado, grupo, o.id]);
+                    await query('UPDATE produccion_ordenes SET fecha_programada = $1, grupo = $2, estado_programacion = $3 WHERE id = $4', [asignado, grupo, 'PROGRAMADO', o.id]);
                     asignados.push({ id: o.id, fecha: asignado, grupo, kg });
                 } else {
                     noAsignados.push({ id: o.id, motivo: 'no cabe en ' + dias + ' dias habiles' });
