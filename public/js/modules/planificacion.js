@@ -276,7 +276,7 @@ App.modules.planificacion = {
         this.semanaInicio = new Date(d);
         this.semanaInicio.setDate(d.getDate() + diffLunes);
         this.semanaFin = new Date(this.semanaInicio);
-        this.semanaFin.setDate(this.semanaFin.getDate() + 13);
+        this.semanaFin.setDate(this.semanaFin.getDate() + 9);
     },
 
     async render() {
