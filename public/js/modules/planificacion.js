@@ -664,11 +664,14 @@ App.modules.planificacion = {
                     legend: { display: false },
                     datalabels: {
                         display: function(ctx) {
-                            return ctx.dataset.type !== 'line' && ctx.parsed.y > 0;
+                            if (ctx.dataset.type === 'line') return false;
+                            const val = ctx.dataset.data[ctx.dataIndex];
+                            return val > 0;
                         },
                         color: '#fff',
                         font: { size: 10, weight: 'bold' },
                         formatter: function(value) {
+                            if (!value || value <= 0) return '';
                             return value >= 1000 ? (value / 1000).toFixed(1) + 'k' : Math.round(value);
                         },
                         anchor: 'center',
@@ -677,8 +680,9 @@ App.modules.planificacion = {
                     tooltip: {
                         callbacks: {
                             label: function(ctx) {
-                                if (ctx.dataset.type === 'line') return `Capacidad: ${ctx.parsed.y.toLocaleString('es-CL')} kg`;
-                                return `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('es-CL', {maximumFractionDigits:1})} kg`;
+                                const val = ctx.parsed ? ctx.parsed.y : ctx.raw;
+                                if (ctx.dataset.type === 'line') return `Capacidad: ${Number(val).toLocaleString('es-CL')} kg`;
+                                return `${ctx.dataset.label}: ${Number(val).toLocaleString('es-CL', {maximumFractionDigits:1})} kg`;
                             }
                         }
                     }
