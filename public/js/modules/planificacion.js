@@ -181,6 +181,7 @@ App.modules.planificacion = {
             if (res.ok) {
                 App.toast('Orden asignada');
                 await this.cargarGrupo();
+                await this.cargarDatos();
             }
         } catch(e) { alert('Error: ' + e.message); }
     },
@@ -256,7 +257,7 @@ App.modules.planificacion = {
                     <div><strong>✓ Asignadas: ${data.asignados}</strong></div>
                     <div style="margin-top:4px;color:#166534">Sin capacidad: ${data.no_asignados}</div>
                 </div>`;
-                setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); }, 1500);
+                setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); }, 1500);
             } else {
                 resEl.innerHTML = `<div style="color:#ef4444">${data.error || 'Error'}</div>`;
             }
