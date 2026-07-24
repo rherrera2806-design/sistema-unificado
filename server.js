@@ -4163,7 +4163,7 @@ const server = http.createServer(async (req, res) => {
             `);
 
             const pendRes = await query(`
-                SELECT o.id, o.kilos, o.grupo, o.es_compuesto, o.bom_padre_id FROM produccion_ordenes o
+                SELECT o.* FROM produccion_ordenes o
                 WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL
                 ORDER BY o.created_at
             `);
@@ -4208,6 +4208,26 @@ const server = http.createServer(async (req, res) => {
             };
             const fmt = (d) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
             const inicioDate = new Date(inicio + 'T00:00:00');
+            const targetPct = 0.85; // 80-90% de capacidad
+
+            const findDateWithCapacity = (grupo, kg) => {
+                for (let d = 0; d < dias; d++) {
+                    const f = new Date(inicioDate);
+                    f.setDate(f.getDate() + d);
+                    const fStr = fmt(f);
+                    if (!esLaboral(fStr)) continue;
+                    const usado = (cargaMap[fStr] && cargaMap[fStr][grupo]) || 0;
+                    if (usado + kg <= capacidad) {
+                        return fStr;
+                    }
+                }
+                return null;
+            };
+
+            const addToCarga = (fecha, grupo, kg) => {
+                if (!cargaMap[fecha]) cargaMap[fecha] = {};
+                cargaMap[fecha][grupo] = (cargaMap[fecha][grupo] || 0) + kg;
+            };
 
             const asignados = [];
             const noAsignados = [];
@@ -4216,32 +4236,73 @@ const server = http.createServer(async (req, res) => {
                 let grupo = o.grupo;
                 if (!grupo && o.es_compuesto && o.bom_padre_id) grupo = padreGrupoMap[o.bom_padre_id];
                 const capacidad = grupo ? capMap[grupo] : null;
-                const kg = Number(o.kilos) || 0;
+                const kgTotal = Number(o.kilos) || 0;
                 if (!grupo) { noAsignados.push({ id: o.id, motivo: 'sin grupo' }); continue; }
                 if (!capacidad) { noAsignados.push({ id: o.id, motivo: 'capacidad no configurada para ' + grupo }); continue; }
-                let asignado = null;
-                for (let d = 0; d < dias; d++) {
-                    const f = new Date(inicioDate);
-                    f.setDate(f.getDate() + d);
-                    const fStr = fmt(f);
-                    if (!esLaboral(fStr)) continue;
-                    const usado = (cargaMap[fStr] && cargaMap[fStr][grupo]) || 0;
-                    if (usado + kg <= capacidad) {
-                        asignado = fStr;
-                        if (!cargaMap[fStr]) cargaMap[fStr] = {};
-                        cargaMap[fStr][grupo] = usado + kg;
-                        break;
+
+                // Calcular unidades por dia (target = 85% de capacidad)
+                const totalUnidades = Number(o.cantidad) || 1;
+                const kgPorUnidad = kgTotal / totalUnidades;
+                const m2PorUnidad = Number(o.metros_cuadrados || 0) / totalUnidades;
+                const targetKgPorDia = capacidad * targetPct;
+                const unidadesPorDia = Math.max(1, Math.floor(targetKgPorDia / kgPorUnidad));
+                const kgPorDia = +(unidadesPorDia * kgPorUnidad).toFixed(2);
+                const m2PorDia = +(unidadesPorDia * m2PorUnidad).toFixed(4);
+
+                // Sufijo: si el pedido ya tiene letra al final, continuar desde la siguiente
+                let basePedido = String(o.pedido_sap_id || '');
+                let startCharCode = 65; // 'A'
+                const m = basePedido.match(/^(.+?)([A-Z])$/);
+                if (m) { basePedido = m[1]; startCharCode = m[2].charCodeAt(0) + 1; }
+
+                let remaining = totalUnidades;
+                let suffix = String.fromCharCode(startCharCode);
+                let firstDate = null;
+
+                // 1ra pieza: actualizar el original
+                const firstUnits = Math.min(unidadesPorDia, remaining);
+                const firstKg = +(firstUnits * kgPorUnidad).toFixed(2);
+                const firstM2 = +(firstUnits * m2PorUnidad).toFixed(4);
+                const newPedido = basePedido + suffix;
+                const fechaAsignada = findDateWithCapacity(grupo, firstKg);
+                if (!fechaAsignada) { noAsignados.push({ id: o.id, motivo: 'no cabe en ' + dias + ' dias habiles' }); continue; }
+                await query(
+                    'UPDATE produccion_ordenes SET pedido_sap_id=$1, cantidad=$2, kilos=$3, metros_cuadrados=$4, fecha_programada=$5, estado_programacion=$6, grupo=$7 WHERE id=$8',
+                    [newPedido, firstUnits, firstKg, firstM2, fechaAsignada, 'PROGRAMADO', grupo, o.id]
+                );
+                addToCarga(fechaAsignada, grupo, firstKg);
+                asignados.push({ id: o.id, pedido: newPedido, fecha: fechaAsignada, grupo, kg: firstKg, unidades: firstUnits });
+                firstDate = fechaAsignada;
+                remaining -= firstUnits;
+                suffix = String.fromCharCode(suffix.charCodeAt(0) + 1);
+
+                // 2da pieza en adelante: crear nuevas ordenes
+                while (remaining > 0) {
+                    const units = Math.min(unidadesPorDia, remaining);
+                    const kg = +(units * kgPorUnidad).toFixed(2);
+                    const m2 = +(units * m2PorUnidad).toFixed(4);
+                    const newPedidoSplit = basePedido + suffix;
+                    const fecha = findDateWithCapacity(grupo, kg);
+                    if (!fecha) { noAsignados.push({ id: o.id, motivo: 'resto no cabe en ' + dias + ' dias habiles' }); break; }
+                    const ins = await query(
+                        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, bom_padre_id, codigo_padre, tipo_venta, pintado, perforaciones, item_numero, cantidad, espesor_mm, kilos, grupo, fecha_programada, estado_programacion, created_at)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
+                        [newPedidoSplit, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, m2, o.es_compuesto, o.bom_padre_id, o.codigo_padre, o.tipo_venta, o.pintado, o.perforaciones, o.item_numero, units, o.espesor_mm, kg, grupo, fecha, 'PROGRAMADO', new Date().toISOString()]
+                    );
+                    const newId = ins.rows[0].id;
+                    // Copiar pasos
+                    const pasosRes = await query('SELECT estacion_nombre, orden_secuencia FROM produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [o.id]);
+                    for (const p of pasosRes.rows) {
+                        await query('INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [newId, p.estacion_nombre, p.orden_secuencia, 'PENDIENTE']);
                     }
-                }
-                if (asignado) {
-                    await query('UPDATE produccion_ordenes SET fecha_programada = $1, grupo = $2, estado_programacion = $3 WHERE id = $4', [asignado, grupo, 'PROGRAMADO', o.id]);
-                    asignados.push({ id: o.id, fecha: asignado, grupo, kg });
-                } else {
-                    noAsignados.push({ id: o.id, motivo: 'no cabe en ' + dias + ' dias habiles' });
+                    addToCarga(fecha, grupo, kg);
+                    asignados.push({ id: newId, pedido: newPedidoSplit, fecha, grupo, kg, unidades: units });
+                    remaining -= units;
+                    suffix = String.fromCharCode(suffix.charCodeAt(0) + 1);
                 }
             }
 
-            json(res, { asignados: asignados.length, no_asignados: noAsignados.length, detalle: { asignados: asignados.slice(0, 50), noAsignados: noAsignados.slice(0, 50) } });
+            json(res, { asignados: asignados.length, no_asignados: noAsignados.length, detalle: { asignados: asignados.slice(0, 100), noAsignados: noAsignados.slice(0, 50) } });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
