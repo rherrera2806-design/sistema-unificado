@@ -60,7 +60,12 @@ App.registerModule('inst_detalle', {
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
                         <div><strong>Cliente:</strong> ${escapeHtml(inst.cliente)}</div>
                         <div><strong>Tecnico:</strong> ${escapeHtml(inst.tecnico || '-')}</div>
-                        <div><strong>Direccion:</strong> ${escapeHtml(inst.direccion)}</div>
+                        <div style="grid-column:1/-1"><strong>Direccion:</strong> ${escapeHtml(inst.direccion)}
+                            <span style="margin-left:8px;display:inline-flex;gap:4px;vertical-align:middle">
+                                <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inst.direccion)}" target="_blank" title="Google Maps" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534;text-decoration:none;border:1px solid #bbf7d0;transition:background .15s" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'">📍 Maps</a>
+                                <a href="https://www.waze.com/ul?q=${encodeURIComponent(inst.direccion)}" target="_blank" title="Waze" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af;text-decoration:none;border:1px solid #bfdbfe;transition:background .15s" onmouseover="this.style.background='#bfdbfe'" onmouseout="this.style.background='#dbeafe'">🚗 Waze</a>
+                            </span>
+                        </div>
                         <div><strong>Fecha:</strong> ${fecha} ${inst.hora_programada || ''}</div>
                         <div style="grid-column:1/-1"><strong>Descripcion:</strong> ${escapeHtml(inst.descripcion || '-')}</div>
                         <div style="grid-column:1/-1"><strong>Notas Previas:</strong> ${escapeHtml(inst.notas_previas || '-')}</div>
