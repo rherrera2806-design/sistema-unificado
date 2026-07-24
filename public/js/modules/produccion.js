@@ -250,7 +250,7 @@ App.registerModule('produccion', {
                 <td style="padding:6px 12px;font-weight:600">${o.kilos ? Number(o.kilos).toFixed(1) : '-'}</td>
                 <td style="padding:6px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(${o.id}, ${o.cantidad || 1})"><strong>${o.cantidad || 1}</strong></td>
                 <td style="padding:6px 12px">${tipoBadge(o.tipo_venta)}</td>
-                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${(() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const s = String(f).split('T')[0]; const parts = s.split('-'); if (parts.length === 3) return parts[2] + '/' + parts[1]; return '<span style="color:#cbd5e1">-</span>'; })()}</td>
+                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${(() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })()}</td>
                 <td style="padding:6px 12px">${progreso}</td>
                 <td style="padding:6px 12px">${estadoBadge(o.estado_programacion)}${o.cerrado_nota ? ` <span title="${o.cerrado_nota.replace(/"/g, '&quot;')}" style="cursor:pointer;font-size:10px">ℹ️</span>` : ''}</td>
                 <td style="padding:6px 12px">
