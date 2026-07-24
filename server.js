@@ -4240,8 +4240,7 @@ const server = http.createServer(async (req, res) => {
             };
             const fmt = (d) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
             const inicioDate = new Date(inicio + 'T00:00:00');
-            const targetPct = 0.85; // 80-90% de capacidad
-
+            // targetPct removido: ahora se calcula dinamicamente por dia segun carga existente
             const findDateWithCapacity = (grupo, kg) => {
                 const capGrupo = capMap[grupo] || 0;
                 for (let d = 0; d < dias; d++) {
@@ -4255,6 +4254,25 @@ const server = http.createServer(async (req, res) => {
                     }
                 }
                 return null;
+            };
+
+            // Calcula cuantas unidades ENTERAS caben en el primer dia con capacidad
+            // (cabe en el dia mas proximo que tenga espacio)
+            const calcUnitsForDay = (grupo, kgPorUnidad) => {
+                const capGrupo = capMap[grupo] || 0;
+                for (let d = 0; d < dias; d++) {
+                    const f = new Date(inicioDate);
+                    f.setDate(f.getDate() + d);
+                    const fStr = fmt(f);
+                    if (!esLaboral(fStr)) continue;
+                    const usado = (cargaMap[fStr] && cargaMap[fStr][grupo]) || 0;
+                    const libre = capGrupo - usado;
+                    if (libre <= 0) continue;
+                    // Unidades enteras que caben en libre (sin pasar la capacidad del dia)
+                    const unitsFit = Math.floor(libre / kgPorUnidad);
+                    if (unitsFit >= 1) return { units: unitsFit, fecha: fStr };
+                }
+                return { units: 0, fecha: null };
             };
 
             const addToCarga = (fecha, grupo, kg) => {
@@ -4273,64 +4291,63 @@ const server = http.createServer(async (req, res) => {
                 if (!grupo) { noAsignados.push({ id: o.id, motivo: 'sin grupo' }); continue; }
                 if (!capacidad) { noAsignados.push({ id: o.id, motivo: 'capacidad no configurada para ' + grupo }); continue; }
 
-                // Calcular unidades por dia (target = 85% de capacidad)
                 const totalUnidades = Number(o.cantidad) || 1;
                 const kgPorUnidad = kgTotal / totalUnidades;
                 const m2PorUnidad = Number(o.metros_cuadrados || 0) / totalUnidades;
-                const targetKgPorDia = capacidad * targetPct;
-                const unidadesPorDia = Math.max(1, Math.floor(targetKgPorDia / kgPorUnidad));
-                const kgPorDia = +(unidadesPorDia * kgPorUnidad).toFixed(2);
-                const m2PorDia = +(unidadesPorDia * m2PorUnidad).toFixed(4);
 
-                // Sufijo: si el pedido ya tiene letra al final, continuar desde la siguiente
+                // Si 1 sola unidad ya excede la capacidad, no se puede dividir mas
+                if (kgPorUnidad > capacidad) {
+                    noAsignados.push({ id: o.id, motivo: '1 unidad (' + kgPorUnidad.toFixed(1) + ' kg) excede capacidad de ' + grupo + ' (' + capacidad + ' kg/dia)' });
+                    continue;
+                }
+
+                // Sufijo
                 let basePedido = String(o.pedido_sap_id || '');
-                let startCharCode = 65; // 'A'
+                let startCharCode = 65;
                 const m = basePedido.match(/^(.+?)([A-Z])$/);
                 if (m) { basePedido = m[1]; startCharCode = m[2].charCodeAt(0) + 1; }
 
                 let remaining = totalUnidades;
                 let suffix = String.fromCharCode(startCharCode);
-                let firstDate = null;
 
-                // 1ra pieza: actualizar el original
-                const firstUnits = Math.min(unidadesPorDia, remaining);
+                // 1ra pieza: actualizar el original con lo que cabe en el primer dia con capacidad
+                let { units: firstUnits, fecha: firstDate } = calcUnitsForDay(grupo, kgPorUnidad);
+                if (!firstDate || firstUnits < 1) { noAsignados.push({ id: o.id, motivo: 'no hay capacidad en ' + dias + ' dias habiles' }); continue; }
+
+                firstUnits = Math.min(firstUnits, remaining);
                 const firstKg = +(firstUnits * kgPorUnidad).toFixed(2);
                 const firstM2 = +(firstUnits * m2PorUnidad).toFixed(4);
                 const newPedido = basePedido + suffix;
-                const fechaAsignada = findDateWithCapacity(grupo, firstKg);
-                if (!fechaAsignada) { noAsignados.push({ id: o.id, motivo: 'no cabe en ' + dias + ' dias habiles' }); continue; }
                 await query(
                     'UPDATE produccion_ordenes SET pedido_sap_id=$1, cantidad=$2, kilos=$3, metros_cuadrados=$4, fecha_programada=$5, estado_programacion=$6, grupo=$7 WHERE id=$8',
-                    [newPedido, firstUnits, firstKg, firstM2, fechaAsignada, 'PROGRAMADO', grupo, o.id]
+                    [newPedido, firstUnits, firstKg, firstM2, firstDate, 'PROGRAMADO', grupo, o.id]
                 );
-                addToCarga(fechaAsignada, grupo, firstKg);
-                asignados.push({ id: o.id, pedido: newPedido, fecha: fechaAsignada, grupo, kg: firstKg, unidades: firstUnits });
-                firstDate = fechaAsignada;
+                addToCarga(firstDate, grupo, firstKg);
+                asignados.push({ id: o.id, pedido: newPedido, fecha: firstDate, grupo, kg: firstKg, unidades: firstUnits });
                 remaining -= firstUnits;
                 suffix = String.fromCharCode(suffix.charCodeAt(0) + 1);
 
-                // 2da pieza en adelante: crear nuevas ordenes
+                // Piezas siguientes
                 while (remaining > 0) {
-                    const units = Math.min(unidadesPorDia, remaining);
-                    const kg = +(units * kgPorUnidad).toFixed(2);
-                    const m2 = +(units * m2PorUnidad).toFixed(4);
+                    const { units, fecha } = calcUnitsForDay(grupo, kgPorUnidad);
+                    if (!fecha || units < 1) { noAsignados.push({ id: o.id, motivo: 'resto (' + remaining + ' un) no cabe en ' + dias + ' dias habiles' }); break; }
+                    const u = Math.min(units, remaining);
+                    const kg = +(u * kgPorUnidad).toFixed(2);
+                    const m2 = +(u * m2PorUnidad).toFixed(4);
                     const newPedidoSplit = basePedido + suffix;
-                    const fecha = findDateWithCapacity(grupo, kg);
-                    if (!fecha) { noAsignados.push({ id: o.id, motivo: 'resto no cabe en ' + dias + ' dias habiles' }); break; }
                     const ins = await query(
                         `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, es_compuesto, bom_padre_id, codigo_padre, tipo_venta, pintado, perforaciones, item_numero, cantidad, espesor_mm, kilos, grupo, fecha_programada, estado_programacion, created_at)
                          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
-                        [newPedidoSplit, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, m2, o.es_compuesto, o.bom_padre_id, o.codigo_padre, o.tipo_venta, o.pintado, o.perforaciones, o.item_numero, units, o.espesor_mm, kg, grupo, fecha, 'PROGRAMADO', new Date().toISOString()]
+                        [newPedidoSplit, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, m2, o.es_compuesto, o.bom_padre_id, o.codigo_padre, o.tipo_venta, o.pintado, o.perforaciones, o.item_numero, u, o.espesor_mm, kg, grupo, fecha, 'PROGRAMADO', new Date().toISOString()]
                     );
                     const newId = ins.rows[0].id;
-                    // Copiar pasos
                     const pasosRes = await query('SELECT estacion_nombre, orden_secuencia FROM produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [o.id]);
                     for (const p of pasosRes.rows) {
                         await query('INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [newId, p.estacion_nombre, p.orden_secuencia, 'PENDIENTE']);
                     }
                     addToCarga(fecha, grupo, kg);
-                    asignados.push({ id: newId, pedido: newPedidoSplit, fecha, grupo, kg, unidades: units });
-                    remaining -= units;
+                    asignados.push({ id: newId, pedido: newPedidoSplit, fecha, grupo, kg, unidades: u });
+                    remaining -= u;
                     suffix = String.fromCharCode(suffix.charCodeAt(0) + 1);
                 }
             }
