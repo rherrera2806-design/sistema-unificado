@@ -132,6 +132,40 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // =====================================================
+// SEGURIDAD: Sesiones en memoria
+// =====================================================
+const sessions = new Map();
+const SESSION_TTL = 24 * 60 * 60 * 1000; // 24 horas
+
+function createSession(user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.set(token, { user, createdAt: Date.now() });
+    return token;
+}
+
+function getSession(token) {
+    if (!token || !sessions.has(token)) return null;
+    const session = sessions.get(token);
+    if (Date.now() - session.createdAt > SESSION_TTL) {
+        sessions.delete(token);
+        return null;
+    }
+    return session.user;
+}
+
+function destroySession(token) {
+    if (token) sessions.delete(token);
+}
+
+// Limpiar sesiones expiradas cada hora
+setInterval(() => {
+    const now = Date.now();
+    for (const [token, session] of sessions) {
+        if (now - session.createdAt > SESSION_TTL) sessions.delete(token);
+    }
+}, 60 * 60 * 1000);
+
+// =====================================================
 // SEGURIDAD: Headers de seguridad
 // =====================================================
 function setSecurityHeaders(res) {
@@ -1416,6 +1450,7 @@ const server = http.createServer(async (req, res) => {
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Permisos, X-User-Email');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
@@ -1455,7 +1490,36 @@ const server = http.createServer(async (req, res) => {
         recordLoginAttempt(clientIp);
         const user = await login(email, password);
         if (!user) { json(res, { error: 'Credenciales inválidas' }, 401); return; }
+        const token = createSession(user);
+        const isSecure = req.headers.host && !req.headers.host.includes('localhost');
+        res.setHeader('Set-Cookie', `session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL / 1000}${isSecure ? '; Secure' : ''}`);
         json(res, user);
+        return;
+    }
+
+    // =====================================================
+    // AUTH: Verificar sesión actual
+    // =====================================================
+    if (urlPath === '/api/auth/me' && req.method === 'GET') {
+        const cookieHeader = req.headers.cookie || '';
+        const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+        const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+        const user = getSession(token);
+        if (!user) { json(res, { error: 'No autenticado' }, 401); return; }
+        json(res, user);
+        return;
+    }
+
+    // =====================================================
+    // AUTH: Cerrar sesión
+    // =====================================================
+    if (urlPath === '/api/auth/logout' && req.method === 'POST') {
+        const cookieHeader = req.headers.cookie || '';
+        const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+        const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+        destroySession(token);
+        res.setHeader('Set-Cookie', 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+        json(res, { ok: true });
         return;
     }
 
