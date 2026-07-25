@@ -364,7 +364,7 @@ App.modules.planificacion = {
             </div>
         `;
         await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
-        this.cargarEstaciones();
+        await this.cargarEstaciones().catch(e => console.error('cargarEstaciones:', e));
     },
 
     async cargarDatos() {

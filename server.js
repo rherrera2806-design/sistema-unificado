@@ -2799,7 +2799,12 @@ const server = http.createServer(async (req, res) => {
                     )
                 ELSE NULL END as nombre_codigo_padre,
                 (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as nombre_mp,
-                (SELECT f.nombre_familia FROM familias_producto f WHERE f.id = o.familia_id) as familia_nombre
+                (SELECT f.nombre_familia FROM familias_producto f WHERE f.id = o.familia_id) as familia_nombre,
+                (SELECT em.nombre_estacion FROM cola_produccion_pasos cp
+                 JOIN estaciones_maestras em ON cp.estacion_id = em.id
+                 WHERE cp.orden_produccion_id = o.id AND em.es_cuello_botella = TRUE
+                 AND cp.estado != 'TERMINADO'
+                 ORDER BY cp.orden_secuencia LIMIT 1) as cuello_botella
             FROM produccion_ordenes o ORDER BY o.created_at DESC
         `);
         json(res, result.rows);
@@ -3949,7 +3954,7 @@ const server = http.createServer(async (req, res) => {
     // GET /api/produccion/planificacion/carga-estaciones?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
     if (urlPath.startsWith('/api/produccion/planificacion/carga-estaciones') && req.method === 'GET') {
         try {
-            const params = new URL(url, 'http://localhost').searchParams;
+            const params = new URL(req.url, 'http://localhost').searchParams;
             const inicio = params.get('inicio') || new Date().toISOString().split('T')[0];
             const fin = params.get('fin') || inicio;
 
