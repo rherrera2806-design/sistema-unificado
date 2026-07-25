@@ -689,9 +689,25 @@ async function tCargar() {
 }
 
 // ═══════ ADMIN ═══════
-function getTurnosUser() { try { return JSON.parse(localStorage.getItem('unified_user')); } catch(e) { return null; } }
+function getTurnosUser() {
+    try {
+        var u = JSON.parse(localStorage.getItem('unified_user'));
+        if (!u) return null;
+        if (!u.permisos) u.permisos = [];
+        if (u.rol === 'admin' && !u.permisos.includes('usuarios')) u.permisos.push('usuarios');
+        return u;
+    } catch(e) { return null; }
+}
+function canDelete() {
+    const user = getTurnosUser();
+    if (!user) return false;
+    if (user.rol === 'admin') return true;
+    const p = user.permisos || [];
+    return p.includes('atencion.eliminar') || p.includes('usuarios');
+}
 function checkAdmin() {
     if (canDelete()) document.body.classList.add('isAdmin');
+    else document.body.classList.remove('isAdmin');
 }
 checkAdmin();
 
@@ -724,8 +740,8 @@ var pageId = {menu:'pageMenu',recepcion:'pageRecepcion',bodega:'pageBodega',qr:'
 var page = document.getElementById(pageId);
 if(page) page.style.display='block';
 
-if(view==='recepcion'){rCargar();setInterval(rCargar,3000);}
-if(view==='bodega'){bCargar();setInterval(bCargar,3000);}
+if(view==='recepcion'){checkAdmin();rCargar();setInterval(rCargar,3000);}
+if(view==='bodega'){checkAdmin();bCargar();setInterval(bCargar,3000);}
 if(view==='qr'){qrLoad();qrCargar();setInterval(qrCargar,3000);}
 if(view==='registro'){document.getElementById('cNombre').addEventListener('keydown',e=>{if(e.key==='Enter')cCrear();});}
 if(view==='ticket'){tCargar();setInterval(tCargar,3000);}
