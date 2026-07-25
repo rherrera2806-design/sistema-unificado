@@ -49,6 +49,7 @@ App.registerModule('turnos', {
     fmtSec(s) { if (s == null) return '-'; const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s%60}s` : `${s}s`; },
     fmtTime(t) { if (!t) return '-'; return String(t).slice(0, 8); },
     timeToSec(t) { if (!t) return 0; const p = String(t).slice(0,8).split(':').map(Number); return p[0]*3600 + p[1]*60 + (p[2]||0); },
+    canEliminar() { const u = JSON.parse(localStorage.getItem('unified_user') || '{}'); return (u.permisos || []).includes('turnos_eliminar'); },
 
     // ═══════ RECEPCION ═══════
     async showRecepcion() {
@@ -160,7 +161,7 @@ App.registerModule('turnos', {
         if (t.hora_fin && t.bodega_entregado) { const seg = this.timeToSec(t.bodega_entregado) - this.timeToSec(t.hora_fin); if (seg > 0) details += `<span><span style="color:var(--text-light)">Espera bodega: </span><span style="color:var(--warning);font-weight:700">${this.fmtSec(seg)}</span></span>`; }
         if (t.total_segundos) details += `<span><span style="color:var(--text-light)">Total: </span><span style="font-weight:700">${this.fmtSec(t.total_segundos)}</span></span>`;
         details += `</div>`;
-        return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)">${info}${details}<span style="font-size:11px;color:var(--text-light);margin-top:2px;display:block">${t.fecha_fmt||''}</span></div>`;
+        return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);position:relative">${info}${details}<span style="font-size:11px;color:var(--text-light);margin-top:2px;display:block">${t.fecha_fmt||''}</span>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarTurno(${t.id})" style="position:absolute;right:8px;top:10px;background:none;border:none;cursor:pointer;color:#ef4444;font-size:16px" title="Eliminar">&#10005;</button>` : ''}</div>`;
     },
 
     async rLlamar() {
@@ -266,14 +267,14 @@ App.registerModule('turnos', {
                 if (e.tipo) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${e.tipo==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${e.tipo==='Despacho'?'var(--warning)':'var(--success)'}">${e.tipo}</span>`;
                 if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${e.pedidos}</span>`;
                 if (e.factura) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7">Factura: ${e.factura}</span>`;
-                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div>${info}<div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div><button onclick="App.modules.turnos.bEntregar(${e.id})" class="btn btn-success" style="padding:6px 12px;font-size:12px">ENTREGADO</button></div>`;
+                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div>${info}<div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div><div style="display:flex;gap:6px;align-items:center"><button onclick="App.modules.turnos.bEntregar(${e.id})" class="btn btn-success" style="padding:6px 12px;font-size:12px">ENTREGADO</button>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px" title="Eliminar">&#10005;</button>` : ''}</div></div>`;
             }).join('');
             const el = document.getElementById('tBEntregList');
             if (el) el.innerHTML = ent.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin entregas hoy</div>' : ent.map(e => {
                 let info = `<span style="font-weight:900">${escapeHtml(e.cliente_nombre)}</span>`;
                 if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${escapeHtml(e.pedidos)}</span>`;
                 if (e.factura) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7">Factura: ${escapeHtml(e.factura)}</span>`;
-                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px"><div>${info}</div><div style="font-size:11px"><span style="font-weight:700;color:var(--success)">&#10003; Entregado: ${this.fmtTime(e.hora_entregada)}</span></div></div><div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div>`;
+                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px"><div>${info}</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px"><span style="font-weight:700;color:var(--success)">&#10003; Entregado: ${this.fmtTime(e.hora_entregada)}</span></span>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px" title="Eliminar">&#10005;</button>` : ''}</div></div><div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div>`;
             }).join('');
         } catch(e) {}
     },

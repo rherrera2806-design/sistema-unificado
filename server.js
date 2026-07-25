@@ -795,7 +795,7 @@ async function initDB() {
     const ALL_PERMS = [
         'mantencion','dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora',
         'inventario','inv_inventario','inv_movimientos','inv_historial','inv_catalogos',
-        'atencion','turnos_recepcion','turnos_bodega','turnos_qr',
+        'atencion','turnos_recepcion','turnos_bodega','turnos_qr','turnos_eliminar',
         'ventas','pedidos',
         'produccion','prod_ordenes','prod_maquinas','prod_recetas','prod_codigos','prod_notas','prod_config',
         'administracion','usuarios','pedidos.autorizar'
