@@ -93,7 +93,7 @@ async function r2Delete(key) {
 // SEGURIDAD: Rate limiting en memoria
 // =====================================================
 const loginAttempts = new Map();
-const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_MAX = 50;
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
 
 function checkRateLimit(ip) {
