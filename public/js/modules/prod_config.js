@@ -87,11 +87,12 @@ App.registerModule('prod_config', {
                     <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showEstacionForm()">+ Nueva Estacion</button>
                 </div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr><th>Orden</th><th>Nombre</th><th>Cap. Max m²/día</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <table><thead><tr><th>Orden</th><th>Nombre</th><th>Cap. Max m²/día</th><th>Cuello Botella</th><th>Estado</th><th>Acciones</th></tr></thead>
                     <tbody>${this._estaciones.map(e => `<tr>
                         <td><strong style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px">${e.orden_secuencia_defecto}</strong></td>
                         <td>${escapeHtml(e.nombre_estacion)}</td>
                         <td><strong>${Number(e.capacidad_max_m2_dia || 100).toFixed(0)}</strong> m²</td>
+                        <td>${e.es_cuello_botella ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#fee2e2;color:#991b1b">Cuello de Botella</span>' : '<span style="color:var(--text-light);font-size:11px">No</span>'}</td>
                         <td>${e.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
                         <td class="table-actions">
                             <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showEstacionForm(${e.id})">✏️</button>
@@ -108,6 +109,7 @@ App.registerModule('prod_config', {
             <div class="form-group"><label>Nombre de Estacion *</label><input class="form-control" id="estNombre" value="${est ? est.nombre_estacion : ''}" placeholder="Ej: Corte, Pulido, Templado..."></div>
             <div class="form-group"><label>Orden de Secuencia *</label><input type="number" class="form-control" id="estOrden" value="${est ? est.orden_secuencia_defecto : (this._estaciones.length + 1)}" min="1"></div>
             <div class="form-group"><label>Capacidad Maxima (m²/dia) *</label><input type="number" class="form-control" id="estCapacidad" value="${est ? (est.capacidad_max_m2_dia || 100) : 100}" min="1" step="0.01"></div>
+            <div class="form-group"><label><input type="checkbox" id="estCuelloBotella" ${est && est.es_cuello_botella ? 'checked' : ''}> Es Cuello de Botella (limita capacidad diaria en m²)</label></div>
             <div class="form-group"><label><input type="checkbox" id="estActiva" ${!est || est.activa ? 'checked' : ''}> Activa</label></div>
         `, { title: est ? 'Editar Estacion' : 'Nueva Estacion' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
@@ -120,6 +122,7 @@ App.registerModule('prod_config', {
             nombre_estacion: document.getElementById('estNombre').value.trim(),
             orden_secuencia_defecto: parseInt(document.getElementById('estOrden').value),
             capacidad_max_m2_dia: parseFloat(document.getElementById('estCapacidad').value) || 100,
+            es_cuello_botella: document.getElementById('estCuelloBotella').checked,
             activa: document.getElementById('estActiva').checked
         };
         if (!data.nombre_estacion || !data.orden_secuencia_defecto) { App.showAlert('Nombre y orden requeridos', 'danger'); return; }

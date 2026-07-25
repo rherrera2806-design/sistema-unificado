@@ -661,6 +661,9 @@ async function initDB() {
 
     // Columnas para planificacion
     await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS capacidad_max_m2_dia DECIMAL(10,2) DEFAULT 100`);
+    await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS es_cuello_botella BOOLEAN DEFAULT FALSE`);
+    // Marcar estaciones 4-8 como cuellos de botella por defecto
+    await query(`UPDATE estaciones_maestras SET es_cuello_botella = TRUE WHERE orden_secuencia_defecto BETWEEN 4 AND 8 AND es_cuello_botella = FALSE`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`);
 
@@ -703,11 +706,12 @@ async function initDB() {
     const estCount = await query('SELECT COUNT(*) as c FROM estaciones_maestras');
     if (Number(estCount.rows[0].c) === 0) {
         const estacionesDefault = [
-            ['Corte', 1], ['Pulido', 2], ['Radio', 3], ['Mecanizado', 4],
-            ['Ventana', 5], ['Pintado', 6], ['Templado', 7], ['Armado', 8]
+            ['Corte', 1, 500, false], ['Pulido', 2, 300, false], ['Radio', 3, 200, false],
+            ['Mecanizado', 4, 130, true], ['Ventana', 5, 100, true], ['Pintado', 6, 24, true],
+            ['Templado', 7, 200, true], ['Armado', 8, 150, true]
         ];
-        for (const [nombre, orden] of estacionesDefault) {
-            await query('INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto) VALUES ($1, $2)', [nombre, orden]);
+        for (const [nombre, orden, cap, cuello] of estacionesDefault) {
+            await query('INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia, es_cuello_botella) VALUES ($1, $2, $3, $4)', [nombre, orden, cap, cuello]);
         }
         console.log('[PROD] Estaciones maestras creadas por defecto');
     }
@@ -3320,10 +3324,10 @@ const server = http.createServer(async (req, res) => {
     if (urlPath.match(/^\/api\/produccion\/estaciones\/\d+$/) && req.method === 'PUT') {
         const id = parseInt(urlPath.split('/').pop());
         const body = await parseBody(req);
-        const { nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia } = body;
+        const { nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia, es_cuello_botella } = body;
         const result = await query(
-            'UPDATE estaciones_maestras SET nombre_estacion=$1, orden_secuencia_defecto=$2, activa=$3, capacidad_max_m2_dia=$4 WHERE id=$5 RETURNING *',
-            [nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia || 100, id]
+            'UPDATE estaciones_maestras SET nombre_estacion=$1, orden_secuencia_defecto=$2, activa=$3, capacidad_max_m2_dia=$4, es_cuello_botella=$5 WHERE id=$6 RETURNING *',
+            [nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia || 100, es_cuello_botella || false, id]
         );
         json(res, result.rows[0] || { error: 'No encontrado' }, result.rows[0] ? 200 : 404);
         return;
@@ -4348,6 +4352,27 @@ const server = http.createServer(async (req, res) => {
             const capMap = {};
             capRes.rows.forEach(c => { capMap[c.grupo] = Number(c.capacidad_kg_dia) || 0; });
 
+            // Cuellos de botella: estaciones con capacidad reducida en m²/día
+            const cuelloRes = await query('SELECT id, nombre_estacion, capacidad_max_m2_dia FROM estaciones_maestras WHERE es_cuello_botella = TRUE AND activa = TRUE');
+            const cuellosMap = {};
+            cuelloRes.rows.forEach(e => { cuellosMap[e.id] = Number(e.capacidad_max_m2_dia) || 100; });
+            const cuelloIds = new Set(cuelloRes.rows.map(e => e.id));
+
+            // Carga actual de m² por estación por día (para cuellos de botella)
+            const cargaEstRes = await query(`
+                SELECT cp.fecha_programada, cp.estacion_id, COALESCE(SUM(cp.m2_asignados),0) as m2_total
+                FROM cola_produccion_pasos cp
+                JOIN produccion_ordenes o ON o.id = cp.orden_produccion_id
+                WHERE cp.fecha_programada IS NOT NULL AND cp.estado != 'TERMINADO'
+                AND cp.estacion_id = ANY($1)
+                GROUP BY cp.fecha_programada, cp.estacion_id
+            `, [cuelloRes.rows.map(e => e.id)]);
+            const cargaEstMap = {};
+            cargaEstRes.rows.forEach(r => {
+                const key = r.fecha_programada + '|' + r.estacion_id;
+                cargaEstMap[key] = Number(r.m2_total) || 0;
+            });
+
             // Backfill grupo: BOM usa grupo del codigo_padre (prioridad) o recetas_bom (fallback), no-BOM usa grupo del codigo_producto
             await query(`
                 UPDATE produccion_ordenes o
@@ -4433,25 +4458,35 @@ const server = http.createServer(async (req, res) => {
             };
             const fmt = (d) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
             const inicioDate = new Date(inicio + 'T00:00:00');
-            // targetPct removido: ahora se calcula dinamicamente por dia segun carga existente
-            const findDateWithCapacity = (grupo, kg) => {
+
+            // Busca el primer dia con capacidad en grupo (kg) Y en todos los cuellos de botella (m²)
+            const findDateWithCapacity = (grupo, kg, estacionesIds) => {
                 const capGrupo = capMap[grupo] || 0;
                 for (let d = 0; d < dias; d++) {
                     const f = new Date(inicioDate);
                     f.setDate(f.getDate() + d);
                     const fStr = fmt(f);
                     if (!esLaboral(fStr)) continue;
+                    // 1) Check kg del grupo
                     const usado = (cargaMap[fStr] && cargaMap[fStr][grupo]) || 0;
-                    if (usado + kg <= capGrupo) {
-                        return fStr;
+                    if (usado + kg > capGrupo) continue;
+                    // 2) Check m² en cada cuello de botella que esta orden necesita
+                    let estacionOk = true;
+                    for (const estId of estacionesIds) {
+                        if (!cuelloIds.has(estId)) continue;
+                        const capEst = cuellosMap[estId] || 100;
+                        const usadoEst = cargaEstMap[fStr + '|' + estId] || 0;
+                        if (usadoEst + kg > capEst) { estacionOk = false; break; }
+                    }
+                    if (estacionOk) return fStr;
                     }
                 }
                 return null;
             };
 
             // Calcula cuantas unidades ENTERAS caben en el primer dia con capacidad
-            // (cabe en el dia mas proximo que tenga espacio)
-            const calcUnitsForDay = (grupo, kgPorUnidad) => {
+            // Considera kg del grupo Y m² en cuellos de botella
+            const calcUnitsForDay = (grupo, kgPorUnidad, estacionesIds) => {
                 const capGrupo = capMap[grupo] || 0;
                 for (let d = 0; d < dias; d++) {
                     const f = new Date(inicioDate);
@@ -4462,7 +4497,18 @@ const server = http.createServer(async (req, res) => {
                     const libre = capGrupo - usado;
                     if (libre <= 0) continue;
                     // Unidades enteras que caben en libre (sin pasar la capacidad del dia)
-                    const unitsFit = Math.floor(libre / kgPorUnidad);
+                    let unitsFit = Math.floor(libre / kgPorUnidad);
+                    if (unitsFit < 1) continue;
+                    // Check m² en cada cuello de botella: limitar por el mas restrictivo
+                    for (const estId of estacionesIds) {
+                        if (!cuelloIds.has(estId)) continue;
+                        const capEst = cuellosMap[estId] || 100;
+                        const usadoEst = cargaEstMap[fStr + '|' + estId] || 0;
+                        const libreEst = capEst - usadoEst;
+                        if (libreEst <= 0) { unitsFit = 0; break; }
+                        const unitsByEst = Math.floor(libreEst / kgPorUnidad);
+                        if (unitsByEst < unitsFit) unitsFit = unitsByEst;
+                    }
                     if (unitsFit >= 1) return { units: unitsFit, fecha: fStr };
                 }
                 return { units: 0, fecha: null };
@@ -4471,6 +4517,11 @@ const server = http.createServer(async (req, res) => {
             const addToCarga = (fecha, grupo, kg) => {
                 if (!cargaMap[fecha]) cargaMap[fecha] = {};
                 cargaMap[fecha][grupo] = (cargaMap[fecha][grupo] || 0) + kg;
+            };
+
+            const addToCargaEst = (fecha, estacionId, m2) => {
+                const key = fecha + '|' + estacionId;
+                cargaEstMap[key] = (cargaEstMap[key] || 0) + m2;
             };
 
             const asignados = [];
@@ -4488,7 +4539,27 @@ const server = http.createServer(async (req, res) => {
                 const kgPorUnidad = kgTotal / totalUnidades;
                 const m2PorUnidad = Number(o.metros_cuadrados || 0) / totalUnidades;
 
-                // Si 1 sola unidad ya excede la capacidad, no se puede dividir mas
+                // Obtener estaciones de esta orden (de cola_produccion_pasos)
+                const pasosOrigRes = await query('SELECT estacion_id FROM cola_produccion_pasos WHERE orden_produccion_id = $1', [o.id]);
+                const estacionesIds = pasosOrigRes.rows.map(r => r.estacion_id);
+
+                // Verificar si alguna estacion cuello de botella no tiene capacidad para 1 unidad
+                let restriccionEstacion = null;
+                for (const estId of estacionesIds) {
+                    if (!cuelloIds.has(estId)) continue;
+                    const capEst = cuellosMap[estId] || 100;
+                    if (kgPorUnidad > capEst) {
+                        const estName = cuelloRes.rows.find(e => e.id === estId)?.nombre_estacion || estId;
+                        restriccionEstacion = estName + ' (' + capEst + ' m²/dia)';
+                        break;
+                    }
+                }
+                if (restriccionEstacion) {
+                    noAsignados.push({ id: o.id, motivo: '1 unidad (' + kgPorUnidad.toFixed(1) + ' kg) excede capacidad de ' + restriccionEstacion });
+                    continue;
+                }
+
+                // Si 1 sola unidad ya excede la capacidad del grupo, no se puede dividir mas
                 if (kgPorUnidad > capacidad) {
                     noAsignados.push({ id: o.id, motivo: '1 unidad (' + kgPorUnidad.toFixed(1) + ' kg) excede capacidad de ' + grupo + ' (' + capacidad + ' kg/dia)' });
                     continue;
@@ -4504,8 +4575,8 @@ const server = http.createServer(async (req, res) => {
                 let suffix = String.fromCharCode(startCharCode);
 
                 // 1ra pieza: actualizar el original con lo que cabe en el primer dia con capacidad
-                let { units: firstUnits, fecha: firstDate } = calcUnitsForDay(grupo, kgPorUnidad);
-                if (!firstDate || firstUnits < 1) { noAsignados.push({ id: o.id, motivo: 'no hay capacidad en ' + dias + ' dias habiles' }); continue; }
+                let { units: firstUnits, fecha: firstDate } = calcUnitsForDay(grupo, kgPorUnidad, estacionesIds);
+                if (!firstDate || firstUnits < 1) { noAsignados.push({ id: o.id, motivo: 'no hay capacidad en ' + dias + ' dias habiles (grupo o cuellos de botella llenos)' }); continue; }
 
                 firstUnits = Math.min(firstUnits, remaining);
                 const firstKg = +(firstUnits * kgPorUnidad).toFixed(2);
@@ -4515,15 +4586,18 @@ const server = http.createServer(async (req, res) => {
                     'UPDATE produccion_ordenes SET pedido_sap_id=$1, cantidad=$2, kilos=$3, metros_cuadrados=$4, fecha_programada=$5, estado_programacion=$6, grupo=$7 WHERE id=$8',
                     [newPedido, firstUnits, firstKg, firstM2, firstDate, 'PROGRAMADO', grupo, o.id]
                 );
+                // Actualizar cola_produccion_pasos con fecha y m2
+                await query('UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3', [firstDate, firstM2, o.id]);
                 addToCarga(firstDate, grupo, firstKg);
+                for (const estId of estacionesIds) { addToCargaEst(firstDate, estId, firstM2); }
                 asignados.push({ id: o.id, pedido: newPedido, fecha: firstDate, grupo, kg: firstKg, unidades: firstUnits });
                 remaining -= firstUnits;
                 suffix = String.fromCharCode(suffix.charCodeAt(0) + 1);
 
                 // Piezas siguientes
                 while (remaining > 0) {
-                    const { units, fecha } = calcUnitsForDay(grupo, kgPorUnidad);
-                    if (!fecha || units < 1) { noAsignados.push({ id: o.id, motivo: 'resto (' + remaining + ' un) no cabe en ' + dias + ' dias habiles' }); break; }
+                    const { units, fecha } = calcUnitsForDay(grupo, kgPorUnidad, estacionesIds);
+                    if (!fecha || units < 1) { noAsignados.push({ id: o.id, motivo: 'resto (' + remaining + ' un) no cabe en ' + dias + ' dias habiles (grupo o cuellos de botella llenos)' }); break; }
                     const u = Math.min(units, remaining);
                     const kg = +(u * kgPorUnidad).toFixed(2);
                     const m2 = +(u * m2PorUnidad).toFixed(4);
@@ -4534,11 +4608,13 @@ const server = http.createServer(async (req, res) => {
                         [newPedidoSplit, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, m2, o.es_compuesto, o.bom_padre_id, o.codigo_padre, o.tipo_venta, o.pintado, o.perforaciones, o.item_numero, u, o.espesor_mm, kg, grupo, fecha, 'PROGRAMADO', new Date().toISOString()]
                     );
                     const newId = ins.rows[0].id;
-                    const pasosRes = await query('SELECT estacion_nombre, orden_secuencia FROM produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [o.id]);
+                    // Copiar pasos de la orden original al split
+                    const pasosRes = await query('SELECT estacion_id, orden_secuencia FROM cola_produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [o.id]);
                     for (const p of pasosRes.rows) {
-                        await query('INSERT INTO produccion_pasos (orden_produccion_id, estacion_nombre, orden_secuencia, estado) VALUES ($1, $2, $3, $4)', [newId, p.estacion_nombre, p.orden_secuencia, 'PENDIENTE']);
+                        await query('INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1, $2, $3, $4, $5, $6)', [newId, p.estacion_id, p.orden_secuencia, 'PENDIENTE', fecha, m2]);
                     }
                     addToCarga(fecha, grupo, kg);
+                    for (const estId of estacionesIds) { addToCargaEst(fecha, estId, m2); }
                     asignados.push({ id: newId, pedido: newPedidoSplit, fecha, grupo, kg, unidades: u });
                     remaining -= u;
                     suffix = String.fromCharCode(suffix.charCodeAt(0) + 1);
