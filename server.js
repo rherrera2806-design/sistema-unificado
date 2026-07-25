@@ -2311,6 +2311,10 @@ const server = http.createServer(async (req, res) => {
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         await query('UPDATE entregas SET estado = $1, hora_entregada = $2 WHERE id = $3', ['entregado', hora, id]);
+        const turnoResult = await query('SELECT turno_id FROM entregas WHERE id = $1', [id]);
+        if (turnoResult.rows.length > 0 && turnoResult.rows[0].turno_id) {
+            await query('DELETE FROM turnos_adjuntos WHERE turno_id = $1', [turnoResult.rows[0].turno_id]);
+        }
         json(res, { ok: true });
         return;
     }
@@ -2330,6 +2334,10 @@ const server = http.createServer(async (req, res) => {
     const eliminarEntregaMatch = urlPath.match(/^\/api\/turnos\/eliminar-entrega\/(\d+)$/);
     if (eliminarEntregaMatch && req.method === 'DELETE') {
         const id = Number(eliminarEntregaMatch[1]);
+        const turnoResult = await query('SELECT turno_id FROM entregas WHERE id = $1', [id]);
+        if (turnoResult.rows.length > 0 && turnoResult.rows[0].turno_id) {
+            await query('DELETE FROM turnos_adjuntos WHERE turno_id = $1', [turnoResult.rows[0].turno_id]);
+        }
         await query('DELETE FROM entregas WHERE id = $1', [id]);
         json(res, { ok: true });
         return;
