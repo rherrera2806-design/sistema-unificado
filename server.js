@@ -1492,8 +1492,9 @@ const server = http.createServer(async (req, res) => {
         if (!user) { json(res, { error: 'Credenciales inválidas' }, 401); return; }
         const token = createSession(user);
         const isSecure = req.headers.host && !req.headers.host.includes('localhost');
-        res.setHeader('Set-Cookie', `session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL / 1000}${isSecure ? '; Secure' : ''}`);
-        json(res, user);
+        const cookieValue = `session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL / 1000}${isSecure ? '; Secure' : ''}`;
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': cookieValue });
+        res.end(JSON.stringify(user));
         return;
     }
 
@@ -1518,8 +1519,8 @@ const server = http.createServer(async (req, res) => {
         const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
         const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
         destroySession(token);
-        res.setHeader('Set-Cookie', 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
-        json(res, { ok: true });
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' });
+        res.end(JSON.stringify({ ok: true }));
         return;
     }
 
