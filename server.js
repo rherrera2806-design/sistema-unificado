@@ -4590,7 +4590,32 @@ const server = http.createServer(async (req, res) => {
 
                 // 1ra pieza: actualizar el original con lo que cabe en el primer dia con capacidad
                 let { units: firstUnits, fecha: firstDate } = calcUnitsForDay(grupo, kgPorUnidad, m2PorUnidad, estacionesIds);
-                if (!firstDate || firstUnits < 1) { noAsignados.push({ id: o.id, motivo: 'no hay capacidad en ' + dias + ' dias habiles (grupo o cuellos de botella llenos)' }); continue; }
+                if (!firstDate || firstUnits < 1) {
+                    // Identificar cual cuello de botella bloquea
+                    let bloqueador = null;
+                    const capGrupo = capMap[grupo] || 0;
+                    const cargaGrupoHoy = (cargaMap[inicio] && cargaMap[inicio][grupo]) || 0;
+                    if (cargaGrupoHoy + kgTotal > capGrupo) {
+                        bloqueador = grupo + ' (grupo lleno: ' + capGrupo + ' kg/dia)';
+                    }
+                    for (const estId of estacionesIds) {
+                        if (!cuelloIds.has(estId)) continue;
+                        const capEst = cuellosMap[estId] || 100;
+                        const estName = cuelloRes.rows.find(e => e.id === estId)?.nombre_estacion || estId;
+                        // Buscar dia mas restrictivo
+                        for (let d = 0; d < dias; d++) {
+                            const f = new Date(inicioDate); f.setDate(f.getDate() + d);
+                            const fStr = fmt(f); if (!esLaboral(fStr)) continue;
+                            const usadoEst = cargaEstMap[fStr + '|' + estId] || 0;
+                            if (usadoEst + m2Total > capEst) {
+                                bloqueador = (bloqueador ? bloqueador + ', ' : '') + estName + ' (' + capEst + ' m²/dia, ' + usadoEst.toFixed(1) + ' usados en ' + fStr + ')';
+                                break;
+                            }
+                        }
+                    }
+                    noAsignados.push({ id: o.id, pedido: o.pedido_sap_id, motivo: 'Sin capacidad: ' + (bloqueador || 'lleno en ' + dias + ' dias'), grupo, m2_total: m2Total, kg_total: kgTotal });
+                    continue;
+                }
 
                 firstUnits = Math.min(firstUnits, remaining);
                 const firstKg = +(firstUnits * kgPorUnidad).toFixed(2);

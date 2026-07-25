@@ -255,10 +255,21 @@ App.modules.planificacion = {
             });
             const data = await res.json();
             if (res.ok) {
-                resEl.innerHTML = `<div style="background:#dcfce7;border-radius:8px;padding:12px;font-size:13px">
-                    <div><strong>✓ Asignadas: ${data.asignados}</strong></div>
-                    <div style="margin-top:4px;color:#166534">Sin capacidad: ${data.no_asignados}</div>
-                </div>`;
+                let html = `<div style="background:#dcfce7;border-radius:8px;padding:12px;font-size:13px">
+                    <div><strong>✓ Asignadas: ${data.asignados}</strong></div>`;
+                if (data.detalle && data.detalle.noAsignados && data.detalle.noAsignados.length > 0) {
+                    html += `<div style="margin-top:8px;color:#991b1b;font-weight:600">Sin capacidad (${data.detalle.noAsignados.length}):</div>`;
+                    html += data.detalle.noAsignados.map(n => 
+                        `<div style="margin-top:4px;padding:6px 8px;background:#fef2f2;border-radius:6px;border-left:3px solid #ef4444">
+                            <div><strong>${escapeHtml(n.pedido || n.id)}</strong> — ${escapeHtml(n.motivo)}</div>
+                            <div style="font-size:11px;color:#6b7280">Grupo: ${escapeHtml(n.grupo || '?')} | ${Number(n.m2_total || 0).toFixed(1)} m² | ${Number(n.kg_total || 0).toFixed(0)} kg</div>
+                        </div>`
+                    ).join('');
+                } else if (data.no_asignados > 0) {
+                    html += `<div style="margin-top:4px;color:#166534">Sin capacidad: ${data.no_asignados}</div>`;
+                }
+                html += '</div>';
+                resEl.innerHTML = html;
                 setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); }, 1500);
             } else {
                 resEl.innerHTML = `<div style="color:#ef4444">${data.error || 'Error'}</div>`;
