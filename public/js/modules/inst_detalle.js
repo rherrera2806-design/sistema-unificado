@@ -47,6 +47,8 @@ App.registerModule('inst_detalle', {
                     <span style="background:${color};color:#fff;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600">${inst.estado}</span>
                 </div>
                 <div style="display:flex;gap:8px">
+                    ${(() => { const user = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = user.permisos || []; return (p.includes('instalaciones.eliminar') || p.includes('usuarios')) ?
+                        `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.inst_detalle.eliminarInstalacion(${inst.id})">🗑️ Eliminar</button>` : ''; })()}
                     ${inst.estado === 'PROGRAMADA' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.inst_detalle.cambiarEstado(${inst.id},'EN_CAMINO')">🚗 En Camino</button>` : ''}
                     ${inst.estado === 'EN_CAMINO' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.inst_detalle.cambiarEstado(${inst.id},'EN_CURSO')">⚙ En Curso</button>` : ''}
                     ${inst.estado === 'EN_CURSO' ? `<button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="App.modules.inst_detalle.showCerrar(${inst.id})">✓ Completar</button>` : ''}
@@ -60,7 +62,15 @@ App.registerModule('inst_detalle', {
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
                         <div><strong>Cliente:</strong> ${escapeHtml(inst.cliente)}</div>
                         <div><strong>Tecnico:</strong> ${escapeHtml(inst.tecnico || '-')}</div>
-                        <div><strong>Direccion:</strong> ${escapeHtml(inst.direccion)}</div>
+                        <div><strong>Orden:</strong> ${escapeHtml(inst.numero_orden || '-')}</div>
+                        <div><strong>Fecha:</strong> ${fecha} ${inst.hora_programada || ''}</div>
+                        <div style="grid-column:1/-1"><strong>Direccion:</strong> ${escapeHtml(inst.direccion)}
+                            ${(() => { const user = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = user.permisos || []; return (p.includes('instalaciones.nueva') || p.includes('usuarios')) ?
+                            `<span style="margin-left:8px;display:inline-flex;gap:4px;vertical-align:middle">
+                                <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inst.direccion)}" target="_blank" title="Google Maps" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534;text-decoration:none;border:1px solid #bbf7d0;transition:background .15s" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'">📍 Maps</a>
+                                <a href="https://www.waze.com/ul?q=${encodeURIComponent(inst.direccion)}" target="_blank" title="Waze" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af;text-decoration:none;border:1px solid #bfdbfe;transition:background .15s" onmouseover="this.style.background='#bfdbfe'" onmouseout="this.style.background='#dbeafe'">🚗 Waze</a>
+                            </span>` : ''; })()}
+                        </div>
                         <div><strong>Fecha:</strong> ${fecha} ${inst.hora_programada || ''}</div>
                         <div style="grid-column:1/-1"><strong>Descripcion:</strong> ${escapeHtml(inst.descripcion || '-')}</div>
                         <div style="grid-column:1/-1"><strong>Notas Previas:</strong> ${escapeHtml(inst.notas_previas || '-')}</div>
@@ -99,7 +109,8 @@ App.registerModule('inst_detalle', {
                         ${this.fotos.map(f => `
                             <div style="position:relative;display:inline-block">
                                 <img src="/api/instalaciones/${inst.id}/foto/${f.id}" style="width:140px;height:105px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="App.modules.inst_detalle.verFoto(${inst.id},${f.id})" title="${escapeHtml(f.descripcion || '')}">
-                                <button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(${inst.id},${f.id})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Eliminar">✕</button>
+                                ${(() => { const user = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = user.permisos || []; return (p.includes('instalaciones.eliminar') || p.includes('usuarios')) ?
+                                `<button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(${inst.id},${f.id})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Eliminar">✕</button>` : ''; })()}
                             </div>
                         `).join('')}
                     </div>
@@ -217,6 +228,19 @@ App.registerModule('inst_detalle', {
             });
             App.showAlert('Foto eliminada');
             await this.cargarYRenderizar(instId);
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async eliminarInstalacion(id) {
+        if (!confirm('Eliminar esta instalacion y todo su historial? Esta accion no se puede deshacer.')) return;
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        try {
+            await fetch(`/api/instalaciones/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-User-Email': user.email || '' }
+            });
+            App.showAlert('Instalacion eliminada');
+            App.loadModule('instalaciones');
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 

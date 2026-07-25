@@ -93,7 +93,7 @@ async function r2Delete(key) {
 // SEGURIDAD: Rate limiting en memoria
 // =====================================================
 const loginAttempts = new Map();
-const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_MAX = 50;
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
 
 function checkRateLimit(ip) {
@@ -130,6 +130,40 @@ setInterval(() => {
         else globalRequests.set(ip, recent);
     }
 }, 5 * 60 * 1000);
+
+// =====================================================
+// SEGURIDAD: Sesiones en memoria
+// =====================================================
+const sessions = new Map();
+const SESSION_TTL = 24 * 60 * 60 * 1000; // 24 horas
+
+function createSession(user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.set(token, { user, createdAt: Date.now() });
+    return token;
+}
+
+function getSession(token) {
+    if (!token || !sessions.has(token)) return null;
+    const session = sessions.get(token);
+    if (Date.now() - session.createdAt > SESSION_TTL) {
+        sessions.delete(token);
+        return null;
+    }
+    return session.user;
+}
+
+function destroySession(token) {
+    if (token) sessions.delete(token);
+}
+
+// Limpiar sesiones expiradas cada hora
+setInterval(() => {
+    const now = Date.now();
+    for (const [token, session] of sessions) {
+        if (now - session.createdAt > SESSION_TTL) sessions.delete(token);
+    }
+}, 60 * 60 * 1000);
 
 // =====================================================
 // SEGURIDAD: Headers de seguridad
@@ -395,6 +429,15 @@ async function initDB() {
         hora_entregada TIME
     )`);
 
+    await query(`CREATE TABLE IF NOT EXISTS turnos_adjuntos (
+        id SERIAL PRIMARY KEY,
+        turno_id INTEGER REFERENCES turnos(id) ON DELETE CASCADE,
+        nombre VARCHAR(255) NOT NULL,
+        archivo BYTEA,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut') THEN ALTER TABLE turnos ADD COLUMN rut VARCHAR(20) DEFAULT ''; END IF; END $$`);
+
     await query(`CREATE TABLE IF NOT EXISTS movimientos (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER REFERENCES usuarios(id),
@@ -531,6 +574,14 @@ async function initDB() {
         costo_hh DECIMAL(12,2) DEFAULT 0,
         costo_energia DECIMAL(12,2) DEFAULT 0,
         activa BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // TABLA MAESTRA: Tecnicos de instalacion
+    await query(`CREATE TABLE IF NOT EXISTS tecnicos (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(150) NOT NULL,
+        activo BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -684,8 +735,9 @@ async function initDB() {
             fecha DATE UNIQUE NOT NULL,
             es_laboral BOOLEAN DEFAULT TRUE,
             motivo TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='numero_orden') THEN ALTER TABLE instalaciones ADD COLUMN numero_orden VARCHAR(50) DEFAULT ''; END IF; END $$`);
         const year = new Date().getFullYear();
         for (let m = 0; m < 12; m++) {
             for (let d = 1; d <= 31; d++) {
@@ -1398,6 +1450,7 @@ const server = http.createServer(async (req, res) => {
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Permisos, X-User-Email');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
@@ -1437,7 +1490,37 @@ const server = http.createServer(async (req, res) => {
         recordLoginAttempt(clientIp);
         const user = await login(email, password);
         if (!user) { json(res, { error: 'Credenciales inválidas' }, 401); return; }
+        const token = createSession(user);
+        const isSecure = req.headers.host && !req.headers.host.includes('localhost');
+        const cookieValue = `session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL / 1000}${isSecure ? '; Secure' : ''}`;
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': cookieValue });
+        res.end(JSON.stringify(user));
+        return;
+    }
+
+    // =====================================================
+    // AUTH: Verificar sesión actual
+    // =====================================================
+    if (urlPath === '/api/auth/me' && req.method === 'GET') {
+        const cookieHeader = req.headers.cookie || '';
+        const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+        const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+        const user = getSession(token);
+        if (!user) { json(res, { error: 'No autenticado' }, 401); return; }
         json(res, user);
+        return;
+    }
+
+    // =====================================================
+    // AUTH: Cerrar sesión
+    // =====================================================
+    if (urlPath === '/api/auth/logout' && req.method === 'POST') {
+        const cookieHeader = req.headers.cookie || '';
+        const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+        const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+        destroySession(token);
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' });
+        res.end(JSON.stringify({ ok: true }));
         return;
     }
 
@@ -2016,6 +2099,7 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/turnos/crear' && req.method === 'POST') {
         const body = await parseBody(req);
         const nombre = sanitizeString(body.nombre);
+        const rut = sanitizeString(body.rut || '');
         if (!nombre) return json(res, { error: 'Nombre requerido' }, 400);
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
@@ -2024,8 +2108,8 @@ const server = http.createServer(async (req, res) => {
         const numRow = await query('SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM turnos WHERE fecha = $1', [hoy]);
         const numero = numRow.rows[0].next;
         const result = await query(
-            'INSERT INTO turnos (nombre, numero, fecha, hora_creacion) VALUES ($1, $2, $3, $4) RETURNING *',
-            [nombre, numero, hoy, hora]
+            'INSERT INTO turnos (nombre, numero, fecha, hora_creacion, rut) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [nombre, numero, hoy, hora, rut]
         );
         json(res, result.rows[0], 201);
         return;
@@ -2105,7 +2189,7 @@ const server = http.createServer(async (req, res) => {
     // =====================================================
     if (urlPath === '/api/turnos/derivar-bodega' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { turno_id, pedidos, factura } = body;
+        const { turno_id, pedidos, factura, adjuntos } = body;
         if (!turno_id) return json(res, { error: 'turno_id requerido' }, 400);
         const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
@@ -2118,7 +2202,42 @@ const server = http.createServer(async (req, res) => {
             'INSERT INTO entregas (turno_id, cliente_nombre, pedidos, factura, tipo, estado, fecha, hora_registrada) VALUES ($1, (SELECT nombre FROM turnos WHERE id=$2), $3, $4, $5, $6, $7, $8)',
             [turno_id, turno_id, pedidos || null, factura || null, 'Retira', 'pendiente', hoy, hora]
         );
+        if (Array.isArray(adjuntos) && adjuntos.length > 0) {
+            for (const adj of adjuntos) {
+                const buf = Buffer.from(adj.base64, 'base64');
+                await query('INSERT INTO turnos_adjuntos (turno_id, nombre, archivo) VALUES ($1, $2, $3)', [turno_id, adj.nombre || 'archivo.pdf', buf]);
+            }
+        }
         json(res, { ok: true });
+        return;
+    }
+
+    // GET /api/turnos/:id/adjuntos - Listar adjuntos de un turno
+    const adjuntosMatch = urlPath.match(/^\/api\/turnos\/(\d+)\/adjuntos$/);
+    if (adjuntosMatch && req.method === 'GET') {
+        const turnoId = parseInt(adjuntosMatch[1]);
+        try {
+            const result = await query('SELECT id, nombre, created_at FROM turnos_adjuntos WHERE turno_id = $1 ORDER BY created_at', [turnoId]);
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/turnos/adjunto/:id - Descargar PDF
+    const adjuntoPdfMatch = urlPath.match(/^\/api\/turnos\/adjunto\/(\d+)$/);
+    if (adjuntoPdfMatch && req.method === 'GET') {
+        const adjId = parseInt(adjuntoPdfMatch[1]);
+        try {
+            const result = await query('SELECT nombre, archivo FROM turnos_adjuntos WHERE id = $1', [adjId]);
+            if (result.rows.length === 0) { json(res, { error: 'No encontrado' }, 404); return; }
+            const row = result.rows[0];
+            res.writeHead(200, {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `inline; filename="${row.nombre}"`,
+                'Content-Length': row.archivo.length
+            });
+            res.end(row.archivo);
+        } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
 
@@ -2144,7 +2263,8 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/turnos/entregas' && req.method === 'GET') {
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const result = await query(
-            `SELECT e.*, t.numero as turno_numero
+            `SELECT e.*, t.numero as turno_numero,
+                (SELECT COUNT(*) FROM turnos_adjuntos ta WHERE ta.turno_id = e.turno_id) as adjuntos_count
              FROM entregas e
              LEFT JOIN turnos t ON e.turno_id = t.id
              WHERE e.fecha = $1
@@ -2157,7 +2277,8 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/turnos/entregas/pendientes' && req.method === 'GET') {
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const result = await query(
-            `SELECT e.*, t.numero as turno_numero
+            `SELECT e.*, t.numero as turno_numero,
+                (SELECT COUNT(*) FROM turnos_adjuntos ta WHERE ta.turno_id = e.turno_id) as adjuntos_count
              FROM entregas e
              LEFT JOIN turnos t ON e.turno_id = t.id
              WHERE e.fecha = $1 AND e.estado = 'pendiente'
@@ -2190,6 +2311,10 @@ const server = http.createServer(async (req, res) => {
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         await query('UPDATE entregas SET estado = $1, hora_entregada = $2 WHERE id = $3', ['entregado', hora, id]);
+        const turnoResult = await query('SELECT turno_id FROM entregas WHERE id = $1', [id]);
+        if (turnoResult.rows.length > 0 && turnoResult.rows[0].turno_id) {
+            await query('DELETE FROM turnos_adjuntos WHERE turno_id = $1', [turnoResult.rows[0].turno_id]);
+        }
         json(res, { ok: true });
         return;
     }
@@ -2209,6 +2334,10 @@ const server = http.createServer(async (req, res) => {
     const eliminarEntregaMatch = urlPath.match(/^\/api\/turnos\/eliminar-entrega\/(\d+)$/);
     if (eliminarEntregaMatch && req.method === 'DELETE') {
         const id = Number(eliminarEntregaMatch[1]);
+        const turnoResult = await query('SELECT turno_id FROM entregas WHERE id = $1', [id]);
+        if (turnoResult.rows.length > 0 && turnoResult.rows[0].turno_id) {
+            await query('DELETE FROM turnos_adjuntos WHERE turno_id = $1', [turnoResult.rows[0].turno_id]);
+        }
         await query('DELETE FROM entregas WHERE id = $1', [id]);
         json(res, { ok: true });
         return;
@@ -3736,6 +3865,69 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // GET /api/produccion/planificacion/carga-por-grupo?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
+    if (urlPath.startsWith('/api/produccion/planificacion/carga-por-grupo') && req.method === 'GET') {
+        const inicio = q.inicio;
+        const fin = q.fin;
+        if (!inicio || !fin) { json(res, { error: 'Fechas inicio y fin requeridas' }, 400); return; }
+        try {
+            const cargaRes = await query(`
+                SELECT
+                    COALESCE(o.grupo, '(sin grupo)') as nombre_familia,
+                    o.fecha_programada::text as fecha,
+                    COALESCE(SUM(o.kilos), 0) as kilos
+                FROM produccion_ordenes o
+                WHERE o.fecha_programada BETWEEN $1 AND $2
+                  AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+                  AND o.kilos > 0
+                GROUP BY o.grupo, o.fecha_programada
+                ORDER BY o.fecha_programada, o.grupo
+            `, [inicio, fin]);
+
+            const capRes = await query(`
+                SELECT
+                    o.fecha_programada::text as fecha,
+                    COALESCE(SUM(pg.capacidad_kg_dia), 0) as capacidad_total
+                FROM (
+                    SELECT DISTINCT fecha_programada FROM produccion_ordenes
+                    WHERE fecha_programada BETWEEN $1 AND $2
+                      AND estado_programacion NOT IN ('CERRADO','TERMINADO')
+                ) o
+                CROSS JOIN produccion_capacidad_grupo pg
+                WHERE pg.activo = TRUE
+                GROUP BY o.fecha_programada
+            `, [inicio, fin]);
+
+            const capMap = {};
+            for (const r of capRes.rows) { capMap[r.fecha] = Number(r.capacidad_total); }
+
+            const familiasMap = {};
+            const fechasSet = new Set();
+            for (const r of cargaRes.rows) {
+                if (!familiasMap[r.nombre_familia]) familiasMap[r.nombre_familia] = {};
+                familiasMap[r.nombre_familia][r.fecha] = Number(r.kilos);
+                fechasSet.add(r.fecha);
+            }
+
+            const todasFamilias = Object.keys(familiasMap);
+            for (const fam of todasFamilias) {
+                for (const fs of fechasSet) {
+                    if (familiasMap[fam][fs] === undefined) familiasMap[fam][fs] = 0;
+                }
+            }
+
+            const fechas = Array.from(fechasSet).sort();
+
+            json(res, {
+                familias: todasFamilias,
+                fechas,
+                datos: familiasMap,
+                capacidad_por_dia: capMap
+            });
+        } catch(e) { console.error('carga-por-grupo error:', e.message); json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/produccion/planificacion/pendientes - Ordenes pendientes de programar
     if (urlPath === '/api/produccion/planificacion/pendientes' && req.method === 'GET') {
         try {
@@ -4456,6 +4648,15 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // GET /api/instalaciones/tecnicos - Lista de tecnicos
+    if (urlPath === '/api/instalaciones/tecnicos' && req.method === 'GET') {
+        try {
+            const result = await query("SELECT nombre FROM tecnicos WHERE activo = true ORDER BY nombre");
+            json(res, result.rows.map(r => r.nombre));
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/instalaciones/:id - Detalle
     const instDetailMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)$/);
     if (instDetailMatch && req.method === 'GET') {
@@ -4471,14 +4672,14 @@ const server = http.createServer(async (req, res) => {
     // POST /api/instalaciones - Crear
     if (urlPath === '/api/instalaciones' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas } = body;
+        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden, notas_previas } = body;
         if (!cliente || !direccion || !fecha_programada) { json(res, { error: 'Cliente, dirección y fecha requeridos' }, 400); return; }
         const userEmail = req.headers['x-user-email'] || 'Sistema';
         try {
             const result = await query(
-                `INSERT INTO instalaciones (cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas, estado, creado_por)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, 'PROGRAMADA', $8) RETURNING *`,
-                [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', notas_previas || '', userEmail]
+                `INSERT INTO instalaciones (cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden, notas_previas, estado, creado_por)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PROGRAMADA', $9) RETURNING *`,
+                [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', numero_orden || '', notas_previas || '', userEmail]
             );
             const inst = result.rows[0];
             await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [inst.id, 'CREADA', 'Instalación programada', userEmail]);
@@ -4492,12 +4693,12 @@ const server = http.createServer(async (req, res) => {
     if (instEditMatch && req.method === 'PUT') {
         const id = parseInt(instEditMatch[1]);
         const body = await parseBody(req);
-        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas } = body;
+        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden, notas_previas } = body;
         const userEmail = req.headers['x-user-email'] || 'Sistema';
         try {
             await query(
-                `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, notas_previas=$7 WHERE id=$8`,
-                [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, notas_previas, id]
+                `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, numero_orden=$7, notas_previas=$8 WHERE id=$9`,
+                [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden || '', notas_previas, id]
             );
             await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [id, 'EDITADA', 'Datos actualizados', userEmail]);
             json(res, { ok: true });
@@ -4616,6 +4817,45 @@ const server = http.createServer(async (req, res) => {
         const id = parseInt(instDelMatch[1]);
         try {
             await query('DELETE FROM instalaciones WHERE id = $1', [id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // =====================================================
+    // CRUD: Tecnicos de Instalacion
+    // =====================================================
+    if (urlPath === '/api/produccion/tecnicos' && req.method === 'GET') {
+        try {
+            const result = await query('SELECT * FROM tecnicos ORDER BY nombre');
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+    if (urlPath === '/api/produccion/tecnicos' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { nombre } = body;
+        if (!nombre || !nombre.trim()) { json(res, { error: 'Nombre requerido' }, 400); return; }
+        try {
+            const result = await query('INSERT INTO tecnicos (nombre) VALUES ($1) RETURNING *', [nombre.trim()]);
+            json(res, result.rows[0]);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/tecnicos\/\d+$/) && req.method === 'PUT') {
+        const id = parseInt(urlPath.split('/').pop());
+        const body = await parseBody(req);
+        const { nombre, activo } = body;
+        try {
+            await query('UPDATE tecnicos SET nombre=$1, activo=$2 WHERE id=$3', [nombre, activo !== false, id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/tecnicos\/\d+$/) && req.method === 'DELETE') {
+        const id = parseInt(urlPath.split('/').pop());
+        try {
+            await query('DELETE FROM tecnicos WHERE id = $1', [id]);
             json(res, { ok: true });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;

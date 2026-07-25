@@ -45,7 +45,7 @@ App.registerModule('prod_codigos', {
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <h3 style="margin:0">Listado de Codigos</h3>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <select class="form-control" id="codFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.filter()">
+                        <select class="form-control" id="codFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.onGrupoChange()">
                             <option value="">Todos los grupos</option>
                         </select>
                         <select class="form-control" id="codFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.filter()">
@@ -130,17 +130,29 @@ App.registerModule('prod_codigos', {
 
     populateFilters() {
         const grupos = [...new Set(this.codigos.map(c => c.grupo).filter(Boolean))].sort();
-        const familias = [...new Set(this.codigos.map(c => c.familia).filter(Boolean))].sort();
         const grupoSel = document.getElementById('codFilterGrupo');
-        const familiaSel = document.getElementById('codFilterFamilia');
         if (grupoSel && !grupoSel._populated) {
             grupos.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; grupoSel.appendChild(o); });
             grupoSel._populated = true;
         }
-        if (familiaSel && !familiaSel._populated) {
-            familias.forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; familiaSel.appendChild(o); });
-            familiaSel._populated = true;
-        }
+        this._updateFamiliasFilter();
+    },
+
+    _updateFamiliasFilter() {
+        const grupo = document.getElementById('codFilterGrupo')?.value || '';
+        const familiaSel = document.getElementById('codFilterFamilia');
+        if (!familiaSel) return;
+        const actual = familiaSel.value;
+        familiaSel.innerHTML = '<option value="">Todas las familias</option>';
+        const filtered = grupo ? this.codigos.filter(c => c.grupo === grupo) : this.codigos;
+        const familias = [...new Set(filtered.map(c => c.familia).filter(Boolean))].sort();
+        familias.forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; familiaSel.appendChild(o); });
+        if (familias.includes(actual)) familiaSel.value = actual;
+    },
+
+    onGrupoChange() {
+        this._updateFamiliasFilter();
+        this.filter();
     },
 
     renderStats() {

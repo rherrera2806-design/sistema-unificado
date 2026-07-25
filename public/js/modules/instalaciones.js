@@ -9,10 +9,16 @@ App.registerModule('instalaciones', {
 
     async render() {
         const el = document.getElementById('page-instalaciones');
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const permisos = user.permisos || [];
+        const puedeCrear = permisos.includes('instalaciones.nueva') || permisos.includes('usuarios');
         el.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
                 <div><h2 style="margin:0">Instalaciones</h2><div class="subtitle">Calendario mensual de trabajos en terreno</div></div>
-                <button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()">+ Nueva Instalacion</button>
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-outline btn-sm" onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos">⚙️ Tecnicos</button>
+                    ${puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()">+ Nueva Instalacion</button>' : ''}
+                </div>
             </div>
             <div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px"></div>
             <div id="instCalendario"></div>
@@ -101,7 +107,7 @@ App.registerModule('instalaciones', {
             for (const inst of instDia) {
                 const color = estadoColor(inst.estado);
                 html += `<div onclick="App.modules.inst_detalle.abrir(${inst.id})" style="cursor:pointer;margin:1px 0;padding:3px 5px;border-radius:4px;border-left:3px solid ${color};font-size:10px;line-height:1.3;transition:all .15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background=''">
-                    <div style="font-weight:600;color:${color}">${estadoIcon(inst.estado)} ${inst.hora_programada || '09:00'}</div>
+                    <div style="font-weight:600;color:${color}">${estadoIcon(inst.estado)} ${inst.hora_programada || '09:00'}${inst.numero_orden ? ' • ' + escapeHtml(inst.numero_orden) : ''}</div>
                     <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(inst.cliente)}</div>
                 </div>`;
             }
@@ -121,15 +127,26 @@ App.registerModule('instalaciones', {
         this.loadData();
     },
 
-    showForm(id) {
+    async showForm(id) {
         const inst = id ? this.instalaciones.find(i => i.id === id) : null;
         const hoy = this.fmtDate(new Date());
+        let tecnicos = [];
+        try { tecnicos = await fetch('/api/instalaciones/tecnicos').then(r => r.json()); } catch(e) {}
+        const datalistHtml = `<datalist id="tecnicosList">${(tecnicos || []).map(t => `<option value="${escapeHtml(t)}">`).join('')}</datalist>`;
         App.showModal(`
+            ${datalistHtml}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div class="form-group"><label>Cliente *</label><input class="form-control" id="instCliente" value="${inst ? escapeHtml(inst.cliente) : ''}" placeholder="Nombre del cliente" style="text-transform:uppercase"></div>
-                <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${inst ? escapeHtml(inst.tecnico) : ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize"></div>
+                <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${inst ? escapeHtml(inst.tecnico) : ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize" list="tecnicosList"></div>
             </div>
-            <div class="form-group"><label>Direccion *</label><input class="form-control" id="instDireccion" value="${inst ? escapeHtml(inst.direccion) : ''}" placeholder="Direccion de la instalacion" style="text-transform:capitalize"></div>
+            <div class="form-group"><label>Numero de Orden</label><input class="form-control" id="instNumeroOrden" value="${inst ? escapeHtml(inst.numero_orden || '') : ''}" placeholder="Numero de orden" style="text-transform:uppercase"></div>
+            <div class="form-group"><label>Direccion *</label>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <input class="form-control" id="instDireccion" value="${inst ? escapeHtml(inst.direccion) : ''}" placeholder="Direccion de la instalacion" style="text-transform:capitalize;flex:1">
+                    <a href="https://www.google.com/maps/search/?api=1&query=" target="_blank" id="instMapGoogle" title="Google Maps" style="display:inline-flex;align-items:center;padding:6px 10px;border-radius:6px;font-size:12px;background:#dcfce7;color:#166534;text-decoration:none;border:1px solid #bbf7d0;white-space:nowrap" onclick="this.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(document.getElementById('instDireccion').value)">📍 Maps</a>
+                    <a href="https://www.waze.com/ul?q=" target="_blank" id="instMapWaze" title="Waze" style="display:inline-flex;align-items:center;padding:6px 10px;border-radius:6px;font-size:12px;background:#dbeafe;color:#1e40af;text-decoration:none;border:1px solid #bfdbfe;white-space:nowrap" onclick="this.href='https://www.waze.com/ul?q='+encodeURIComponent(document.getElementById('instDireccion').value)">🚗 Waze</a>
+                </div>
+            </div>
             <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="instDescripcion" rows="2" placeholder="Detalle de vidrios o estructuras a instalar" style="text-transform:capitalize">${inst ? escapeHtml(inst.descripcion) : ''}</textarea></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div class="form-group"><label>Fecha Programada *</label><input type="date" class="form-control" id="instFecha" value="${inst ? inst.fecha_programada.substring(0, 10) : hoy}"></div>
@@ -152,6 +169,7 @@ App.registerModule('instalaciones', {
             fecha_programada: document.getElementById('instFecha').value,
             hora_programada: document.getElementById('instHora').value,
             tecnico: capitalize(document.getElementById('instTecnico').value.trim()),
+            numero_orden: document.getElementById('instNumeroOrden').value.trim().toUpperCase(),
             notas_previas: capitalize(document.getElementById('instNotas').value.trim())
         };
         if (!data.cliente || !data.direccion || !data.fecha_programada) { App.showAlert('Cliente, direccion y fecha requeridos', 'danger'); return; }
@@ -167,6 +185,65 @@ App.registerModule('instalaciones', {
             }
             App.hideModal();
             await this.loadData();
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async showTecnicos() {
+        let list = [];
+        try { list = await fetch('/api/produccion/tecnicos').then(r => r.json()); } catch(e) {}
+        list = Array.isArray(list) ? list : [];
+        const html = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h3 style="margin:0">Tecnicos (${list.length})</h3>
+                <button class="btn btn-sm btn-primary" onclick="App.modules.instalaciones.formTecnico()">+ Nuevo</button>
+            </div>
+            <div id="tecnicoFormInst"></div>
+            <table class="data-table" style="width:100%">
+                <thead><tr><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody>${list.length === 0 ? '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text-light)">No hay tecnicos. Agrega uno para que aparezca en el desplegable.</td></tr>' :
+                list.map(t => `
+                    <tr>
+                        <td style="font-weight:600">${escapeHtml(t.nombre)}</td>
+                        <td><span class="status-badge ${t.activo ? 'status-completada' : 'status-cancelada'}">${t.activo ? 'Activo' : 'Inactivo'}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.formTecnico(${t.id},'${escapeHtml(t.nombre).replace(/'/g,"\\'")}',${t.activo})" style="margin-right:4px">✏️</button>
+                            <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.eliminarTecnico(${t.id})" style="color:var(--danger)">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('')}</tbody>
+            </table>`;
+        App.showModal(html, { title: 'Configurar Tecnicos' });
+    },
+
+    formTecnico(id, nombre, activo) {
+        const el = document.getElementById('tecnicoFormInst');
+        if (el) el.innerHTML = `
+            <div style="display:flex;gap:8px;align-items:end;margin-bottom:12px;padding:10px;background:rgba(59,130,246,0.05);border-radius:8px;border:1px solid var(--border)">
+                <div style="flex:1"><label style="font-size:12px;font-weight:600">Nombre</label>
+                    <input class="form-control" id="tecNombreInst" value="${nombre || ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize"></div>
+                <div style="flex:0"><label style="font-size:12px;font-weight:600">Activo</label>
+                    <select class="form-control" id="tecActivoInst"><option value="true" ${activo !== false ? 'selected' : ''}>Si</option><option value="false" ${activo === false ? 'selected' : ''}>No</option></select></div>
+                <button class="btn btn-sm btn-primary" onclick="App.modules.instalaciones.guardarTecnico(${id || 0})">Guardar</button>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('tecnicoFormInst').innerHTML=''">Cancelar</button>
+            </div>`;
+    },
+
+    async guardarTecnico(id) {
+        const nombre = (document.getElementById('tecNombreInst').value || '').trim();
+        const activo = document.getElementById('tecActivoInst').value === 'true';
+        if (!nombre) { App.showAlert('Nombre requerido', 'danger'); return; }
+        try {
+            if (id === 0) await fetch('/api/produccion/tecnicos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, activo }) });
+            else await fetch(`/api/produccion/tecnicos/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, activo }) });
+            await this.showTecnicos();
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async eliminarTecnico(id) {
+        if (!confirm('Eliminar este tecnico?')) return;
+        try {
+            await fetch(`/api/produccion/tecnicos/${id}`, { method: 'DELETE' });
+            await this.showTecnicos();
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     }
 });

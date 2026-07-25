@@ -96,6 +96,11 @@ App.registerModule('turnos', {
                     <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Turno: <span id="tMdTurno" style="color:var(--accent);font-weight:900"></span> - <span id="tMdNombre" style="font-weight:600"></span></p>
                     <input id="tMdPedidos" type="text" class="input" placeholder="Numero de pedido(s)">
                     <input id="tMdFactura" type="text" class="input" placeholder="Numero de factura" style="margin-top:8px">
+                    <div style="margin-top:8px">
+                        <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Adjuntar PDFs (opcional)</label>
+                        <input id="tMdFiles" type="file" accept=".pdf" multiple style="font-size:12px;width:100%">
+                        <div id="tMdFilesList" style="font-size:11px;color:var(--text-light);margin-top:4px"></div>
+                    </div>
                     <p id="tMdError" style="color:var(--danger);font-size:12px;display:none;margin-top:8px"></p>
                     <div style="display:flex;gap:8px;margin-top:12px">
                         <button onclick="App.modules.turnos.cerrarModalDerivar()" class="btn" style="flex:1;background:var(--border);color:var(--text)">CANCELAR</button>
@@ -145,7 +150,7 @@ App.registerModule('turnos', {
         const tipoColor = tipoLabel === 'Despacho' ? 'var(--warning)' : 'var(--success)';
         let info = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">`;
         if (isBodega) { info += `<span style="font-weight:900">${escapeHtml(t.nombre)}</span>`; }
-        else { info += `<span style="color:var(--accent);font-weight:900">#${escapeHtml(String(t.numero))}</span><span style="font-weight:600">${escapeHtml(t.nombre)}</span>`; }
+        else { info += `<span style="color:var(--accent);font-weight:900">#${escapeHtml(String(t.numero))}</span><span style="font-weight:600">${escapeHtml(t.nombre)}</span>${t.rut ? `<span style="font-size:10px;color:var(--text-light);margin-left:4px">${escapeHtml(t.rut)}</span>` : ''}`; }
         info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${tipoLabel==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${tipoColor}">${tipoLabel}</span>`;
         if (t.entrega_estado === 'entregado') { info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.1);color:var(--success)">&#10003; Entregado</span>`; }
         else if (t.entrega_estado === 'pendiente') { info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(245,158,11,0.1);color:var(--warning)">Pendiente bodega</span>`; }
@@ -187,8 +192,20 @@ App.registerModule('turnos', {
         const factura = document.getElementById('tMdFactura').value.trim();
         if (!pedidos && !factura) { const e = document.getElementById('tMdError'); e.textContent = 'Ingresa al menos un pedido o factura'; e.style.display = 'block'; return; }
         const btn = document.getElementById('tMdBtn'); btn.disabled = true; btn.textContent = 'DERIVANDO...';
+        const fileInput = document.getElementById('tMdFiles');
+        const adjuntos = [];
+        if (fileInput && fileInput.files.length > 0) {
+            for (const f of fileInput.files) {
+                const b64 = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.readAsDataURL(f);
+                });
+                adjuntos.push({ nombre: f.name, base64: b64 });
+            }
+        }
         try {
-            const r = await fetch('/api/turnos/derivar-bodega', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turno_id: this.rActualTurno.id, pedidos, factura }) });
+            const r = await fetch('/api/turnos/derivar-bodega', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turno_id: this.rActualTurno.id, pedidos, factura, adjuntos }) });
             if (r.ok) { this.cerrarModalDerivar(); await this.rCargar(); }
             else { const d = await r.json(); const e = document.getElementById('tMdError'); e.textContent = d.error || 'Error'; e.style.display = 'block'; }
         } catch(e) { const er = document.getElementById('tMdError'); er.textContent = 'Error de conexion'; er.style.display = 'block'; }
@@ -267,7 +284,7 @@ App.registerModule('turnos', {
                 if (e.tipo) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${e.tipo==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${e.tipo==='Despacho'?'var(--warning)':'var(--success)'}">${e.tipo}</span>`;
                 if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${e.pedidos}</span>`;
                 if (e.factura) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7">Factura: ${e.factura}</span>`;
-                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div>${info}<div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div><div style="display:flex;gap:6px;align-items:center"><button onclick="App.modules.turnos.bEntregar(${e.id})" class="btn btn-success" style="padding:6px 12px;font-size:12px">ENTREGADO</button>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px" title="Eliminar">&#10005;</button>` : ''}</div></div>`;
+                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div>${info}<div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div><div style="display:flex;gap:6px;align-items:center">${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">PDF (${e.adjuntos_count})</button>` : ''}<button onclick="App.modules.turnos.bEntregar(${e.id})" class="btn btn-success" style="padding:6px 12px;font-size:12px">ENTREGADO</button>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px" title="Eliminar">&#10005;</button>` : ''}</div></div>`;
             }).join('');
             const el = document.getElementById('tBEntregList');
             if (el) el.innerHTML = ent.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin entregas hoy</div>' : ent.map(e => {
@@ -295,6 +312,21 @@ App.registerModule('turnos', {
     },
 
     async bEntregar(id) { try { await fetch(`/api/turnos/entregas/${id}/entregar`, { method: 'POST' }); this.bCargar(); } catch(e) {} },
+
+    async verAdjuntos(turnoId) {
+        try {
+            const r = await fetch(`/api/turnos/${turnoId}/adjuntos`);
+            const adjuntos = await r.json();
+            if (!Array.isArray(adjuntos) || adjuntos.length === 0) { App.showAlert('No hay archivos adjuntos'); return; }
+            const html = adjuntos.map(a => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border)">
+                    <span style="font-size:13px">📄 ${escapeHtml(a.nombre)}</span>
+                    <a href="/api/turnos/adjunto/${a.id}" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:11px;color:var(--info);border-color:var(--info)">Ver PDF</a>
+                </div>
+            `).join('');
+            App.showModal(`<div>${html}</div>`, { title: 'Archivos Adjuntos' });
+        } catch(e) { App.showAlert('Error al cargar adjuntos', 'danger'); }
+    },
     async eliminarEntrega(id) { if (!confirm('Eliminar?')) return; try { await fetch(`/api/turnos/eliminar-entrega/${id}`, { method: 'DELETE' }); this.bCargar(); } catch(e) {} },
 
     // ═══════ QR ═══════
