@@ -13,6 +13,7 @@ App.modules.planificacion = {
     fechaGrupo: null,
     cargaPorGrupo: null,
     _chartInstance: null,
+    semanaEstaciones: null,
 
     fmtDate(d) {
         return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -337,6 +338,24 @@ App.modules.planificacion = {
             <!-- CHART: Carga por Grupo -->
             <div id="planChart" style="margin-top:24px"></div>
 
+            <!-- CARGA POR ESTACIONES -->
+            <div class="card" style="margin-top:24px;border:2px solid #f59e0b">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#fffbeb,#fff)">
+                    <div>
+                        <h3 style="margin:0;font-size:16px">🏭 Carga por Estaciones</h3>
+                        <div style="font-size:12px;color:var(--text-light)">Ocupacion de m² por estacion y dia</div>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <label style="font-size:12px;color:var(--text-light)">Semana:</label>
+                        <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarSemanaEstaciones(-1)">◀</button>
+                        <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarSemanaEstaciones(1)">▶</button>
+                    </div>
+                </div>
+                <div class="card-body" style="padding:16px">
+                    <div id="planEstaciones"><div style="text-align:center;padding:20px;color:#64748b">Cargando...</div></div>
+                </div>
+            </div>
+
             <div class="modal-overlay" id="planAsignarModal">
                 <div class="modal" style="max-width:500px">
                     <div class="modal-header"><h3>Asignar Fecha de Entrega</h3><button class="modal-close" onclick="App.modules.planificacion.cerrarModal()">&times;</button></div>
@@ -345,6 +364,7 @@ App.modules.planificacion = {
             </div>
         `;
         await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
+        this.cargarEstaciones();
     },
 
     async cargarDatos() {
@@ -740,5 +760,103 @@ App.modules.planificacion = {
                 }
             }
         });
+    },
+
+    // ── CARGA POR ESTACIONES ──
+    cambiarSemanaEstaciones(delta) {
+        if (!this.semanaEstaciones) {
+            this.semanaEstaciones = new Date();
+            const dia = this.semanaEstaciones.getDay();
+            const diffLunes = dia === 0 ? -6 : 1 - dia;
+            this.semanaEstaciones.setDate(this.semanaEstaciones.getDate() + diffLunes);
+        }
+        this.semanaEstaciones.setDate(this.semanaEstaciones.getDate() + delta * 7);
+        this.cargarEstaciones();
+    },
+
+    async cargarEstaciones() {
+        if (!this.semanaEstaciones) {
+            this.semanaEstaciones = new Date();
+            const dia = this.semanaEstaciones.getDay();
+            const diffLunes = dia === 0 ? -6 : 1 - dia;
+            this.semanaEstaciones.setDate(this.semanaEstaciones.getDate() + diffLunes);
+        }
+        const inicio = this.fmtDate(this.semanaEstaciones);
+        const finD = new Date(this.semanaEstaciones);
+        finD.setDate(finD.getDate() + 6);
+        const fin = this.fmtDate(finD);
+
+        try {
+            const res = await fetch(`/api/produccion/planificacion/carga-estaciones?inicio=${inicio}&fin=${fin}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            this.renderEstaciones(data);
+        } catch(e) { console.error('cargarEstaciones:', e); }
+    },
+
+    renderEstaciones(data) {
+        const el = document.getElementById('planEstaciones');
+        if (!el) return;
+        const { estaciones, carga } = data;
+
+        if (!estaciones || estaciones.length === 0) {
+            el.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b">No hay estaciones configuradas</div>';
+            return;
+        }
+
+        // Generar dias de la semana
+        const dias = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(this.semanaEstaciones);
+            d.setDate(d.getDate() + i);
+            dias.push(this.fmtDate(d));
+        }
+
+        const nombreDia = (f) => {
+            const d = new Date(f + 'T12:00:00');
+            return ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'][d.getDay()] + ' ' + d.getDate();
+        };
+
+        const pct = (usado, cap) => cap > 0 ? Math.round((usado / cap) * 100) : 0;
+        const barColor = (p) => p >= 100 ? '#ef4444' : p >= 85 ? '#f59e0b' : p >= 50 ? '#3b82f6' : '#22c55e';
+
+        let html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+        // Header
+        html += '<thead><tr style="border-bottom:2px solid var(--border)">';
+        html += '<th style="padding:8px;text-align:left;min-width:140px">Estacion</th>';
+        dias.forEach(f => {
+            html += `<th style="padding:6px;text-align:center;min-width:90px;white-space:nowrap">${nombreDia(f)}</th>`;
+        });
+        html += '<th style="padding:6px;text-align:center;min-width:70px">Cap</th>';
+        html += '</tr></thead><tbody>';
+
+        estaciones.forEach(est => {
+            html += '<tr style="border-bottom:1px solid var(--border)">';
+            html += `<td style="padding:8px;font-weight:600;white-space:nowrap">${est.nombre}${est.es_cuello_botella ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#fef2f2;color:#ef4444">CB</span>' : ''}</td>`;
+
+            dias.forEach(f => {
+                const datos = (carga[f] && carga[f][est.id]) || { m2: 0, ordenes: 0 };
+                const p = pct(datos.m2, est.capacidad_m2_dia);
+                html += `<td style="padding:6px;text-align:center">
+                    <div style="margin-bottom:3px;font-weight:600;color:${barColor(p)}">${datos.m2.toFixed(1)}</div>
+                    <div style="background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden">
+                        <div style="background:${barColor(p)};height:100%;width:${Math.min(p, 100)}%;transition:width 0.3s"></div>
+                    </div>
+                    <div style="font-size:10px;color:#6b7280;margin-top:2px">${p}% · ${datos.ordenes} ord</div>
+                </td>`;
+            });
+
+            html += `<td style="padding:6px;text-align:center;font-weight:600;color:var(--text-light)">${est.capacidad_m2_dia}</td>`;
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+
+        // Leyenda
+        html += '<div style="margin-top:10px;display:flex;gap:16px;font-size:11px;color:#6b7280">';
+        html += '<span>🟢 &lt;50%</span><span>🔵 50-84%</span><span>🟡 85-99%</span><span>🔴 ≥100%</span>';
+        html += '<span style="margin-left:auto">CB = Cuello de Botella</span></div>';
+
+        el.innerHTML = html;
     }
 };

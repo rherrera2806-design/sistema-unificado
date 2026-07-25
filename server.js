@@ -3946,6 +3946,51 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // GET /api/produccion/planificacion/carga-estaciones?inicio=YYYY-MM-DD&fin=YYYY-MM-DD
+    if (urlPath.startsWith('/api/produccion/planificacion/carga-estaciones') && req.method === 'GET') {
+        try {
+            const params = new URL(url, 'http://localhost').searchParams;
+            const inicio = params.get('inicio') || new Date().toISOString().split('T')[0];
+            const fin = params.get('fin') || inicio;
+
+            // Todas las estaciones activas
+            const estRes = await query(`
+                SELECT id, nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia, es_cuello_botella
+                FROM estaciones_maestras WHERE activa = TRUE
+                ORDER BY orden_secuencia_defecto
+            `);
+
+            // Carga asignada por estacion por dia
+            const cargaRes = await query(`
+                SELECT cp.estacion_id, to_char(cp.fecha_programada, 'YYYY-MM-DD') as fs,
+                       COALESCE(SUM(cp.m2_asignados), 0) as m2_total,
+                       COUNT(*) as ordenes
+                FROM cola_produccion_pasos cp
+                WHERE cp.fecha_programada >= $1::date AND cp.fecha_programada <= $2::date
+                  AND cp.estado != 'MERMADO'
+                GROUP BY cp.estacion_id, cp.fecha_programada
+            `, [inicio, fin]);
+
+            const estaciones = estRes.rows.map(e => ({
+                id: e.id,
+                nombre: e.nombre_estacion,
+                orden: e.orden_secuencia_defecto,
+                capacidad_m2_dia: Number(e.capacidad_max_m2_dia) || 100,
+                es_cuello_botella: e.es_cuello_botella
+            }));
+
+            const carga = {};
+            cargaRes.rows.forEach(r => {
+                const key = r.fs;
+                if (!carga[key]) carga[key] = {};
+                carga[key][r.estacion_id] = { m2: Number(r.m2_total), ordenes: Number(r.ordenes) };
+            });
+
+            json(res, { estaciones, carga, inicio, fin });
+        } catch(e) { console.error('carga-estaciones error:', e.message); json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/produccion/planificacion/pendientes - Ordenes pendientes de programar
     if (urlPath === '/api/produccion/planificacion/pendientes' && req.method === 'GET') {
         try {
