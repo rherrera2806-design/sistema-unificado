@@ -172,7 +172,12 @@ function fmtSec(s){ if(s==null)return'-'; const m=Math.floor(s/60); return m>0?`
 function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extra}`; }
 
 function getTurnosUser() {
-    try { var u = JSON.parse(localStorage.getItem('unified_user')); return u && u.id ? u : null; } catch(e) { return null; }
+    try {
+        var u = JSON.parse(localStorage.getItem('unified_user'));
+        if (u && u.permisos) return u;
+        if (u && u.rol === 'admin') return { ...u, permisos: ['usuarios'] };
+        return u;
+    } catch(e) { return null; }
 }
 </script>
 
@@ -682,7 +687,7 @@ async function tCargar() {
 function getTurnosUser() { try { return JSON.parse(localStorage.getItem('unified_user')); } catch(e) { return null; } }
 function checkAdmin() {
     const user = getTurnosUser();
-    if (user && user.rol === 'admin') document.body.classList.add('isAdmin');
+    if (user && (user.rol === 'admin' || (user.permisos && user.permisos.includes('usuarios')))) document.body.classList.add('isAdmin');
 }
 checkAdmin();
 
