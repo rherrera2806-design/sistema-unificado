@@ -174,10 +174,19 @@ function navigate(v, extra='') { window.location.href = `${BASE}?view=${v}${extr
 function getTurnosUser() {
     try {
         var u = JSON.parse(localStorage.getItem('unified_user'));
-        if (u && u.permisos) return u;
-        if (u && u.rol === 'admin') return { ...u, permisos: ['usuarios'] };
+        if (!u) return null;
+        if (!u.permisos) u.permisos = [];
+        if (u.rol === 'admin' && !u.permisos.includes('usuarios')) u.permisos.push('usuarios');
         return u;
     } catch(e) { return null; }
+}
+
+function canDelete() {
+    const user = getTurnosUser();
+    if (!user) return false;
+    if (user.rol === 'admin') return true;
+    const p = user.permisos || [];
+    return p.includes('atencion.eliminar') || p.includes('usuarios');
 }
 </script>
 
@@ -452,9 +461,7 @@ function renderHistorialItem(t) {
     } else if (!isDirecto) {
         html += estadoTag(t.estado);
     }
-    const user = getTurnosUser();
-    const perm = (user && user.permisos) ? user.permisos : [];
-    const puedeEliminar = perm.includes('atencion.eliminar') || perm.includes('usuarios');
+    const puedeEliminar = canDelete();
     if (delFn && puedeEliminar) html += `<button class="btn-delete" onclick="${delFn}">&#10005;</button>`;
     html += `</div>`;
     html += `<span class="text-slate-500 text-xs">${t.fecha_fmt||''}</span></div>`;
@@ -605,9 +612,7 @@ async function bCargar() {
             const adjBtn = Number(e.adjuntos_count) > 0 ? `<button onclick="verAdjuntosTurno(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">PDF (${e.adjuntos_count})</button>` : '';
             return `<div class="turno-item" style="flex-direction:column;align-items:stretch;gap:6px"><div class="flex items-center justify-between flex-wrap gap-1"><div class="flex items-center gap-2 flex-wrap">${entregaInfoHtml(e)}</div><div style="display:flex;gap:6px;align-items:center">${adjBtn}<button onclick="bEntregar(${e.id})" class="btn btn-green btn-sm">ENTREGADO</button></div></div><div style="font-size:11px;color:#94a3b8">Recibido: ${e.hora_registrada||'-'}</div></div>`;
         }).join('');
-        const user2 = getTurnosUser();
-        const perm2 = (user2 && user2.permisos) ? user2.permisos : [];
-        const puedeEliminar2 = perm2.includes('atencion.eliminar') || perm2.includes('usuarios');
+        const puedeEliminar2 = canDelete();
         document.getElementById('bEntregList').innerHTML = ent.length===0 ? '<div class="text-center text-slate-600 py-4 text-sm">Sin entregas hoy</div>' : ent.map(e=>{
             const esDespacho = e.tipo === 'Despacho';
             const estadoLabel = esDespacho ? '&#10003; Despachado' : '&#10003; Entregado';
@@ -686,8 +691,7 @@ async function tCargar() {
 // ═══════ ADMIN ═══════
 function getTurnosUser() { try { return JSON.parse(localStorage.getItem('unified_user')); } catch(e) { return null; } }
 function checkAdmin() {
-    const user = getTurnosUser();
-    if (user && (user.rol === 'admin' || (user.permisos && user.permisos.includes('usuarios')))) document.body.classList.add('isAdmin');
+    if (canDelete()) document.body.classList.add('isAdmin');
 }
 checkAdmin();
 
