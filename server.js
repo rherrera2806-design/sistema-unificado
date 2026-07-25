@@ -4479,7 +4479,6 @@ const server = http.createServer(async (req, res) => {
                         if (usadoEst + kg > capEst) { estacionOk = false; break; }
                     }
                     if (estacionOk) return fStr;
-                    }
                 }
                 return null;
             };
