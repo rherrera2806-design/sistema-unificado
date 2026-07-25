@@ -664,6 +664,8 @@ async function initDB() {
     await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS es_cuello_botella BOOLEAN DEFAULT FALSE`);
     // Marcar estaciones 4-8 como cuellos de botella por defecto
     await query(`UPDATE estaciones_maestras SET es_cuello_botella = TRUE WHERE orden_secuencia_defecto BETWEEN 4 AND 8 AND es_cuello_botella = FALSE`);
+    // Ajustar capacidad de Armado (estacion 8) a 24 m²/día si es cuello de botella
+    await query(`UPDATE estaciones_maestras SET capacidad_max_m2_dia = 24 WHERE nombre_estacion = 'Armado' AND es_cuello_botella = TRUE AND capacidad_max_m2_dia > 50`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`);
 
@@ -708,7 +710,7 @@ async function initDB() {
         const estacionesDefault = [
             ['Corte', 1, 500, false], ['Pulido', 2, 300, false], ['Radio', 3, 200, false],
             ['Mecanizado', 4, 130, true], ['Ventana', 5, 100, true], ['Pintado', 6, 24, true],
-            ['Templado', 7, 200, true], ['Armado', 8, 150, true]
+            ['Templado', 7, 200, true], ['Armado', 8, 24, true]
         ];
         for (const [nombre, orden, cap, cuello] of estacionesDefault) {
             await query('INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia, es_cuello_botella) VALUES ($1, $2, $3, $4)', [nombre, orden, cap, cuello]);
