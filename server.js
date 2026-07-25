@@ -723,7 +723,7 @@ async function initDB() {
     if (Number(regCount.rows[0].c) === 0) {
         const reglasDefault = [
             ['radio', 'Radio'], ['pulido', 'Pulido'], ['mecanizado', 'Mecanizado'],
-            ['ventana', 'Ventana'], ['pintado', 'Pintado']
+            ['ventana', 'Ventana'], ['pintado', 'Pintado'], ['pintado_car', 'Armado']
         ];
         for (const [flag, estNombre] of reglasDefault) {
             const est = await query('SELECT id FROM estaciones_maestras WHERE nombre_estacion = $1', [estNombre]);
@@ -733,6 +733,17 @@ async function initDB() {
         }
         console.log('[PROD] Reglas de procesos extras creadas por defecto');
     }
+    // Asegurar regla pintado_car → Armado (para BDs que ya existen)
+    try {
+        const pcExists = await query("SELECT id FROM reglas_procesos_extras WHERE nombre_flag = 'pintado_car'");
+        if (pcExists.rows.length === 0) {
+            const armado = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Armado'");
+            if (armado.rows.length > 0) {
+                await query('INSERT INTO reglas_procesos_extras (nombre_flag, estacion_id) VALUES ($1, $2)', ['pintado_car', armado.rows[0].id]);
+                console.log('[PROD] Regla pintado_car → Armado creada');
+            }
+        }
+    } catch(e) {}
 
     // Tabla calendario de produccion
     try {
@@ -3618,6 +3629,7 @@ const server = http.createServer(async (req, res) => {
                     mecanizado: Number(row['mecanizado'] || row['Mecanizado'] || row['MECANIZADO'] || row['perforaciones'] || row['Perforaciones'] || 0) > 0,
                     ventana: Number(row['ventana'] || row['Ventana'] || row['VENTANA'] || 0) === 1,
                     pintado: Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1,
+                    pintado_car: Number(row['pintado car'] || row['pintado_car'] || row['PintadoCar'] || row['PINTADO CAR'] || row['pintado_carroceros'] || row['PINTADO_CARROCEROS'] || 0) === 1,
                     tipo_venta: String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || row['TIPO VENTA'] || row['TIPO_DE_VENTA'] || 'Normal').trim(),
                     familia_codigo: String(row['familia'] || row['Familia'] || row['FAMILIA'] || row['grupo'] || row['Grupo'] || '').trim(),
                     fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || null,
@@ -3683,7 +3695,7 @@ const server = http.createServer(async (req, res) => {
                 }
 
                 // Agregar estaciones extras según banderas del Excel
-                const flagsMap = { radio: 'radio', pulido: 'pulido', mecanizado: 'mecanizado', ventana: 'ventana', pintado: 'pintado' };
+                const flagsMap = { radio: 'radio', pulido: 'pulido', mecanizado: 'mecanizado', ventana: 'ventana', pintado: 'pintado', pintado_car: 'pintado_car' };
                 for (const [flag, nombre] of Object.entries(flagsMap)) {
                     if (r[flag] && reglaMap[nombre]) {
                         const estId = reglaMap[nombre].estacion_id;
@@ -4462,7 +4474,7 @@ const server = http.createServer(async (req, res) => {
             const inicioDate = new Date(inicio + 'T00:00:00');
 
             // Busca el primer dia con capacidad en grupo (kg) Y en todos los cuellos de botella (m²)
-            const findDateWithCapacity = (grupo, kg, estacionesIds) => {
+            const findDateWithCapacity = (grupo, kg, m2, estacionesIds) => {
                 const capGrupo = capMap[grupo] || 0;
                 for (let d = 0; d < dias; d++) {
                     const f = new Date(inicioDate);
@@ -4478,7 +4490,7 @@ const server = http.createServer(async (req, res) => {
                         if (!cuelloIds.has(estId)) continue;
                         const capEst = cuellosMap[estId] || 100;
                         const usadoEst = cargaEstMap[fStr + '|' + estId] || 0;
-                        if (usadoEst + kg > capEst) { estacionOk = false; break; }
+                        if (usadoEst + m2 > capEst) { estacionOk = false; break; }
                     }
                     if (estacionOk) return fStr;
                 }
@@ -4487,7 +4499,7 @@ const server = http.createServer(async (req, res) => {
 
             // Calcula cuantas unidades ENTERAS caben en el primer dia con capacidad
             // Considera kg del grupo Y m² en cuellos de botella
-            const calcUnitsForDay = (grupo, kgPorUnidad, estacionesIds) => {
+            const calcUnitsForDay = (grupo, kgPorUnidad, m2PorUnidad, estacionesIds) => {
                 const capGrupo = capMap[grupo] || 0;
                 for (let d = 0; d < dias; d++) {
                     const f = new Date(inicioDate);
@@ -4507,7 +4519,7 @@ const server = http.createServer(async (req, res) => {
                         const usadoEst = cargaEstMap[fStr + '|' + estId] || 0;
                         const libreEst = capEst - usadoEst;
                         if (libreEst <= 0) { unitsFit = 0; break; }
-                        const unitsByEst = Math.floor(libreEst / kgPorUnidad);
+                        const unitsByEst = Math.floor(libreEst / m2PorUnidad);
                         if (unitsByEst < unitsFit) unitsFit = unitsByEst;
                     }
                     if (unitsFit >= 1) return { units: unitsFit, fecha: fStr };
@@ -4533,12 +4545,13 @@ const server = http.createServer(async (req, res) => {
                 if (!grupo && o.es_compuesto && o.bom_padre_id) grupo = padreGrupoMap[o.bom_padre_id];
                 const capacidad = grupo ? capMap[grupo] : null;
                 const kgTotal = Number(o.kilos) || 0;
+                const m2Total = Number(o.metros_cuadrados) || 0;
                 if (!grupo) { noAsignados.push({ id: o.id, motivo: 'sin grupo' }); continue; }
                 if (!capacidad) { noAsignados.push({ id: o.id, motivo: 'capacidad no configurada para ' + grupo }); continue; }
 
                 const totalUnidades = Number(o.cantidad) || 1;
                 const kgPorUnidad = kgTotal / totalUnidades;
-                const m2PorUnidad = Number(o.metros_cuadrados || 0) / totalUnidades;
+                const m2PorUnidad = m2Total / totalUnidades;
 
                 // Obtener estaciones de esta orden (de cola_produccion_pasos)
                 const pasosOrigRes = await query('SELECT estacion_id FROM cola_produccion_pasos WHERE orden_produccion_id = $1', [o.id]);
@@ -4549,14 +4562,14 @@ const server = http.createServer(async (req, res) => {
                 for (const estId of estacionesIds) {
                     if (!cuelloIds.has(estId)) continue;
                     const capEst = cuellosMap[estId] || 100;
-                    if (kgPorUnidad > capEst) {
+                    if (m2PorUnidad > capEst) {
                         const estName = cuelloRes.rows.find(e => e.id === estId)?.nombre_estacion || estId;
                         restriccionEstacion = estName + ' (' + capEst + ' m²/dia)';
                         break;
                     }
                 }
                 if (restriccionEstacion) {
-                    noAsignados.push({ id: o.id, motivo: '1 unidad (' + kgPorUnidad.toFixed(1) + ' kg) excede capacidad de ' + restriccionEstacion });
+                    noAsignados.push({ id: o.id, motivo: '1 unidad (' + m2PorUnidad.toFixed(1) + ' m²) excede capacidad de ' + restriccionEstacion });
                     continue;
                 }
 
@@ -4576,7 +4589,7 @@ const server = http.createServer(async (req, res) => {
                 let suffix = String.fromCharCode(startCharCode);
 
                 // 1ra pieza: actualizar el original con lo que cabe en el primer dia con capacidad
-                let { units: firstUnits, fecha: firstDate } = calcUnitsForDay(grupo, kgPorUnidad, estacionesIds);
+                let { units: firstUnits, fecha: firstDate } = calcUnitsForDay(grupo, kgPorUnidad, m2PorUnidad, estacionesIds);
                 if (!firstDate || firstUnits < 1) { noAsignados.push({ id: o.id, motivo: 'no hay capacidad en ' + dias + ' dias habiles (grupo o cuellos de botella llenos)' }); continue; }
 
                 firstUnits = Math.min(firstUnits, remaining);
@@ -4597,7 +4610,7 @@ const server = http.createServer(async (req, res) => {
 
                 // Piezas siguientes
                 while (remaining > 0) {
-                    const { units, fecha } = calcUnitsForDay(grupo, kgPorUnidad, estacionesIds);
+                    const { units, fecha } = calcUnitsForDay(grupo, kgPorUnidad, m2PorUnidad, estacionesIds);
                     if (!fecha || units < 1) { noAsignados.push({ id: o.id, motivo: 'resto (' + remaining + ' un) no cabe en ' + dias + ' dias habiles (grupo o cuellos de botella llenos)' }); break; }
                     const u = Math.min(units, remaining);
                     const kg = +(u * kgPorUnidad).toFixed(2);
