@@ -2280,34 +2280,64 @@ const server = http.createServer(async (req, res) => {
     // TALLER - Pantalla de Operarios
     // =====================================================
 
-    // GET /api/taller/estaciones - Estaciones activas
+    // GET /api/taller/estaciones - Estaciones activas con totalizados pendientes
     if (urlPath === '/api/taller/estaciones' && req.method === 'GET') {
         try {
             await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS capacidad_max_m2_dia DECIMAL(10,2) DEFAULT 100`);
             await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS es_cuello_botella BOOLEAN DEFAULT FALSE`);
-            const result = await query('SELECT id, nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia FROM estaciones_maestras WHERE activa = true ORDER BY orden_secuencia_defecto');
+            const result = await query(`
+                SELECT e.id, e.nombre_estacion, e.orden_secuencia_defecto, e.capacidad_max_m2_dia,
+                       COALESCE(t.pendientes, 0) as pendientes,
+                       COALESCE(t.en_proceso, 0) as en_proceso,
+                       COALESCE(t.total_kilos, 0) as total_kilos,
+                       COALESCE(t.total_m2, 0) as total_m2,
+                       COALESCE(t.total_ml, 0) as total_ml,
+                       COALESCE(t.total_unidades, 0) as total_unidades
+                FROM estaciones_maestras e
+                LEFT JOIN (
+                    SELECT p.estacion_id,
+                           COUNT(*) FILTER (WHERE p.estado = 'PENDIENTE') as pendientes,
+                           COUNT(*) FILTER (WHERE p.estado = 'EN_PROCESO') as en_proceso,
+                           SUM(COALESCE(o.kilos, 0)) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_kilos,
+                           SUM(COALESCE(p.m2_asignados, (o.ancho::DECIMAL * o.alto / 1000000) * COALESCE(o.cantidad, 1))) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_m2,
+                           SUM((o.alto::DECIMAL / 1000) * COALESCE(o.cantidad, 1)) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_ml,
+                           SUM(COALESCE(o.cantidad, 1)) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_unidades
+                    FROM cola_produccion_pasos p
+                    JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                    WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
+                    GROUP BY p.estacion_id
+                ) t ON t.estacion_id = e.id
+                WHERE e.activa = true
+                ORDER BY e.orden_secuencia_defecto
+            `);
             json(res, result.rows);
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
 
-    // GET /api/taller/colaxestacion/:id?fecha=YYYY-MM-DD - Cola del dia para una estacion
+    // GET /api/taller/colaxestacion/:id - Todas las ordenes pendientes/en proceso para una estacion
     if (urlPath.match(/^\/api\/taller\/colaxestacion\/\d+/) && req.method === 'GET') {
         const estacionId = parseInt(urlPath.split('/').pop());
-        const hoy = q.fecha || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         try {
             const result = await query(`
-                SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados,
+                SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados, p.fecha_programada,
                        o.id as orden_id, o.pedido_sap_id, o.cliente, o.codigo_producto, o.descripcion,
                        o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
                        o.nota, o.grupo, o.es_reposicion, o.familia_id,
-                       f.nombre_familia
+                       f.nombre_familia,
+                       nes.nombre_estacion as proxima_estacion
                 FROM cola_produccion_pasos p
                 JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
                 LEFT JOIN familias_producto f ON o.familia_id = f.id
-                WHERE p.estacion_id = $1 AND p.fecha_programada = $2
-                ORDER BY p.orden_secuencia ASC, o.id ASC
-            `, [estacionId, hoy]);
+                LEFT JOIN cola_produccion_pasos nes_paso ON nes_paso.orden_produccion_id = o.id
+                    AND nes_paso.orden_secuencia = p.orden_secuencia + 1
+                LEFT JOIN estaciones_maestras nes ON nes_paso.estacion_id = nes.id
+                WHERE p.estacion_id = $1 AND p.estado IN ('PENDIENTE', 'EN_PROCESO')
+                ORDER BY
+                    CASE WHEN p.estado = 'EN_PROCESO' THEN 0 ELSE 1 END,
+                    p.fecha_programada ASC NULLS LAST,
+                    p.orden_secuencia ASC, o.id ASC
+            `, [estacionId]);
             json(res, result.rows);
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
