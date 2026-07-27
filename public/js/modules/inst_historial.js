@@ -45,6 +45,7 @@ App.registerModule('inst_historial', {
                     <table style="width:100%;font-size:13px">
                         <thead><tr style="border-bottom:2px solid var(--border)">
                             <th style="padding:10px 12px;text-align:left">Fecha</th>
+                            <th style="padding:10px 12px;text-align:left">Tipo</th>
                             <th style="padding:10px 12px;text-align:left">Cliente</th>
                             <th style="padding:10px 12px;text-align:left">Descripcion</th>
                             <th style="padding:10px 12px;text-align:left">Direccion</th>
@@ -67,13 +68,14 @@ App.registerModule('inst_historial', {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const perm = user.permisos || [];
         const puedeEliminar = perm.includes('instalaciones.eliminar') || perm.includes('usuarios');
-        if (lista.length === 0) return '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-light)">No hay instalaciones</td></tr>';
+        if (lista.length === 0) return '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text-light)">No hay instalaciones</td></tr>';
         return lista.map(inst => {
             const color = estadoColor[inst.estado] || '#3b82f6';
             const icon = estadoIcon[inst.estado] || '📅';
             const fecha = inst.fecha_programada ? inst.fecha_programada.substring(0, 10) : '-';
             return `<tr style="border-bottom:1px solid var(--border)">
                 <td style="padding:10px 12px"><strong>${fecha}</strong> ${inst.hora_programada || ''}</td>
+                <td style="padding:10px 12px;font-size:11px;font-weight:600;text-transform:uppercase">${escapeHtml((inst.tipo || 'INSTALACION').replace('_',' '))}</td>
                 <td style="padding:10px 12px">${escapeHtml(inst.cliente)}</td>
                 <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${escapeHtml(inst.descripcion || '-')}</td>
                 <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${escapeHtml(inst.direccion)}</td>
