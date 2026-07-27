@@ -683,12 +683,14 @@ App.modules.planificacion = {
                         Capacidad promedio: <strong>${Math.round(capacidadPromedio).toLocaleString('es-CL')} kg/día</strong>
                     </div>
                 </div>
-                <div style="position:relative;height:300px">
-                    <canvas id="chartCargaGrupo"></canvas>
-                </div>
-                <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--text-light)">
-                    ${data.familias.map((fam, i) => `<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${colores[i % colores.length].bg};vertical-align:middle"></span> ${fam}</span>`).join('')}
-                    <span><span style="display:inline-block;width:12px;height:2px;background:rgba(239,68,68,1);vertical-align:middle;border-top:2px dashed rgba(239,68,68,1)"></span> Capacidad Promedio</span>
+                <div style="display:flex;gap:16px">
+                    <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--text-light);min-width:120px;padding-top:8px">
+                        ${data.familias.map((fam, i) => `<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${colores[i % colores.length].bg};vertical-align:middle"></span> ${fam}</span>`).join('')}
+                        <span><span style="display:inline-block;width:12px;height:2px;background:rgba(239,68,68,1);vertical-align:middle;border-top:2px dashed rgba(239,68,68,1)"></span> Capacidad</span>
+                    </div>
+                    <div style="position:relative;height:300px;flex:1">
+                        <canvas id="chartCargaGrupo"></canvas>
+                    </div>
                 </div>
             </div>
         `;
