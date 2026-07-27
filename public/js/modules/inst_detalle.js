@@ -48,7 +48,8 @@ App.registerModule('inst_detalle', {
                 </div>
                 <div style="display:flex;gap:8px">
                     ${(() => { const user = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = user.permisos || []; return (p.includes('instalaciones.eliminar') || p.includes('usuarios')) ?
-                        `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.inst_detalle.eliminarInstalacion(${inst.id})">🗑️ Eliminar</button>` : ''; })()}
+                        `<button class="btn btn-sm btn-primary" onclick="App.modules.inst_detalle.editarInstalacion(${inst.id})">✏️ Editar</button>
+                        <button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.inst_detalle.eliminarInstalacion(${inst.id})">🗑️ Eliminar</button>` : ''; })()}
                     ${inst.estado === 'PROGRAMADA' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.inst_detalle.cambiarEstado(${inst.id},'EN_CAMINO')">🚗 En Camino</button>` : ''}
                     ${inst.estado === 'EN_CAMINO' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.inst_detalle.cambiarEstado(${inst.id},'EN_CURSO')">⚙ En Curso</button>` : ''}
                     ${inst.estado === 'EN_CURSO' ? `<button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="App.modules.inst_detalle.showCerrar(${inst.id})">✓ Completar</button>` : ''}
@@ -229,6 +230,71 @@ App.registerModule('inst_detalle', {
             });
             App.showAlert('Foto eliminada');
             await this.cargarYRenderizar(instId);
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async editarInstalacion(id) {
+        const inst = this.inst;
+        if (!inst) return;
+        let tecnicos = [];
+        let vendedores = [];
+        try { tecnicos = await fetch('/api/instalaciones/tecnicos').then(r => r.json()); } catch(e) {}
+        try { vendedores = await fetch('/api/instalaciones/vendedores').then(r => r.json()); } catch(e) {}
+        const datalistHtml = `<datalist id="tecnicosList">${(tecnicos || []).map(t => `<option value="${escapeHtml(t)}">`).join('')}</datalist><datalist id="vendedoresList">${(vendedores || []).map(v => `<option value="${escapeHtml(v)}">`).join('')}</datalist>`;
+        App.showModal(`
+            ${datalistHtml}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group"><label>Cliente *</label><input class="form-control" id="instCliente" value="${escapeHtml(inst.cliente)}" placeholder="Nombre del cliente" style="text-transform:uppercase"></div>
+                <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${escapeHtml(inst.tecnico || '')}" placeholder="Nombre del tecnico" style="text-transform:capitalize" list="tecnicosList"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group"><label>Vendedor</label><input class="form-control" id="instVendedor" value="${escapeHtml(inst.vendedor || '')}" placeholder="Nombre del vendedor" style="text-transform:capitalize" list="vendedoresList"></div>
+                <div class="form-group"><label>Numero de Orden</label><input class="form-control" id="instNumeroOrden" value="${escapeHtml(inst.numero_orden || '')}" placeholder="Numero de orden" style="text-transform:uppercase"></div>
+            </div>
+            <div class="form-group"><label>Direccion *</label>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <input class="form-control" id="instDireccion" value="${escapeHtml(inst.direccion)}" placeholder="Direccion de la instalacion" style="text-transform:capitalize;flex:1">
+                    <a href="https://www.google.com/maps/search/?api=1&query=" target="_blank" id="instMapGoogle" title="Google Maps" style="display:inline-flex;align-items:center;padding:6px 10px;border-radius:6px;font-size:12px;background:#dcfce7;color:#166534;text-decoration:none;border:1px solid #bbf7d0;white-space:nowrap" onclick="this.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(document.getElementById('instDireccion').value)">📍 Maps</a>
+                    <a href="https://www.waze.com/ul?q=" target="_blank" id="instMapWaze" title="Waze" style="display:inline-flex;align-items:center;padding:6px 10px;border-radius:6px;font-size:12px;background:#dbeafe;color:#1e40af;text-decoration:none;border:1px solid #bfdbfe;white-space:nowrap" onclick="this.href='https://www.waze.com/ul?q='+encodeURIComponent(document.getElementById('instDireccion').value)">🚗 Waze</a>
+                </div>
+            </div>
+            <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="instDescripcion" rows="2" placeholder="Detalle de vidrios o estructuras a instalar" style="text-transform:capitalize">${escapeHtml(inst.descripcion || '')}</textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group"><label>Fecha Programada *</label><input type="date" class="form-control" id="instFecha" value="${inst.fecha_programada ? inst.fecha_programada.substring(0, 10) : ''}"></div>
+                <div class="form-group"><label>Hora</label><input type="time" class="form-control" id="instHora" value="${inst.hora_programada || '09:00'}"></div>
+            </div>
+            <div class="form-group"><label>Notas Previas</label><textarea class="form-control" id="instNotas" rows="2" placeholder="Notas o instrucciones previas" style="text-transform:capitalize">${escapeHtml(inst.notas_previas || '')}</textarea></div>
+        `, { title: 'Editar Instalacion #' + id });
+        document.querySelector('#modalOverlay .modal-footer').innerHTML = `
+            <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="App.modules.inst_detalle.guardarEdicion(${id})">Actualizar</button>
+        `;
+    },
+
+    async guardarEdicion(id) {
+        const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
+        const data = {
+            cliente: document.getElementById('instCliente').value.trim().toUpperCase(),
+            direccion: capitalize(document.getElementById('instDireccion').value.trim()),
+            descripcion: capitalize(document.getElementById('instDescripcion').value.trim()),
+            fecha_programada: document.getElementById('instFecha').value,
+            hora_programada: document.getElementById('instHora').value,
+            tecnico: capitalize(document.getElementById('instTecnico').value.trim()),
+            vendedor: capitalize(document.getElementById('instVendedor').value.trim()),
+            numero_orden: document.getElementById('instNumeroOrden').value.trim().toUpperCase(),
+            notas_previas: capitalize(document.getElementById('instNotas').value.trim())
+        };
+        if (!data.cliente || !data.direccion || !data.fecha_programada) { App.showAlert('Cliente, direccion y fecha requeridos', 'danger'); return; }
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        try {
+            await fetch(`/api/instalaciones/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
+                body: JSON.stringify(data)
+            });
+            App.hideModal();
+            App.showAlert('Instalacion actualizada');
+            await this.cargarYRenderizar(id);
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
