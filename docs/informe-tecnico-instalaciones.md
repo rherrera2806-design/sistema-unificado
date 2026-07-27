@@ -145,6 +145,18 @@ PROGRAMADA → EN_CAMINO → EN_CURSO → COMPLETADA
 
 ## 5. Archivos de Presentacion
 
+### Precios de Referencia (Mercado 2026)
+
+| Plan | Precio | Usuarios | Incluye |
+|------|--------|----------|---------|
+| Basico | $79.900/mes | 5 | 100 instalaciones, calendario, fotos, historial, soporte email |
+| Profesional | $149.900/mes | 15 | Ilimitado, tecnicos/vendedores, reportes, soporte prioritario |
+| Empresarial | $249.900/mes | Ilimitados | Todo + API, ERP, capacitacion, soporte 24/7 |
+
+*Precios basados en benchmarking contra DABI (US$19-36/usuario), FieldServicePro (US$199 base) y mfr (EUR 29/mes).*
+
+### Archivos
+
 - **Presentacion HTML:** `docs/presentacion-instalaciones.html` (9 slides, navegar con flechas)
 - **Flyer HTML:** `docs/flyer-instalaciones.html` (imagen tipo flyer para impresion/redes)
 
