@@ -116,6 +116,7 @@
     <div class="queue-header">
         <button class="back" onclick="volver()">&#9664; Cambiar</button>
         <h1 id="stationName">-</h1>
+        <input type="text" id="searchInput" placeholder="Buscar por cliente o pedido..." oninput="filtrarCola()" style="background:#0f172a;border:1px solid #475569;border-radius:8px;padding:8px 14px;color:#e2e8f0;font-size:14px;width:220px;outline:none">
         <div id="clock" style="font-size:14px;color:#94a3b8;font-weight:600"></div>
     </div>
     <div class="queue-stats">
@@ -246,6 +247,13 @@ async function cargarCola() {
 
 function renderCola() {
     const list = document.getElementById('queueList');
+    const filtro = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+    const filtrados = filtro ? colaActual.filter(p =>
+        (p.cliente || '').toLowerCase().includes(filtro) ||
+        (p.pedido_sap_id || '').toLowerCase().includes(filtro) ||
+        (p.codigo_producto || '').toLowerCase().includes(filtro) ||
+        String(p.orden_id).includes(filtro)
+    ) : colaActual;
     const pend = colaActual.filter(p => p.estado === 'PENDIENTE').length;
     const proc = colaActual.filter(p => p.estado === 'EN_PROCESO').length;
     const term = colaActual.filter(p => p.estado === 'TERMINADO').length;
@@ -255,12 +263,14 @@ function renderCola() {
     document.getElementById('statTerm').textContent = term;
     document.getElementById('statMerm').textContent = merm;
 
-    if (colaActual.length === 0) {
-        list.innerHTML = '<div class="empty-state"><div class="icon">&#128203;</div><h3>Sin ordenes programadas para hoy</h3></div>';
+    if (filtrados.length === 0) {
+        list.innerHTML = filtro
+            ? `<div class="empty-state"><div class="icon">&#128269;</div><h3>Sin resultados para "${escapeHtml(filtro)}"</h3></div>`
+            : '<div class="empty-state"><div class="icon">&#128203;</div><h3>Sin ordenes en esta estacion</h3></div>';
         return;
     }
 
-    list.innerHTML = colaActual.map(p => {
+    list.innerHTML = filtrados.map(p => {
         const esReposicion = p.es_reposicion;
         const cardClass = `order-card estado-${p.estado}${esReposicion ? ' reposicion' : ''}`;
         let actions = '';
@@ -299,6 +309,8 @@ function renderCola() {
 }
 
 function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function filtrarCola() { renderCola(); }
 
 async function iniciarPaso(pasoId) {
     try {
