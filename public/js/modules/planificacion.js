@@ -710,7 +710,7 @@ App.modules.planificacion = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 130 } },
+                layout: { padding: { left: 100 } },
                 plugins: {
                     legend: { display: false },
                     datalabels: {
