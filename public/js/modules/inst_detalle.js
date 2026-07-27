@@ -77,7 +77,17 @@ App.registerModule('inst_detalle', {
                         <div style="grid-column:1/-1"><strong>Descripcion:</strong> ${escapeHtml(inst.descripcion || '-')}</div>
                         <div style="grid-column:1/-1"><strong>Notas Previas:</strong> ${escapeHtml(inst.notas_previas || '-')}</div>
                         ${inst.notas_cierre ? `<div style="grid-column:1/-1"><strong>Notas Cierre:</strong> ${escapeHtml(inst.notas_cierre)}</div>` : ''}
-                        ${inst.firma_cliente ? `<div style="grid-column:1/-1"><strong>Firma Cliente:</strong> ${escapeHtml(inst.firma_cliente)}</div>` : ''}
+                        ${(() => {
+                            if (!inst.firma_cliente) return '';
+                            try {
+                                const f = JSON.parse(inst.firma_cliente);
+                                return `<div style="grid-column:1/-1"><strong>Firma Cliente:</strong> ${escapeHtml(f.nombre || '')}
+                                    <div style="margin-top:6px"><img src="${f.firma}" style="max-width:280px;border:1px solid var(--border);border-radius:6px;background:#fff;padding:4px"></div>
+                                </div>`;
+                            } catch(e) {
+                                return `<div style="grid-column:1/-1"><strong>Firma Cliente:</strong> ${escapeHtml(inst.firma_cliente)}</div>`;
+                            }
+                        })()}
                         <div><strong>Creado por:</strong> ${escapeHtml(inst.creado_por || '-')}</div>
                         <div><strong>Cerrado por:</strong> ${escapeHtml(inst.cerrado_por || '-')}</div>
                     </div>
@@ -137,20 +147,101 @@ App.registerModule('inst_detalle', {
     showCerrar(id) {
         App.showModal(`
             <div class="form-group"><label>Notas de Cierre</label><textarea class="form-control" id="instCierreNotas" rows="3" placeholder="Observaciones finales" style="text-transform:capitalize"></textarea></div>
-            <div class="form-group"><label>Firma / Conformidad Cliente</label><input class="form-control" id="instCierreFirma" placeholder="Nombre de quien recibe" style="text-transform:capitalize"></div>
+            <div class="form-group"><label>Nombre de quien recibe *</label><input class="form-control" id="instCierreFirma" placeholder="Nombre completo" style="text-transform:capitalize"></div>
+            <div class="form-group">
+                <label>Firma del Cliente *</label>
+                <div style="position:relative;border:2px solid #334155;border-radius:8px;overflow:hidden;background:#fff">
+                    <canvas id="firmaCanvas" width="460" height="180" style="display:block;width:100%;height:180px;touch-action:none;cursor:crosshair"></canvas>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:6px">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="App.modules.inst_detalle.limpiarFirma()" style="font-size:11px">🗑️ Limpiar</button>
+                    <span style="font-size:11px;color:#64748b;align-self:center">Firme aqui con el dedo o mouse</span>
+                </div>
+            </div>
         `, { title: 'Cerrar Instalacion #' + id });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.inst_detalle.cerrar(${id})">Completar</button>
         `;
+        setTimeout(() => this.initFirmaCanvas(), 100);
+    },
+
+    initFirmaCanvas() {
+        const canvas = document.getElementById('firmaCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+        let lastX = 0, lastY = 0;
+
+        const getPos = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            if (e.touches) {
+                return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+            }
+            return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+        };
+
+        const startDraw = (e) => {
+            e.preventDefault();
+            drawing = true;
+            const pos = getPos(e);
+            lastX = pos.x; lastY = pos.y;
+        };
+
+        const draw = (e) => {
+            e.preventDefault();
+            if (!drawing) return;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            lastX = pos.x; lastY = pos.y;
+        };
+
+        const stopDraw = (e) => { e.preventDefault(); drawing = false; };
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDraw, { passive: false });
+    },
+
+    limpiarFirma() {
+        const canvas = document.getElementById('firmaCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     },
 
     async cerrar(id) {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
+        const nombre = document.getElementById('instCierreFirma').value.trim();
+        if (!nombre) { App.showAlert('Ingrese el nombre de quien recibe', 'danger'); return; }
+        const canvas = document.getElementById('firmaCanvas');
+        let firmaBase64 = '';
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            let hasContent = false;
+            for (let i = 3; i < pixels.length; i += 4) { if (pixels[i] > 0) { hasContent = true; break; } }
+            if (hasContent) firmaBase64 = canvas.toDataURL('image/png');
+        }
+        if (!firmaBase64) { App.showAlert('Por favor firme el documento', 'danger'); return; }
         const data = {
             notas_cierre: capitalize(document.getElementById('instCierreNotas').value.trim()),
-            firma_cliente: capitalize(document.getElementById('instCierreFirma').value.trim())
+            firma_cliente: JSON.stringify({ nombre: capitalize(nombre), firma: firmaBase64 })
         };
         try {
             await fetch(`/api/instalaciones/${id}/cerrar`, {
