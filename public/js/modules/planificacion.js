@@ -512,10 +512,15 @@ App.modules.planificacion = {
                     </div>
                 </div>
                 <div style="overflow-x:auto">
-                    <table style="width:100%;font-size:10px;border-collapse:collapse">
+                    <table style="width:100%;font-size:10px;border-collapse:collapse;table-layout:fixed">
+                        <colgroup>
+                            <col style="width:180px">
+                            <col style="width:70px">
+                            ${diasInfo.map(() => '<col>').join('')}
+                        </colgroup>
                         <thead><tr style="border-bottom:2px solid var(--border)">
-                            <th style="padding:6px;text-align:left;width:120px">Grupo</th>
-                            <th style="padding:6px;text-align:center;width:70px">Cap kg/dia</th>
+                            <th style="padding:6px;text-align:left">Grupo</th>
+                            <th style="padding:6px;text-align:center">Cap kg/dia</th>
                             ${diasInfo.map(d => {
                                 return `<th style="padding:4px;text-align:center">
                                     <div style="font-weight:600;font-size:11px">${d.fechaCorta}</div>
@@ -705,6 +710,7 @@ App.modules.planificacion = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { left: 210 } },
                 plugins: {
                     legend: { display: false },
                     datalabels: {
@@ -814,11 +820,14 @@ App.modules.planificacion = {
         const pct = (usado, cap) => cap > 0 ? Math.round((usado / cap) * 100) : 0;
         const barColor = (p) => p >= 100 ? '#ef4444' : p >= 85 ? '#f59e0b' : p >= 50 ? '#3b82f6' : '#22c55e';
 
-        let html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+        let html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
+        html += '<colgroup><col style="width:180px"><col style="width:70px">';
+        dias.forEach(() => { html += '<col>'; });
+        html += '</colgroup>';
         // Header
         html += '<thead><tr style="border-bottom:2px solid var(--border)">';
-        html += '<th style="padding:8px;text-align:left;min-width:140px">Estacion</th>';
-        html += '<th style="padding:8px 2px 8px 0;text-align:left;min-width:35px;max-width:45px">Cap</th>';
+        html += '<th style="padding:8px;text-align:left">Estacion</th>';
+        html += '<th style="padding:6px 2px 6px 0;text-align:left">Cap</th>';
         dias.forEach(f => {
             html += `<th style="padding:6px;text-align:center;min-width:90px;white-space:nowrap">${nombreDia(f)}</th>`;
         });
