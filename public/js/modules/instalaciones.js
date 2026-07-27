@@ -108,6 +108,7 @@ App.registerModule('instalaciones', {
             for (const inst of instDia) {
                 const color = estadoColor(inst.estado);
                 html += `<div onclick="App.modules.inst_detalle.abrir(${inst.id})" style="cursor:pointer;margin:1px 0;padding:3px 5px;border-radius:4px;border-left:3px solid ${color};font-size:10px;line-height:1.3;transition:all .15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background=''">
+                    <div style="font-weight:700;color:${color};font-size:9px;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')}</div>
                     <div style="font-weight:600;color:${color}">${estadoIcon(inst.estado)} ${inst.hora_programada || '09:00'}${inst.numero_orden ? ' • ' + escapeHtml(inst.numero_orden) : ''}</div>
                     <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(inst.cliente)}</div>
                 </div>`;
