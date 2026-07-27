@@ -438,6 +438,24 @@ async function initDB() {
     )`);
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut') THEN ALTER TABLE turnos ADD COLUMN rut VARCHAR(20) DEFAULT ''; END IF; END $$`);
 
+    // TABLA: Mermas de produccion
+    await query(`CREATE TABLE IF NOT EXISTS mermas (
+        id SERIAL PRIMARY KEY,
+        orden_produccion_id INTEGER NOT NULL REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+        paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE SET NULL,
+        estacion_id INTEGER REFERENCES estaciones_maestras(id),
+        causa VARCHAR(100) NOT NULL,
+        cantidad INTEGER DEFAULT 1,
+        observacion TEXT DEFAULT '',
+        m2_mermados DECIMAL(10,4) DEFAULT 0,
+        costo_materia_prima DECIMAL(12,2) DEFAULT 0,
+        creado_por VARCHAR(200) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_ordenes' AND column_name='es_reposicion') THEN ALTER TABLE produccion_ordenes ADD COLUMN es_reposicion BOOLEAN DEFAULT FALSE; END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_ordenes' AND column_name='merma_original_id') THEN ALTER TABLE produccion_ordenes ADD COLUMN merma_original_id INTEGER REFERENCES mermas(id); END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='cola_produccion_pasos' AND column_name='estado') THEN ALTER TABLE cola_produccion_pasos ALTER COLUMN estado SET DEFAULT 'PENDIENTE'; END IF; END $$`);
+
     await query(`CREATE TABLE IF NOT EXISTS movimientos (
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER REFERENCES usuarios(id),
@@ -2254,6 +2272,173 @@ const server = http.createServer(async (req, res) => {
                 'Content-Length': row.archivo.length
             });
             res.end(row.archivo);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // =====================================================
+    // TALLER - Pantalla de Operarios
+    // =====================================================
+
+    // GET /api/taller/estaciones - Estaciones activas
+    if (urlPath === '/api/taller/estaciones' && req.method === 'GET') {
+        try {
+            await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS capacidad_max_m2_dia DECIMAL(10,2) DEFAULT 100`);
+            await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS es_cuello_botella BOOLEAN DEFAULT FALSE`);
+            const result = await query('SELECT id, nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia FROM estaciones_maestras WHERE activa = true ORDER BY orden_secuencia_defecto');
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/taller/colaxestacion/:id?fecha=YYYY-MM-DD - Cola del dia para una estacion
+    if (urlPath.match(/^\/api\/taller\/colaxestacion\/\d+/) && req.method === 'GET') {
+        const estacionId = parseInt(urlPath.split('/').pop());
+        const hoy = q.fecha || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        try {
+            const result = await query(`
+                SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados,
+                       o.id as orden_id, o.pedido_sap_id, o.cliente, o.codigo_producto, o.descripcion,
+                       o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
+                       o.nota, o.grupo, o.es_reposicion, o.familia_id,
+                       f.nombre_familia
+                FROM cola_produccion_pasos p
+                JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                LEFT JOIN familias_producto f ON o.familia_id = f.id
+                WHERE p.estacion_id = $1 AND p.fecha_programada = $2
+                ORDER BY p.orden_secuencia ASC, o.id ASC
+            `, [estacionId, hoy]);
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/taller/iniciar - Marcar paso como EN_PROCESO
+    if (urlPath === '/api/taller/iniciar' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { paso_id, operario } = body;
+        if (!paso_id) { json(res, { error: 'paso_id requerido' }, 400); return; }
+        try {
+            await query(
+                `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()) WHERE id = $1 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
+                [paso_id]
+            );
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/taller/finalizar - Marcar paso como TERMINADO y habilitar siguiente
+    if (urlPath === '/api/taller/finalizar' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { paso_id } = body;
+        if (!paso_id) { json(res, { error: 'paso_id requerido' }, 400); return; }
+        try {
+            const paso = await query('SELECT * FROM cola_produccion_pasos WHERE id = $1', [paso_id]);
+            if (paso.rows.length === 0) { json(res, { error: 'Paso no encontrado' }, 404); return; }
+            const p = paso.rows[0];
+            await query(`UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW() WHERE id = $1`, [paso_id]);
+            const siguiente = await query(
+                `SELECT id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND orden_secuencia = $2 AND estado = 'PENDIENTE' LIMIT 1`,
+                [p.orden_produccion_id, p.orden_secuencia + 1]
+            );
+            let siguienteHabilitado = false;
+            if (siguiente.rows.length > 0) {
+                siguienteHabilitado = true;
+            }
+            json(res, { ok: true, siguienteHabilitado, siguientePasoId: siguiente.rows.length > 0 ? siguiente.rows[0].id : null });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // POST /api/taller/merma - Declarar merma con reposicion urgente
+    if (urlPath === '/api/taller/merma' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { paso_id, causa, cantidad, observacion, operario } = body;
+        if (!paso_id || !causa) { json(res, { error: 'paso_id y causa requeridos' }, 400); return; }
+        const userEmail = req.headers['x-user-email'] || operario || 'Operario';
+        try {
+            const paso = await query(`
+                SELECT p.*, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, o.cantidad,
+                       o.familia_id, o.kilos, o.espesor_mm, o.pedido_sap_id, o.grupo, o.metros_cuadrados,
+                       o.costo_materia_prima, o.nota, o.pintado, o.perforaciones, o.tipo_venta,
+                       o.posicion, o.orden_compra, o.tipo_entrega
+                FROM cola_produccion_pasos p
+                JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                WHERE p.id = $1
+            `, [paso_id]);
+            if (paso.rows.length === 0) { json(res, { error: 'Paso no encontrado' }, 404); return; }
+            const p = paso.rows[0];
+            const m2mermados = p.m2_asignados || p.metros_cuadrados || 0;
+            const costoMP = p.costo_materia_prima || 0;
+
+            await query(`UPDATE cola_produccion_pasos SET estado = 'MERMADO', hora_fin = NOW() WHERE id = $1`, [paso_id]);
+
+            const mermaRes = await query(
+                `INSERT INTO mermas (orden_produccion_id, paso_id, estacion_id, causa, cantidad, observacion, m2_mermados, costo_materia_prima, creado_por)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+                [p.orden_produccion_id, paso_id, p.estacion_id, causa, cantidad || 1, observacion || '', m2mermados, costoMP, userEmail]
+            );
+            const mermaId = mermaRes.rows[0].id;
+
+            const ordenRes = await query('SELECT MAX(id) as max_id FROM produccion_ordenes');
+            const nuevoNumero = (ordenRes.rows[0].max_id || 0) + 1;
+
+            const nuevaOrdenRes = await query(`
+                INSERT INTO produccion_ordenes (
+                    pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto,
+                    metros_cuadrados, cantidad, familia_id, espesor_mm, kilos,
+                    estado_programacion, es_reposicion, merma_original_id,
+                    pintado, perforaciones, tipo_venta, nota, posicion, orden_compra,
+                    tipo_entrega, grupo, fecha_programada
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+                RETURNING id
+            `, [
+                p.pedido_sap_id, p.cliente, p.codigo_producto,
+                '[REPOSICION] ' + (p.descripcion || ''),
+                p.ancho, p.alto, m2mermados, cantidad || 1,
+                p.familia_id, p.espesor_mm, p.kilos,
+                mermaId, p.pintado, p.perforaciones,
+                p.tipo_venta,
+                (p.nota || '') + ' | Merma: ' + causa + (observacion ? ' - ' + observacion : ''),
+                p.posicion, p.orden_compra, p.tipo_entrega, p.grupo,
+                new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' })
+            ]);
+            const nuevaOrdenId = nuevaOrdenRes.rows[0].id;
+
+            const estacionesBase = await query(
+                'SELECT estacion_id FROM familia_estaciones_base WHERE familia_id = $1 ORDER BY (SELECT orden_secuencia_defecto FROM estaciones_maestras WHERE id = estacion_id)',
+                [p.familia_id]
+            );
+            if (estacionesBase.rows.length > 0) {
+                for (let i = 0; i < estacionesBase.rows.length; i++) {
+                    await query(
+                        'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1,$2,$3,$4,$5,$6)',
+                        [nuevaOrdenId, estacionesBase.rows[i].estacion_id, i + 1, 'PENDIENTE',
+                         new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' }), m2mermados]
+                    );
+                }
+            }
+
+            json(res, { ok: true, mermaId, nuevaOrdenId });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // GET /api/taller/mermas?fecha=YYYY-MM-DD - Historial de mermas del dia
+    if (urlPath === '/api/taller/mermas' && req.method === 'GET') {
+        const hoy = q.fecha || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        try {
+            const result = await query(`
+                SELECT m.*, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto,
+                       e.nombre_estacion
+                FROM mermas m
+                JOIN produccion_ordenes o ON m.orden_produccion_id = o.id
+                LEFT JOIN estaciones_maestras e ON m.estacion_id = e.id
+                WHERE m.created_at::date = $1
+                ORDER BY m.created_at DESC
+            `, [hoy]);
+            json(res, result.rows);
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
