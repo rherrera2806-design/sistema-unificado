@@ -30,6 +30,12 @@ App.registerModule('inst_historial', {
                     <h3 style="margin:0">Todas las Instalaciones (${this.instalaciones.length})</h3>
                     <div style="display:flex;gap:8px">
                         <input type="text" id="iHistSearch" placeholder="Buscar cliente, direccion..." oninput="App.modules.inst_historial.filtrar()" class="form-control" style="width:250px;font-size:13px">
+                        <select id="iHistTipo" onchange="App.modules.inst_historial.filtrar()" class="form-control" style="width:130px;font-size:13px">
+                            <option value="todos">Todos</option>
+                            <option value="VISITA_TECNICA">Visita Tecnica</option>
+                            <option value="INSTALACION">Instalacion</option>
+                            <option value="POST_VENTA">Post-Venta</option>
+                        </select>
                         <select id="iHistEstado" onchange="App.modules.inst_historial.filtrar()" class="form-control" style="width:140px;font-size:13px">
                             <option value="todos">Todos</option>
                             <option value="PROGRAMADA">Programadas</option>
@@ -94,6 +100,7 @@ App.registerModule('inst_historial', {
     filtrar() {
         const search = (document.getElementById('iHistSearch')?.value || '').toLowerCase();
         const estado = document.getElementById('iHistEstado')?.value || 'todos';
+        const tipo = document.getElementById('iHistTipo')?.value || 'todos';
         let filtered = this.instalaciones;
         if (search) filtered = filtered.filter(i =>
             (i.cliente || '').toLowerCase().includes(search) ||
@@ -103,6 +110,7 @@ App.registerModule('inst_historial', {
             (i.numero_orden || '').toLowerCase().includes(search)
         );
         if (estado !== 'todos') filtered = filtered.filter(i => i.estado === estado);
+        if (tipo !== 'todos') filtered = filtered.filter(i => (i.tipo || 'INSTALACION') === tipo);
         document.getElementById('iHistBody').innerHTML = this.filasHtml(filtered);
     },
 
