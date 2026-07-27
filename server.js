@@ -2392,7 +2392,7 @@ const server = http.createServer(async (req, res) => {
                 SELECT p.*, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, o.cantidad,
                        o.familia_id, o.kilos, o.espesor_mm, o.pedido_sap_id, o.grupo, o.metros_cuadrados,
                        o.costo_materia_prima, o.nota, o.pintado, o.perforaciones, o.tipo_venta,
-                       o.posicion, o.orden_compra, o.tipo_entrega
+                       o.posicion, o.orden_compra, o.tipo_entrega, o.item_numero, o.codigo_padre
                 FROM cola_produccion_pasos p
                 JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
                 WHERE p.id = $1
@@ -2425,8 +2425,8 @@ const server = http.createServer(async (req, res) => {
                     metros_cuadrados, cantidad, familia_id, espesor_mm, kilos,
                     estado_programacion, es_reposicion, merma_original_id,
                     pintado, perforaciones, tipo_venta, nota, posicion, orden_compra,
-                    tipo_entrega, grupo, fecha_programada
-                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+                    tipo_entrega, grupo, item_numero, codigo_padre
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
                 RETURNING id
             `, [
                 p.pedido_sap_id, p.cliente, p.codigo_producto,
@@ -2437,7 +2437,7 @@ const server = http.createServer(async (req, res) => {
                 p.tipo_venta,
                 (p.nota || '') + ' | Merma: ' + causa + (observacion ? ' - ' + observacion : ''),
                 p.posicion, p.orden_compra, p.tipo_entrega, p.grupo,
-                new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' })
+                p.item_numero, p.codigo_padre
             ]);
             const nuevaOrdenId = nuevaOrdenRes.rows[0].id;
 
@@ -2453,8 +2453,7 @@ const server = http.createServer(async (req, res) => {
                 for (const pasoOrig of pasosOriginales.rows) {
                     await query(
                         'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1,$2,$3,$4,$5,$6)',
-                        [nuevaOrdenId, pasoOrig.estacion_id, pasoOrig.orden_secuencia, 'PENDIENTE',
-                         new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' }), m2Mermados]
+                        [nuevaOrdenId, pasoOrig.estacion_id, pasoOrig.orden_secuencia, 'PENDIENTE', null, m2Mermados]
                     );
                 }
             } else {
@@ -2466,8 +2465,7 @@ const server = http.createServer(async (req, res) => {
                 for (let i = 0; i < estacionesBase.rows.length; i++) {
                     await query(
                         'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1,$2,$3,$4,$5,$6)',
-                        [nuevaOrdenId, estacionesBase.rows[i].estacion_id, i + 1, 'PENDIENTE',
-                         new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' }), m2Mermados]
+                        [nuevaOrdenId, estacionesBase.rows[i].estacion_id, i + 1, 'PENDIENTE', null, m2Mermados]
                     );
                 }
             }
