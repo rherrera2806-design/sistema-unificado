@@ -411,6 +411,7 @@ App.modules.planificacion = {
         }
         this.renderCalendario();
         this.renderChart();
+        this.cargarEstaciones();
     },
 
     _findFirstDayWithData() {
@@ -748,26 +749,16 @@ App.modules.planificacion = {
 
     // ── CARGA POR ESTACIONES ──
     cambiarSemanaEstaciones(delta) {
-        if (!this.semanaEstaciones) {
-            this.semanaEstaciones = new Date();
-            const dia = this.semanaEstaciones.getDay();
-            const diffLunes = dia === 0 ? -6 : 1 - dia;
-            this.semanaEstaciones.setDate(this.semanaEstaciones.getDate() + diffLunes);
-        }
-        this.semanaEstaciones.setDate(this.semanaEstaciones.getDate() + delta * 15);
-        this.cargarEstaciones();
+        this.semanaInicio.setDate(this.semanaInicio.getDate() + delta * 15);
+        this.semanaFin = new Date(this.semanaInicio);
+        this.semanaFin.setDate(this.semanaFin.getDate() + 14);
+        this._dataLoaded = false;
+        this.cargarDatos();
     },
 
     async cargarEstaciones() {
-        if (!this.semanaEstaciones) {
-            this.semanaEstaciones = new Date();
-            const dia = this.semanaEstaciones.getDay();
-            const diffLunes = dia === 0 ? -6 : 1 - dia;
-            this.semanaEstaciones.setDate(this.semanaEstaciones.getDate() + diffLunes);
-        }
-        const inicio = this.fmtDate(this.semanaEstaciones);
-        const finD = new Date(this.semanaEstaciones);
-        finD.setDate(finD.getDate() + 14);
+        const inicio = this.fmtDate(this.semanaInicio);
+        const finD = new Date(this.semanaFin);
         const fin = this.fmtDate(finD);
 
         try {
@@ -788,10 +779,10 @@ App.modules.planificacion = {
             return;
         }
 
-        // Generar 15 dias corridos, filtrando solo dias laborales segun calendario
+        // Generar 15 dias corridos desde semanaInicio, filtrando solo dias laborales
         const todosDias = [];
         for (let i = 0; i < 15; i++) {
-            const d = new Date(this.semanaEstaciones);
+            const d = new Date(this.semanaInicio);
             d.setDate(d.getDate() + i);
             const fs = this.fmtDate(d);
             const cal = calendario ? calendario[fs] : null;
