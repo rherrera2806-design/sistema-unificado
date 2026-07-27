@@ -3064,7 +3064,15 @@ const server = http.createServer(async (req, res) => {
                 (SELECT em.nombre_estacion FROM cola_produccion_pasos cp
                  JOIN estaciones_maestras em ON cp.estacion_id = em.id
                  WHERE cp.orden_produccion_id = o.id AND em.es_cuello_botella = TRUE
-                 AND cp.estado != 'TERMINADO'
+                 AND cp.fecha_programada IS NOT NULL
+                 AND EXISTS (
+                     SELECT 1 FROM cola_produccion_pasos cp2
+                     WHERE cp2.estacion_id = cp.estacion_id
+                       AND cp2.fecha_programada = cp.fecha_programada
+                       AND cp2.estado != 'MERMADO'
+                     GROUP BY cp2.estacion_id, cp2.fecha_programada
+                     HAVING COALESCE(SUM(cp2.m2_asignados), 0) > em.capacidad_max_m2_dia
+                 )
                  ORDER BY em.capacidad_max_m2_dia ASC LIMIT 1) as cuello_botella
             FROM produccion_ordenes o ORDER BY o.created_at DESC
         `);
