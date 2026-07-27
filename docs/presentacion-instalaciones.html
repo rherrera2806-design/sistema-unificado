@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VitroFlow - Modulo de Instalaciones</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0f172a; color: #fff; overflow: hidden; }
+  
+  .slide { width: 100vw; height: 100vh; display: none; padding: 60px 80px; position: relative; }
+  .slide.active { display: flex; flex-direction: column; }
+  
+  /* Slide 1 - Cover */
+  .slide-cover { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); justify-content: center; align-items: center; text-align: center; }
+  .slide-cover::before { content: ''; position: absolute; top: -50%; right: -20%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%); border-radius: 50%; }
+  .slide-cover::after { content: ''; position: absolute; bottom: -30%; left: -10%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(34,197,94,0.1) 0%, transparent 70%); border-radius: 50%; }
+  .slide-cover h1 { font-size: 56px; font-weight: 900; letter-spacing: -2px; margin-bottom: 16px; background: linear-gradient(135deg, #3b82f6, #22c55e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; position: relative; z-index: 1; }
+  .slide-cover .subtitle { font-size: 24px; color: #94a3b8; font-weight: 300; margin-bottom: 40px; position: relative; z-index: 1; }
+  .slide-cover .tagline { font-size: 16px; color: #64748b; max-width: 600px; line-height: 1.6; position: relative; z-index: 1; }
+  .slide-cover .logo { font-size: 72px; margin-bottom: 24px; position: relative; z-index: 1; }
+  
+  /* Slide 2 - Problem */
+  .slide-problem { background: linear-gradient(135deg, #0f172a, #1e1b4b); }
+  .slide-problem .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; flex: 1; align-items: center; }
+  .problem-card { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 16px; padding: 24px; margin-bottom: 16px; }
+  .problem-card .icon { font-size: 32px; margin-bottom: 8px; }
+  .problem-card h3 { font-size: 16px; font-weight: 600; color: #fca5a5; margin-bottom: 6px; }
+  .problem-card p { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+  
+  /* Slide 3 - Solution */
+  .slide-solution { background: linear-gradient(135deg, #0f172a, #0c1a0f); }
+  .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; flex: 1; align-items: start; }
+  .feature-card { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.15); border-radius: 16px; padding: 24px; text-align: center; transition: transform 0.2s; }
+  .feature-card:hover { transform: translateY(-4px); }
+  .feature-card .icon { font-size: 36px; margin-bottom: 12px; }
+  .feature-card h3 { font-size: 15px; font-weight: 600; color: #86efac; margin-bottom: 8px; }
+  .feature-card p { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+  
+  /* Slide 4 - Workflow */
+  .slide-workflow { background: linear-gradient(135deg, #0f172a, #1a1a2e); }
+  .workflow-flow { display: flex; align-items: center; justify-content: center; gap: 12px; flex: 1; flex-wrap: wrap; }
+  .wf-step { padding: 16px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; text-align: center; min-width: 140px; }
+  .wf-arrow { font-size: 24px; color: #64748b; }
+  .wf-blue { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+  .wf-amber { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+  .wf-green { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+  .wf-red { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+  
+  /* Slide 5 - Dashboard */
+  .slide-dashboard { background: linear-gradient(135deg, #0f172a, #0f172a); }
+  .dashboard-mock { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 30px; }
+  .stat-card { padding: 20px; border-radius: 12px; text-align: center; }
+  .stat-card .num { font-size: 36px; font-weight: 800; }
+  .stat-card .label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+  .stat-blue { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); }
+  .stat-blue .num { color: #60a5fa; }
+  .stat-amber { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
+  .stat-amber .num { color: #fbbf24; }
+  .stat-green { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); }
+  .stat-green .num { color: #4ade80; }
+  .stat-red { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+  .stat-red .num { color: #f87171; }
+  .stat-gray { background: rgba(148,163,184,0.1); border: 1px solid rgba(148,163,184,0.2); }
+  .stat-gray .num { color: #cbd5e1; }
+  
+  /* Slide 6 - Benefits */
+  .slide-benefits { background: linear-gradient(135deg, #0f172a, #0c2d1a); }
+  .benefits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; flex: 1; align-items: start; }
+  .benefit-item { display: flex; gap: 16px; padding: 20px; background: rgba(34,197,94,0.04); border: 1px solid rgba(34,197,94,0.1); border-radius: 12px; }
+  .benefit-item .icon { font-size: 28px; flex-shrink: 0; }
+  .benefit-item h3 { font-size: 15px; font-weight: 600; color: #86efac; margin-bottom: 4px; }
+  .benefit-item p { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+  
+  /* Slide 7 - ROI */
+  .slide-roi { background: linear-gradient(135deg, #0f172a, #1a1a2e); }
+  .roi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; flex: 1; align-items: center; }
+  .roi-card { text-align: center; padding: 30px; background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15); border-radius: 16px; }
+  .roi-card .number { font-size: 48px; font-weight: 900; background: linear-gradient(135deg, #3b82f6, #22c55e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .roi-card .unit { font-size: 16px; color: #94a3b8; margin-top: 4px; }
+  .roi-card .desc { font-size: 13px; color: #cbd5e1; margin-top: 8px; line-height: 1.4; }
+  
+  /* Slide 8 - Pricing */
+  .slide-pricing { background: linear-gradient(135deg, #0f172a, #1e1b4b); justify-content: center; align-items: center; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1000px; }
+  .price-card { padding: 32px 24px; border-radius: 16px; text-align: center; position: relative; }
+  .price-card.popular { border: 2px solid #3b82f6; background: rgba(59,130,246,0.08); }
+  .price-card:not(.popular) { border: 1px solid rgba(148,163,184,0.15); background: rgba(30,41,59,0.5); }
+  .price-card .plan-name { font-size: 14px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
+  .price-card .price { font-size: 42px; font-weight: 900; color: #fff; }
+  .price-card .period { font-size: 14px; color: #64748b; }
+  .price-card .features { list-style: none; margin: 20px 0; text-align: left; }
+  .price-card .features li { padding: 8px 0; font-size: 13px; color: #cbd5e1; border-bottom: 1px solid rgba(148,163,184,0.1); }
+  .price-card .features li::before { content: '✓ '; color: #22c55e; font-weight: 700; }
+  .popular-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #3b82f6; color: #fff; padding: 4px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  
+  /* Slide 9 - CTA */
+  .slide-cta { background: linear-gradient(135deg, #0f172a, #1e293b); justify-content: center; align-items: center; text-align: center; }
+  .slide-cta h2 { font-size: 48px; font-weight: 900; margin-bottom: 16px; background: linear-gradient(135deg, #3b82f6, #22c55e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .slide-cta p { font-size: 18px; color: #94a3b8; margin-bottom: 40px; max-width: 600px; }
+  .cta-btn { display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; font-size: 18px; font-weight: 700; border-radius: 12px; text-decoration: none; transition: transform 0.2s; }
+  .cta-btn:hover { transform: scale(1.05); }
+  
+  /* Section titles */
+  .section-title { font-size: 14px; font-weight: 600; color: #3b82f6; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px; }
+  .slide h2 { font-size: 36px; font-weight: 800; margin-bottom: 32px; letter-spacing: -1px; }
+  
+  /* Navigation */
+  .nav { position: fixed; bottom: 30px; right: 40px; display: flex; gap: 8px; z-index: 100; }
+  .nav button { width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.2); background: rgba(15,23,42,0.8); color: #fff; font-size: 18px; cursor: pointer; backdrop-filter: blur(10px); }
+  .nav button:hover { background: rgba(59,130,246,0.2); border-color: #3b82f6; }
+  .slide-num { position: fixed; bottom: 40px; left: 40px; font-size: 13px; color: #64748b; z-index: 100; }
+  
+  /* Tables */
+  .tech-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tech-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid rgba(59,130,246,0.3); color: #93c5fd; font-weight: 600; }
+  .tech-table td { padding: 10px 12px; border-bottom: 1px solid rgba(148,163,184,0.1); color: #cbd5e1; }
+  .tech-table tr:hover td { background: rgba(59,130,246,0.05); }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: Cover -->
+<div class="slide slide-cover active" id="s1">
+  <div class="logo">🏢</div>
+  <h1>VitroFlow</h1>
+  <div class="subtitle">Modulo de Gestion de Instalaciones</div>
+  <div class="tagline">Control total de instalaciones en terreno. Programa, monitorea y documenta cada trabajo con trazabilidad completa desde la oficina hasta el sitio del cliente.</div>
+</div>
+
+<!-- SLIDE 2: Problem -->
+<div class="slide slide-problem" id="s2">
+  <div class="section-title">El Problema</div>
+  <h2>Sin control, las instalaciones se pierden</h2>
+  <div class="grid">
+    <div>
+      <div class="problem-card">
+        <div class="icon">📋</div>
+        <h3>Programacion en papel o WhatsApp</h3>
+        <p>Las instalaciones se coordinan por mensajes sueltos. No hay vista centralizada de que esta programado para hoy, manana o la proxima semana.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🔍</div>
+        <h3>Sin visibilidad en tiempo real</h3>
+        <p>El jefe no sabe si el tecnico ya salio, si esta en camino o si llego al sitio. Las llamadas para preguntar interrumpen el trabajo.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">📸</div>
+        <h3>Sin evidencia documentada</h3>
+        <p>Cuando hay un reclamo del cliente no hay fotos, ni notas, ni firma de conformidad. La empresa queda en desventaja.</p>
+      </div>
+    </div>
+    <div>
+      <div class="problem-card">
+        <div class="icon">⚠️</div>
+        <h3>Novedades no registradas</h3>
+        <p>Si se encuentra un problema en terreno (acceso bloqueado, medidas incorrectas), no queda registro formal. Se pierde informacion critica.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">📊</div>
+        <h3>Sin metricas de desempeno</h3>
+        <p>No se puede medir cuantas instalaciones completa cada tecnico, cual es el promedio de novedades, ni cuales clientes tienen mas problemas.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">💸</div>
+        <h3>Costos ocultos</h3>
+        <p>Segundas visitas por falta de informacion, tiempos muertos sin seguimiento, y trabajos sin conformidad que generan reclamos.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3: Solution -->
+<div class="slide slide-solution" id="s3">
+  <div class="section-title">La Solucion</div>
+  <h2>Todo lo que necesitas en un solo lugar</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="icon">📅</div>
+      <h3>Calendario Mensual</h3>
+      <p>Vista visual de todas las instalaciones programadas. Navega por meses, colores por estado, seleccion rapida.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🗺️</div>
+      <h3>Navegacion Integrada</h3>
+      <p>Un clic para abrir Google Maps o Waze con la direccion exacta del cliente. Sin copiar, sin errores.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🔄</div>
+      <h3>Flujo de Estados</h3>
+      <p>PROGRAMADA → EN CAMINO → EN CURSO → COMPLETADA. Cada paso registrado con usuario y timestamp.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">⚠️</div>
+      <h3>Registro de Novedades</h3>
+      <p>Reporta problemas en terreno con descripcion y fotos. Historial completo de cada incidente.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📸</div>
+      <h3>Evidencia Fotografica</h3>
+      <p>Sube fotos directamente desde el celular. Antes, durante y despues. Todo queda almacenado.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">✍️</div>
+      <h3>Firma de Conformidad</h3>
+      <p>Cierre con notas y firma del cliente. Prueba legal de que el trabajo fue entregado satisfactoriamente.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">👷</div>
+      <h3>Gestion de Tecnicos</h3>
+      <p>Lista maestra de tecnicos con estado activo/inactivo. Asignacion consistente sin errores de tipeo.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🤝</div>
+      <h3>Gestion de Vendedores</h3>
+      <p>Lista maestra de vendedores. Rastrea que vendedor genero cada instalacion para comisiones.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📜</div>
+      <h3>Auditoria Completa</h3>
+      <p>Cada accion queda registrada: quien, cuando, que hizo. Historial inmutable para control total.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: Workflow -->
+<div class="slide slide-workflow" id="s4">
+  <div class="section-title">Flujo de Trabajo</div>
+  <h2>Un ciclo claro y controlado</h2>
+  <div class="workflow-flow">
+    <div class="wf-step wf-blue">📋 PROGRAMADA<br><small>Instalacion creada y programada</small></div>
+    <div class="wf-arrow">→</div>
+    <div class="wf-step wf-amber">🚗 EN CAMINO<br><small>Tecnico sale hacia el sitio</small></div>
+    <div class="wf-arrow">→</div>
+    <div class="wf-step wf-amber">⚙ EN CURSO<br><small>Trabajo en progreso</small></div>
+    <div class="wf-arrow">→</div>
+    <div class="wf-step wf-green">✅ COMPLETADA<br><small>Con firma del cliente</small></div>
+  </div>
+  <div style="text-align:center;margin-top:20px">
+    <div style="display:inline-flex;align-items:center;gap:12px">
+      <span style="color:#64748b">Si hay problema:</span>
+      <div class="wf-step wf-red" style="padding:12px 20px">⚠ NOVEDAD<br><small>Con fotos y descripcion</small></div>
+      <span style="color:#64748b">→</span>
+      <div class="wf-step wf-amber" style="padding:12px 20px">↩ REANUDAR<br><small>Vuelve a EN CURSO</small></div>
+    </div>
+  </div>
+  <div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:800px;margin-left:auto;margin-right:auto">
+    <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:12px;padding:16px">
+      <h4 style="color:#93c5fd;font-size:13px;margin-bottom:8px">📷 Evidencia en cada paso</h4>
+      <p style="font-size:12px;color:#94a3b8">Fotos subidas durante EN_CURSO, COMPLETADA o CON_NOVEDAD. Cada imagen queda vinculada a la instalacion.</p>
+    </div>
+    <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:12px;padding:16px">
+      <h4 style="color:#86efac;font-size:13px;margin-bottom:8px">✍️ Cierre formal</h4>
+      <p style="font-size:12px;color:#94a3b8">Notas de cierre + firma/nombre del cliente que recibe. Registro legal de conformidad.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5: Dashboard -->
+<div class="slide slide-dashboard" id="s5">
+  <div class="section-title">Panel de Control</div>
+  <h2>Los numeros al instante</h2>
+  <div class="dashboard-mock">
+    <div class="stat-card stat-gray"><div class="num">24</div><div class="label">Total Instalaciones</div></div>
+    <div class="stat-card stat-blue"><div class="num">8</div><div class="label">Programadas</div></div>
+    <div class="stat-card stat-amber"><div class="num">5</div><div class="label">En Curso</div></div>
+    <div class="stat-card stat-green"><div class="num">9</div><div class="label">Completadas</div></div>
+    <div class="stat-card stat-red"><div class="num">2</div><div class="label">Con Novedades</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1">
+    <div style="background:rgba(30,41,59,0.5);border:1px solid rgba(148,163,184,0.1);border-radius:12px;padding:20px">
+      <h4 style="color:#93c5fd;font-size:14px;margin-bottom:12px">📊 Que ves en el calendario</h4>
+      <ul style="font-size:13px;color:#94a3b8;line-height:2">
+        <li>Instalaciones del dia con color por estado</li>
+        <li>Navegacion entre meses con un clic</li>
+        <li>Seleccion rapida para ver detalle completo</li>
+        <li>Filtros por tecnico y estado</li>
+      </ul>
+    </div>
+    <div style="background:rgba(30,41,59,0.5);border:1px solid rgba(148,163,184,0.1);border-radius:12px;padding:20px">
+      <h4 style="color:#86efac;font-size:14px;margin-bottom:12px">🔎 Busqueda e historial</h4>
+      <ul style="font-size:13px;color:#94a3b8;line-height:2">
+        <li>Busca por cliente, direccion, tecnico u orden</li>
+        <li>Filtro por estado (todos, programadas, completadas...)</li>
+        <li>Tabla completa con toda la informacion</li>
+        <li>Acceso rapido al detalle de cada instalacion</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 6: Benefits -->
+<div class="slide slide-benefits" id="s6">
+  <div class="section-title">Beneficios</div>
+  <h2>Lo que gana tu empresa</h2>
+  <div class="benefits-grid">
+    <div class="benefit-item">
+      <div class="icon">⏱️</div>
+      <div><h3>Ahorro de tiempo</h3><p>Elimina llamadas para preguntar el estado. Todo el equipo ve lo mismo en tiempo real desde cualquier dispositivo.</p></div>
+    </div>
+    <div class="benefit-item">
+      <div class="icon">📉</div>
+      <div><h3>Reduccion de errores</h3><p>Direcciones correctas con Maps/Waze, tecnicos asignados consistentes, fechas sin duplicar.</p></div>
+    </div>
+    <div class="benefit-item">
+      <div class="icon">🛡️</div>
+      <div><h3>Proteccion legal</h3><p>Firma de conformidad + fotos + historial = evidencia irrefutable ante reclamos o disputas.</p></div>
+    </div>
+    <div class="benefit-item">
+      <div class="icon">📈</div>
+      <div><h3>Medicion de desempeno</h3><p>Sabe cuantos trabajos completa cada tecnico, cual tiene mas novedades, y donde mejorar.</p></div>
+    </div>
+    <div class="benefit-item">
+      <div class="icon">💰</div>
+      <div><h3>Menos segundas visitas</h3><p>Con informacion completa y fotos previas, el tecnico llega preparado. Sin sorpresas en terreno.</p></div>
+    </div>
+    <div class="benefit-item">
+      <div class="icon">🤝</div>
+      <div><h3>Satisfaccion del cliente</h3><p>Comunicacion transparente, entregas documentadas y seguimiento profesional generan confianza.</p></div>
+    </div>
+    <div class="benefit-item">
+      <div class="icon">📱</div>
+      <div><h3>Accesible desde cualquier lugar</h3><p>Funciona en celular, tablet o computador. Los tecnicos actualizan desde el terreno.</p></div>
+    </div>
+    <div class="benefit-item">
+      <div class="icon">🔐</div>
+      <div><h3>Control de acceso</h3><p>Permisos por rol: quien puede crear, editar, eliminar o solo ver. Auditoria de cada accion.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 7: ROI -->
+<div class="slide slide-roi" id="s7">
+  <div class="section-title">Retorno de Inversion</div>
+  <h2>Los numeros hablan</h2>
+  <div class="roi-grid">
+    <div class="roi-card">
+      <div class="number">30%</div>
+      <div class="unit">menos tiempo administrativo</div>
+      <div class="desc">Eliminacion de coordinacion por WhatsApp/telefono. Vista centralizada reduce llamadas de seguimiento.</div>
+    </div>
+    <div class="roi-card">
+      <div class="number">50%</div>
+      <div class="unit">menos reclamos sin resolver</div>
+      <div class="desc">Evidencia fotografica y firma de conformidad respaldan cada entrega ante disputas del cliente.</div>
+    </div>
+    <div class="roi-card">
+      <div class="number">3x</div>
+      <div class="unit">mas instalaciones gestionadas</div>
+      <div class="desc">Un solo coordinador puede manejar el doble o triple de instalaciones con herramientas automatizadas.</div>
+    </div>
+  </div>
+  <div style="margin-top:40px;max-width:800px;margin-left:auto;margin-right:auto">
+    <table class="tech-table">
+      <thead><tr><th>Metrica</th><th>Sin VitroFlow</th><th>Con VitroFlow</th></tr></thead>
+      <tbody>
+        <tr><td>Coordinacion por instalacion</td><td style="color:#f87171">15-20 min (llamadas/mensajes)</td><td style="color:#4ade80">2 min (1 clic)</td></tr>
+        <tr><td>Tiempo para buscar una instalacion pasada</td><td style="color:#f87171">10-30 min (buscando chats)</td><td style="color:#4ade80">30 segundos (buscador)</td></tr>
+        <tr><td>Evidencia ante reclamos</td><td style="color:#f87171">Ninguna o incompleta</td><td style="color:#4ade80">Fotos + firma + historial</td></tr>
+        <tr><td>Visibilidad del jefe</td><td style="color:#f87171">Llamar a cada tecnico</td><td style="color:#4ade80">Panel en tiempo real</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SLIDE 8: Pricing -->
+<div class="slide slide-pricing" id="s8">
+  <div class="section-title">Inversion</div>
+  <h2 style="text-align:center">Planes que se adaptan a tu negocio</h2>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="plan-name">Basico</div>
+      <div class="price">$49.900</div>
+      <div class="period">/mes</div>
+      <ul class="features">
+        <li>Hasta 50 instalaciones/mes</li>
+        <li>3 usuarios</li>
+        <li>Calendario y estados</li>
+        <li>Fotos y historial</li>
+        <li>Soporte por email</li>
+      </ul>
+    </div>
+    <div class="price-card popular">
+      <div class="popular-badge">Recomendado</div>
+      <div class="plan-name">Profesional</div>
+      <div class="price">$89.900</div>
+      <div class="period">/mes</div>
+      <ul class="features">
+        <li>Instalaciones ilimitadas</li>
+        <li>10 usuarios</li>
+        <li>Todo del plan Basico</li>
+        <li>Gestion tecnicos/vendedores</li>
+        <li>Reportes y metricas</li>
+        <li>Soporte prioritario</li>
+      </ul>
+    </div>
+    <div class="price-card">
+      <div class="plan-name">Empresarial</div>
+      <div class="price">$149.900</div>
+      <div class="period">/mes</div>
+      <ul class="features">
+        <li>Todo del plan Profesional</li>
+        <li>Usuarios ilimitados</li>
+        <li>API personalizada</li>
+        <li>Integracion con ERP</li>
+        <li>Capacitacion on-site</li>
+        <li>Soporte dedicado 24/7</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 9: CTA -->
+<div class="slide slide-cta" id="s9">
+  <h2>Transforma tu gestion de instalaciones</h2>
+  <p>Deja de perder tiempo coordinando por WhatsApp. Lleva el control total de tus instalaciones en terreno con VitroFlow.</p>
+  <a href="#" class="cta-btn" onclick="alert('Contacto: ventas@vitroflow.cl')">Solicitar Demo Gratis</a>
+  <div style="margin-top:60px;color:#64748b;font-size:14px">
+    <p>📧 ventas@vitroflow.cl &nbsp;|&nbsp; 📞 +56 9 XXXX XXXX &nbsp;|&nbsp; 🌐 vitroflow.cl</p>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button onclick="prev()">◀</button>
+  <button onclick="next()">▶</button>
+</div>
+<div class="slide-num" id="slideNum">1 / 9</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  
+  function show(i) {
+    slides.forEach(s => s.classList.remove('active'));
+    slides[i].classList.add('active');
+    document.getElementById('slideNum').textContent = (i+1) + ' / ' + slides.length;
+  }
+  
+  function next() { if (current < slides.length - 1) { current++; show(current); } }
+  function prev() { if (current > 0) { current--; show(current); } }
+  
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') next();
+    if (e.key === 'ArrowLeft') prev();
+  });
+</script>
+</body>
+</html>

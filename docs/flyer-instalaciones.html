@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VitroFlow - Flyer Instalaciones</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; width: 800px; height: 1200px; overflow: hidden; }
+  
+  .flyer {
+    width: 800px; height: 1200px;
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 40%, #0f172a 100%);
+    color: #fff; padding: 48px; position: relative; overflow: hidden;
+  }
+  .flyer::before {
+    content: ''; position: absolute; top: -100px; right: -100px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .flyer::after {
+    content: ''; position: absolute; bottom: -50px; left: -50px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  
+  .header { text-align: center; margin-bottom: 36px; position: relative; z-index: 1; }
+  .header .logo { font-size: 48px; margin-bottom: 8px; }
+  .header h1 { font-size: 42px; font-weight: 900; letter-spacing: -2px; background: linear-gradient(135deg, #3b82f6, #22c55e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header .tag { font-size: 18px; color: #94a3b8; font-weight: 300; margin-top: 8px; }
+  
+  .divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent); margin: 24px 0; position: relative; z-index: 1; }
+  
+  .problem-section { position: relative; z-index: 1; margin-bottom: 28px; }
+  .problem-section h2 { font-size: 20px; font-weight: 700; color: #f87171; margin-bottom: 14px; }
+  .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .problem-item { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); border-radius: 10px; padding: 12px 14px; display: flex; gap: 10px; align-items: start; }
+  .problem-item .icon { font-size: 20px; flex-shrink: 0; }
+  .problem-item h3 { font-size: 13px; font-weight: 600; color: #fca5a5; margin-bottom: 2px; }
+  .problem-item p { font-size: 11px; color: #94a3b8; line-height: 1.4; }
+  
+  .solution-section { position: relative; z-index: 1; margin-bottom: 28px; }
+  .solution-section h2 { font-size: 20px; font-weight: 700; color: #4ade80; margin-bottom: 14px; }
+  .solution-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .sol-item { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.12); border-radius: 10px; padding: 14px; text-align: center; }
+  .sol-item .icon { font-size: 28px; margin-bottom: 6px; }
+  .sol-item h3 { font-size: 12px; font-weight: 600; color: #86efac; margin-bottom: 4px; }
+  .sol-item p { font-size: 10px; color: #94a3b8; line-height: 1.3; }
+  
+  .workflow-section { position: relative; z-index: 1; margin-bottom: 28px; }
+  .workflow-section h2 { font-size: 18px; font-weight: 700; color: #93c5fd; margin-bottom: 12px; }
+  .workflow-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .wf-box { padding: 10px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; }
+  .wf-blue { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #93c5fd; }
+  .wf-amber { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+  .wf-green { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+  .wf-red { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+  .wf-arrow { color: #64748b; font-size: 16px; }
+  
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; position: relative; z-index: 1; margin-bottom: 28px; }
+  .stat-box { text-align: center; padding: 16px 8px; border-radius: 12px; }
+  .stat-box .num { font-size: 32px; font-weight: 900; }
+  .stat-box .label { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+  .stat-blue { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.15); }
+  .stat-blue .num { color: #60a5fa; }
+  .stat-green { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.15); }
+  .stat-green .num { color: #4ade80; }
+  .stat-amber { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.15); }
+  .stat-amber .num { color: #fbbf24; }
+  .stat-red { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.15); }
+  .stat-red .num { color: #f87171; }
+  
+  .pricing-section { position: relative; z-index: 1; margin-bottom: 24px; }
+  .pricing-section h2 { font-size: 18px; font-weight: 700; color: #c4b5fd; margin-bottom: 12px; }
+  .pricing-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .price-card { padding: 16px; border-radius: 12px; text-align: center; }
+  .price-card.pop { background: rgba(59,130,246,0.1); border: 2px solid rgba(59,130,246,0.4); }
+  .price-card:not(.pop) { background: rgba(30,41,59,0.5); border: 1px solid rgba(148,163,184,0.15); }
+  .price-card .plan { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+  .price-card .amount { font-size: 28px; font-weight: 900; color: #fff; margin: 6px 0; }
+  .price-card .period { font-size: 11px; color: #64748b; }
+  .price-card ul { list-style: none; margin-top: 10px; text-align: left; }
+  .price-card ul li { font-size: 10px; color: #cbd5e1; padding: 3px 0; }
+  .price-card ul li::before { content: '✓ '; color: #22c55e; font-weight: 700; }
+  
+  .cta-section { text-align: center; position: relative; z-index: 1; }
+  .cta-btn { display: inline-block; padding: 14px 40px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; font-size: 16px; font-weight: 700; border-radius: 10px; text-decoration: none; }
+  .cta-section p { margin-top: 12px; font-size: 13px; color: #64748b; }
+</style>
+</head>
+<body>
+<div class="flyer">
+  <div class="header">
+    <div class="logo">🏢</div>
+    <h1>VitroFlow</h1>
+    <div class="tag">Modulo de Gestion de Instalaciones en Terreno</div>
+  </div>
+  
+  <div class="divider"></div>
+  
+  <div class="problem-section">
+    <h2>❌ El problema que resolvemos</h2>
+    <div class="problem-grid">
+      <div class="problem-item">
+        <div class="icon">📋</div>
+        <div><h3>Coordinacion caotica</h3><p>Instalaciones programadas por WhatsApp o papel sin control centralizado</p></div>
+      </div>
+      <div class="problem-item">
+        <div class="icon">🔍</div>
+        <div><h3>Sin visibilidad</h3><p>No sabes si el tecnico llego, si工作 o si termino. Llamadas constantes.</p></div>
+      </div>
+      <div class="problem-item">
+        <div class="icon">📸</div>
+        <div><h3>Sin evidencia</h3><p>Sin fotos ni firma, los reclamos del cliente no tienen respaldo</p></div>
+      </div>
+      <div class="problem-item">
+        <div class="icon">💸</div>
+        <div><h3>Costos ocultos</h3><p>Segundas visitas, tiempos muertos y trabajos sin conformidad</p></div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="solution-section">
+    <h2>✅ Nuestra solucion</h2>
+    <div class="solution-grid">
+      <div class="sol-item"><div class="icon">📅</div><h3>Calendario</h3><p> Vista visual mensual con colores por estado</p></div>
+      <div class="sol-item"><div class="icon">🗺️</div><h3>Maps + Waze</h3><p> Navegacion con 1 clic a la direccion</p></div>
+      <div class="sol-item"><div class="icon">🔄</div><h3>Estados</h3><p> Flujo controlado y auditado</p></div>
+      <div class="sol-item"><div class="icon">📸</div><h3>Fotos</h3><p> Evidencia desde el celular</p></div>
+      <div class="sol-item"><div class="icon">⚠️</div><h3>Novedades</h3><p> Registro formal de problemas</p></div>
+      <div class="sol-item"><div class="icon">✍️</div><h3>Firma</h3><p> Conformidad del cliente</p></div>
+    </div>
+  </div>
+  
+  <div class="workflow-section">
+    <h2>🔄 Flujo de trabajo</h2>
+    <div class="workflow-bar">
+      <div class="wf-box wf-blue">📋 PROGRAMADA</div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-box wf-amber">🚗 EN CAMINO</div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-box wf-amber">⚙ EN CURSO</div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-box wf-green">✅ COMPLETADA</div>
+      <div class="wf-arrow">|</div>
+      <div class="wf-box wf-red">⚠ NOVEDAD</div>
+      <div class="wf-arrow">→</div>
+      <div class="wf-box wf-amber">↩ REANUDAR</div>
+    </div>
+  </div>
+  
+  <div class="stats-row">
+    <div class="stat-box stat-blue"><div class="num">30%</div><div class="label">menos tiempo administrativo</div></div>
+    <div class="stat-box stat-green"><div class="num">50%</div><div class="label">menos reclamos</div></div>
+    <div class="stat-box stat-amber"><div class="num">3x</div><div class="label">mas instalaciones gestionadas</div></div>
+    <div class="stat-box stat-red"><div class="num">100%</div><div class="label">trazabilidad</div></div>
+  </div>
+  
+  <div class="pricing-section">
+    <h2>💰 Inversion</h2>
+    <div class="pricing-row">
+      <div class="price-card">
+        <div class="plan">Basico</div>
+        <div class="amount">$49.900</div>
+        <div class="period">/mes</div>
+        <ul><li>50 instalaciones/mes</li><li>3 usuarios</li><li>Soporte email</li></ul>
+      </div>
+      <div class="price-card pop">
+        <div class="plan">Profesional ⭐</div>
+        <div class="amount">$89.900</div>
+        <div class="period">/mes</div>
+        <ul><li>Ilimitado</li><li>10 usuarios</li><li>Reportes</li><li>Soporte prioritario</li></ul>
+      </div>
+      <div class="price-card">
+        <div class="plan">Empresarial</div>
+        <div class="amount">$149.900</div>
+        <div class="period">/mes</div>
+        <ul><li>Todo incluido</li><li>Usuarios ilimitados</li><li>API + ERP</li><li>Soporte 24/7</li></ul>
+      </div>
+    </div>
+  </div>
+  
+  <div class="cta-section">
+    <a href="#" class="cta-btn">Solicitar Demo Gratis</a>
+    <p>📧 ventas@vitroflow.cl &nbsp;|&nbsp; 🌐 vitroflow.cl</p>
+  </div>
+</div>
+</body>
+</html>
