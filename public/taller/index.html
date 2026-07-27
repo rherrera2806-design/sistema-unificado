@@ -268,7 +268,7 @@ function renderCola() {
             actions = `<button class="btn btn-iniciar" onclick="iniciarPaso(${p.id})">&#9654;&#65039; Iniciar</button>`;
         } else if (p.estado === 'EN_PROCESO') {
             actions = `<button class="btn btn-finalizar" onclick="finalizarPaso(${p.id})">&#9989; Finalizar</button>
-                       <button class="btn btn-merma" onclick="abrirMerma(${p.id}, '${escapeHtml(p.descripcion || p.codigo_producto)}')">&#9888;&#65039; Merma</button>`;
+                       <button class="btn btn-merma" onclick="abrirMerma(${p.id}, '${escapeHtml(p.descripcion || p.codigo_producto)}', ${p.cantidad || 1})">&#9888;&#65039; Merma</button>`;
         }
         const timeInfo = p.hora_inicio ? `<div class="order-time">Inicio: ${fmtTime(p.hora_inicio)}${p.hora_fin ? ' | Fin: ' + fmtTime(p.hora_fin) : ''}</div>` : '';
         return `
@@ -326,11 +326,12 @@ async function finalizarPaso(pasoId) {
     } catch(e) { showToast('Error de conexion', true); }
 }
 
-function abrirMerma(pasoId, info) {
+function abrirMerma(pasoId, info, maxCantidad) {
     mermaPasoId = pasoId;
-    document.getElementById('mermaInfo').textContent = info;
+    document.getElementById('mermaInfo').textContent = info + ' (Disponibles: ' + (maxCantidad || 1) + ')';
     document.getElementById('mermaCausa').value = '';
     document.getElementById('mermaCantidad').value = '1';
+    document.getElementById('mermaCantidad').max = maxCantidad || 1;
     document.getElementById('mermaObs').value = '';
     document.getElementById('mermaModal').classList.add('show');
 }
@@ -354,7 +355,7 @@ async function confirmarMerma() {
         });
         const d = await r.json();
         if (d.ok) {
-            showToast('Merma registrada. Orden de reposicion #' + d.nuevaOrdenId + ' creada.');
+            showToast(d.mensaje || ('Merma registrada. Reposicion #' + d.nuevaOrdenId));
             cerrarMerma();
             cargarCola();
         } else showToast(d.error || 'Error', true);

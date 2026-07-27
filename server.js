@@ -2399,21 +2399,26 @@ const server = http.createServer(async (req, res) => {
             `, [paso_id]);
             if (paso.rows.length === 0) { json(res, { error: 'Paso no encontrado' }, 404); return; }
             const p = paso.rows[0];
-            const m2mermados = p.m2_asignados || p.metros_cuadrados || 0;
+            const cantidadOriginal = Number(p.cantidad) || 1;
+            const cantidadMermada = Number(cantidad) || 1;
+            const cantidadRestante = Math.max(0, cantidadOriginal - cantidadMermada);
+            const totalM2 = Number(p.m2_asignados) || Number(p.metros_cuadrados) || ((Number(p.ancho) * Number(p.alto)) / 1000000) * cantidadOriginal;
+            const totalKilos = Number(p.kilos) || 0;
+            const m2Proporcion = cantidadOriginal > 0 ? (totalM2 / cantidadOriginal) : 0;
+            const kilosProporcion = cantidadOriginal > 0 ? (totalKilos / cantidadOriginal) : 0;
+            const m2Mermados = m2Proporcion * cantidadMermada;
+            const kilosMermados = kilosProporcion * cantidadMermada;
             const costoMP = p.costo_materia_prima || 0;
 
-            await query(`UPDATE cola_produccion_pasos SET estado = 'MERMADO', hora_fin = NOW() WHERE id = $1`, [paso_id]);
-
+            // 1. Registrar la merma
             const mermaRes = await query(
                 `INSERT INTO mermas (orden_produccion_id, paso_id, estacion_id, causa, cantidad, observacion, m2_mermados, costo_materia_prima, creado_por)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-                [p.orden_produccion_id, paso_id, p.estacion_id, causa, cantidad || 1, observacion || '', m2mermados, costoMP, userEmail]
+                [p.orden_produccion_id, paso_id, p.estacion_id, causa, cantidadMermada, observacion || '', m2Mermados, costoMP, userEmail]
             );
             const mermaId = mermaRes.rows[0].id;
 
-            const ordenRes = await query('SELECT MAX(id) as max_id FROM produccion_ordenes');
-            const nuevoNumero = (ordenRes.rows[0].max_id || 0) + 1;
-
+            // 2. Crear orden de reposicion SOLO por la cantidad mermada
             const nuevaOrdenRes = await query(`
                 INSERT INTO produccion_ordenes (
                     pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto,
@@ -2426,8 +2431,8 @@ const server = http.createServer(async (req, res) => {
             `, [
                 p.pedido_sap_id, p.cliente, p.codigo_producto,
                 '[REPOSICION] ' + (p.descripcion || ''),
-                p.ancho, p.alto, m2mermados, cantidad || 1,
-                p.familia_id, p.espesor_mm, p.kilos,
+                p.ancho, p.alto, m2Mermados, cantidadMermada,
+                p.familia_id, p.espesor_mm, kilosMermados,
                 mermaId, p.pintado, p.perforaciones,
                 p.tipo_venta,
                 (p.nota || '') + ' | Merma: ' + causa + (observacion ? ' - ' + observacion : ''),
@@ -2436,6 +2441,7 @@ const server = http.createServer(async (req, res) => {
             ]);
             const nuevaOrdenId = nuevaOrdenRes.rows[0].id;
 
+            // 3. Enrutar reposicion desde Corte
             const estacionesBase = await query(
                 'SELECT estacion_id FROM familia_estaciones_base WHERE familia_id = $1 ORDER BY (SELECT orden_secuencia_defecto FROM estaciones_maestras WHERE id = estacion_id)',
                 [p.familia_id]
@@ -2445,12 +2451,30 @@ const server = http.createServer(async (req, res) => {
                     await query(
                         'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1,$2,$3,$4,$5,$6)',
                         [nuevaOrdenId, estacionesBase.rows[i].estacion_id, i + 1, 'PENDIENTE',
-                         new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' }), m2mermados]
+                         new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' }), m2Mermados]
                     );
                 }
             }
 
-            json(res, { ok: true, mermaId, nuevaOrdenId });
+            // 4. Manejar orden original segun cantidad restante
+            if (cantidadRestante > 0) {
+                // Quedan unidades: reducir cantidad y proporcionalizar m2/kilos en la orden original
+                await query(
+                    `UPDATE produccion_ordenes SET cantidad = $1, metros_cuadrados = $2, kilos = $3 WHERE id = $4`,
+                    [cantidadRestante, m2Proporcion * cantidadRestante, kilosProporcion * cantidadRestante, p.orden_produccion_id]
+                );
+                // Mantener el paso original activo (no marcar MERMADO)
+                // Actualizar m2_asignados del paso proporcionalmente
+                await query(
+                    `UPDATE cola_produccion_pasos SET m2_asignados = $1 WHERE id = $2`,
+                    [m2Proporcion * cantidadRestante, paso_id]
+                );
+                json(res, { ok: true, mermaId, nuevaOrdenId, cantidadRestante, mensaje: `Merma registrada. Reposicion #${nuevaOrdenId} por ${cantidadMermada} unidades. Quedan ${cantidadRestante} unidades en cola.` });
+            } else {
+                // Se mermaron todas las unidades: marcar paso como MERMADO
+                await query(`UPDATE cola_produccion_pasos SET estado = 'MERMADO', hora_fin = NOW() WHERE id = $1`, [paso_id]);
+                json(res, { ok: true, mermaId, nuevaOrdenId, cantidadRestante: 0, mensaje: `Merma total. Reposicion #${nuevaOrdenId} creada.` });
+            }
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }
