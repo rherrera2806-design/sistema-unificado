@@ -62,6 +62,7 @@ App.registerModule('inst_detalle', {
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
                         <div><strong>Cliente:</strong> ${escapeHtml(inst.cliente)}</div>
                         <div><strong>Tecnico:</strong> ${escapeHtml(inst.tecnico || '-')}</div>
+                        <div><strong>Vendedor:</strong> ${escapeHtml(inst.vendedor || '-')}</div>
                         <div><strong>Orden:</strong> ${escapeHtml(inst.numero_orden || '-')}</div>
                         <div><strong>Fecha:</strong> ${fecha} ${inst.hora_programada || ''}</div>
                         <div style="grid-column:1/-1"><strong>Direccion:</strong> ${escapeHtml(inst.direccion)}

@@ -603,6 +603,13 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    await query(`CREATE TABLE IF NOT EXISTS vendedores (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(150) NOT NULL,
+        activo BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     // TABLA INTERMEDIA: Estaciones base por familia
     await query(`CREATE TABLE IF NOT EXISTS familia_estaciones_base (
         id SERIAL PRIMARY KEY,
@@ -773,6 +780,7 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='numero_orden') THEN ALTER TABLE instalaciones ADD COLUMN numero_orden VARCHAR(50) DEFAULT ''; END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='vendedor') THEN ALTER TABLE instalaciones ADD COLUMN vendedor VARCHAR(200) DEFAULT ''; END IF; END $$`);
         const year = new Date().getFullYear();
         for (let m = 0; m < 12; m++) {
             for (let d = 1; d <= 31; d++) {
@@ -3057,7 +3065,7 @@ const server = http.createServer(async (req, res) => {
                  JOIN estaciones_maestras em ON cp.estacion_id = em.id
                  WHERE cp.orden_produccion_id = o.id AND em.es_cuello_botella = TRUE
                  AND cp.estado != 'TERMINADO'
-                 ORDER BY cp.orden_secuencia LIMIT 1) as cuello_botella
+                 ORDER BY em.capacidad_max_m2_dia ASC LIMIT 1) as cuello_botella
             FROM produccion_ordenes o ORDER BY o.created_at DESC
         `);
         json(res, result.rows);
@@ -4147,6 +4155,19 @@ const server = http.createServer(async (req, res) => {
         const fin = q.fin;
         if (!inicio || !fin) { json(res, { error: 'Fechas inicio y fin requeridas' }, 400); return; }
         try {
+            // Calendario de produccion
+            const calMap = {};
+            try {
+                const calRes = await query('SELECT to_char(fecha, \'YYYY-MM-DD\') as fs, es_laboral, motivo FROM calendario_produccion WHERE fecha >= $1::date AND fecha <= $2::date', [inicio, fin]);
+                calRes.rows.forEach(c => { calMap[c.fs] = { es_laboral: c.es_laboral, motivo: c.motivo }; });
+            } catch(calErr) {}
+
+            const esLaboral = (fStr) => {
+                if (calMap.hasOwnProperty(fStr)) return calMap[fStr].es_laboral;
+                const d = new Date(fStr + 'T12:00:00');
+                return d.getDay() !== 0 && d.getDay() !== 6;
+            };
+
             const cargaRes = await query(`
                 SELECT
                     COALESCE(o.grupo, '(sin grupo)') as nombre_familia,
@@ -4180,9 +4201,18 @@ const server = http.createServer(async (req, res) => {
             const familiasMap = {};
             const fechasSet = new Set();
             for (const r of cargaRes.rows) {
+                if (!esLaboral(r.fecha)) continue;
                 if (!familiasMap[r.nombre_familia]) familiasMap[r.nombre_familia] = {};
                 familiasMap[r.nombre_familia][r.fecha] = Number(r.kilos);
                 fechasSet.add(r.fecha);
+            }
+
+            // Agregar capacidad para dias laborales sin carga
+            const inicioD = new Date(inicio + 'T00:00:00');
+            const finD = new Date(fin + 'T00:00:00');
+            for (let d = new Date(inicioD); d <= finD; d.setDate(d.getDate() + 1)) {
+                const fs = d.toISOString().split('T')[0];
+                if (esLaboral(fs)) fechasSet.add(fs);
             }
 
             const todasFamilias = Object.keys(familiasMap);
@@ -4229,6 +4259,13 @@ const server = http.createServer(async (req, res) => {
                 GROUP BY cp.estacion_id, cp.fecha_programada
             `, [inicio, fin]);
 
+            // Calendario de produccion
+            const calendarioMap = {};
+            try {
+                const calRes = await query('SELECT to_char(fecha, \'YYYY-MM-DD\') as fs, es_laboral, motivo FROM calendario_produccion WHERE fecha >= $1::date AND fecha <= $2::date', [inicio, fin]);
+                for (const c of calRes.rows) { calendarioMap[c.fs] = { es_laboral: c.es_laboral, motivo: c.motivo }; }
+            } catch(calErr) {}
+
             const estaciones = estRes.rows.map(e => ({
                 id: e.id,
                 nombre: e.nombre_estacion,
@@ -4241,10 +4278,29 @@ const server = http.createServer(async (req, res) => {
             cargaRes.rows.forEach(r => {
                 const key = r.fs;
                 if (!carga[key]) carga[key] = {};
-                carga[key][r.estacion_id] = { m2: Number(r.m2_total), ordenes: Number(r.ordenes) };
+                const cal = calendarioMap[key];
+                const es_laboral = cal ? cal.es_laboral : (new Date(key + 'T12:00:00').getDay() !== 0 && new Date(key + 'T12:00:00').getDay() !== 6);
+                carga[key][r.estacion_id] = {
+                    m2: es_laboral ? Number(r.m2_total) : 0,
+                    ordenes: es_laboral ? Number(r.ordenes) : 0,
+                    es_laboral
+                };
             });
 
-            json(res, { estaciones, carga, inicio, fin });
+            // Agregar info de calendario por dia
+            const calendario = {};
+            const inicioD = new Date(inicio + 'T00:00:00');
+            const finD = new Date(fin + 'T00:00:00');
+            for (let d = new Date(inicioD); d <= finD; d.setDate(d.getDate() + 1)) {
+                const fs = d.toISOString().split('T')[0];
+                const cal = calendarioMap[fs];
+                calendario[fs] = {
+                    es_laboral: cal ? cal.es_laboral : (d.getDay() !== 0 && d.getDay() !== 6),
+                    motivo: cal ? cal.motivo : (d.getDay() === 0 ? 'Domingo' : d.getDay() === 6 ? 'Sabado' : '')
+                };
+            }
+
+            json(res, { estaciones, carga, inicio, fin, calendario });
         } catch(e) { console.error('carga-estaciones error:', e.message); json(res, { error: e.message }, 500); }
         return;
     }
@@ -5075,6 +5131,15 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // GET /api/instalaciones/vendedores - Lista de vendedores
+    if (urlPath === '/api/instalaciones/vendedores' && req.method === 'GET') {
+        try {
+            const result = await query("SELECT nombre FROM vendedores WHERE activo = true ORDER BY nombre");
+            json(res, result.rows.map(r => r.nombre));
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
     // GET /api/instalaciones/:id - Detalle
     const instDetailMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)$/);
     if (instDetailMatch && req.method === 'GET') {
@@ -5090,14 +5155,14 @@ const server = http.createServer(async (req, res) => {
     // POST /api/instalaciones - Crear
     if (urlPath === '/api/instalaciones' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden, notas_previas } = body;
+        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas } = body;
         if (!cliente || !direccion || !fecha_programada) { json(res, { error: 'Cliente, dirección y fecha requeridos' }, 400); return; }
         const userEmail = req.headers['x-user-email'] || 'Sistema';
         try {
             const result = await query(
-                `INSERT INTO instalaciones (cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden, notas_previas, estado, creado_por)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PROGRAMADA', $9) RETURNING *`,
-                [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', numero_orden || '', notas_previas || '', userEmail]
+                `INSERT INTO instalaciones (cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas, estado, creado_por)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PROGRAMADA', $10) RETURNING *`,
+                [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', vendedor || '', numero_orden || '', notas_previas || '', userEmail]
             );
             const inst = result.rows[0];
             await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [inst.id, 'CREADA', 'Instalación programada', userEmail]);
@@ -5111,12 +5176,12 @@ const server = http.createServer(async (req, res) => {
     if (instEditMatch && req.method === 'PUT') {
         const id = parseInt(instEditMatch[1]);
         const body = await parseBody(req);
-        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden, notas_previas } = body;
+        const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas } = body;
         const userEmail = req.headers['x-user-email'] || 'Sistema';
         try {
             await query(
-                `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, numero_orden=$7, notas_previas=$8 WHERE id=$9`,
-                [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, numero_orden || '', notas_previas, id]
+                `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, vendedor=$7, numero_orden=$8, notas_previas=$9 WHERE id=$10`,
+                [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor || '', numero_orden || '', notas_previas, id]
             );
             await query('INSERT INTO instalaciones_historial (instalacion_id, accion, detalle, usuario) VALUES ($1, $2, $3, $4)', [id, 'EDITADA', 'Datos actualizados', userEmail]);
             json(res, { ok: true });
@@ -5274,6 +5339,45 @@ const server = http.createServer(async (req, res) => {
         const id = parseInt(urlPath.split('/').pop());
         try {
             await query('DELETE FROM tecnicos WHERE id = $1', [id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+
+    // =====================================================
+    // CRUD: Vendedores de Instalacion
+    // =====================================================
+    if (urlPath === '/api/produccion/vendedores' && req.method === 'GET') {
+        try {
+            const result = await query('SELECT * FROM vendedores ORDER BY nombre');
+            json(res, result.rows);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+    if (urlPath === '/api/produccion/vendedores' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { nombre } = body;
+        if (!nombre || !nombre.trim()) { json(res, { error: 'Nombre requerido' }, 400); return; }
+        try {
+            const result = await query('INSERT INTO vendedores (nombre) VALUES ($1) RETURNING *', [nombre.trim()]);
+            json(res, result.rows[0]);
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/vendedores\/\d+$/) && req.method === 'PUT') {
+        const id = parseInt(urlPath.split('/').pop());
+        const body = await parseBody(req);
+        const { nombre, activo } = body;
+        try {
+            await query('UPDATE vendedores SET nombre=$1, activo=$2 WHERE id=$3', [nombre, activo !== false, id]);
+            json(res, { ok: true });
+        } catch(e) { json(res, { error: e.message }, 500); }
+        return;
+    }
+    if (urlPath.match(/^\/api\/produccion\/vendedores\/\d+$/) && req.method === 'DELETE') {
+        const id = parseInt(urlPath.split('/').pop());
+        try {
+            await query('DELETE FROM vendedores WHERE id = $1', [id]);
             json(res, { ok: true });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;

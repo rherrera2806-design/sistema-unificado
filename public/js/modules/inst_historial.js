@@ -49,6 +49,7 @@ App.registerModule('inst_historial', {
                             <th style="padding:10px 12px;text-align:left">Descripcion</th>
                             <th style="padding:10px 12px;text-align:left">Direccion</th>
                             <th style="padding:10px 12px;text-align:left">Tecnico</th>
+                            <th style="padding:10px 12px;text-align:left">Vendedor</th>
                             <th style="padding:10px 12px;text-align:left">Orden</th>
                             <th style="padding:10px 12px;text-align:center">Estado</th>
                             <th style="padding:10px 12px;text-align:center">Accion</th>
@@ -66,7 +67,7 @@ App.registerModule('inst_historial', {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const perm = user.permisos || [];
         const puedeEliminar = perm.includes('instalaciones.eliminar') || perm.includes('usuarios');
-        if (lista.length === 0) return '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-light)">No hay instalaciones</td></tr>';
+        if (lista.length === 0) return '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-light)">No hay instalaciones</td></tr>';
         return lista.map(inst => {
             const color = estadoColor[inst.estado] || '#3b82f6';
             const icon = estadoIcon[inst.estado] || '📅';
@@ -77,6 +78,7 @@ App.registerModule('inst_historial', {
                 <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${escapeHtml(inst.descripcion || '-')}</td>
                 <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${escapeHtml(inst.direccion)}</td>
                 <td style="padding:10px 12px">${escapeHtml(inst.tecnico || '-')}</td>
+                <td style="padding:10px 12px">${escapeHtml(inst.vendedor || '-')}</td>
                 <td style="padding:10px 12px;font-size:12px;color:var(--text-light)">${escapeHtml(inst.numero_orden || '-')}</td>
                 <td style="padding:10px 12px;text-align:center"><span style="background:${color};color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600">${icon} ${inst.estado}</span></td>
                 <td style="padding:10px 12px;text-align:center;white-space:nowrap">
@@ -95,6 +97,7 @@ App.registerModule('inst_historial', {
             (i.cliente || '').toLowerCase().includes(search) ||
             (i.direccion || '').toLowerCase().includes(search) ||
             (i.tecnico || '').toLowerCase().includes(search) ||
+            (i.vendedor || '').toLowerCase().includes(search) ||
             (i.numero_orden || '').toLowerCase().includes(search)
         );
         if (estado !== 'todos') filtered = filtered.filter(i => i.estado === estado);

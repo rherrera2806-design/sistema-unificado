@@ -16,6 +16,7 @@ App.registerModule('instalaciones', {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
                 <div><h2 style="margin:0">Instalaciones</h2><div class="subtitle">Calendario mensual de trabajos en terreno</div></div>
                 <div style="display:flex;gap:8px">
+                    <button class="btn btn-outline btn-sm" onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores">🏷️ Vendedores</button>
                     <button class="btn btn-outline btn-sm" onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos">⚙️ Tecnicos</button>
                     ${puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()">+ Nueva Instalacion</button>' : ''}
                 </div>
@@ -131,15 +132,20 @@ App.registerModule('instalaciones', {
         const inst = id ? this.instalaciones.find(i => i.id === id) : null;
         const hoy = this.fmtDate(new Date());
         let tecnicos = [];
+        let vendedores = [];
         try { tecnicos = await fetch('/api/instalaciones/tecnicos').then(r => r.json()); } catch(e) {}
-        const datalistHtml = `<datalist id="tecnicosList">${(tecnicos || []).map(t => `<option value="${escapeHtml(t)}">`).join('')}</datalist>`;
+        try { vendedores = await fetch('/api/instalaciones/vendedores').then(r => r.json()); } catch(e) {}
+        const datalistHtml = `<datalist id="tecnicosList">${(tecnicos || []).map(t => `<option value="${escapeHtml(t)}">`).join('')}</datalist><datalist id="vendedoresList">${(vendedores || []).map(v => `<option value="${escapeHtml(v)}">`).join('')}</datalist>`;
         App.showModal(`
             ${datalistHtml}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div class="form-group"><label>Cliente *</label><input class="form-control" id="instCliente" value="${inst ? escapeHtml(inst.cliente) : ''}" placeholder="Nombre del cliente" style="text-transform:uppercase"></div>
                 <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${inst ? escapeHtml(inst.tecnico) : ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize" list="tecnicosList"></div>
             </div>
-            <div class="form-group"><label>Numero de Orden</label><input class="form-control" id="instNumeroOrden" value="${inst ? escapeHtml(inst.numero_orden || '') : ''}" placeholder="Numero de orden" style="text-transform:uppercase"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group"><label>Vendedor</label><input class="form-control" id="instVendedor" value="${inst ? escapeHtml(inst.vendedor || '') : ''}" placeholder="Nombre del vendedor" style="text-transform:capitalize" list="vendedoresList"></div>
+                <div class="form-group"><label>Numero de Orden</label><input class="form-control" id="instNumeroOrden" value="${inst ? escapeHtml(inst.numero_orden || '') : ''}" placeholder="Numero de orden" style="text-transform:uppercase"></div>
+            </div>
             <div class="form-group"><label>Direccion *</label>
                 <div style="display:flex;gap:6px;align-items:center">
                     <input class="form-control" id="instDireccion" value="${inst ? escapeHtml(inst.direccion) : ''}" placeholder="Direccion de la instalacion" style="text-transform:capitalize;flex:1">
@@ -169,6 +175,7 @@ App.registerModule('instalaciones', {
             fecha_programada: document.getElementById('instFecha').value,
             hora_programada: document.getElementById('instHora').value,
             tecnico: capitalize(document.getElementById('instTecnico').value.trim()),
+            vendedor: capitalize(document.getElementById('instVendedor').value.trim()),
             numero_orden: document.getElementById('instNumeroOrden').value.trim().toUpperCase(),
             notas_previas: capitalize(document.getElementById('instNotas').value.trim())
         };
@@ -244,6 +251,65 @@ App.registerModule('instalaciones', {
         try {
             await fetch(`/api/produccion/tecnicos/${id}`, { method: 'DELETE' });
             await this.showTecnicos();
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async showVendedores() {
+        let list = [];
+        try { list = await fetch('/api/produccion/vendedores').then(r => r.json()); } catch(e) {}
+        list = Array.isArray(list) ? list : [];
+        const html = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <h3 style="margin:0">Vendedores (${list.length})</h3>
+                <button class="btn btn-sm btn-primary" onclick="App.modules.instalaciones.formVendedor()">+ Nuevo</button>
+            </div>
+            <div id="vendedorFormInst"></div>
+            <table class="data-table" style="width:100%">
+                <thead><tr><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody>${list.length === 0 ? '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text-light)">No hay vendedores. Agrega uno para que aparezca en el desplegable.</td></tr>' :
+                list.map(v => `
+                    <tr>
+                        <td style="font-weight:600">${escapeHtml(v.nombre)}</td>
+                        <td><span class="status-badge ${v.activo ? 'status-completada' : 'status-cancelada'}">${v.activo ? 'Activo' : 'Inactivo'}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.formVendedor(${v.id},'${escapeHtml(v.nombre).replace(/'/g,"\\'")}',${v.activo})" style="margin-right:4px">✏️</button>
+                            <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.eliminarVendedor(${v.id})" style="color:var(--danger)">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('')}</tbody>
+            </table>`;
+        App.showModal(html, { title: 'Configurar Vendedores' });
+    },
+
+    formVendedor(id, nombre, activo) {
+        const el = document.getElementById('vendedorFormInst');
+        if (el) el.innerHTML = `
+            <div style="display:flex;gap:8px;align-items:end;margin-bottom:12px;padding:10px;background:rgba(59,130,246,0.05);border-radius:8px;border:1px solid var(--border)">
+                <div style="flex:1"><label style="font-size:12px;font-weight:600">Nombre</label>
+                    <input class="form-control" id="vedNombreInst" value="${nombre || ''}" placeholder="Nombre del vendedor" style="text-transform:capitalize"></div>
+                <div style="flex:0"><label style="font-size:12px;font-weight:600">Activo</label>
+                    <select class="form-control" id="vedActivoInst"><option value="true" ${activo !== false ? 'selected' : ''}>Si</option><option value="false" ${activo === false ? 'selected' : ''}>No</option></select></div>
+                <button class="btn btn-sm btn-primary" onclick="App.modules.instalaciones.guardarVendedor(${id || 0})">Guardar</button>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('vendedorFormInst').innerHTML=''">Cancelar</button>
+            </div>`;
+    },
+
+    async guardarVendedor(id) {
+        const nombre = (document.getElementById('vedNombreInst').value || '').trim();
+        const activo = document.getElementById('vedActivoInst').value === 'true';
+        if (!nombre) { App.showAlert('Nombre requerido', 'danger'); return; }
+        try {
+            if (id === 0) await fetch('/api/produccion/vendedores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, activo }) });
+            else await fetch(`/api/produccion/vendedores/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, activo }) });
+            await this.showVendedores();
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async eliminarVendedor(id) {
+        if (!confirm('Eliminar este vendedor?')) return;
+        try {
+            await fetch(`/api/produccion/vendedores/${id}`, { method: 'DELETE' });
+            await this.showVendedores();
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     }
 });
