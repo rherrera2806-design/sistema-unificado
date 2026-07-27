@@ -467,6 +467,7 @@ function renderSidebar() {
         if (canSeeItem('prod_planificacion','produccion')) html += navI('planificacion', 'Planificacion', '📅');
         if (canSeeItem('prod_notas','produccion')) html += navI('prod_notas', 'Mis Pendientes', '📋');
         if (canSeeItem('prod_config','produccion')) html += navI('prod_config', 'Configuracion', '⚙️');
+        html += `<div class="nav-item" onclick="window.open('/taller/','_blank')"><span class="nav-icon">&#127981;</span><span class="nav-text">Taller</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
         html += `</div>`;
     }
 

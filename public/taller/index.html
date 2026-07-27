@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Taller - Pantalla de Operario</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;-webkit-tap-highlight-color:transparent}
+        .bg-grad{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%)}
+
+        .selector-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+        .selector-title{font-size:28px;font-weight:900;color:#f59e0b;margin-bottom:8px;text-align:center}
+        .selector-sub{font-size:14px;color:#94a3b8;margin-bottom:32px;text-align:center}
+        .station-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;width:100%;max-width:900px}
+        .station-card{background:#1e293b;border:2px solid #334155;border-radius:16px;padding:24px;text-align:center;cursor:pointer;transition:all .2s}
+        .station-card:hover,.station-card:active{border-color:#f59e0b;background:#1e293b;transform:scale(1.02)}
+        .station-card .icon{font-size:40px;margin-bottom:8px}
+        .station-card .name{font-size:16px;font-weight:700;color:#f8fafc}
+        .station-card .seq{font-size:12px;color:#94a3b8;margin-top:4px}
+
+        .queue-screen{display:none;flex-direction:column;min-height:100vh}
+        .queue-header{background:#1e293b;border-bottom:2px solid #334155;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+        .queue-header h1{font-size:20px;font-weight:800;color:#f59e0b}
+        .queue-header .back{background:#334155;color:#e2e8f0;border:none;padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+        .queue-stats{display:flex;gap:12px;padding:12px 20px;flex-wrap:wrap}
+        .stat{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:10px 16px;text-align:center;flex:1;min-width:80px}
+        .stat .num{font-size:24px;font-weight:900}
+        .stat .label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em}
+        .stat.pendiente .num{color:#f59e0b}
+        .stat.proceso .num{color:#3b82f6}
+        .stat.terminado .num{color:#22c55e}
+        .stat.mermado .num{color:#ef4444}
+
+        .queue-list{flex:1;padding:12px 20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding-bottom:100px}
+
+        .order-card{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:16px;transition:all .2s}
+        .order-card.estado-PENDIENTE{border-left:4px solid #f59e0b}
+        .order-card.estado-EN_PROCESO{border-left:4px solid #3b82f6;background:#172554}
+        .order-card.estado-TERMINADO{border-left:4px solid #22c55e;opacity:.6}
+        .order-card.estado-MERMADO{border-left:4px solid #ef4444;opacity:.5}
+        .order-card/reposicion{border:2px solid #f59e0b;position:relative}
+        .order-card/reposicion::after{content:'REPOSICION';position:absolute;top:8px;right:8px;background:#f59e0b;color:#000;font-size:9px;font-weight:800;padding:2px 8px;border-radius:4px}
+
+        .order-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+        .order-pedido{font-size:13px;color:#94a3b8}
+        .order-cliente{font-size:16px;font-weight:700;color:#f8fafc}
+        .order-codigo{font-size:12px;color:#60a5fa;margin-top:2px}
+        .order-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+        .order-status.PENDIENTE{background:rgba(245,158,11,.15);color:#f59e0b}
+        .order-status.EN_PROCESO{background:rgba(59,130,246,.15);color:#3b82f6}
+        .order-status.TERMINADO{background:rgba(34,197,94,.15);color:#22c55e}
+        .order-status.MERMADO{background:rgba(239,68,68,.15);color:#ef4444}
+
+        .order-details{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;color:#94a3b8;margin:8px 0}
+        .order-details span{display:flex;align-items:center;gap:4px}
+        .order-details .val{color:#e2e8f0;font-weight:600}
+
+        .order-actions{display:flex;gap:8px;margin-top:12px}
+        .btn{padding:12px 20px;border-radius:10px;font-size:14px;font-weight:700;border:none;cursor:pointer;transition:all .15s;min-height:48px;flex:1}
+        .btn:active{transform:scale(.97)}
+        .btn-iniciar{background:#3b82f6;color:#fff}
+        .btn-finalizar{background:#22c55e;color:#fff}
+        .btn-merma{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+        .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+        .order-time{font-size:11px;color:#60a5fa;margin-top:4px}
+
+        .empty-state{text-align:center;padding:60px 20px;color:#64748b}
+        .empty-state .icon{font-size:48px;margin-bottom:12px}
+        .empty-state h3{font-size:16px;color:#94a3b8}
+
+        .modal-overlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);align-items:center;justify-content:center}
+        .modal-overlay.show{display:flex}
+        .modal{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:24px;width:90%;max-width:420px}
+        .modal h2{font-size:18px;font-weight:700;color:#ef4444;margin-bottom:16px}
+        .modal label{display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;text-transform:uppercase}
+        .modal select,.modal input,.modal textarea{width:100%;padding:12px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#e2e8f0;font-size:14px;margin-bottom:12px}
+        .modal textarea{min-height:60px;resize:vertical}
+        .modal-actions{display:flex;gap:8px;margin-top:16px}
+        .modal-actions .btn{flex:1}
+        .btn-cancel{background:#334155;color:#e2e8f0}
+        .btn-confirm-merma{background:#ef4444;color:#fff}
+
+        .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;z-index:200;opacity:0;transition:opacity .3s}
+        .toast.show{opacity:1}
+        .toast.error{background:#ef4444}
+
+        @media(max-width:600px){
+            .station-grid{grid-template-columns:1fr 1fr}
+            .order-details{font-size:11px}
+        }
+    </style>
+</head>
+<body class="bg-grad">
+
+<!-- ═══ SELECTOR DE ESTACION ═══ -->
+<div id="selectorScreen" class="selector-screen">
+    <div style="font-size:48px;margin-bottom:8px">&#127981;</div>
+    <div class="selector-title">TALLER DE PRODUCCION</div>
+    <div class="selector-sub">Selecciona tu estacion de trabajo</div>
+    <div id="stationGrid" class="station-grid"></div>
+</div>
+
+<!-- ═══ COLA DIARIA ═══ -->
+<div id="queueScreen" class="queue-screen">
+    <div class="queue-header">
+        <button class="back" onclick="volver()">&#9664; Cambiar</button>
+        <h1 id="stationName">-</h1>
+        <div id="clock" style="font-size:14px;color:#94a3b8;font-weight:600"></div>
+    </div>
+    <div class="queue-stats">
+        <div class="stat pendiente"><div class="num" id="statPend">0</div><div class="label">Pendientes</div></div>
+        <div class="stat proceso"><div class="num" id="statProc">0</div><div class="label">En Proceso</div></div>
+        <div class="stat terminado"><div class="num" id="statTerm">0</div><div class="label">Terminados</div></div>
+        <div class="stat mermado"><div class="num" id="statMerm">0</div><div class="label">Mermas</div></div>
+    </div>
+    <div id="queueList" class="queue-list"></div>
+</div>
+
+<!-- ═══ MODAL MERMA ═══ -->
+<div id="mermaModal" class="modal-overlay">
+    <div class="modal">
+        <h2>&#9888;&#65039; Declarar Merma</h2>
+        <p id="mermaInfo" style="font-size:13px;color:#94a3b8;margin-bottom:16px"></p>
+        <label>Causa de la Merma</label>
+        <select id="mermaCausa">
+            <option value="">Seleccionar causa...</option>
+            <option value="Rotura en Proceso">Rotura en Proceso</option>
+            <option value="Vidrio Trizado">Vidrio Trizado</option>
+            <option value="Perforacion Fuera de Cota">Perforacion Fuera de Cota</option>
+            <option value="Rayado">Rayado</option>
+            <option value="Falla de Carga">Falla de Carga</option>
+            <option value="Defecto de Materia Prima">Defecto de Materia Prima</option>
+            <option value="Otro">Otro</option>
+        </select>
+        <label>Cantidad</label>
+        <input type="number" id="mermaCantidad" value="1" min="1" placeholder="1">
+        <label>Observacion (opcional)</label>
+        <textarea id="mermaObs" placeholder="Detalle adicional..."></textarea>
+        <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="cerrarMerma()">CANCELAR</button>
+            <button class="btn btn-confirm-merma" id="btnConfirmMerma" onclick="confirmarMerma()">DECLARAR MERMA</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="toast" class="toast"></div>
+
+<script>
+let estaciones = [];
+let estacionActual = null;
+let colaActual = [];
+let mermaPasoId = null;
+let refreshInterval = null;
+
+function fmtTime(t) {
+    if (!t) return '-';
+    const d = new Date(t);
+    return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => t.className = 'toast', 2500);
+}
+
+async function loadEstaciones() {
+    try {
+        const r = await fetch('/api/taller/estaciones');
+        estaciones = await r.json();
+        const grid = document.getElementById('stationGrid');
+        const icons = {'Corte':'&#9986;','Pulido':'&#10024;','Radio':'&#128279;','Mecanizado':'&#9881;','Ventana':'&#129704;','Pintado':'&#127912;','Templado':'&#128293;','Armado':'&#128736;','Laminado VM':'&#128204;','Corte Laminado':'&#9986;','Pintado Car':'&#127912;'};
+        grid.innerHTML = estaciones.map(e => `
+            <div class="station-card" onclick="seleccionarEstacion(${e.id}, '${e.nombre_estacion.replace(/'/g,"\\'")}')">
+                <div class="icon">${icons[e.nombre_estacion] || '&#9881;'}</div>
+                <div class="name">${e.nombre_estacion}</div>
+                <div class="seq">Seq: ${e.orden_secuencia_defecto}</div>
+            </div>
+        `).join('');
+    } catch(e) { document.getElementById('stationGrid').innerHTML = '<div style="color:#ef4444;text-align:center">Error cargando estaciones</div>'; }
+}
+
+function seleccionarEstacion(id, nombre) {
+    estacionActual = { id, nombre };
+    document.getElementById('selectorScreen').style.display = 'none';
+    document.getElementById('queueScreen').style.display = 'flex';
+    document.getElementById('stationName').textContent = nombre;
+    cargarCola();
+    refreshInterval = setInterval(cargarCola, 10000);
+}
+
+function volver() {
+    if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
+    estacionActual = null;
+    document.getElementById('queueScreen').style.display = 'none';
+    document.getElementById('selectorScreen').style.display = 'flex';
+}
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+async function cargarCola() {
+    if (!estacionActual) return;
+    try {
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        const r = await fetch(`/api/taller/colaxestacion/${estacionActual.id}?fecha=${hoy}`);
+        colaActual = await r.json();
+        if (!Array.isArray(colaActual)) colaActual = [];
+        renderCola();
+    } catch(e) {}
+}
+
+function renderCola() {
+    const list = document.getElementById('queueList');
+    const pend = colaActual.filter(p => p.estado === 'PENDIENTE').length;
+    const proc = colaActual.filter(p => p.estado === 'EN_PROCESO').length;
+    const term = colaActual.filter(p => p.estado === 'TERMINADO').length;
+    const merm = colaActual.filter(p => p.estado === 'MERMADO').length;
+    document.getElementById('statPend').textContent = pend;
+    document.getElementById('statProc').textContent = proc;
+    document.getElementById('statTerm').textContent = term;
+    document.getElementById('statMerm').textContent = merm;
+
+    if (colaActual.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="icon">&#128203;</div><h3>Sin ordenes programadas para hoy</h3></div>';
+        return;
+    }
+
+    list.innerHTML = colaActual.map(p => {
+        const esReposicion = p.es_reposicion;
+        const cardClass = `order-card estado-${p.estado}${esReposicion ? ' reposicion' : ''}`;
+        let actions = '';
+        if (p.estado === 'PENDIENTE') {
+            actions = `<button class="btn btn-iniciar" onclick="iniciarPaso(${p.id})">&#9654;&#65039; Iniciar</button>`;
+        } else if (p.estado === 'EN_PROCESO') {
+            actions = `<button class="btn btn-finalizar" onclick="finalizarPaso(${p.id})">&#9989; Finalizar</button>
+                       <button class="btn btn-merma" onclick="abrirMerma(${p.id}, '${escapeHtml(p.descripcion || p.codigo_producto)}')">&#9888;&#65039; Merma</button>`;
+        }
+        const timeInfo = p.hora_inicio ? `<div class="order-time">Inicio: ${fmtTime(p.hora_inicio)}${p.hora_fin ? ' | Fin: ' + fmtTime(p.hora_fin) : ''}</div>` : '';
+        return `
+        <div class="${cardClass}">
+            <div class="order-top">
+                <div>
+                    <div class="order-pedido">Pedido: ${escapeHtml(p.pedido_sap_id || '-')} | #${p.orden_id}</div>
+                    <div class="order-cliente">${escapeHtml(p.cliente || '-')}</div>
+                    <div class="order-codigo">${escapeHtml(p.codigo_producto || '')} ${escapeHtml(p.descripcion || '')}</div>
+                </div>
+                <div class="order-status ${p.estado}">${p.estado.replace('_', ' ')}</div>
+            </div>
+            <div class="order-details">
+                <span>&#128207; <span class="val">${p.ancho || '-'} x ${p.alto || '-'}</span> mm</span>
+                <span>&#128207; <span class="val">${p.espesor_mm || '-'}mm</span></span>
+                <span>&#128230; <span class="val">${p.cantidad || 1}</span></span>
+                ${p.m2_asignados ? `<span>&#128208; <span class="val">${Number(p.m2_asignados).toFixed(2)} m²</span></span>` : ''}
+                ${p.nombre_familia ? `<span>&#128196; <span class="val">${escapeHtml(p.nombre_familia)}</span></span>` : ''}
+                ${p.pintado ? '<span>&#127912; Pintado</span>' : ''}
+                ${p.perforaciones > 0 ? `<span>&#128296; ${p.perforaciones} perf.</span>` : ''}
+                ${p.nota ? `<span>&#128221; ${escapeHtml(p.nota.substring(0, 40))}</span>` : ''}
+            </div>
+            ${timeInfo}
+            <div class="order-actions">${actions}</div>
+        </div>`;
+    }).join('');
+}
+
+function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function iniciarPaso(pasoId) {
+    try {
+        const r = await fetch('/api/taller/iniciar', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ paso_id: pasoId })
+        });
+        const d = await r.json();
+        if (d.ok) { showToast('Iniciado correctamente'); cargarCola(); }
+        else showToast(d.error || 'Error', true);
+    } catch(e) { showToast('Error de conexion', true); }
+}
+
+async function finalizarPaso(pasoId) {
+    try {
+        const r = await fetch('/api/taller/finalizar', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ paso_id: pasoId })
+        });
+        const d = await r.json();
+        if (d.ok) {
+            showToast('Finalizado. Siguiente estacion habilitada.');
+            cargarCola();
+        } else showToast(d.error || 'Error', true);
+    } catch(e) { showToast('Error de conexion', true); }
+}
+
+function abrirMerma(pasoId, info) {
+    mermaPasoId = pasoId;
+    document.getElementById('mermaInfo').textContent = info;
+    document.getElementById('mermaCausa').value = '';
+    document.getElementById('mermaCantidad').value = '1';
+    document.getElementById('mermaObs').value = '';
+    document.getElementById('mermaModal').classList.add('show');
+}
+
+function cerrarMerma() {
+    mermaPasoId = null;
+    document.getElementById('mermaModal').classList.remove('show');
+}
+
+async function confirmarMerma() {
+    if (!mermaPasoId) return;
+    const causa = document.getElementById('mermaCausa').value;
+    const cantidad = parseInt(document.getElementById('mermaCantidad').value) || 1;
+    const observacion = document.getElementById('mermaObs').value.trim();
+    if (!causa) { showToast('Selecciona una causa', true); return; }
+    document.getElementById('btnConfirmMerma').disabled = true;
+    try {
+        const r = await fetch('/api/taller/merma', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ paso_id: mermaPasoId, causa, cantidad, observacion })
+        });
+        const d = await r.json();
+        if (d.ok) {
+            showToast('Merma registrada. Orden de reposicion #' + d.nuevaOrdenId + ' creada.');
+            cerrarMerma();
+            cargarCola();
+        } else showToast(d.error || 'Error', true);
+    } catch(e) { showToast('Error de conexion', true); }
+    document.getElementById('btnConfirmMerma').disabled = false;
+}
+
+loadEstaciones();
+</script>
+</body>
+</html>
