@@ -271,7 +271,7 @@ App.modules.planificacion = {
                 }
                 html += '</div>';
                 resEl.innerHTML = html;
-                setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); }, 1500);
+                setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); await this.cargarEstaciones(); }, 1500);
             } else {
                 resEl.innerHTML = `<div style="color:#ef4444">${data.error || 'Error'}</div>`;
             }
