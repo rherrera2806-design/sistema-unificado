@@ -2441,12 +2441,28 @@ const server = http.createServer(async (req, res) => {
             ]);
             const nuevaOrdenId = nuevaOrdenRes.rows[0].id;
 
-            // 3. Enrutar reposicion desde Corte
-            const estacionesBase = await query(
-                'SELECT estacion_id FROM familia_estaciones_base WHERE familia_id = $1 ORDER BY (SELECT orden_secuencia_defecto FROM estaciones_maestras WHERE id = estacion_id)',
-                [p.familia_id]
+            // 3. Enrutar reposicion copiando la ruta exacta de la orden original
+            const pasosOriginales = await query(
+                `SELECT cp.estacion_id, cp.orden_secuencia
+                 FROM cola_produccion_pasos cp
+                 WHERE cp.orden_produccion_id = $1
+                 ORDER BY cp.orden_secuencia ASC`,
+                [p.orden_produccion_id]
             );
-            if (estacionesBase.rows.length > 0) {
+            if (pasosOriginales.rows.length > 0) {
+                for (const pasoOrig of pasosOriginales.rows) {
+                    await query(
+                        'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1,$2,$3,$4,$5,$6)',
+                        [nuevaOrdenId, pasoOrig.estacion_id, pasoOrig.orden_secuencia, 'PENDIENTE',
+                         new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' }), m2Mermados]
+                    );
+                }
+            } else {
+                // Fallback: si no tiene pasos, usar familia_estaciones_base
+                const estacionesBase = await query(
+                    'SELECT estacion_id FROM familia_estaciones_base WHERE familia_id = $1 ORDER BY (SELECT orden_secuencia_defecto FROM estaciones_maestras WHERE id = estacion_id)',
+                    [p.familia_id]
+                );
                 for (let i = 0; i < estacionesBase.rows.length; i++) {
                     await query(
                         'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1,$2,$3,$4,$5,$6)',
