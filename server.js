@@ -4588,7 +4588,7 @@ const server = http.createServer(async (req, res) => {
                 return { grupo: g.grupo, color: g.color, capacidad_kg_dia: Number(g.capacidad_kg_dia) || 0, dias: diasMap, total: tot };
             });
 
-            json(res, { grupos: data, dias });
+            json(res, { grupos: data, dias, calendario: calMap });
         } catch(e) { json(res, { error: e.message }, 500); }
         return;
     }

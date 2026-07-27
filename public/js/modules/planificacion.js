@@ -381,7 +381,8 @@ App.modules.planificacion = {
                 const data = await cargaGrupoRes.json();
                 this.gruposSemana = data.grupos || [];
                 this.diasSemana = data.dias || [];
-            } else { console.error('carga-grupo-semana error:', cargaGrupoRes.status); this.gruposSemana = []; this.diasSemana = []; }
+                this.calendario = data.calendario || {};
+            } else { console.error('carga-grupo-semana error:', cargaGrupoRes.status); this.gruposSemana = []; this.diasSemana = []; this.calendario = {}; }
             if (pendRes.ok) this.pendientes = await pendRes.json();
             else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
             if (cargaEstRes.ok) this.cargaSemanal = await cargaEstRes.json();
@@ -472,11 +473,18 @@ App.modules.planificacion = {
         const inicio = this.semanaInicio;
         const finD = new Date(this.semanaFin);
 
-        // Construir headers de dias desde this.diasSemana (todos los 15 dias, sin filtrar)
+        // Construir headers de dias desde this.diasSemana
         let diasInfo = this.diasSemana.map(f => {
             const d = new Date(f + 'T00:00:00');
             const dow = d.getDay();
-            return { fecha: f, dia: diasSemana[(dow + 6) % 7], fechaCorta: d.getDate() + '/' + (d.getMonth()+1) };
+            const diaCorto = diasSemana[(dow + 6) % 7];
+            const fechaCorta = diaCorto + ', ' + d.getDate() + '/' + (d.getMonth()+1);
+            return { fecha: f, dia: diaCorto, fechaCorta };
+        }).filter(d => {
+            // Ocultar dias desactivados (sab/dom) del calendario
+            const cal = this.calendario ? this.calendario[d.fecha] : null;
+            const es_laboral = cal ? cal.es_laboral : (new Date(d.fecha + 'T12:00:00').getDay() !== 0 && new Date(d.fecha + 'T12:00:00').getDay() !== 6);
+            return es_laboral;
         });
 
         // Color de fondo segun capacidad kg/dia usada
@@ -508,12 +516,8 @@ App.modules.planificacion = {
                             <th style="padding:6px;text-align:left;width:120px">Grupo</th>
                             <th style="padding:6px;text-align:center;width:70px">Cap kg/dia</th>
                             ${diasInfo.map(d => {
-                                const laboral = this.gruposSemana[0]?.dias.find(x => x.fecha === d.fecha)?.es_laboral !== false;
-                                const headerBg = laboral ? '' : 'background:#f1f5f9;';
-                                const headerColor = laboral ? '' : 'color:#94a3b8;';
-                                return `<th style="padding:4px;text-align:center;${headerBg}${headerColor}">
+                                return `<th style="padding:4px;text-align:center">
                                     <div style="font-weight:600;font-size:11px">${d.fechaCorta}</div>
-                                    ${!laboral ? '<div style="font-size:8px;color:#ef4444">NO LAB</div>' : ''}
                                 </th>`;
                             }).join('')}
                         </tr></thead>
@@ -526,14 +530,7 @@ App.modules.planificacion = {
                                 <td style="padding:6px;text-align:center;font-size:10px;color:var(--text-light)">${g.capacidad_kg_dia.toLocaleString('es-CL')}</td>
                                 ${diasInfo.map(d => {
                                     const cell = g.dias.find(x => x.fecha === d.fecha) || {};
-                                    const c = colorCelda(cell.kilos || 0, g.capacidad_kg_dia, cell.es_laboral !== false);
-                                    if (cell.es_laboral === false) {
-                                        return `<td style="padding:3px;text-align:center">
-                                            <div style="background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:4px;padding:4px 2px">
-                                                <div style="font-weight:600;font-size:10px;color:#94a3b8">✕</div>
-                                            </div>
-                                        </td>`;
-                                    }
+                                    const c = colorCelda(cell.kilos || 0, g.capacidad_kg_dia, true);
                                     const hasData = (cell.m2 || cell.m_lineales || cell.kilos) > 0;
                                     return `<td style="padding:2px;text-align:center">
                                         <div style="background:${hasData ? c.bg : '#f8fafc'};border:1px solid ${hasData ? c.border : '#e2e8f0'};border-radius:4px;padding:4px 2px">
@@ -553,7 +550,6 @@ App.modules.planificacion = {
                     <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#dbeafe;vertical-align:middle"></span> Con carga</span>
                     <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fef3c7;vertical-align:middle"></span> 85-100% capacidad</span>
                     <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fee2e2;vertical-align:middle"></span> Sobrecargado</span>
-                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f1f5f9;border:1px dashed #cbd5e1;vertical-align:middle"></span> No Laboral</span>
                 </div>
             </div>
         `;
@@ -793,19 +789,33 @@ App.modules.planificacion = {
         }
 
         // Generar 15 dias corridos, filtrando solo dias laborales segun calendario
-        const dias = [];
+        const todosDias = [];
         for (let i = 0; i < 15; i++) {
             const d = new Date(this.semanaEstaciones);
             d.setDate(d.getDate() + i);
             const fs = this.fmtDate(d);
             const cal = calendario ? calendario[fs] : null;
             const es_laboral = cal ? cal.es_laboral : (d.getDay() !== 0 && d.getDay() !== 6);
-            if (es_laboral) dias.push(fs);
+            if (es_laboral) todosDias.push(fs);
         }
+
+        // Encontrar primer dia con carga (>0 m2 en alguna estacion)
+        let primerDiaConCarga = null;
+        for (const f of todosDias) {
+            const diaCarga = carga[f] || {};
+            const tieneCarga = Object.values(diaCarga).some(est => (est.m2 || 0) > 0);
+            if (tieneCarga) { primerDiaConCarga = f; break; }
+        }
+
+        // Filtrar: solo desde el primer dia con carga
+        const dias = primerDiaConCarga
+            ? todosDias.filter(f => f >= primerDiaConCarga)
+            : todosDias;
 
         const nombreDia = (f) => {
             const d = new Date(f + 'T12:00:00');
-            return ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'][d.getDay()] + ' ' + d.getDate();
+            const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+            return diasSemana[d.getDay()] + ', ' + d.getDate() + '/' + (d.getMonth() + 1);
         };
 
         const pct = (usado, cap) => cap > 0 ? Math.round((usado / cap) * 100) : 0;
