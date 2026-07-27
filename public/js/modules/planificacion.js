@@ -710,7 +710,7 @@ App.modules.planificacion = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 120 } },
+                layout: { padding: { left: 130 } },
                 plugins: {
                     legend: { display: false },
                     datalabels: {
@@ -748,7 +748,8 @@ App.modules.planificacion = {
                         stacked: true,
                         beginAtZero: true,
                         grid: { color: 'rgba(148,163,184,0.15)' },
-                        title: { display: true, text: 'kg', font: { size: 12 } }
+                        title: { display: false },
+                        ticks: { display: false }
                     }
                 }
             }
