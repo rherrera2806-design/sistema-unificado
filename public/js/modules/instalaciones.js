@@ -18,7 +18,7 @@ App.registerModule('instalaciones', {
                 <div style="display:flex;gap:8px">
                     <button class="btn btn-outline btn-sm" onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores">🏷️ Vendedores</button>
                     <button class="btn btn-outline btn-sm" onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos">⚙️ Tecnicos</button>
-                    ${puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()">+ Nueva Instalacion</button>' : ''}
+                    ${puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()">+ Nuevo</button>' : ''}
                 </div>
             </div>
             <div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px"></div>
@@ -138,6 +138,13 @@ App.registerModule('instalaciones', {
         const datalistHtml = `<datalist id="tecnicosList">${(tecnicos || []).map(t => `<option value="${escapeHtml(t)}">`).join('')}</datalist><datalist id="vendedoresList">${(vendedores || []).map(v => `<option value="${escapeHtml(v)}">`).join('')}</datalist>`;
         App.showModal(`
             ${datalistHtml}
+            <div class="form-group"><label>Tipo de servicio *</label>
+                <select class="form-control" id="instTipo">
+                    <option value="VISITA_TECNICA" ${inst?.tipo === 'VISITA_TECNICA' ? 'selected' : ''}>Visita Tecnica</option>
+                    <option value="INSTALACION" ${inst?.tipo === 'INSTALACION' || !inst ? 'selected' : ''}>Instalacion</option>
+                    <option value="POST_VENTA" ${inst?.tipo === 'POST_VENTA' ? 'selected' : ''}>Post-Venta</option>
+                </select>
+            </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div class="form-group"><label>Cliente *</label><input class="form-control" id="instCliente" value="${inst ? escapeHtml(inst.cliente) : ''}" placeholder="Nombre del cliente" style="text-transform:uppercase"></div>
                 <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${inst ? escapeHtml(inst.tecnico) : ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize" list="tecnicosList"></div>
@@ -159,7 +166,7 @@ App.registerModule('instalaciones', {
                 <div class="form-group"><label>Hora</label><input type="time" class="form-control" id="instHora" value="${inst ? inst.hora_programada : '09:00'}"></div>
             </div>
             <div class="form-group"><label>Notas Previas</label><textarea class="form-control" id="instNotas" rows="2" placeholder="Notas o instrucciones previas" style="text-transform:capitalize">${inst ? escapeHtml(inst.notas_previas) : ''}</textarea></div>
-        `, { title: inst ? 'Editar Instalacion' : 'Nueva Instalacion' });
+        `, { title: inst ? 'Editar Registro' : 'Nuevo Registro' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.instalaciones.guardar(${id || 0})">${inst ? 'Actualizar' : 'Crear'}</button>
@@ -177,7 +184,8 @@ App.registerModule('instalaciones', {
             tecnico: capitalize(document.getElementById('instTecnico').value.trim()),
             vendedor: capitalize(document.getElementById('instVendedor').value.trim()),
             numero_orden: document.getElementById('instNumeroOrden').value.trim().toUpperCase(),
-            notas_previas: capitalize(document.getElementById('instNotas').value.trim())
+            notas_previas: capitalize(document.getElementById('instNotas').value.trim()),
+            tipo: document.getElementById('instTipo').value
         };
         if (!data.cliente || !data.direccion || !data.fecha_programada) { App.showAlert('Cliente, direccion y fecha requeridos', 'danger'); return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
