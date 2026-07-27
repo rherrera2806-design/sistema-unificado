@@ -818,15 +818,16 @@ App.modules.planificacion = {
         // Header
         html += '<thead><tr style="border-bottom:2px solid var(--border)">';
         html += '<th style="padding:8px;text-align:left;min-width:140px">Estacion</th>';
+        html += '<th style="padding:6px;text-align:center;min-width:60px">Cap</th>';
         dias.forEach(f => {
             html += `<th style="padding:6px;text-align:center;min-width:90px;white-space:nowrap">${nombreDia(f)}</th>`;
         });
-        html += '<th style="padding:6px;text-align:center;min-width:70px">Cap</th>';
         html += '</tr></thead><tbody>';
 
         estaciones.forEach(est => {
             html += '<tr style="border-bottom:1px solid var(--border)">';
             html += `<td style="padding:8px;font-weight:600;white-space:nowrap">${est.nombre}${est.es_cuello_botella ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#fef2f2;color:#ef4444">CB</span>' : ''}</td>`;
+            html += `<td style="padding:6px;text-align:center;font-size:11px;color:var(--text-light)">${est.capacidad_m2_dia}</td>`;
 
             dias.forEach(f => {
                 const datos = (carga[f] && carga[f][est.id]) || { m2: 0, ordenes: 0 };
@@ -840,7 +841,6 @@ App.modules.planificacion = {
                 </td>`;
             });
 
-            html += `<td style="padding:6px;text-align:center;font-weight:600;color:var(--text-light)">${est.capacidad_m2_dia}</td>`;
             html += '</tr>';
         });
 
