@@ -472,23 +472,11 @@ App.modules.planificacion = {
         const inicio = this.semanaInicio;
         const finD = new Date(this.semanaFin);
 
-        // Construir headers de dias desde this.diasSemana
+        // Construir headers de dias desde this.diasSemana (todos los 15 dias, sin filtrar)
         let diasInfo = this.diasSemana.map(f => {
             const d = new Date(f + 'T00:00:00');
             const dow = d.getDay();
-            const diff = dow === 0 ? -6 : 1 - dow;
-            const lunes = new Date(d);
-            lunes.setDate(d.getDate() + diff);
-            const isThisWeek = lunes.getTime() === new Date(inicio).getTime();
-            return { fecha: f, dia: diasSemana[(dow + 6) % 7], fechaCorta: d.getDate() + '/' + (d.getMonth()+1), isThisWeek };
-        });
-
-        // Filtrar solo los dias que tienen datos en ALGUN grupo
-        diasInfo = diasInfo.filter(d => {
-            return this.gruposSemana.some(g => {
-                const cell = g.dias.find(x => x.fecha === d.fecha) || {};
-                return (cell.m2 || cell.m_lineales || cell.kilos) > 0;
-            });
+            return { fecha: f, dia: diasSemana[(dow + 6) % 7], fechaCorta: d.getDate() + '/' + (d.getMonth()+1) };
         });
 
         // Color de fondo segun capacidad kg/dia usada
@@ -797,19 +785,22 @@ App.modules.planificacion = {
     renderEstaciones(data) {
         const el = document.getElementById('planEstaciones');
         if (!el) return;
-        const { estaciones, carga } = data;
+        const { estaciones, carga, calendario } = data;
 
         if (!estaciones || estaciones.length === 0) {
             el.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b">No hay estaciones configuradas</div>';
             return;
         }
 
-        // Generar 15 dias corridos
+        // Generar 15 dias corridos, filtrando solo dias laborales segun calendario
         const dias = [];
         for (let i = 0; i < 15; i++) {
             const d = new Date(this.semanaEstaciones);
             d.setDate(d.getDate() + i);
-            dias.push(this.fmtDate(d));
+            const fs = this.fmtDate(d);
+            const cal = calendario ? calendario[fs] : null;
+            const es_laboral = cal ? cal.es_laboral : (d.getDay() !== 0 && d.getDay() !== 6);
+            if (es_laboral) dias.push(fs);
         }
 
         const nombreDia = (f) => {
