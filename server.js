@@ -2844,7 +2844,7 @@ const server = http.createServer(async (req, res) => {
     if (urlPath === '/api/turnos/entregas/pendientes' && req.method === 'GET') {
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const result = await query(
-            `SELECT e.*, t.numero as turno_numero,
+            `SELECT e.*, t.numero as turno_numero, t.patente, t.motivo, t.rut_empresa,
                 (SELECT COUNT(*) FROM turnos_adjuntos ta WHERE ta.turno_id = e.turno_id) as adjuntos_count
              FROM entregas e
              LEFT JOIN turnos t ON e.turno_id = t.id
