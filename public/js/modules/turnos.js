@@ -95,7 +95,6 @@ App.registerModule('turnos', {
                     <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">&#128230; Derivar a Verificación de Bodega</h3>
                     <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Turno: <span id="tMdTurno" style="color:var(--accent);font-weight:900"></span> - <span id="tMdNombre" style="font-weight:600"></span></p>
                     <input id="tMdPedidos" type="text" class="input" placeholder="Numero de pedido(s)">
-                    <input id="tMdFactura" type="text" class="input" placeholder="Numero de factura" style="margin-top:8px">
                     <div style="margin-top:8px">
                         <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Adjuntar PDFs (opcional)</label>
                         <input id="tMdFiles" type="file" accept=".pdf" multiple style="font-size:12px;width:100%">
@@ -181,7 +180,6 @@ App.registerModule('turnos', {
         document.getElementById('tMdTurno').textContent = '#' + this.rActualTurno.numero;
         document.getElementById('tMdNombre').textContent = this.rActualTurno.nombre;
         document.getElementById('tMdPedidos').value = '';
-        document.getElementById('tMdFactura').value = '';
         document.getElementById('tMdError').style.display = 'none';
         document.getElementById('tModalDerivar').style.display = 'flex';
     },
@@ -189,8 +187,7 @@ App.registerModule('turnos', {
     async rDerivar() {
         if (!this.rActualTurno) return;
         const pedidos = document.getElementById('tMdPedidos').value.trim();
-        const factura = document.getElementById('tMdFactura').value.trim();
-        if (!pedidos && !factura) { const e = document.getElementById('tMdError'); e.textContent = 'Ingresa al menos un pedido o factura'; e.style.display = 'block'; return; }
+        if (!pedidos) { const e = document.getElementById('tMdError'); e.textContent = 'Ingresa al menos un pedido'; e.style.display = 'block'; return; }
         const btn = document.getElementById('tMdBtn'); btn.disabled = true; btn.textContent = 'DERIVANDO...';
         const fileInput = document.getElementById('tMdFiles');
         const adjuntos = [];
@@ -205,7 +202,7 @@ App.registerModule('turnos', {
             }
         }
         try {
-            const r = await fetch('/api/turnos/derivar-bodega', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turno_id: this.rActualTurno.id, pedidos, factura, adjuntos }) });
+            const r = await fetch('/api/turnos/derivar-bodega', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ turno_id: this.rActualTurno.id, pedidos, adjuntos }) });
             if (r.ok) { this.cerrarModalDerivar(); await this.rCargar(); }
             else { const d = await r.json(); const e = document.getElementById('tMdError'); e.textContent = d.error || 'Error'; e.style.display = 'block'; }
         } catch(e) { const er = document.getElementById('tMdError'); er.textContent = 'Error de conexion'; er.style.display = 'block'; }
