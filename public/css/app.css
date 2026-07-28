@@ -398,6 +398,16 @@ tr:hover { background: #f8fafc; }
     position: relative;
     transition: transform 0.2s, box-shadow 0.2s;
 }
+.top-failing-card-first {
+    min-width: 200px;
+    max-width: 240px;
+    padding: 28px 32px;
+    transform: scale(1.1);
+    z-index: 2;
+}
+.top-failing-card-first .top-failing-medal { font-size: 36px; }
+.top-failing-card-first .top-failing-name { font-size: 15px; }
+.top-failing-card-first .top-failing-count { font-size: 42px; }
 .top-failing-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 20px rgba(0,0,0,0.12) !important;

@@ -63,8 +63,10 @@ App.registerModule('dashboard', {
         let cards = '';
         data.slice(0, 3).forEach((item, i) => {
             const pos = i + 1;
+            const isFirst = i === 0;
+            const size = isFirst ? 'top-failing-card top-failing-card-first' : 'top-failing-card';
             cards += `
-                <div class="top-failing-card" style="background:${medalBg[i]};border:2px solid ${medalBorder[i]};box-shadow:0 4px 12px ${medalShadow[i]};cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
+                <div class="${size}" style="background:${medalBg[i]};border:2px solid ${medalBorder[i]};box-shadow:0 4px 12px ${medalShadow[i]};cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
                     <div class="top-failing-medal">${medals[i]}</div>
                     <div class="top-failing-rank">${pos}</div>
                     <div class="top-failing-name">${escapeHtml(item.nombre || 'Sin nombre')}</div>
