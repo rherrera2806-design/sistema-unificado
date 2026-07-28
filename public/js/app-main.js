@@ -448,6 +448,7 @@ function renderSidebar() {
         if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', '📋');
         if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Entrega de Bodega', '📦');
         if (canSeeItem('turnos_qr','atencion')) html += navI('turnos_qr', 'QR Clientes', '💻');
+        if (canSeeItem('turnos_reporte','atencion')) html += navI('turnos_reporte', 'Reporte', '📊');
         html += `</div>`;
     }
 
@@ -510,6 +511,8 @@ function renderSidebar() {
             } else if (page === 'turnos_qr') {
                 App.loadModule('turnos');
                 setTimeout(() => App.modules.turnos.showQR(), 100);
+            } else if (page === 'turnos_reporte') {
+                App.loadModule('reporte_turnos');
             } else if (page === 'pedidos') {
                 App.loadModule('pedidos');
             } else {

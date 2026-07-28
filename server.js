@@ -2209,6 +2209,44 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
+    // TURNOS - Reporte historial completo
+    // =====================================================
+    if (urlPath === '/api/turnos/reporte' && req.method === 'GET') {
+        const params = new URL(req.url, 'http://localhost').searchParams;
+        const desde = params.get('desde') || '';
+        const hasta = params.get('hasta') || '';
+        const turno = params.get('turno') || 'todos';
+        let conditions = [];
+        let idx = 1;
+        let vals = [];
+        if (desde) { conditions.push(`t.fecha >= $${idx++}`); vals.push(desde); }
+        if (hasta) { conditions.push(`t.fecha <= $${idx++}`); vals.push(hasta); }
+        if (turno !== 'todos') { conditions.push(`t.numero = $${idx++}`); vals.push(Number(turno)); }
+        const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+        const result = await query(
+            `SELECT t.*, e.estado as entrega_estado, e.pedidos, e.factura, e.tipo,
+                    e.hora_registrada as bodega_recibido, e.hora_entregada as bodega_entregado
+             FROM turnos t
+             LEFT JOIN entregas e ON t.id = e.turno_id
+             ${where}
+             ORDER BY t.fecha DESC, t.numero DESC`, vals
+        );
+        const turnos = result.rows.map(t => {
+            let espera_segundos = null, recepcion_segundos = null, bodega_segundos = null, total_segundos = null;
+            const pad = s => { if (!s) return 0; const p = String(s).split(':').map(Number); return p[0]*3600 + p[1]*60 + (p[2]||0); };
+            if (t.hora_creacion && t.hora_llamada) espera_segundos = pad(t.hora_llamada) - pad(t.hora_creacion);
+            if (t.hora_fin && t.hora_llamada) recepcion_segundos = pad(t.hora_fin) - pad(t.hora_llamada);
+            if (t.bodega_recibido && t.bodega_entregado) bodega_segundos = pad(t.bodega_entregado) - pad(t.bodega_recibido);
+            if (t.hora_creacion && t.bodega_entregado) total_segundos = pad(t.bodega_entregado) - pad(t.hora_creacion);
+            else if (t.hora_creacion && t.hora_fin) total_segundos = pad(t.hora_fin) - pad(t.hora_creacion);
+            return { ...t, espera_segundos, recepcion_segundos, bodega_segundos, total_segundos,
+                     fecha_fmt: t.fecha ? new Date(t.fecha).toLocaleDateString('es-CL') : '-' };
+        });
+        json(res, turnos);
+        return;
+    }
+
+    // =====================================================
     // TURNOS - Ticket individual
     // =====================================================
     const turnoByIdMatch = urlPath.match(/^\/api\/turnos\/(\d+)$/);

@@ -102,6 +102,7 @@ App.registerModule('usuarios', {
                 { key: 'turnos_recepcion', label: 'Recepcion y Control' },
                 { key: 'turnos_bodega', label: 'Entrega de Bodega' },
                 { key: 'turnos_qr', label: 'QR Clientes' },
+                { key: 'turnos_reporte', label: 'Reporte' },
                 { key: 'turnos_eliminar', label: 'Eliminar' }
             ]},
             { key: 'ventas', label: 'VENTAS', items: [
