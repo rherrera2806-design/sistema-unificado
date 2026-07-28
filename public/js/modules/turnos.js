@@ -222,8 +222,8 @@ App.registerModule('turnos', {
         c.innerHTML = `
             <div class="page-header">
                 <div>
-                    <h2>Entrega de Bodega</h2>
-                    <div class="subtitle">Gestion de entregas y pedidos</div>
+                    <h2>Verificación Bodega</h2>
+                    <div class="subtitle">Verificar stock y derivar a almacén</div>
                 </div>
             </div>
             <div class="card" style="margin-bottom:12px">
@@ -247,17 +247,31 @@ App.registerModule('turnos', {
             </div>
             <div class="card" style="margin-bottom:12px">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">Pendientes de Entrega</h3>
+                    <h3 style="font-size:14px;font-weight:600">Pendientes de Verificación</h3>
                     <span id="tBPendBadge" class="badge" style="background:var(--warning);color:white">0</span>
                 </div>
                 <div id="tBPendList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay entregas pendientes</div></div>
             </div>
             <div class="card">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">Entregados Hoy</h3>
+                    <h3 style="font-size:14px;font-weight:600">Verificados Hoy</h3>
                     <span id="tBEntregBadge" class="badge" style="background:var(--success);color:white">0</span>
                 </div>
-                <div id="tBEntregList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin entregas hoy</div></div>
+                <div id="tBEntregList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin verificaciones hoy</div></div>
+            </div>
+            <div id="tModalVerificar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)">
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+                    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">✅ Verificar y Derivar a Almacén</h3>
+                    <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Selecciona el técnico de almacén que atenderá.</p>
+                    <label style="font-size:12px;color:var(--text-light)">Técnico Almacén</label>
+                    <select id="tVerTecnico" class="input" style="margin-bottom:8px"></select>
+                    <label style="font-size:12px;color:var(--text-light)">Observaciones</label>
+                    <textarea id="tVerObs" class="input" rows="2" placeholder="Observaciones opcionales" style="margin-bottom:8px"></textarea>
+                    <div style="display:flex;gap:8px;margin-top:12px">
+                        <button onclick="App.modules.turnos.cerrarModalVerificar()" class="btn" style="flex:1;background:var(--border);color:var(--text)">CANCELAR</button>
+                        <button onclick="App.modules.turnos.confirmarVerificar()" id="tVerBtn" class="btn btn-success" style="flex:2">VERIFICAR</button>
+                    </div>
+                </div>
             </div>
         `;
         await this.bCargar();
@@ -271,27 +285,58 @@ App.registerModule('turnos', {
         else { body.style.display = 'none'; arrow.style.transform = 'rotate(0deg)'; }
     },
 
+    pendingVerificar: null,
+
+    async abrirModalVerificar(entregaId) {
+        this.pendingVerificar = entregaId;
+        let tecnicos = [];
+        try { tecnicos = await fetch('/api/turnos/tecnicos-almacen').then(r => r.json()); } catch(e) {}
+        const sel = document.getElementById('tVerTecnico');
+        sel.innerHTML = '<option value="">-- Seleccionar técnico --</option>' + tecnicos.map(t => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`).join('');
+        document.getElementById('tVerObs').value = '';
+        document.getElementById('tModalVerificar').style.display = 'flex';
+    },
+
+    cerrarModalVerificar() {
+        document.getElementById('tModalVerificar').style.display = 'none';
+        this.pendingVerificar = null;
+    },
+
+    async confirmarVerificar() {
+        if (!this.pendingVerificar) return;
+        const tecnicoId = document.getElementById('tVerTecnico').value;
+        const obs = document.getElementById('tVerObs').value.trim();
+        if (!tecnicoId) { App.showAlert('Selecciona un técnico', 'danger'); return; }
+        const btn = document.getElementById('tVerBtn'); btn.disabled = true; btn.textContent = 'VERIFICANDO...';
+        await fetch('/api/turnos/verificar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entrega_id: this.pendingVerificar, tecnico_almacen_id: Number(tecnicoId), observaciones: obs }) });
+        this.cerrarModalVerificar();
+        App.showAlert('Verificado y derivado a almacén');
+        this.bCargar();
+        btn.disabled = false; btn.textContent = 'VERIFICAR';
+    },
+
     async bCargar() {
         try {
             const [pR, aR] = await Promise.all([fetch('/api/turnos/entregas/pendientes'), fetch('/api/turnos/entregas')]);
             const p = await pR.json(), a = await aR.json();
-            const ent = a.filter(e => e.estado === 'entregado');
+            const verificados = a.filter(e => e.estado === 'verificado' || e.estado === 'cargado' || e.estado === 'facturado');
             const pb = document.getElementById('tBPendBadge'); if (pb) pb.textContent = p.length;
-            const eb = document.getElementById('tBEntregBadge'); if (eb) eb.textContent = ent.length;
+            const eb = document.getElementById('tBEntregBadge'); if (eb) eb.textContent = verificados.length;
             const pl = document.getElementById('tBPendList');
             if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay entregas pendientes</div>' : p.map(e => {
                 let info = `<span style="font-weight:900">${e.cliente_nombre}</span>`;
                 if (e.tipo) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${e.tipo==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${e.tipo==='Despacho'?'var(--warning)':'var(--success)'}">${e.tipo}</span>`;
                 if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${e.pedidos}</span>`;
                 if (e.factura) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7">Factura: ${e.factura}</span>`;
-                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div>${info}<div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div><div style="display:flex;gap:6px;align-items:center">${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">PDF (${e.adjuntos_count})</button>` : ''}<button onclick="App.modules.turnos.bEntregar(${e.id})" class="btn btn-success" style="padding:6px 12px;font-size:12px">ENTREGADO</button>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px" title="Eliminar">&#10005;</button>` : ''}</div></div>`;
+                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div>${info}<div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div><div style="display:flex;gap:6px;align-items:center">${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">PDF (${e.adjuntos_count})</button>` : ''}<button onclick="App.modules.turnos.abrirModalVerificar(${e.id})" class="btn btn-success" style="padding:6px 12px;font-size:12px">✅ VERIFICAR</button>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px" title="Eliminar">&#10005;</button>` : ''}</div></div>`;
             }).join('');
             const el = document.getElementById('tBEntregList');
-            if (el) el.innerHTML = ent.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin entregas hoy</div>' : ent.map(e => {
+            if (el) el.innerHTML = verificados.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin verificaciones hoy</div>' : verificados.map(e => {
                 let info = `<span style="font-weight:900">${escapeHtml(e.cliente_nombre)}</span>`;
                 if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${escapeHtml(e.pedidos)}</span>`;
-                if (e.factura) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7">Factura: ${escapeHtml(e.factura)}</span>`;
-                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px"><div>${info}</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px"><span style="font-weight:700;color:var(--success)">&#10003; Entregado: ${this.fmtTime(e.hora_entregada)}</span></span>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px" title="Eliminar">&#10005;</button>` : ''}</div></div><div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div>`;
+                const estColor = e.estado === 'facturado' ? 'var(--success)' : e.estado === 'cargado' ? 'var(--info)' : 'var(--warning)';
+                const estLabel = e.estado === 'facturado' ? '✓ Facturado' : e.estado === 'cargado' ? '📦 Cargado' : '⏳ En Almacén';
+                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px"><div>${info}</div><span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${estColor}22;color:${estColor};font-weight:600">${estLabel}</span></div></div>`;
             }).join('');
         } catch(e) {}
     },
@@ -376,5 +421,203 @@ App.registerModule('turnos', {
             const t = document.getElementById('tQRTotal'); if (t) t.textContent = d.total;
             const q = document.getElementById('tQRCola'); if (q) q.textContent = d.enCola;
         } catch(e) {}
+    },
+
+    // ═══════ ALMACÉN ═══════
+    async showAlmacen() {
+        this.currentView = 'almacen';
+        this.stopPolling();
+        const c = document.getElementById('turnosContent');
+        let tecnicos = [];
+        try { tecnicos = await fetch('/api/turnos/tecnicos-almacen').then(r => r.json()); } catch(e) {}
+        c.innerHTML = `
+            <div class="page-header">
+                <div>
+                    <h2>Almacén</h2>
+                    <div class="subtitle">Carga de productos y picking</div>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:12px">
+                <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px" onclick="App.modules.turnos.toggleFormTecAlm()">
+                    <h3 style="font-size:14px;font-weight:600">⚙️ Técnicos Almacén</h3>
+                    <span id="tTecAlmArrow" style="color:var(--text-light);font-size:14px;transition:transform .2s">&#9660;</span>
+                </div>
+                <div id="tTecAlmBody" style="display:none">
+                    <div style="display:flex;gap:8px;margin-bottom:8px">
+                        <input id="tTecAlmNombre" type="text" class="input" placeholder="Nombre del tecnico" style="flex:1;font-size:13px">
+                        <button onclick="App.modules.turnos.addTecnicoAlm()" class="btn btn-primary" style="font-size:13px">Agregar</button>
+                    </div>
+                    <div id="tTecAlmList">${tecnicos.length === 0 ? '<div style="color:var(--text-light);font-size:12px;padding:8px">Sin tecnicos registrados</div>' : tecnicos.map(t => `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-size:13px">${escapeHtml(t.nombre)}</span><button onclick="App.modules.turnos.delTecnicoAlm(${t.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px">&#10005;</button></div>`).join('')}</div>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:12px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <h3 style="font-size:14px;font-weight:600">📦 Pendientes de Carga</h3>
+                    <span id="tAlmPendBadge" class="badge" style="background:var(--warning);color:white">0</span>
+                </div>
+                <div id="tAlmPendList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay pendientes</div></div>
+            </div>
+            <div class="card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <h3 style="font-size:14px;font-weight:600">✅ Cargados Hoy</h3>
+                    <span id="tAlmDoneBadge" class="badge" style="background:var(--success);color:white">0</span>
+                </div>
+                <div id="tAlmDoneList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin cargados hoy</div></div>
+            </div>
+        `;
+        await this.almCargar();
+        this.interval = setInterval(() => this.almCargar(), 15000);
+    },
+
+    toggleFormTecAlm() {
+        const body = document.getElementById('tTecAlmBody');
+        const arrow = document.getElementById('tTecAlmArrow');
+        if (body.style.display === 'none') { body.style.display = 'block'; arrow.style.transform = 'rotate(180deg)'; }
+        else { body.style.display = 'none'; arrow.style.transform = 'rotate(0deg)'; }
+    },
+
+    async addTecnicoAlm() {
+        const nombre = document.getElementById('tTecAlmNombre').value.trim();
+        if (!nombre) return;
+        await fetch('/api/turnos/tecnicos-almacen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre }) });
+        document.getElementById('tTecAlmNombre').value = '';
+        this.showAlmacen();
+    },
+
+    async delTecnicoAlm(id) {
+        if (!confirm('Eliminar este tecnico?')) return;
+        await fetch(`/api/turnos/tecnicos-almacen/${id}`, { method: 'DELETE' });
+        this.showAlmacen();
+    },
+
+    async almCargar() {
+        try {
+            const [pR, aR] = await Promise.all([fetch('/api/turnos/almacen/pendientes'), fetch('/api/turnos/reporte')]);
+            const p = await pR.json();
+            const all = await aR.json();
+            const cargados = all.filter(r => r.turno_estado === 'cargado');
+            const pb = document.getElementById('tAlmPendBadge'); if (pb) pb.textContent = p.length;
+            const db = document.getElementById('tAlmDoneBadge'); if (db) db.textContent = cargados.length;
+            const pl = document.getElementById('tAlmPendList');
+            if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay pendientes</div>' : p.map(e => `
+                <div style="padding:12px;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                        <div>
+                            <span style="color:var(--accent);font-weight:900;font-size:16px">#${e.turno_numero}</span>
+                            <span style="font-weight:600;margin-left:8px">${escapeHtml(e.cliente_nombre)}</span>
+                            ${e.tecnico_nombre ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);margin-left:8px">Técnico: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
+                            ${e.motivo ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#c084fc;margin-left:4px">${escapeHtml(e.motivo)}</span>` : ''}
+                        </div>
+                        <button onclick="App.modules.turnos.marcarCargado(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px">📦 CARGADO</button>
+                    </div>
+                    ${e.observaciones_almacen ? `<div style="font-size:11px;color:var(--text-light);margin-top:6px">Obs: ${escapeHtml(e.observaciones_almacen)}</div>` : ''}
+                    ${e.pedidos ? `<div style="font-size:11px;color:var(--text-light);margin-top:2px">Pedido: ${escapeHtml(e.pedidos)}</div>` : ''}
+                </div>
+            `).join('');
+            const dl = document.getElementById('tAlmDoneList');
+            if (dl) dl.innerHTML = cargados.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin cargados hoy</div>' : cargados.map(r => `
+                <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+                    <div>
+                        <span style="color:var(--accent);font-weight:700">#${r.numero || '-'}</span>
+                        <span style="font-weight:600;margin-left:6px">${escapeHtml(r.nombre || '-')}</span>
+                        <span style="font-size:11px;color:var(--success);margin-left:8px">✓ Cargado</span>
+                    </div>
+                </div>
+            `).join('');
+        } catch(e) {}
+    },
+
+    async marcarCargado(entregaId) {
+        if (!confirm('Marcar como CARGADO? Se enviará a Por Facturar.')) return;
+        await fetch('/api/turnos/cargado', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entrega_id: entregaId }) });
+        App.showAlert('Marcado como cargado');
+        this.almCargar();
+    },
+
+    // ═══════ POR FACTURAR ═══════
+    async showFacturar() {
+        this.currentView = 'facturar';
+        this.stopPolling();
+        const c = document.getElementById('turnosContent');
+        c.innerHTML = `
+            <div class="page-header">
+                <div>
+                    <h2>Por Facturar</h2>
+                    <div class="subtitle">Ingresar número y monto de factura</div>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:12px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <h3 style="font-size:14px;font-weight:600">🧾 Pendientes de Facturar</h3>
+                    <span id="tFacPendBadge" class="badge" style="background:var(--warning);color:white">0</span>
+                </div>
+                <div id="tFacPendList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay pendientes</div></div>
+            </div>
+            <div class="card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <h3 style="font-size:14px;font-weight:600">✅ Facturados Hoy</h3>
+                    <span id="tFacDoneBadge" class="badge" style="background:var(--success);color:white">0</span>
+                </div>
+                <div id="tFacDoneList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin facturados hoy</div></div>
+            </div>
+        `;
+        await this.facCargar();
+        this.interval = setInterval(() => this.facCargar(), 15000);
+    },
+
+    async facCargar() {
+        try {
+            const [pR, eR] = await Promise.all([fetch('/api/turnos/facturar/pendientes'), fetch('/api/turnos/entregas')]);
+            const p = await pR.json();
+            const all = await eR.json();
+            const facturados = all.filter(e => e.estado === 'facturado');
+            const pb = document.getElementById('tFacPendBadge'); if (pb) pb.textContent = p.length;
+            const db = document.getElementById('tFacDoneBadge'); if (db) db.textContent = facturados.length;
+            const pl = document.getElementById('tFacPendList');
+            if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay pendientes</div>' : p.map(e => `
+                <div style="padding:12px;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+                        <div>
+                            <span style="color:var(--accent);font-weight:900;font-size:16px">#${e.turno_numero}</span>
+                            <span style="font-weight:600;margin-left:8px">${escapeHtml(e.cliente_nombre)}</span>
+                            ${e.tecnico_nombre ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);margin-left:8px">Técnico: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
+                            ${e.motivo ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#c084fc;margin-left:4px">${escapeHtml(e.motivo)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+                        <div style="flex:1;min-width:120px">
+                            <label style="font-size:11px;color:var(--text-light)">N° Factura</label>
+                            <input id="facNum_${e.id}" type="text" class="form-control" placeholder="Ej: F-12345" style="font-size:13px;padding:8px">
+                        </div>
+                        <div style="flex:1;min-width:120px">
+                            <label style="font-size:11px;color:var(--text-light)">Monto</label>
+                            <input id="facMonto_${e.id}" type="number" class="form-control" placeholder="0" style="font-size:13px;padding:8px">
+                        </div>
+                        <button onclick="App.modules.turnos.facturar(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px">🧾 FACTURAR</button>
+                    </div>
+                    ${e.pedidos ? `<div style="font-size:11px;color:var(--text-light);margin-top:6px">Pedido: ${escapeHtml(e.pedidos)}</div>` : ''}
+                </div>
+            `).join('');
+            const dl = document.getElementById('tFacDoneList');
+            if (dl) dl.innerHTML = facturados.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin facturados hoy</div>' : facturados.map(e => `
+                <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+                    <div>
+                        <span style="font-weight:600">${escapeHtml(e.cliente_nombre || '-')}</span>
+                        <span style="font-size:11px;color:var(--success);margin-left:8px">✓ Fact: ${escapeHtml(e.numero_factura || '-')}</span>
+                        <span style="font-size:11px;color:var(--text-light);margin-left:8px">$${Number(e.monto_factura || 0).toLocaleString('es-CL')}</span>
+                    </div>
+                </div>
+            `).join('');
+        } catch(e) {}
+    },
+
+    async facturar(entregaId) {
+        const num = document.getElementById('facNum_' + entregaId)?.value.trim();
+        const monto = document.getElementById('facMonto_' + entregaId)?.value;
+        if (!num) { App.showAlert('Ingresa el número de factura', 'danger'); return; }
+        if (!confirm('Confirmar facturación? Se cerrará el ciclo.')) return;
+        await fetch('/api/turnos/facturar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entrega_id: entregaId, numero_factura: num, monto_factura: Number(monto) || 0 }) });
+        App.showAlert('Facturado correctamente');
+        this.facCargar();
     }
 });

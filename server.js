@@ -463,6 +463,32 @@ async function initDB() {
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='motivo') THEN ALTER TABLE turnos ADD COLUMN motivo VARCHAR(20) DEFAULT 'Retirar'; END IF; END $$`);
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut_empresa') THEN ALTER TABLE turnos ADD COLUMN rut_empresa VARCHAR(20) DEFAULT ''; END IF; END $$`);
 
+    await query(`CREATE TABLE IF NOT EXISTS turnos_estados_log (
+        id SERIAL PRIMARY KEY,
+        turno_id INTEGER REFERENCES turnos(id) ON DELETE CASCADE,
+        entrega_id INTEGER,
+        estado VARCHAR(30) NOT NULL,
+        fecha_entrada TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_salida TIMESTAMP,
+        duracion_segundos INTEGER,
+        usuario VARCHAR(200) DEFAULT ''
+    )`);
+
+    await query(`CREATE TABLE IF NOT EXISTS tecnicos_almacen (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(200) NOT NULL,
+        activo BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='tecnico_almacen_id') THEN ALTER TABLE entregas ADD COLUMN tecnico_almacen_id INTEGER; END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='observaciones_almacen') THEN ALTER TABLE entregas ADD COLUMN observaciones_almacen TEXT DEFAULT ''; END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='numero_factura') THEN ALTER TABLE entregas ADD COLUMN numero_factura VARCHAR(50) DEFAULT ''; END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='monto_factura') THEN ALTER TABLE entregas ADD COLUMN monto_factura DECIMAL(12,2) DEFAULT 0; END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='hora_verificada') THEN ALTER TABLE entregas ADD COLUMN hora_verificada TIME; END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='hora_cargada') THEN ALTER TABLE entregas ADD COLUMN hora_cargada TIME; END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='hora_facturada') THEN ALTER TABLE entregas ADD COLUMN hora_facturada TIME; END IF; END $$`);
+
     // TABLA: Mermas de produccion
     await query(`CREATE TABLE IF NOT EXISTS mermas (
         id SERIAL PRIMARY KEY,
@@ -2231,6 +2257,8 @@ const server = http.createServer(async (req, res) => {
         const siguiente = (await query('SELECT * FROM turnos WHERE fecha = $1 AND estado = $2 ORDER BY numero ASC LIMIT 1', [hoy, 'espera'])).rows[0];
         if (!siguiente) return json(res, { error: 'No hay turnos en espera' }, 400);
         await query('UPDATE turnos SET estado = $1, hora_llamada = $2 WHERE id = $3', ['atendiendo', hora, siguiente.id]);
+        await query("INSERT INTO turnos_estados_log (turno_id, estado, fecha_entrada) VALUES ($1, 'atendiendo', NOW())", [siguiente.id]);
+        await query("UPDATE turnos_estados_log SET fecha_salida = NOW(), duracion_segundos = EXTRACT(EPOCH FROM (NOW() - fecha_entrada))::INTEGER WHERE turno_id = $1 AND estado = 'espera' AND fecha_salida IS NULL", [siguiente.id]);
         json(res, { llamado: siguiente, ...await getTurnosStats() });
         return;
     }
@@ -2362,6 +2390,8 @@ const server = http.createServer(async (req, res) => {
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         await query('UPDATE turnos SET estado = $1, hora_fin = $2 WHERE id = $3', ['derivado', hora, turno_id]);
+        await query("INSERT INTO turnos_estados_log (turno_id, estado, fecha_entrada) VALUES ($1, 'derivado', NOW())", [turno_id]);
+        await query("UPDATE turnos_estados_log SET fecha_salida = NOW(), duracion_segundos = EXTRACT(EPOCH FROM (NOW() - fecha_entrada))::INTEGER WHERE turno_id = $1 AND estado = 'atendiendo' AND fecha_salida IS NULL", [turno_id]);
         const turnoRes = await query('SELECT numero FROM turnos WHERE id = $1', [turno_id]);
         const numero = turnoRes.rows.length > 0 ? turnoRes.rows[0].numero : 0;
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
@@ -2376,6 +2406,137 @@ const server = http.createServer(async (req, res) => {
             }
         }
         json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Verificar (Bodega → Almacén)
+    // =====================================================
+    if (urlPath === '/api/turnos/verificar' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { entrega_id, tecnico_almacen_id, observaciones } = body;
+        if (!entrega_id) return json(res, { error: 'entrega_id requerido' }, 400);
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+        const pad = n => String(n).padStart(2, '0');
+        const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        await query("UPDATE entregas SET estado = 'verificado', tecnico_almacen_id = $1, observaciones_almacen = $2, hora_verificada = $3 WHERE id = $4",
+            [tecnico_almacen_id || null, observaciones || '', hora, entrega_id]);
+        const entregaRes = await query('SELECT turno_id FROM entregas WHERE id = $1', [entrega_id]);
+        if (entregaRes.rows.length > 0 && entregaRes.rows[0].turno_id) {
+            await query("UPDATE turnos SET estado = 'verificado' WHERE id = $1", [entregaRes.rows[0].turno_id]);
+            await query("INSERT INTO turnos_estados_log (turno_id, entrega_id, estado, fecha_entrada) VALUES ($1, $2, 'verificado', NOW())",
+                [entregaRes.rows[0].turno_id, entrega_id]);
+            await query("UPDATE turnos_estados_log SET fecha_salida = NOW(), duracion_segundos = EXTRACT(EPOCH FROM (NOW() - fecha_entrada))::INTEGER WHERE turno_id = $1 AND estado = 'derivado' AND fecha_salida IS NULL",
+                [entregaRes.rows[0].turno_id]);
+        }
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Cargado (Almacén → Por Facturar)
+    // =====================================================
+    if (urlPath === '/api/turnos/cargado' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { entrega_id } = body;
+        if (!entrega_id) return json(res, { error: 'entrega_id requerido' }, 400);
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+        const pad = n => String(n).padStart(2, '0');
+        const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        await query("UPDATE entregas SET estado = 'cargado', hora_cargada = $1 WHERE id = $2", [hora, entrega_id]);
+        const entregaRes = await query('SELECT turno_id FROM entregas WHERE id = $1', [entrega_id]);
+        if (entregaRes.rows.length > 0 && entregaRes.rows[0].turno_id) {
+            await query("UPDATE turnos SET estado = 'cargado' WHERE id = $1", [entregaRes.rows[0].turno_id]);
+            await query("INSERT INTO turnos_estados_log (turno_id, entrega_id, estado, fecha_entrada) VALUES ($1, $2, 'cargado', NOW())",
+                [entregaRes.rows[0].turno_id, entrega_id]);
+            await query("UPDATE turnos_estados_log SET fecha_salida = NOW(), duracion_segundos = EXTRACT(EPOCH FROM (NOW() - fecha_entrada))::INTEGER WHERE turno_id = $1 AND estado = 'verificado' AND fecha_salida IS NULL",
+                [entregaRes.rows[0].turno_id]);
+        }
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Facturar (Por Facturar → Completado)
+    // =====================================================
+    if (urlPath === '/api/turnos/facturar' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { entrega_id, numero_factura, monto_factura } = body;
+        if (!entrega_id || !numero_factura) return json(res, { error: 'entrega_id y numero_factura requeridos' }, 400);
+        const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+        const pad = n => String(n).padStart(2, '0');
+        const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        await query("UPDATE entregas SET estado = 'facturado', numero_factura = $1, monto_factura = $2, hora_facturada = $3, hora_entregada = $3 WHERE id = $4",
+            [numero_factura, monto_factura || 0, hora, entrega_id]);
+        const entregaRes = await query('SELECT turno_id FROM entregas WHERE id = $1', [entrega_id]);
+        if (entregaRes.rows.length > 0 && entregaRes.rows[0].turno_id) {
+            await query("UPDATE turnos SET estado = 'completado' WHERE id = $1", [entregaRes.rows[0].turno_id]);
+            await query("INSERT INTO turnos_estados_log (turno_id, entrega_id, estado, fecha_entrada) VALUES ($1, $2, 'facturado', NOW())",
+                [entregaRes.rows[0].turno_id, entrega_id]);
+            await query("UPDATE turnos_estados_log SET fecha_salida = NOW(), duracion_segundos = EXTRACT(EPOCH FROM (NOW() - fecha_entrada))::INTEGER WHERE turno_id = $1 AND estado = 'cargado' AND fecha_salida IS NULL",
+                [entregaRes.rows[0].turno_id]);
+        }
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Técnicos Almacén CRUD
+    // =====================================================
+    if (urlPath === '/api/turnos/tecnicos-almacen' && req.method === 'GET') {
+        const result = await query('SELECT * FROM tecnicos_almacen WHERE activo = TRUE ORDER BY nombre');
+        json(res, result.rows);
+        return;
+    }
+    if (urlPath === '/api/turnos/tecnicos-almacen' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const nombre = sanitizeString(body.nombre);
+        if (!nombre) return json(res, { error: 'Nombre requerido' }, 400);
+        const result = await query('INSERT INTO tecnicos_almacen (nombre) VALUES ($1) RETURNING *', [nombre]);
+        json(res, result.rows[0], 201);
+        return;
+    }
+    const tecnicoAlmMatch = urlPath.match(/^\/api\/turnos\/tecnicos-almacen\/(\d+)$/);
+    if (tecnicoAlmMatch && req.method === 'DELETE') {
+        const id = Number(tecnicoAlmMatch[1]);
+        await query('UPDATE tecnicos_almacen SET activo = FALSE WHERE id = $1', [id]);
+        json(res, { ok: true });
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Pendientes Almacén
+    // =====================================================
+    if (urlPath === '/api/turnos/almacen/pendientes' && req.method === 'GET') {
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        const result = await query(
+            `SELECT e.*, t.numero as turno_numero, t.nombre as cliente_nombre, t.rut, t.patente, t.motivo, t.rut_empresa,
+                    ta.nombre as tecnico_nombre
+             FROM entregas e
+             JOIN turnos t ON e.turno_id = t.id
+             LEFT JOIN tecnicos_almacen ta ON e.tecnico_almacen_id = ta.id
+             WHERE e.fecha = $1 AND e.estado = 'verificado'
+             ORDER BY e.id ASC`, [hoy]
+        );
+        json(res, result.rows);
+        return;
+    }
+
+    // =====================================================
+    // TURNOS - Pendientes Por Facturar
+    // =====================================================
+    if (urlPath === '/api/turnos/facturar/pendientes' && req.method === 'GET') {
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        const result = await query(
+            `SELECT e.*, t.numero as turno_numero, t.nombre as cliente_nombre, t.rut, t.patente, t.motivo, t.rut_empresa,
+                    ta.nombre as tecnico_nombre
+             FROM entregas e
+             JOIN turnos t ON e.turno_id = t.id
+             LEFT JOIN tecnicos_almacen ta ON e.tecnico_almacen_id = ta.id
+             WHERE e.fecha = $1 AND e.estado = 'cargado'
+             ORDER BY e.id ASC`, [hoy]
+        );
+        json(res, result.rows);
         return;
     }
 

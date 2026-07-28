@@ -100,7 +100,9 @@ App.registerModule('usuarios', {
             ]},
             { key: 'atencion', label: 'ATENCION', items: [
                 { key: 'turnos_recepcion', label: 'Recepcion y Control' },
-                { key: 'turnos_bodega', label: 'Entrega de Bodega' },
+                { key: 'turnos_bodega', label: 'Verificación Bodega' },
+                { key: 'turnos_almacen', label: 'Almacén' },
+                { key: 'turnos_facturar', label: 'Por Facturar' },
                 { key: 'turnos_qr', label: 'QR Clientes' },
                 { key: 'turnos_reporte', label: 'Reporte' },
                 { key: 'turnos_eliminar', label: 'Eliminar' }

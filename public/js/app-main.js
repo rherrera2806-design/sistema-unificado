@@ -447,7 +447,9 @@ function renderSidebar() {
         html += `<div class="nav-section" onclick="toggleSection('atencion')"><span>ATENCION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-atencion">`;
         if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', '📋');
-        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Entrega de Bodega', '📦');
+        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Verificación Bodega', '📦');
+        if (canSeeItem('turnos_almacen','atencion')) html += navI('turnos_almacen', 'Almacén', '🏗️');
+        if (canSeeItem('turnos_facturar','atencion')) html += navI('turnos_facturar', 'Por Facturar', '🧾');
         if (canSeeItem('turnos_qr','atencion')) html += navI('turnos_qr', 'QR Clientes', '💻');
         if (canSeeItem('turnos_reporte','atencion')) html += navI('turnos_reporte', 'Reporte', '📊');
         html += `</div>`;
@@ -509,6 +511,12 @@ function renderSidebar() {
             } else if (page === 'turnos_bodega') {
                 App.loadModule('turnos');
                 setTimeout(() => App.modules.turnos.showBodega(), 100);
+            } else if (page === 'turnos_almacen') {
+                App.loadModule('turnos');
+                setTimeout(() => App.modules.turnos.showAlmacen(), 100);
+            } else if (page === 'turnos_facturar') {
+                App.loadModule('turnos');
+                setTimeout(() => App.modules.turnos.showFacturar(), 100);
             } else if (page === 'turnos_qr') {
                 App.loadModule('turnos');
                 setTimeout(() => App.modules.turnos.showQR(), 100);
