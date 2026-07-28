@@ -208,7 +208,8 @@ App.registerModule('reporte_turnos', {
                             <th style="padding:8px 10px;text-align:center">Fact.</th>
                             <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--accent)">TOTAL</th>
                             <th style="padding:8px 10px;text-align:left">Pedido</th>
-                            <th style="padding:8px 10px;text-align:left">Factura</th>
+                            <th style="padding:8px 10px;text-align:left">N° Factura</th>
+                            <th style="padding:8px 10px;text-align:right">Monto</th>
                             <th style="padding:8px 10px;text-align:center">Estado</th>
                             <th style="padding:8px 10px;text-align:center">Accion</th>
                         </tr></thead>
@@ -245,7 +246,8 @@ App.registerModule('reporte_turnos', {
                 <td style="padding:8px 10px;text-align:center;font-size:11px;color:#10b981">${this.fmtSec(r.facturacion_seg)}</td>
                 <td style="padding:8px 10px;text-align:center;font-weight:900;font-size:12px;color:var(--accent)">${this.fmtSec(r.total_seg)}</td>
                 <td style="padding:8px 10px;font-size:11px">${escapeHtml(r.pedidos || '-')}</td>
-                <td style="padding:8px 10px;font-size:11px">${escapeHtml(r.factura || '-')}${r.monto_factura > 0 ? ' $' + Number(r.monto_factura).toLocaleString('es-CL') : ''}</td>
+                <td style="padding:8px 10px;font-size:11px">${escapeHtml(r.factura || '-')}</td>
+                <td style="padding:8px 10px;font-size:11px;text-align:right">${r.monto_factura > 0 ? '$' + Number(r.monto_factura).toLocaleString('es-CL') : '-'}</td>
                 <td style="padding:8px 10px;text-align:center"><span style="font-size:10px;padding:2px 8px;border-radius:6px;background:${estadoColor}22;color:${estadoColor};font-weight:600">${estado}</span> ${tipoBadge}</td>
                 <td style="padding:8px 10px;text-align:center">${r._origen === 'turno' ? `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:3px 8px;font-size:10px" onclick="App.modules.reporte_turnos.solicitarPass('turno',${r.id})">X</button>` : `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:3px 8px;font-size:10px" onclick="App.modules.reporte_turnos.solicitarPass('entrega',${r.entrega_id})">X</button>`}</td>
             </tr>`;
