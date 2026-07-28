@@ -621,16 +621,16 @@ App.registerModule('turnos', {
                             ${e.motivo ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#c084fc;margin-left:4px">${escapeHtml(e.motivo)}</span>` : ''}
                         </div>
                     </div>
-                    <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:8px">
-                        <div style="flex:1;min-width:140px">
+                    <div style="margin-top:8px">
+                        <div style="margin-bottom:8px">
                             <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">N° Factura</label>
-                            <input id="facNum_${e.id}" type="text" class="form-control" placeholder="Ej: F-12345" style="font-size:13px;padding:8px">
+                            <input id="facNum_${e.id}" type="text" class="form-control" placeholder="Ej: F-12345" style="font-size:13px;padding:8px;width:100%">
                         </div>
-                        <div style="flex:1;min-width:140px">
+                        <div style="margin-bottom:8px">
                             <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Monto Factura</label>
-                            <input id="facMonto_${e.id}" type="number" class="form-control" placeholder="0" style="font-size:13px;padding:8px">
+                            <input id="facMonto_${e.id}" type="number" class="form-control" placeholder="0" style="font-size:13px;padding:8px;width:100%">
                         </div>
-                        <button onclick="App.modules.turnos.facturar(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px">🧾 FACTURAR</button>
+                        <button onclick="App.modules.turnos.facturar(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px;width:100%">🧾 FACTURAR</button>
                     </div>
                     ${e.pedidos ? `<div style="font-size:11px;color:var(--text-light);margin-top:6px">Pedido: ${escapeHtml(e.pedidos)}</div>` : ''}
                 </div>
