@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VitroFlow - Modulo de Atencion | Presentacion Comercial</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0f172a; color: #fff; overflow: hidden; -webkit-text-size-adjust: 100%; }
+  
+  .slide { width: 100vw; min-height: 100vh; display: none; padding: 24px 20px; position: relative; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .slide.active { display: flex; flex-direction: column; }
+
+  .section-title { font-size: 10px; font-weight: 600; color: #f59e0b; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; }
+  .slide h2 { font-size: 20px; font-weight: 800; margin-bottom: 16px; letter-spacing: -0.5px; line-height: 1.2; }
+
+  /* ===== SLIDE 1: COVER ===== */
+  .slide-cover { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); justify-content: center; align-items: center; text-align: center; }
+  .slide-cover::before { content: ''; position: absolute; top: -30%; right: -20%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%); border-radius: 50%; }
+  .slide-cover::after { content: ''; position: absolute; bottom: -20%; left: -10%; width: 200px; height: 200px; background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%); border-radius: 50%; }
+  .slide-cover .logo { font-size: 48px; margin-bottom: 16px; position: relative; z-index: 1; }
+  .slide-cover h1 { font-size: 36px; font-weight: 900; letter-spacing: -1.5px; margin-bottom: 8px; background: linear-gradient(135deg, #f59e0b, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; position: relative; z-index: 1; }
+  .slide-cover .subtitle { font-size: 14px; color: #94a3b8; font-weight: 400; margin-bottom: 6px; position: relative; z-index: 1; }
+  .slide-cover .tagline { font-size: 11px; color: #64748b; max-width: 340px; line-height: 1.6; position: relative; z-index: 1; }
+  .slide-cover .brand-badge { position: relative; z-index: 1; margin-top: 24px; padding: 8px 20px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius: 20px; font-size: 11px; color: #fbbf24; font-weight: 600; letter-spacing: 1px; }
+
+  /* ===== SLIDE 2: PROBLEM ===== */
+  .slide-problem { background: linear-gradient(135deg, #0f172a, #1e1b4b); }
+  .problem-card { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; gap: 10px; align-items: start; }
+  .problem-card .icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+  .problem-card h3 { font-size: 12px; font-weight: 600; color: #fca5a5; margin-bottom: 3px; }
+  .problem-card p { font-size: 10px; color: #94a3b8; line-height: 1.4; }
+
+  /* ===== SLIDE 3: SOLUTION OVERVIEW ===== */
+  .slide-solution { background: linear-gradient(135deg, #0f172a, #0c1a0f); }
+  .module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .module-card { background: rgba(245,158,11,0.04); border: 1px solid rgba(245,158,11,0.12); border-radius: 10px; padding: 14px 10px; text-align: center; }
+  .module-card .icon { font-size: 28px; margin-bottom: 6px; }
+  .module-card h3 { font-size: 11px; font-weight: 700; color: #fcd34d; margin-bottom: 3px; }
+  .module-card p { font-size: 9px; color: #94a3b8; line-height: 1.3; }
+  .module-card.featured { border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.06); }
+  .module-card.featured h3 { color: #93c5fd; }
+
+  /* ===== SLIDE 4: QR FLOW ===== */
+  .slide-qr { background: linear-gradient(135deg, #0f172a, #1a1a2e); }
+  .qr-flow { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .qr-step { padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 11px; text-align: center; width: 100%; max-width: 280px; }
+  .qr-step small { font-weight: 400; font-size: 9px; opacity: 0.7; display: block; margin-top: 2px; }
+  .qr-arrow { font-size: 16px; color: #64748b; }
+  .qr-blue { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25); color: #93c5fd; }
+  .qr-amber { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.25); color: #fcd34d; }
+  .qr-green { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.25); color: #86efac; }
+  .qr-purple { background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.25); color: #d8b4fe; }
+  .qr-red { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
+  .qr-info { background: rgba(30,41,59,0.5); border: 1px solid rgba(148,163,184,0.1); border-radius: 8px; padding: 12px; margin-top: 10px; }
+  .qr-info h4 { font-size: 11px; color: #fbbf24; margin-bottom: 4px; }
+  .qr-info p { font-size: 10px; color: #94a3b8; line-height: 1.4; }
+
+  /* ===== SLIDE 5: FEATURES DETAIL ===== */
+  .slide-features { background: linear-gradient(135deg, #0f172a, #0c2d1a); }
+  .feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .feat-card { background: rgba(34,197,94,0.04); border: 1px solid rgba(34,197,94,0.1); border-radius: 8px; padding: 12px 10px; text-align: center; }
+  .feat-card .icon { font-size: 22px; margin-bottom: 4px; }
+  .feat-card h3 { font-size: 10px; font-weight: 600; color: #86efac; margin-bottom: 2px; }
+  .feat-card p { font-size: 9px; color: #94a3b8; line-height: 1.3; }
+
+  /* ===== SLIDE 6: INSTALACIONES ===== */
+  .slide-inst { background: linear-gradient(135deg, #0f172a, #1e1b4b); }
+  .inst-types { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .inst-type { text-align: center; padding: 14px 8px; border-radius: 10px; }
+  .inst-type .icon { font-size: 24px; margin-bottom: 4px; }
+  .inst-type h3 { font-size: 10px; font-weight: 700; margin-bottom: 2px; }
+  .inst-type p { font-size: 8px; color: #94a3b8; line-height: 1.3; }
+  .inst-blue { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); }
+  .inst-blue h3 { color: #93c5fd; }
+  .inst-green { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); }
+  .inst-green h3 { color: #86efac; }
+  .inst-amber { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
+  .inst-amber h3 { color: #fcd34d; }
+  .inst-features { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .inst-feat { background: rgba(30,41,59,0.5); border: 1px solid rgba(148,163,184,0.1); border-radius: 8px; padding: 10px; }
+  .inst-feat h4 { font-size: 10px; color: #93c5fd; margin-bottom: 3px; }
+  .inst-feat p { font-size: 9px; color: #94a3b8; line-height: 1.3; }
+
+  /* ===== SLIDE 7: DASHBOARD ===== */
+  .slide-dashboard { background: linear-gradient(135deg, #0f172a, #0f172a); }
+  .dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .dash-stat { padding: 12px 8px; border-radius: 10px; text-align: center; }
+  .dash-stat .num { font-size: 22px; font-weight: 800; }
+  .dash-stat .label { font-size: 8px; color: #94a3b8; margin-top: 2px; }
+  .ds-blue { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); }
+  .ds-blue .num { color: #60a5fa; }
+  .ds-amber { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
+  .ds-amber .num { color: #fbbf24; }
+  .ds-green { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); }
+  .ds-green .num { color: #4ade80; }
+  .ds-red { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+  .ds-red .num { color: #f87171; }
+  .ds-purple { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.2); }
+  .ds-purple .num { color: #c084fc; }
+  .ds-gray { background: rgba(148,163,184,0.1); border: 1px solid rgba(148,163,184,0.2); }
+  .ds-gray .num { color: #cbd5e1; }
+  .dash-detail { background: rgba(30,41,59,0.5); border: 1px solid rgba(148,163,184,0.1); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+  .dash-detail h4 { font-size: 11px; margin-bottom: 6px; }
+  .dash-detail ul { font-size: 10px; color: #94a3b8; line-height: 1.7; padding-left: 14px; }
+
+  /* ===== SLIDE 8: REPORTING ===== */
+  .slide-report { background: linear-gradient(135deg, #0f172a, #1a1a2e); }
+  .report-mock { background: rgba(30,41,59,0.6); border: 1px solid rgba(148,163,184,0.15); border-radius: 10px; padding: 12px; margin-bottom: 10px; overflow-x: auto; }
+  .report-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+  .report-table th { text-align: left; padding: 6px 5px; border-bottom: 2px solid rgba(245,158,11,0.3); color: #fbbf24; font-weight: 600; white-space: nowrap; }
+  .report-table td { padding: 6px 5px; border-bottom: 1px solid rgba(148,163,184,0.08); color: #cbd5e1; white-space: nowrap; }
+  .report-table tr:hover td { background: rgba(245,158,11,0.03); }
+  .report-info { background: rgba(30,41,59,0.5); border: 1px solid rgba(148,163,184,0.1); border-radius: 10px; padding: 12px; }
+  .report-info h4 { font-size: 11px; color: #fbbf24; margin-bottom: 6px; }
+  .report-info ul { font-size: 10px; color: #94a3b8; line-height: 1.7; padding-left: 14px; }
+
+  /* ===== SLIDE 9: BENEFITS ===== */
+  .slide-benefits { background: linear-gradient(135deg, #0f172a, #0c2d1a); }
+  .benefit-row { display: flex; gap: 10px; padding: 10px; background: rgba(34,197,94,0.03); border: 1px solid rgba(34,197,94,0.08); border-radius: 8px; margin-bottom: 6px; align-items: start; }
+  .benefit-row .icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+  .benefit-row h3 { font-size: 11px; font-weight: 600; color: #86efac; margin-bottom: 2px; }
+  .benefit-row p { font-size: 9px; color: #94a3b8; line-height: 1.4; }
+
+  /* ===== SLIDE 10: ROI ===== */
+  .slide-roi { background: linear-gradient(135deg, #0f172a, #1e1b4b); }
+  .roi-kpi { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .roi-card { text-align: center; padding: 16px 10px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.12); border-radius: 12px; }
+  .roi-card .number { font-size: 28px; font-weight: 900; background: linear-gradient(135deg, #f59e0b, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .roi-card .unit { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+  .roi-card .desc { font-size: 9px; color: #cbd5e1; margin-top: 4px; line-height: 1.3; }
+  .roi-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+  .roi-table th { text-align: left; padding: 7px 6px; border-bottom: 2px solid rgba(245,158,11,0.3); color: #fbbf24; font-weight: 600; }
+  .roi-table td { padding: 7px 6px; border-bottom: 1px solid rgba(148,163,184,0.08); color: #cbd5e1; }
+
+  /* ===== SLIDE 11: PRICING ===== */
+  .slide-pricing { background: linear-gradient(135deg, #0f172a, #1e1b4b); }
+  .pricing-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .price-card { padding: 20px 16px; border-radius: 12px; text-align: center; position: relative; }
+  .price-card.popular { border: 2px solid #f59e0b; background: rgba(245,158,11,0.06); }
+  .price-card:not(.popular) { border: 1px solid rgba(148,163,184,0.12); background: rgba(30,41,59,0.4); }
+  .price-card .plan-name { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; }
+  .price-card .price { font-size: 26px; font-weight: 900; color: #fff; }
+  .price-card .period { font-size: 11px; color: #64748b; }
+  .price-card .features { list-style: none; margin: 10px 0 0; text-align: left; }
+  .price-card .features li { padding: 4px 0; font-size: 10px; color: #cbd5e1; border-bottom: 1px solid rgba(148,163,184,0.08); }
+  .price-card .features li::before { content: '✓ '; color: #22c55e; font-weight: 700; }
+  .popular-badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #f59e0b; color: #0f172a; padding: 3px 14px; border-radius: 20px; font-size: 9px; font-weight: 700; white-space: nowrap; }
+
+  /* ===== SLIDE 12: CTA ===== */
+  .slide-cta { background: linear-gradient(135deg, #0f172a, #1e293b); justify-content: center; align-items: center; text-align: center; }
+  .slide-cta h2 { font-size: 24px; font-weight: 900; margin-bottom: 12px; background: linear-gradient(135deg, #f59e0b, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .slide-cta p { font-size: 12px; color: #94a3b8; margin-bottom: 20px; max-width: 320px; line-height: 1.6; }
+  .cta-btn { display: inline-block; padding: 12px 32px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #0f172a; font-size: 14px; font-weight: 700; border-radius: 10px; text-decoration: none; }
+  .slide-cta .contact { margin-top: 30px; color: #64748b; font-size: 10px; line-height: 1.8; }
+
+  /* Navigation */
+  .nav { position: fixed; bottom: 12px; right: 12px; display: flex; gap: 6px; z-index: 100; }
+  .nav button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(148,163,184,0.2); background: rgba(15,23,42,0.9); color: #fff; font-size: 16px; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .nav button:active { background: rgba(245,158,11,0.3); }
+  .slide-num { position: fixed; bottom: 18px; left: 12px; font-size: 11px; color: #64748b; z-index: 100; background: rgba(15,23,42,0.8); padding: 4px 10px; border-radius: 6px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+  /* Desktop overrides */
+  @media (min-width: 768px) {
+    .slide { padding: 48px 60px; }
+    .section-title { font-size: 14px; letter-spacing: 3px; margin-bottom: 8px; }
+    .slide h2 { font-size: 36px; margin-bottom: 32px; }
+    
+    .slide-cover .logo { font-size: 80px; margin-bottom: 24px; }
+    .slide-cover h1 { font-size: 64px; letter-spacing: -2px; margin-bottom: 16px; }
+    .slide-cover .subtitle { font-size: 24px; margin-bottom: 12px; }
+    .slide-cover .tagline { font-size: 16px; max-width: 600px; }
+    .slide-cover::before { width: 600px; height: 600px; }
+    .slide-cover::after { width: 400px; height: 400px; }
+    .slide-cover .brand-badge { font-size: 14px; padding: 12px 28px; margin-top: 40px; }
+    
+    .problem-card { padding: 24px; margin-bottom: 16px; }
+    .problem-card .icon { font-size: 32px; }
+    .problem-card h3 { font-size: 16px; margin-bottom: 6px; }
+    .problem-card p { font-size: 13px; }
+    
+    .module-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .module-card { padding: 24px; }
+    .module-card .icon { font-size: 40px; margin-bottom: 12px; }
+    .module-card h3 { font-size: 15px; margin-bottom: 8px; }
+    .module-card p { font-size: 12px; }
+    
+    .qr-flow { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 12px; }
+    .qr-step { padding: 16px 20px; font-size: 13px; width: auto; min-width: 140px; }
+    .qr-arrow { font-size: 24px; }
+    
+    .feat-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .feat-card { padding: 20px; }
+    .feat-card .icon { font-size: 32px; margin-bottom: 10px; }
+    .feat-card h3 { font-size: 14px; margin-bottom: 6px; }
+    .feat-card p { font-size: 11px; }
+    
+    .inst-types { gap: 16px; margin-bottom: 24px; }
+    .inst-type { padding: 24px 16px; }
+    .inst-type .icon { font-size: 36px; margin-bottom: 8px; }
+    .inst-type h3 { font-size: 14px; }
+    .inst-type p { font-size: 11px; }
+    .inst-features { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .inst-feat { padding: 16px; }
+    .inst-feat h4 { font-size: 13px; }
+    .inst-feat p { font-size: 11px; }
+    
+    .dash-stats { grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 24px; }
+    .dash-stat { padding: 16px; }
+    .dash-stat .num { font-size: 32px; }
+    .dash-stat .label { font-size: 11px; }
+    .dash-detail { padding: 20px; }
+    .dash-detail h4 { font-size: 14px; }
+    .dash-detail ul { font-size: 12px; }
+    
+    .report-table { font-size: 12px; }
+    .report-table th, .report-table td { padding: 8px 10px; }
+    .report-info { padding: 20px; }
+    .report-info h4 { font-size: 14px; }
+    .report-info ul { font-size: 12px; }
+    
+    .benefit-row { padding: 16px; margin-bottom: 0; }
+    .benefit-row .icon { font-size: 28px; }
+    .benefit-row h3 { font-size: 14px; }
+    .benefit-row p { font-size: 11px; }
+    
+    .roi-kpi { grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .roi-card { padding: 24px; }
+    .roi-card .number { font-size: 42px; }
+    .roi-card .unit { font-size: 13px; }
+    .roi-card .desc { font-size: 12px; }
+    .roi-table { font-size: 12px; }
+    .roi-table th, .roi-table td { padding: 10px 12px; }
+    
+    .pricing-grid { grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1000px; }
+    .price-card { padding: 32px 24px; }
+    .price-card .plan-name { font-size: 14px; }
+    .price-card .price { font-size: 42px; }
+    .price-card .period { font-size: 14px; }
+    .price-card .features li { padding: 8px 0; font-size: 13px; }
+    
+    .slide-cta h2 { font-size: 48px; margin-bottom: 16px; }
+    .slide-cta p { font-size: 18px; margin-bottom: 40px; }
+    .cta-btn { padding: 16px 48px; font-size: 18px; }
+    .slide-cta .contact { font-size: 14px; }
+    
+    .nav { bottom: 30px; right: 40px; gap: 8px; }
+    .nav button { width: 44px; height: 44px; font-size: 18px; }
+    .slide-num { bottom: 40px; left: 40px; font-size: 13px; padding: 0; background: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: COVER -->
+<div class="slide slide-cover active" id="s1">
+  <div class="logo">🔷</div>
+  <h1>VitroFlow</h1>
+  <div class="subtitle">Modulo de Atencion Integral</div>
+  <div class="tagline">Gestiona el ciclo completo de atencion al cliente: desde la recepcion y el turno QR, pasando por verificacion y carga en bodega, hasta la facturacion y instalacion en terreno. Todo con trazabilidad en tiempo real.</div>
+  <div class="brand-badge">DISEÑADO PARA VIDRIERAS Y FABRICAS DE CRISTAL</div>
+</div>
+
+<!-- SLIDE 2: PROBLEM -->
+<div class="slide slide-problem" id="s2">
+  <div class="section-title">El Problema</div>
+  <h2>Sin sistema, cada cliente es una gestion manual</h2>
+  <div class="problem-card">
+    <div class="icon">📋</div>
+    <div><h3>Colas sin control</h3><p>El cliente llega, no sabe cuantos hay adelante. Se va y vuelve despues. La recepcion no tiene visibilidad del flujo.</p></div>
+  </div>
+  <div class="problem-card">
+    <div class="icon">🔍</div>
+    <div><h3>Sin verificacion de stock</h3><p>El cliente paga y cuando va a retirar, el producto no esta listo. Segunda visita, malestar, perdida de tiempo.</p></div>
+  </div>
+  <div class="problem-card">
+    <div class="icon">📝</div>
+    <div><h3>Pedidos sin seguimiento</h3><p>Los PDFs de pedidos se pierden entre WhatsApp y correo. Nadie sabe que falta por facturar o entregar.</p></div>
+  </div>
+  <div class="problem-card">
+    <div class="icon">🏗️</div>
+    <div><h3>Instalaciones descoordinadas</h3><p>El tecnico no sabe a donde ir. El cliente no recibe confirmacion. Sin fotos ni firma, no hay evidencia.</p></div>
+  </div>
+  <div class="problem-card">
+    <div class="icon">📊</div>
+    <div><h3>Sin metricas</h3><p>Cuanto tiempo espera cada cliente? Cuantos pedidos se facturan al dia? No se puede mejorar lo que no se mide.</p></div>
+  </div>
+  <div class="problem-card">
+    <div class="icon">💸</div>
+    <div><h3>Costos ocultos</h3><p>Personal dedicado a coordinar manualmente, clientes que no retiran, horas hombre perdidas en tareas repetitivas.</p></div>
+  </div>
+</div>
+
+<!-- SLIDE 3: SOLUTION OVERVIEW -->
+<div class="slide slide-solution" id="s3">
+  <div class="section-title">La Solucion</div>
+  <h2>Un sistema, todos los módulos de atencion</h2>
+  <div class="module-grid">
+    <div class="module-card featured">
+      <div class="icon">🎫</div>
+      <h3>Turnos y Cola QR</h3>
+      <p>Clientes se registran con QR o en mostrador. Cola automatica con tiempos de espera.</p>
+    </div>
+    <div class="module-card featured">
+      <div class="icon">📦</div>
+      <h3>Bodega y Carga</h3>
+      <p>Verificacion de stock, asignacion de encargado, registro de carga con observaciones.</p>
+    </div>
+    <div class="module-card featured">
+      <div class="icon">💳</div>
+      <h3>Facturacion</h3>
+      <p>Registro de N° factura y monto. Cierre del ciclo de atencion.</p>
+    </div>
+    <div class="module-card">
+      <div class="icon">🔧</div>
+      <h3>Instalaciones</h3>
+      <p>Visita tecnica, instalacion y post-venta con calendario, fotos y firma.</p>
+    </div>
+    <div class="module-card">
+      <div class="icon">📄</div>
+      <h3>Pedidos / Ordenes</h3>
+      <p>Carga de PDFs de pedido con aprobacion o rechazo y seguimiento.</p>
+    </div>
+    <div class="module-card">
+      <div class="icon">📊</div>
+      <h3>Reportes</h3>
+      <p>Reporte completo de turnos con tiempos por etapa y filtros por fecha.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: QR + COLA FLOW -->
+<div class="slide slide-qr" id="s4">
+  <div class="section-title">Flujo QR</div>
+  <h2>Del registro al cierre, todo trazado</h2>
+  <div class="qr-flow">
+    <div class="qr-step qr-blue">🎫 REGISTRO<br><small>QR auto-servicio o mostrador. RUT, nombre, motivo, patente.</small></div>
+    <div class="qr-arrow">↓</div>
+    <div class="qr-step qr-amber">📞 LLAMADO<br><small>Recepcion llama al siguiente. Turno con numero y posicion.</small></div>
+    <div class="qr-arrow">↓</div>
+    <div class="qr-step qr-purple">📋 PEDIDO<br><small>Se adjunta PDF del pedido. Informacion del cliente validada.</small></div>
+    <div class="qr-arrow">↓</div>
+    <div class="qr-step qr-amber">🔍 VERIFICACION<br><small>Se verifica stock y se asigna tecnico de almacen.</small></div>
+    <div class="qr-arrow">↓</div>
+    <div class="qr-step qr-green">📦 CARGA<br><small>Encargado carga producto. Observaciones y evidencia.</small></div>
+    <div class="qr-arrow">↓</div>
+    <div class="qr-step qr-green">💳 FACTURACION<br><small>N° factura + monto. Ciclo completado.</small></div>
+  </div>
+  <div class="qr-info">
+    <h4>📱 Ticket en tiempo real</h4>
+    <p>El cliente ve su posicion, tiempo estimado y estado del turno desde su celular. Se actualiza cada 3 segundos.</p>
+  </div>
+</div>
+
+<!-- SLIDE 5: FEATURES DETAIL -->
+<div class="slide slide-features" id="s5">
+  <div class="section-title">Funcionalidades Clave</div>
+  <h2>Cada detalle pensado para la operacion</h2>
+  <div class="feat-grid">
+    <div class="feat-card"><div class="icon">📱</div><h3>QR Auto-Servicio</h3><p>Cliente escanea y se registra solo. Reduce filas en mostrador.</p></div>
+    <div class="feat-card"><div class="icon">⏱️</div><h3>Control de Tiempos</h3><p>Cada estado registra entrada y salida. Conoce el tiempo real por etapa.</p></div>
+    <div class="feat-card"><div class="icon">📄</div><h3>PDFs Adjuntos</h3><p>Pedidos PDF vinculados al turno. Visibles en cada estacion.</p></div>
+    <div class="feat-card"><div class="icon">🔐</div><h3>Validacion RUT</h3><p>Algoritmo modulo 11. Datos del cliente siempre correctos.</p></div>
+    <div class="feat-card"><div class="icon">🚗</div><h3>Patente Chilena</h3><p>Formato AB-1234 o ABCD-12. Validacion automatica.</p></div>
+    <div class="feat-card"><div class="icon">🔔</div><h3>Badges en Sidebar</h3><p>Pendientes visibles en el menu. Cada modulo muestra su cola.</p></div>
+    <div class="feat-card"><div class="icon">👤</div><h3>Tecnico de Almacen</h3><p>CRUD de encargados. Asignacion en verificacion y carga.</p></div>
+    <div class="feat-card"><div class="icon">📝</div><h3>Observaciones</h3><p>Notas en verificacion y carga. Contexto para el siguiente paso.</p></div>
+    <div class="feat-card"><div class="icon">🗑️</div><h3>Eliminacion Segura</h3><p>Requiere password de admin. Auditoria completa.</p></div>
+  </div>
+</div>
+
+<!-- SLIDE 6: INSTALACIONES -->
+<div class="slide slide-inst" id="s6">
+  <div class="section-title">Modulo de Instalaciones</div>
+  <h2>Tres tipos de servicio en terreno</h2>
+  <div class="inst-types">
+    <div class="inst-type inst-blue">
+      <div class="icon">🔍</div>
+      <h3>Visita Tecnica</h3>
+      <p>Inspeccion, levantamiento, evaluacion previa a la obra.</p>
+    </div>
+    <div class="inst-type inst-green">
+      <div class="icon">🔧</div>
+      <h3>Instalacion</h3>
+      <p>Montaje, colocacion y entrega del proyecto de vidrio.</p>
+    </div>
+    <div class="inst-type inst-amber">
+      <div class="icon">🛠️</div>
+      <h3>Post Venta</h3>
+      <p>Garantia, reparaciones y atencion de reclamos.</p>
+    </div>
+  </div>
+  <div class="inst-features">
+    <div class="inst-feat"><h4>📅 Calendario Visual</h4><p>Mensual con colores por estado y tipo de servicio.</p></div>
+    <div class="inst-feat"><h4>🗺️ Navegacion</h4><p>1 clic a Google Maps o Waze con la direccion exacta.</p></div>
+    <div class="inst-feat"><h4>📸 Fotos</h4><p>Evidencia fotografica desde el celular en cada visita.</p></div>
+    <div class="inst-feat"><h4>✍️ Firma Digital</h4><p>Conformidad del cliente en canvas, sin papel.</p></div>
+    <div class="inst-feat"><h4>⚠️ Novedades</h4><p>Registro formal de problemas encontrados en terreno.</p></div>
+    <div class="inst-feat"><h4>📜 Historial</h4><p>Auditoria inmutable con todas las acciones registradas.</p></div>
+  </div>
+</div>
+
+<!-- SLIDE 7: DASHBOARD -->
+<div class="slide slide-dashboard" id="s7">
+  <div class="section-title">Panel de Control</div>
+  <h2>Los numeros al instante</h2>
+  <div class="dash-stats">
+    <div class="dash-stat ds-blue"><div class="num">3</div><div class="label">En Cola</div></div>
+    <div class="dash-stat ds-amber"><div class="num">2</div><div class="label">Verificacion</div></div>
+    <div class="dash-stat ds-purple"><div class="num">1</div><div class="label">Por Cargar</div></div>
+    <div class="dash-stat ds-green"><div class="num">5</div><div class="label">Facturados Hoy</div></div>
+    <div class="dash-stat ds-red"><div class="num">12</div><div class="label">Turnos Dia</div></div>
+    <div class="dash-stat ds-gray"><div class="num">8</div><div class="label">Completados</div></div>
+  </div>
+  <div class="dash-detail">
+    <h4 style="color:#93c5fd">📊 Reporte de Turnos</h4>
+    <ul>
+      <li>Una linea por flujo completo del cliente</li>
+      <li>Tiempos: espera, atencion, verificacion, carga, facturacion</li>
+      <li>Filtros por rango de fechas</li>
+      <li>Exportacion visual para toma de decisiones</li>
+    </ul>
+  </div>
+  <div class="dash-detail">
+    <h4 style="color:#86efac">📈 Metricas Clave</h4>
+    <ul>
+      <li>Tiempo promedio de espera por turno</li>
+      <li>Tiempo total de ciclo (registro a facturacion)</li>
+      <li>Turnos atendidos por turno de trabajo</li>
+      <li>Pedidos facturados vs pendientes</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 8: REPORTING -->
+<div class="slide slide-report" id="s8">
+  <div class="section-title">Reportes</div>
+  <h2>Cada segundo cuenta</h2>
+  <div class="report-mock">
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Cliente</th><th>RUT</th><th>Patente</th>
+          <th>Llegada</th><th>Atencion</th><th>Verif.</th><th>Carga</th><th>Factura</th>
+          <th>Espera</th><th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td><td>Juan Perez</td><td>12.345.678-9</td><td>AB-1234</td>
+          <td>09:15</td><td>09:22</td><td>09:35</td><td>09:50</td><td>10:05</td>
+          <td style="color:#fbbf24">7 min</td><td style="color:#4ade80">50 min</td>
+        </tr>
+        <tr>
+          <td>2</td><td>Maria Garcia</td><td>15.678.901-2</td><td>CD-5678</td>
+          <td>09:30</td><td>09:38</td><td>09:52</td><td>10:10</td><td>10:25</td>
+          <td style="color:#fbbf24">8 min</td><td style="color:#4ade80">55 min</td>
+        </tr>
+        <tr>
+          <td>3</td><td>Pedro Morales</td><td>18.901.234-5</td><td>EF-9012</td>
+          <td>10:00</td><td>10:05</td><td>10:20</td><td>10:35</td><td>10:45</td>
+          <td style="color:#fbbf24">5 min</td><td style="color:#4ade80">45 min</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="report-info">
+    <h4>📋 Datos por cada turno</h4>
+    <ul>
+      <li>Numero de turno, cliente, RUT, motivo, patente</li>
+      <li>Fecha/hora de cada transicion (llegada, atencion, verificacion, carga, factura)</li>
+      <li>Tiempo de espera (llegada a atencion)</li>
+      <li>Tiempo total del ciclo (llegada a factura)</li>
+      <li>Filtros por rango de fechas</li>
+    </ul>
+  </div>
+</div>
+
+<!-- SLIDE 9: BENEFITS -->
+<div class="slide slide-benefits" id="s9">
+  <div class="section-title">Beneficios</div>
+  <h2>Lo que gana tu empresa</h2>
+  <div class="benefit-row"><div class="icon">⏱️</div><div><h3>Ahorro de tiempo</h3><p>Clientes se registran con QR. Recepcion no necesita anotar manualmente. Cada paso es automatico.</p></div></div>
+  <div class="benefit-row"><div class="icon">📉</div><div><h3>Menos errores</h3><p>RUT y patente validados. Stock verificado antes de facturar. Sin sorpresas en bodega.</p></div></div>
+  <div class="benefit-row"><div class="icon">🛡️</div><div><h3>Proteccion legal</h3><p>Firma digital, fotos, historial inmutable. Evidencia ante cualquier reclamo.</p></div></div>
+  <div class="benefit-row"><div class="icon">📈</div><div><h3>Medicion de desempeno</h3><p>Conoce tiempos reales por etapa. Identifica cuellos de botella y mejora.</p></div></div>
+  <div class="benefit-row"><div class="icon">💰</div><div><h3>Menos segundas visitas</h3><p>Con stock verificado y pedidos adjuntos, el cliente retira sin problemas.</p></div></div>
+  <div class="benefit-row"><div class="icon">🤝</div><div><h3>Satisfaccion del cliente</h3><p>Sabe donde esta su pedido. Ve el tiempo estimado. Confianza total.</p></div></div>
+  <div class="benefit-row"><div class="icon">📱</div><div><h3>Desde cualquier lugar</h3><p>Funciona en celular, tablet o computador. Instalaciones con GPS integrado.</p></div></div>
+  <div class="benefit-row"><div class="icon">🔐</div><div><h3>Control de acceso</h3><p>Permisos por rol: recepcion, bodega, almacen, facturacion. Cada uno ve lo suyo.</p></div></div>
+</div>
+
+<!-- SLIDE 10: ROI -->
+<div class="slide slide-roi" id="s10">
+  <div class="section-title">Retorno de Inversion</div>
+  <h2>Los numeros hablan</h2>
+  <div class="roi-kpi">
+    <div class="roi-card"><div class="number">40%</div><div class="unit">menos tiempo de espera</div><div class="desc">Cola QR automatica vs gestion manual.</div></div>
+    <div class="roi-card"><div class="number">60%</div><div class="unit">menos llamadas</div><div><div class="number" style="font-size:12px;color:#94a3b8">de seguimiento</div></div></div>
+    <div class="roi-card"><div class="number">3x</div><div class="unit">mas clientes atendidos</div><div class="desc">Un coordinador maneja el triple.</div></div>
+    <div class="roi-card"><div class="number">90%</div><div class="unit">menos perdidas</div><div class="desc">Stock verificado antes de facturar.</div></div>
+  </div>
+  <table class="roi-table">
+    <thead><tr><th>Metrica</th><th>Sin VitroFlow</th><th>Con VitroFlow</th></tr></thead>
+    <tbody>
+      <tr><td>Registro de turno</td><td style="color:#f87171">3-5 min manual</td><td style="color:#4ade80">30 seg con QR</td></tr>
+      <tr><td>Verificar stock</td><td style="color:#f87171">Llamar a bodega</td><td style="color:#4ade80">1 clic en panel</td></tr>
+      <tr><td>Tiempo de espera</td><td style="color:#f87171">15-30 min</td><td style="color:#4ade80">5-10 min</td></tr>
+      <tr><td>Evidencia</td><td style="color:#f87171">Ninguna</td><td style="color:#4ade80">Fotos + firma + log</td></tr>
+      <tr><td>Reporte</td><td style="color:#f87171">Excel manual</td><td style="color:#4ade80">Automatico en vivo</td></tr>
+      <tr><td>Segundo viaje</td><td style="color:#f87171">20-30% de casos</td><td style="color:#4ade80">&lt; 5% de casos</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SLIDE 11: PRICING -->
+<div class="slide slide-pricing" id="s11">
+  <div class="section-title">Planes y Precios</div>
+  <h2>El plan correcto para tu empresa</h2>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="plan-name">Basico</div>
+      <div class="price">$79.900</div>
+      <div class="period">por mes</div>
+      <ul class="features">
+        <li>5 usuarios</li>
+        <li>Turnos QR + Cola</li>
+        <li>Recepcion y Control</li>
+        <li>Pedidos / Ordenes</li>
+        <li>Reporte de turnos</li>
+        <li>Soporte por email</li>
+      </ul>
+    </div>
+    <div class="price-card popular">
+      <div class="popular-badge">RECOMENDADO</div>
+      <div class="plan-name">Profesional</div>
+      <div class="price">$149.900</div>
+      <div class="period">por mes</div>
+      <ul class="features">
+        <li>15 usuarios</li>
+        <li>Todo lo del Basico</li>
+        <li>Bodega + Almacen + Facturacion</li>
+        <li>Instalaciones (3 tipos)</li>
+        <li>Firma digital + Fotos</li>
+        <li>Reportes avanzados</li>
+        <li>Soporte prioritario</li>
+      </ul>
+    </div>
+    <div class="price-card">
+      <div class="plan-name">Empresarial</div>
+      <div class="price">$249.900</div>
+      <div class="period">por mes</div>
+      <ul class="features">
+        <li>Usuarios ilimitados</li>
+        <li>Todo lo del Profesional</li>
+        <li>Mantenimiento (SIGMA)</li>
+        <li>Inventario de vidrios</li>
+        <li>Produccion + Planificacion</li>
+        <li>Taller en terreno</li>
+        <li>API personalizada</li>
+        <li>Soporte 24/7</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 12: CTA -->
+<div class="slide slide-cta" id="s12">
+  <h2>Transforma la atencion de tus clientes</h2>
+  <p>Cola QR, verificacion de stock, facturacion e instalaciones. Todo integrado, todo trazado, todo en tiempo real.</p>
+  <a href="#" class="cta-btn" onclick="alert('Contacto: ventas@vitroflow.cl')">Solicitar Demo Gratis</a>
+  <div class="contact">
+    <p>📧 ventas@vitroflow.cl</p>
+    <p>🌐 vitroflow.up.railway.app</p>
+    <p style="margin-top:12px;color:#475569">Configuracion sin costo · Soporte incluido · Sin permanencia</p>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button onclick="prev()">◀</button>
+  <button onclick="next()">▶</button>
+</div>
+<div class="slide-num" id="slideNum">1 / 12</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  
+  function show(i) {
+    slides.forEach(s => s.classList.remove('active'));
+    slides[i].classList.add('active');
+    document.getElementById('slideNum').textContent = (i+1) + ' / ' + slides.length;
+    slides[i].scrollTop = 0;
+  }
+  
+  function next() { if (current < slides.length - 1) { current++; show(current); } }
+  function prev() { if (current > 0) { current--; show(current); } }
+  
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+  });
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    const dy = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      if (dx < 0) next(); else prev();
+    }
+  }, { passive: true });
+</script>
+</body>
+</html>
