@@ -610,7 +610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) {}
     await App.updateNavBadge();
     setInterval(() => App.updateTurnosBadges(), 15000);
-    setInterval(() => loadAtencionBadges(), 30000);
+    setInterval(() => loadAtencionBadges(), 10000);
     setInterval(() => App.updateInvAlertasBadge(), 30000);
     setInterval(() => App.updatePedidosBadge(), 15000);
     setInterval(() => App.updateProdNotasBadge(), 15000);
