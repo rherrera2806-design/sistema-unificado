@@ -259,55 +259,67 @@ App.registerModule('turnos', {
         this.stopPolling();
         const c = document.getElementById('turnosContent');
         c.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2>Verificación Bodega</h2>
-                    <div class="subtitle">Verificar stock y derivar a almacén</div>
-                </div>
+            <div style="margin-bottom:24px">
+                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Verificacion Bodega</h2>
+                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Verificar stock y derivar a almacen</p>
             </div>
-            <div class="card" style="margin-bottom:12px">
-                <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px" onclick="App.modules.turnos.toggleFormBodega()">
-                    <h3 style="font-size:14px;font-weight:600">Registrar Entrega</h3>
-                    <span id="tBFormArrow" style="color:var(--text-light);font-size:14px;transition:transform .2s">&#9660;</span>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer" onclick="App.modules.turnos.toggleFormBodega()">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Registrar Entrega</h3>
+                    <span id="tBFormArrow" style="color:#94a3b8;font-size:12px;transition:transform 0.2s">&#9660;</span>
                 </div>
-                <div id="tBFormBody" style="display:none">
-                    <select id="tBTipo" class="input">
-                        <option value="Retira sin turno">Retira sin turno</option><option value="Despacho">Despacho</option>
-                    </select>
-                    <input id="tBNombre" type="text" class="input" placeholder="Nombre del cliente" style="margin-top:8px">
-                    <div style="display:flex;gap:8px;margin-top:8px">
-                        <input id="tBPedidos" type="text" class="input" placeholder="Pedido(s)" style="flex:1;min-width:120px">
+                <div id="tBFormBody" style="display:none;padding:0 20px 20px;border-top:1px solid #f1f5f9">
+                    <div style="margin-top:16px">
+                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Tipo</label>
+                        <select id="tBTipo" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
+                            <option value="Retira sin turno">Retira sin turno</option><option value="Despacho">Despacho</option>
+                        </select>
                     </div>
-                    <input id="tBDesc" type="text" class="input" placeholder="Descripcion (opcional)" style="margin-top:8px">
-                    <button onclick="App.modules.turnos.bRegistrar()" class="btn btn-success" style="width:100%;margin-top:12px">REGISTRAR</button>
-                    <p id="tBError" style="color:var(--danger);font-size:12px;margin-top:8px;display:none"></p>
+                    <div style="margin-top:12px">
+                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Nombre del cliente</label>
+                        <input id="tBNombre" type="text" placeholder="Nombre completo" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
+                    </div>
+                    <div style="margin-top:12px">
+                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Pedido(s)</label>
+                        <input id="tBPedidos" type="text" placeholder="Numero de pedido(s)" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
+                    </div>
+                    <div style="margin-top:12px">
+                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Descripcion (opcional)</label>
+                        <input id="tBDesc" type="text" placeholder="Descripcion breve" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
+                    </div>
+                    <button onclick="App.modules.turnos.bRegistrar()" style="width:100%;margin-top:16px;padding:12px;background:#16a34a;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Registrar</button>
+                    <p id="tBError" style="color:#dc2626;font-size:12px;margin-top:8px;display:none"></p>
                 </div>
             </div>
-            <div class="card" style="margin-bottom:12px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">Pendientes de Verificación</h3>
-                    <span id="tBPendBadge" class="badge" style="background:var(--warning);color:white">0</span>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Pendientes de Verificacion</h3>
+                    <span id="tBPendBadge" style="font-size:12px;font-weight:700;color:white;background:#f59e0b;padding:3px 10px;border-radius:20px">0</span>
                 </div>
-                <div id="tBPendList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay entregas pendientes</div></div>
+                <div id="tBPendList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay entregas pendientes</div></div>
             </div>
-            <div class="card">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">Verificados Hoy</h3>
-                    <span id="tBEntregBadge" class="badge" style="background:var(--success);color:white">0</span>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Verificados Hoy</h3>
+                    <span id="tBEntregBadge" style="font-size:12px;font-weight:700;color:white;background:#16a34a;padding:3px 10px;border-radius:20px">0</span>
                 </div>
-                <div id="tBEntregList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin verificaciones hoy</div></div>
+                <div id="tBEntregList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin verificaciones hoy</div></div>
             </div>
-            <div id="tModalVerificar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)">
-                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
-                    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">✅ Verificar y Derivar a Almacén</h3>
-                    <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Selecciona el técnico de almacén que atenderá.</p>
-                    <label style="font-size:12px;color:var(--text-light)">Encargado de Atención y Carga</label>
-                    <select id="tVerTecnico" class="input" style="margin-bottom:8px"></select>
-                    <label style="font-size:12px;color:var(--text-light)">Observaciones</label>
-                    <textarea id="tVerObs" class="input" rows="2" placeholder="Observaciones opcionales" style="margin-bottom:8px"></textarea>
-                    <div style="display:flex;gap:8px;margin-top:12px">
-                        <button onclick="App.modules.turnos.cerrarModalVerificar()" class="btn" style="flex:1;background:var(--border);color:var(--text)">CANCELAR</button>
-                        <button onclick="App.modules.turnos.confirmarVerificar()" id="tVerBtn" class="btn btn-success" style="flex:2">VERIFICAR</button>
+            <div id="tModalVerificar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+                    <h3 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#1e293b">Verificar y Derivar a Almacen</h3>
+                    <p style="font-size:13px;color:#64748b;margin:0 0 16px">Selecciona el tecnico de almacen que atendera.</p>
+                    <div style="margin-bottom:12px">
+                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Encargado de Atencion y Carga</label>
+                        <select id="tVerTecnico" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box"></select>
+                    </div>
+                    <div style="margin-bottom:16px">
+                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Observaciones</label>
+                        <textarea id="tVerObs" rows="2" placeholder="Observaciones opcionales" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box;resize:vertical"></textarea>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <button onclick="App.modules.turnos.cerrarModalVerificar()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>
+                        <button onclick="App.modules.turnos.confirmarVerificar()" id="tVerBtn" style="flex:2;background:#16a34a;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Verificar</button>
                     </div>
                 </div>
             </div>
@@ -361,21 +373,47 @@ App.registerModule('turnos', {
             const pb = document.getElementById('tBPendBadge'); if (pb) pb.textContent = p.length;
             const eb = document.getElementById('tBEntregBadge'); if (eb) eb.textContent = verificados.length;
             const pl = document.getElementById('tBPendList');
-            if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay entregas pendientes</div>' : p.map(e => {
-                let info = `<span style="font-weight:900">${e.cliente_nombre}</span>`;
-                if (e.patente) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(99,102,241,0.1);color:#818cf8;font-weight:600">${escapeHtml(e.patente)}</span>`;
-                if (e.tipo) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${e.tipo==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${e.tipo==='Despacho'?'var(--warning)':'var(--success)'}">${e.tipo}</span>`;
-                if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${e.pedidos}</span>`;
-                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div>${info}<div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div><div style="display:flex;gap:6px;align-items:center">${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">PDF (${e.adjuntos_count})</button>` : ''}<button onclick="App.modules.turnos.abrirModalVerificar(${e.id})" class="btn btn-success" style="padding:6px 12px;font-size:12px">✅ VERIFICAR</button>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px" title="Eliminar">&#10005;</button>` : ''}</div></div>`;
+            if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay entregas pendientes</div>' : p.map(e => {
+                const tipoBg = e.tipo === 'Despacho' ? '#fef3c7' : '#dcfce7';
+                const tipoColor = e.tipo === 'Despacho' ? '#92400e' : '#166534';
+                const deleteBtn = this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'" title="Eliminar">&#10005;</button>` : '';
+                return `<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                    <div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                            <span style="font-weight:700;color:#1e293b">${escapeHtml(e.cliente_nombre)}</span>
+                            ${e.patente ? `<span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:2px 7px;border-radius:4px;font-family:'SF Mono','Consolas',monospace">${escapeHtml(e.patente)}</span>` : ''}
+                            <span style="font-size:10px;font-weight:600;color:${tipoColor};background:${tipoBg};padding:2px 8px;border-radius:4px">${e.tipo}</span>
+                            ${e.pedidos ? `<span style="font-size:10px;font-weight:600;color:#1e40af;background:#eff6ff;padding:2px 8px;border-radius:4px">Pedido: ${e.pedidos}</span>` : ''}
+                        </div>
+                        <div style="font-size:12px;color:#94a3b8;margin-top:6px">Recibido: <span style="color:#64748b;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(e.hora_registrada)}</span></div>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        ${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" style="padding:5px 10px;font-size:11px;font-weight:600;color:#7c3aed;background:#f3e8ff;border:1px solid #e9d5ff;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#ede9fe'" onmouseout="this.style.background='#f3e8ff'">PDF (${e.adjuntos_count})</button>` : ''}
+                        <button onclick="App.modules.turnos.abrirModalVerificar(${e.id})" style="padding:6px 14px;font-size:12px;font-weight:600;color:white;background:#16a34a;border:none;border-radius:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Verificar</button>
+                        ${deleteBtn}
+                    </div>
+                </div>`;
             }).join('');
             const el = document.getElementById('tBEntregList');
-            if (el) el.innerHTML = verificados.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin verificaciones hoy</div>' : verificados.map(e => {
-                let info = `<span style="font-weight:900">${escapeHtml(e.cliente_nombre)}</span>`;
-                if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${escapeHtml(e.pedidos)}</span>`;
-                const estColor = e.estado === 'facturado' ? 'var(--success)' : e.estado === 'cargado' ? 'var(--info)' : 'var(--warning)';
-                const estLabel = e.estado === 'facturado' ? '✓ Facturado' : e.estado === 'cargado' ? '📦 Cargado' : '⏳ En Almacén';
+            if (el) el.innerHTML = verificados.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin verificaciones hoy</div>' : verificados.map(e => {
+                const estConfig = {
+                    'facturado': { bg: '#dcfce7', color: '#166534', label: 'Facturado' },
+                    'cargado': { bg: '#dbeafe', color: '#1e40af', label: 'Cargado' },
+                    'verificado': { bg: '#fef3c7', color: '#92400e', label: 'En Almacen' }
+                }[e.estado] || { bg: '#f1f5f9', color: '#64748b', label: e.estado };
                 const hora = e.estado === 'facturado' ? e.hora_facturada : e.estado === 'cargado' ? e.hora_cargada : e.hora_verificada;
-                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px"><div>${info}</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${estColor}22;color:${estColor};font-weight:600">${estLabel}</span><span style="font-size:11px;color:var(--text-light)">${this.fmtTime(hora)}</span></div></div></div>`;
+                return `<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                            <span style="font-weight:700;color:#1e293b">${escapeHtml(e.cliente_nombre)}</span>
+                            ${e.pedidos ? `<span style="font-size:10px;font-weight:600;color:#1e40af;background:#eff6ff;padding:2px 8px;border-radius:4px">Pedido: ${escapeHtml(e.pedidos)}</span>` : ''}
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span style="font-size:10px;font-weight:600;color:${estConfig.color};background:${estConfig.bg};padding:3px 10px;border-radius:4px">${estConfig.label}</span>
+                            <span style="font-size:12px;color:#94a3b8;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(hora)}</span>
+                        </div>
+                    </div>
+                </div>`;
             }).join('');
         } catch(e) {}
     },
@@ -469,48 +507,48 @@ App.registerModule('turnos', {
         let tecnicos = [];
         try { tecnicos = await fetch('/api/turnos/tecnicos-almacen').then(r => r.json()); } catch(e) {}
         c.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2>Almacén</h2>
-                    <div class="subtitle">Carga de productos y picking</div>
-                </div>
+            <div style="margin-bottom:24px">
+                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Almacen</h2>
+                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Carga de productos y picking</p>
             </div>
-            <div class="card" style="margin-bottom:12px">
-                <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px" onclick="App.modules.turnos.toggleFormTecAlm()">
-                    <h3 style="font-size:14px;font-weight:600">⚙️ Encargados de Atención y Carga</h3>
-                    <span id="tTecAlmArrow" style="color:var(--text-light);font-size:14px;transition:transform .2s">&#9660;</span>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer" onclick="App.modules.turnos.toggleFormTecAlm()">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Encargados de Atencion y Carga</h3>
+                    <span id="tTecAlmArrow" style="color:#94a3b8;font-size:12px;transition:transform 0.2s">&#9660;</span>
                 </div>
-                <div id="tTecAlmBody" style="display:none">
-                    <div style="display:flex;gap:8px;margin-bottom:8px">
-                        <input id="tTecAlmNombre" type="text" class="input" placeholder="Nombre del encargado" style="flex:1;font-size:13px">
-                        <button onclick="App.modules.turnos.addTecnicoAlm()" class="btn btn-primary" style="font-size:13px">Agregar</button>
+                <div id="tTecAlmBody" style="display:none;padding:0 20px 20px;border-top:1px solid #f1f5f9">
+                    <div style="display:flex;gap:8px;margin-top:16px">
+                        <input id="tTecAlmNombre" type="text" placeholder="Nombre del encargado" style="flex:1;font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px">
+                        <button onclick="App.modules.turnos.addTecnicoAlm()" style="padding:10px 18px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Agregar</button>
                     </div>
-                    <div id="tTecAlmList">${tecnicos.length === 0 ? '<div style="color:var(--text-light);font-size:12px;padding:8px">Sin encargados registrados</div>' : tecnicos.map(t => `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-size:13px">${escapeHtml(t.nombre)}</span><button onclick="App.modules.turnos.delTecnicoAlm(${t.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px">&#10005;</button></div>`).join('')}</div>
+                    <div id="tTecAlmList" style="margin-top:12px">${tecnicos.length === 0 ? '<div style="color:#94a3b8;font-size:12px;padding:8px">Sin encargados registrados</div>' : tecnicos.map(t => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f1f5f9"><span style="font-size:13px;color:#1e293b">${escapeHtml(t.nombre)}</span><button onclick="App.modules.turnos.delTecnicoAlm(${t.id})" style="background:white;color:#dc2626;border:1px solid #fecaca;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">&#10005;</button></div>`).join('')}</div>
                 </div>
             </div>
-            <div class="card" style="margin-bottom:12px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">📦 Pendientes de Carga</h3>
-                    <span id="tAlmPendBadge" class="badge" style="background:var(--warning);color:white">0</span>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Pendientes de Carga</h3>
+                    <span id="tAlmPendBadge" style="font-size:12px;font-weight:700;color:white;background:#f59e0b;padding:3px 10px;border-radius:20px">0</span>
                 </div>
-                <div id="tAlmPendList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay pendientes</div></div>
+                <div id="tAlmPendList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay pendientes</div></div>
             </div>
-            <div class="card">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">✅ Cargados Hoy</h3>
-                    <span id="tAlmDoneBadge" class="badge" style="background:var(--success);color:white">0</span>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Cargados Hoy</h3>
+                    <span id="tAlmDoneBadge" style="font-size:12px;font-weight:700;color:white;background:#16a34a;padding:3px 10px;border-radius:20px">0</span>
                 </div>
-                <div id="tAlmDoneList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin cargados hoy</div></div>
+                <div id="tAlmDoneList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin cargados hoy</div></div>
             </div>
-            <div id="tModalCargado" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)">
-                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
-                    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">📦 Marcar como Cargado</h3>
-                    <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Agrega una observación antes de enviar a Por Facturar.</p>
-                    <label style="font-size:12px;color:var(--text-light)">Observación (opcional)</label>
-                    <textarea id="tCargadoObs" class="input" rows="3" placeholder="Ej: Productos completos, falta item X, etc." style="margin-bottom:8px"></textarea>
-                    <div style="display:flex;gap:8px;margin-top:12px">
-                        <button onclick="App.modules.turnos.cerrarModalCargado()" class="btn" style="flex:1;background:var(--border);color:var(--text)">CANCELAR</button>
-                        <button onclick="App.modules.turnos.confirmarCargado()" id="tCargadoBtn" class="btn btn-success" style="flex:2">📦 CONFIRMAR CARGADO</button>
+            <div id="tModalCargado" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+                    <h3 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#1e293b">Marcar como Cargado</h3>
+                    <p style="font-size:13px;color:#64748b;margin:0 0 16px">Agrega una observacion antes de enviar a Por Facturar.</p>
+                    <div style="margin-bottom:16px">
+                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Observacion (opcional)</label>
+                        <textarea id="tCargadoObs" rows="3" placeholder="Ej: Productos completos, falta item X, etc." style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box;resize:vertical"></textarea>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <button onclick="App.modules.turnos.cerrarModalCargado()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>
+                        <button onclick="App.modules.turnos.confirmarCargado()" id="tCargadoBtn" style="flex:2;background:#16a34a;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Confirmar Cargado</button>
                     </div>
                 </div>
             </div>
@@ -549,33 +587,34 @@ App.registerModule('turnos', {
             const pb = document.getElementById('tAlmPendBadge'); if (pb) pb.textContent = p.length;
             const db = document.getElementById('tAlmDoneBadge'); if (db) db.textContent = cargados.length;
             const pl = document.getElementById('tAlmPendList');
-            if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay pendientes</div>' : p.map(e => `
-                <div style="padding:12px;border-bottom:1px solid var(--border)">
+            if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay pendientes</div>' : p.map(e => `
+                <div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                         <div>
-                            <span style="color:var(--accent);font-weight:900;font-size:16px">#${e.turno_numero}</span>
-                            <span style="font-weight:600;margin-left:8px">${escapeHtml(e.cliente_nombre)}</span>
-                            ${e.tecnico_nombre ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);margin-left:8px">Encargado: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
-                            ${e.motivo ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#c084fc;margin-left:4px">${escapeHtml(e.motivo)}</span>` : ''}
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                                <span style="color:#1e40af;font-weight:800;font-size:15px;font-family:'SF Mono','Consolas',monospace">#${e.turno_numero}</span>
+                                <span style="font-weight:700;color:#1e293b">${escapeHtml(e.cliente_nombre)}</span>
+                                ${e.tecnico_nombre ? `<span style="font-size:10px;font-weight:600;color:#1e40af;background:#eff6ff;padding:2px 8px;border-radius:4px">Encargado: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
+                                ${e.motivo ? `<span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f3e8ff;padding:2px 8px;border-radius:4px">${escapeHtml(e.motivo)}</span>` : ''}
+                            </div>
+                            <div style="font-size:12px;color:#94a3b8;margin-top:6px">${e.observaciones_almacen ? `Obs: ${escapeHtml(e.observaciones_almacen)}` : ''}${e.pedidos ? `${e.observaciones_almacen ? ' · ' : ''}Pedido: ${escapeHtml(e.pedidos)}` : ''}</div>
                         </div>
                         <div style="display:flex;gap:6px;align-items:center">
-                            <button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">📄 PDF${e.adjuntos_count > 0 ? ' (' + e.adjuntos_count + ')' : ''}</button>
-                            <button onclick="App.modules.turnos.abrirModalCargado(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px">📦 CARGADO</button>
+                            ${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" style="padding:5px 10px;font-size:11px;font-weight:600;color:#7c3aed;background:#f3e8ff;border:1px solid #e9d5ff;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#ede9fe'" onmouseout="this.style.background='#f3e8ff'">PDF (${e.adjuntos_count})</button>` : ''}
+                            <button onclick="App.modules.turnos.abrirModalCargado(${e.id})" style="padding:7px 16px;font-size:12px;font-weight:600;color:white;background:#16a34a;border:none;border-radius:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Cargado</button>
                         </div>
                     </div>
-                    ${e.observaciones_almacen ? `<div style="font-size:11px;color:var(--text-light);margin-top:6px">Obs: ${escapeHtml(e.observaciones_almacen)}</div>` : ''}
-                    ${e.pedidos ? `<div style="font-size:11px;color:var(--text-light);margin-top:2px">Pedido: ${escapeHtml(e.pedidos)}</div>` : ''}
                 </div>
             `).join('');
             const dl = document.getElementById('tAlmDoneList');
-            if (dl) dl.innerHTML = cargados.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin cargados hoy</div>' : cargados.map(r => `
-                <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-                    <div>
-                        <span style="color:var(--accent);font-weight:700">#${r.numero || '-'}</span>
-                        <span style="font-weight:600;margin-left:6px">${escapeHtml(r.nombre || '-')}</span>
-                        <span style="font-size:11px;color:var(--success);margin-left:8px">✓ Cargado</span>
+            if (dl) dl.innerHTML = cargados.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin cargados hoy</div>' : cargados.map(r => `
+                <div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span style="color:#1e40af;font-weight:800;font-family:'SF Mono','Consolas',monospace">#${r.numero || '-'}</span>
+                        <span style="font-weight:700;color:#1e293b">${escapeHtml(r.nombre || '-')}</span>
+                        <span style="font-size:10px;font-weight:600;color:#166534;background:#dcfce7;padding:2px 8px;border-radius:4px">Cargado</span>
                     </div>
-                    <span style="font-size:11px;color:var(--text-light)">${this.fmtTime(r.hora_cargada)}</span>
+                    <span style="font-size:12px;color:#94a3b8;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(r.hora_cargada)}</span>
                 </div>
             `).join('');
         } catch(e) {}
@@ -619,25 +658,23 @@ App.registerModule('turnos', {
         this.stopPolling();
         const c = document.getElementById('turnosContent');
         c.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2>Por Facturar</h2>
-                    <div class="subtitle">Ingresar número y monto de factura</div>
-                </div>
+            <div style="margin-bottom:24px">
+                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Por Facturar</h2>
+                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Ingresar numero y monto de factura</p>
             </div>
-            <div class="card" style="margin-bottom:12px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">🧾 Pendientes de Facturar</h3>
-                    <span id="tFacPendBadge" class="badge" style="background:var(--warning);color:white">0</span>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Pendientes de Facturar</h3>
+                    <span id="tFacPendBadge" style="font-size:12px;font-weight:700;color:white;background:#f59e0b;padding:3px 10px;border-radius:20px">0</span>
                 </div>
-                <div id="tFacPendList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay pendientes</div></div>
+                <div id="tFacPendList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay pendientes</div></div>
             </div>
-            <div class="card">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">✅ Facturados Hoy</h3>
-                    <span id="tFacDoneBadge" class="badge" style="background:var(--success);color:white">0</span>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Facturados Hoy</h3>
+                    <span id="tFacDoneBadge" style="font-size:12px;font-weight:700;color:white;background:#16a34a;padding:3px 10px;border-radius:20px">0</span>
                 </div>
-                <div id="tFacDoneList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin facturados hoy</div></div>
+                <div id="tFacDoneList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin facturados hoy</div></div>
             </div>
         `;
         await this.facCargar();
@@ -653,39 +690,37 @@ App.registerModule('turnos', {
             const pb = document.getElementById('tFacPendBadge'); if (pb) pb.textContent = p.length;
             const db = document.getElementById('tFacDoneBadge'); if (db) db.textContent = facturados.length;
             const pl = document.getElementById('tFacPendList');
-            if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay pendientes</div>' : p.map(e => `
-                <div style="padding:12px;border-bottom:1px solid var(--border)">
-                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+            if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay pendientes</div>' : p.map(e => `
+                <div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+                        <span style="color:#1e40af;font-weight:800;font-size:15px;font-family:'SF Mono','Consolas',monospace">#${e.turno_numero}</span>
+                        <span style="font-weight:700;color:#1e293b">${escapeHtml(e.cliente_nombre)}</span>
+                        ${e.tecnico_nombre ? `<span style="font-size:10px;font-weight:600;color:#1e40af;background:#eff6ff;padding:2px 8px;border-radius:4px">Encargado: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
+                        ${e.motivo ? `<span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f3e8ff;padding:2px 8px;border-radius:4px">${escapeHtml(e.motivo)}</span>` : ''}
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
                         <div>
-                            <span style="color:var(--accent);font-weight:900;font-size:16px">#${e.turno_numero}</span>
-                            <span style="font-weight:600;margin-left:8px">${escapeHtml(e.cliente_nombre)}</span>
-                            ${e.tecnico_nombre ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);margin-left:8px">Encargado: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
-                            ${e.motivo ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#c084fc;margin-left:4px">${escapeHtml(e.motivo)}</span>` : ''}
+                            <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">N Factura</label>
+                            <input id="facNum_${e.id}" type="text" placeholder="Ej: F-12345" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
+                        </div>
+                        <div>
+                            <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Monto Factura</label>
+                            <input id="facMonto_${e.id}" type="number" placeholder="0" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
                         </div>
                     </div>
-                    <div style="margin-top:8px">
-                        <div style="margin-bottom:8px">
-                            <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">N° Factura</label>
-                            <input id="facNum_${e.id}" type="text" class="form-control" placeholder="Ej: F-12345" style="font-size:13px;padding:8px;width:100%">
-                        </div>
-                        <div style="margin-bottom:8px">
-                            <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Monto Factura</label>
-                            <input id="facMonto_${e.id}" type="number" class="form-control" placeholder="0" style="font-size:13px;padding:8px;width:100%">
-                        </div>
-                        <button onclick="App.modules.turnos.facturar(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px;width:100%">🧾 FACTURAR</button>
-                    </div>
-                    ${e.pedidos ? `<div style="font-size:11px;color:var(--text-light);margin-top:6px">Pedido: ${escapeHtml(e.pedidos)}</div>` : ''}
+                    <button onclick="App.modules.turnos.facturar(${e.id})" style="width:100%;margin-top:12px;padding:10px;background:#16a34a;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Facturar</button>
+                    ${e.pedidos ? `<div style="font-size:12px;color:#94a3b8;margin-top:8px">Pedido: <span style="color:#1e40af;font-weight:600">${escapeHtml(e.pedidos)}</span></div>` : ''}
                 </div>
             `).join('');
             const dl = document.getElementById('tFacDoneList');
-            if (dl) dl.innerHTML = facturados.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin facturados hoy</div>' : facturados.map(e => `
-                <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-                    <div>
-                        <span style="font-weight:600">${escapeHtml(e.cliente_nombre || '-')}</span>
-                        <span style="font-size:11px;color:var(--success);margin-left:8px">✓ Fact: ${escapeHtml(e.numero_factura || '-')}</span>
-                        <span style="font-size:11px;color:var(--text-light);margin-left:8px">$${Number(e.monto_factura || 0).toLocaleString('es-CL')}</span>
+            if (dl) dl.innerHTML = facturados.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin facturados hoy</div>' : facturados.map(e => `
+                <div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span style="font-weight:700;color:#1e293b">${escapeHtml(e.cliente_nombre || '-')}</span>
+                        <span style="font-size:10px;font-weight:600;color:#166534;background:#dcfce7;padding:2px 8px;border-radius:4px">Fact: ${escapeHtml(e.numero_factura || '-')}</span>
+                        <span style="font-size:12px;color:#1e293b;font-weight:600;font-family:'SF Mono','Consolas',monospace">$${Number(e.monto_factura || 0).toLocaleString('es-CL')}</span>
                     </div>
-                    <span style="font-size:11px;color:var(--text-light)">${this.fmtTime(e.hora_facturada)}</span>
+                    <span style="font-size:12px;color:#94a3b8;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(e.hora_facturada)}</span>
                 </div>
             `).join('');
         } catch(e) {}
