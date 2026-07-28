@@ -285,7 +285,7 @@
 
         // Init
         if (new URLSearchParams(window.location.search).get('admin') === '1' && getUser()) openAdmin();
-        else if (getUser()) showSelector(); else showLogin();
+        else if (getUser()) window.location.href = '/app.html'; else showLogin();
     </script>
 </body>
 </html>
