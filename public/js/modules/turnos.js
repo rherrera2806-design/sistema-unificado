@@ -75,7 +75,7 @@ App.registerModule('turnos', {
                 <div id="tRActualNombre" style="color:var(--text-light);font-size:14px;margin-top:4px">Sin turno</div>
             </div>
             <button onclick="App.modules.turnos.rLlamar()" id="tRBtnLlamar" class="btn btn-success" style="width:100%;margin-bottom:8px">LLAMAR SIGUIENTE</button>
-            <button onclick="App.modules.turnos.abrirModalDerivar()" id="tRBtnDerivar" class="btn btn-primary" style="width:100%;margin-bottom:12px;display:none">&#128230; DERIVAR A BODEGA</button>
+            <button onclick="App.modules.turnos.abrirModalDerivar()" id="tRBtnDerivar" class="btn btn-primary" style="width:100%;margin-bottom:12px;display:none">&#128230; DERIVAR A VERIFICACION DE BODEGA</button>
             <div class="card" style="margin-bottom:12px">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
                     <h3 style="font-size:14px;font-weight:600">Cola de Espera</h3>
@@ -92,7 +92,7 @@ App.registerModule('turnos', {
             </div>
             <div id="tModalDerivar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)">
                 <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
-                    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">&#128230; Derivar a Bodega</h3>
+                    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">&#128230; Derivar a Verificación de Bodega</h3>
                     <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Turno: <span id="tMdTurno" style="color:var(--accent);font-weight:900"></span> - <span id="tMdNombre" style="font-weight:600"></span></p>
                     <input id="tMdPedidos" type="text" class="input" placeholder="Numero de pedido(s)">
                     <input id="tMdFactura" type="text" class="input" placeholder="Numero de factura" style="margin-top:8px">
