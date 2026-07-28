@@ -102,6 +102,7 @@ App.registerModule('reporte_turnos', {
                 nombre: t.nombre,
                 rut: t.rut || '',
                 patente: t.patente || '',
+                motivo: t.motivo || '',
                 numero: t.numero,
                 turno_estado: t.turno_estado,
                 hora_llegada: t.hora_creacion,
@@ -185,6 +186,7 @@ App.registerModule('reporte_turnos', {
                             <th style="padding:8px 10px;text-align:center">#</th>
                             <th style="padding:8px 10px;text-align:left">Cliente</th>
                             <th style="padding:8px 10px;text-align:left">Patente</th>
+                            <th style="padding:8px 10px;text-align:left">Motivo</th>
                             <th style="padding:8px 10px;text-align:center">Llegada</th>
                             <th style="padding:8px 10px;text-align:center">Llamado</th>
                             <th style="padding:8px 10px;text-align:center">Atencion</th>
@@ -217,6 +219,7 @@ App.registerModule('reporte_turnos', {
                 <td style="padding:8px 10px;text-align:center;font-weight:700;color:var(--accent)">${r.numero ? '#' + r.numero : (r._origen === 'bodega' ? 'BOD' : '-')}</td>
                 <td style="padding:8px 10px;font-weight:600">${escapeHtml(r.nombre)}</td>
                 <td style="padding:8px 10px;font-size:11px;font-weight:600">${escapeHtml(r.patente || '-')}</td>
+                <td style="padding:8px 10px;font-size:11px">${escapeHtml(r.motivo || '-')}</td>
                 <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_llegada)}</td>
                 <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_llamado)}</td>
                 <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_atencion)}</td>

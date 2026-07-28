@@ -24,6 +24,11 @@
         .btn-sm{padding:8px 14px;font-size:13px;border-radius:8px;width:auto}
         .input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid #334155;background:#1e293b;color:#f1f5f9;font-size:16px;outline:none}
         .input:focus{border-color:#f59e0b}
+        @media(max-width:480px){
+            .input{padding:16px;font-size:16px;min-height:48px}
+            .btn{min-height:48px;font-size:16px}
+            .card{padding:24px 20px}
+        }
         select.input{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
         .stat-box{text-align:center;padding:16px;border-radius:12px;background:rgba(30,41,59,0.6);border:1px solid #334155}
         .turno-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #334155}
@@ -370,20 +375,25 @@ function canDelete() {
 <!-- PÁGINA: REGISTRO CLIENTE -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="pageRegistro" class="bg-grad" style="display:none">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 16px;min-height:100vh">
+    <div style="display:flex;flex-direction:column;align-items:center;padding:24px 16px;min-height:100vh">
         <div class="text-center mb-6">
             <div class="text-4xl mb-2">&#128186;</div>
             <h1 class="text-2xl font-black text-amber-400">TURNO QR</h1>
-            <p class="text-slate-400 mt-2 text-sm">Ingresa tu nombre para tomar turno</p>
+            <p class="text-slate-400 mt-2 text-sm">Ingresa tus datos para tomar turno</p>
         </div>
         <div class="card" style="width:100%;max-width:400px">
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">RUT</label>
-            <input id="cRut" type="text" class="input mb-4" placeholder="Ej: 12.345.678-9" maxlength="12" oninput="this.value=formatRut(this.value)">
+            <input id="cRut" type="text" inputmode="numeric" class="input mb-4" placeholder="Ej: 12.345.678-9" maxlength="12" oninput="this.value=formatRut(this.value)" autocomplete="off">
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Tu nombre</label>
-            <input id="cNombre" type="text" class="input mb-4" placeholder="Ej: Juan Pérez">
+            <input id="cNombre" type="text" inputmode="text" class="input mb-4" placeholder="Ej: Juan Pérez" autocomplete="name">
+            <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Motivo</label>
+            <select id="cMotivo" class="input mb-4">
+                <option value="Retirar">Retirar</option>
+                <option value="Cotizar">Cotizar</option>
+            </select>
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Patente</label>
-            <input id="cPatente" type="text" class="input mb-4" placeholder="Ej: AB-1234 o ABCD-12" maxlength="8" oninput="this.value=formatPatente(this.value)">
-            <button onclick="cCrear()" class="btn btn-amber" id="cBtn">TOMAR TURNO</button>
+            <input id="cPatente" type="text" inputmode="text" class="input mb-4" placeholder="Ej: AB-1234 o ABCD-12" maxlength="8" oninput="this.value=formatPatente(this.value)" autocomplete="off">
+            <button onclick="cCrear()" class="btn btn-amber" id="cBtn" style="min-height:48px;font-size:16px">TOMAR TURNO</button>
             <p id="cError" class="text-red-400 text-sm text-center mt-3 hidden"></p>
         </div>
     </div>
@@ -399,6 +409,7 @@ function canDelete() {
             <div id="tNumero" class="text-6xl font-black text-amber-400"></div>
             <p id="tNombre" class="text-slate-300 text-base mt-1"></p>
             <p id="tRut" class="text-slate-500 text-sm"></p>
+            <p id="tMotivo" class="text-slate-500 text-sm"></p>
             <p id="tPatente" class="text-slate-500 text-sm"></p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:12px">
@@ -704,12 +715,13 @@ async function cCrear() {
     const n = document.getElementById('cNombre').value.trim();
     const rut = document.getElementById('cRut').value.trim();
     const patente = document.getElementById('cPatente').value.trim();
+    const motivo = document.getElementById('cMotivo').value;
     if(!n){document.getElementById('cError').textContent='Ingresa tu nombre';document.getElementById('cError').classList.remove('hidden');return;}
     if(rut && !validateRut(rut)){document.getElementById('cError').textContent='RUT invalido. Verifica el formato (ej: 12.345.678-9)';document.getElementById('cError').classList.remove('hidden');return;}
     if(patente && !validatePatente(patente)){document.getElementById('cError').textContent='Patente invalida. Formato: AB-1234 o ABCD-12';document.getElementById('cError').classList.remove('hidden');return;}
     const btn = document.getElementById('cBtn'); btn.disabled=true; btn.textContent='REGISTRANDO...';
     try {
-        const r = await fetch('/api/turnos/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n, rut, patente})});
+        const r = await fetch('/api/turnos/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n, rut, patente, motivo})});
         const d = await r.json();
         if(r.ok && d.id) window.location.href=`${BASE}?view=ticket&id=${d.id}`;
         else { const e=document.getElementById('cError'); if(e){e.textContent=d.error||'Error';e.classList.remove('hidden');} btn.disabled=false; btn.textContent='TOMAR TURNO'; }
@@ -728,7 +740,8 @@ async function tCargar() {
         const e0=document.getElementById('tNumero');if(e0)e0.textContent=turno.numero;
         const el2=document.getElementById('tNombre');if(el2)el2.textContent=turno.nombre;
         const el2b=document.getElementById('tRut');if(el2b)el2b.textContent=turno.rut ? 'RUT: ' + turno.rut : '';
-        const el2c=document.getElementById('tPatente');if(el2c)el2c.textContent=turno.patente ? 'Patente: ' + turno.patente : '';
+        const el2c=document.getElementById('tMotivo');if(el2c)el2c.textContent=turno.motivo ? 'Motivo: ' + turno.motivo : '';
+        const el2d=document.getElementById('tPatente');if(el2d)el2d.textContent=turno.patente ? 'Patente: ' + turno.patente : '';
         const el3=document.getElementById('tActual');if(el3)el3.textContent=actualNumero||'-';
         const el4=document.getElementById('tActualInfo');if(el4)el4.textContent=actualNumero===turno.numero?'¡Es tu turno!':(actualNumero?`Atendiendo #${actualNumero}`:'Sin turno');
         const el5=document.getElementById('tPosicion');if(el5)el5.textContent=posicion;
