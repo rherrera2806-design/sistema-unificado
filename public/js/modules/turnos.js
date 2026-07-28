@@ -505,7 +505,10 @@ App.registerModule('turnos', {
                             ${e.tecnico_nombre ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);margin-left:8px">Encargado: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
                             ${e.motivo ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#c084fc;margin-left:4px">${escapeHtml(e.motivo)}</span>` : ''}
                         </div>
-                        <button onclick="App.modules.turnos.marcarCargado(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px">📦 CARGADO</button>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            ${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">📄 PDF (${e.adjuntos_count})</button>` : ''}
+                            <button onclick="App.modules.turnos.marcarCargado(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px">📦 CARGADO</button>
+                        </div>
                     </div>
                     ${e.observaciones_almacen ? `<div style="font-size:11px;color:var(--text-light);margin-top:6px">Obs: ${escapeHtml(e.observaciones_almacen)}</div>` : ''}
                     ${e.pedidos ? `<div style="font-size:11px;color:var(--text-light);margin-top:2px">Pedido: ${escapeHtml(e.pedidos)}</div>` : ''}
