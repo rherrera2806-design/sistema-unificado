@@ -301,6 +301,6 @@ App.registerModule('reporte_turnos', {
         }).join('');
     },
 
-    fmtSec(s) { if (s == null || isNaN(s)) return '-'; const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s%60}s` : `${s}s`; },
+    fmtSec(s) { if (s == null || isNaN(s)) return '-'; const m = Math.round(s / 60); return `${m}m`; },
     fmtTime(t) { if (!t) return '-'; return String(t).slice(0, 8); }
 });
