@@ -1823,6 +1823,31 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
+    // SIGMA - Top Failing Machines
+    // =====================================================
+    if (urlPath === '/api/sigma/reports/top-failing-machines' && req.method === 'GET') {
+        try {
+            const result = await query(`
+                SELECT 
+                    m.id AS maquina_id,
+                    m.nombre,
+                    m.codigo,
+                    COUNT(cm.id) AS total_fallas,
+                    ROUND(COALESCE(SUM(cm.horas_detencion), 0)::numeric, 1) AS total_horas_detencion
+                FROM corrective_maintenance cm
+                JOIN machines m ON m.id = cm.maquina_id
+                GROUP BY m.id, m.nombre, m.codigo
+                ORDER BY total_fallas DESC
+                LIMIT 5
+            `);
+            json(res, result.rows);
+        } catch(e) {
+            json(res, { error: e.message }, 500);
+        }
+        return;
+    }
+
+    // =====================================================
     // SIGMA - CRUD Generico para colecciones
     // =====================================================
     const sigmaCollectionMatch = urlPath.match(/^\/api\/sigma\/([a-z_]+)$/);
