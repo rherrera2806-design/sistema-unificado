@@ -2234,6 +2234,44 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
+    // TURNOS - Reporte historial completo
+    // =====================================================
+    if (urlPath === '/api/turnos/reporte' && req.method === 'GET') {
+        const params = new URLSearchParams(url.split('?')[1] || '');
+        const desde = params.get('desde') || '';
+        const hasta = params.get('hasta') || '';
+        const turnoFilter = params.get('turno') || '';
+        let sql = `SELECT t.*, e.estado as entrega_estado, e.pedidos, e.factura, e.tipo,
+                          e.hora_registrada as bodega_recibido, e.hora_entregada as bodega_entregado
+                   FROM turnos t
+                   LEFT JOIN entregas e ON t.id = e.turno_id
+                   WHERE t.estado != 'espera'`;
+        const vals = [];
+        let idx = 1;
+        if (desde) { sql += ` AND t.fecha >= $${idx}`; vals.push(desde); idx++; }
+        if (hasta) { sql += ` AND t.fecha <= $${idx}`; vals.push(hasta); idx++; }
+        sql += ' ORDER BY t.fecha DESC, t.numero DESC';
+        const result = await query(sql, vals);
+        const turnos = result.rows.map(t => {
+            let espera_segundos = null, recepcion_segundos = null, bodega_segundos = null, total_segundos = null;
+            const pad = s => { if (!s) return 0; const p = String(s).slice(0,8).split(':').map(Number); return p[0]*3600 + p[1]*60 + (p[2]||0); };
+            if (t.hora_creacion && t.hora_llamada) espera_segundos = pad(t.hora_llamada) - pad(t.hora_creacion);
+            if (t.hora_fin && t.hora_llamada) recepcion_segundos = pad(t.hora_fin) - pad(t.hora_llamada);
+            if (t.bodega_recibido && t.bodega_entregado) bodega_segundos = pad(t.bodega_entregado) - pad(t.bodega_recibido);
+            if (t.hora_creacion && t.bodega_entregado) total_segundos = pad(t.bodega_entregado) - pad(t.hora_creacion);
+            else if (t.hora_creacion && t.hora_fin) total_segundos = pad(t.hora_fin) - pad(t.hora_creacion);
+            const horaNum = t.hora_creacion ? pad(t.hora_creacion) : 0;
+            const turnoLabel = (horaNum >= 21600 && horaNum < 64800) ? 'Dia' : 'Noche';
+            return { ...t, espera_segundos, recepcion_segundos, bodega_segundos, total_segundos,
+                     fecha_fmt: new Date(t.fecha).toLocaleDateString('es-CL'), turno_label: turnoLabel };
+        });
+        let filtered = turnos;
+        if (turnoFilter) filtered = turnos.filter(t => t.turno_label === turnoFilter);
+        json(res, filtered);
+        return;
+    }
+
+    // =====================================================
     // TURNOS - Ticket individual
     // =====================================================
     const turnoByIdMatch = urlPath.match(/^\/api\/turnos\/(\d+)$/);

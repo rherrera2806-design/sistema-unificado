@@ -386,7 +386,7 @@ function doLogout() {
 const SIDEBAR_SECTIONS = {
     mantencion: ['dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora'],
     inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
-    atencion: ['turnos_recepcion','turnos_bodega','turnos_qr'],
+    atencion: ['turnos_recepcion','turnos_bodega','turnos_qr','turnos_reporte'],
     ventas: ['pedidos'],
     produccion: ['prod_ordenes','prod_planificacion','prod_notas','prod_config'],
     instalaciones: ['instalaciones','inst_detalle','inst_historial'],
@@ -449,6 +449,7 @@ function renderSidebar() {
         if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', '📋');
         if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Entrega de Bodega', '📦');
         if (canSeeItem('turnos_qr','atencion')) html += navI('turnos_qr', 'QR Clientes', '💻');
+        if (canSeeItem('turnos_reporte','atencion')) html += navI('turnos_reporte', 'Reporte Turnos', '📊');
         html += `</div>`;
     }
 
@@ -511,6 +512,8 @@ function renderSidebar() {
             } else if (page === 'turnos_qr') {
                 App.loadModule('turnos');
                 setTimeout(() => App.modules.turnos.showQR(), 100);
+            } else if (page === 'turnos_reporte') {
+                App.loadModule('turnos_reporte');
             } else if (page === 'pedidos') {
                 App.loadModule('pedidos');
             } else {
