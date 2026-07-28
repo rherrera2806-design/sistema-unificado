@@ -605,6 +605,7 @@ App.registerModule('turnos', {
                         <span style="font-size:11px;color:var(--success);margin-left:8px">✓ Fact: ${escapeHtml(e.numero_factura || '-')}</span>
                         <span style="font-size:11px;color:var(--text-light);margin-left:8px">$${Number(e.monto_factura || 0).toLocaleString('es-CL')}</span>
                     </div>
+                    <span style="font-size:11px;color:var(--text-light)">${this.fmtTime(e.hora_facturada)}</span>
                 </div>
             `).join('');
         } catch(e) {}
