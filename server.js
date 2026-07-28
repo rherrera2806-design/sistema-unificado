@@ -2478,6 +2478,7 @@ const server = http.createServer(async (req, res) => {
                 [entregaRes.rows[0].turno_id, entrega_id]);
             await query("UPDATE turnos_estados_log SET fecha_salida = NOW(), duracion_segundos = EXTRACT(EPOCH FROM (NOW() - fecha_entrada))::INTEGER WHERE turno_id = $1 AND estado = 'cargado' AND fecha_salida IS NULL",
                 [entregaRes.rows[0].turno_id]);
+            await query("DELETE FROM turnos_adjuntos WHERE turno_id = $1", [entregaRes.rows[0].turno_id]);
         }
         json(res, { ok: true });
         return;
