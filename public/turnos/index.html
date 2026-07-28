@@ -394,6 +394,8 @@ function canDelete() {
             </select>
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Patente</label>
             <input id="cPatente" type="text" inputmode="text" class="input mb-4" placeholder="Ej: AB-1234 o ABCD-12" maxlength="8" oninput="this.value=formatPatente(this.value)" autocomplete="off">
+            <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Rut Empresa</label>
+            <input id="cRutEmpresa" type="text" inputmode="numeric" class="input mb-4" placeholder="Ej: 76.123.456-7" maxlength="12" oninput="this.value=formatRut(this.value)" autocomplete="off">
             <button onclick="cCrear()" class="btn btn-amber" id="cBtn" style="min-height:48px;font-size:16px">TOMAR TURNO</button>
             <p id="cError" class="text-red-400 text-sm text-center mt-3 hidden"></p>
         </div>
@@ -412,6 +414,7 @@ function canDelete() {
             <p id="tRut" class="text-slate-500 text-sm"></p>
             <p id="tMotivo" class="text-slate-500 text-sm"></p>
             <p id="tPatente" class="text-slate-500 text-sm"></p>
+            <p id="tRutEmpresa" class="text-slate-500 text-sm"></p>
         </div>
         <div style="width:100%;display:flex;flex-direction:column;gap:12px">
             <div class="card">
@@ -716,13 +719,14 @@ async function cCrear() {
     const n = document.getElementById('cNombre').value.trim();
     const rut = document.getElementById('cRut').value.trim();
     const patente = document.getElementById('cPatente').value.trim();
+    const rut_empresa = document.getElementById('cRutEmpresa').value.trim();
     const motivo = document.getElementById('cMotivo').value;
     if(!n){document.getElementById('cError').textContent='Ingresa tu nombre';document.getElementById('cError').classList.remove('hidden');return;}
     if(rut && !validateRut(rut)){document.getElementById('cError').textContent='RUT invalido. Verifica el formato (ej: 12.345.678-9)';document.getElementById('cError').classList.remove('hidden');return;}
     if(patente && !validatePatente(patente)){document.getElementById('cError').textContent='Patente invalida. Formato: AB-1234 o ABCD-12';document.getElementById('cError').classList.remove('hidden');return;}
     const btn = document.getElementById('cBtn'); btn.disabled=true; btn.textContent='REGISTRANDO...';
     try {
-        const r = await fetch('/api/turnos/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n, rut, patente, motivo})});
+        const r = await fetch('/api/turnos/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n, rut, patente, motivo, rut_empresa})});
         const d = await r.json();
         if(r.ok && d.id) window.location.href=`${BASE}?view=ticket&id=${d.id}`;
         else { const e=document.getElementById('cError'); if(e){e.textContent=d.error||'Error';e.classList.remove('hidden');} btn.disabled=false; btn.textContent='TOMAR TURNO'; }
@@ -743,6 +747,7 @@ async function tCargar() {
         const el2b=document.getElementById('tRut');if(el2b)el2b.textContent=turno.rut ? 'RUT: ' + turno.rut : '';
         const el2c=document.getElementById('tMotivo');if(el2c)el2c.textContent=turno.motivo ? 'Motivo: ' + turno.motivo : '';
         const el2d=document.getElementById('tPatente');if(el2d)el2d.textContent=turno.patente ? 'Patente: ' + turno.patente : '';
+        const el2e=document.getElementById('tRutEmpresa');if(el2e)el2e.textContent=turno.rut_empresa ? 'Rut Empresa: ' + turno.rut_empresa : '';
         const el3=document.getElementById('tActual');if(el3)el3.textContent=actualNumero||'-';
         const el4=document.getElementById('tActualInfo');if(el4)el4.textContent=actualNumero===turno.numero?'¡Es tu turno!':(actualNumero?`Atendiendo #${actualNumero}`:'Sin turno');
         const el5=document.getElementById('tPosicion');if(el5)el5.textContent=posicion;

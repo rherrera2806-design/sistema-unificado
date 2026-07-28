@@ -461,6 +461,7 @@ async function initDB() {
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut') THEN ALTER TABLE turnos ADD COLUMN rut VARCHAR(20) DEFAULT ''; END IF; END $$`);
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='patente') THEN ALTER TABLE turnos ADD COLUMN patente VARCHAR(10) DEFAULT ''; END IF; END $$`);
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='motivo') THEN ALTER TABLE turnos ADD COLUMN motivo VARCHAR(20) DEFAULT 'Retirar'; END IF; END $$`);
+    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut_empresa') THEN ALTER TABLE turnos ADD COLUMN rut_empresa VARCHAR(20) DEFAULT ''; END IF; END $$`);
 
     // TABLA: Mermas de produccion
     await query(`CREATE TABLE IF NOT EXISTS mermas (
@@ -2200,6 +2201,7 @@ const server = http.createServer(async (req, res) => {
         const rut = sanitizeString(body.rut || '');
         const patente = sanitizeString(body.patente || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         const motivo = sanitizeString(body.motivo || 'Retirar');
+        const rut_empresa = sanitizeString(body.rut_empresa || '');
         if (!nombre) return json(res, { error: 'Nombre requerido' }, 400);
         if (rut && !validateRut(rut)) return json(res, { error: 'RUT invalido. Verifica el formato.' }, 400);
         if (patente && !validatePatente(patente)) return json(res, { error: 'Patente invalida. Formato: AB1234 o ABCD12' }, 400);
@@ -2210,8 +2212,8 @@ const server = http.createServer(async (req, res) => {
         const numRow = await query('SELECT COALESCE(MAX(numero), 0) + 1 AS next FROM turnos WHERE fecha = $1', [hoy]);
         const numero = numRow.rows[0].next;
         const result = await query(
-            'INSERT INTO turnos (nombre, numero, fecha, hora_creacion, rut, patente, motivo) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [nombre, numero, hoy, hora, rut, patente, motivo]
+            'INSERT INTO turnos (nombre, numero, fecha, hora_creacion, rut, patente, motivo, rut_empresa) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [nombre, numero, hoy, hora, rut, patente, motivo, rut_empresa]
         );
         json(res, result.rows[0], 201);
         return;
