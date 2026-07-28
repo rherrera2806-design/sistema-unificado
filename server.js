@@ -2441,12 +2441,12 @@ const server = http.createServer(async (req, res) => {
     // =====================================================
     if (urlPath === '/api/turnos/cargado' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { entrega_id } = body;
+        const { entrega_id, observaciones } = body;
         if (!entrega_id) return json(res, { error: 'entrega_id requerido' }, 400);
         const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-        await query("UPDATE entregas SET estado = 'cargado', hora_cargada = $1 WHERE id = $2", [hora, entrega_id]);
+        await query("UPDATE entregas SET estado = 'cargado', hora_cargada = $1, observaciones_almacen = CASE WHEN $2 != '' THEN $2 ELSE observaciones_almacen END WHERE id = $3", [hora, observaciones || '', entrega_id]);
         const entregaRes = await query('SELECT turno_id FROM entregas WHERE id = $1', [entrega_id]);
         if (entregaRes.rows.length > 0 && entregaRes.rows[0].turno_id) {
             await query("UPDATE turnos SET estado = 'cargado' WHERE id = $1", [entregaRes.rows[0].turno_id]);

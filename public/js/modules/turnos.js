@@ -460,6 +460,18 @@ App.registerModule('turnos', {
                 </div>
                 <div id="tAlmDoneList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin cargados hoy</div></div>
             </div>
+            <div id="tModalCargado" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)">
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+                    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">📦 Marcar como Cargado</h3>
+                    <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Agrega una observación antes de enviar a Por Facturar.</p>
+                    <label style="font-size:12px;color:var(--text-light)">Observación (opcional)</label>
+                    <textarea id="tCargadoObs" class="input" rows="3" placeholder="Ej: Productos completos, falta item X, etc." style="margin-bottom:8px"></textarea>
+                    <div style="display:flex;gap:8px;margin-top:12px">
+                        <button onclick="App.modules.turnos.cerrarModalCargado()" class="btn" style="flex:1;background:var(--border);color:var(--text)">CANCELAR</button>
+                        <button onclick="App.modules.turnos.confirmarCargado()" id="tCargadoBtn" class="btn btn-success" style="flex:2">📦 CONFIRMAR CARGADO</button>
+                    </div>
+                </div>
+            </div>
         `;
         await this.almCargar();
         this.interval = setInterval(() => this.almCargar(), 15000);
@@ -506,7 +518,7 @@ App.registerModule('turnos', {
                         </div>
                         <div style="display:flex;gap:6px;align-items:center">
                             <button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">📄 PDF${e.adjuntos_count > 0 ? ' (' + e.adjuntos_count + ')' : ''}</button>
-                            <button onclick="App.modules.turnos.marcarCargado(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px">📦 CARGADO</button>
+                            <button onclick="App.modules.turnos.abrirModalCargado(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px">📦 CARGADO</button>
                         </div>
                     </div>
                     ${e.observaciones_almacen ? `<div style="font-size:11px;color:var(--text-light);margin-top:6px">Obs: ${escapeHtml(e.observaciones_almacen)}</div>` : ''}
@@ -525,6 +537,31 @@ App.registerModule('turnos', {
                 </div>
             `).join('');
         } catch(e) {}
+    },
+
+    pendingCargado: null,
+
+    abrirModalCargado(entregaId) {
+        this.pendingCargado = entregaId;
+        document.getElementById('tCargadoObs').value = '';
+        document.getElementById('tModalCargado').style.display = 'flex';
+        document.getElementById('tCargadoObs').focus();
+    },
+
+    cerrarModalCargado() {
+        document.getElementById('tModalCargado').style.display = 'none';
+        this.pendingCargado = null;
+    },
+
+    async confirmarCargado() {
+        if (!this.pendingCargado) return;
+        const obs = document.getElementById('tCargadoObs').value.trim();
+        const btn = document.getElementById('tCargadoBtn'); btn.disabled = true; btn.textContent = 'PROCESANDO...';
+        await fetch('/api/turnos/cargado', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entrega_id: this.pendingCargado, observaciones: obs }) });
+        this.cerrarModalCargado();
+        App.showAlert('Marcado como cargado');
+        this.almCargar();
+        btn.disabled = false; btn.textContent = '📦 CONFIRMAR CARGADO';
     },
 
     async marcarCargado(entregaId) {
