@@ -46,7 +46,7 @@ App.registerModule('turnos', {
 
     stopPolling() { if (this.interval) { clearInterval(this.interval); this.interval = null; } },
 
-    fmtSec(s) { if (s == null) return '-'; const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s%60}s` : `${s}s`; },
+    fmtSec(s) { if (s == null) return '-'; const m = Math.round(s / 60); return `${m}m`; },
     fmtTime(t) { if (!t) return '-'; return String(t).slice(0, 8); },
     timeToSec(t) { if (!t) return 0; const p = String(t).slice(0,8).split(':').map(Number); return p[0]*3600 + p[1]*60 + (p[2]||0); },
     canEliminar() { const u = JSON.parse(localStorage.getItem('unified_user') || '{}'); return (u.permisos || []).includes('turnos_eliminar'); },
@@ -57,53 +57,63 @@ App.registerModule('turnos', {
         this.stopPolling();
         const c = document.getElementById('turnosContent');
         c.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2>Recepcion y Control de Turnos</h2>
-                    <div class="subtitle">Gestion de cola de espera</div>
+            <div style="margin-bottom:24px">
+                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Recepcion y Control de Turnos</h2>
+                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Gestion de cola de espera</p>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Turno Actual</div>
+                    <div id="tRActual" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">-</div>
+                </div>
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">En Cola</div>
+                    <div id="tRCola" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">0</div>
+                </div>
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #16a34a;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Atendidos</div>
+                    <div id="tRAtendidos" style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">0</div>
+                </div>
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f97316;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Pend. Bodega</div>
+                    <div id="tRPendBodega" style="font-size:28px;font-weight:800;color:#f97316;line-height:1">0</div>
                 </div>
             </div>
-            <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
-                <div class="stat-card"><div class="stat-icon yellow">&#127919;</div><div class="stat-info"><h4 id="tRActual">-</h4><p>Turno Actual</p></div></div>
-                <div class="stat-card"><div class="stat-icon blue">&#128101;</div><div class="stat-info"><h4 id="tRCola">0</h4><p>En Cola</p></div></div>
-                <div class="stat-card"><div class="stat-icon green">&#9989;</div><div class="stat-info"><h4 id="tRAtendidos">0</h4><p>Atendidos</p></div></div>
-                <div class="stat-card"><div class="stat-icon orange">&#128230;</div><div class="stat-info"><h4 id="tRPendBodega">0</h4><p>Pend. Bodega</p></div></div>
+            <div id="tRActualBox" style="text-align:center;margin-bottom:24px;padding:28px 20px;background:white;border:2px solid #f59e0b;border-radius:14px;box-shadow:0 2px 8px rgba(245,158,11,0.1)">
+                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Turno Actual</div>
+                <div id="tRActualLarge" style="font-size:52px;font-weight:900;color:#1e293b;line-height:1">-</div>
+                <div id="tRActualNombre" style="color:#64748b;font-size:15px;margin-top:8px;font-weight:500">Sin turno</div>
             </div>
-            <div id="tRActualBox" style="text-align:center;margin-bottom:16px;padding:20px;background:var(--bg-card);border:2px solid var(--accent);border-radius:12px;box-shadow:var(--shadow)">
-                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:600;margin-bottom:4px">Turno Actual</div>
-                <div id="tRActualLarge" style="font-size:42px;font-weight:900;color:var(--accent)">-</div>
-                <div id="tRActualNombre" style="color:var(--text-light);font-size:14px;margin-top:4px">Sin turno</div>
-            </div>
-            <button onclick="App.modules.turnos.rLlamar()" id="tRBtnLlamar" class="btn btn-success" style="width:100%;margin-bottom:8px">LLAMAR SIGUIENTE</button>
-            <button onclick="App.modules.turnos.abrirModalDerivar()" id="tRBtnDerivar" class="btn btn-primary" style="width:100%;margin-bottom:12px;display:none">&#128230; DERIVAR A VERIFICACION DE BODEGA</button>
-            <div class="card" style="margin-bottom:12px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">Cola de Espera</h3>
-                    <span id="tRColaBadge" class="badge" style="background:var(--info);color:white">0</span>
+            <button onclick="App.modules.turnos.rLlamar()" id="tRBtnLlamar" style="width:100%;margin-bottom:8px;padding:14px;background:#16a34a;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase;letter-spacing:0.5px" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Llamar Siguiente</button>
+            <button onclick="App.modules.turnos.abrirModalDerivar()" id="tRBtnDerivar" style="width:100%;margin-bottom:20px;padding:14px;background:#3b82f6;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase;letter-spacing:0.5px;display:none" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Derivar a Verificacion de Bodega</button>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Cola de Espera</h3>
+                    <span id="tRColaBadge" style="font-size:12px;font-weight:700;color:white;background:#3b82f6;padding:3px 10px;border-radius:20px">0</span>
                 </div>
-                <div id="tRColaList"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay personas en cola</div></div>
+                <div id="tRColaList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay personas en cola</div></div>
             </div>
-            <div class="card">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                    <h3 style="font-size:14px;font-weight:600">Historial del Dia</h3>
-                    <span id="tRHistBadge" class="badge" style="background:var(--text-light);color:white">0</span>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Historial del Dia</h3>
+                    <span id="tRHistBadge" style="font-size:12px;font-weight:700;color:white;background:#64748b;padding:3px 10px;border-radius:20px">0</span>
                 </div>
-                <div id="tRHistList" style="max-height:384px;overflow-y:auto"><div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin registros</div></div>
+                <div id="tRHistList" style="max-height:420px;overflow-y:auto"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin registros</div></div>
             </div>
-            <div id="tModalDerivar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)">
-                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
-                    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">&#128230; Derivar a Verificación de Bodega</h3>
-                    <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Turno: <span id="tMdTurno" style="color:var(--accent);font-weight:900"></span> - <span id="tMdNombre" style="font-weight:600"></span></p>
-                    <input id="tMdPedidos" type="text" class="input" placeholder="Numero de pedido(s)">
-                    <div style="margin-top:8px">
-                        <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Adjuntar PDFs (opcional)</label>
+            <div id="tModalDerivar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+                    <h3 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#1e293b">Derivar a Verificacion de Bodega</h3>
+                    <p style="font-size:13px;color:#64748b;margin:0 0 16px">Turno: <span id="tMdTurno" style="color:#1e40af;font-weight:900"></span> - <span id="tMdNombre" style="font-weight:600;color:#1e293b"></span></p>
+                    <input id="tMdPedidos" type="text" placeholder="Numero de pedido(s)" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
+                    <div style="margin-top:12px">
+                        <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:500">Adjuntar PDFs (opcional)</label>
                         <input id="tMdFiles" type="file" accept=".pdf" multiple style="font-size:12px;width:100%">
-                        <div id="tMdFilesList" style="font-size:11px;color:var(--text-light);margin-top:4px"></div>
+                        <div id="tMdFilesList" style="font-size:11px;color:#94a3b8;margin-top:4px"></div>
                     </div>
-                    <p id="tMdError" style="color:var(--danger);font-size:12px;display:none;margin-top:8px"></p>
-                    <div style="display:flex;gap:8px;margin-top:12px">
-                        <button onclick="App.modules.turnos.cerrarModalDerivar()" class="btn" style="flex:1;background:var(--border);color:var(--text)">CANCELAR</button>
-                        <button onclick="App.modules.turnos.rDerivar()" id="tMdBtn" class="btn btn-primary" style="flex:2">DERIVAR</button>
+                    <p id="tMdError" style="color:#dc2626;font-size:12px;display:none;margin-top:8px"></p>
+                    <div style="display:flex;gap:8px;margin-top:16px">
+                        <button onclick="App.modules.turnos.cerrarModalDerivar()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>
+                        <button onclick="App.modules.turnos.rDerivar()" id="tMdBtn" style="flex:2;background:#3b82f6;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Derivar</button>
                     </div>
                 </div>
             </div>
@@ -136,7 +146,18 @@ App.registerModule('turnos', {
                 if (btnD) btnD.style.display = 'none';
             }
             const cl = document.getElementById('tRColaList');
-            if (cl) cl.innerHTML = c.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">No hay personas en cola</div>' : c.map((t, i) => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><span style="color:var(--text-light);font-size:13px">${i+1}</span><span style="color:var(--accent);font-weight:900;font-size:16px">#${escapeHtml(String(t.numero))}</span><span style="font-weight:600">${escapeHtml(t.nombre)}</span></div><span style="color:var(--text-light);font-size:11px">${this.fmtTime(t.hora_creacion)}</span></div>`).join('');
+            if (cl) cl.innerHTML = c.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay personas en cola</div>' : c.map((t, i) => {
+                const posBg = i === 0 ? '#eff6ff' : 'white';
+                const posBorder = i === 0 ? '#bfdbfe' : '#f1f5f9';
+                return `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid ${posBorder};background:${posBg};transition:background 0.1s" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='${posBg}'">
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <span style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:${i===0?'#3b82f6':'#f1f5f9'};color:${i===0?'white':'#64748b'};border-radius:50%;font-size:12px;font-weight:700">${i+1}</span>
+                        <span style="color:#1e40af;font-weight:800;font-size:16px;font-family:'SF Mono','Consolas',monospace">#${escapeHtml(String(t.numero))}</span>
+                        <span style="font-weight:600;color:#1e293b">${escapeHtml(t.nombre)}</span>
+                    </div>
+                    <span style="color:#94a3b8;font-size:12px;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(t.hora_creacion)}</span>
+                </div>`;
+            }).join('');
             const hb = document.getElementById('tRHistBadge'); if (hb) hb.textContent = h.length;
             const hl = document.getElementById('tRHistList');
             if (hl) hl.innerHTML = h.length === 0 ? '<div style="text-align:center;color:var(--text-light);padding:16px;font-size:13px">Sin registros</div>' : h.map(t => this.renderHistItem(t)).join('');
@@ -146,26 +167,47 @@ App.registerModule('turnos', {
     renderHistItem(t) {
         const isBodega = t.origen === 'bodega';
         const tipoLabel = t.tipo || 'Retira';
-        const tipoColor = tipoLabel === 'Despacho' ? 'var(--warning)' : 'var(--success)';
-        let info = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">`;
-        if (isBodega) { info += `<span style="font-weight:900">${escapeHtml(t.nombre)}</span>`; }
-        else { info += `<span style="color:var(--accent);font-weight:900">#${escapeHtml(String(t.numero))}</span><span style="font-weight:600">${escapeHtml(t.nombre)}</span>${t.rut ? `<span style="font-size:10px;color:var(--text-light);margin-left:4px">${escapeHtml(t.rut)}</span>` : ''}${t.patente ? `<span style="font-size:10px;color:var(--text-light);margin-left:4px">[${escapeHtml(t.patente)}]</span>` : ''}${t.motivo ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(168,85,247,0.1);color:#c084fc;margin-left:4px">${escapeHtml(t.motivo)}</span>` : ''}${t.rut_empresa ? `<span style="font-size:10px;color:var(--text-light);margin-left:4px">RUT: ${escapeHtml(t.rut_empresa)}</span>` : ''}`; }
-        info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${tipoLabel==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${tipoColor}">${tipoLabel}</span>`;
-        if (t.entrega_estado === 'entregado') { info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.1);color:var(--success)">&#10003; Entregado</span>`; }
-        else if (t.entrega_estado === 'pendiente') { info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(245,158,11,0.1);color:var(--warning)">Pendiente bodega</span>`; }
-        else if (!isBodega) { const est = {atendiendo:'Atendiendo',derivado:'Derivado',atendido:'Atendido'}[t.estado]||t.estado; info += `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(100,116,139,0.1);color:var(--text-light)">${est}</span>`; }
-        info += `</div>`;
-        let details = `<div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;margin-top:4px">`;
-        if (!isBodega && t.hora_creacion) details += `<span><span style="color:var(--text-light)">Llegada: </span><span style="font-weight:700">${t.hora_creacion}</span></span>`;
-        if (!isBodega && t.hora_llamada) details += `<span><span style="color:var(--text-light)">Atencion: </span><span style="color:var(--info);font-weight:700">${t.hora_llamada}</span></span><span><span style="color:var(--text-light)">Espera: </span><span style="color:var(--warning);font-weight:700">${this.fmtSec(t.espera_segundos)}</span></span>`;
-        if (t.pedidos) details += `<span><span style="color:var(--text-light)">Pedido: </span><span style="color:var(--info);font-weight:700">${t.pedidos}</span></span>`;
-        if (t.factura) details += `<span><span style="color:var(--text-light)">Factura: </span><span style="color:#a855f7;font-weight:700">${t.factura}</span></span>`;
-        if (t.estado === 'derivado' && t.hora_fin) details += `<span><span style="color:var(--text-light)">Derivo: </span><span style="color:var(--accent);font-weight:700">${this.fmtTime(t.hora_fin)}</span></span>`;
-        if (t.bodega_entregado) details += `<span><span style="color:var(--text-light)">Entrega bodega: </span><span style="color:var(--success);font-weight:700">${this.fmtTime(t.bodega_entregado)}</span></span>`;
-        if (t.hora_fin && t.bodega_entregado) { const seg = this.timeToSec(t.bodega_entregado) - this.timeToSec(t.hora_fin); if (seg > 0) details += `<span><span style="color:var(--text-light)">Espera bodega: </span><span style="color:var(--warning);font-weight:700">${this.fmtSec(seg)}</span></span>`; }
-        if (t.total_segundos) details += `<span><span style="color:var(--text-light)">Total: </span><span style="font-weight:700">${this.fmtSec(t.total_segundos)}</span></span>`;
+        const tipoBg = tipoLabel === 'Despacho' ? '#fef3c7' : '#dcfce7';
+        const tipoColor = tipoLabel === 'Despacho' ? '#92400e' : '#166534';
+
+        const estadoConfig = {
+            'entregado': { bg: '#dcfce7', color: '#166534', label: 'Entregado' },
+            'pendiente': { bg: '#fef3c7', color: '#92400e', label: 'Pend. Bodega' },
+            'atendiendo': { bg: '#dbeafe', color: '#1e40af', label: 'Atendiendo' },
+            'derivado': { bg: '#f3e8ff', color: '#7c3aed', label: 'Derivado' },
+            'atendido': { bg: '#dcfce7', color: '#166534', label: 'Atendido' }
+        }[t.entrega_estado || (!isBodega ? t.estado : null)] || null;
+
+        let header = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">`;
+        if (!isBodega) {
+            header += `<span style="color:#1e40af;font-weight:800;font-size:15px;font-family:'SF Mono','Consolas',monospace">#${escapeHtml(String(t.numero))}</span>`;
+            header += `<span style="font-weight:700;color:#1e293b">${escapeHtml(t.nombre)}</span>`;
+            if (t.patente) header += `<span style="font-size:10px;font-weight:600;color:#475569;background:#f1f5f9;padding:2px 7px;border-radius:4px;font-family:'SF Mono','Consolas',monospace">${escapeHtml(t.patente)}</span>`;
+            if (t.motivo) header += `<span style="font-size:10px;font-weight:600;color:#7c3aed;background:#f3e8ff;padding:2px 7px;border-radius:4px">${escapeHtml(t.motivo)}</span>`;
+        } else {
+            header += `<span style="font-weight:700;color:#1e293b">${escapeHtml(t.nombre)}</span>`;
+        }
+        header += `<span style="font-size:10px;font-weight:600;color:${tipoColor};background:${tipoBg};padding:2px 8px;border-radius:4px">${tipoLabel}</span>`;
+        if (estadoConfig) header += `<span style="font-size:10px;font-weight:600;color:${estadoConfig.color};background:${estadoConfig.bg};padding:2px 8px;border-radius:4px">${estadoConfig.label}</span>`;
+        header += `</div>`;
+
+        let details = `<div style="display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;margin-top:8px">`;
+        if (!isBodega && t.hora_creacion) details += `<span style="color:#64748b">Llegada: <span style="color:#1e293b;font-weight:700;font-family:'SF Mono','Consolas',monospace">${t.hora_creacion}</span></span>`;
+        if (!isBodega && t.hora_llamada) {
+            details += `<span style="color:#64748b">Atencion: <span style="color:#3b82f6;font-weight:700;font-family:'SF Mono','Consolas',monospace">${t.hora_llamada}</span></span>`;
+            details += `<span style="color:#64748b">Espera: <span style="color:#f59e0b;font-weight:700;font-family:'SF Mono','Consolas',monospace">${this.fmtSec(t.espera_segundos)}</span></span>`;
+        }
+        if (t.pedidos) details += `<span style="color:#64748b">Pedido: <span style="color:#1e40af;font-weight:700">${t.pedidos}</span></span>`;
+        if (t.factura) details += `<span style="color:#64748b">Factura: <span style="color:#7c3aed;font-weight:700">${t.factura}</span></span>`;
+        if (t.estado === 'derivado' && t.hora_fin) details += `<span style="color:#64748b">Derivo: <span style="color:#1e40af;font-weight:700">${this.fmtTime(t.hora_fin)}</span></span>`;
+        if (t.bodega_entregado) details += `<span style="color:#64748b">Entrega bodega: <span style="color:#16a34a;font-weight:700">${this.fmtTime(t.bodega_entregado)}</span></span>`;
+        if (t.hora_fin && t.bodega_entregado) { const seg = this.timeToSec(t.bodega_entregado) - this.timeToSec(t.hora_fin); if (seg > 0) details += `<span style="color:#64748b">Espera bodega: <span style="color:#f59e0b;font-weight:700">${this.fmtSec(seg)}</span></span>`; }
+        if (t.total_segundos) details += `<span style="color:#64748b">Total: <span style="color:#1e293b;font-weight:800">${this.fmtSec(t.total_segundos)}</span></span>`;
         details += `</div>`;
-        return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);position:relative">${info}${details}<span style="font-size:11px;color:var(--text-light);margin-top:2px;display:block">${t.fecha_fmt||''}</span>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarTurno(${t.id})" style="position:absolute;right:8px;top:10px;background:none;border:none;cursor:pointer;color:#ef4444;font-size:16px" title="Eliminar">&#10005;</button>` : ''}</div>`;
+
+        const deleteBtn = this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarTurno(${t.id})" style="position:absolute;right:12px;top:12px;background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'" title="Eliminar">&#10005;</button>` : '';
+
+        return `<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;position:relative;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">${header}${details}<span style="font-size:11px;color:#94a3b8;margin-top:6px;display:block">${t.fecha_fmt||''}</span>${deleteBtn}</div>`;
     },
 
     async rLlamar() {
