@@ -7,26 +7,34 @@ App.registerModule('reporte_turnos', {
         const hoy = new Date().toISOString().substring(0, 10);
         const hace30 = new Date(Date.now() - 30*86400000).toISOString().substring(0, 10);
         el.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-                <div><h2 style="margin:0;color:#e2e8f0">Reporte de Turnos</h2><div style="font-size:12px;color:#7eb8dc;margin-top:2px">Flujo completo por cliente: llegada, atencion, bodega y entrega</div></div>
+            <div style="margin-bottom:24px">
+                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Reporte de Turnos</h2>
+                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Flujo completo por cliente: llegada, atencion, bodega y entrega</p>
             </div>
-            <div style="background:rgba(14,30,60,0.7);border:1px solid rgba(59,130,246,0.15);border-radius:12px;padding:16px;margin-bottom:16px">
-                <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-                    <div style="margin:0"><label style="font-size:11px;color:#7eb8dc;display:block;margin-bottom:4px">Desde</label><input type="date" id="rtDesde" class="form-control" value="${hace30}" style="font-size:13px;background:rgba(8,18,40,0.9);border:1px solid rgba(59,130,246,0.2);color:#e2e8f0;padding:8px 10px;border-radius:8px"></div>
-                    <div style="margin:0"><label style="font-size:11px;color:#7eb8dc;display:block;margin-bottom:4px">Hasta</label><input type="date" id="rtHasta" class="form-control" value="${hoy}" style="font-size:13px;background:rgba(8,18,40,0.9);border:1px solid rgba(59,130,246,0.2);color:#e2e8f0;padding:8px 10px;border-radius:8px"></div>
-                    <button onclick="App.modules.reporte_turnos.cargar()" style="font-size:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0f172a;border:none;padding:9px 20px;border-radius:8px;font-weight:700;cursor:pointer">Buscar</button>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;gap:16px;align-items:end;flex-wrap:wrap">
+                    <div style="margin:0">
+                        <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Desde</label>
+                        <input type="date" id="rtDesde" class="form-control" value="${hace30}" style="font-size:13px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;width:160px">
+                    </div>
+                    <div style="margin:0">
+                        <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Hasta</label>
+                        <input type="date" id="rtHasta" class="form-control" value="${hoy}" style="font-size:13px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;width:160px">
+                    </div>
+                    <button onclick="App.modules.reporte_turnos.cargar()" style="font-size:13px;background:#1e40af;color:white;border:none;padding:9px 24px;border-radius:8px;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#1e3a8a'" onmouseout="this.style.background='#1e40af'">Buscar</button>
+                    <div id="rtFilterInfo" style="font-size:12px;color:#64748b;margin-left:8px"></div>
                 </div>
             </div>
-            <div id="rtContent"><div style="text-align:center;color:#7eb8dc;padding:40px">Cargando...</div></div>
-            <div id="rtModalPass" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)">
-                <div style="background:#0e1e3c;border:1px solid rgba(59,130,246,0.2);border-radius:14px;padding:24px;width:90%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
-                    <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#e2e8f0">Confirmar eliminacion</h3>
-                    <p style="font-size:12px;color:#7eb8dc;margin-bottom:14px">Ingresa la contrasena de administrador para eliminar este registro.</p>
-                    <input id="rtPassInput" type="password" placeholder="Contrasena admin" style="font-size:13px;width:100%;background:rgba(8,18,40,0.9);border:1px solid rgba(59,130,246,0.2);color:#e2e8f0;padding:10px 12px;border-radius:8px;margin-bottom:4px" onkeydown="if(event.key==='Enter')App.modules.reporte_turnos.confirmarEliminar()">
-                    <p id="rtPassError" style="color:#f87171;font-size:11px;display:none;margin-top:6px"></p>
-                    <div style="display:flex;gap:8px;margin-top:14px">
-                        <button onclick="App.modules.reporte_turnos.cerrarModal()" style="flex:1;background:rgba(59,130,246,0.12);color:#93c5fd;border:1px solid rgba(59,130,246,0.25);padding:9px;border-radius:8px;font-size:13px;cursor:pointer">Cancelar</button>
-                        <button onclick="App.modules.reporte_turnos.confirmarEliminar()" id="rtPassBtn" style="flex:1;background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:9px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Eliminar</button>
+            <div id="rtContent"><div style="text-align:center;color:#94a3b8;padding:40px">Cargando...</div></div>
+            <div id="rtModalPass" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+                    <h3 style="font-size:16px;font-weight:700;margin:0 0 8px;color:#1e293b">Confirmar eliminacion</h3>
+                    <p style="font-size:13px;color:#64748b;margin:0 0 16px">Ingresa la contrasena de administrador para eliminar este registro.</p>
+                    <input id="rtPassInput" type="password" placeholder="Contrasena admin" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box" onkeydown="if(event.key==='Enter')App.modules.reporte_turnos.confirmarEliminar()">
+                    <p id="rtPassError" style="color:#dc2626;font-size:12px;display:none;margin:8px 0 0"></p>
+                    <div style="display:flex;gap:8px;margin-top:16px">
+                        <button onclick="App.modules.reporte_turnos.cerrarModal()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>
+                        <button onclick="App.modules.reporte_turnos.confirmarEliminar()" id="rtPassBtn" style="flex:1;background:#dc2626;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Eliminar</button>
                     </div>
                 </div>
             </div>
@@ -94,7 +102,6 @@ App.registerModule('reporte_turnos', {
             const turnos = await resT.json();
             const entregasSinTurno = await resE.json();
 
-            // Turnos ya incluyen su entrega (LEFT JOIN), son el flujo principal
             const flujo = turnos.map(t => ({
                 id: t.turno_id,
                 fecha: t.fecha,
@@ -129,7 +136,6 @@ App.registerModule('reporte_turnos', {
                 _origen: 'turno'
             }));
 
-            // Entregas sin turno (bodega directa)
             const sinTurno = entregasSinTurno.map(e => ({
                 id: e.id,
                 fecha: e.fecha,
@@ -160,16 +166,24 @@ App.registerModule('reporte_turnos', {
                 if (fa !== fb) return fb.localeCompare(fa);
                 return (a.numero || 9999) - (b.numero || 9999);
             });
+
+            const fi = document.getElementById('rtFilterInfo');
+            if (fi && desde && hasta) {
+                const d = new Date(desde + 'T12:00:00').toLocaleDateString('es-CL');
+                const h = new Date(hasta + 'T12:00:00').toLocaleDateString('es-CL');
+                fi.textContent = `Mostrando ${this.registros.length} registros del ${d} al ${h}`;
+            }
+
             this.renderTabla();
         } catch(e) {
-            document.getElementById('rtContent').innerHTML = '<div style="text-align:center;color:#f87171;padding:40px">Error al cargar</div>';
+            document.getElementById('rtContent').innerHTML = '<div style="text-align:center;color:#dc2626;padding:40px">Error al cargar</div>';
         }
     },
 
     renderTabla() {
         const div = document.getElementById('rtContent');
         if (this.registros.length === 0) {
-            div.innerHTML = '<div style="text-align:center;color:#7eb8dc;padding:40px">No hay registros en este rango</div>';
+            div.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;font-size:14px">No hay registros en este rango</div>';
             return;
         }
         const total = this.registros.length;
@@ -179,86 +193,110 @@ App.registerModule('reporte_turnos', {
         const promedio = tiempos.length > 0 ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : 0;
 
         let html = `
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-                <div style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#60a5fa">${total}</div><div style="font-size:11px;color:#7eb8dc;margin-top:2px">Total flujos</div></div>
-                <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#4ade80">${conEntrega}</div><div style="font-size:11px;color:#7eb8dc;margin-top:2px">Entregados</div></div>
-                <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#fbbf24">${pendientes}</div><div style="font-size:11px;color:#7eb8dc;margin-top:2px">Pend. bodega</div></div>
-                <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#93c5fd">${this.fmtSec(promedio)}</div><div style="font-size:11px;color:#7eb8dc;margin-top:2px">Tiempo prom. total</div></div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px">
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #1e40af;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Total turnos</div>
+                    <div style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">${total}</div>
+                </div>
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #16a34a;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Entregados</div>
+                    <div style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">${conEntrega}</div>
+                </div>
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Pend. bodega</div>
+                    <div style="font-size:28px;font-weight:800;color:#f59e0b;line-height:1">${pendientes}</div>
+                </div>
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #7c3aed;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Tiempo prom. total</div>
+                    <div style="font-size:28px;font-weight:800;color:#7c3aed;line-height:1">${this.fmtSec(promedio)}</div>
+                </div>
             </div>
-            <div style="background:rgba(14,30,60,0.7);border:1px solid rgba(59,130,246,0.12);border-radius:12px;padding:0;overflow-x:auto">
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="overflow-x:auto">
                 <table style="width:100%;font-size:12px;border-collapse:collapse">
-                    <thead><tr style="border-bottom:2px solid rgba(245,158,11,0.3)">
-                        <th style="padding:10px 8px;text-align:left;color:#fbbf24;font-weight:600;font-size:11px">FECHA</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">#</th>
-                        <th style="padding:10px 8px;text-align:left;color:#fbbf24;font-weight:600;font-size:11px">CLIENTE</th>
-                        <th style="padding:10px 8px;text-align:left;color:#fbbf24;font-weight:600;font-size:11px">PATENTE</th>
-                        <th style="padding:10px 8px;text-align:left;color:#fbbf24;font-weight:600;font-size:11px">MOTIVO</th>
-                        <th style="padding:10px 8px;text-align:left;color:#fbbf24;font-weight:600;font-size:11px">RUT EMPRESA</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">LLEGADA</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">LLAMADO</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">ATENCIÓN</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">VERIF.</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">CARGADO</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">FACTURADO</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">ESPERA</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">RECEP.</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">VERIF.</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">ALMAC.</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">FACT.</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:700;font-size:11px">TOTAL</th>
-                        <th style="padding:10px 8px;text-align:left;color:#fbbf24;font-weight:600;font-size:11px">PEDIDO</th>
-                        <th style="padding:10px 8px;text-align:left;color:#fbbf24;font-weight:600;font-size:11px">N° FACTURA</th>
-                        <th style="padding:10px 8px;text-align:right;color:#fbbf24;font-weight:600;font-size:11px">MONTO</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">ESTADO</th>
-                        <th style="padding:10px 8px;text-align:center;color:#fbbf24;font-weight:600;font-size:11px">ACCION</th>
-                    </tr></thead>
+                    <thead>
+                        <tr style="border-bottom:2px solid #e2e8f0">
+                            <th colspan="6" style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.8px;background:#f8fafc;border-bottom:1px solid #e2e8f0">Flujo Cliente</th>
+                            <th colspan="6" style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.8px;background:#f8fafc;border-bottom:1px solid #e2e8f0;border-left:1px solid #e2e8f0">Tiempos</th>
+                            <th colspan="6" style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.8px;background:#f8fafc;border-bottom:1px solid #e2e8f0;border-left:1px solid #e2e8f0">Duracion</th>
+                            <th colspan="3" style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.8px;background:#f8fafc;border-bottom:1px solid #e2e8f0;border-left:1px solid #e2e8f0">Documentos</th>
+                            <th colspan="2" style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.8px;background:#f8fafc;border-bottom:1px solid #e2e8f0;border-left:1px solid #e2e8f0">Estado</th>
+                        </tr>
+                        <tr style="border-bottom:1px solid #e2e8f0;background:#f8fafc">
+                            <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Fecha</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">#</th>
+                            <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Cliente</th>
+                            <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Patente</th>
+                            <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Motivo</th>
+                            <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">RUT Empresa</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;border-left:1px solid #e2e8f0">Llegada</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Llamado</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Atencion</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Verif.</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Cargado</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Facturado</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;border-left:1px solid #e2e8f0">Espera</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Recep.</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Verif.</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Almac.</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Fact.</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:#1e293b;text-transform:uppercase;border-left:1px solid #e2e8f0">Total</th>
+                            <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;border-left:1px solid #e2e8f0">Pedido</th>
+                            <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">N° Factura</th>
+                            <th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Monto</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;border-left:1px solid #e2e8f0">Estado</th>
+                            <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Accion</th>
+                        </tr>
+                    </thead>
                     <tbody>${this.filasHtml()}</tbody>
                 </table>
+                </div>
             </div>
         `;
         div.innerHTML = html;
     },
 
     filasHtml() {
-        return this.registros.map(r => {
+        return this.registros.map((r, i) => {
             const estado = r.entrega_estado || r.turno_estado || '-';
-            const estadoStyle = {
-                'entregado': 'background:rgba(34,197,94,0.15);color:#86efac',
-                'pendiente': 'background:rgba(245,158,11,0.15);color:#fcd34d',
-                'atendido': 'background:rgba(34,197,94,0.15);color:#86efac',
-                'derivado': 'background:rgba(59,130,246,0.15);color:#93c5fd',
-                'atendiendo': 'background:rgba(245,158,11,0.15);color:#fcd34d',
-                'espera': 'background:rgba(59,130,246,0.12);color:#93c5fd',
-                'verificado': 'background:rgba(139,92,246,0.15);color:#d8b4fe',
-                'cargado': 'background:rgba(6,182,212,0.15);color:#67e8f9',
-                'facturado': 'background:rgba(16,185,129,0.15);color:#6ee7b7',
-                'completado': 'background:rgba(34,197,94,0.15);color:#86efac'
-            }[estado] || 'background:rgba(59,130,246,0.12);color:#93c5fd';
-            const tipoBadge = r.tipo ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:${r.tipo==='Despacho'?'rgba(245,158,11,0.12)':'rgba(34,197,94,0.12)'};color:${r.tipo==='Despacho'?'#fcd34d':'#86efac'};margin-left:4px">${r.tipo}</span>` : '';
-            return `<tr style="border-bottom:1px solid rgba(59,130,246,0.08)">
-                <td style="padding:8px;font-size:11px;color:#93c5fd">${r.fecha_fmt || '-'}</td>
-                <td style="padding:8px;text-align:center;font-weight:700;color:#fbbf24;font-size:12px">${r.numero ? '#' + r.numero : (r._origen === 'bodega' ? 'BOD' : '-')}</td>
-                <td style="padding:8px;font-weight:600;color:#e2e8f0">${escapeHtml(r.nombre)}</td>
-                <td style="padding:8px;font-size:11px;font-weight:600;color:#93c5fd">${escapeHtml(r.patente || '-')}</td>
-                <td style="padding:8px;font-size:11px;color:#7eb8dc">${escapeHtml(r.motivo || '-')}</td>
-                <td style="padding:8px;font-size:11px;color:#7eb8dc">${escapeHtml(r.rut_empresa || '-')}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_llegada)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_llamado)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_atencion)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_verificado)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_cargado)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_facturado)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#fbbf24">${this.fmtSec(r.espera_seg)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#93c5fd">${this.fmtSec(r.recepcion_seg)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#d8b4fe">${this.fmtSec(r.verificacion_seg)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#67e8f9">${this.fmtSec(r.almacen_seg)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#6ee7b7">${this.fmtSec(r.facturacion_seg)}</td>
-                <td style="padding:8px;text-align:center;font-weight:900;font-size:12px;color:#fbbf24">${this.fmtSec(r.total_seg)}</td>
-                <td style="padding:8px;font-size:11px;color:#7eb8dc">${escapeHtml(r.pedidos || '-')}</td>
-                <td style="padding:8px;font-size:11px;color:#93c5fd">${escapeHtml(r.factura || '-')}</td>
-                <td style="padding:8px;font-size:11px;text-align:right;color:#93c5fd">${r.monto_factura > 0 ? '$' + Number(r.monto_factura).toLocaleString('es-CL') : '-'}</td>
-                <td style="padding:8px;text-align:center"><span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;${estadoStyle}">${estado}</span>${tipoBadge}</td>
-                <td style="padding:8px;text-align:center">${r._origen === 'turno' ? `<button style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:3px 10px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:600" onclick="App.modules.reporte_turnos.solicitarPass('turno',${r.id})">X</button>` : `<button style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:3px 10px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:600" onclick="App.modules.reporte_turnos.solicitarPass('entrega',${r.entrega_id})">X</button>`}</td>
+            const estadoConfig = {
+                'entregado': { bg: '#dcfce7', color: '#166534', border: '#bbf7d0' },
+                'pendiente': { bg: '#fef3c7', color: '#92400e', border: '#fde68a' },
+                'atendido': { bg: '#dcfce7', color: '#166534', border: '#bbf7d0' },
+                'derivado': { bg: '#dbeafe', color: '#1e40af', border: '#bfdbfe' },
+                'atendiendo': { bg: '#fef3c7', color: '#92400e', border: '#fde68a' },
+                'espera': { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' },
+                'verificado': { bg: '#f3e8ff', color: '#7c3aed', border: '#e9d5ff' },
+                'cargado': { bg: '#cffafe', color: '#0e7490', border: '#a5f3fc' },
+                'facturado': { bg: '#dcfce7', color: '#166534', border: '#bbf7d0' },
+                'completado': { bg: '#dcfce7', color: '#166534', border: '#bbf7d0' }
+            }[estado] || { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
+            const tipoBadge = r.tipo ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:${r.tipo==='Despacho'?'#fef3c7':'#dcfce7'};color:${r.tipo==='Despacho'?'#92400e':'#166534'};margin-left:4px;font-weight:600">${r.tipo}</span>` : '';
+            const rowBg = i % 2 === 0 ? 'white' : '#f8fafc';
+            return `<tr style="border-bottom:1px solid #f1f5f9;background:${rowBg};transition:background 0.1s" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
+                <td style="padding:8px 10px;font-size:11px;color:#64748b;white-space:nowrap">${r.fecha_fmt || '-'}</td>
+                <td style="padding:8px 10px;text-align:center;font-weight:700;color:#1e40af;font-size:12px">${r.numero ? '#' + r.numero : (r._origen === 'bodega' ? 'BOD' : '-')}</td>
+                <td style="padding:8px 10px;font-weight:600;color:#1e293b;white-space:nowrap">${escapeHtml(r.nombre)}</td>
+                <td style="padding:8px 10px;font-size:11px;font-weight:600;color:#475569;font-family:'SF Mono','Consolas',monospace">${escapeHtml(r.patente || '-')}</td>
+                <td style="padding:8px 10px;font-size:11px;color:#64748b">${escapeHtml(r.motivo || '-')}</td>
+                <td style="padding:8px 10px;font-size:11px;color:#64748b;font-family:'SF Mono','Consolas',monospace">${escapeHtml(r.rut_empresa || '-')}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#64748b;font-family:'SF Mono','Consolas',monospace;border-left:1px solid #f1f5f9">${this.fmtTime(r.hora_llegada)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#64748b;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(r.hora_llamado)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#64748b;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(r.hora_atencion)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#64748b;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(r.hora_verificado)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#64748b;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(r.hora_cargado)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#64748b;font-family:'SF Mono','Consolas',monospace">${this.fmtTime(r.hora_facturado)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#f59e0b;font-weight:600;font-family:'SF Mono','Consolas',monospace;border-left:1px solid #f1f5f9">${this.fmtSec(r.espera_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#1e40af;font-weight:500;font-family:'SF Mono','Consolas',monospace">${this.fmtSec(r.recepcion_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#7c3aed;font-weight:500;font-family:'SF Mono','Consolas',monospace">${this.fmtSec(r.verificacion_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#0e7490;font-weight:500;font-family:'SF Mono','Consolas',monospace">${this.fmtSec(r.almacen_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#16a34a;font-weight:500;font-family:'SF Mono','Consolas',monospace">${this.fmtSec(r.facturacion_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-weight:800;font-size:12px;color:#1e293b;font-family:'SF Mono','Consolas',monospace;border-left:1px solid #f1f5f9">${this.fmtSec(r.total_seg)}</td>
+                <td style="padding:8px 10px;font-size:11px;color:#64748b;border-left:1px solid #f1f5f9;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(r.pedidos || '')}">${escapeHtml(r.pedidos || '-')}</td>
+                <td style="padding:8px 10px;font-size:11px;color:#1e40af;font-weight:600">${escapeHtml(r.factura || '-')}</td>
+                <td style="padding:8px 10px;font-size:11px;text-align:right;color:#1e293b;font-weight:600;font-family:'SF Mono','Consolas',monospace">${r.monto_factura > 0 ? '$' + Number(r.monto_factura).toLocaleString('es-CL') : '-'}</td>
+                <td style="padding:8px 10px;text-align:center;border-left:1px solid #f1f5f9"><span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;background:${estadoConfig.bg};color:${estadoConfig.color};border:1px solid ${estadoConfig.border}">${estado}</span>${tipoBadge}</td>
+                <td style="padding:8px 10px;text-align:center">${r._origen === 'turno' ? `<button style="background:white;color:#dc2626;border:1px solid #fecaca;padding:4px 10px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:600;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'" onclick="App.modules.reporte_turnos.solicitarPass('turno',${r.id})">Eliminar</button>` : `<button style="background:white;color:#dc2626;border:1px solid #fecaca;padding:4px 10px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:600;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'" onclick="App.modules.reporte_turnos.solicitarPass('entrega',${r.entrega_id})">Eliminar</button>`}</td>
             </tr>`;
         }).join('');
     },
