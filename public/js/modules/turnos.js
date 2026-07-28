@@ -331,7 +331,8 @@ App.registerModule('turnos', {
                 if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${escapeHtml(e.pedidos)}</span>`;
                 const estColor = e.estado === 'facturado' ? 'var(--success)' : e.estado === 'cargado' ? 'var(--info)' : 'var(--warning)';
                 const estLabel = e.estado === 'facturado' ? '✓ Facturado' : e.estado === 'cargado' ? '📦 Cargado' : '⏳ En Almacén';
-                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px"><div>${info}</div><span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${estColor}22;color:${estColor};font-weight:600">${estLabel}</span></div></div>`;
+                const hora = e.estado === 'facturado' ? e.hora_facturada : e.estado === 'cargado' ? e.hora_cargada : e.hora_verificada;
+                return `<div style="padding:10px 12px;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px"><div>${info}</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${estColor}22;color:${estColor};font-weight:600">${estLabel}</span><span style="font-size:11px;color:var(--text-light)">${this.fmtTime(hora)}</span></div></div></div>`;
             }).join('');
         } catch(e) {}
     },
@@ -519,6 +520,7 @@ App.registerModule('turnos', {
                         <span style="font-weight:600;margin-left:6px">${escapeHtml(r.nombre || '-')}</span>
                         <span style="font-size:11px;color:var(--success);margin-left:8px">✓ Cargado</span>
                     </div>
+                    <span style="font-size:11px;color:var(--text-light)">${this.fmtTime(r.hora_cargada)}</span>
                 </div>
             `).join('');
         } catch(e) {}
