@@ -238,7 +238,6 @@ App.registerModule('turnos', {
                     <input id="tBNombre" type="text" class="input" placeholder="Nombre del cliente" style="margin-top:8px">
                     <div style="display:flex;gap:8px;margin-top:8px">
                         <input id="tBPedidos" type="text" class="input" placeholder="Pedido(s)" style="flex:1;min-width:120px">
-                        <input id="tBFactura" type="text" class="input" placeholder="Factura" style="flex:1;min-width:120px">
                     </div>
                     <input id="tBDesc" type="text" class="input" placeholder="Descripcion (opcional)" style="margin-top:8px">
                     <button onclick="App.modules.turnos.bRegistrar()" class="btn btn-success" style="width:100%;margin-top:12px">REGISTRAR</button>
@@ -327,7 +326,6 @@ App.registerModule('turnos', {
                 let info = `<span style="font-weight:900">${e.cliente_nombre}</span>`;
                 if (e.tipo) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${e.tipo==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${e.tipo==='Despacho'?'var(--warning)':'var(--success)'}">${e.tipo}</span>`;
                 if (e.pedidos) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info)">Pedido: ${e.pedidos}</span>`;
-                if (e.factura) info += ` <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7">Factura: ${e.factura}</span>`;
                 return `<div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div>${info}<div style="font-size:11px;color:var(--text-light);margin-top:4px">Recibido: ${this.fmtTime(e.hora_registrada)}</div></div><div style="display:flex;gap:6px;align-items:center">${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" class="btn btn-sm btn-outline" style="padding:4px 8px;font-size:11px;color:#a855f7;border-color:#a855f7">PDF (${e.adjuntos_count})</button>` : ''}<button onclick="App.modules.turnos.abrirModalVerificar(${e.id})" class="btn btn-success" style="padding:6px 12px;font-size:12px">✅ VERIFICAR</button>${this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px" title="Eliminar">&#10005;</button>` : ''}</div></div>`;
             }).join('');
             const el = document.getElementById('tBEntregList');
@@ -345,12 +343,11 @@ App.registerModule('turnos', {
         const tipo = document.getElementById('tBTipo').value;
         const n = document.getElementById('tBNombre').value.trim();
         const pedidos = document.getElementById('tBPedidos').value.trim();
-        const factura = document.getElementById('tBFactura').value.trim();
         const d = document.getElementById('tBDesc').value.trim();
         if (!n) { const e = document.getElementById('tBError'); e.textContent = 'Nombre requerido'; e.style.display = 'block'; return; }
         try {
-            await fetch('/api/turnos/entregas/registrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente_nombre: n, descripcion: d, tipo, pedidos, factura }) });
-            document.getElementById('tBNombre').value = ''; document.getElementById('tBPedidos').value = ''; document.getElementById('tBFactura').value = ''; document.getElementById('tBDesc').value = '';
+            await fetch('/api/turnos/entregas/registrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente_nombre: n, descripcion: d, tipo, pedidos }) });
+            document.getElementById('tBNombre').value = ''; document.getElementById('tBPedidos').value = '';
             document.getElementById('tBError').style.display = 'none';
             this.bCargar();
         } catch(e) {}

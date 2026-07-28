@@ -2853,15 +2853,15 @@ const server = http.createServer(async (req, res) => {
 
     if (urlPath === '/api/turnos/entregas/registrar' && req.method === 'POST') {
         const body = await parseBody(req);
-        const { cliente_nombre, descripcion, tipo, pedidos, factura } = body;
+        const { cliente_nombre, descripcion, tipo, pedidos } = body;
         if (!cliente_nombre) return json(res, { error: 'Nombre requerido' }, 400);
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
         const hora = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
         const result = await query(
-            'INSERT INTO entregas (cliente_nombre, descripcion, tipo, pedidos, factura, estado, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-            [cliente_nombre, descripcion || null, tipo || 'Retira', pedidos || null, factura || null, 'pendiente', hoy, hora]
+            'INSERT INTO entregas (cliente_nombre, descripcion, tipo, pedidos, estado, fecha, hora_registrada) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [cliente_nombre, descripcion || null, tipo || 'Retira', pedidos || null, 'pendiente', hoy, hora]
         );
         json(res, result.rows[0], 201);
         return;
