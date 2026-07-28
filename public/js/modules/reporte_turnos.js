@@ -8,24 +8,24 @@ App.registerModule('reporte_turnos', {
         const hace30 = new Date(Date.now() - 30*86400000).toISOString().substring(0, 10);
         el.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-                <div><h2 style="margin:0;color:#e2e8f0">Reporte de Turnos</h2><div style="font-size:12px;color:#94a3b8;margin-top:2px">Flujo completo por cliente: llegada, atencion, bodega y entrega</div></div>
+                <div><h2 style="margin:0;color:#e2e8f0">Reporte de Turnos</h2><div style="font-size:12px;color:#7eb8dc;margin-top:2px">Flujo completo por cliente: llegada, atencion, bodega y entrega</div></div>
             </div>
-            <div style="background:rgba(30,41,59,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="background:rgba(14,30,60,0.7);border:1px solid rgba(59,130,246,0.15);border-radius:12px;padding:16px;margin-bottom:16px">
                 <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
-                    <div style="margin:0"><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px">Desde</label><input type="date" id="rtDesde" class="form-control" value="${hace30}" style="font-size:13px;background:rgba(15,23,42,0.8);border:1px solid rgba(148,163,184,0.2);color:#e2e8f0;padding:8px 10px;border-radius:8px"></div>
-                    <div style="margin:0"><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px">Hasta</label><input type="date" id="rtHasta" class="form-control" value="${hoy}" style="font-size:13px;background:rgba(15,23,42,0.8);border:1px solid rgba(148,163,184,0.2);color:#e2e8f0;padding:8px 10px;border-radius:8px"></div>
+                    <div style="margin:0"><label style="font-size:11px;color:#7eb8dc;display:block;margin-bottom:4px">Desde</label><input type="date" id="rtDesde" class="form-control" value="${hace30}" style="font-size:13px;background:rgba(8,18,40,0.9);border:1px solid rgba(59,130,246,0.2);color:#e2e8f0;padding:8px 10px;border-radius:8px"></div>
+                    <div style="margin:0"><label style="font-size:11px;color:#7eb8dc;display:block;margin-bottom:4px">Hasta</label><input type="date" id="rtHasta" class="form-control" value="${hoy}" style="font-size:13px;background:rgba(8,18,40,0.9);border:1px solid rgba(59,130,246,0.2);color:#e2e8f0;padding:8px 10px;border-radius:8px"></div>
                     <button onclick="App.modules.reporte_turnos.cargar()" style="font-size:13px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0f172a;border:none;padding:9px 20px;border-radius:8px;font-weight:700;cursor:pointer">Buscar</button>
                 </div>
             </div>
-            <div id="rtContent"><div style="text-align:center;color:#94a3b8;padding:40px">Cargando...</div></div>
+            <div id="rtContent"><div style="text-align:center;color:#7eb8dc;padding:40px">Cargando...</div></div>
             <div id="rtModalPass" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)">
-                <div style="background:#1e293b;border:1px solid rgba(148,163,184,0.15);border-radius:14px;padding:24px;width:90%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+                <div style="background:#0e1e3c;border:1px solid rgba(59,130,246,0.2);border-radius:14px;padding:24px;width:90%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
                     <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;color:#e2e8f0">Confirmar eliminacion</h3>
-                    <p style="font-size:12px;color:#94a3b8;margin-bottom:14px">Ingresa la contrasena de administrador para eliminar este registro.</p>
-                    <input id="rtPassInput" type="password" placeholder="Contrasena admin" style="font-size:13px;width:100%;background:rgba(15,23,42,0.8);border:1px solid rgba(148,163,184,0.2);color:#e2e8f0;padding:10px 12px;border-radius:8px;margin-bottom:4px" onkeydown="if(event.key==='Enter')App.modules.reporte_turnos.confirmarEliminar()">
+                    <p style="font-size:12px;color:#7eb8dc;margin-bottom:14px">Ingresa la contrasena de administrador para eliminar este registro.</p>
+                    <input id="rtPassInput" type="password" placeholder="Contrasena admin" style="font-size:13px;width:100%;background:rgba(8,18,40,0.9);border:1px solid rgba(59,130,246,0.2);color:#e2e8f0;padding:10px 12px;border-radius:8px;margin-bottom:4px" onkeydown="if(event.key==='Enter')App.modules.reporte_turnos.confirmarEliminar()">
                     <p id="rtPassError" style="color:#f87171;font-size:11px;display:none;margin-top:6px"></p>
                     <div style="display:flex;gap:8px;margin-top:14px">
-                        <button onclick="App.modules.reporte_turnos.cerrarModal()" style="flex:1;background:rgba(148,163,184,0.15);color:#cbd5e1;border:1px solid rgba(148,163,184,0.2);padding:9px;border-radius:8px;font-size:13px;cursor:pointer">Cancelar</button>
+                        <button onclick="App.modules.reporte_turnos.cerrarModal()" style="flex:1;background:rgba(59,130,246,0.12);color:#93c5fd;border:1px solid rgba(59,130,246,0.25);padding:9px;border-radius:8px;font-size:13px;cursor:pointer">Cancelar</button>
                         <button onclick="App.modules.reporte_turnos.confirmarEliminar()" id="rtPassBtn" style="flex:1;background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:9px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Eliminar</button>
                     </div>
                 </div>
@@ -162,14 +162,14 @@ App.registerModule('reporte_turnos', {
             });
             this.renderTabla();
         } catch(e) {
-            document.getElementById('rtContent').innerHTML = '<div style="text-align:center;color:var(--danger);padding:40px">Error al cargar</div>';
+            document.getElementById('rtContent').innerHTML = '<div style="text-align:center;color:#f87171;padding:40px">Error al cargar</div>';
         }
     },
 
     renderTabla() {
         const div = document.getElementById('rtContent');
         if (this.registros.length === 0) {
-            div.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px">No hay registros en este rango</div>';
+            div.innerHTML = '<div style="text-align:center;color:#7eb8dc;padding:40px">No hay registros en este rango</div>';
             return;
         }
         const total = this.registros.length;
@@ -180,12 +180,12 @@ App.registerModule('reporte_turnos', {
 
         let html = `
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-                <div style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#60a5fa">${total}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Total flujos</div></div>
-                <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#4ade80">${conEntrega}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Entregados</div></div>
-                <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#fbbf24">${pendientes}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Pend. bodega</div></div>
-                <div style="background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#cbd5e1">${this.fmtSec(promedio)}</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Tiempo prom. total</div></div>
+                <div style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#60a5fa">${total}</div><div style="font-size:11px;color:#7eb8dc;margin-top:2px">Total flujos</div></div>
+                <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#4ade80">${conEntrega}</div><div style="font-size:11px;color:#7eb8dc;margin-top:2px">Entregados</div></div>
+                <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#fbbf24">${pendientes}</div><div style="font-size:11px;color:#7eb8dc;margin-top:2px">Pend. bodega</div></div>
+                <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15);border-radius:10px;padding:16px;text-align:center"><div style="font-size:28px;font-weight:800;color:#93c5fd">${this.fmtSec(promedio)}</div><div style="font-size:11px;color:#7eb8dc;margin-top:2px">Tiempo prom. total</div></div>
             </div>
-            <div style="background:rgba(30,41,59,0.6);border:1px solid rgba(148,163,184,0.12);border-radius:12px;padding:0;overflow-x:auto">
+            <div style="background:rgba(14,30,60,0.7);border:1px solid rgba(59,130,246,0.12);border-radius:12px;padding:0;overflow-x:auto">
                 <table style="width:100%;font-size:12px;border-collapse:collapse">
                     <thead><tr style="border-bottom:2px solid rgba(245,158,11,0.3)">
                         <th style="padding:10px 8px;text-align:left;color:#fbbf24;font-weight:600;font-size:11px">FECHA</th>
@@ -228,35 +228,35 @@ App.registerModule('reporte_turnos', {
                 'atendido': 'background:rgba(34,197,94,0.15);color:#86efac',
                 'derivado': 'background:rgba(59,130,246,0.15);color:#93c5fd',
                 'atendiendo': 'background:rgba(245,158,11,0.15);color:#fcd34d',
-                'espera': 'background:rgba(148,163,184,0.15);color:#cbd5e1',
+                'espera': 'background:rgba(59,130,246,0.12);color:#93c5fd',
                 'verificado': 'background:rgba(139,92,246,0.15);color:#d8b4fe',
                 'cargado': 'background:rgba(6,182,212,0.15);color:#67e8f9',
                 'facturado': 'background:rgba(16,185,129,0.15);color:#6ee7b7',
                 'completado': 'background:rgba(34,197,94,0.15);color:#86efac'
-            }[estado] || 'background:rgba(148,163,184,0.15);color:#cbd5e1';
+            }[estado] || 'background:rgba(59,130,246,0.12);color:#93c5fd';
             const tipoBadge = r.tipo ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:${r.tipo==='Despacho'?'rgba(245,158,11,0.12)':'rgba(34,197,94,0.12)'};color:${r.tipo==='Despacho'?'#fcd34d':'#86efac'};margin-left:4px">${r.tipo}</span>` : '';
-            return `<tr style="border-bottom:1px solid rgba(148,163,184,0.08)">
-                <td style="padding:8px;font-size:11px;color:#cbd5e1">${r.fecha_fmt || '-'}</td>
+            return `<tr style="border-bottom:1px solid rgba(59,130,246,0.08)">
+                <td style="padding:8px;font-size:11px;color:#93c5fd">${r.fecha_fmt || '-'}</td>
                 <td style="padding:8px;text-align:center;font-weight:700;color:#fbbf24;font-size:12px">${r.numero ? '#' + r.numero : (r._origen === 'bodega' ? 'BOD' : '-')}</td>
                 <td style="padding:8px;font-weight:600;color:#e2e8f0">${escapeHtml(r.nombre)}</td>
-                <td style="padding:8px;font-size:11px;font-weight:600;color:#cbd5e1">${escapeHtml(r.patente || '-')}</td>
-                <td style="padding:8px;font-size:11px;color:#94a3b8">${escapeHtml(r.motivo || '-')}</td>
-                <td style="padding:8px;font-size:11px;color:#94a3b8">${escapeHtml(r.rut_empresa || '-')}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#94a3b8">${this.fmtTime(r.hora_llegada)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#94a3b8">${this.fmtTime(r.hora_llamado)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#94a3b8">${this.fmtTime(r.hora_atencion)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#94a3b8">${this.fmtTime(r.hora_verificado)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#94a3b8">${this.fmtTime(r.hora_cargado)}</td>
-                <td style="padding:8px;text-align:center;font-size:11px;color:#94a3b8">${this.fmtTime(r.hora_facturado)}</td>
+                <td style="padding:8px;font-size:11px;font-weight:600;color:#93c5fd">${escapeHtml(r.patente || '-')}</td>
+                <td style="padding:8px;font-size:11px;color:#7eb8dc">${escapeHtml(r.motivo || '-')}</td>
+                <td style="padding:8px;font-size:11px;color:#7eb8dc">${escapeHtml(r.rut_empresa || '-')}</td>
+                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_llegada)}</td>
+                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_llamado)}</td>
+                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_atencion)}</td>
+                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_verificado)}</td>
+                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_cargado)}</td>
+                <td style="padding:8px;text-align:center;font-size:11px;color:#7eb8dc">${this.fmtTime(r.hora_facturado)}</td>
                 <td style="padding:8px;text-align:center;font-size:11px;color:#fbbf24">${this.fmtSec(r.espera_seg)}</td>
                 <td style="padding:8px;text-align:center;font-size:11px;color:#93c5fd">${this.fmtSec(r.recepcion_seg)}</td>
                 <td style="padding:8px;text-align:center;font-size:11px;color:#d8b4fe">${this.fmtSec(r.verificacion_seg)}</td>
                 <td style="padding:8px;text-align:center;font-size:11px;color:#67e8f9">${this.fmtSec(r.almacen_seg)}</td>
                 <td style="padding:8px;text-align:center;font-size:11px;color:#6ee7b7">${this.fmtSec(r.facturacion_seg)}</td>
                 <td style="padding:8px;text-align:center;font-weight:900;font-size:12px;color:#fbbf24">${this.fmtSec(r.total_seg)}</td>
-                <td style="padding:8px;font-size:11px;color:#94a3b8">${escapeHtml(r.pedidos || '-')}</td>
-                <td style="padding:8px;font-size:11px;color:#cbd5e1">${escapeHtml(r.factura || '-')}</td>
-                <td style="padding:8px;font-size:11px;text-align:right;color:#cbd5e1">${r.monto_factura > 0 ? '$' + Number(r.monto_factura).toLocaleString('es-CL') : '-'}</td>
+                <td style="padding:8px;font-size:11px;color:#7eb8dc">${escapeHtml(r.pedidos || '-')}</td>
+                <td style="padding:8px;font-size:11px;color:#93c5fd">${escapeHtml(r.factura || '-')}</td>
+                <td style="padding:8px;font-size:11px;text-align:right;color:#93c5fd">${r.monto_factura > 0 ? '$' + Number(r.monto_factura).toLocaleString('es-CL') : '-'}</td>
                 <td style="padding:8px;text-align:center"><span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;${estadoStyle}">${estado}</span>${tipoBadge}</td>
                 <td style="padding:8px;text-align:center">${r._origen === 'turno' ? `<button style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:3px 10px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:600" onclick="App.modules.reporte_turnos.solicitarPass('turno',${r.id})">X</button>` : `<button style="background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);padding:3px 10px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:600" onclick="App.modules.reporte_turnos.solicitarPass('entrega',${r.entrega_id})">X</button>`}</td>
             </tr>`;
