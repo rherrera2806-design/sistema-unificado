@@ -100,6 +100,10 @@ class ApiClient {
     async saveMachineComponents(maquinaId, componentes) {
         return this.request('PUT', `/machines/${maquinaId}/components`, { componentes });
     }
+
+    async getTopFailingMachines() {
+        return this.request('GET', '/reports/top-failing-machines');
+    }
 }
 
 window.db = new ApiClient();

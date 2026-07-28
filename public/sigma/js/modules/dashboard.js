@@ -4,13 +4,14 @@ App.registerModule('dashboard', {
         let stats = { totalMachines: 0, completedMaintenance: 0, upcomingMaintenance: 0, overdueMaintenance: 0, totalFailures: 0, criticalSpareParts: 0, recentFailures: [] };
         try { stats = await db.getStatsSummary(); } catch(e) { console.error('Error loading stats:', e); }
 
-        const [overdue, upcoming, recentFailures, recentPreventive, maquinas, componentes] = await Promise.all([
+        const [overdue, upcoming, recentFailures, recentPreventive, maquinas, componentes, topFailing] = await Promise.all([
             db.getOverdueMaintenance().catch(() => []),
             db.getUpcomingMaintenance(15).catch(() => []),
             stats.recentFailures || [],
             db.getRecentCompleted().catch(() => []),
             db.getAll('machines').catch(() => []),
-            db.getAll('components').catch(() => [])
+            db.getAll('components').catch(() => []),
+            db.getTopFailingMachines().catch(() => [])
         ]);
 
         const maqMap = {};
@@ -41,12 +42,64 @@ App.registerModule('dashboard', {
                     <div class="stat-info"><h4>${stats.upcomingMaintenance}</h4><p>Próximas (15 días)</p></div>
                 </div>
             </div>
+            ${this.renderTopFailing(topFailing)}
             <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 ${this.renderOverdueLocal(overdue, maqMap, compMap)}
                 ${this.renderUpcomingLocal(upcoming, maqMap, compMap)}
             </div>
             ${this.renderRecentFailuresLocal(recentFailures, maqMap, compMap)}
             ${this.renderRecentPreventiveLocal(recentPreventive, maqMap, compMap)}
+        `;
+    },
+
+    renderTopFailing(data) {
+        if (!data || data.length === 0) return '';
+        const medals = ['🥇', '🥈', '🥉'];
+        const medalClasses = ['top-gold', 'top-silver', 'top-bronze'];
+        const medalBg = ['#fef9c3', '#f1f5f9', '#fed7aa'];
+        const medalBorder = ['#facc15', '#cbd5e1', '#fb923c'];
+        const medalShadow = ['rgba(250,204,21,0.25)', 'rgba(148,163,184,0.2)', 'rgba(251,146,60,0.2)'];
+
+        let cards = '';
+        const order = [1, 0, 2];
+        order.forEach(idx => {
+            const item = data[idx];
+            if (!item) return;
+            const pos = idx + 1;
+            const isFirst = idx === 0;
+            const size = isFirst ? 'top-failing-card top-failing-card-first' : 'top-failing-card';
+            cards += `
+                <div class="${size}" style="background:${medalBg[idx]};border:2px solid ${medalBorder[idx]};box-shadow:0 4px 12px ${medalShadow[idx]};cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
+                    <div class="top-failing-medal">${medals[idx]}</div>
+                    <div class="top-failing-rank">${pos}</div>
+                    <div class="top-failing-name">${escapeHtml(item.nombre || 'Sin nombre')}</div>
+                    <div class="top-failing-count">${item.total_fallas}</div>
+                    <div class="top-failing-label">FALLAS</div>
+                </div>
+            `;
+        });
+
+        if (data.length > 3) {
+            let extras = '';
+            data.slice(3, 5).forEach((item, i) => {
+                extras += `
+                    <div class="top-failing-extra" style="cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
+                        <span class="top-failing-extra-pos">${i + 4}°</span>
+                        <span class="top-failing-extra-name">${escapeHtml(item.nombre || 'Sin nombre')}</span>
+                        <span class="top-failing-extra-count">${item.total_fallas} fallas</span>
+                    </div>
+                `;
+            });
+            cards += `<div class="top-failing-extras">${extras}</div>`;
+        }
+
+        return `
+            <div class="card mt-16">
+                <div class="card-header"><h3>🏆 Top Máquinas con más Fallas</h3></div>
+                <div class="card-body">
+                    <div class="top-failing-grid">${cards}</div>
+                </div>
+            </div>
         `;
     },
 
@@ -123,5 +176,16 @@ App.registerModule('dashboard', {
             <div class="card-body" style="padding:0">
                 <table><thead><tr><th>Máquina</th><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Acción</th></tr></thead>
                 <tbody>${rows}</tbody></table></div></div>`;
+    },
+
+    goToCorrective(maquinaId) {
+        App.loadModule('corrective');
+        setTimeout(() => {
+            const select = document.getElementById('filterCorrMaq');
+            if (select) {
+                select.value = maquinaId;
+                App.modules.corrective.render();
+            }
+        }, 300);
     }
 });
