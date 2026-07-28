@@ -19,114 +19,197 @@ App.registerModule('dashboard', {
         const compMap = {};
         componentes.forEach(c => { compMap[c.id] = c; });
 
-        el.innerHTML = `
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon blue">🔧</div>
-                    <div class="stat-info"><h4>${(stats.completedMaintenance || 0) + (stats.totalFailures || 0)}</h4><p>Total mantenciones</p></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon green">✅</div>
-                    <div class="stat-info"><h4>${stats.completedMaintenance}</h4><p>Preventivas realizadas</p></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon red">🔴</div>
-                    <div class="stat-info"><h4>${stats.totalFailures}</h4><p>Fallas registradas</p></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon orange">⚠️</div>
-                    <div class="stat-info"><h4>${stats.overdueMaintenance}</h4><p>Vencidas</p></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed">📅</div>
-                    <div class="stat-info"><h4>${stats.upcomingMaintenance}</h4><p>Próximas (15 días)</p></div>
-                </div>
-            </div>
-            ${this.renderTopFailing(topFailing)}
-            <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-                ${this.renderOverdueLocal(overdue, maqMap, compMap)}
-                ${this.renderUpcomingLocal(upcoming, maqMap, compMap)}
-            </div>
-            ${this.renderRecentFailuresLocal(recentFailures, maqMap, compMap)}
-            ${this.renderRecentPreventiveLocal(recentPreventive, maqMap, compMap)}
-        `;
+        const totalMant = (stats.completedMaintenance || 0) + (stats.totalFailures || 0);
+
+        el.innerHTML = '<style>'
+            + '@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '@keyframes countUp{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}'
+            + '@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}'
+            + '@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}'
+            + '@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}'
+            + '.dash-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.dash-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,0.12)!important}'
+            + '.dash-podium{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.dash-podium:hover{transform:translateY(-6px) scale(1.02)!important}'
+            + '.dash-row{transition:all 0.2s ease}'
+            + '.dash-row:hover{transform:translateX(4px)!important;background:#f8fafc!important}'
+            + '.dash-section{animation:fadeUp 0.5s ease both}'
+            + '.dash-stat-num{animation:countUp 0.6s ease both}'
+            + '.dash-badge{transition:all 0.2s ease}'
+            + '.dash-badge:hover{transform:scale(1.08)}'
+            + '.dash-btn{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}'
+            + '.dash-btn:hover{transform:translateY(-1px)!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:32px 36px;margin-bottom:28px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:absolute;bottom:-60px;left:30%;width:300px;height:200px;background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
+            + '<div><h2 style="margin:0;font-size:28px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Dashboard Mantencion</h2>'
+            + '<p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.7)">Vista general del estado de mantencion y fallas</p></div>'
+            + '<div style="display:flex;gap:8px">'
+            + '<div style="background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:12px 20px;text-align:center">'
+            + '<div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.5px">Maquinas</div>'
+            + '<div style="font-size:22px;font-weight:800;color:white;font-family:\'JetBrains Mono\',monospace">' + maquinas.length + '</div></div>'
+            + '<div style="background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:12px 20px;text-align:center">'
+            + '<div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.5px">Componentes</div>'
+            + '<div style="font-size:22px;font-weight:800;color:white;font-family:\'JetBrains Mono\',monospace">' + componentes.length + '</div></div>'
+            + '</div></div></div>'
+
+            + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:28px">'
+            + this.statCard(totalMant, 'Total Mantenciones', '#3b82f6', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', 'M+R completados', 0)
+            + this.statCard(stats.completedMaintenance || 0, 'Preventivas', '#22c55e', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 'Realizadas', 100)
+            + this.statCard(stats.totalFailures || 0, 'Fallas', '#ef4444', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', 'Registradas', 200)
+            + this.statCard(stats.overdueMaintenance || 0, 'Vencidas', '#f59e0b', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', 'Requieren accion', 300)
+            + this.statCard(stats.upcomingMaintenance || 0, 'Proximas (15d)', '#8b5cf6', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', 'Programadas', 400)
+            + '</div>'
+
+            + this.renderTopFailing(topFailing)
+
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">'
+            + this.renderOverdueLocal(overdue, maqMap, compMap)
+            + this.renderUpcomingLocal(upcoming, maqMap, compMap)
+            + '</div>'
+
+            + this.renderRecentFailuresLocal(recentFailures, maqMap, compMap)
+            + this.renderRecentPreventiveLocal(recentPreventive, maqMap, compMap);
+    },
+
+    statCard(value, label, color, icon, subtitle, delay) {
+        return '<div class="dash-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:22px;border-left:4px solid ' + color + ';box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:fadeUp 0.5s ease ' + delay + 'ms both;position:relative;overflow:hidden">'
+            + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:' + color + ';opacity:0.04;border-radius:50%"></div>'
+            + '<div style="display:flex;align-items:flex-start;gap:16px;position:relative;z-index:1">'
+            + '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
+            + '<div><div class="dash-stat-num" style="font-size:30px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1;animation-delay:' + (delay + 200) + 'ms">' + value + '</div>'
+            + '<div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px">' + label + '</div>'
+            + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">' + subtitle + '</div></div></div></div>';
     },
 
     renderTopFailing(data) {
         if (!data || data.length === 0) return '';
-        const medals = ['🥇', '🥈', '🥉'];
-        const medalClasses = ['top-gold', 'top-silver', 'top-bronze'];
-        const medalBg = ['#fef9c3', '#f1f5f9', '#fed7aa'];
-        const medalBorder = ['#facc15', '#cbd5e1', '#fb923c'];
-        const medalShadow = ['rgba(250,204,21,0.25)', 'rgba(148,163,184,0.2)', 'rgba(251,146,60,0.2)'];
-
-        let cards = '';
+        const medalStyles = [
+            { bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', border: '#fbbf24', shadow: '0 8px 32px rgba(251,191,36,0.25)', glow: '#fbbf24', text: '#92400e', num: '#b45309', ring: '#f59e0b' },
+            { bg: 'linear-gradient(135deg,#f8fafc,#e2e8f0)', border: '#94a3b8', shadow: '0 6px 20px rgba(148,163,184,0.2)', glow: '#94a3b8', text: '#334155', num: '#475569', ring: '#64748b' },
+            { bg: 'linear-gradient(135deg,#fff7ed,#fed7aa)', border: '#fb923c', shadow: '0 6px 20px rgba(251,146,60,0.2)', glow: '#fb923c', text: '#7c2d12', num: '#c2410c', ring: '#ea580c' }
+        ];
+        const medalEmoji = ['&#127942;', '&#129352;', '&#129353;'];
         const order = [1, 0, 2];
-        order.forEach(idx => {
-            const item = data[idx];
-            if (!item) return;
-            const pos = idx + 1;
-            const isFirst = idx === 0;
-            const size = isFirst ? 'top-failing-card top-failing-card-first' : 'top-failing-card';
-            cards += `
-                <div class="${size}" style="background:${medalBg[idx]};border:2px solid ${medalBorder[idx]};box-shadow:0 4px 12px ${medalShadow[idx]};cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
-                    <div class="top-failing-medal">${medals[idx]}</div>
-                    <div class="top-failing-rank">${pos}</div>
-                    <div class="top-failing-name">${escapeHtml(item.nombre || 'Sin nombre')}</div>
-                    <div class="top-failing-count">${item.total_fallas}</div>
-                    <div class="top-failing-label">FALLAS</div>
-                </div>
-            `;
-        });
 
+        let podium = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:28px;padding:30px 0 10px">';
+        order.forEach((dataIdx, i) => {
+            const item = data[dataIdx];
+            if (!item) return;
+            const ms = medalStyles[dataIdx];
+            const isCenter = dataIdx === 0;
+            const w = isCenter ? 220 : 190;
+            const numSize = isCenter ? 48 : 38;
+            const nameSize = isCenter ? 14 : 13;
+            podium += '<div class="dash-podium" style="width:' + w + 'px;background:' + ms.bg + ';border:2px solid ' + ms.border + ';border-radius:20px;padding:28px 20px 24px;text-align:center;box-shadow:' + ms.shadow + ';cursor:pointer;animation:fadeUp 0.6s ease ' + (i * 150) + 'ms both;position:relative;overflow:hidden">'
+                + '<div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:radial-gradient(circle,' + ms.glow + '30 0%,transparent 70%);border-radius:50%"></div>'
+                + '<div style="position:relative;z-index:1">'
+                + '<div style="font-size:' + (isCenter ? '44' : '36') + 'px;margin-bottom:6px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1))">' + medalEmoji[dataIdx] + '</div>'
+                + '<div style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:' + ms.ring + ';color:white;font-size:13px;font-weight:800;margin-bottom:10px;font-family:\'JetBrains Mono\',monospace">' + (dataIdx + 1) + '</div>'
+                + '<div style="font-size:' + nameSize + 'px;font-weight:700;color:' + ms.text + ';margin-bottom:14px;line-height:1.3;min-height:36px;display:flex;align-items:center;justify-content:center">' + escapeHtml(item.nombre || 'Sin nombre') + '</div>'
+                + '<div style="font-size:' + numSize + 'px;font-weight:900;color:' + ms.num + ';font-family:\'JetBrains Mono\',monospace;line-height:1">' + item.total_fallas + '</div>'
+                + '<div style="font-size:11px;font-weight:700;color:' + ms.ring + ';text-transform:uppercase;letter-spacing:1.5px;margin-top:8px">FALLAS</div>'
+                + '</div></div>';
+        });
+        podium += '</div>';
+
+        let extras = '';
         if (data.length > 3) {
-            let extras = '';
+            extras = '<div style="border-top:1px solid #e2e8f0;margin-top:16px;padding-top:16px">';
             data.slice(3, 5).forEach((item, i) => {
-                extras += `
-                    <div class="top-failing-extra" style="cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
-                        <span class="top-failing-extra-pos">${i + 4}°</span>
-                        <span class="top-failing-extra-name">${escapeHtml(item.nombre || 'Sin nombre')}</span>
-                        <span class="top-failing-extra-count">${item.total_fallas} fallas</span>
-                    </div>
-                `;
+                extras += '<div class="dash-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-radius:10px;cursor:pointer;margin-bottom:6px;border:1px solid transparent;transition:all 0.2s ease" '
+                    + 'onmouseover="this.style.background=\'#f8fafc\';this.style.borderColor=\'#e2e8f0\';this.style.transform=\'translateX(4px)\'" '
+                    + 'onmouseout="this.style.background=\'transparent\';this.style.borderColor=\'transparent\';this.style.transform=\'none\'" '
+                    + 'onclick="App.modules.dashboard.goToCorrective(' + item.maquina_id + ')">'
+                    + '<div style="display:flex;align-items:center;gap:14px">'
+                    + '<div style="width:32px;height:32px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (i + 4) + '°</div>'
+                    + '<span style="font-size:14px;font-weight:600;color:#1e293b">' + escapeHtml(item.nombre || 'Sin nombre') + '</span></div>'
+                    + '<span style="font-size:13px;font-weight:700;color:#ef4444;font-family:\'JetBrains Mono\',monospace;background:#fef2f2;padding:4px 12px;border-radius:20px;border:1px solid #fecaca">' + item.total_fallas + ' fallas</span></div>';
             });
-            cards += `<div class="top-failing-extras">${extras}</div>`;
+            extras += '</div>';
         }
 
-        return `
-            <div class="card mt-16">
-                <div class="card-header"><h3>🏆 Top Máquinas con más Fallas</h3></div>
-                <div class="card-body">
-                    <div class="top-failing-grid">${cards}</div>
-                </div>
-            </div>
-        `;
+        return '<div class="dash-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:fadeUp 0.5s ease 200ms both">'
+            + '<div style="padding:22px 28px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
+            + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 8px rgba(251,191,36,0.3)">&#127942;</div>'
+            + '<div><h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Top Maquinas con mas Fallas</h3>'
+            + '<p style="margin:2px 0 0;font-size:12px;color:#94a3b8">Ranking de maquinas con mayor cantidad de fallas registradas</p></div></div>'
+            + '<div style="padding:24px 28px">' + podium + extras + '</div></div>';
     },
 
     renderOverdueLocal(data, maqMap, compMap) {
-        return `<div class="card">
-            <div class="card-header"><h3>⚠️ Mantenciones Vencidas</h3></div>
-            <div class="card-body">${data.length === 0 ? '<div class="empty-state"><p>No hay mantenciones vencidas</p></div>' : `
-            <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Acción</th></tr></thead>
-            <tbody>${data.slice(0,5).map(v => {
+        let body;
+        if (data.length === 0) {
+            body = '<div style="text-align:center;padding:48px 20px">'
+                + '<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#dcfce7,#bbf7d0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 4px 12px rgba(34,197,94,0.2)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>'
+                + '<div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:4px">Todo al dia</div>'
+                + '<div style="color:#94a3b8;font-size:13px">No hay mantenciones vencidas</div></div>';
+        } else {
+            body = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+                + '<thead><tr style="background:#fef2f2;border-bottom:1px solid #fecaca">'
+                + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Maquina</th>'
+                + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Componente</th>'
+                + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Fecha</th>'
+                + '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Accion</th>'
+                + '</tr></thead><tbody>';
+            data.slice(0, 5).forEach(v => {
                 const maq = maqMap[v.maquina_id];
                 const comp = compMap[v.componente_id];
-                return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td><td><button class="btn btn-sm btn-outline" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${v.id}),300)">Ir</button></td></tr>`;
-            }).join('')}</tbody></table>`}
-            </div></div>`;
+                body += '<tr class="dash-row" style="border-bottom:1px solid #f1f5f9;cursor:pointer;transition:all 0.2s" '
+                    + 'onmouseover="this.style.background=\'#fef2f2\';this.style.transform=\'translateX(2px)\'" '
+                    + 'onmouseout="this.style.background=\'transparent\';this.style.transform=\'none\'">'
+                    + '<td style="padding:10px 14px;font-weight:600;color:#1e293b">' + (maq ? maq.nombre : '-') + '</td>'
+                    + '<td style="padding:10px 14px;color:#475569">' + (comp ? comp.nombre : '-') + '</td>'
+                    + '<td style="padding:10px 14px"><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#64748b;background:#fef2f2;padding:3px 8px;border-radius:6px;border:1px solid #fecaca">' + App.formatDate(v.fecha_programada) + '</span></td>'
+                    + '<td style="padding:10px 14px;text-align:center"><button class="dash-btn" onclick="event.stopPropagation();App.loadModule(\'preventive\');setTimeout(()=>App.modules.preventive.showForm(' + v.id + '),300)" style="background:#ef4444;color:white;border:none;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(239,68,68,0.3)">Ir</button></td></tr>';
+            });
+            body += '</tbody></table>';
+        }
+        return '<div class="dash-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:fadeUp 0.5s ease 500ms both">'
+            + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
+            + '<div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(239,68,68,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Mantenciones Vencidas</h3>'
+            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Requieren atencion inmediata</p></div>'
+            + (data.length > 0 ? '<span class="dash-badge" style="margin-left:auto;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;font-family:\'JetBrains Mono\',monospace">' + data.length + '</span>' : '')
+            + '</div><div>' + body + '</div></div>';
     },
 
     renderUpcomingLocal(data, maqMap, compMap) {
-        return `<div class="card">
-            <div class="card-header"><h3>📅 Próximas Mantenciones</h3></div>
-            <div class="card-body">${data.length === 0 ? '<div class="empty-state"><p>No hay mantenciones próximas</p></div>' : `
-            <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th></tr></thead>
-            <tbody>${data.slice(0,5).map(v => {
+        let body;
+        if (data.length === 0) {
+            body = '<div style="text-align:center;padding:48px 20px">'
+                + '<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#e0e7ff,#c7d2fe);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 4px 12px rgba(99,102,241,0.2)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>'
+                + '<div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:4px">Sin programaciones</div>'
+                + '<div style="color:#94a3b8;font-size:13px">No hay mantenciones proximas</div></div>';
+        } else {
+            body = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+                + '<thead><tr style="background:#eff6ff;border-bottom:1px solid #bfdbfe">'
+                + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px">Maquina</th>'
+                + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px">Componente</th>'
+                + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px">Fecha Prog.</th>'
+                + '</tr></thead><tbody>';
+            data.slice(0, 5).forEach(v => {
                 const maq = maqMap[v.maquina_id];
                 const comp = compMap[v.componente_id];
-                return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td></tr>`;
-            }).join('')}</tbody></table>`}
-            </div></div>`;
+                body += '<tr class="dash-row" style="border-bottom:1px solid #f1f5f9;cursor:pointer;transition:all 0.2s" '
+                    + 'onmouseover="this.style.background=\'#eff6ff\';this.style.transform=\'translateX(2px)\'" '
+                    + 'onmouseout="this.style.background=\'transparent\';this.style.transform=\'none\'">'
+                    + '<td style="padding:10px 14px;font-weight:600;color:#1e293b">' + (maq ? maq.nombre : '-') + '</td>'
+                    + '<td style="padding:10px 14px;color:#475569">' + (comp ? comp.nombre : '-') + '</td>'
+                    + '<td style="padding:10px 14px"><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#1e40af;background:#eff6ff;padding:3px 8px;border-radius:6px;border:1px solid #bfdbfe">' + App.formatDate(v.fecha_programada) + '</span></td></tr>';
+            });
+            body += '</tbody></table>';
+        }
+        return '<div class="dash-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:fadeUp 0.5s ease 600ms both">'
+            + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
+            + '<div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(59,130,246,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Proximas Mantenciones</h3>'
+            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Programadas en los proximos 15 dias</p></div>'
+            + (data.length > 0 ? '<span class="dash-badge" style="margin-left:auto;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;font-family:\'JetBrains Mono\',monospace">' + data.length + '</span>' : '')
+            + '</div><div>' + body + '</div></div>';
     },
 
     renderRecentFailuresLocal(recentFailures, maqMap, compMap) {
@@ -135,23 +218,37 @@ App.registerModule('dashboard', {
         for (const c of recentFailures) {
             const maq = maqMap[c.maquina_id];
             const comp = compMap[c.componente_id];
-            const color = c.estado === 'Reparada' ? '#28a745' : '#dc3545';
-            rows += `<tr>
-                <td>${maq ? maq.nombre : '-'}</td>
-                <td>${comp ? comp.nombre : '-'}</td>
-                <td>${App.formatDate(c.fecha_falla)}</td>
-                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(c.descripcion_falla || '')}">${escapeHtml(c.descripcion_falla || '-')}</td>
-                <td>${escapeHtml(c.responsable || '-')}</td>
-                <td><span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${escapeHtml(c.estado || 'En Mantención')}</span></td>
-                <td>${c.horas_detencion}</td>
-                <td><button class="btn btn-sm btn-outline" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)">Ir</button></td>
-            </tr>`;
+            const estadoBadge = c.estado === 'Reparada'
+                ? '<span class="dash-badge" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Reparada</span>'
+                : '<span class="dash-badge" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>En Mantencion</span>';
+            rows += '<tr class="dash-row" style="border-bottom:1px solid #f1f5f9;cursor:pointer;transition:all 0.2s" '
+                + 'onmouseover="this.style.background=\'#f8fafc\';this.style.transform=\'translateX(2px)\'" '
+                + 'onmouseout="this.style.background=\'transparent\';this.style.transform=\'none\'">'
+                + '<td style="padding:11px 14px;font-weight:600;color:#1e293b">' + (maq ? maq.nombre : '-') + '</td>'
+                + '<td style="padding:11px 14px;color:#475569">' + (comp ? comp.nombre : '-') + '</td>'
+                + '<td style="padding:11px 14px"><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#64748b">' + App.formatDate(c.fecha_falla) + '</span></td>'
+                + '<td style="padding:11px 14px;font-size:12px;color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escapeHtml(c.descripcion_falla || '') + '">' + escapeHtml(c.descripcion_falla || '-') + '</td>'
+                + '<td style="padding:11px 14px;color:#475569">' + escapeHtml(c.responsable || '-') + '</td>'
+                + '<td style="padding:11px 14px">' + estadoBadge + '</td>'
+                + '<td style="padding:11px 14px;font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#64748b;text-align:center">' + c.horas_detencion + '</td>'
+                + '<td style="padding:11px 14px;text-align:center"><button class="dash-btn" onclick="event.stopPropagation();App.loadModule(\'corrective\');setTimeout(()=>App.modules.corrective.showForm(' + c.id + '),300)" style="background:#3b82f6;color:white;border:none;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(59,130,246,0.3)">Ir</button></td></tr>';
         }
-        return `<div class="card mt-16">
-            <div class="card-header"><h3>🔴 Últimas Fallas Registradas</h3></div>
-            <div class="card-body" style="padding:0">
-                <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha</th><th>Falla</th><th>Técnico</th><th>Estado</th><th>Hs.Det.</th><th>Acción</th></tr></thead>
-                <tbody>${rows}</tbody></table></div></div>`;
+        return '<div class="dash-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:20px;animation:fadeUp 0.5s ease 700ms both">'
+            + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
+            + '<div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(239,68,68,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Ultimas Fallas Registradas</h3>'
+            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Fallas reportadas recientemente</p></div></div>'
+            + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+            + '<thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Maquina</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Componente</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Falla</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tecnico</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
+            + '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Hs.Det.</th>'
+            + '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Accion</th>'
+            + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
     },
 
     renderRecentPreventiveLocal(data, maqMap, compMap) {
@@ -160,22 +257,34 @@ App.registerModule('dashboard', {
         for (const p of data) {
             const maq = maqMap[p.maquina_id];
             const comp = compMap[p.componente_id];
-            rows += `<tr>
-                <td>${maq ? maq.nombre : '-'}</td>
-                <td>${comp ? comp.nombre : '-'}</td>
-                <td>${escapeHtml(p.observaciones || '-')}</td>
-                <td>${App.formatDate(p.fecha_programada)}</td>
-                <td>${App.formatDate(p.fecha_ejecutada)}</td>
-                <td>${escapeHtml(p.tecnico || '-')}</td>
-                <td>${escapeHtml(p.turno || 'Dia')}</td>
-                <td><button class="btn btn-sm btn-outline" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${p.id}),300)">Ir</button></td>
-            </tr>`;
+            rows += '<tr class="dash-row" style="border-bottom:1px solid #f1f5f9;cursor:pointer;transition:all 0.2s" '
+                + 'onmouseover="this.style.background=\'#f0fdf4\';this.style.transform=\'translateX(2px)\'" '
+                + 'onmouseout="this.style.background=\'transparent\';this.style.transform=\'none\'">'
+                + '<td style="padding:11px 14px;font-weight:600;color:#1e293b">' + (maq ? maq.nombre : '-') + '</td>'
+                + '<td style="padding:11px 14px;color:#475569">' + (comp ? comp.nombre : '-') + '</td>'
+                + '<td style="padding:11px 14px;font-size:12px;color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escapeHtml(p.observaciones || '') + '">' + escapeHtml(p.observaciones || '-') + '</td>'
+                + '<td style="padding:11px 14px"><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#16a34a;background:#f0fdf4;padding:3px 8px;border-radius:6px;border:1px solid #bbf7d0">' + App.formatDate(p.fecha_programada) + '</span></td>'
+                + '<td style="padding:11px 14px"><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#64748b">' + App.formatDate(p.fecha_ejecutada) + '</span></td>'
+                + '<td style="padding:11px 14px;color:#475569">' + escapeHtml(p.tecnico || '-') + '</td>'
+                + '<td style="padding:11px 14px"><span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);color:#475569;border:1px solid #e2e8f0">' + escapeHtml(p.turno || 'Dia') + '</span></td>'
+                + '<td style="padding:11px 14px;text-align:center"><button class="dash-btn" onclick="event.stopPropagation();App.loadModule(\'preventive\');setTimeout(()=>App.modules.preventive.showForm(' + p.id + '),300)" style="background:#22c55e;color:white;border:none;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(34,197,94,0.3)">Ir</button></td></tr>';
         }
-        return `<div class="card mt-16">
-            <div class="card-header"><h3>✅ Últimas Mantenciones Preventivas Realizadas</h3></div>
-            <div class="card-body" style="padding:0">
-                <table><thead><tr><th>Máquina</th><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Acción</th></tr></thead>
-                <tbody>${rows}</tbody></table></div></div>`;
+        return '<div class="dash-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:fadeUp 0.5s ease 800ms both">'
+            + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
+            + '<div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(34,197,94,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Ultimas Mantenciones Preventivas</h3>'
+            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Trabajos preventivos completados recientemente</p></div></div>'
+            + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+            + '<thead><tr style="background:#f0fdf4;border-bottom:1px solid #bbf7d0">'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px">Maquina</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px">Componente</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px">Observaciones</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px">Fecha Prog.</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px">Fecha Ejec.</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px">Tecnico</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px">Turno</th>'
+            + '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px">Accion</th>'
+            + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
     },
 
     goToCorrective(maquinaId) {
