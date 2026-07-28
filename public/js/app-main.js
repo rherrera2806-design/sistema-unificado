@@ -446,10 +446,10 @@ function renderSidebar() {
     if (hasSection('atencion')) {
         html += `<div class="nav-section" onclick="toggleSection('atencion')"><span>ATENCION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-atencion">`;
-        if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', '📋', window._badgeRecepcion);
-        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Verificación Bodega', '📦', window._badgeBodega);
-        if (canSeeItem('turnos_almacen','atencion')) html += navI('turnos_almacen', 'Almacén', '🏗️', window._badgeAlmacen);
-        if (canSeeItem('turnos_facturar','atencion')) html += navI('turnos_facturar', 'Por Facturar', '🧾', window._badgeFacturar);
+        if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', '📋');
+        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Verificación Bodega', '📦');
+        if (canSeeItem('turnos_almacen','atencion')) html += navI('turnos_almacen', 'Almacén', '🏗️');
+        if (canSeeItem('turnos_facturar','atencion')) html += navI('turnos_facturar', 'Por Facturar', '🧾');
         if (canSeeItem('turnos_qr','atencion')) html += navI('turnos_qr', 'QR Clientes', '💻');
         if (canSeeItem('turnos_reporte','atencion')) html += navI('turnos_reporte', 'Reporte', '📊');
         html += `</div>`;
@@ -558,16 +558,25 @@ async function loadAtencionBadges() {
             fetch('/api/turnos/almacen/pendientes').then(r => r.json()).catch(() => []),
             fetch('/api/turnos/facturar/pendientes').then(r => r.json()).catch(() => [])
         ]);
-        window._badgeRecepcion = cola.length > 0 ? cola.length : undefined;
-        window._badgeBodega = pendBodega.length > 0 ? pendBodega.length : undefined;
-        window._badgeAlmacen = pendAlmacen.length > 0 ? pendAlmacen.length : undefined;
-        window._badgeFacturar = pendFacturar.length > 0 ? pendFacturar.length : undefined;
-        renderSidebar();
+        const badges = {
+            'turnos_recepcion': cola.length > 0 ? cola.length : null,
+            'turnos_bodega': pendBodega.length > 0 ? pendBodega.length : null,
+            'turnos_almacen': pendAlmacen.length > 0 ? pendAlmacen.length : null,
+            'turnos_facturar': pendFacturar.length > 0 ? pendFacturar.length : null
+        };
+        document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+            const page = el.dataset.page;
+            const existing = el.querySelector('.nav-badge');
+            if (badges[page] !== undefined && badges[page] !== null) {
+                if (existing) { existing.textContent = badges[page]; }
+                else { const b = document.createElement('span'); b.className = 'nav-badge'; b.style.cssText = 'background:var(--danger);color:white;font-size:10px;padding:2px 6px;border-radius:8px;margin-left:auto'; b.textContent = badges[page]; el.appendChild(b); }
+            } else if (existing) { existing.remove(); }
+        });
     } catch(e) {}
 }
 
-function navI(id, label, icon, badge) {
-    return `<div class="nav-item" data-page="${id}"><span class="nav-icon">${icon}</span> ${label}${badge !== undefined && badge !== null ? `<span class="nav-badge" style="background:var(--danger);color:white;font-size:10px;padding:2px 6px;border-radius:8px;margin-left:auto">${badge}</span>` : ''}</div>`;
+function navI(id, label, icon) {
+    return `<div class="nav-item" data-page="${id}"><span class="nav-icon">${icon}</span> ${label}</div>`;
 }
 
 // ─── Inventario Navigation (inline) ────
