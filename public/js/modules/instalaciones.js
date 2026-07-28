@@ -258,7 +258,7 @@ App.registerModule('instalaciones', {
                         </tr>
                     `).join('')}</tbody>
                 </table>
-            </div>`;
+            </div>`};
         App.showModal(html, { title: 'Configurar Tecnicos' });
     },
 
@@ -327,7 +327,7 @@ App.registerModule('instalaciones', {
                         </tr>
                     `).join('')}</tbody>
                 </table>
-            </div>`;
+            </div>`};
         App.showModal(html, { title: 'Configurar Vendedores' });
     },
 
