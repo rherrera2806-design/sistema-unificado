@@ -1543,7 +1543,24 @@ const server = http.createServer(async (req, res) => {
     }
 
     // =====================================================
-    // AUTH: Verificar sesión actual
+    // AUTH: Verificar password (para eliminacion en reportes)
+    // =====================================================
+    if (urlPath === '/api/auth/verify-password' && req.method === 'POST') {
+        const body = await parseBody(req);
+        const { email, password } = body;
+        if (!email || !password) { json(res, { ok: false }, 400); return; }
+        try {
+            const result = await query("SELECT password FROM usuarios WHERE email = $1 AND activo = TRUE", [email]);
+            if (result.rows.length === 0) { json(res, { ok: false }, 401); return; }
+            const verification = verifyPassword(password, result.rows[0].password);
+            if (!verification) { json(res, { ok: false }, 401); return; }
+            json(res, { ok: true });
+        } catch(e) { json(res, { ok: false }, 500); }
+        return;
+    }
+
+    // =====================================================
+    // AUTH: Verificar sesion actual
     // =====================================================
     if (urlPath === '/api/auth/me' && req.method === 'GET') {
         const cookieHeader = req.headers.cookie || '';
