@@ -262,7 +262,7 @@ App.registerModule('turnos', {
                 <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
                     <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">✅ Verificar y Derivar a Almacén</h3>
                     <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Selecciona el técnico de almacén que atenderá.</p>
-                    <label style="font-size:12px;color:var(--text-light)">Técnico Almacén</label>
+                    <label style="font-size:12px;color:var(--text-light)">Encargado de Atención y Carga</label>
                     <select id="tVerTecnico" class="input" style="margin-bottom:8px"></select>
                     <label style="font-size:12px;color:var(--text-light)">Observaciones</label>
                     <textarea id="tVerObs" class="input" rows="2" placeholder="Observaciones opcionales" style="margin-bottom:8px"></textarea>
@@ -436,15 +436,15 @@ App.registerModule('turnos', {
             </div>
             <div class="card" style="margin-bottom:12px">
                 <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:8px" onclick="App.modules.turnos.toggleFormTecAlm()">
-                    <h3 style="font-size:14px;font-weight:600">⚙️ Técnicos Almacén</h3>
+                    <h3 style="font-size:14px;font-weight:600">⚙️ Encargados de Atención y Carga</h3>
                     <span id="tTecAlmArrow" style="color:var(--text-light);font-size:14px;transition:transform .2s">&#9660;</span>
                 </div>
                 <div id="tTecAlmBody" style="display:none">
                     <div style="display:flex;gap:8px;margin-bottom:8px">
-                        <input id="tTecAlmNombre" type="text" class="input" placeholder="Nombre del tecnico" style="flex:1;font-size:13px">
+                        <input id="tTecAlmNombre" type="text" class="input" placeholder="Nombre del encargado" style="flex:1;font-size:13px">
                         <button onclick="App.modules.turnos.addTecnicoAlm()" class="btn btn-primary" style="font-size:13px">Agregar</button>
                     </div>
-                    <div id="tTecAlmList">${tecnicos.length === 0 ? '<div style="color:var(--text-light);font-size:12px;padding:8px">Sin tecnicos registrados</div>' : tecnicos.map(t => `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-size:13px">${escapeHtml(t.nombre)}</span><button onclick="App.modules.turnos.delTecnicoAlm(${t.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px">&#10005;</button></div>`).join('')}</div>
+                    <div id="tTecAlmList">${tecnicos.length === 0 ? '<div style="color:var(--text-light);font-size:12px;padding:8px">Sin encargados registrados</div>' : tecnicos.map(t => `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border)"><span style="font-size:13px">${escapeHtml(t.nombre)}</span><button onclick="App.modules.turnos.delTecnicoAlm(${t.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:14px">&#10005;</button></div>`).join('')}</div>
                 </div>
             </div>
             <div class="card" style="margin-bottom:12px">
@@ -482,7 +482,7 @@ App.registerModule('turnos', {
     },
 
     async delTecnicoAlm(id) {
-        if (!confirm('Eliminar este tecnico?')) return;
+        if (!confirm('Eliminar este encargado?')) return;
         await fetch(`/api/turnos/tecnicos-almacen/${id}`, { method: 'DELETE' });
         this.showAlmacen();
     },
@@ -502,7 +502,7 @@ App.registerModule('turnos', {
                         <div>
                             <span style="color:var(--accent);font-weight:900;font-size:16px">#${e.turno_numero}</span>
                             <span style="font-weight:600;margin-left:8px">${escapeHtml(e.cliente_nombre)}</span>
-                            ${e.tecnico_nombre ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);margin-left:8px">Técnico: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
+                            ${e.tecnico_nombre ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);margin-left:8px">Encargado: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
                             ${e.motivo ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#c084fc;margin-left:4px">${escapeHtml(e.motivo)}</span>` : ''}
                         </div>
                         <button onclick="App.modules.turnos.marcarCargado(${e.id})" class="btn btn-success" style="padding:8px 16px;font-size:13px">📦 CARGADO</button>
@@ -577,7 +577,7 @@ App.registerModule('turnos', {
                         <div>
                             <span style="color:var(--accent);font-weight:900;font-size:16px">#${e.turno_numero}</span>
                             <span style="font-weight:600;margin-left:8px">${escapeHtml(e.cliente_nombre)}</span>
-                            ${e.tecnico_nombre ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);margin-left:8px">Técnico: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
+                            ${e.tecnico_nombre ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);margin-left:8px">Encargado: ${escapeHtml(e.tecnico_nombre)}</span>` : ''}
                             ${e.motivo ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#c084fc;margin-left:4px">${escapeHtml(e.motivo)}</span>` : ''}
                         </div>
                     </div>
