@@ -8,7 +8,7 @@ App.registerModule('reporte_turnos', {
         const hace30 = new Date(Date.now() - 30*86400000).toISOString().substring(0, 10);
         el.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-                <div><h2 style="margin:0">Reporte de Turnos</h2><div class="subtitle">Historial completo de turnos y entregas de bodega</div></div>
+                <div><h2 style="margin:0">Reporte de Turnos</h2><div class="subtitle">Flujo completo por cliente: llegada, atencion, bodega y entrega</div></div>
             </div>
             <div class="card" style="margin-bottom:16px">
                 <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
@@ -92,19 +92,65 @@ App.registerModule('reporte_turnos', {
                 fetch(`/api/turnos/reporte-entregas?${params}`)
             ]);
             const turnos = await resT.json();
-            const entregas = await resE.json();
-            const registros = [
-                ...turnos.map(t => ({ ...t, _tipo: 'turno', _num: t.numero, _fecha: t.fecha || '' })),
-                ...entregas.map(e => ({ ...e, _tipo: 'entrega', _num: e.turno_numero || 0, _fecha: e.fecha || '', fecha_fmt: e.fecha ? new Date(e.fecha).toLocaleDateString('es-CL') : '-' }))
-            ];
-            registros.sort((a, b) => {
-                const fa = a._fecha, fb = b._fecha;
+            const entregasSinTurno = await resE.json();
+
+            // Turnos ya incluyen su entrega (LEFT JOIN), son el flujo principal
+            const flujo = turnos.map(t => ({
+                id: t.turno_id,
+                fecha: t.fecha,
+                fecha_fmt: t.fecha_fmt,
+                nombre: t.nombre,
+                rut: t.rut || '',
+                numero: t.numero,
+                turno_estado: t.turno_estado,
+                hora_llegada: t.hora_creacion,
+                hora_llamado: t.hora_llamada,
+                hora_atencion: t.hora_fin,
+                hora_bodega: t.bodega_recibido,
+                hora_entrega: t.bodega_entregado,
+                espera_segundos: t.espera_segundos,
+                recepcion_segundos: t.recepcion_segundos,
+                bodega_segundos: t.bodega_segundos,
+                total_segundos: t.total_segundos,
+                pedidos: t.pedidos,
+                factura: t.factura,
+                tipo: t.tipo,
+                entrega_estado: t.entrega_estado,
+                entrega_id: t.entrega_id,
+                _origen: 'turno'
+            }));
+
+            // Entregas sin turno (bodega directa)
+            const sinTurno = entregasSinTurno.map(e => ({
+                id: e.id,
+                fecha: e.fecha,
+                fecha_fmt: e.fecha ? new Date(e.fecha).toLocaleDateString('es-CL') : '-',
+                nombre: e.cliente_nombre,
+                rut: '',
+                numero: null,
+                turno_estado: null,
+                hora_llegada: null,
+                hora_llamado: null,
+                hora_atencion: null,
+                hora_bodega: e.hora_registrada,
+                hora_entrega: e.hora_entregada,
+                espera_segundos: null,
+                recepcion_segundos: null,
+                bodega_segundos: null,
+                total_segundos: null,
+                pedidos: e.pedidos,
+                factura: e.factura,
+                tipo: e.tipo,
+                entrega_estado: e.estado,
+                entrega_id: e.id,
+                _origen: 'bodega'
+            }));
+
+            this.registros = [...flujo, ...sinTurno].sort((a, b) => {
+                const fa = a.fecha || '', fb = b.fecha || '';
                 if (fa !== fb) return fb.localeCompare(fa);
-                if (a._num !== b._num) return a._num - b._num;
-                if (a._tipo !== b._tipo) return a._tipo === 'turno' ? -1 : 1;
-                return (b.id || 0) - (a.id || 0);
+                return (a.numero || 9999) - (b.numero || 9999);
             });
-            this.registros = registros;
             this.renderTabla();
         } catch(e) {
             document.getElementById('rtContent').innerHTML = '<div style="text-align:center;color:var(--danger);padding:40px">Error al cargar</div>';
@@ -117,31 +163,39 @@ App.registerModule('reporte_turnos', {
             div.innerHTML = '<div style="text-align:center;color:var(--text-light);padding:40px">No hay registros en este rango</div>';
             return;
         }
-        const totalTurnos = this.registros.filter(r => r._tipo === 'turno').length;
-        const totalEntregas = this.registros.filter(r => r._tipo === 'entrega').length;
-        const pendientes = this.registros.filter(r => r._tipo === 'entrega' && r.estado === 'pendiente').length;
+        const total = this.registros.length;
+        const conEntrega = this.registros.filter(r => r.entrega_estado === 'entregado').length;
+        const pendientes = this.registros.filter(r => r.entrega_estado === 'pendiente').length;
+        const tiempos = this.registros.filter(r => r.total_segundos != null).map(r => r.total_segundos);
+        const promedio = tiempos.length > 0 ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : 0;
 
         let html = `
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-                <div class="stat-card"><div class="stat-info"><h4>${this.registros.length}</h4><p>Total registros</p></div></div>
-                <div class="stat-card"><div class="stat-info"><h4>${totalTurnos}</h4><p>Turnos atendidos</p></div></div>
-                <div class="stat-card"><div class="stat-info"><h4>${totalEntregas}</h4><p>Entregas bodega</p></div></div>
-                <div class="stat-card"><div class="stat-info"><h4>${pendientes}</h4><p>Pendientes bodega</p></div></div>
+                <div class="stat-card"><div class="stat-info"><h4>${total}</h4><p>Total flujos</p></div></div>
+                <div class="stat-card"><div class="stat-info"><h4>${conEntrega}</h4><p>Entregados</p></div></div>
+                <div class="stat-card"><div class="stat-info"><h4>${pendientes}</h4><p>Pend. bodega</p></div></div>
+                <div class="stat-card"><div class="stat-info"><h4>${this.fmtSec(promedio)}</h4><p>Tiempo prom. total</p></div></div>
             </div>
             <div class="card">
                 <div class="card-body" style="padding:0;overflow-x:auto">
-                    <table style="width:100%;font-size:13px">
+                    <table style="width:100%;font-size:12px">
                         <thead><tr style="border-bottom:2px solid var(--border)">
-                            <th style="padding:10px 12px;text-align:left">Fecha</th>
-                            <th style="padding:10px 12px;text-align:left">Tipo</th>
-                            <th style="padding:10px 12px;text-align:left">Nombre</th>
-                            <th style="padding:10px 12px;text-align:left">Estado</th>
-                            <th style="padding:10px 12px;text-align:center">Hora Inicio</th>
-                            <th style="padding:10px 12px;text-align:center">Hora Fin</th>
-                            <th style="padding:10px 12px;text-align:left">Pedido</th>
-                            <th style="padding:10px 12px;text-align:left">Factura</th>
-                            <th style="padding:10px 12px;text-align:left">Detalle</th>
-                            <th style="padding:10px 12px;text-align:center">Accion</th>
+                            <th style="padding:8px 10px;text-align:left">Fecha</th>
+                            <th style="padding:8px 10px;text-align:center">#</th>
+                            <th style="padding:8px 10px;text-align:left">Cliente</th>
+                            <th style="padding:8px 10px;text-align:center">Llegada</th>
+                            <th style="padding:8px 10px;text-align:center">Llamado</th>
+                            <th style="padding:8px 10px;text-align:center">Atencion</th>
+                            <th style="padding:8px 10px;text-align:center">Bodega</th>
+                            <th style="padding:8px 10px;text-align:center">Entrega</th>
+                            <th style="padding:8px 10px;text-align:center">Espera</th>
+                            <th style="padding:8px 10px;text-align:center">Recepcion</th>
+                            <th style="padding:8px 10px;text-align:center">Bod.</th>
+                            <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--accent)">TOTAL</th>
+                            <th style="padding:8px 10px;text-align:left">Pedido</th>
+                            <th style="padding:8px 10px;text-align:left">Factura</th>
+                            <th style="padding:8px 10px;text-align:center">Estado</th>
+                            <th style="padding:8px 10px;text-align:center">Accion</th>
                         </tr></thead>
                         <tbody>${this.filasHtml()}</tbody>
                     </table>
@@ -152,41 +206,28 @@ App.registerModule('reporte_turnos', {
     },
 
     filasHtml() {
-        const estadoColor = {
-            'atendido': '#22c55e', 'atendiendo': '#f59e0b', 'derivado': '#3b82f6', 'espera': '#94a3b8',
-            'entregado': '#22c55e', 'pendiente': '#f59e0b'
-        };
         return this.registros.map(r => {
-            if (r._tipo === 'turno') {
-                const color = estadoColor[r.estado] || '#94a3b8';
-                return `<tr style="border-bottom:1px solid var(--border)">
-                    <td style="padding:8px 12px">${r.fecha_fmt || '-'}</td>
-                    <td style="padding:8px 12px"><span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,0.1);color:var(--info);font-weight:700">TURNO #${r.numero}</span></td>
-                    <td style="padding:8px 12px;font-weight:600">${escapeHtml(r.nombre)}</td>
-                    <td style="padding:8px 12px"><span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${color}22;color:${color};font-weight:600">${r.estado}</span></td>
-                    <td style="padding:8px 12px;text-align:center;font-size:12px">${this.fmtTime(r.hora_creacion)}</td>
-                    <td style="padding:8px 12px;text-align:center;font-size:12px">${this.fmtTime(r.hora_fin)}</td>
-                    <td style="padding:8px 12px;font-size:12px">${escapeHtml(r.pedidos || '-')}</td>
-                    <td style="padding:8px 12px;font-size:12px">${escapeHtml(r.factura || '-')}</td>
-                    <td style="padding:8px 12px;font-size:12px;color:var(--text-light)">${r.espera_segundos ? 'Espera: ' + this.fmtSec(r.espera_segundos) : '-'}</td>
-                    <td style="padding:8px 12px;text-align:center"><button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:4px 10px;font-size:11px" onclick="App.modules.reporte_turnos.solicitarPass('turno',${r.id})">Eliminar</button></td>
-                </tr>`;
-            } else {
-                const color = estadoColor[r.estado] || '#94a3b8';
-                const tipoColor = r.tipo === 'Despacho' ? 'var(--warning)' : 'var(--success)';
-                return `<tr style="border-bottom:1px solid var(--border)">
-                    <td style="padding:8px 12px">${r.fecha_fmt || '-'}</td>
-                    <td style="padding:8px 12px"><span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7;font-weight:700">ENTREGA${r.turno_numero ? ' #' + r.turno_numero : ''}</span></td>
-                    <td style="padding:8px 12px;font-weight:600">${escapeHtml(r.cliente_nombre)}</td>
-                    <td style="padding:8px 12px"><span style="font-size:11px;padding:2px 8px;border-radius:6px;background:${color}22;color:${color};font-weight:600">${r.estado}</span></td>
-                    <td style="padding:8px 12px;text-align:center;font-size:12px">${this.fmtTime(r.hora_registrada)}</td>
-                    <td style="padding:8px 12px;text-align:center;font-size:12px">${this.fmtTime(r.hora_entregada)}</td>
-                    <td style="padding:8px 12px;font-size:12px">${escapeHtml(r.pedidos || '-')}</td>
-                    <td style="padding:8px 12px;font-size:12px">${escapeHtml(r.factura || '-')}</td>
-                    <td style="padding:8px 12px;font-size:12px"><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${tipoColor}22;color:${tipoColor}">${r.tipo || '-'}</span>${r.descripcion ? ' ' + escapeHtml(r.descripcion) : ''}</td>
-                    <td style="padding:8px 12px;text-align:center"><button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:4px 10px;font-size:11px" onclick="App.modules.reporte_turnos.solicitarPass('entrega',${r.id})">Eliminar</button></td>
-                </tr>`;
-            }
+            const estado = r.entrega_estado || r.turno_estado || '-';
+            const estadoColor = { 'entregado': '#22c55e', 'pendiente': '#f59e0b', 'atendido': '#22c55e', 'derivado': '#3b82f6', 'atendiendo': '#f59e0b', 'espera': '#94a3b8' }[estado] || '#94a3b8';
+            const tipoBadge = r.tipo ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${r.tipo==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${r.tipo==='Despacho'?'var(--warning)':'var(--success)'}">${r.tipo}</span>` : '';
+            return `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px 10px">${r.fecha_fmt || '-'}</td>
+                <td style="padding:8px 10px;text-align:center;font-weight:700;color:var(--accent)">${r.numero ? '#' + r.numero : (r._origen === 'bodega' ? 'BOD' : '-')}</td>
+                <td style="padding:8px 10px;font-weight:600">${escapeHtml(r.nombre)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_llegada)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_llamado)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_atencion)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_bodega)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;font-weight:600">${this.fmtTime(r.hora_entrega)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:var(--warning)">${this.fmtSec(r.espera_segundos)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:var(--info)">${this.fmtSec(r.recepcion_segundos)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtSec(r.bodega_segundos)}</td>
+                <td style="padding:8px 10px;text-align:center;font-weight:900;font-size:12px;color:var(--accent)">${this.fmtSec(r.total_segundos)}</td>
+                <td style="padding:8px 10px;font-size:11px">${escapeHtml(r.pedidos || '-')}</td>
+                <td style="padding:8px 10px;font-size:11px">${escapeHtml(r.factura || '-')}</td>
+                <td style="padding:8px 10px;text-align:center"><span style="font-size:10px;padding:2px 8px;border-radius:6px;background:${estadoColor}22;color:${estadoColor};font-weight:600">${estado}</span> ${tipoBadge}</td>
+                <td style="padding:8px 10px;text-align:center">${r._origen === 'turno' ? `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:3px 8px;font-size:10px" onclick="App.modules.reporte_turnos.solicitarPass('turno',${r.id})">X</button>` : `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:3px 8px;font-size:10px" onclick="App.modules.reporte_turnos.solicitarPass('entrega',${r.entrega_id})">X</button>`}</td>
+            </tr>`;
         }).join('');
     },
 
