@@ -21,7 +21,7 @@ App.registerModule('instalaciones', {
                 <div style="display:flex;gap:8px">
                     <button onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores" style="padding:8px 16px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc';this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0'">Vendedores</button>
                     <button onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos" style="padding:8px 16px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc';this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0'">Tecnicos</button>
-                    ${puedeCrear ? '<button onclick="App.modules.instalaciones.showForm()" style="padding:8px 18px;font-size:13px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">+ Nuevo</button>' : ''}
+                    ${puedeCrear ? `<button onclick="App.modules.instalaciones.showForm()" style="padding:8px 18px;font-size:13px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">+ Nuevo</button>` : ''}
                 </div>
             </div>
             <div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px"></div>
@@ -233,50 +233,48 @@ App.registerModule('instalaciones', {
         let list = [];
         try { list = await fetch('/api/produccion/tecnicos').then(r => r.json()); } catch(e) {}
         list = Array.isArray(list) ? list : [];
-        const html = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Tecnicos (${list.length})</h3>
-                <button onclick="App.modules.instalaciones.formTecnico()" style="padding:6px 14px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">+ Nuevo</button>
-            </div>
-            <div id="tecnicoFormInst"></div>
-            ${list.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px">No hay tecnicos. Agrega uno para que aparezca en el desplegable.</div>' :
-            `<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-                <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Nombre</th>
-                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
-                        <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
-                    </tr></thead>
-                    <tbody>${list.map(t => `
-                        <tr style="border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-                            <td style="padding:10px 14px;font-weight:600;color:#1e293b">${escapeHtml(t.nombre)}</td>
-                            <td style="padding:10px 14px"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;${t.activo ? 'color:#166534;background:#dcfce7' : 'color:#94a3b8;background:#f1f5f9'}">${t.activo ? 'Activo' : 'Inactivo'}</span></td>
-                            <td style="padding:10px 14px;text-align:right">
-                                <button onclick="App.modules.instalaciones.formTecnico(${t.id},'${escapeHtml(t.nombre).replace(/'/g,"\\'")}',${t.activo})" style="background:white;color:#64748b;border:1px solid #e2e8f0;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;margin-right:4px" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&#9998;</button>
-                                <button onclick="App.modules.instalaciones.eliminarTecnico(${t.id})" style="background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">&#10005;</button>
-                            </td>
-                        </tr>
-                    `).join('')}</tbody>
-                </table>
-            </div>`};
+        const rows = list.map(t => {
+            const badge = t.activo
+                ? '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;color:#166534;background:#dcfce7">Activo</span>'
+                : '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;color:#94a3b8;background:#f1f5f9">Inactivo</span>';
+            const esc = escapeHtml(t.nombre).replace(/'/g,"\\'");
+            return '<tr style="border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'white\'">'
+                + '<td style="padding:10px 14px;font-weight:600;color:#1e293b">' + escapeHtml(t.nombre) + '</td>'
+                + '<td style="padding:10px 14px">' + badge + '</td>'
+                + '<td style="padding:10px 14px;text-align:right">'
+                + '<button onclick="App.modules.instalaciones.formTecnico(' + t.id + ',\'' + esc + '\',' + t.activo + ')" style="background:white;color:#64748b;border:1px solid #e2e8f0;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;margin-right:4px" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'white\'">&#9998;</button>'
+                + '<button onclick="App.modules.instalaciones.eliminarTecnico(' + t.id + ')" style="background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'">&#10005;</button>'
+                + '</td></tr>';
+        }).join('');
+        const tableHtml = list.length === 0
+            ? '<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px">No hay tecnicos. Agrega uno para que aparezca en el desplegable.</div>'
+            : '<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+            + '<thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Nombre</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
+            + '<th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
+            + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+        const html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+            + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Tecnicos (' + list.length + ')</h3>'
+            + '<button onclick="App.modules.instalaciones.formTecnico()" style="padding:6px 14px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">+ Nuevo</button>'
+            + '</div><div id="tecnicoFormInst"></div>' + tableHtml;
         App.showModal(html, { title: 'Configurar Tecnicos' });
     },
 
     formTecnico(id, nombre, activo) {
         const el = document.getElementById('tecnicoFormInst');
-        if (el) el.innerHTML = `
-            <div style="display:flex;gap:8px;align-items:end;margin-bottom:16px;padding:14px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe">
-                <div style="flex:1">
-                    <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Nombre</label>
-                    <input id="tecNombreInst" value="${nombre || ''}" placeholder="Nombre del tecnico" style="font-size:13px;width:100%;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px;box-sizing:border-box">
-                </div>
-                <div style="flex:0">
-                    <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Activo</label>
-                    <select id="tecActivoInst" style="font-size:13px;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px"><option value="true" ${activo !== false ? 'selected' : ''}>Si</option><option value="false" ${activo === false ? 'selected' : ''}>No</option></select>
-                </div>
-                <button onclick="App.modules.instalaciones.guardarTecnico(${id || 0})" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">Guardar</button>
-                <button onclick="document.getElementById('tecnicoFormInst').innerHTML=''" style="padding:8px 16px;font-size:12px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">Cancelar</button>
-            </div>`;
+        if (!el) return;
+        el.innerHTML = '<div style="display:flex;gap:8px;align-items:end;margin-bottom:16px;padding:14px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe">'
+            + '<div style="flex:1"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Nombre</label>'
+            + '<input id="tecNombreInst" value="' + (nombre || '').replace(/"/g,'&quot;') + '" placeholder="Nombre del tecnico" style="font-size:13px;width:100%;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px;box-sizing:border-box"></div>'
+            + '<div style="flex:0"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Activo</label>'
+            + '<select id="tecActivoInst" style="font-size:13px;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px">'
+            + '<option value="true"' + (activo !== false ? ' selected' : '') + '>Si</option>'
+            + '<option value="false"' + (activo === false ? ' selected' : '') + '>No</option>'
+            + '</select></div>'
+            + '<button onclick="App.modules.instalaciones.guardarTecnico(' + (id || 0) + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">Guardar</button>'
+            + '<button onclick="document.getElementById(\'tecnicoFormInst\').innerHTML=\'\'" style="padding:8px 16px;font-size:12px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">Cancelar</button>'
+            + '</div>';
     },
 
     async guardarTecnico(id) {
@@ -302,50 +300,48 @@ App.registerModule('instalaciones', {
         let list = [];
         try { list = await fetch('/api/produccion/vendedores').then(r => r.json()); } catch(e) {}
         list = Array.isArray(list) ? list : [];
-        const html = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Vendedores (${list.length})</h3>
-                <button onclick="App.modules.instalaciones.formVendedor()" style="padding:6px 14px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">+ Nuevo</button>
-            </div>
-            <div id="vendedorFormInst"></div>
-            ${list.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px">No hay vendedores. Agrega uno para que aparezca en el desplegable.</div>' :
-            `<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-                <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Nombre</th>
-                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
-                        <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
-                    </tr></thead>
-                    <tbody>${list.map(v => `
-                        <tr style="border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
-                            <td style="padding:10px 14px;font-weight:600;color:#1e293b">${escapeHtml(v.nombre)}</td>
-                            <td style="padding:10px 14px"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;${v.activo ? 'color:#166534;background:#dcfce7' : 'color:#94a3b8;background:#f1f5f9'}">${v.activo ? 'Activo' : 'Inactivo'}</span></td>
-                            <td style="padding:10px 14px;text-align:right">
-                                <button onclick="App.modules.instalaciones.formVendedor(${v.id},'${escapeHtml(v.nombre).replace(/'/g,"\\'")}',${v.activo})" style="background:white;color:#64748b;border:1px solid #e2e8f0;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;margin-right:4px" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&#9998;</button>
-                                <button onclick="App.modules.instalaciones.eliminarVendedor(${v.id})" style="background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">&#10005;</button>
-                            </td>
-                        </tr>
-                    `).join('')}</tbody>
-                </table>
-            </div>`};
+        const rows = list.map(v => {
+            const badge = v.activo
+                ? '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;color:#166534;background:#dcfce7">Activo</span>'
+                : '<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;color:#94a3b8;background:#f1f5f9">Inactivo</span>';
+            const esc = escapeHtml(v.nombre).replace(/'/g,"\\'");
+            return '<tr style="border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'white\'">'
+                + '<td style="padding:10px 14px;font-weight:600;color:#1e293b">' + escapeHtml(v.nombre) + '</td>'
+                + '<td style="padding:10px 14px">' + badge + '</td>'
+                + '<td style="padding:10px 14px;text-align:right">'
+                + '<button onclick="App.modules.instalaciones.formVendedor(' + v.id + ',\'' + esc + '\',' + v.activo + ')" style="background:white;color:#64748b;border:1px solid #e2e8f0;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;margin-right:4px" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'white\'">&#9998;</button>'
+                + '<button onclick="App.modules.instalaciones.eliminarVendedor(' + v.id + ')" style="background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'">&#10005;</button>'
+                + '</td></tr>';
+        }).join('');
+        const tableHtml = list.length === 0
+            ? '<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px">No hay vendedores. Agrega uno para que aparezca en el desplegable.</div>'
+            : '<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+            + '<thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Nombre</th>'
+            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
+            + '<th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
+            + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+        const html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+            + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Vendedores (' + list.length + ')</h3>'
+            + '<button onclick="App.modules.instalaciones.formVendedor()" style="padding:6px 14px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">+ Nuevo</button>'
+            + '</div><div id="vendedorFormInst"></div>' + tableHtml;
         App.showModal(html, { title: 'Configurar Vendedores' });
     },
 
     formVendedor(id, nombre, activo) {
         const el = document.getElementById('vendedorFormInst');
-        if (el) el.innerHTML = `
-            <div style="display:flex;gap:8px;align-items:end;margin-bottom:16px;padding:14px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe">
-                <div style="flex:1">
-                    <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Nombre</label>
-                    <input id="vedNombreInst" value="${nombre || ''}" placeholder="Nombre del vendedor" style="font-size:13px;width:100%;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px;box-sizing:border-box">
-                </div>
-                <div style="flex:0">
-                    <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Activo</label>
-                    <select id="vedActivoInst" style="font-size:13px;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px"><option value="true" ${activo !== false ? 'selected' : ''}>Si</option><option value="false" ${activo === false ? 'selected' : ''}>No</option></select>
-                </div>
-                <button onclick="App.modules.instalaciones.guardarVendedor(${id || 0})" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">Guardar</button>
-                <button onclick="document.getElementById('vendedorFormInst').innerHTML=''" style="padding:8px 16px;font-size:12px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">Cancelar</button>
-            </div>`;
+        if (!el) return;
+        el.innerHTML = '<div style="display:flex;gap:8px;align-items:end;margin-bottom:16px;padding:14px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe">'
+            + '<div style="flex:1"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Nombre</label>'
+            + '<input id="vendNombreInst" value="' + (nombre || '').replace(/"/g,'&quot;') + '" placeholder="Nombre del vendedor" style="font-size:13px;width:100%;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px;box-sizing:border-box"></div>'
+            + '<div style="flex:0"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Activo</label>'
+            + '<select id="vendActivoInst" style="font-size:13px;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px">'
+            + '<option value="true"' + (activo !== false ? ' selected' : '') + '>Si</option>'
+            + '<option value="false"' + (activo === false ? ' selected' : '') + '>No</option>'
+            + '</select></div>'
+            + '<button onclick="App.modules.instalaciones.guardarVendedor(' + (id || 0) + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">Guardar</button>'
+            + '<button onclick="document.getElementById(\'vendedorFormInst\').innerHTML=\'\'" style="padding:8px 16px;font-size:12px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">Cancelar</button>'
+            + '</div>';
     },
 
     async guardarVendedor(id) {
