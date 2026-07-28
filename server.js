@@ -2512,7 +2512,7 @@ const server = http.createServer(async (req, res) => {
         const result = await query(
             `SELECT e.*, t.numero as turno_numero, t.nombre as cliente_nombre, t.rut, t.patente, t.motivo, t.rut_empresa,
                     ta.nombre as tecnico_nombre,
-                    (SELECT COUNT(*) FROM turnos_adjuntos ta2 WHERE ta2.turno_id = t.id) as adjuntos_count
+                    (SELECT COUNT(*) FROM turnos_adjuntos adj WHERE adj.turno_id = t.id) as adjuntos_count
              FROM entregas e
              JOIN turnos t ON e.turno_id = t.id
              LEFT JOIN tecnicos_almacen ta ON e.tecnico_almacen_id = ta.id
