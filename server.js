@@ -2605,6 +2605,29 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // TURNOS - Reporte de entregas historial
+    if (urlPath === '/api/turnos/reporte-entregas' && req.method === 'GET') {
+        const params = new URL(req.url, 'http://localhost').searchParams;
+        const desde = params.get('desde') || '';
+        const hasta = params.get('hasta') || '';
+        let conditions = [];
+        let idx = 1;
+        let vals = [];
+        if (desde) { conditions.push(`e.fecha >= $${idx++}`); vals.push(desde); }
+        if (hasta) { conditions.push(`e.fecha <= $${idx++}`); vals.push(hasta); }
+        const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+        const result = await query(
+            `SELECT e.*, t.numero as turno_numero, t.nombre as turno_nombre,
+                    (SELECT COUNT(*) FROM turnos_adjuntos ta WHERE ta.turno_id = e.turno_id) as adjuntos_count
+             FROM entregas e
+             LEFT JOIN turnos t ON e.turno_id = t.id
+             ${where}
+             ORDER BY e.fecha DESC, e.id DESC`, vals
+        );
+        json(res, result.rows);
+        return;
+    }
+
     if (urlPath === '/api/turnos/entregas/registrar' && req.method === 'POST') {
         const body = await parseBody(req);
         const { cliente_nombre, descripcion, tipo, pedidos, factura } = body;
