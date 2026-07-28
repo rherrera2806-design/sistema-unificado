@@ -446,10 +446,10 @@ function renderSidebar() {
     if (hasSection('atencion')) {
         html += `<div class="nav-section" onclick="toggleSection('atencion')"><span>ATENCION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-atencion">`;
-        if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', '📋');
-        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Verificación Bodega', '📦');
-        if (canSeeItem('turnos_almacen','atencion')) html += navI('turnos_almacen', 'Almacén', '🏗️');
-        if (canSeeItem('turnos_facturar','atencion')) html += navI('turnos_facturar', 'Por Facturar', '🧾');
+        if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', '📋', window._badgeRecepcion);
+        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Verificación Bodega', '📦', window._badgeBodega);
+        if (canSeeItem('turnos_almacen','atencion')) html += navI('turnos_almacen', 'Almacén', '🏗️', window._badgeAlmacen);
+        if (canSeeItem('turnos_facturar','atencion')) html += navI('turnos_facturar', 'Por Facturar', '🧾', window._badgeFacturar);
         if (canSeeItem('turnos_qr','atencion')) html += navI('turnos_qr', 'QR Clientes', '💻');
         if (canSeeItem('turnos_reporte','atencion')) html += navI('turnos_reporte', 'Reporte', '📊');
         html += `</div>`;
@@ -550,8 +550,24 @@ function toggleSection(section) {
     try { localStorage.setItem('sidebar_collapsed', JSON.stringify({ [section]: !isCollapsed })); } catch(e) {}
 }
 
-function navI(id, label, icon) {
-    return `<div class="nav-item" data-page="${id}"><span class="nav-icon">${icon}</span> ${label}</div>`;
+async function loadAtencionBadges() {
+    try {
+        const [cola, pendBodega, pendAlmacen, pendFacturar] = await Promise.all([
+            fetch('/api/turnos/cola').then(r => r.json()).catch(() => []),
+            fetch('/api/turnos/entregas/pendientes').then(r => r.json()).catch(() => []),
+            fetch('/api/turnos/almacen/pendientes').then(r => r.json()).catch(() => []),
+            fetch('/api/turnos/facturar/pendientes').then(r => r.json()).catch(() => [])
+        ]);
+        window._badgeRecepcion = cola.length > 0 ? cola.length : undefined;
+        window._badgeBodega = pendBodega.length > 0 ? pendBodega.length : undefined;
+        window._badgeAlmacen = pendAlmacen.length > 0 ? pendAlmacen.length : undefined;
+        window._badgeFacturar = pendFacturar.length > 0 ? pendFacturar.length : undefined;
+        renderSidebar();
+    } catch(e) {}
+}
+
+function navI(id, label, icon, badge) {
+    return `<div class="nav-item" data-page="${id}"><span class="nav-icon">${icon}</span> ${label}${badge !== undefined && badge !== null ? `<span class="nav-badge" style="background:var(--danger);color:white;font-size:10px;padding:2px 6px;border-radius:8px;margin-left:auto">${badge}</span>` : ''}</div>`;
 }
 
 // ─── Inventario Navigation (inline) ────
@@ -582,6 +598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('userAvatar').textContent = (user.nombre || 'U').charAt(0).toUpperCase();
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     renderSidebar();
+    loadAtencionBadges();
     // Restaurar estado del sidebar colapsado
     try {
         const collapsed = localStorage.getItem('sidebar_collapsed_state');
@@ -593,6 +610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) {}
     await App.updateNavBadge();
     setInterval(() => App.updateTurnosBadges(), 15000);
+    setInterval(() => loadAtencionBadges(), 30000);
     setInterval(() => App.updateInvAlertasBadge(), 30000);
     setInterval(() => App.updatePedidosBadge(), 15000);
     setInterval(() => App.updateProdNotasBadge(), 15000);
