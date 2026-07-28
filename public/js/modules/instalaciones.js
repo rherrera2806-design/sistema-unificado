@@ -13,15 +13,18 @@ App.registerModule('instalaciones', {
         const permisos = user.permisos || [];
         const puedeCrear = permisos.includes('instalaciones.nueva') || permisos.includes('usuarios');
         el.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-                <div><h2 style="margin:0">Instalaciones</h2><div class="subtitle">Calendario mensual de trabajos en terreno</div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+                <div>
+                    <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Instalaciones</h2>
+                    <p style="margin:4px 0 0;font-size:13px;color:#64748b">Calendario mensual de trabajos en terreno</p>
+                </div>
                 <div style="display:flex;gap:8px">
-                    <button class="btn btn-outline btn-sm" onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores">🏷️ Vendedores</button>
-                    <button class="btn btn-outline btn-sm" onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos">⚙️ Tecnicos</button>
-                    ${puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()">+ Nuevo</button>' : ''}
+                    <button onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores" style="padding:8px 16px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc';this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0'">Vendedores</button>
+                    <button onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos" style="padding:8px 16px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc';this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0'">Tecnicos</button>
+                    ${puedeCrear ? '<button onclick="App.modules.instalaciones.showForm()" style="padding:8px 18px;font-size:13px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">+ Nuevo</button>' : ''}
                 </div>
             </div>
-            <div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px"></div>
+            <div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px"></div>
             <div id="instCalendario"></div>
         `;
         await this.loadData();
@@ -45,11 +48,26 @@ App.registerModule('instalaciones', {
         const comp = this.instalaciones.filter(i => i.estado === 'COMPLETADA').length;
         const nov = this.instalaciones.filter(i => i.estado === 'CON_NOVEDADES' || i.estado === 'CANCELADA').length;
         document.getElementById('instStats').innerHTML = `
-            <div class="card" style="text-align:center;padding:12px"><div style="font-size:24px;font-weight:700;color:var(--primary)">${total}</div><div style="font-size:11px;color:var(--text-light)">Total</div></div>
-            <div class="card" style="text-align:center;padding:12px"><div style="font-size:24px;font-weight:700;color:#3b82f6">${prog}</div><div style="font-size:11px;color:var(--text-light)">Programadas</div></div>
-            <div class="card" style="text-align:center;padding:12px"><div style="font-size:24px;font-weight:700;color:#f59e0b">${curso}</div><div style="font-size:11px;color:var(--text-light)">En Curso</div></div>
-            <div class="card" style="text-align:center;padding:12px"><div style="font-size:24px;font-weight:700;color:#22c55e">${comp}</div><div style="font-size:11px;color:var(--text-light)">Completadas</div></div>
-            <div class="card" style="text-align:center;padding:12px"><div style="font-size:24px;font-weight:700;color:#ef4444">${nov}</div><div style="font-size:11px;color:var(--text-light)">Novedades</div></div>
+            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Total</div>
+                <div style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">${total}</div>
+            </div>
+            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Programadas</div>
+                <div style="font-size:28px;font-weight:800;color:#3b82f6;line-height:1">${prog}</div>
+            </div>
+            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">En Curso</div>
+                <div style="font-size:28px;font-weight:800;color:#f59e0b;line-height:1">${curso}</div>
+            </div>
+            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #16a34a;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Completadas</div>
+                <div style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">${comp}</div>
+            </div>
+            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #dc2626;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Novedades</div>
+                <div style="font-size:28px;font-weight:800;color:#dc2626;line-height:1">${nov}</div>
+            </div>
         `;
     },
 
@@ -65,57 +83,64 @@ App.registerModule('instalaciones', {
         const hoyStr = this.fmtDate(new Date());
 
         const estadoColor = (e) => {
-            if (e === 'COMPLETADA') return '#22c55e';
+            if (e === 'COMPLETADA') return '#16a34a';
             if (e === 'EN_CURSO' || e === 'EN_CAMINO') return '#f59e0b';
-            if (e === 'CON_NOVEDADES') return '#ef4444';
+            if (e === 'CON_NOVEDADES') return '#dc2626';
             if (e === 'CANCELADA') return '#94a3b8';
             return '#3b82f6';
+        };
+        const estadoBg = (e) => {
+            if (e === 'COMPLETADA') return '#f0fdf4';
+            if (e === 'EN_CURSO' || e === 'EN_CAMINO') return '#fffbeb';
+            if (e === 'CON_NOVEDADES') return '#fef2f2';
+            if (e === 'CANCELADA') return '#f8fafc';
+            return '#eff6ff';
         };
         const estadoIcon = (e) => {
             if (e === 'COMPLETADA') return '✓';
             if (e === 'EN_CURSO') return '⚙';
-            if (e === 'EN_CAMINO') return '🚗';
-            if (e === 'CON_NOVEDADES') return '⚠';
-            if (e === 'CANCELADA') return '✕';
-            return '📅';
+            if (e === 'EN_CAMINO') return '→';
+            if (e === 'CON_NOVEDADES') return '!';
+            if (e === 'CANCELADA') return '×';
+            return '';
         };
 
         let html = `
-            <div class="card">
-                <div class="card-header" style="justify-content:space-between">
-                    <h3 style="margin:0">${monthNames[month]} ${year}</h3>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.cambiarMes(-1)">◀</button>
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.cambiarMes(0)">Hoy</button>
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.cambiarMes(1)">▶</button>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+                    <h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">${monthNames[month]} ${year}</h3>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <button onclick="App.modules.instalaciones.cambiarMes(-1)" style="padding:6px 12px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&#9664;</button>
+                        <button onclick="App.modules.instalaciones.cambiarMes(0)" style="padding:6px 12px;font-size:12px;font-weight:600;color:#3b82f6;background:white;border:1px solid #bfdbfe;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='white'">Hoy</button>
+                        <button onclick="App.modules.instalaciones.cambiarMes(1)" style="padding:6px 12px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&#9654;</button>
                     </div>
                 </div>
-                <div class="card-body" style="padding:0">
-                    <div style="display:grid;grid-template-columns:repeat(7,1fr)">
-                        ${diasSemana.map(d => `<div style="padding:10px;text-align:center;font-weight:600;font-size:12px;border-bottom:2px solid var(--border);color:var(--text-light)">${d}</div>`).join('')}
+                <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+                    ${diasSemana.map(d => `<div style="padding:10px;text-align:center;font-weight:700;font-size:11px;border-bottom:1px solid #f1f5f9;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">${d}</div>`).join('')}
         `;
-        for (let i = 0; i < startOffset; i++) html += '<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:100px;background:var(--bg)"></div>';
+        for (let i = 0; i < startOffset; i++) html += '<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:100px;background:#fafbfc"></div>';
         for (let d = 1; d <= daysInMonth; d++) {
             const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
             const instDia = this.instalaciones.filter(inst => inst.fecha_programada && inst.fecha_programada.substring(0, 10) === fs);
             const esHoy = fs === hoyStr;
             const dt = new Date(year, month, d);
             const esFinde = dt.getDay() === 0 || dt.getDay() === 6;
-            const bgBase = esHoy ? 'background:rgba(59,130,246,0.08)' : (esFinde ? 'background:var(--bg)' : '');
-            html += `<div style="border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:100px;padding:4px;${bgBase}">
-                <div style="text-align:right;padding:2px 4px;font-size:12px;${esHoy ? 'background:var(--primary);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700' : (esFinde ? 'color:var(--text-light)' : 'color:var(--text)')}">${d}</div>
+            const bgBase = esHoy ? 'background:#eff6ff' : (esFinde ? 'background:#fafbfc' : '');
+            html += `<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:100px;padding:4px;${bgBase}">
+                <div style="text-align:right;padding:2px 4px;font-size:12px;${esHoy ? 'background:#3b82f6;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700' : (esFinde ? 'color:#94a3b8' : 'color:#1e293b')}">${d}</div>
             `;
             for (const inst of instDia) {
                 const color = estadoColor(inst.estado);
-                html += `<div onclick="App.modules.inst_detalle.abrir(${inst.id})" style="cursor:pointer;margin:1px 0;padding:3px 5px;border-radius:4px;border-left:3px solid ${color};font-size:10px;line-height:1.3;transition:all .15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background=''">
+                const bg = estadoBg(inst.estado);
+                html += `<div onclick="App.modules.inst_detalle.abrir(${inst.id})" style="cursor:pointer;margin:2px 0;padding:4px 6px;border-radius:6px;border-left:3px solid ${color};background:${bg};font-size:10px;line-height:1.3;transition:all .15s" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
                     <div style="font-weight:700;color:${color};font-size:9px;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')}</div>
-                    <div style="font-weight:600;color:${color}">${estadoIcon(inst.estado)} ${inst.hora_programada || '09:00'}${inst.numero_orden ? ' • ' + escapeHtml(inst.numero_orden) : ''}</div>
-                    <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(inst.cliente)}</div>
+                    <div style="font-weight:600;color:${color}">${inst.hora_programada || '09:00'}${inst.numero_orden ? ' · ' + escapeHtml(inst.numero_orden) : ''}</div>
+                    <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1e293b;font-weight:500">${escapeHtml(inst.cliente)}</div>
                 </div>`;
             }
             html += '</div>';
         }
-        html += '</div></div></div>';
+        html += '</div></div>';
         div.innerHTML = html;
     },
 
@@ -209,38 +234,48 @@ App.registerModule('instalaciones', {
         try { list = await fetch('/api/produccion/tecnicos').then(r => r.json()); } catch(e) {}
         list = Array.isArray(list) ? list : [];
         const html = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                <h3 style="margin:0">Tecnicos (${list.length})</h3>
-                <button class="btn btn-sm btn-primary" onclick="App.modules.instalaciones.formTecnico()">+ Nuevo</button>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Tecnicos (${list.length})</h3>
+                <button onclick="App.modules.instalaciones.formTecnico()" style="padding:6px 14px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">+ Nuevo</button>
             </div>
             <div id="tecnicoFormInst"></div>
-            <table class="data-table" style="width:100%">
-                <thead><tr><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
-                <tbody>${list.length === 0 ? '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text-light)">No hay tecnicos. Agrega uno para que aparezca en el desplegable.</td></tr>' :
-                list.map(t => `
-                    <tr>
-                        <td style="font-weight:600">${escapeHtml(t.nombre)}</td>
-                        <td><span class="status-badge ${t.activo ? 'status-completada' : 'status-cancelada'}">${t.activo ? 'Activo' : 'Inactivo'}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.formTecnico(${t.id},'${escapeHtml(t.nombre).replace(/'/g,"\\'")}',${t.activo})" style="margin-right:4px">✏️</button>
-                            <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.eliminarTecnico(${t.id})" style="color:var(--danger)">🗑️</button>
-                        </td>
-                    </tr>
-                `).join('')}</tbody>
-            </table>`;
+            ${list.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px">No hay tecnicos. Agrega uno para que aparezca en el desplegable.</div>' :
+            `<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Nombre</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                        <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                    </tr></thead>
+                    <tbody>${list.map(t => `
+                        <tr style="border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                            <td style="padding:10px 14px;font-weight:600;color:#1e293b">${escapeHtml(t.nombre)}</td>
+                            <td style="padding:10px 14px"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;${t.activo ? 'color:#166534;background:#dcfce7' : 'color:#94a3b8;background:#f1f5f9'}">${t.activo ? 'Activo' : 'Inactivo'}</span></td>
+                            <td style="padding:10px 14px;text-align:right">
+                                <button onclick="App.modules.instalaciones.formTecnico(${t.id},'${escapeHtml(t.nombre).replace(/'/g,"\\'")}',${t.activo})" style="background:white;color:#64748b;border:1px solid #e2e8f0;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;margin-right:4px" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&#9998;</button>
+                                <button onclick="App.modules.instalaciones.eliminarTecnico(${t.id})" style="background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">&#10005;</button>
+                            </td>
+                        </tr>
+                    `).join('')}</tbody>
+                </table>
+            </div>`;
         App.showModal(html, { title: 'Configurar Tecnicos' });
     },
 
     formTecnico(id, nombre, activo) {
         const el = document.getElementById('tecnicoFormInst');
         if (el) el.innerHTML = `
-            <div style="display:flex;gap:8px;align-items:end;margin-bottom:12px;padding:10px;background:rgba(59,130,246,0.05);border-radius:8px;border:1px solid var(--border)">
-                <div style="flex:1"><label style="font-size:12px;font-weight:600">Nombre</label>
-                    <input class="form-control" id="tecNombreInst" value="${nombre || ''}" placeholder="Nombre del tecnico" style="text-transform:capitalize"></div>
-                <div style="flex:0"><label style="font-size:12px;font-weight:600">Activo</label>
-                    <select class="form-control" id="tecActivoInst"><option value="true" ${activo !== false ? 'selected' : ''}>Si</option><option value="false" ${activo === false ? 'selected' : ''}>No</option></select></div>
-                <button class="btn btn-sm btn-primary" onclick="App.modules.instalaciones.guardarTecnico(${id || 0})">Guardar</button>
-                <button class="btn btn-sm btn-outline" onclick="document.getElementById('tecnicoFormInst').innerHTML=''">Cancelar</button>
+            <div style="display:flex;gap:8px;align-items:end;margin-bottom:16px;padding:14px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe">
+                <div style="flex:1">
+                    <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Nombre</label>
+                    <input id="tecNombreInst" value="${nombre || ''}" placeholder="Nombre del tecnico" style="font-size:13px;width:100%;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px;box-sizing:border-box">
+                </div>
+                <div style="flex:0">
+                    <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Activo</label>
+                    <select id="tecActivoInst" style="font-size:13px;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px"><option value="true" ${activo !== false ? 'selected' : ''}>Si</option><option value="false" ${activo === false ? 'selected' : ''}>No</option></select>
+                </div>
+                <button onclick="App.modules.instalaciones.guardarTecnico(${id || 0})" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">Guardar</button>
+                <button onclick="document.getElementById('tecnicoFormInst').innerHTML=''" style="padding:8px 16px;font-size:12px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">Cancelar</button>
             </div>`;
     },
 
@@ -268,38 +303,48 @@ App.registerModule('instalaciones', {
         try { list = await fetch('/api/produccion/vendedores').then(r => r.json()); } catch(e) {}
         list = Array.isArray(list) ? list : [];
         const html = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                <h3 style="margin:0">Vendedores (${list.length})</h3>
-                <button class="btn btn-sm btn-primary" onclick="App.modules.instalaciones.formVendedor()">+ Nuevo</button>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Vendedores (${list.length})</h3>
+                <button onclick="App.modules.instalaciones.formVendedor()" style="padding:6px 14px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">+ Nuevo</button>
             </div>
             <div id="vendedorFormInst"></div>
-            <table class="data-table" style="width:100%">
-                <thead><tr><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
-                <tbody>${list.length === 0 ? '<tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text-light)">No hay vendedores. Agrega uno para que aparezca en el desplegable.</td></tr>' :
-                list.map(v => `
-                    <tr>
-                        <td style="font-weight:600">${escapeHtml(v.nombre)}</td>
-                        <td><span class="status-badge ${v.activo ? 'status-completada' : 'status-cancelada'}">${v.activo ? 'Activo' : 'Inactivo'}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.formVendedor(${v.id},'${escapeHtml(v.nombre).replace(/'/g,"\\'")}',${v.activo})" style="margin-right:4px">✏️</button>
-                            <button class="btn btn-sm btn-outline" onclick="App.modules.instalaciones.eliminarVendedor(${v.id})" style="color:var(--danger)">🗑️</button>
-                        </td>
-                    </tr>
-                `).join('')}</tbody>
-            </table>`;
+            ${list.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:24px;font-size:13px">No hay vendedores. Agrega uno para que aparezca en el desplegable.</div>' :
+            `<div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Nombre</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                        <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                    </tr></thead>
+                    <tbody>${list.map(v => `
+                        <tr style="border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                            <td style="padding:10px 14px;font-weight:600;color:#1e293b">${escapeHtml(v.nombre)}</td>
+                            <td style="padding:10px 14px"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;${v.activo ? 'color:#166534;background:#dcfce7' : 'color:#94a3b8;background:#f1f5f9'}">${v.activo ? 'Activo' : 'Inactivo'}</span></td>
+                            <td style="padding:10px 14px;text-align:right">
+                                <button onclick="App.modules.instalaciones.formVendedor(${v.id},'${escapeHtml(v.nombre).replace(/'/g,"\\'")}',${v.activo})" style="background:white;color:#64748b;border:1px solid #e2e8f0;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;margin-right:4px" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&#9998;</button>
+                                <button onclick="App.modules.instalaciones.eliminarVendedor(${v.id})" style="background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">&#10005;</button>
+                            </td>
+                        </tr>
+                    `).join('')}</tbody>
+                </table>
+            </div>`;
         App.showModal(html, { title: 'Configurar Vendedores' });
     },
 
     formVendedor(id, nombre, activo) {
         const el = document.getElementById('vendedorFormInst');
         if (el) el.innerHTML = `
-            <div style="display:flex;gap:8px;align-items:end;margin-bottom:12px;padding:10px;background:rgba(59,130,246,0.05);border-radius:8px;border:1px solid var(--border)">
-                <div style="flex:1"><label style="font-size:12px;font-weight:600">Nombre</label>
-                    <input class="form-control" id="vedNombreInst" value="${nombre || ''}" placeholder="Nombre del vendedor" style="text-transform:capitalize"></div>
-                <div style="flex:0"><label style="font-size:12px;font-weight:600">Activo</label>
-                    <select class="form-control" id="vedActivoInst"><option value="true" ${activo !== false ? 'selected' : ''}>Si</option><option value="false" ${activo === false ? 'selected' : ''}>No</option></select></div>
-                <button class="btn btn-sm btn-primary" onclick="App.modules.instalaciones.guardarVendedor(${id || 0})">Guardar</button>
-                <button class="btn btn-sm btn-outline" onclick="document.getElementById('vendedorFormInst').innerHTML=''">Cancelar</button>
+            <div style="display:flex;gap:8px;align-items:end;margin-bottom:16px;padding:14px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe">
+                <div style="flex:1">
+                    <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Nombre</label>
+                    <input id="vedNombreInst" value="${nombre || ''}" placeholder="Nombre del vendedor" style="font-size:13px;width:100%;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px;box-sizing:border-box">
+                </div>
+                <div style="flex:0">
+                    <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Activo</label>
+                    <select id="vedActivoInst" style="font-size:13px;background:white;border:1px solid #e2e8f0;color:#1e293b;padding:8px 12px;border-radius:6px"><option value="true" ${activo !== false ? 'selected' : ''}>Si</option><option value="false" ${activo === false ? 'selected' : ''}>No</option></select>
+                </div>
+                <button onclick="App.modules.instalaciones.guardarVendedor(${id || 0})" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">Guardar</button>
+                <button onclick="document.getElementById('vendedorFormInst').innerHTML=''" style="padding:8px 16px;font-size:12px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">Cancelar</button>
             </div>`;
     },
 
