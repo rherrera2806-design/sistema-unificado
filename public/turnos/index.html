@@ -379,10 +379,10 @@ function canDelete() {
         <div class="card" style="width:100%;max-width:400px">
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">RUT</label>
             <input id="cRut" type="text" class="input mb-4" placeholder="Ej: 12.345.678-9" maxlength="12" oninput="this.value=formatRut(this.value)">
-            <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Patente</label>
-            <input id="cPatente" type="text" class="input mb-4" placeholder="Ej: AB-1234 o ABCD-12" maxlength="8" oninput="this.value=formatPatente(this.value)">
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Tu nombre</label>
             <input id="cNombre" type="text" class="input mb-4" placeholder="Ej: Juan Pérez">
+            <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Patente</label>
+            <input id="cPatente" type="text" class="input mb-4" placeholder="Ej: AB-1234 o ABCD-12" maxlength="8" oninput="this.value=formatPatente(this.value)">
             <button onclick="cCrear()" class="btn btn-amber" id="cBtn">TOMAR TURNO</button>
             <p id="cError" class="text-red-400 text-sm text-center mt-3 hidden"></p>
         </div>
