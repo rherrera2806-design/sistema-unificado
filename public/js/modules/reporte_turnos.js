@@ -93,14 +93,18 @@ App.registerModule('reporte_turnos', {
             ]);
             const turnos = await resT.json();
             const entregas = await resE.json();
-            this.registros = [
-                ...turnos.map(t => ({ ...t, _tipo: 'turno' })),
-                ...entregas.map(e => ({ ...e, _tipo: 'entrega', fecha_fmt: e.fecha ? new Date(e.fecha).toLocaleDateString('es-CL') : '-' }))
-            ].sort((a, b) => {
-                const fa = a.fecha || '', fb = b.fecha || '';
+            const registros = [
+                ...turnos.map(t => ({ ...t, _tipo: 'turno', _num: t.numero, _fecha: t.fecha || '' })),
+                ...entregas.map(e => ({ ...e, _tipo: 'entrega', _num: e.turno_numero || 0, _fecha: e.fecha || '', fecha_fmt: e.fecha ? new Date(e.fecha).toLocaleDateString('es-CL') : '-' }))
+            ];
+            registros.sort((a, b) => {
+                const fa = a._fecha, fb = b._fecha;
                 if (fa !== fb) return fb.localeCompare(fa);
+                if (a._num !== b._num) return a._num - b._num;
+                if (a._tipo !== b._tipo) return a._tipo === 'turno' ? -1 : 1;
                 return (b.id || 0) - (a.id || 0);
             });
+            this.registros = registros;
             this.renderTabla();
         } catch(e) {
             document.getElementById('rtContent').innerHTML = '<div style="text-align:center;color:var(--danger);padding:40px">Error al cargar</div>';

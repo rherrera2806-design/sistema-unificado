@@ -2047,6 +2047,19 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (urlPath === '/api/sigma/reports/top-failing-machines' && req.method === 'GET') {
+        const result = await query(
+            `SELECT m.id as maquina_id, m.nombre, COUNT(cm.id) as total_fallas
+             FROM corrective_maintenance cm
+             JOIN machines m ON cm.maquina_id = m.id
+             GROUP BY m.id, m.nombre
+             ORDER BY total_fallas DESC
+             LIMIT 5`
+        );
+        json(res, result.rows);
+        return;
+    }
+
     if (urlPath === '/api/sigma/reports/by-period' && req.method === 'GET') {
         const start = q.start || '2000-01-01';
         const end = q.end || '2099-12-31';

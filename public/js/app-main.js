@@ -29,6 +29,7 @@ class SigmaApiClient {
     async getMachineComponents(id) { return this.request('GET', `/machines/${id}/components`); }
     async saveMachineComponents(id, comps) { return this.request('PUT', `/machines/${id}/components`, { componentes: comps }); }
     async getStatsSummary() { return this.request('GET', '/stats/summary'); }
+    async getTopFailingMachines() { return this.request('GET', '/reports/top-failing-machines'); }
     async exportJSON() { return this.request('GET', '/export'); }
     async importJSON(json) { const d = typeof json === 'string' ? JSON.parse(json) : json; return this.request('POST', '/import', d); }
     async resetDatabase() { return this.request('POST', '/reset'); }
