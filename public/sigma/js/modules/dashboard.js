@@ -61,13 +61,16 @@ App.registerModule('dashboard', {
         const medalShadow = ['rgba(250,204,21,0.25)', 'rgba(148,163,184,0.2)', 'rgba(251,146,60,0.2)'];
 
         let cards = '';
-        data.slice(0, 3).forEach((item, i) => {
-            const pos = i + 1;
-            const isFirst = i === 0;
+        const order = [1, 0, 2];
+        order.forEach(idx => {
+            const item = data[idx];
+            if (!item) return;
+            const pos = idx + 1;
+            const isFirst = idx === 0;
             const size = isFirst ? 'top-failing-card top-failing-card-first' : 'top-failing-card';
             cards += `
-                <div class="${size}" style="background:${medalBg[i]};border:2px solid ${medalBorder[i]};box-shadow:0 4px 12px ${medalShadow[i]};cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
-                    <div class="top-failing-medal">${medals[i]}</div>
+                <div class="${size}" style="background:${medalBg[idx]};border:2px solid ${medalBorder[idx]};box-shadow:0 4px 12px ${medalShadow[idx]};cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
+                    <div class="top-failing-medal">${medals[idx]}</div>
                     <div class="top-failing-rank">${pos}</div>
                     <div class="top-failing-name">${escapeHtml(item.nombre || 'Sin nombre')}</div>
                     <div class="top-failing-count">${item.total_fallas}</div>
