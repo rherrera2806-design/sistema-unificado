@@ -64,7 +64,7 @@ App.registerModule('dashboard', {
         data.slice(0, 3).forEach((item, i) => {
             const pos = i + 1;
             cards += `
-                <div class="top-failing-card" style="background:${medalBg[i]};border:2px solid ${medalBorder[i]};box-shadow:0 4px 12px ${medalShadow[i]}">
+                <div class="top-failing-card" style="background:${medalBg[i]};border:2px solid ${medalBorder[i]};box-shadow:0 4px 12px ${medalShadow[i]};cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
                     <div class="top-failing-medal">${medals[i]}</div>
                     <div class="top-failing-rank">${pos}</div>
                     <div class="top-failing-name">${escapeHtml(item.nombre || 'Sin nombre')}</div>
@@ -78,7 +78,7 @@ App.registerModule('dashboard', {
             let extras = '';
             data.slice(3, 5).forEach((item, i) => {
                 extras += `
-                    <div class="top-failing-extra">
+                    <div class="top-failing-extra" style="cursor:pointer" onclick="App.modules.dashboard.goToCorrective(${item.maquina_id})">
                         <span class="top-failing-extra-pos">${i + 4}°</span>
                         <span class="top-failing-extra-name">${escapeHtml(item.nombre || 'Sin nombre')}</span>
                         <span class="top-failing-extra-count">${item.total_fallas} fallas</span>
@@ -171,5 +171,16 @@ App.registerModule('dashboard', {
             <div class="card-body" style="padding:0">
                 <table><thead><tr><th>Máquina</th><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Acción</th></tr></thead>
                 <tbody>${rows}</tbody></table></div></div>`;
+    },
+
+    goToCorrective(maquinaId) {
+        App.loadModule('corrective');
+        setTimeout(() => {
+            const select = document.getElementById('filterCorrMaq');
+            if (select) {
+                select.value = maquinaId;
+                App.modules.corrective.render();
+            }
+        }, 300);
     }
 });
