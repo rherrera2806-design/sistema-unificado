@@ -110,13 +110,19 @@ App.registerModule('reporte_turnos', {
                 hora_llamado: t.hora_llamada,
                 hora_atencion: t.hora_fin,
                 hora_bodega: t.bodega_recibido,
+                hora_verificado: t.hora_verificada,
+                hora_cargado: t.hora_cargada,
+                hora_facturado: t.hora_facturada,
                 hora_entrega: t.bodega_entregado,
-                espera_segundos: t.espera_segundos,
-                recepcion_segundos: t.recepcion_segundos,
-                bodega_segundos: t.bodega_segundos,
-                total_segundos: t.total_segundos,
+                espera_seg: t.espera_seg,
+                recepcion_seg: t.recepcion_seg,
+                verificacion_seg: t.verificacion_seg,
+                almacen_seg: t.almacen_seg,
+                facturacion_seg: t.facturacion_seg,
+                total_seg: t.total_seg,
                 pedidos: t.pedidos,
-                factura: t.factura,
+                factura: t.numero_factura || t.factura || '',
+                monto_factura: t.monto_factura || 0,
                 tipo: t.tipo,
                 entrega_estado: t.entrega_estado,
                 entrega_id: t.entrega_id,
@@ -167,9 +173,9 @@ App.registerModule('reporte_turnos', {
             return;
         }
         const total = this.registros.length;
-        const conEntrega = this.registros.filter(r => r.entrega_estado === 'entregado').length;
-        const pendientes = this.registros.filter(r => r.entrega_estado === 'pendiente').length;
-        const tiempos = this.registros.filter(r => r.total_segundos != null).map(r => r.total_segundos);
+        const conEntrega = this.registros.filter(r => r.entrega_estado === 'facturado' || r.entrega_estado === 'completado').length;
+        const pendientes = this.registros.filter(r => r.entrega_estado === 'pendiente' || r.entrega_estado === 'verificado').length;
+        const tiempos = this.registros.filter(r => r.total_seg != null).map(r => r.total_seg);
         const promedio = tiempos.length > 0 ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : 0;
 
         let html = `
@@ -191,12 +197,15 @@ App.registerModule('reporte_turnos', {
                             <th style="padding:8px 10px;text-align:left">Rut Empresa</th>
                             <th style="padding:8px 10px;text-align:center">Llegada</th>
                             <th style="padding:8px 10px;text-align:center">Llamado</th>
-                            <th style="padding:8px 10px;text-align:center">Atencion</th>
-                            <th style="padding:8px 10px;text-align:center">Bodega</th>
-                            <th style="padding:8px 10px;text-align:center">Entrega</th>
+                            <th style="padding:8px 10px;text-align:center">Atención</th>
+                            <th style="padding:8px 10px;text-align:center">Verif.</th>
+                            <th style="padding:8px 10px;text-align:center">Cargado</th>
+                            <th style="padding:8px 10px;text-align:center">Facturado</th>
                             <th style="padding:8px 10px;text-align:center">Espera</th>
-                            <th style="padding:8px 10px;text-align:center">Recepcion</th>
-                            <th style="padding:8px 10px;text-align:center">Bod.</th>
+                            <th style="padding:8px 10px;text-align:center">Recep.</th>
+                            <th style="padding:8px 10px;text-align:center">Verif.</th>
+                            <th style="padding:8px 10px;text-align:center">Almac.</th>
+                            <th style="padding:8px 10px;text-align:center">Fact.</th>
                             <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--accent)">TOTAL</th>
                             <th style="padding:8px 10px;text-align:left">Pedido</th>
                             <th style="padding:8px 10px;text-align:left">Factura</th>
@@ -214,7 +223,7 @@ App.registerModule('reporte_turnos', {
     filasHtml() {
         return this.registros.map(r => {
             const estado = r.entrega_estado || r.turno_estado || '-';
-            const estadoColor = { 'entregado': '#22c55e', 'pendiente': '#f59e0b', 'atendido': '#22c55e', 'derivado': '#3b82f6', 'atendiendo': '#f59e0b', 'espera': '#94a3b8' }[estado] || '#94a3b8';
+            const estadoColor = { 'entregado': '#22c55e', 'pendiente': '#f59e0b', 'atendido': '#22c55e', 'derivado': '#3b82f6', 'atendiendo': '#f59e0b', 'espera': '#94a3b8', 'verificado': '#8b5cf6', 'cargado': '#06b6d4', 'facturado': '#10b981', 'completado': '#22c55e' }[estado] || '#94a3b8';
             const tipoBadge = r.tipo ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${r.tipo==='Despacho'?'rgba(245,158,11,0.1)':'rgba(34,197,94,0.1)'};color:${r.tipo==='Despacho'?'var(--warning)':'var(--success)'}">${r.tipo}</span>` : '';
             return `<tr style="border-bottom:1px solid var(--border)">
                 <td style="padding:8px 10px">${r.fecha_fmt || '-'}</td>
@@ -226,14 +235,17 @@ App.registerModule('reporte_turnos', {
                 <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_llegada)}</td>
                 <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_llamado)}</td>
                 <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_atencion)}</td>
-                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_bodega)}</td>
-                <td style="padding:8px 10px;text-align:center;font-size:11px;font-weight:600">${this.fmtTime(r.hora_entrega)}</td>
-                <td style="padding:8px 10px;text-align:center;font-size:11px;color:var(--warning)">${this.fmtSec(r.espera_segundos)}</td>
-                <td style="padding:8px 10px;text-align:center;font-size:11px;color:var(--info)">${this.fmtSec(r.recepcion_segundos)}</td>
-                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtSec(r.bodega_segundos)}</td>
-                <td style="padding:8px 10px;text-align:center;font-weight:900;font-size:12px;color:var(--accent)">${this.fmtSec(r.total_segundos)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_verificado)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_cargado)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px">${this.fmtTime(r.hora_facturado)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:var(--warning)">${this.fmtSec(r.espera_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:var(--info)">${this.fmtSec(r.recepcion_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#8b5cf6">${this.fmtSec(r.verificacion_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#06b6d4">${this.fmtSec(r.almacen_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-size:11px;color:#10b981">${this.fmtSec(r.facturacion_seg)}</td>
+                <td style="padding:8px 10px;text-align:center;font-weight:900;font-size:12px;color:var(--accent)">${this.fmtSec(r.total_seg)}</td>
                 <td style="padding:8px 10px;font-size:11px">${escapeHtml(r.pedidos || '-')}</td>
-                <td style="padding:8px 10px;font-size:11px">${escapeHtml(r.factura || '-')}</td>
+                <td style="padding:8px 10px;font-size:11px">${escapeHtml(r.factura || '-')}${r.monto_factura > 0 ? ' $' + Number(r.monto_factura).toLocaleString('es-CL') : ''}</td>
                 <td style="padding:8px 10px;text-align:center"><span style="font-size:10px;padding:2px 8px;border-radius:6px;background:${estadoColor}22;color:${estadoColor};font-weight:600">${estado}</span> ${tipoBadge}</td>
                 <td style="padding:8px 10px;text-align:center">${r._origen === 'turno' ? `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:3px 8px;font-size:10px" onclick="App.modules.reporte_turnos.solicitarPass('turno',${r.id})">X</button>` : `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:3px 8px;font-size:10px" onclick="App.modules.reporte_turnos.solicitarPass('entrega',${r.entrega_id})">X</button>`}</td>
             </tr>`;

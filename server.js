@@ -2311,9 +2311,10 @@ const server = http.createServer(async (req, res) => {
         const where = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
         const result = await query(
             `SELECT t.id as turno_id, t.nombre, t.numero, t.estado as turno_estado, t.fecha,
-                    t.hora_creacion, t.hora_llamada, t.hora_fin, t.rut,
+                    t.hora_creacion, t.hora_llamada, t.hora_fin, t.rut, t.patente, t.motivo, t.rut_empresa,
                     e.id as entrega_id, e.estado as entrega_estado, e.pedidos, e.factura, e.tipo,
-                    e.hora_registrada as bodega_recibido, e.hora_entregada as bodega_entregado,
+                    e.hora_registrada as bodega_recibido, e.hora_verificada, e.hora_cargada, e.hora_facturada,
+                    e.hora_entregada as bodega_entregado, e.numero_factura, e.monto_factura,
                     e.descripcion as entrega_desc
              FROM turnos t
              LEFT JOIN entregas e ON t.id = e.turno_id
@@ -2322,13 +2323,15 @@ const server = http.createServer(async (req, res) => {
         );
         const turnos = result.rows.map(t => {
             const pad = s => { if (!s) return 0; const p = String(s).slice(0,8).split(':').map(Number); return p[0]*3600 + p[1]*60 + (p[2]||0); };
-            let espera_segundos = null, recepcion_segundos = null, bodega_segundos = null, total_segundos = null;
-            if (t.hora_creacion && t.hora_llamada) espera_segundos = pad(t.hora_llamada) - pad(t.hora_creacion);
-            if (t.hora_fin && t.hora_llamada) recepcion_segundos = pad(t.hora_fin) - pad(t.hora_llamada);
-            if (t.bodega_recibido && t.bodega_entregado) bodega_segundos = pad(t.bodega_entregado) - pad(t.bodega_recibido);
-            if (t.hora_creacion && t.bodega_entregado) total_segundos = pad(t.bodega_entregado) - pad(t.hora_creacion);
-            else if (t.hora_creacion && t.hora_fin) total_segundos = pad(t.hora_fin) - pad(t.hora_creacion);
-            return { ...t, espera_segundos, recepcion_segundos, bodega_segundos, total_segundos,
+            let espera_seg = null, recepcion_seg = null, verificacion_seg = null, almacen_seg = null, facturacion_seg = null, total_seg = null;
+            if (t.hora_creacion && t.hora_llamada) espera_seg = pad(t.hora_llamada) - pad(t.hora_creacion);
+            if (t.hora_llamada && t.hora_fin) recepcion_seg = pad(t.hora_fin) - pad(t.hora_llamada);
+            if (t.bodega_recibido && t.hora_verificada) verificacion_seg = pad(t.hora_verificada) - pad(t.bodega_recibido);
+            if (t.hora_verificada && t.hora_cargada) almacen_seg = pad(t.hora_cargada) - pad(t.hora_verificada);
+            if (t.hora_cargada && t.hora_facturada) facturacion_seg = pad(t.hora_facturada) - pad(t.hora_cargada);
+            if (t.hora_creacion && t.hora_facturada) total_seg = pad(t.hora_facturada) - pad(t.hora_creacion);
+            else if (t.hora_creacion && t.hora_fin) total_seg = pad(t.hora_fin) - pad(t.hora_creacion);
+            return { ...t, espera_seg, recepcion_seg, verificacion_seg, almacen_seg, facturacion_seg, total_seg,
                      fecha_fmt: t.fecha ? new Date(t.fecha).toLocaleDateString('es-CL') : '-' };
         });
         json(res, turnos);
