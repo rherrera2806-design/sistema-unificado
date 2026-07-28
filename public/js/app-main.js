@@ -386,7 +386,7 @@ function doLogout() {
 const SIDEBAR_SECTIONS = {
     mantencion: ['dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora'],
     inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
-    atencion: ['turnos_recepcion','turnos_bodega','turnos_qr'],
+    atencion: ['turnos_recepcion','turnos_bodega','turnos_almacen','turnos_facturar','turnos_qr','turnos_reporte'],
     ventas: ['pedidos'],
     produccion: ['prod_ordenes','prod_planificacion','prod_notas','prod_config'],
     instalaciones: ['instalaciones','inst_detalle','inst_historial'],
