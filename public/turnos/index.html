@@ -378,7 +378,7 @@ function canDelete() {
         </div>
         <div class="card" style="width:100%;max-width:400px">
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">RUT</label>
-            <input id="cRut" type="text" class="input mb-4" placeholder="Ej: 12.345.678-9" maxlength="12">
+            <input id="cRut" type="text" class="input mb-4" placeholder="Ej: 12.345.678-9" maxlength="12" oninput="this.value=formatRut(this.value)">
             <label class="text-xs uppercase tracking-widest text-slate-400 mb-2 block">Tu nombre</label>
             <input id="cNombre" type="text" class="input mb-4" placeholder="Ej: Juan Pérez">
             <button onclick="cCrear()" class="btn btn-amber" id="cBtn">TOMAR TURNO</button>
@@ -652,11 +652,42 @@ async function qrLoad() {
     } catch(e) { document.getElementById('qrImg').innerHTML='<p class="text-red-400 text-xs">Error QR</p>'; }
 }
 
+// ═══════ RUT VALIDATION ═══════
+function formatRut(value) {
+    value = value.replace(/[^0-9kK]/g, '').toUpperCase();
+    if (value.length === 0) return '';
+    const body = value.slice(0, -1);
+    const dv = value.slice(-1);
+    let formatted = '';
+    for (let i = body.length - 1, j = 0; i >= 0; i--, j++) {
+        if (j > 0 && j % 3 === 0) formatted = '.' + formatted;
+        formatted = body[i] + formatted;
+    }
+    return formatted + '-' + dv;
+}
+
+function validateRut(rut) {
+    rut = rut.replace(/[^0-9kK]/g, '').toUpperCase();
+    if (rut.length < 2) return false;
+    const body = rut.slice(0, -1);
+    const dv = rut.slice(-1);
+    if (!/^\d+$/.test(body)) return false;
+    let sum = 0, mul = 2;
+    for (let i = body.length - 1; i >= 0; i--) {
+        sum += parseInt(body[i]) * mul;
+        mul = mul === 7 ? 2 : mul + 1;
+    }
+    const res = 11 - (sum % 11);
+    const expected = res === 11 ? '0' : res === 10 ? 'K' : String(res);
+    return dv === expected;
+}
+
 // ═══════ CLIENTE: REGISTRO ═══════
 async function cCrear() {
     const n = document.getElementById('cNombre').value.trim();
     const rut = document.getElementById('cRut').value.trim();
     if(!n){document.getElementById('cError').textContent='Ingresa tu nombre';document.getElementById('cError').classList.remove('hidden');return;}
+    if(rut && !validateRut(rut)){document.getElementById('cError').textContent='RUT invalido. Verifica el formato (ej: 12.345.678-9)';document.getElementById('cError').classList.remove('hidden');return;}
     const btn = document.getElementById('cBtn'); btn.disabled=true; btn.textContent='REGISTRANDO...';
     try {
         const r = await fetch('/api/turnos/crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:n, rut})});

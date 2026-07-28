@@ -186,6 +186,22 @@ function sanitizeString(str) {
     return str.replace(/[<>]/g, '').trim();
 }
 
+function validateRut(rut) {
+    rut = rut.replace(/[^0-9kK]/g, '').toUpperCase();
+    if (rut.length < 2) return false;
+    const body = rut.slice(0, -1);
+    const dv = rut.slice(-1);
+    if (!/^\d+$/.test(body)) return false;
+    let sum = 0, mul = 2;
+    for (let i = body.length - 1; i >= 0; i--) {
+        sum += parseInt(body[i]) * mul;
+        mul = mul === 7 ? 2 : mul + 1;
+    }
+    const res = 11 - (sum % 11);
+    const expected = res === 11 ? '0' : res === 10 ? 'K' : String(res);
+    return dv === expected;
+}
+
 function sanitizeObject(obj) {
     if (!obj || typeof obj !== 'object') return obj;
     const sanitized = {};
@@ -2175,6 +2191,7 @@ const server = http.createServer(async (req, res) => {
         const nombre = sanitizeString(body.nombre);
         const rut = sanitizeString(body.rut || '');
         if (!nombre) return json(res, { error: 'Nombre requerido' }, 400);
+        if (rut && !validateRut(rut)) return json(res, { error: 'RUT invalido. Verifica el formato.' }, 400);
         const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
         const pad = n => String(n).padStart(2, '0');
