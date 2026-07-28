@@ -327,14 +327,20 @@ const App = {
 
     async updateTurnosBadges() {
         try {
-            const [estadoRes, entregasRes] = await Promise.all([
+            const [estadoRes, pendBodRes, pendAlmRes, pendFacRes] = await Promise.all([
                 fetch('/api/turnos/estado'),
-                fetch('/api/turnos/entregas/pendientes')
+                fetch('/api/turnos/entregas/pendientes'),
+                fetch('/api/turnos/almacen/pendientes'),
+                fetch('/api/turnos/facturar/pendientes')
             ]);
             const estado = await estadoRes.json();
-            const entregas = await entregasRes.json();
+            const pendBod = await pendBodRes.json();
+            const pendAlm = await pendAlmRes.json();
+            const pendFac = await pendFacRes.json();
             this.setSidebarBadge('turnos_recepcion', estado.enCola || 0);
-            this.setSidebarBadge('turnos_bodega', entregas.length || 0);
+            this.setSidebarBadge('turnos_bodega', pendBod.length || 0);
+            this.setSidebarBadge('turnos_almacen', pendAlm.length || 0);
+            this.setSidebarBadge('turnos_facturar', pendFac.length || 0);
         } catch(e) {}
     },
 
@@ -550,31 +556,6 @@ function toggleSection(section) {
     try { localStorage.setItem('sidebar_collapsed', JSON.stringify({ [section]: !isCollapsed })); } catch(e) {}
 }
 
-async function loadAtencionBadges() {
-    try {
-        const [cola, pendBodega, pendAlmacen, pendFacturar] = await Promise.all([
-            fetch('/api/turnos/cola').then(r => r.json()).catch(() => []),
-            fetch('/api/turnos/entregas/pendientes').then(r => r.json()).catch(() => []),
-            fetch('/api/turnos/almacen/pendientes').then(r => r.json()).catch(() => []),
-            fetch('/api/turnos/facturar/pendientes').then(r => r.json()).catch(() => [])
-        ]);
-        const badges = {
-            'turnos_recepcion': cola.length > 0 ? cola.length : null,
-            'turnos_bodega': pendBodega.length > 0 ? pendBodega.length : null,
-            'turnos_almacen': pendAlmacen.length > 0 ? pendAlmacen.length : null,
-            'turnos_facturar': pendFacturar.length > 0 ? pendFacturar.length : null
-        };
-        document.querySelectorAll('.nav-item[data-page]').forEach(el => {
-            const page = el.dataset.page;
-            const existing = el.querySelector('.nav-badge');
-            if (badges[page] !== undefined && badges[page] !== null) {
-                if (existing) { existing.textContent = badges[page]; }
-                else { const b = document.createElement('span'); b.className = 'nav-badge'; b.style.cssText = 'background:var(--danger);color:white;font-size:10px;padding:2px 6px;border-radius:8px;margin-left:auto'; b.textContent = badges[page]; el.appendChild(b); }
-            } else if (existing) { existing.remove(); }
-        });
-    } catch(e) {}
-}
-
 function navI(id, label, icon) {
     return `<div class="nav-item" data-page="${id}"><span class="nav-icon">${icon}</span> ${label}</div>`;
 }
@@ -607,7 +588,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('userAvatar').textContent = (user.nombre || 'U').charAt(0).toUpperCase();
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     renderSidebar();
-    loadAtencionBadges();
     // Restaurar estado del sidebar colapsado
     try {
         const collapsed = localStorage.getItem('sidebar_collapsed_state');
@@ -618,8 +598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch(e) {}
     await App.updateNavBadge();
-    setInterval(() => App.updateTurnosBadges(), 15000);
-    setInterval(() => loadAtencionBadges(), 10000);
+    setInterval(() => App.updateTurnosBadges(), 10000);
     setInterval(() => App.updateInvAlertasBadge(), 30000);
     setInterval(() => App.updatePedidosBadge(), 15000);
     setInterval(() => App.updateProdNotasBadge(), 15000);
