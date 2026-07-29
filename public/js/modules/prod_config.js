@@ -10,22 +10,35 @@ App.registerModule('prod_config', {
 
     async render() {
         const el = document.getElementById('page-prod_config');
-        el.innerHTML = `
-            <div class="page-header">
-                <div><h2>Configuracion de Produccion</h2><div class="subtitle">Estaciones, Codigos, Maquinas, Recetas BOM, Familias, Materias Primas y Calendario</div></div>
-            </div>
-            <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0;flex-wrap:wrap">
-                <button class="btn btn-sm ${this._tab==='estaciones'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('estaciones')">⚙️ Estaciones</button>
-                <button class="btn btn-sm ${this._tab==='codigos'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('codigos')">🏷️ Codigos</button>
-                <button class="btn btn-sm ${this._tab==='maquinas'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('maquinas')">⚙️ Maquinas</button>
-                <button class="btn btn-sm ${this._tab==='recetas'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('recetas')">📦 Recetas BOM</button>
-                <button class="btn btn-sm ${this._tab==='familias'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('familias')">📋 Familias</button>
-                <button class="btn btn-sm ${this._tab==='materias'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('materias')">🪟 Materias Primas</button>
-                <button class="btn btn-sm ${this._tab==='reglas'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('reglas')">🏷️ Reglas Extras</button>
-                <button class="btn btn-sm ${this._tab==='calendario'?'btn-primary':'btn-outline'}" onclick="App.modules.prod_config.switchTab('calendario')">📅 Calendario</button>
-            </div>
-            <div id="prodConfigContent"></div>
-        `;
+        const tabs = [
+            { id: 'estaciones', label: 'Estaciones', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' },
+            { id: 'codigos', label: 'Codigos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
+            { id: 'maquinas', label: 'Maquinas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
+            { id: 'recetas', label: 'Recetas BOM', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>' },
+            { id: 'familias', label: 'Familias', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' },
+            { id: 'materias', label: 'Materias Primas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>' },
+            { id: 'reglas', label: 'Reglas Extras', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
+            { id: 'calendario', label: 'Calendario', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' }
+        ];
+        el.innerHTML = '<style>'
+            + '@keyframes pcFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.pc-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.pc-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
+            + '.pc-tab{transition:all 0.15s}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Configuracion de Produccion</h2>'
+            + '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Estaciones, Codigos, Maquinas, Recetas BOM, Familias, Materias Primas y Calendario</p></div></div>'
+
+            + '<div style="display:flex;gap:6px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:0;flex-wrap:wrap">'
+            + tabs.map(t => {
+                const active = this._tab === t.id;
+                return '<button class="pc-tab" onclick="App.modules.prod_config.switchTab(\'' + t.id + '\')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:12px;font-weight:600;border:none;border-bottom:2px solid ' + (active ? '#3b82f6' : 'transparent') + ';margin-bottom:-2px;cursor:pointer;transition:all 0.15s;background:' + (active ? '#eff6ff' : 'transparent') + ';color:' + (active ? '#2563eb' : '#64748b') + ';border-radius:8px 8px 0 0" onmouseover="this.style.background=\'' + (active ? '#eff6ff' : '#f8fafc') + '\'" onmouseout="this.style.background=\'' + (active ? '#eff6ff' : 'transparent') + '\'">' + t.svg + ' ' + t.label + '</button>';
+            }).join('')
+            + '</div>'
+            + '<div id="prodConfigContent"></div>';
         await this.loadTab();
     },
 

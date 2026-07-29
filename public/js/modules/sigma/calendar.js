@@ -20,8 +20,6 @@ App.registerModule('calendar', {
                     <button class="btn btn-outline" onclick="App.modules.calendar.navigate(-1)">◀ Anterior</button>
                     <button class="btn btn-outline" onclick="App.modules.calendar.navigate(0, true)">Hoy</button>
                     <button class="btn btn-outline" onclick="App.modules.calendar.navigate(1)">Siguiente ▶</button>
-                    <button class="btn btn-success" onclick="App.modules.calendar.exportICS()">📅 Exportar .ics</button>
-                    <button class="btn btn-info" onclick="App.modules.calendar.exportImage()">📱 Enviar WhatsApp</button>
                 </div>
             </div>
             <div style="text-align:center;margin-bottom:16px"><h3 style="font-size:22px">${monthNames[this.currentMonth]} ${this.currentYear}</h3></div>
