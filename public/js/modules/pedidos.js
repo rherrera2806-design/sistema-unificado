@@ -13,85 +13,126 @@ App.registerModule('pedidos', {
         this.canAuthorize = permisos.includes('pedidos.autorizar') || permisos.includes('usuarios');
         const showNew = this.isVendedor || this.canAuthorize;
 
-        el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">'
-            + '<div><h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Pedidos</h2>'
-            + '<p style="margin:4px 0 0;font-size:13px;color:#64748b">Gestion de pedidos y documentos</p></div>'
-            + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" style="padding:10px 20px;font-size:13px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'#2563eb\'" onmouseout="this.style.background=\'#3b82f6\'">+ Nuevo Pedido</button>' : '')
-            + '</div>'
-            + '<div id="pedStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px"></div>'
-            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:16px">'
+        el.innerHTML = '<style>'
+            + '@keyframes pedFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '@keyframes pedCount{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}'
+            + '.ped-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.ped-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 28px rgba(0,0,0,0.12)!important}'
+            + '.ped-row{transition:all 0.2s ease}'
+            + '.ped-row:hover{transform:translateX(4px)!important}'
+            + '.ped-section{animation:pedFadeUp 0.5s ease both}'
+            + '.ped-badge{transition:all 0.2s ease}'
+            + '.ped-badge:hover{transform:scale(1.08)}'
+            + '.ped-btn{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}'
+            + '.ped-btn:hover{transform:translateY(-1px)!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:32px 36px;margin-bottom:28px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:absolute;bottom:-60px;left:30%;width:300px;height:200px;background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
+            + '<div><h2 style="margin:0;font-size:28px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Pedidos / Ordenes</h2>'
+            + '<p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.7)">Gestion de pedidos y documentos de ventas</p></div>'
+            + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" class="ped-btn" style="padding:12px 24px;font-size:14px;font-weight:600;color:#1e40af;background:white;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15)">+ Nuevo Pedido</button>' : '')
+            + '</div></div>'
+
+            + '<div id="pedStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px"></div>'
+
+            + '<div class="ped-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease 300ms both">'
             + '<div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">'
-            + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Buscar</label>'
-            + '<input type="text" id="pedFilterSearch" placeholder="N Pedido, Cliente..." oninput="App.modules.pedidos.filter()" style="font-size:13px;padding:8px 14px;border:1px solid #e2e8f0;border-radius:8px;color:#1e293b;background:white;width:220px;box-sizing:border-box;outline:none;transition:border 0.15s" onfocus="this.style.borderColor=\'#3b82f6\'" onblur="this.style.borderColor=\'#e2e8f0\'"></div>'
-            + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Estado</label>'
-            + '<select id="pedFilterEstado" onchange="App.modules.pedidos.filter()" style="font-size:13px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;color:#1e293b;background:white;cursor:pointer;outline:none">'
+            + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Buscar</label>'
+            + '<div style="position:relative"><svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+            + '<input type="text" id="pedFilterSearch" placeholder="N Pedido, Cliente..." oninput="App.modules.pedidos.filter()" style="font-size:13px;padding:10px 14px 10px 36px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;width:260px;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div></div>'
+            + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Estado</label>'
+            + '<select id="pedFilterEstado" onchange="App.modules.pedidos.filter()" style="font-size:13px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\'" onblur="this.style.borderColor=\'#e2e8f0\'">'
             + '<option value="">Todos</option><option value="pendiente">Pendiente</option><option value="aprobado">Aprobado</option><option value="rechazado">Rechazado</option></select></div>'
             + '</div></div>'
-            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">'
-            + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0"><h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">Lista de Pedidos</h3></div>'
+
+            + '<div class="ped-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease 400ms both">'
+            + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
+            + '<div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(59,130,246,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Lista de Pedidos</h3>'
+            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Todos los pedidos registrados en el sistema</p></div></div>'
             + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
             + '<thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
-            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">N Pedido</th>'
-            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Cliente</th>'
-            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Vendedor</th>'
-            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha Subida</th>'
-            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
-            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Revisor</th>'
-            + '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha Revision</th>'
-            + '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">N Pedido</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Cliente</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Vendedor</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha Subida</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Revisor</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha Revision</th>'
+            + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
             + '</tr></thead><tbody id="pedidosTable">'
-            + '<tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8">Cargando pedidos...</td></tr>'
+            + '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8"><div style="font-size:14px">Cargando pedidos...</div></td></tr>'
             + '</tbody></table></div></div>'
 
-            + '<div id="pedUploadModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center">'
-            + '<div style="background:white;border-radius:12px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)">'
-            + '<div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid #e2e8f0">'
-            + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Nuevo Pedido</h3>'
-            + '<button onclick="App.modules.pedidos.hideUploadModal()" style="background:none;border:none;font-size:20px;color:#94a3b8;cursor:pointer;padding:4px">&times;</button></div>'
-            + '<div style="padding:24px">'
-            + '<div style="margin-bottom:16px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Numero de Pedido *</label>'
-            + '<input type="text" id="pedNumero" placeholder="Ej: 12345" style="font-size:13px;width:100%;padding:8px 14px;border:1px solid #e2e8f0;border-radius:8px;color:#1e293b;background:white;box-sizing:border-box;outline:none"></div>'
-            + '<div style="margin-bottom:16px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Cliente *</label>'
-            + '<input type="text" id="pedCliente" placeholder="Nombre del cliente" style="font-size:13px;width:100%;padding:8px 14px;border:1px solid #e2e8f0;border-radius:8px;color:#1e293b;background:white;box-sizing:border-box;outline:none"></div>'
-            + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">PDF del Pedido *</label>'
-            + '<div id="pedUploadArea" onclick="document.getElementById(\'pedFileInput\').click()" style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all 0.15s">'
-            + '<div style="font-size:36px;margin-bottom:8px;color:#94a3b8">&#128196;</div>'
-            + '<div style="color:#64748b;font-size:13px">Arrastra un PDF aqui o haz clic para seleccionar</div>'
-            + '<div id="pedUploadFilename" style="display:none;margin-top:12px;color:#2563eb;font-weight:600;font-size:13px"></div></div>'
-            + '<input type="file" id="pedFileInput" accept=".pdf" style="display:none" onchange="App.modules.pedidos.handleFileSelect(event)"></div></div>'
-            + '<div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid #e2e8f0">'
-            + '<button onclick="App.modules.pedidos.hideUploadModal()" style="padding:8px 16px;font-size:13px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer">Cancelar</button>'
-            + '<button onclick="App.modules.pedidos.upload()" style="padding:8px 16px;font-size:13px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'#2563eb\'" onmouseout="this.style.background=\'#3b82f6\'">Subir Pedido</button>'
-            + '</div></div></div>'
-
-            + '<div id="pedReviewModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center">'
-            + '<div style="background:white;border-radius:12px;width:600px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)">'
-            + '<div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid #e2e8f0">'
-            + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Revisar Pedido</h3>'
-            + '<button onclick="App.modules.pedidos.hideReviewModal()" style="background:none;border:none;font-size:20px;color:#94a3b8;cursor:pointer;padding:4px">&times;</button></div>'
-            + '<div style="padding:24px">'
-            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0">'
-            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">N Pedido</span><span id="pedReviewNumero" style="font-weight:700;color:#1e293b;font-family:\'JetBrains Mono\',monospace"></span></div>'
-            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Cliente</span><span id="pedReviewCliente" style="font-weight:700;color:#1e293b"></span></div>'
-            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Vendedor</span><span id="pedReviewVendedor" style="color:#475569"></span></div>'
-            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Fecha Subida</span><span id="pedReviewFecha" style="color:#475569;font-family:\'JetBrains Mono\',monospace;font-size:12px"></span></div></div>'
-            + '<div id="pedMotivoGroup" style="display:none;margin-bottom:16px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Motivo de Rechazo</label>'
-            + '<textarea id="pedMotivo" rows="3" placeholder="Indica el motivo del rechazo..." style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;color:#1e293b;background:white;box-sizing:border-box;outline:none;resize:vertical"></textarea></div></div>'
-            + '<div style="display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid #e2e8f0">'
-            + '<button onclick="App.modules.pedidos.hideReviewModal()" style="padding:8px 16px;font-size:13px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer">Cancelar</button>'
-            + '<button id="pedBtnRechazar" onclick="App.modules.pedidos.review(\'rechazado\')" style="padding:8px 16px;font-size:13px;font-weight:600;color:white;background:#ef4444;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'#dc2626\'" onmouseout="this.style.background=\'#ef4444\'">Rechazar</button>'
-            + '<button id="pedBtnAprobar" onclick="App.modules.pedidos.review(\'aprobado\')" style="padding:8px 16px;font-size:13px;font-weight:600;color:white;background:#22c55e;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'#16a34a\'" onmouseout="this.style.background=\'#22c55e\'">Aprobar</button>'
-            + '</div></div></div>'
-
-            + '<div id="pedViewPdfModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center">'
-            + '<div style="background:white;border-radius:12px;width:900px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.2)">'
-            + '<div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid #e2e8f0;flex-shrink:0">'
-            + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Ver PDF</h3>'
-            + '<button onclick="App.modules.pedidos.hideViewPdf()" style="background:none;border:none;font-size:20px;color:#94a3b8;cursor:pointer;padding:4px">&times;</button></div>'
-            + '<div style="padding:24px;flex:1;overflow:auto"><iframe id="pedViewPdfFrame" style="width:100%;height:600px;border:1px solid #e2e8f0;border-radius:8px"></iframe></div></div></div>';
+            + this.uploadModalHtml()
+            + this.reviewModalHtml()
+            + this.viewPdfModalHtml();
 
         this.setupDragDrop();
         await this.load();
+    },
+
+    uploadModalHtml() {
+        return '<div id="pedUploadModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center">'
+            + '<div style="background:white;border-radius:16px;width:500px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:pedFadeUp 0.3s ease both">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;padding:24px 28px;border-bottom:1px solid #e2e8f0">'
+            + '<div style="display:flex;align-items:center;gap:12px">'
+            + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>'
+            + '<h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Nuevo Pedido</h3></div>'
+            + '<button onclick="App.modules.pedidos.hideUploadModal()" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:4px;line-height:1">&times;</button></div>'
+            + '<div style="padding:28px">'
+            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Numero de Pedido *</label>'
+            + '<input type="text" id="pedNumero" placeholder="Ej: 12345" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
+            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Cliente *</label>'
+            + '<input type="text" id="pedCliente" placeholder="Nombre del cliente" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
+            + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">PDF del Pedido *</label>'
+            + '<div id="pedUploadArea" onclick="document.getElementById(\'pedFileInput\').click()" style="border:2px dashed #cbd5e1;border-radius:12px;padding:36px;text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc">'
+            + '<div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#eff6ff,#dbeafe);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 4px 12px rgba(59,130,246,0.15)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
+            + '<div style="color:#64748b;font-size:13px;font-weight:500">Arrastra un PDF aqui o haz clic para seleccionar</div>'
+            + '<div style="color:#94a3b8;font-size:11px;margin-top:4px">Solo archivos PDF</div>'
+            + '<div id="pedUploadFilename" style="display:none;margin-top:14px;padding:8px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-weight:600;font-size:13px"></div></div>'
+            + '<input type="file" id="pedFileInput" accept=".pdf" style="display:none" onchange="App.modules.pedidos.handleFileSelect(event)"></div></div>'
+            + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
+            + '<button onclick="App.modules.pedidos.hideUploadModal()" class="ped-btn" style="padding:10px 20px;font-size:13px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer">Cancelar</button>'
+            + '<button onclick="App.modules.pedidos.upload()" class="ped-btn" style="padding:10px 24px;font-size:13px;font-weight:600;color:white;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3)">Subir Pedido</button>'
+            + '</div></div></div>';
+    },
+
+    reviewModalHtml() {
+        return '<div id="pedReviewModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center">'
+            + '<div style="background:white;border-radius:16px;width:620px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:pedFadeUp 0.3s ease both">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;padding:24px 28px;border-bottom:1px solid #e2e8f0">'
+            + '<div style="display:flex;align-items:center;gap:12px">'
+            + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>'
+            + '<h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Revisar Pedido</h3></div>'
+            + '<button onclick="App.modules.pedidos.hideReviewModal()" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:4px;line-height:1">&times;</button></div>'
+            + '<div style="padding:28px">'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;padding:20px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:12px;border:1px solid #e2e8f0">'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">N Pedido</span><span id="pedReviewNumero" style="font-weight:700;color:#0f172a;font-family:\'JetBrains Mono\',monospace;font-size:15px"></span></div>'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Cliente</span><span id="pedReviewCliente" style="font-weight:700;color:#0f172a;font-size:15px"></span></div>'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Vendedor</span><span id="pedReviewVendedor" style="color:#475569;font-size:14px"></span></div>'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Fecha Subida</span><span id="pedReviewFecha" style="color:#475569;font-family:\'JetBrains Mono\',monospace;font-size:13px"></span></div></div>'
+            + '<div id="pedMotivoGroup" style="display:none;margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Motivo de Rechazo *</label>'
+            + '<textarea id="pedMotivo" rows="3" placeholder="Indica el motivo del rechazo..." style="font-size:13px;width:100%;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;resize:vertical;transition:all 0.2s" onfocus="this.style.borderColor=\'#ef4444\';this.style.boxShadow=\'0 0 0 3px rgba(239,68,68,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></textarea></div></div>'
+            + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
+            + '<button onclick="App.modules.pedidos.hideReviewModal()" class="ped-btn" style="padding:10px 20px;font-size:13px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer">Cancelar</button>'
+            + '<button id="pedBtnRechazar" onclick="App.modules.pedidos.review(\'rechazado\')" class="ped-btn" style="padding:10px 24px;font-size:13px;font-weight:600;color:white;background:linear-gradient(135deg,#ef4444,#dc2626);border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(239,68,68,0.3)">Rechazar</button>'
+            + '<button id="pedBtnAprobar" onclick="App.modules.pedidos.review(\'aprobado\')" class="ped-btn" style="padding:10px 24px;font-size:13px;font-weight:600;color:white;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(34,197,94,0.3)">Aprobar</button>'
+            + '</div></div></div>';
+    },
+
+    viewPdfModalHtml() {
+        return '<div id="pedViewPdfModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center">'
+            + '<div style="background:white;border-radius:16px;width:920px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:pedFadeUp 0.3s ease both">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;padding:24px 28px;border-bottom:1px solid #e2e8f0;flex-shrink:0">'
+            + '<div style="display:flex;align-items:center;gap:12px">'
+            + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
+            + '<h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Ver PDF</h3></div>'
+            + '<button onclick="App.modules.pedidos.hideViewPdf()" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:4px;line-height:1">&times;</button></div>'
+            + '<div style="padding:28px;flex:1;overflow:auto"><iframe id="pedViewPdfFrame" style="width:100%;height:600px;border:1px solid #e2e8f0;border-radius:12px"></iframe></div></div></div>';
     },
 
     async load() {
@@ -105,7 +146,7 @@ App.registerModule('pedidos', {
             this.filter();
         } catch(e) {
             console.error('Error loading pedidos:', e);
-            document.getElementById('pedidosTable').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8">Error al cargar pedidos</td></tr>';
+            document.getElementById('pedidosTable').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8">Error al cargar pedidos</td></tr>';
         }
     },
 
@@ -116,18 +157,19 @@ App.registerModule('pedidos', {
         const apr = p.filter(x => x.estado === 'aprobado').length;
         const rech = p.filter(x => x.estado === 'rechazado').length;
         document.getElementById('pedStats').innerHTML =
-            '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:20px;border-left:4px solid #64748b">'
-            + '<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Total Pedidos</div>'
-            + '<div style="font-size:28px;font-weight:800;color:#1e293b;font-family:\'JetBrains Mono\',monospace">' + total + '</div></div>'
-            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:20px;border-left:4px solid #f59e0b">'
-            + '<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Pendientes</div>'
-            + '<div style="font-size:28px;font-weight:800;color:#f59e0b;font-family:\'JetBrains Mono\',monospace">' + pend + '</div></div>'
-            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:20px;border-left:4px solid #22c55e">'
-            + '<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Aprobados</div>'
-            + '<div style="font-size:28px;font-weight:800;color:#22c55e;font-family:\'JetBrains Mono\',monospace">' + apr + '</div></div>'
-            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:20px;border-left:4px solid #ef4444">'
-            + '<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Rechazados</div>'
-            + '<div style="font-size:28px;font-weight:800;color:#ef4444;font-family:\'JetBrains Mono\',monospace">' + rech + '</div></div>';
+            this.statCard(total, 'Total Pedidos', '#64748b', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', 0)
+            + this.statCard(pend, 'Pendientes', '#f59e0b', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', 100)
+            + this.statCard(apr, 'Aprobados', '#22c55e', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 200)
+            + this.statCard(rech, 'Rechazados', '#ef4444', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', 300);
+    },
+
+    statCard(value, label, color, icon, delay) {
+        return '<div class="ped-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:22px;border-left:4px solid ' + color + ';box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease ' + delay + 'ms both;position:relative;overflow:hidden">'
+            + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:' + color + ';opacity:0.04;border-radius:50%"></div>'
+            + '<div style="display:flex;align-items:flex-start;gap:16px;position:relative;z-index:1">'
+            + '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
+            + '<div><div style="font-size:30px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1;animation:pedCount 0.6s ease ' + (delay + 200) + 'ms both">' + value + '</div>'
+            + '<div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px">' + label + '</div></div></div></div>';
     },
 
     filter() {
@@ -143,31 +185,38 @@ App.registerModule('pedidos', {
 
     renderTable(pedidos) {
         const tbody = document.getElementById('pedidosTable');
-        if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8">No hay pedidos que mostrar</td></tr>'; return; }
-        const isAdmin = this.canAuthorize;
+        if (!pedidos.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:56px 20px">'
+                + '<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
+                + '<div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:4px">Sin pedidos</div>'
+                + '<div style="color:#94a3b8;font-size:13px">No hay pedidos que mostrar</div></td></tr>';
+            return;
+        }
         tbody.innerHTML = pedidos.map(p => {
             const badge = this.badgeHtml(p.estado);
-            return '<tr style="border-bottom:1px solid #f1f5f9;transition:background 0.1s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'white\'">'
-                + '<td style="padding:10px 14px;font-weight:600;color:#1e293b;font-family:\'JetBrains Mono\',monospace;font-size:12px">' + escapeHtml(p.numero_pedido) + '</td>'
-                + '<td style="padding:10px 14px;font-weight:600;color:#1e293b">' + escapeHtml(p.cliente) + '</td>'
-                + '<td style="padding:10px 14px;color:#475569">' + escapeHtml(p.vendedor_nombre || p.vendedor) + '</td>'
-                + '<td style="padding:10px 14px;font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + this.fmtDateTime(p.fecha_subida) + '</td>'
-                + '<td style="padding:10px 14px">' + badge + '</td>'
-                + '<td style="padding:10px 14px;color:#475569">' + escapeHtml(p.revisor_nombre || '-') + '</td>'
-                + '<td style="padding:10px 14px;font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</td>'
-                + '<td style="padding:10px 14px;text-align:center;white-space:nowrap">'
-                + (p.estado === 'pendiente' ? '<button onclick="App.modules.pedidos.viewPdf(' + p.id + ')" style="background:white;color:#3b82f6;border:1px solid #bfdbfe;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'white\'">Ver PDF</button> ' : '')
-                + (this.canAuthorize && p.estado === 'pendiente' ? '<button onclick="App.modules.pedidos.showReviewModal(' + p.id + ')" style="background:#3b82f6;color:white;border:none;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'#2563eb\'" onmouseout="this.style.background=\'#3b82f6\'">Revisar</button> ' : '')
-                + (isAdmin ? '<button onclick="App.modules.pedidos.deletePedido(' + p.id + ',\'' + escapeHtml(p.numero_pedido) + '\')" style="background:white;color:#dc2626;border:1px solid #fecaca;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'">&#10005;</button>' : '')
+            return '<tr class="ped-row" style="border-bottom:1px solid #f1f5f9;cursor:pointer" '
+                + 'onmouseover="this.style.background=\'#f8fafc\';this.style.transform=\'translateX(4px)\'" '
+                + 'onmouseout="this.style.background=\'white\';this.style.transform=\'none\'">'
+                + '<td style="padding:12px 14px"><span style="font-weight:700;color:#0f172a;font-family:\'JetBrains Mono\',monospace;font-size:13px;background:#f1f5f9;padding:4px 10px;border-radius:6px">' + escapeHtml(p.numero_pedido) + '</span></td>'
+                + '<td style="padding:12px 14px;font-weight:600;color:#0f172a">' + escapeHtml(p.cliente) + '</td>'
+                + '<td style="padding:12px 14px;color:#475569">' + escapeHtml(p.vendedor_nombre || p.vendedor) + '</td>'
+                + '<td style="padding:12px 14px"><span style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + this.fmtDateTime(p.fecha_subida) + '</span></td>'
+                + '<td style="padding:12px 14px">' + badge + '</td>'
+                + '<td style="padding:12px 14px;color:#475569">' + escapeHtml(p.revisor_nombre || '-') + '</td>'
+                + '<td style="padding:12px 14px"><span style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</span></td>'
+                + '<td style="padding:12px 14px;text-align:center;white-space:nowrap">'
+                + (p.estado === 'pendiente' ? '<button onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')" class="ped-btn" style="background:white;color:#3b82f6;border:1px solid #bfdbfe;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Ver PDF</button> ' : '')
+                + (this.canAuthorize && p.estado === 'pendiente' ? '<button onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')" class="ped-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(59,130,246,0.3)">Revisar</button> ' : '')
+                + (isAdmin ? '<button onclick="event.stopPropagation();App.modules.pedidos.deletePedido(' + p.id + ',\'' + escapeHtml(p.numero_pedido) + '\')" class="ped-btn" style="background:white;color:#dc2626;border:1px solid #fecaca;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'">&#10005;</button>' : '')
                 + '</td></tr>';
         }).join('');
         this.updatePendingBadge(pedidos);
     },
 
     badgeHtml(estado) {
-        if (estado === 'aprobado') return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0">&#10003; APROBADO</span>';
-        if (estado === 'rechazado') return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca">&#10005; RECHAZADO</span>';
-        return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:#fefce8;color:#ca8a04;border:1px solid #fde68a">&#9201; PENDIENTE</span>';
+        if (estado === 'aprobado') return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>APROBADO</span>';
+        if (estado === 'rechazado') return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>RECHAZADO</span>';
+        return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fefce8;color:#ca8a04;border:1px solid #fde68a"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>PENDIENTE</span>';
     },
 
     updatePendingBadge(pedidos) {
@@ -181,7 +230,7 @@ App.registerModule('pedidos', {
         document.getElementById('pedCliente').value = '';
         document.getElementById('pedUploadFilename').style.display = 'none';
         document.getElementById('pedUploadArea').style.borderColor = '#cbd5e1';
-        document.getElementById('pedUploadArea').style.background = '';
+        document.getElementById('pedUploadArea').style.background = '#f8fafc';
         this.selectedFile = null;
     },
     hideUploadModal() { document.getElementById('pedUploadModal').style.display = 'none'; },
@@ -190,8 +239,8 @@ App.registerModule('pedidos', {
         const area = document.getElementById('pedUploadArea');
         if (!area) return;
         area.addEventListener('dragover', e => { e.preventDefault(); area.style.borderColor = '#3b82f6'; area.style.background = '#eff6ff'; });
-        area.addEventListener('dragleave', () => { area.style.borderColor = '#cbd5e1'; area.style.background = ''; });
-        area.addEventListener('drop', e => { e.preventDefault(); area.style.borderColor = '#cbd5e1'; area.style.background = ''; if (e.dataTransfer.files.length) this.handleFile(e.dataTransfer.files[0]); });
+        area.addEventListener('dragleave', () => { area.style.borderColor = '#cbd5e1'; area.style.background = '#f8fafc'; });
+        area.addEventListener('drop', e => { e.preventDefault(); area.style.borderColor = '#cbd5e1'; area.style.background = '#f8fafc'; if (e.dataTransfer.files.length) this.handleFile(e.dataTransfer.files[0]); });
     },
 
     handleFileSelect(e) { this.handleFile(e.target.files[0]); },
@@ -211,7 +260,6 @@ App.registerModule('pedidos', {
         const cliente = document.getElementById('pedCliente').value.trim().replace(/\b\w/g, c => c.toUpperCase());
         if (!numero || !cliente) { alert('Numero de pedido y cliente son requeridos'); return; }
         if (!this.selectedFile) { alert('Por favor selecciona un archivo PDF'); return; }
-
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const pdfBase64 = await new Promise((resolve, reject) => {
@@ -220,13 +268,11 @@ App.registerModule('pedidos', {
                 reader.onerror = () => reject(new Error('Error al leer archivo'));
                 reader.readAsDataURL(this.selectedFile);
             });
-
             const res = await fetch('/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
                 body: JSON.stringify({ numero_pedido: numero, cliente: cliente, vendedor: user.email || '', pdf_base64: pdfBase64 })
             });
-
             if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }
             else { const data = await res.json(); alert(data.error || 'Error al guardar pedido'); }
         } catch(e) { alert('Error al subir pedido: ' + e.message); }
