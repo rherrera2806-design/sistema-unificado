@@ -113,7 +113,7 @@ App.registerModule('bitacora', {
         </div>
 
         <!-- CONTENT -->
-        <div class="bit-content">
+        <div id="bitacoraContent" class="bit-content">
             <div style="padding:40px 20px;text-align:center;">
                 <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#1e40af);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 6px 20px rgba(30,64,175,.3);">
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
