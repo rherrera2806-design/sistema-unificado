@@ -4,19 +4,43 @@ App.registerModule('reports', {
     async render() {
         const el = document.getElementById('page-reports');
         el.innerHTML = `
-            <div class="page-header">
-                <div><h2>Reportes</h2><div class="subtitle">Análisis y estadísticas del sistema</div></div>
-                <button class="btn btn-outline" onclick="window.print()">🖨️ Imprimir</button>
+            <style>
+                @keyframes repFadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+                #page-reports .rep-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:36px 40px;color:#fff;position:relative;overflow:hidden;margin-bottom:28px}
+                #page-reports .rep-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(96,165,250,.35),transparent 70%);border-radius:50%}
+                #page-reports .rep-hero::after{content:'';position:absolute;bottom:-40px;left:30%;width:180px;height:180px;background:radial-gradient(circle,rgba(147,197,253,.22),transparent 70%);border-radius:50%}
+                #page-reports .rep-hero h2{font-size:26px;font-weight:700;margin:0 0 4px;position:relative;z-index:1}
+                #page-reports .rep-hero .subtitle{font-size:14px;opacity:.82;position:relative;z-index:1}
+                #page-reports .rep-hero .rep-print-btn{position:relative;z-index:1;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);color:#fff;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;backdrop-filter:blur(4px);transition:background .2s,transform .15s}
+                #page-reports .rep-hero .rep-print-btn:hover{background:rgba(255,255,255,.28);transform:translateY(-1px)}
+                #page-reports .rep-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}
+                #page-reports .rep-tabs .rep-tab{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;background:#f1f5f9;border:1px solid transparent;color:#475569;transition:all .2s}
+                #page-reports .rep-tabs .rep-tab:hover{background:#e2e8f0;border-color:#cbd5e1}
+                #page-reports .rep-tabs .rep-tab.active{background:linear-gradient(135deg,#1e40af,#2563eb);color:#fff;border-color:#2563eb;box-shadow:0 2px 8px rgba(37,99,235,.3)}
+                #page-reports .rep-content-wrap{animation:repFadeUp .4s ease both}
+                #page-reports .rep-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:24px 28px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:box-shadow .25s,transform .25s}
+                #page-reports .rep-card:hover{box-shadow:0 6px 20px rgba(30,64,175,.10);transform:translateY(-2px)}
+                #page-reports .rep-card .card-header{margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #f1f5f9}
+                #page-reports .rep-card .card-header h3{margin:0;font-size:16px;font-weight:600;color:#1e293b}
+            </style>
+            <div class="rep-hero">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;position:relative;z-index:1">
+                    <div>
+                        <h2>Reportes</h2>
+                        <div class="subtitle">Análisis y estadísticas del sistema</div>
+                    </div>
+                    <button class="rep-print-btn" onclick="window.print()">🖨 Imprimir</button>
+                </div>
             </div>
-            <div class="tabs">
-                <div class="tab ${this.activeTab === 'periodo' ? 'active' : ''}" onclick="App.modules.reports.switchTab('periodo')">📅 Por Periodo</div>
-                <div class="tab ${this.activeTab === 'maquina' ? 'active' : ''}" onclick="App.modules.reports.switchTab('maquina')">🏭 Por Máquina</div>
-                <div class="tab ${this.activeTab === 'fallas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('fallas')">🔴 Más Fallas</div>
-                <div class="tab ${this.activeTab === 'componentes' ? 'active' : ''}" onclick="App.modules.reports.switchTab('componentes')">🔧 Componentes</div>
-                <div class="tab ${this.activeTab === 'vencidas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('vencidas')">⚠️ Vencidas</div>
-                <div class="tab ${this.activeTab === 'mensual' ? 'active' : ''}" onclick="App.modules.reports.switchTab('mensual')">📊 Mensual</div>
+            <div class="rep-tabs">
+                <div class="rep-tab ${this.activeTab === 'periodo' ? 'active' : ''}" onclick="App.modules.reports.switchTab('periodo')">📅 Por Periodo</div>
+                <div class="rep-tab ${this.activeTab === 'maquina' ? 'active' : ''}" onclick="App.modules.reports.switchTab('maquina')">🏭 Por Máquina</div>
+                <div class="rep-tab ${this.activeTab === 'fallas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('fallas')">🔴 Más Fallas</div>
+                <div class="rep-tab ${this.activeTab === 'componentes' ? 'active' : ''}" onclick="App.modules.reports.switchTab('componentes')">🔧 Componentes</div>
+                <div class="rep-tab ${this.activeTab === 'vencidas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('vencidas')">⚠️ Vencidas</div>
+                <div class="rep-tab ${this.activeTab === 'mensual' ? 'active' : ''}" onclick="App.modules.reports.switchTab('mensual')">📊 Mensual</div>
             </div>
-            <div id="reportContent">${await this.renderTabContent()}</div>
+            <div id="reportContent" class="rep-content-wrap">${await this.renderTabContent()}</div>
         `;
     },
 

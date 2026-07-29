@@ -19,40 +19,96 @@ App.registerModule('corrective', {
         if (filterMaquina) filtered = filtered.filter(r => r.maquina_id === parseInt(filterMaquina));
         filtered.sort((a, b) => (b.fecha_falla || '').localeCompare(a.fecha_falla || ''));
 
-        el.innerHTML = `
-            <div class="page-header">
-                <div><h2>Mantención Correctiva</h2><div class="subtitle">Registro de fallas y acciones correctivas</div></div>
-                <button class="btn btn-danger" onclick="App.modules.corrective.showForm()">+ Registrar Falla</button>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <select class="form-control" id="filterCorrMaq" style="width:auto;min-width:180px" onchange="App.modules.corrective.render()">
-                        <option value="">Todas las máquinas</option>
-                        ${maquinas.map(m => `<option value="${m.id}" ${filterMaquina === String(m.id) ? 'selected' : ''}>${m.nombre}</option>`).join('')}
-                    </select>
-                    <span class="text-muted">${filtered.length} registros</span>
-                </div>
-                <div class="card-body" style="padding:0">
-                    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon">🔴</div><h4>No hay fallas registradas</h4></div>' : `
-                    <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha</th><th>Descripción</th><th>Estado</th><th>Días</th><th>Hs.Det.</th><th>Responsable</th><th>Acciones</th></tr></thead>
-                    <tbody>${filtered.map(r => {
-                        const dias = r.estado === 'Reparada' && r.fecha_falla && r.fecha_reparacion ? Math.round((new Date(r.fecha_reparacion) - new Date(r.fecha_falla)) / 86400000) : '-';
-                        return `<tr>
-                        <td>${r.maquinaNombre}</td><td>${r.componenteNombre}</td>
-                        <td>${App.formatDate(r.fecha_falla)}</td>
-                        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(r.descripcion_falla || '').replace(/"/g, '&quot;')}">${r.descripcion_falla || '-'}</td>
-                        <td><span class="status-badge ${r.estado === 'Reparada' ? 'status-realizada' : 'status-mantenimiento'}">${r.estado || 'En Mantención'}</span></td>
-                        <td>${dias}</td>
-                        <td>${r.horas_detencion}</td>
-                        <td>${r.responsable || '-'}</td>
-                        <td class="table-actions">
-                            <button class="btn btn-sm btn-info" onclick="App.modules.corrective.showDetail(${r.id})">👁️</button>
-                            <button class="btn btn-sm btn-outline" onclick="App.modules.corrective.showForm(${r.id})">✏️</button>
-                            <button class="btn btn-sm btn-danger" onclick="App.modules.corrective.delete(${r.id})">🗑️</button>
-                        </td>
-                    </tr>`}).join('')}</tbody></table>`}
-                </div>
-            </div>`;
+        const total = registros.length;
+        const reparadas = registros.filter(r => r.estado === 'Reparada').length;
+        const activas = total - reparadas;
+
+        let tableHtml;
+        if (filtered.length === 0) {
+            tableHtml = '<tr><td colspan="9" style="text-align:center;padding:56px 20px">'
+                + '<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#fef2f2,#fecaca);display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;box-shadow:0 4px 12px rgba(239,68,68,0.15)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>'
+                + '<div style="font-size:15px;font-weight:600;color:#0f172a;margin-bottom:4px">No hay fallas registradas</div>'
+                + '<div style="color:#94a3b8;font-size:13px">Registra la primera falla para comenzar</div></td></tr>';
+        } else {
+            tableHtml = filtered.map(r => {
+                const dias = r.estado === 'Reparada' && r.fecha_falla && r.fecha_reparacion ? Math.round((new Date(r.fecha_reparacion) - new Date(r.fecha_falla)) / 86400000) : '-';
+                const badge = r.estado === 'Reparada'
+                    ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>Reparada</span>'
+                    : '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>En Mantencion</span>';
+                return '<tr style="border-bottom:1px solid #f1f5f9;transition:all 0.2s" onmouseover="this.style.background=\'#fef2f2\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'transparent\';this.style.transform=\'none\'">'
+                    + '<td style="padding:11px 14px;font-weight:600;color:#0f172a">' + r.maquinaNombre + '</td>'
+                    + '<td style="padding:11px 14px;color:#475569">' + r.componenteNombre + '</td>'
+                    + '<td style="padding:11px 14px"><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#64748b">' + App.formatDate(r.fecha_falla) + '</span></td>'
+                    + '<td style="padding:11px 14px;font-size:12px;color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (r.descripcion_falla || '').replace(/"/g, '&quot;') + '">' + (r.descripcion_falla || '-') + '</td>'
+                    + '<td style="padding:11px 14px">' + badge + '</td>'
+                    + '<td style="padding:11px 14px;font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#64748b;text-align:center">' + dias + '</td>'
+                    + '<td style="padding:11px 14px;font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#64748b;text-align:center">' + r.horas_detencion + '</td>'
+                    + '<td style="padding:11px 14px;color:#475569">' + (r.responsable || '-') + '</td>'
+                    + '<td style="padding:11px 14px;text-align:center;white-space:nowrap">'
+                    + '<button onclick="App.modules.corrective.showDetail(' + r.id + ')" style="background:white;color:#3b82f6;border:1px solid #bfdbfe;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button> '
+                    + '<button onclick="App.modules.corrective.showForm(' + r.id + ')" style="background:white;color:#64748b;border:1px solid #e2e8f0;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> '
+                    + '<button onclick="App.modules.corrective.delete(' + r.id + ')" style="background:white;color:#dc2626;border:1px solid #fecaca;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+                    + '</td></tr>';
+            }).join('');
+        }
+
+        const selectOpts = '<option value="">Todas las maquinas</option>' + maquinas.map(m => '<option value="' + m.id + '"' + (filterMaquina === String(m.id) ? ' selected' : '') + '>' + m.nombre + '</option>').join('');
+
+        el.innerHTML = '<style>'
+            + '@keyframes corrFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.corr-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.corr-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 28px rgba(0,0,0,0.12)!important}'
+            + '</style>'
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#7f1d1d 50%,#991b1b 100%);border-radius:16px;padding:32px 36px;margin-bottom:28px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(239,68,68,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:absolute;bottom:-60px;left:30%;width:300px;height:200px;background:radial-gradient(circle,rgba(220,38,38,0.15) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
+            + '<div><h2 style="margin:0;font-size:28px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Mantencion Correctiva</h2>'
+            + '<p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.7)">Registro de fallas y acciones correctivas</p></div>'
+            + '<button onclick="App.modules.corrective.showForm()" style="padding:12px 24px;font-size:14px;font-weight:600;color:#991b1b;background:white;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:all 0.2s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,0.2)\'" onmouseout="this.style.transform=\'none\';this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.15)\'">+ Registrar Falla</button>'
+            + '</div></div>'
+
+            + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px">'
+            + '<div class="corr-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:22px;border-left:4px solid #64748b;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:corrFadeUp 0.5s ease 0ms both;position:relative;overflow:hidden">'
+            + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:#64748b;opacity:0.04;border-radius:50%"></div>'
+            + '<div style="display:flex;align-items:flex-start;gap:16px;position:relative;z-index:1">'
+            + '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#64748b15,#64748b08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #64748b20"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
+            + '<div><div style="font-size:30px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1">' + total + '</div>'
+            + '<div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px">Total Fallas</div></div></div></div>'
+            + '<div class="corr-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:22px;border-left:4px solid #ef4444;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:corrFadeUp 0.5s ease 100ms both;position:relative;overflow:hidden">'
+            + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:#ef4444;opacity:0.04;border-radius:50%"></div>'
+            + '<div style="display:flex;align-items:flex-start;gap:16px;position:relative;z-index:1">'
+            + '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#ef444415,#ef444408);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #ef444420"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>'
+            + '<div><div style="font-size:30px;font-weight:800;color:#ef4444;font-family:\'JetBrains Mono\',monospace;line-height:1">' + activas + '</div>'
+            + '<div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px">Activas</div></div></div></div>'
+            + '<div class="corr-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:22px;border-left:4px solid #22c55e;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:corrFadeUp 0.5s ease 200ms both;position:relative;overflow:hidden">'
+            + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:#22c55e;opacity:0.04;border-radius:50%"></div>'
+            + '<div style="display:flex;align-items:flex-start;gap:16px;position:relative;z-index:1">'
+            + '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#22c55e15,#22c55e08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid #22c55e20"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>'
+            + '<div><div style="font-size:30px;font-weight:800;color:#22c55e;font-family:\'JetBrains Mono\',monospace;line-height:1">' + reparadas + '</div>'
+            + '<div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px">Reparadas</div></div></div></div>'
+            + '</div>'
+
+            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:corrFadeUp 0.5s ease 300ms both">'
+            + '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">'
+            + '<div style="position:relative"><svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>'
+            + '<select id="filterCorrMaq" onchange="App.modules.corrective.render()" style="font-size:13px;padding:10px 14px 10px 36px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;cursor:pointer;outline:none;min-width:220px;transition:all 0.2s" onfocus="this.style.borderColor=\'#ef4444\';this.style.boxShadow=\'0 0 0 3px rgba(239,68,68,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'">' + selectOpts + '</select></div>'
+            + '<span style="font-size:12px;color:#94a3b8;font-weight:500">' + filtered.length + ' registros</span>'
+            + '</div></div>'
+
+            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:corrFadeUp 0.5s ease 400ms both">'
+            + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+            + '<thead><tr style="background:#fef2f2;border-bottom:1px solid #fecaca">'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Maquina</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Componente</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Fecha</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Falla</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
+            + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Dias</th>'
+            + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Hs.Det.</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Responsable</th>'
+            + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
+            + '</tr></thead><tbody>' + tableHtml + '</tbody></table></div></div>';
     },
 
     async showForm(id) {

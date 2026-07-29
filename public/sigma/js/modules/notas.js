@@ -2,14 +2,185 @@ App.registerModule('notas', {
     async render() {
         const el = document.getElementById('page-notas');
         el.innerHTML = `
-            <div class="page-header">
-                <div><h2>Notas</h2><div class="subtitle">Comunicación entre turnos</div></div>
-                <button class="btn btn-primary" onclick="App.modules.notas.showForm()">+ Nueva Nota</button>
-            </div>
-            <div class="card">
-                <div class="card-body" style="padding:0" id="notasContent">
-                    <div class="empty-state"><p>Cargando...</p></div>
+            <style>
+                @keyframes notaFadeUp {
+                    from { opacity: 0; transform: translateY(12px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .nota-hero {
+                    background: linear-gradient(135deg, #0f172a 0%, #065f46 50%, #047857 100%);
+                    border-radius: 12px;
+                    padding: 32px 28px;
+                    margin-bottom: 24px;
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: 0 4px 20px rgba(4, 120, 87, .25);
+                }
+                .nota-hero::before {
+                    content: '';
+                    position: absolute;
+                    width: 180px;
+                    height: 180px;
+                    background: radial-gradient(circle, rgba(34,197,94,.18) 0%, transparent 70%);
+                    top: -50px;
+                    right: -30px;
+                    border-radius: 50%;
+                    pointer-events: none;
+                }
+                .nota-hero::after {
+                    content: '';
+                    position: absolute;
+                    width: 120px;
+                    height: 120px;
+                    background: radial-gradient(circle, rgba(16,185,129,.14) 0%, transparent 70%);
+                    bottom: -40px;
+                    left: 20%;
+                    border-radius: 50%;
+                    pointer-events: none;
+                }
+                .nota-hero h2 {
+                    color: #fff;
+                    margin: 0 0 4px 0;
+                    font-size: 1.6rem;
+                    font-weight: 700;
+                    letter-spacing: -.02em;
+                    position: relative;
+                    z-index: 1;
+                }
+                .nota-hero .subtitle {
+                    color: rgba(255,255,255,.7);
+                    font-size: .85rem;
+                    position: relative;
+                    z-index: 1;
+                }
+                .nota-hero-actions {
+                    position: relative;
+                    z-index: 1;
+                }
+                .nota-hero-actions .btn {
+                    background: rgba(255,255,255,.12);
+                    color: #fff;
+                    border: 1px solid rgba(255,255,255,.2);
+                    border-radius: 8px;
+                    padding: 10px 22px;
+                    font-weight: 600;
+                    font-size: .85rem;
+                    cursor: pointer;
+                    transition: all .2s ease;
+                    backdrop-filter: blur(4px);
+                }
+                .nota-hero-actions .btn:hover {
+                    background: rgba(255,255,255,.22);
+                    transform: translateY(-1px);
+                }
+                .nota-card {
+                    background: #fff;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 10px;
+                    padding: 18px 20px;
+                    margin-bottom: 12px;
+                    display: flex;
+                    gap: 16px;
+                    align-items: flex-start;
+                    animation: notaFadeUp .35s ease both;
+                    transition: box-shadow .2s ease, border-color .2s ease;
+                }
+                .nota-card:hover {
+                    box-shadow: 0 4px 16px rgba(0,0,0,.06);
+                    border-color: #d1d5db;
+                }
+                .nota-card.nueva {
+                    background: #f0f7ff;
+                    border-left: 3px solid #3b82f6;
+                }
+                .nota-card .nota-body {
+                    flex: 1;
+                    min-width: 0;
+                }
+                .nota-card .nota-meta {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-bottom: 6px;
+                    flex-wrap: wrap;
+                }
+                .nota-card .nota-author {
+                    color: #047857;
+                    font-weight: 600;
+                    font-size: .9rem;
+                }
+                .nota-card .nota-date {
+                    font-size: .75rem;
+                    color: #9ca3af;
+                }
+                .nota-badge {
+                    background: #ef4444;
+                    color: #fff;
+                    font-size: .6rem;
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                    font-weight: 700;
+                    letter-spacing: .04em;
+                    text-transform: uppercase;
+                }
+                .nota-card .nota-text {
+                    margin: 0;
+                    color: #374151;
+                    white-space: pre-wrap;
+                    font-size: .88rem;
+                    line-height: 1.55;
+                }
+                .nota-card .nota-actions {
+                    display: flex;
+                    gap: 4px;
+                    flex-shrink: 0;
+                    align-items: flex-start;
+                }
+                .nota-read-label {
+                    font-size: .72rem;
+                    color: #22c55e;
+                    padding: 4px 10px;
+                    font-weight: 600;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                }
+                .nota-container {
+                    padding: 0 16px 16px 16px;
+                }
+                .nota-empty {
+                    text-align: center;
+                    padding: 56px 20px;
+                    color: #9ca3af;
+                }
+                .nota-empty .icon {
+                    font-size: 2.8rem;
+                    margin-bottom: 10px;
+                    display: block;
+                }
+                .nota-empty h4 {
+                    margin: 0 0 6px 0;
+                    color: #6b7280;
+                    font-size: 1rem;
+                }
+                .nota-empty p {
+                    margin: 0;
+                    font-size: .85rem;
+                }
+            </style>
+            <div class="nota-hero">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
+                    <div>
+                        <h2>Notas</h2>
+                        <div class="subtitle">Comunicacion entre turnos</div>
+                    </div>
+                    <div class="nota-hero-actions">
+                        <button onclick="App.modules.notas.showForm()">+ Nueva Nota</button>
+                    </div>
                 </div>
+            </div>
+            <div id="notasContent">
+                <div class="nota-empty"><p>Cargando...</p></div>
             </div>
         `;
         await this.loadNotas();
