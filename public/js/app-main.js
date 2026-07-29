@@ -423,17 +423,17 @@ function renderSidebar() {
     if (hasSection('mantencion')) {
         html += `<div class="nav-section" onclick="toggleSection('mantencion')"><span>MANTENCION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-mantencion">`;
-        if (canSeeItem('dashboard','mantencion')) html += navI('dashboard', 'Dashboard', '📊');
-        if (canSeeItem('machineTypes','mantencion')) html += navI('machineTypes', 'Tipos de Area', '⚙️');
-        if (canSeeItem('machines','mantencion')) html += navI('machines', 'Maquinas', '🏭');
-        if (canSeeItem('components','mantencion')) html += navI('components', 'Componentes', '🔧');
-        if (canSeeItem('preventive','mantencion')) html += navI('preventive', 'Preventivo', '📋');
-        if (canSeeItem('corrective','mantencion')) html += navI('corrective', 'Correctivo', '🔴');
-        if (canSeeItem('calendar','mantencion')) html += navI('calendar', 'Calendario', '📅');
-        if (canSeeItem('notas','mantencion')) html += navI('notas', 'Notas', '📒');
-        if (canSeeItem('reports','mantencion')) html += navI('reports', 'Reportes', '📈');
-        if (canSeeItem('history','mantencion')) html += navI('history', 'Historial', '📜');
-        if (canSeeItem('bitacora','mantencion')) html += navI('bitacora', 'Bitacora de Mantencion', '📒');
+        if (canSeeItem('dashboard','mantencion')) html += navI('dashboard', 'Dashboard', SVG.dashboard);
+        if (canSeeItem('machineTypes','mantencion')) html += navI('machineTypes', 'Tipos de Area', SVG.layers);
+        if (canSeeItem('machines','mantencion')) html += navI('machines', 'Maquinas', SVG.box);
+        if (canSeeItem('components','mantencion')) html += navI('components', 'Componentes', SVG.wrench);
+        if (canSeeItem('preventive','mantencion')) html += navI('preventive', 'Preventivo', SVG.check);
+        if (canSeeItem('corrective','mantencion')) html += navI('corrective', 'Correctivo', SVG.alert);
+        if (canSeeItem('calendar','mantencion')) html += navI('calendar', 'Calendario', SVG.calendar);
+        if (canSeeItem('notas','mantencion')) html += navI('notas', 'Notas', SVG.file);
+        if (canSeeItem('reports','mantencion')) html += navI('reports', 'Reportes', SVG.chart);
+        if (canSeeItem('history','mantencion')) html += navI('history', 'Historial', SVG.clock);
+        if (canSeeItem('bitacora','mantencion')) html += navI('bitacora', 'Bitacora de Mantencion', SVG.book);
         html += `</div>`;
     }
 
@@ -441,10 +441,10 @@ function renderSidebar() {
     if (hasSection('inventario')) {
         html += `<div class="nav-section" onclick="toggleSection('inventario')"><span>INVENTARIO</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-inventario">`;
-        if (canSeeItem('inv_inventario','inventario')) html += navI('inv_inventario', 'Inventario', '📦');
-        if (canSeeItem('inv_movimientos','inventario')) html += navI('inv_movimientos', 'Movimientos', '📋');
-        if (canSeeItem('inv_historial','inventario')) html += navI('inv_historial', 'Historial Inventario', '🕐');
-        if (canSeeItem('inv_catalogos','inventario')) html += navI('inv_catalogos', 'Catalogos', '⚙️');
+        if (canSeeItem('inv_inventario','inventario')) html += navI('inv_inventario', 'Inventario', SVG.clipboard);
+        if (canSeeItem('inv_movimientos','inventario')) html += navI('inv_movimientos', 'Movimientos', SVG.list);
+        if (canSeeItem('inv_historial','inventario')) html += navI('inv_historial', 'Historial Inventario', SVG.clock);
+        if (canSeeItem('inv_catalogos','inventario')) html += navI('inv_catalogos', 'Catalogos', SVG.settings);
         html += `</div>`;
     }
 
@@ -452,12 +452,12 @@ function renderSidebar() {
     if (hasSection('atencion')) {
         html += `<div class="nav-section" onclick="toggleSection('atencion')"><span>ATENCION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-atencion">`;
-        if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', '📋');
-        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Verificación Bodega', '📦');
-        if (canSeeItem('turnos_almacen','atencion')) html += navI('turnos_almacen', 'Almacén', '🏗️');
-        if (canSeeItem('turnos_facturar','atencion')) html += navI('turnos_facturar', 'Por Facturar', '🧾');
-        if (canSeeItem('turnos_qr','atencion')) html += navI('turnos_qr', 'QR Clientes', '💻');
-        if (canSeeItem('turnos_reporte','atencion')) html += navI('turnos_reporte', 'Reporte', '📊');
+        if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', SVG.users);
+        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Verificación Bodega', SVG.package);
+        if (canSeeItem('turnos_almacen','atencion')) html += navI('turnos_almacen', 'Almacén', SVG.warehouse);
+        if (canSeeItem('turnos_facturar','atencion')) html += navI('turnos_facturar', 'Por Facturar', SVG.receipt);
+        if (canSeeItem('turnos_qr','atencion')) html += navI('turnos_qr', 'QR Clientes', SVG.qrcode);
+        if (canSeeItem('turnos_reporte','atencion')) html += navI('turnos_reporte', 'Reporte', SVG.barChart);
         html += `</div>`;
     }
 
@@ -465,7 +465,7 @@ function renderSidebar() {
     if (hasSection('ventas')) {
         html += `<div class="nav-section" onclick="toggleSection('ventas')"><span>VENTAS</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-ventas">`;
-        if (canSeeItem('pedidos','ventas')) html += navI('pedidos', 'Pedidos / Ordenes', '📄');
+        if (canSeeItem('pedidos','ventas')) html += navI('pedidos', 'Pedidos / Ordenes', SVG.file);
         html += `</div>`;
     }
 
@@ -473,11 +473,11 @@ function renderSidebar() {
     if (hasSection('produccion')) {
         html += `<div class="nav-section" onclick="toggleSection('produccion')"><span>PRODUCCION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-produccion">`;
-        if (canSeeItem('prod_ordenes','produccion')) html += navI('produccion', 'Produccion', '🏭');
-        if (canSeeItem('prod_planificacion','produccion')) html += navI('planificacion', 'Planificacion', '📅');
-        if (canSeeItem('prod_notas','produccion')) html += navI('prod_notas', 'Mis Pendientes', '📋');
-        if (canSeeItem('prod_config','produccion')) html += navI('prod_config', 'Configuracion', '⚙️');
-        html += `<div class="nav-item" onclick="window.open('/taller/','_blank')"><span class="nav-icon">&#127981;</span><span class="nav-text">Taller</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
+        if (canSeeItem('prod_ordenes','produccion')) html += navI('produccion', 'Produccion', SVG.box);
+        if (canSeeItem('prod_planificacion','produccion')) html += navI('planificacion', 'Planificacion', SVG.calendar);
+        if (canSeeItem('prod_notas','produccion')) html += navI('prod_notas', 'Mis Pendientes', SVG.clipboard);
+        if (canSeeItem('prod_config','produccion')) html += navI('prod_config', 'Configuracion', SVG.settings);
+        html += `<div class="nav-item" onclick="window.open('/taller/','_blank')"><span class="nav-icon">${SVG.home}</span><span class="nav-text">Taller</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
         html += `</div>`;
     }
 
@@ -485,8 +485,8 @@ function renderSidebar() {
     if (hasSection('instalaciones')) {
         html += `<div class="nav-section" onclick="toggleSection('instalaciones')"><span>INSTALACIONES</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-instalaciones">`;
-        if (canSeeItem('instalaciones','instalaciones')) html += navI('instalaciones', 'Instalaciones', '🔧');
-        if (canSeeItem('inst_historial','instalaciones')) html += navI('inst_historial', 'Historial', '📜');
+        if (canSeeItem('instalaciones','instalaciones')) html += navI('instalaciones', 'Instalaciones', SVG.tool);
+        if (canSeeItem('inst_historial','instalaciones')) html += navI('inst_historial', 'Historial', SVG.clock);
         html += `</div>`;
     }
 
@@ -494,14 +494,14 @@ function renderSidebar() {
     if (hasSection('administracion')) {
         html += `<div class="nav-section" onclick="toggleSection('administracion')"><span>ADMINISTRACION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-administracion">`;
-        if (canSeeItem('usuarios','administracion')) html += navI('usuarios', 'Usuarios', '👥');
+        if (canSeeItem('usuarios','administracion')) html += navI('usuarios', 'Usuarios', SVG.users);
         html += `</div>`;
     }
 
     // Cerrar sesion
     html += `<div style="flex:1"></div>`;
-    html += `<div class="nav-item" onclick="doLogout()" style="opacity:0.5;margin-top:8px">
-        <span class="nav-icon">🚪</span> Cerrar Sesion</div>`;
+    html += `<div class="nav-item" onclick="doLogout()" style="opacity:0.4;margin-top:8px">
+        <span class="nav-icon">${SVG.logOut}</span> Cerrar Sesion</div>`;
 
     nav.innerHTML = html;
 
@@ -559,6 +559,32 @@ function toggleSection(section) {
 function navI(id, label, icon) {
     return `<div class="nav-item" data-page="${id}"><span class="nav-icon">${icon}</span> ${label}</div>`;
 }
+
+const SVG = {
+    dashboard: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    layers: '<svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+    box: '<svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+    wrench: '<svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+    check: '<svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    alert: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    calendar: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+    file: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+    chart: '<svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    book: '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    clipboard: '<svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
+    list: '<svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+    settings: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    users: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    package: '<svg viewBox="0 0 24 24"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+    warehouse: '<svg viewBox="0 0 24 24"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21V12h6v9"/></svg>',
+    receipt: '<svg viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1L4 2z"/><path d="M8 10h8"/><path d="M8 14h4"/></svg>',
+    qrcode: '<svg viewBox="0 0 24 24"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="4" height="4"/><line x1="22" y1="14" x2="22" y2="22"/><line x1="14" y1="22" x2="22" y2="22"/></svg>',
+    barChart: '<svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
+    home: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+    tool: '<svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+    logOut: '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
+};
 
 // ─── Inventario Navigation (inline) ────
 const INV_PAGES = {
