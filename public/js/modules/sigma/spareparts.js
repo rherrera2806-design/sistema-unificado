@@ -14,10 +14,12 @@ App.registerModule('spareparts', {
         const normales = repuestos.filter(r => r.stock_actual > r.stock_minimo);
 
         el.innerHTML = `
-            <div class="page-header">
-                <div><h2>Repuestos</h2><div class="subtitle">Control de inventario de repuestos industriales</div></div>
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Repuestos</h2>
+            <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Control de inventario de repuestos industriales</p></div>
                 <button class="btn btn-primary" onclick="App.modules.spareparts.showForm()">+ Nuevo Repuesto</button>
-            </div>
+            </div></div>
             <div class="stats-grid">
                 <div class="stat-card"><div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="stat-info"><h4>${repuestos.length}</h4><p>Total repuestos</p></div></div>
                 <div class="stat-card"><div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><h4>${criticos.length}</h4><p>Stock crítico</p></div></div>

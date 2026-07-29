@@ -10,6 +10,10 @@ const InvMovimientos = {
             const movimientos = await api.inv().getMovimientos();
             this.allMovimientos = movimientos;
             page.innerHTML = `
+                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Movimientos</h2>
+<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Registrar entradas y salidas de inventario</p></div></div>
                 <div class="card" style="margin-bottom:20px;">
                     <div class="card-header">Nuevo Movimiento</div>
                     <div class="card-body">

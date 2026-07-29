@@ -7,10 +7,11 @@ App.registerModule('reporte_turnos', {
         const hoy = new Date().toISOString().substring(0, 10);
         const hace30 = new Date(Date.now() - 30*86400000).toISOString().substring(0, 10);
         el.innerHTML = `
-            <div style="margin-bottom:24px">
-                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Reporte de Turnos</h2>
-                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Flujo completo por cliente: llegada, atencion, bodega y entrega</p>
-            </div>
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Reporte de Turnos</h2>
+<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Flujo completo por cliente: llegada, atencion, bodega y entrega</p></div>
+</div></div>
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
                 <div style="display:flex;gap:16px;align-items:end;flex-wrap:wrap">
                     <div style="margin:0">

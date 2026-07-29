@@ -14,10 +14,12 @@ App.registerModule('corrective', {
         filtered.sort((a, b) => (b.fecha_falla || '').localeCompare(a.fecha_falla || ''));
 
         el.innerHTML = `
-            <div class="page-header">
-                <div><h2>Mantención Correctiva</h2><div class="subtitle">Registro de fallas y acciones correctivas</div></div>
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Mantención Correctiva</h2>
+            <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Registro de fallas y acciones correctivas</p></div>
                 <button class="btn btn-danger" onclick="App.modules.corrective.showForm()">+ Registrar Falla</button>
-            </div>
+            </div></div>
             <div class="card">
                 <div class="card-header">
                     <select class="form-control" id="filterCorrMaq" style="width:auto;min-width:180px" onchange="App.modules.corrective.render()">

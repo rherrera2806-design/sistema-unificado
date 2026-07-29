@@ -299,12 +299,11 @@ App.modules.planificacion = {
         const page = document.getElementById('page-planificacion');
         if (!page) return;
         page.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <div>
-                    <h2 style="margin:0">Planificacion de Produccion</h2>
-                    <p style="margin:4px 0 0;color:var(--text-light);font-size:13px">Carga por grupo (kg) + calendario por estacion (m2) - 15 dias corridos</p>
-                </div>
-            </div>
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Planificacion</h2>
+<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Carga por grupo (kg) + calendario por estacion (m2) - 15 dias corridos</p></div>
+</div></div>
 
             <!-- VISTA POR GRUPO (kg/dia) - nueva -->
             <div class="card" style="margin-bottom:20px;border:2px solid #3b82f6">

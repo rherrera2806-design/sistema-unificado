@@ -9,16 +9,16 @@ App.registerModule('prod_maquinas', {
         const puedeEditar = esAdmin || permisos.includes('produccion');
 
         el.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2 style="margin:0">Maquinas</h2>
-                    <div class="subtitle">Capacidad de producción por máquina (m²/día)</div>
-                </div>
-                ${puedeEditar ? `<div style="display:flex;gap:8px">
-                    <button class="btn btn-primary" onclick="App.modules.prod_maquinas.showCreateModal()">+ Nueva Maquina</button>
-                    <button class="btn btn-success" onclick="App.modules.prod_maquinas.showImportModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar Excel</button>
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Maquinas de Produccion</h2>
+<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Capacidad de produccion por maquina (m2/dia)</p></div>
+${puedeEditar ? `
+<div style="display:flex;gap:8px">
+                    <button style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer" onclick="App.modules.prod_maquinas.showCreateModal()">+ Nueva Maquina</button>
+                    <button style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer" onclick="App.modules.prod_maquinas.showImportModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar Excel</button>
                 </div>` : ''}
-            </div>
+</div></div>
 
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
                 <div class="card" style="text-align:center"><div class="card-body">

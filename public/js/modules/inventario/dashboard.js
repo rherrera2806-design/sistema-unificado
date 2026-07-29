@@ -10,7 +10,10 @@ const InvDashboard = {
             ]);
             const recentes = recientes.slice(0, 8);
             page.innerHTML = `
-                <div class="section-title">Acciones Rapidas</div>
+                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Dashboard Inventario</h2>
+<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Acciones Rapidas</p></div></div>
                 <div class="quick-actions">
                     <div class="action-card" onclick="App.navigateInv('movimientos')"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="label">Nuevo Movimiento</div></div>
                     <div class="action-card" onclick="App.navigateInv('inventario')"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="label">Ver Inventario</div></div>

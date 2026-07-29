@@ -16,13 +16,15 @@ App.registerModule('preventive', {
         const today = new Date().toISOString().split('T')[0];
 
         el.innerHTML = `
-            <div class="page-header">
-                <div><h2>Mantención Preventiva</h2><div class="subtitle">Programación y control de mantenciones periódicas</div></div>
-                <div class="btn-group">
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Mantención Preventiva</h2>
+            <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Programación y control de mantenciones periódicas</p></div>
+                <div style="display:flex;gap:8px">
                     <button class="btn btn-accent" onclick="App.modules.preventive.autoProgram()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Auto-programar Semana</button>
                     <button class="btn btn-primary" onclick="App.modules.preventive.showForm()">+ Nueva Mantención</button>
                 </div>
-            </div>
+            </div></div>
             <div class="card">
                 <div class="card-header">
                     <div class="flex items-center gap-16" style="flex-wrap:wrap">
