@@ -19,7 +19,7 @@ App.registerModule('preventive', {
             <div class="page-header">
                 <div><h2>Mantención Preventiva</h2><div class="subtitle">Programación y control de mantenciones periódicas</div></div>
                 <div class="btn-group">
-                    <button class="btn btn-accent" onclick="App.modules.preventive.autoProgram()">🔄 Auto-programar Semana</button>
+                    <button class="btn btn-accent" onclick="App.modules.preventive.autoProgram()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Auto-programar Semana</button>
                     <button class="btn btn-primary" onclick="App.modules.preventive.showForm()">+ Nueva Mantención</button>
                 </div>
             </div>
@@ -39,7 +39,7 @@ App.registerModule('preventive', {
                     </div>
                 </div>
                 <div class="card-body" style="padding:0">
-                    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon">📋</div><h4>No hay registros</h4></div>' : `
+                    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4>No hay registros</h4></div>' : `
                     <table><thead><tr><th>Máquina</th><th>Componente</th><th>Checklist</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Días</th><th>Hs.Oc.</th><th>Técnico</th><th>Estado</th><th>Acciones</th></tr></thead>
                     <tbody>${filtered.map(r => {
                         const dias = r.fecha_programada && r.fecha_ejecutada ? Math.round((new Date(r.fecha_ejecutada) - new Date(r.fecha_programada)) / 86400000) : '-';
@@ -56,8 +56,8 @@ App.registerModule('preventive', {
                         <td>${r.tecnico || 'Pendiente'}</td>
                         <td><span class="status-badge ${App.getEstadoClass(isVencida ? 'Vencida' : r.estado)}">${isVencida ? 'Vencida' : r.estado}</span></td>
                         <td class="table-actions">
-                            <button class="btn btn-sm btn-outline" onclick="App.modules.preventive.showForm(${r.id})">✏️</button>
-                            <button class="btn btn-sm btn-danger" onclick="App.modules.preventive.delete(${r.id})">🗑️</button>
+                            <button class="btn btn-sm btn-outline" onclick="App.modules.preventive.showForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                            <button class="btn btn-sm btn-danger" onclick="App.modules.preventive.delete(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                         </td>
                     </tr>`}).join('')}</tbody></table>`}
                 </div>
@@ -213,7 +213,7 @@ App.registerModule('preventive', {
 
             const fechaInicio = workingDays[0].toISOString().split('T')[0];
             const fechaFin = workingDays[4].toISOString().split('T')[0];
-            App.showAlert(`✅ ${created} mantenciones auto-programadas\n${fechaInicio} al ${fechaFin}`);
+            App.showAlert(`${created} mantenciones auto-programadas\n${fechaInicio} al ${fechaFin}`);
             this.render();
         } catch(e) { App.showAlert('Error al auto-programar: ' + e.message, 'danger'); }
     },

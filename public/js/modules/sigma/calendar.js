@@ -58,7 +58,7 @@ App.registerModule('calendar', {
                 events.push({ date: r.fecha_programada, title: label, status: status });
             }
             if (r.fecha_ejecutada && r.fecha_ejecutada !== r.fecha_programada)
-                events.push({ date: r.fecha_ejecutada, title: `✅ ${label}`, status: 'Realizada' });
+                events.push({ date: r.fecha_ejecutada, title: `${label}`, status: 'Realizada' });
         }
 
         for (const r of (data.correctivos || [])) {
@@ -66,7 +66,7 @@ App.registerModule('calendar', {
             const comp = compMap[r.componente_id];
             if (r.fecha_falla) {
                 const status = r.estado === 'Reparada' ? 'Realizada' : 'Vencida';
-                const icon = r.estado === 'Reparada' ? '✅' : '🔴';
+                const icon = r.estado === 'Reparada' ? '' : '';
                 events.push({ date: r.fecha_falla, title: `${icon} ${maq ? maq.codigo : ''}: ${comp ? comp.nombre : ''}`, status: status });
             }
         }
@@ -128,7 +128,7 @@ App.registerModule('calendar', {
         a.click();
         URL.revokeObjectURL(url);
 
-        App.showAlert(`📅 Archivo .ics exportado con ${monthEvents.length} eventos`);
+        App.showAlert(`Archivo .ics exportado con ${monthEvents.length} eventos`);
     },
 
     async exportImage() {
@@ -139,7 +139,7 @@ App.registerModule('calendar', {
             return d.getMonth() === this.currentMonth && d.getFullYear() === this.currentYear;
         });
 
-        let text = `📋 *Calendario de Mantenimiento*\n🗓️ ${monthNames[this.currentMonth]} ${this.currentYear}\n\n`;
+        let text = `*Calendario de Mantenimiento*\n*${monthNames[this.currentMonth]} ${this.currentYear}*\n\n`;
 
         const grouped = {};
         for (const e of monthEvents) {
@@ -154,7 +154,7 @@ App.registerModule('calendar', {
             const dayNum = d.getDate();
             text += `*${dayName} ${dayNum}:*\n`;
             for (const e of grouped[date]) {
-                const icon = e.status === 'Realizada' ? '✅' : e.status === 'Vencida' ? '🔴' : '🔵';
+                const icon = e.status === 'Realizada' ? '+' : e.status === 'Vencida' ? '!' : '-';
                 text += `${icon} ${e.title}\n`;
             }
             text += '\n';
@@ -179,7 +179,7 @@ App.registerModule('calendar', {
 
     copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
-            App.showAlert('📋 Texto copiado. Pégalo en WhatsApp');
+            App.showAlert('Texto copiado. Pégalo en WhatsApp');
         }).catch(() => {
             const textarea = document.createElement('textarea');
             textarea.value = text;
@@ -187,7 +187,7 @@ App.registerModule('calendar', {
             textarea.select();
             document.execCommand('copy');
             document.body.removeChild(textarea);
-            App.showAlert('📋 Texto copiado. Pégalo en WhatsApp');
+            App.showAlert('Texto copiado. Pégalo en WhatsApp');
         });
     }
 });

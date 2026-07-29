@@ -12,9 +12,9 @@ const InvDashboard = {
             page.innerHTML = `
                 <div class="section-title">Acciones Rapidas</div>
                 <div class="quick-actions">
-                    <div class="action-card" onclick="App.navigateInv('movimientos')"><div class="icon">➕</div><div class="label">Nuevo Movimiento</div></div>
-                    <div class="action-card" onclick="App.navigateInv('inventario')"><div class="icon">📦</div><div class="label">Ver Inventario</div></div>
-                    <div class="action-card" onclick="App.navigateInv('historial')"><div class="icon">🕐</div><div class="label">Historial</div></div>
+                    <div class="action-card" onclick="App.navigateInv('movimientos')"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><div class="label">Nuevo Movimiento</div></div>
+                    <div class="action-card" onclick="App.navigateInv('inventario')"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="label">Ver Inventario</div></div>
+                    <div class="action-card" onclick="App.navigateInv('historial')"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="label">Historial</div></div>
                 </div>
                 <div class="stats-grid">
                     <div class="stat-card primary"><div class="label">Total Movimientos</div><div class="value">${stats.totalMovimientos}</div></div>

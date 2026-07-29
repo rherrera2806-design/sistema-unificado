@@ -19,9 +19,9 @@ App.registerModule('spareparts', {
                 <button class="btn btn-primary" onclick="App.modules.spareparts.showForm()">+ Nuevo Repuesto</button>
             </div>
             <div class="stats-grid">
-                <div class="stat-card"><div class="stat-icon blue">📦</div><div class="stat-info"><h4>${repuestos.length}</h4><p>Total repuestos</p></div></div>
-                <div class="stat-card"><div class="stat-icon red">⚠️</div><div class="stat-info"><h4>${criticos.length}</h4><p>Stock crítico</p></div></div>
-                <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><h4>${normales.length}</h4><p>Stock normal</p></div></div>
+                <div class="stat-card"><div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="stat-info"><h4>${repuestos.length}</h4><p>Total repuestos</p></div></div>
+                <div class="stat-card"><div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><h4>${criticos.length}</h4><p>Stock crítico</p></div></div>
+                <div class="stat-card"><div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div><div class="stat-info"><h4>${normales.length}</h4><p>Stock normal</p></div></div>
             </div>
             <div class="card">
                 <div class="card-header">
@@ -32,7 +32,7 @@ App.registerModule('spareparts', {
                     </select>
                 </div>
                 <div class="card-body" style="padding:0">
-                    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon">📦</div><h4>No hay repuestos</h4></div>' : `
+                    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h4>No hay repuestos</h4></div>' : `
                     <table><thead><tr><th>Código</th><th>Descripción</th><th>Componente</th><th>Stock Actual</th><th>Stock Mín.</th><th>Estado</th><th>Proveedor</th><th>Ubicación</th><th>Acciones</th></tr></thead>
                     <tbody>${filtered.map(r => {
                         const critico = r.stock_actual <= r.stock_minimo;
@@ -46,8 +46,8 @@ App.registerModule('spareparts', {
                             <td>${r.proveedor || '-'}</td>
                             <td>${r.ubicacion_bodega || '-'}</td>
                             <td class="table-actions">
-                                <button class="btn btn-sm btn-outline" onclick="App.modules.spareparts.showForm(${r.id})">✏️</button>
-                                <button class="btn btn-sm btn-danger" onclick="App.modules.spareparts.delete(${r.id})">🗑️</button>
+                                <button class="btn btn-sm btn-outline" onclick="App.modules.spareparts.showForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                                <button class="btn btn-sm btn-danger" onclick="App.modules.spareparts.delete(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                             </td>
                         </tr>`;
                     }).join('')}</tbody></table>`}

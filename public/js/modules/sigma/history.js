@@ -20,7 +20,7 @@ App.registerModule('history', {
                     </div>
                 </div>
             </div>
-            ${this._selectedMaq ? await this.renderHistory(this._selectedMaq) : '<div class="empty-state" style="padding:60px"><div class="icon">📜</div><h4>Seleccione una máquina</h4></div>'}
+            ${this._selectedMaq ? await this.renderHistory(this._selectedMaq) : '<div class="empty-state" style="padding:60px"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/></svg></div><h4>Seleccione una máquina</h4></div>'}
         `;
     },
 
@@ -56,30 +56,30 @@ App.registerModule('history', {
                 </div>
             </div>
             <div class="stats-grid">
-                <div class="stat-card"><div class="stat-icon blue">📋</div><div class="stat-info"><h4>${preventivos.length}</h4><p>Mantenciones</p></div></div>
-                <div class="stat-card"><div class="stat-icon red">🔴</div><div class="stat-info"><h4>${correctivos.length}</h4><p>Fallas</p></div></div>
-                <div class="stat-card"><div class="stat-icon orange">⏱️</div><div class="stat-info"><h4>${totalHorasDet}</h4><p>Horas detención</p></div></div>
-                <div class="stat-card"><div class="stat-icon green">🔧</div><div class="stat-info"><h4>${componentes.length}</h4><p>Componentes</p></div></div>
+                <div class="stat-card"><div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><div class="stat-info"><h4>${preventivos.length}</h4><p>Mantenciones</p></div></div>
+                <div class="stat-card"><div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div><div class="stat-info"><h4>${correctivos.length}</h4><p>Fallas</p></div></div>
+                <div class="stat-card"><div class="stat-icon orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="stat-info"><h4>${totalHorasDet}</h4><p>Horas detención</p></div></div>
+                <div class="stat-card"><div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><div class="stat-info"><h4>${componentes.length}</h4><p>Componentes</p></div></div>
             </div>
             <div class="card">
                 <div class="card-header"><h3>Componentes</h3></div>
                 <div class="card-body">${componentes.map(c => `<span class="status-badge status-programada" style="margin:2px">${c.nombre}</span>`).join(' ') || 'Sin componentes'}</div>
             </div>
             <div class="card">
-                <div class="card-header"><h3>📋 Preventivas</h3></div>
+                <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Preventivas</h3></div>
                 <div class="card-body" style="padding:0">
                     ${preventivos.length === 0 ? '<div class="empty-state"><p>Sin registros</p></div>' : `<table><thead><tr><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Estado</th></tr></thead><tbody>${prevRows}</tbody></table>`}
                 </div>
             </div>
             <div class="card">
-                <div class="card-header"><h3>🔴 Fallas</h3></div>
+                <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Fallas</h3></div>
                 <div class="card-body" style="padding:0">
                     ${correctivos.length === 0 ? '<div class="empty-state"><p>Sin registros</p></div>' : `<table><thead><tr><th>Componente</th><th>Fecha</th><th>Falla</th><th>Diagnóstico</th><th>Turno</th><th>Horas Det.</th></tr></thead><tbody>${corrRows}</tbody></table>`}
                 </div>
             </div>
             ${repuestosUsados.length > 0 ? `
             <div class="card">
-                <div class="card-header"><h3>📦 Repuestos Utilizados</h3></div>
+                <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Repuestos Utilizados</h3></div>
                 <div class="card-body"><ul style="margin-left:20px">${repuestosUsados.map(r => `<li style="margin:4px 0">${r}</li>`).join('')}</ul></div>
             </div>` : ''}
         `;

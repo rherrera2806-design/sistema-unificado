@@ -15,9 +15,9 @@ App.registerModule('prod_recetas', {
                 </div>
                 ${puedeEditar ? `
                 <div style="display:flex;gap:8px">
-                    <button class="btn btn-outline" onclick="App.modules.prod_recetas.importarExcel()">📥 Importar Excel</button>
-                    <button class="btn btn-outline" onclick="App.modules.prod_recetas.exportarExcel()">📤 Exportar Excel</button>
-                    ${permisos.includes('usuarios') ? '<button class="btn btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.prod_recetas.deleteAll()">🗑️ Eliminar Registros</button>' : ''}
+                    <button class="btn btn-outline" onclick="App.modules.prod_recetas.importarExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar Excel</button>
+                    <button class="btn btn-outline" onclick="App.modules.prod_recetas.exportarExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Exportar Excel</button>
+                    ${permisos.includes('usuarios') ? '<button class="btn btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.prod_recetas.deleteAll()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar Registros</button>' : ''}
                     <button class="btn btn-primary" onclick="App.modules.prod_recetas.showCreateModal()">+ Nueva Receta</button>
                 </div>` : ''}
             </div>
@@ -69,7 +69,7 @@ App.registerModule('prod_recetas', {
                     <div class="modal-body">
                         <div id="recImportArea" style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all .2s"
                              onclick="document.getElementById('recImportFile').click()">
-                            <div style="font-size:32px;margin-bottom:8px">📊</div>
+                            <div style="font-size:32px;margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
                             <div style="color:var(--text-light)">Arrastra un Excel o haz clic para seleccionar</div>
                             <div id="recImportName" style="color:var(--success);font-weight:500;margin-top:8px;display:none"></div>
                         </div>

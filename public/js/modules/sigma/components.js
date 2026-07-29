@@ -34,7 +34,7 @@ App.registerModule('components', {
             (c.descripcion || '').toLowerCase().includes(filter.toLowerCase())
         ) : this._allComponentes;
         if (componentes.length === 0) {
-            body.innerHTML = '<div class="empty-state"><div class="icon">🔧</div><h4>No hay componentes' + (filter ? ` que coincidan con "${filter}"` : ' registrados') + '</h4></div>';
+            body.innerHTML = '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><h4>No hay componentes' + (filter ? ` que coincidan con "${filter}"` : ' registrados') + '</h4></div>';
         } else {
             body.innerHTML = `<table><thead><tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Usado en Tipos</th><th>Repuestos</th><th>Acciones</th></tr></thead>
                 <tbody>${this._buildRows(componentes)}</tbody></table>`;
@@ -54,8 +54,8 @@ App.registerModule('components', {
                 <td>${tipos.map(t => `<span class="status-badge status-programada" style="margin:1px">${t.nombre}</span>`).join(' ') || '-'}</td>
                 <td>${reps}</td>
                 <td class="table-actions">
-                    <button class="btn btn-sm btn-outline" onclick="App.modules.components.showForm(${c.id})">✏️</button>
-                    <button class="btn btn-sm btn-danger" onclick="App.modules.components.delete(${c.id})">🗑️</button>
+                    <button class="btn btn-sm btn-outline" onclick="App.modules.components.showForm(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="btn btn-sm btn-danger" onclick="App.modules.components.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                 </td>
             </tr>`;
         }

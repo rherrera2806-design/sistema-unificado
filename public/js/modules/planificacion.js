@@ -112,7 +112,7 @@ App.modules.planificacion = {
                             <div style="height:100%;width:${Math.min(pct,100)}%;background:${colorBar};transition:width .3s"></div>
                         </div>
                         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-light)">
-                            <span>📦 ${ordenes} ord.</span>
+                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> ${ordenes} ord.</span>
                             <span>Libre: <strong style="color:${libre < 0 ? '#ef4444' : '#10b981'}">${libre.toLocaleString('es-CL', {maximumFractionDigits:1})} kg</strong></span>
                         </div>
                     </div>
@@ -126,7 +126,7 @@ App.modules.planificacion = {
         if (!el) return;
         const sinAsignar = this.pendientesGrupo;
         if (!sinAsignar.length) {
-            el.innerHTML = '<div style="background:#dcfce7;border-radius:8px;padding:12px;text-align:center;color:#166534;font-size:13px">✓ No hay ordenes pendientes sin asignar</div>';
+            el.innerHTML = '<div style="background:#dcfce7;border-radius:8px;padding:12px;text-align:center;color:#166534;font-size:13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg> No hay ordenes pendientes sin asignar</div>';
             return;
         }
         const kgTotal = sinAsignar.reduce((s, o) => s + Number(o.kilos || 0), 0);
@@ -134,7 +134,7 @@ App.modules.planificacion = {
         const td = 'padding:5px 8px';
         let html = `<div style="background:#fef3c7;padding:8px 12px;font-size:12px;display:flex;justify-content:space-between;border-radius:8px 8px 0 0">
             <strong>${sinAsignar.length} pendientes sin asignar · ${kgTotal.toLocaleString('es-CL', {maximumFractionDigits:1})} kg${sinGrupo ? ` · <span style="color:#ef4444">${sinGrupo} sin grupo</span>` : ''}</strong>
-            <span>Usa ⚡ Auto-Asignar para programar todas</span>
+            <span>Usa <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar para programar todas</span>
         </div>`;
         html += `<div style="max-height:300px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr style="background:#f8fafc">
             <th style="${td}">Pedido</th><th style="${td}">Cliente</th><th style="${td}">Codigo</th>
@@ -154,7 +154,7 @@ App.modules.planificacion = {
                 <td style="${td}">${o.cantidad || 1}</td>
                 <td style="${td}"><strong>${Number(o.kilos || 0).toFixed(1)}</strong></td>
                 <td style="${td}"><span style="padding:1px 6px;border-radius:3px;font-size:10px;background:${grupoColor};color:${grupoText}">${o.grupo || 'sin grupo'}</span></td>
-                <td style="${td}">${o.grupo ? `<span style="font-size:10px;color:#6b7280">usa ⚡ Auto-Asignar</span>` : '<span style="font-size:10px;color:#ef4444">requiere grupo</span>'}</td>
+                <td style="${td}">${o.grupo ? `<span style="font-size:10px;color:#6b7280">usa <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar</span>` : '<span style="font-size:10px;color:#ef4444">requiere grupo</span>'}</td>
             </tr>`;
         }).join('');
         html += '</tbody></table></div>';
@@ -240,7 +240,7 @@ App.modules.planificacion = {
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.planificacion.ejecutarAutoAsignarGrupo()">Asignar</button>
         `;
-        App.showModalInv('⚡ Auto-Asignar Pendientes', html, footer);
+        App.showModalInv('<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar Pendientes', html, footer);
     },
 
     async ejecutarAutoAsignarGrupo() {
@@ -257,7 +257,7 @@ App.modules.planificacion = {
             const data = await res.json();
             if (res.ok) {
                 let html = `<div style="background:#dcfce7;border-radius:8px;padding:12px;font-size:13px">
-                    <div><strong>✓ Asignadas: ${data.asignados}</strong></div>`;
+                    <div><strong><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg> Asignadas: ${data.asignados}</strong></div>`;
                 if (data.detalle && data.detalle.noAsignados && data.detalle.noAsignados.length > 0) {
                     html += `<div style="margin-top:8px;color:#991b1b;font-weight:600">Sin capacidad (${data.detalle.noAsignados.length}):</div>`;
                     html += data.detalle.noAsignados.map(n => 
@@ -318,8 +318,8 @@ App.modules.planificacion = {
                         <input type="date" class="form-control" id="planGrupoFecha" value="${this.fechaGrupo}" onchange="App.modules.planificacion.cambiarFechaGrupo()" style="width:140px;padding:4px 8px;font-size:12px">
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(-1)">◀</button>
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(1)">▶</button>
-                        ${puedeEditar ? '<button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.showCapacidadGrupo()">⚙️ Capacidad</button>' : ''}
-                        ${puedeEditar ? '<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="App.modules.planificacion.showAutoAsignarGrupo()">⚡ Auto-Asignar</button>' : ''}
+                        ${puedeEditar ? '<button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.showCapacidadGrupo()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Capacidad</button>' : ''}
+                        ${puedeEditar ? '<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="App.modules.planificacion.showAutoAsignarGrupo()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar</button>' : ''}
                     </div>
                 </div>
                 <div class="card-body" style="padding:16px">
@@ -327,7 +327,7 @@ App.modules.planificacion = {
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px" id="planGrupoCards">
                         <div style="text-align:center;padding:20px;color:#64748b">Cargando...</div>
                     </div>
-                    <h4 style="margin:16px 0 8px;font-size:14px">⏳ Pendientes sin Asignar</h4>
+                    <h4 style="margin:16px 0 8px;font-size:14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Pendientes sin Asignar</h4>
                     <div id="planGrupoPendientes"><div style="text-align:center;padding:12px;color:#64748b">Cargando...</div></div>
                 </div>
             </div>
@@ -342,7 +342,7 @@ App.modules.planificacion = {
             <div class="card" style="margin-top:24px;border:2px solid #f59e0b">
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#fffbeb,#fff)">
                     <div>
-                        <h3 style="margin:0;font-size:16px">🏭 Carga por Estaciones</h3>
+                        <h3 style="margin:0;font-size:16px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg> Carga por Estaciones</h3>
                         <div style="font-size:12px;color:var(--text-light)">Ocupacion de m2 por estacion y dia - 15 dias corridos</div>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center">
@@ -858,7 +858,7 @@ App.modules.planificacion = {
 
         // Leyenda
         html += '<div style="margin-top:10px;display:flex;gap:16px;font-size:11px;color:#6b7280">';
-        html += '<span>🟢 &lt;50%</span><span>🔵 50-84%</span><span>🟡 85-99%</span><span>🔴 ≥100%</span>';
+        html += '<span><svg width="14" height="14" viewBox="0 0 24 24" fill="#22c55e" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> &lt;50%</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="#3b82f6" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> 50-84%</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> 85-99%</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> ≥100%</span>';
         html += '<span style="margin-left:auto">CB = Cuello de Botella</span></div>';
 
         el.innerHTML = html;

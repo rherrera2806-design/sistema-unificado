@@ -16,8 +16,8 @@ const InvMovimientos = {
                         <form onsubmit="InvMovimientos.guardar(event)">
                             <div class="form-group"><label>Tipo de Movimiento *</label>
                                 <div style="display:flex; gap:12px;">
-                                    <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')">➕ Entrada</label>
-                                    <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')">➖ Salida</label>
+                                    <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Entrada</label>
+                                    <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</label>
                                 </div>
                             </div>
                             <div class="form-group" id="tipoSalidaGroup" style="display:none;"><label>Tipo de Salida *</label>

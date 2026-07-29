@@ -6,15 +6,15 @@ App.registerModule('reports', {
         el.innerHTML = `
             <div class="page-header">
                 <div><h2>Reportes</h2><div class="subtitle">Análisis y estadísticas del sistema</div></div>
-                <button class="btn btn-outline" onclick="window.print()">🖨️ Imprimir</button>
+                <button class="btn btn-outline" onclick="window.print()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Imprimir</button>
             </div>
             <div class="tabs">
-                <div class="tab ${this.activeTab === 'periodo' ? 'active' : ''}" onclick="App.modules.reports.switchTab('periodo')">📅 Por Periodo</div>
-                <div class="tab ${this.activeTab === 'maquina' ? 'active' : ''}" onclick="App.modules.reports.switchTab('maquina')">🏭 Por Máquina</div>
-                <div class="tab ${this.activeTab === 'fallas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('fallas')">🔴 Más Fallas</div>
-                <div class="tab ${this.activeTab === 'componentes' ? 'active' : ''}" onclick="App.modules.reports.switchTab('componentes')">🔧 Componentes</div>
-                <div class="tab ${this.activeTab === 'vencidas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('vencidas')">⚠️ Vencidas</div>
-                <div class="tab ${this.activeTab === 'mensual' ? 'active' : ''}" onclick="App.modules.reports.switchTab('mensual')">📊 Mensual</div>
+                <div class="tab ${this.activeTab === 'periodo' ? 'active' : ''}" onclick="App.modules.reports.switchTab('periodo')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Por Periodo</div>
+                <div class="tab ${this.activeTab === 'maquina' ? 'active' : ''}" onclick="App.modules.reports.switchTab('maquina')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg> Por Máquina</div>
+                <div class="tab ${this.activeTab === 'fallas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('fallas')"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Más Fallas</div>
+                <div class="tab ${this.activeTab === 'componentes' ? 'active' : ''}" onclick="App.modules.reports.switchTab('componentes')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Componentes</div>
+                <div class="tab ${this.activeTab === 'vencidas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('vencidas')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Vencidas</div>
+                <div class="tab ${this.activeTab === 'mensual' ? 'active' : ''}" onclick="App.modules.reports.switchTab('mensual')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Mensual</div>
             </div>
             <div id="reportContent">${await this.renderTabContent()}</div>
         `;
@@ -181,9 +181,9 @@ App.registerModule('reports', {
         });
         return `
             <div class="card">
-                <div class="card-header"><h3>⚠️ Vencidas (${vencidas.length})</h3></div>
+                <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Vencidas (${vencidas.length})</h3></div>
                 <div class="card-body" style="padding:0">
-                    ${vencidas.length === 0 ? '<div class="empty-state"><div class="icon">✅</div><h4>No hay vencidas</h4></div>' : `
+                    ${vencidas.length === 0 ? '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div><h4>No hay vencidas</h4></div>' : `
                     <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Días</th><th>Técnico</th></tr></thead><tbody>${rows}</tbody></table>
                     <div style="padding:16px;border-top:1px solid var(--border)"><p class="text-muted">Total: ${vencidas.length} vencidas. Reprogramar a la brevedad.</p></div>`}
                 </div>
@@ -237,7 +237,7 @@ App.registerModule('reports', {
 
         return `
             <div class="card">
-                <div class="card-header"><h3>📊 Mantenciones por Mes</h3></div>
+                <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Mantenciones por Mes</h3></div>
                 <div class="card-body">
                     <div style="display:flex;gap:16px;margin-bottom:16px;font-size:12px">
                         <div><span style="display:inline-block;width:12px;height:12px;background:#28a745;border-radius:2px;margin-right:4px"></span> Preventivas</div>

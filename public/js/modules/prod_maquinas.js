@@ -16,7 +16,7 @@ App.registerModule('prod_maquinas', {
                 </div>
                 ${puedeEditar ? `<div style="display:flex;gap:8px">
                     <button class="btn btn-primary" onclick="App.modules.prod_maquinas.showCreateModal()">+ Nueva Maquina</button>
-                    <button class="btn btn-success" onclick="App.modules.prod_maquinas.showImportModal()">📥 Importar Excel</button>
+                    <button class="btn btn-success" onclick="App.modules.prod_maquinas.showImportModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar Excel</button>
                 </div>` : ''}
             </div>
 

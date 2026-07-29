@@ -21,9 +21,9 @@ App.registerModule('machines', {
                 <td>${m.ubicacion || '-'}</td>
                 <td><span class="status-badge ${App.getEstadoClass(m.estado_operativo)}">${m.estado_operativo}</span></td>
                 <td class="table-actions">
-                    <button class="btn btn-sm btn-info" onclick="App.modules.machines.showDetail(${m.id})">👁️</button>
-                    <button class="btn btn-sm btn-outline" onclick="App.modules.machines.showForm(${m.id})">✏️</button>
-                    <button class="btn btn-sm btn-danger" onclick="App.modules.machines.delete(${m.id})">🗑️</button>
+                    <button class="btn btn-sm btn-info" onclick="App.modules.machines.showDetail(${m.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    <button class="btn btn-sm btn-outline" onclick="App.modules.machines.showForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="btn btn-sm btn-danger" onclick="App.modules.machines.delete(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                 </td>
             </tr>`;
         }
@@ -36,7 +36,7 @@ App.registerModule('machines', {
                 <div class="card-header">
                     <div class="flex items-center gap-16" style="flex-wrap:wrap">
                         <div class="search-box">
-                            <span class="search-icon">🔍</span>
+                            <span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
                             <input type="text" id="searchMaquina" placeholder="Buscar..." value="${searchTerm}" oninput="App.modules.machines.render()">
                         </div>
                         <select class="form-control" id="filterTipoMaq" style="width:auto;min-width:150px" onchange="App.modules.machines.render()">
@@ -53,7 +53,7 @@ App.registerModule('machines', {
                     <span class="text-muted">${filtered.length} de ${maquinas.length}</span>
                 </div>
                 <div class="card-body" style="padding:0">
-                    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon">🏭</div><h4>No se encontraron máquinas</h4></div>' : `
+                    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg></div><h4>No se encontraron máquinas</h4></div>' : `
                     <table><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Marca</th><th>Ubicación</th><th>Estado</th><th>Acciones</th></tr></thead>
                     <tbody>${rows}</tbody></table>`}
                 </div>
