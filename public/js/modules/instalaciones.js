@@ -12,21 +12,25 @@ App.registerModule('instalaciones', {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const permisos = user.permisos || [];
         const puedeCrear = permisos.includes('instalaciones.nueva') || permisos.includes('usuarios');
-        el.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-                <div>
-                    <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Instalaciones</h2>
-                    <p style="margin:4px 0 0;font-size:13px;color:#64748b">Calendario mensual de trabajos en terreno</p>
-                </div>
-                <div style="display:flex;gap:8px">
-                    <button onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores" style="padding:8px 16px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc';this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0'">Vendedores</button>
-                    <button onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos" style="padding:8px 16px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc';this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0'">Tecnicos</button>
-                    ${puedeCrear ? `<button onclick="App.modules.instalaciones.showForm()" style="padding:8px 18px;font-size:13px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:8px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">+ Nuevo</button>` : ''}
-                </div>
-            </div>
-            <div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px"></div>
-            <div id="instCalendario"></div>
-        `;
+        el.innerHTML = '<style>'
+            + '@keyframes instFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.inst-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.inst-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
+            + '<div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Instalaciones</h2>'
+            + '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Calendario mensual de trabajos en terreno</p></div>'
+            + '<div style="display:flex;gap:8px">'
+            + '<button onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores" style="padding:8px 16px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Vendedores</button>'
+            + '<button onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos" style="padding:8px 16px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Tecnicos</button>'
+            + (puedeCrear ? '<button onclick="App.modules.instalaciones.showForm()" style="padding:8px 18px;font-size:13px;font-weight:600;color:white;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(59,130,246,0.3);transition:all 0.15s" onmouseover="this.style.background=\'linear-gradient(135deg,#2563eb,#1d4ed8)\'" onmouseout="this.style.background=\'linear-gradient(135deg,#3b82f6,#2563eb)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nuevo</button>' : '')
+            + '</div></div></div>'
+
+            + '<div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px"></div>'
+            + '<div id="instCalendario"></div>';
         await this.loadData();
     },
 
@@ -47,28 +51,31 @@ App.registerModule('instalaciones', {
         const curso = this.instalaciones.filter(i => i.estado === 'EN_CURSO' || i.estado === 'EN_CAMINO').length;
         const comp = this.instalaciones.filter(i => i.estado === 'COMPLETADA').length;
         const nov = this.instalaciones.filter(i => i.estado === 'CON_NOVEDADES' || i.estado === 'CANCELADA').length;
-        document.getElementById('instStats').innerHTML = `
-            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Total</div>
-                <div style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">${total}</div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Programadas</div>
-                <div style="font-size:28px;font-weight:800;color:#3b82f6;line-height:1">${prog}</div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">En Curso</div>
-                <div style="font-size:28px;font-weight:800;color:#f59e0b;line-height:1">${curso}</div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #16a34a;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Completadas</div>
-                <div style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">${comp}</div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #dc2626;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Novedades</div>
-                <div style="font-size:28px;font-weight:800;color:#dc2626;line-height:1">${nov}</div>
-            </div>
-        `;
+        document.getElementById('instStats').innerHTML = ''
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 0ms both">'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Total</div></div>'
+            + '<div style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">' + total + '</div></div>'
+
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 60ms both">'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Programadas</div></div>'
+            + '<div style="font-size:28px;font-weight:800;color:#3b82f6;line-height:1">' + prog + '</div></div>'
+
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 120ms both">'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">En Curso</div></div>'
+            + '<div style="font-size:28px;font-weight:800;color:#f59e0b;line-height:1">' + curso + '</div></div>'
+
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #22c55e;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 180ms both">'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Completadas</div></div>'
+            + '<div style="font-size:28px;font-weight:800;color:#22c55e;line-height:1">' + comp + '</div></div>'
+
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 240ms both">'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Novedades</div></div>'
+            + '<div style="font-size:28px;font-weight:800;color:#ef4444;line-height:1">' + nov + '</div></div>';
     },
 
     renderCalendario() {
