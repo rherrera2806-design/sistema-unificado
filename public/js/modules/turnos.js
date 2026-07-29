@@ -426,7 +426,7 @@ App.registerModule('turnos', {
             if (!Array.isArray(adjuntos) || adjuntos.length === 0) { App.showAlert('No hay archivos adjuntos'); return; }
             const html = adjuntos.map(a => `
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border)">
-                    <span style="font-size:13px">📄 ${escapeHtml(a.nombre)}</span>
+                    <span style="font-size:13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${escapeHtml(a.nombre)}</span>
                     <a href="/api/turnos/adjunto/${a.id}" target="_blank" class="btn btn-sm btn-outline" style="padding:4px 10px;font-size:11px;color:var(--info);border-color:var(--info)">Ver PDF</a>
                 </div>
             `).join('');
@@ -628,7 +628,7 @@ App.registerModule('turnos', {
         this.cerrarModalCargado();
         App.showAlert('Marcado como cargado');
         this.almCargar();
-        btn.disabled = false; btn.textContent = '📦 CONFIRMAR CARGADO';
+        btn.disabled = false; btn.textContent = 'CONFIRMAR CARGADO';
     },
 
     async marcarCargado(entregaId) {
