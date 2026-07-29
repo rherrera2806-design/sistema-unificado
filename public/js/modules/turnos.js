@@ -17,31 +17,36 @@ App.registerModule('turnos', {
     renderMenu() {
         this.currentView = 'menu';
         this.stopPolling();
-        document.getElementById('turnosContent').innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2>Turnos QR</h2>
-                    <div class="subtitle">Selecciona un modulo</div>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr;gap:12px">
-                <div class="stat-card" style="cursor:pointer;flex-direction:column;text-align:center;padding:20px" onclick="App.modules.turnos.showRecepcion()">
-                    <div style="font-size:36px;margin-bottom:8px">&#128203;</div>
-                    <h3 style="font-size:16px;font-weight:700;margin-bottom:4px">Recepcion y Control de Turnos</h3>
-                    <p style="font-size:12px;color:var(--text-light)">Gestionar cola, llamar siguiente, ver historial</p>
-                </div>
-                <div class="stat-card" style="cursor:pointer;flex-direction:column;text-align:center;padding:20px" onclick="App.modules.turnos.showBodega()">
-                    <div style="font-size:36px;margin-bottom:8px">&#128230;</div>
-                    <h3 style="font-size:16px;font-weight:700;margin-bottom:4px">Entrega de Bodega</h3>
-                    <p style="font-size:12px;color:var(--text-light)">Ver pendientes y marcar entregas realizadas</p>
-                </div>
-                <div class="stat-card" style="cursor:pointer;flex-direction:column;text-align:center;padding:20px" onclick="App.modules.turnos.showQR()">
-                    <div style="font-size:36px;margin-bottom:8px">&#128186;</div>
-                    <h3 style="font-size:16px;font-weight:700;margin-bottom:4px">QR Clientes</h3>
-                    <p style="font-size:12px;color:var(--text-light)">Codigo QR para que los clientes tomen turno</p>
-                </div>
-            </div>
-        `;
+        document.getElementById('turnosContent').innerHTML = '<style>'
+            + '@keyframes tFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.tmenu-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.tmenu-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Atencion al Cliente</h2>'
+            + '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Turnos, bodega y facturacion</p></div></div>'
+
+            + '<div style="display:grid;grid-template-columns:1fr;gap:14px">'
+            + '<div class="tmenu-card" style="cursor:pointer;background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:tFadeUp 0.5s ease 0ms both;display:flex;align-items:center;gap:16px" onclick="App.modules.turnos.showRecepcion()">'
+            + '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Recepcion y Control de Turnos</h3>'
+            + '<p style="margin:3px 0 0;font-size:12px;color:#64748b">Gestionar cola, llamar siguiente, ver historial</p></div>'
+            + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="margin-left:auto;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg></div>'
+
+            + '<div class="tmenu-card" style="cursor:pointer;background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:tFadeUp 0.5s ease 80ms both;display:flex;align-items:center;gap:16px" onclick="App.modules.turnos.showBodega()">'
+            + '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Entrega de Bodega</h3>'
+            + '<p style="margin:3px 0 0;font-size:12px;color:#64748b">Verificar stock y derivar a almacen</p></div>'
+            + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="margin-left:auto;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg></div>'
+
+            + '<div class="tmenu-card" style="cursor:pointer;background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:tFadeUp 0.5s ease 160ms both;display:flex;align-items:center;gap:16px" onclick="App.modules.turnos.showQR()">'
+            + '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="4" height="4"/><line x1="22" y1="14" x2="22" y2="22"/><line x1="14" y1="22" x2="22" y2="22"/></svg></div>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">QR Clientes</h3>'
+            + '<p style="margin:3px 0 0;font-size:12px;color:#64748b">Codigo QR para que los clientes tomen turno</p></div>'
+            + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="margin-left:auto;flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg></div>'
+            + '</div>';
     },
 
     stopPolling() { if (this.interval) { clearInterval(this.interval); this.interval = null; } },
@@ -56,68 +61,66 @@ App.registerModule('turnos', {
         this.currentView = 'recepcion';
         this.stopPolling();
         const c = document.getElementById('turnosContent');
-        c.innerHTML = `
-            <div style="margin-bottom:24px">
-                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Recepcion y Control de Turnos</h2>
-                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Gestion de cola de espera</p>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
-                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Turno Actual</div>
-                    <div id="tRActual" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">-</div>
-                </div>
-                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">En Cola</div>
-                    <div id="tRCola" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">0</div>
-                </div>
-                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #16a34a;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Atendidos</div>
-                    <div id="tRAtendidos" style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">0</div>
-                </div>
-                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f97316;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Pend. Bodega</div>
-                    <div id="tRPendBodega" style="font-size:28px;font-weight:800;color:#f97316;line-height:1">0</div>
-                </div>
-            </div>
-            <div id="tRActualBox" style="text-align:center;margin-bottom:24px;padding:28px 20px;background:white;border:2px solid #f59e0b;border-radius:14px;box-shadow:0 2px 8px rgba(245,158,11,0.1)">
-                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Turno Actual</div>
-                <div id="tRActualLarge" style="font-size:52px;font-weight:900;color:#1e293b;line-height:1">-</div>
-                <div id="tRActualNombre" style="color:#64748b;font-size:15px;margin-top:8px;font-weight:500">Sin turno</div>
-            </div>
-            <button onclick="App.modules.turnos.rLlamar()" id="tRBtnLlamar" style="width:100%;margin-bottom:8px;padding:14px;background:#16a34a;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase;letter-spacing:0.5px" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Llamar Siguiente</button>
-            <button onclick="App.modules.turnos.abrirModalDerivar()" id="tRBtnDerivar" style="width:100%;margin-bottom:20px;padding:14px;background:#3b82f6;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase;letter-spacing:0.5px;display:none" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Derivar a Verificacion de Bodega</button>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Cola de Espera</h3>
-                    <span id="tRColaBadge" style="font-size:12px;font-weight:700;color:white;background:#3b82f6;padding:3px 10px;border-radius:20px">0</span>
-                </div>
-                <div id="tRColaList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay personas en cola</div></div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Historial del Dia</h3>
-                    <span id="tRHistBadge" style="font-size:12px;font-weight:700;color:white;background:#64748b;padding:3px 10px;border-radius:20px">0</span>
-                </div>
-                <div id="tRHistList" style="max-height:420px;overflow-y:auto"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin registros</div></div>
-            </div>
-            <div id="tModalDerivar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">
-                <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
-                    <h3 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#1e293b">Derivar a Verificacion de Bodega</h3>
-                    <p style="font-size:13px;color:#64748b;margin:0 0 16px">Turno: <span id="tMdTurno" style="color:#1e40af;font-weight:900"></span> - <span id="tMdNombre" style="font-weight:600;color:#1e293b"></span></p>
-                    <input id="tMdPedidos" type="text" placeholder="Numero de pedido(s)" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
-                    <div style="margin-top:12px">
-                        <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:500">Adjuntar PDFs (opcional)</label>
-                        <input id="tMdFiles" type="file" accept=".pdf" multiple style="font-size:12px;width:100%">
-                        <div id="tMdFilesList" style="font-size:11px;color:#94a3b8;margin-top:4px"></div>
-                    </div>
-                    <p id="tMdError" style="color:#dc2626;font-size:12px;display:none;margin-top:8px"></p>
-                    <div style="display:flex;gap:8px;margin-top:16px">
-                        <button onclick="App.modules.turnos.cerrarModalDerivar()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>
-                        <button onclick="App.modules.turnos.rDerivar()" id="tMdBtn" style="flex:2;background:#3b82f6;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Derivar</button>
-                    </div>
-                </div>
-            </div>
-        `;
+        c.innerHTML = '<style>'
+            + '@keyframes tFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.t-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.t-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
+            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
+            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Recepcion y Control de Turnos</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestion de cola de espera</p></div>'
+            + '</div></div>'
+
+            + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">'
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Turno Actual</div>'
+            + '<div id="tRActual" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">-</div></div>'
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">En Cola</div>'
+            + '<div id="tRCola" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">0</div></div>'
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #22c55e;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Atendidos</div>'
+            + '<div id="tRAtendidos" style="font-size:28px;font-weight:800;color:#22c55e;line-height:1">0</div></div>'
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f97316;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Pend. Bodega</div>'
+            + '<div id="tRPendBodega" style="font-size:28px;font-weight:800;color:#f97316;line-height:1">0</div></div></div>'
+
+            + '<div id="tRActualBox" style="text-align:center;margin-bottom:20px;padding:28px 20px;background:white;border:2px solid #f59e0b;border-radius:14px;box-shadow:0 2px 8px rgba(245,158,11,0.08)">'
+            + '<div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Turno Actual</div>'
+            + '<div id="tRActualLarge" style="font-size:52px;font-weight:900;color:#1e293b;line-height:1">-</div>'
+            + '<div id="tRActualNombre" style="color:#64748b;font-size:15px;margin-top:8px;font-weight:500">Sin turno</div></div>'
+
+            + '<button onclick="App.modules.turnos.rLlamar()" id="tRBtnLlamar" style="width:100%;margin-bottom:8px;padding:14px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(34,197,94,0.3)" onmouseover="this.style.background=\'linear-gradient(135deg,#16a34a,#15803d)\'" onmouseout="this.style.background=\'linear-gradient(135deg,#22c55e,#16a34a)\'">Llamar Siguiente</button>'
+            + '<button onclick="App.modules.turnos.abrirModalDerivar()" id="tRBtnDerivar" style="width:100%;margin-bottom:20px;padding:14px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.5px;display:none;box-shadow:0 2px 8px rgba(59,130,246,0.3)" onmouseover="this.style.background=\'linear-gradient(135deg,#2563eb,#1d4ed8)\'" onmouseout="this.style.background=\'linear-gradient(135deg,#3b82f6,#2563eb)\'">Derivar a Verificacion de Bodega</button>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Cola de Espera</h3>'
+            + '<span id="tRColaBadge" style="font-size:12px;font-weight:700;color:white;background:#3b82f6;padding:3px 10px;border-radius:20px">0</span></div>'
+            + '<div id="tRColaList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay personas en cola</div></div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Historial del Dia</h3>'
+            + '<span id="tRHistBadge" style="font-size:12px;font-weight:700;color:white;background:#64748b;padding:3px 10px;border-radius:20px">0</span></div>'
+            + '<div id="tRHistList" style="max-height:420px;overflow-y:auto"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin registros</div></div></div>'
+
+            + '<div id="tModalDerivar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">'
+            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">'
+            + '<h3 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#1e293b">Derivar a Verificacion de Bodega</h3>'
+            + '<p style="font-size:13px;color:#64748b;margin:0 0 16px">Turno: <span id="tMdTurno" style="color:#1e40af;font-weight:900"></span> - <span id="tMdNombre" style="font-weight:600;color:#1e293b"></span></p>'
+            + '<input id="tMdPedidos" type="text" placeholder="Numero de pedido(s)" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">'
+            + '<div style="margin-top:12px"><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:500">Adjuntar PDFs (opcional)</label>'
+            + '<input id="tMdFiles" type="file" accept=".pdf" multiple style="font-size:12px;width:100%">'
+            + '<div id="tMdFilesList" style="font-size:11px;color:#94a3b8;margin-top:4px"></div></div>'
+            + '<p id="tMdError" style="color:#dc2626;font-size:12px;display:none;margin-top:8px"></p>'
+            + '<div style="display:flex;gap:8px;margin-top:16px">'
+            + '<button onclick="App.modules.turnos.cerrarModalDerivar()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>'
+            + '<button onclick="App.modules.turnos.rDerivar()" id="tMdBtn" style="flex:2;background:#3b82f6;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Derivar</button></div></div></div>';
         await this.rCargar();
         this.interval = setInterval(() => this.rCargar(), 15000);
     },
@@ -258,72 +261,60 @@ App.registerModule('turnos', {
         this.currentView = 'bodega';
         this.stopPolling();
         const c = document.getElementById('turnosContent');
-        c.innerHTML = `
-            <div style="margin-bottom:24px">
-                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Verificacion Bodega</h2>
-                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Verificar stock y derivar a almacen</p>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer" onclick="App.modules.turnos.toggleFormBodega()">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Registrar Entrega</h3>
-                    <span id="tBFormArrow" style="color:#94a3b8;font-size:12px;transition:transform 0.2s">&#9660;</span>
-                </div>
-                <div id="tBFormBody" style="display:none;padding:0 20px 20px;border-top:1px solid #f1f5f9">
-                    <div style="margin-top:16px">
-                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Tipo</label>
-                        <select id="tBTipo" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
-                            <option value="Retira sin turno">Retira sin turno</option><option value="Despacho">Despacho</option>
-                        </select>
-                    </div>
-                    <div style="margin-top:12px">
-                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Nombre del cliente</label>
-                        <input id="tBNombre" type="text" placeholder="Nombre completo" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
-                    </div>
-                    <div style="margin-top:12px">
-                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Pedido(s)</label>
-                        <input id="tBPedidos" type="text" placeholder="Numero de pedido(s)" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
-                    </div>
-                    <div style="margin-top:12px">
-                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Descripcion (opcional)</label>
-                        <input id="tBDesc" type="text" placeholder="Descripcion breve" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">
-                    </div>
-                    <button onclick="App.modules.turnos.bRegistrar()" style="width:100%;margin-top:16px;padding:12px;background:#16a34a;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Registrar</button>
-                    <p id="tBError" style="color:#dc2626;font-size:12px;margin-top:8px;display:none"></p>
-                </div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Pendientes de Verificacion</h3>
-                    <span id="tBPendBadge" style="font-size:12px;font-weight:700;color:white;background:#f59e0b;padding:3px 10px;border-radius:20px">0</span>
-                </div>
-                <div id="tBPendList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay entregas pendientes</div></div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Verificados Hoy</h3>
-                    <span id="tBEntregBadge" style="font-size:12px;font-weight:700;color:white;background:#16a34a;padding:3px 10px;border-radius:20px">0</span>
-                </div>
-                <div id="tBEntregList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin verificaciones hoy</div></div>
-            </div>
-            <div id="tModalVerificar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">
-                <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
-                    <h3 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#1e293b">Verificar y Derivar a Almacen</h3>
-                    <p style="font-size:13px;color:#64748b;margin:0 0 16px">Selecciona el tecnico de almacen que atendera.</p>
-                    <div style="margin-bottom:12px">
-                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Encargado de Atencion y Carga</label>
-                        <select id="tVerTecnico" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box"></select>
-                    </div>
-                    <div style="margin-bottom:16px">
-                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Observaciones</label>
-                        <textarea id="tVerObs" rows="2" placeholder="Observaciones opcionales" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box;resize:vertical"></textarea>
-                    </div>
-                    <div style="display:flex;gap:8px">
-                        <button onclick="App.modules.turnos.cerrarModalVerificar()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>
-                        <button onclick="App.modules.turnos.confirmarVerificar()" id="tVerBtn" style="flex:2;background:#16a34a;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Verificar</button>
-                    </div>
-                </div>
-            </div>
-        `;
+        c.innerHTML = '<style>'
+            + '@keyframes tFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.t-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.t-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(34,197,94,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
+            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
+            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Verificacion Bodega</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Verificar stock y derivar a almacen</p></div>'
+            + '</div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer" onclick="App.modules.turnos.toggleFormBodega()">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Registrar Entrega</h3>'
+            + '<span id="tBFormArrow" style="color:#94a3b8;font-size:12px;transition:transform 0.2s">&#9660;</span></div>'
+            + '<div id="tBFormBody" style="display:none;padding:0 20px 20px;border-top:1px solid #f1f5f9">'
+            + '<div style="margin-top:16px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Tipo</label>'
+            + '<select id="tBTipo" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box">'
+            + '<option value="Retira sin turno">Retira sin turno</option><option value="Despacho">Despacho</option></select></div>'
+            + '<div style="margin-top:12px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Nombre del cliente</label>'
+            + '<input id="tBNombre" type="text" placeholder="Nombre completo" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box"></div>'
+            + '<div style="margin-top:12px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Pedido(s)</label>'
+            + '<input id="tBPedidos" type="text" placeholder="Numero de pedido(s)" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box"></div>'
+            + '<div style="margin-top:12px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Descripcion (opcional)</label>'
+            + '<input id="tBDesc" type="text" placeholder="Descripcion breve" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box"></div>'
+            + '<button onclick="App.modules.turnos.bRegistrar()" style="width:100%;margin-top:16px;padding:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase" onmouseover="this.style.background=\'#15803d\'" onmouseout="this.style.background=\'linear-gradient(135deg,#22c55e,#16a34a)\'">Registrar</button>'
+            + '<p id="tBError" style="color:#dc2626;font-size:12px;margin-top:8px;display:none"></p></div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Pendientes de Verificacion</h3>'
+            + '<span id="tBPendBadge" style="font-size:12px;font-weight:700;color:white;background:#f59e0b;padding:3px 10px;border-radius:20px">0</span></div>'
+            + '<div id="tBPendList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay entregas pendientes</div></div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Verificados Hoy</h3>'
+            + '<span id="tBEntregBadge" style="font-size:12px;font-weight:700;color:white;background:#22c55e;padding:3px 10px;border-radius:20px">0</span></div>'
+            + '<div id="tBEntregList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin verificaciones hoy</div></div></div>'
+
+            + '<div id="tModalVerificar" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">'
+            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">'
+            + '<h3 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#1e293b">Verificar y Derivar a Almacen</h3>'
+            + '<p style="font-size:13px;color:#64748b;margin:0 0 16px">Selecciona el tecnico de almacen que atendera.</p>'
+            + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Encargado de Atencion y Carga</label>'
+            + '<select id="tVerTecnico" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box"></select></div>'
+            + '<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Observaciones</label>'
+            + '<textarea id="tVerObs" rows="2" placeholder="Observaciones opcionales" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box;resize:vertical"></textarea></div>'
+            + '<div style="display:flex;gap:8px">'
+            + '<button onclick="App.modules.turnos.cerrarModalVerificar()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>'
+            + '<button onclick="App.modules.turnos.confirmarVerificar()" id="tVerBtn" style="flex:2;background:#16a34a;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Verificar</button></div></div></div>';
         await this.bCargar();
         this.interval = setInterval(() => this.bCargar(), 15000);
     },
@@ -457,23 +448,32 @@ App.registerModule('turnos', {
         const c = document.getElementById('turnosContent');
         const baseUrl = window.location.origin;
         const registroUrl = baseUrl + '/turnos/?view=registro';
-        c.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2>QR Clientes</h2>
-                    <div class="subtitle">Codigo QR para que los clientes tomen turno</div>
-                </div>
-            </div>
-            <div class="card" style="text-align:center;margin-bottom:16px;padding:24px">
-                <h3 style="font-size:14px;font-weight:600;margin-bottom:16px">Escanea para tomar turno</h3>
-                <div id="tQRImg" style="background:white;padding:16px;border-radius:12px;display:inline-block;border:1px solid var(--border)"></div>
-                <p id="tQRUrl" style="color:var(--text-light);font-size:11px;word-break:break-all;margin-top:12px">${registroUrl}</p>
-            </div>
-            <div class="stats-grid" style="grid-template-columns:1fr 1fr">
-                <div class="stat-card"><div class="stat-icon blue">&#128202;</div><div class="stat-info"><h4 id="tQRTotal">0</h4><p>Total hoy</p></div></div>
-                <div class="stat-card"><div class="stat-icon orange">&#9203;</div><div class="stat-info"><h4 id="tQRCola">0</h4><p>En espera</p></div></div>
-            </div>
-        `;
+        c.innerHTML = '<style>'
+            + '@keyframes tFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.t-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.t-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(245,158,11,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
+            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
+            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">QR Clientes</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Codigo QR para que los clientes tomen turno</p></div>'
+            + '</div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;text-align:center;margin-bottom:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<h3 style="font-size:14px;font-weight:700;margin:0 0 16px;color:#1e293b">Escanea para tomar turno</h3>'
+            + '<div id="tQRImg" style="background:white;padding:16px;border-radius:12px;display:inline-block;border:1px solid #e2e8f0"></div>'
+            + '<p id="tQRUrl" style="color:#94a3b8;font-size:11px;word-break:break-all;margin-top:12px">' + registroUrl + '</p></div>'
+
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Total hoy</div>'
+            + '<div id="tQRTotal" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">0</div></div>'
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">En espera</div>'
+            + '<div id="tQRCola" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">0</div></div></div>';
         this.generateQR(registroUrl);
         this.qrCargar();
         this.interval = setInterval(() => this.qrCargar(), 15000);
@@ -506,53 +506,51 @@ App.registerModule('turnos', {
         const c = document.getElementById('turnosContent');
         let tecnicos = [];
         try { tecnicos = await fetch('/api/turnos/tecnicos-almacen').then(r => r.json()); } catch(e) {}
-        c.innerHTML = `
-            <div style="margin-bottom:24px">
-                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Almacen</h2>
-                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Carga de productos y picking</p>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer" onclick="App.modules.turnos.toggleFormTecAlm()">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Encargados de Atencion y Carga</h3>
-                    <span id="tTecAlmArrow" style="color:#94a3b8;font-size:12px;transition:transform 0.2s">&#9660;</span>
-                </div>
-                <div id="tTecAlmBody" style="display:none;padding:0 20px 20px;border-top:1px solid #f1f5f9">
-                    <div style="display:flex;gap:8px;margin-top:16px">
-                        <input id="tTecAlmNombre" type="text" placeholder="Nombre del encargado" style="flex:1;font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px">
-                        <button onclick="App.modules.turnos.addTecnicoAlm()" style="padding:10px 18px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Agregar</button>
-                    </div>
-                    <div id="tTecAlmList" style="margin-top:12px">${tecnicos.length === 0 ? '<div style="color:#94a3b8;font-size:12px;padding:8px">Sin encargados registrados</div>' : tecnicos.map(t => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f1f5f9"><span style="font-size:13px;color:#1e293b">${escapeHtml(t.nombre)}</span><button onclick="App.modules.turnos.delTecnicoAlm(${t.id})" style="background:white;color:#dc2626;border:1px solid #fecaca;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'">&#10005;</button></div>`).join('')}</div>
-                </div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Pendientes de Carga</h3>
-                    <span id="tAlmPendBadge" style="font-size:12px;font-weight:700;color:white;background:#f59e0b;padding:3px 10px;border-radius:20px">0</span>
-                </div>
-                <div id="tAlmPendList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay pendientes</div></div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Cargados Hoy</h3>
-                    <span id="tAlmDoneBadge" style="font-size:12px;font-weight:700;color:white;background:#16a34a;padding:3px 10px;border-radius:20px">0</span>
-                </div>
-                <div id="tAlmDoneList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin cargados hoy</div></div>
-            </div>
-            <div id="tModalCargado" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">
-                <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
-                    <h3 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#1e293b">Marcar como Cargado</h3>
-                    <p style="font-size:13px;color:#64748b;margin:0 0 16px">Agrega una observacion antes de enviar a Por Facturar.</p>
-                    <div style="margin-bottom:16px">
-                        <label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Observacion (opcional)</label>
-                        <textarea id="tCargadoObs" rows="3" placeholder="Ej: Productos completos, falta item X, etc." style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box;resize:vertical"></textarea>
-                    </div>
-                    <div style="display:flex;gap:8px">
-                        <button onclick="App.modules.turnos.cerrarModalCargado()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>
-                        <button onclick="App.modules.turnos.confirmarCargado()" id="tCargadoBtn" style="flex:2;background:#16a34a;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Confirmar Cargado</button>
-                    </div>
-                </div>
-            </div>
-        `;
+        c.innerHTML = '<style>'
+            + '@keyframes tFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.t-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.t-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(245,158,11,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
+            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
+            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Almacen</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Carga de productos y picking</p></div>'
+            + '</div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer" onclick="App.modules.turnos.toggleFormTecAlm()">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Encargados de Atencion y Carga</h3>'
+            + '<span id="tTecAlmArrow" style="color:#94a3b8;font-size:12px;transition:transform 0.2s">&#9660;</span></div>'
+            + '<div id="tTecAlmBody" style="display:none;padding:0 20px 20px;border-top:1px solid #f1f5f9">'
+            + '<div style="display:flex;gap:8px;margin-top:16px">'
+            + '<input id="tTecAlmNombre" type="text" placeholder="Nombre del encargado" style="flex:1;font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px">'
+            + '<button onclick="App.modules.turnos.addTecnicoAlm()" style="padding:10px 18px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'#1d4ed8\'" onmouseout="this.style.background=\'linear-gradient(135deg,#3b82f6,#2563eb)\'">Agregar</button></div>'
+            + '<div id="tTecAlmList" style="margin-top:12px">' + (tecnicos.length === 0 ? '<div style="color:#94a3b8;font-size:12px;padding:8px">Sin encargados registrados</div>' : tecnicos.map(function(t) { return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f1f5f9"><span style="font-size:13px;color:#1e293b">' + escapeHtml(t.nombre) + '</span><button onclick="App.modules.turnos.delTecnicoAlm(' + t.id + ')" style="background:white;color:#dc2626;border:1px solid #fecaca;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'">&#10005;</button></div>'; }).join('')) + '</div></div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Pendientes de Carga</h3>'
+            + '<span id="tAlmPendBadge" style="font-size:12px;font-weight:700;color:white;background:#f59e0b;padding:3px 10px;border-radius:20px">0</span></div>'
+            + '<div id="tAlmPendList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay pendientes</div></div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Cargados Hoy</h3>'
+            + '<span id="tAlmDoneBadge" style="font-size:12px;font-weight:700;color:white;background:#22c55e;padding:3px 10px;border-radius:20px">0</span></div>'
+            + '<div id="tAlmDoneList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin cargados hoy</div></div></div>'
+
+            + '<div id="tModalCargado" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px)">'
+            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">'
+            + '<h3 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#1e293b">Marcar como Cargado</h3>'
+            + '<p style="font-size:13px;color:#64748b;margin:0 0 16px">Agrega una observacion antes de enviar a Por Facturar.</p>'
+            + '<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Observacion (opcional)</label>'
+            + '<textarea id="tCargadoObs" rows="3" placeholder="Ej: Productos completos, falta item X, etc." style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box;resize:vertical"></textarea></div>'
+            + '<div style="display:flex;gap:8px">'
+            + '<button onclick="App.modules.turnos.cerrarModalCargado()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>'
+            + '<button onclick="App.modules.turnos.confirmarCargado()" id="tCargadoBtn" style="flex:2;background:#16a34a;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Confirmar Cargado</button></div></div></div>';
         await this.almCargar();
         this.interval = setInterval(() => this.almCargar(), 15000);
     },
@@ -657,26 +655,31 @@ App.registerModule('turnos', {
         this.currentView = 'facturar';
         this.stopPolling();
         const c = document.getElementById('turnosContent');
-        c.innerHTML = `
-            <div style="margin-bottom:24px">
-                <h2 style="margin:0;font-size:22px;font-weight:700;color:#1e293b">Por Facturar</h2>
-                <p style="margin:4px 0 0;font-size:13px;color:#64748b">Ingresar numero y monto de factura</p>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Pendientes de Facturar</h3>
-                    <span id="tFacPendBadge" style="font-size:12px;font-weight:700;color:white;background:#f59e0b;padding:3px 10px;border-radius:20px">0</span>
-                </div>
-                <div id="tFacPendList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay pendientes</div></div>
-            </div>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
-                    <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Facturados Hoy</h3>
-                    <span id="tFacDoneBadge" style="font-size:12px;font-weight:700;color:white;background:#16a34a;padding:3px 10px;border-radius:20px">0</span>
-                </div>
-                <div id="tFacDoneList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin facturados hoy</div></div>
-            </div>
-        `;
+        c.innerHTML = '<style>'
+            + '@keyframes tFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.t-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.t-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(124,58,237,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
+            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
+            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Por Facturar</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Ingresar numero y monto de factura</p></div>'
+            + '</div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Pendientes de Facturar</h3>'
+            + '<span id="tFacPendBadge" style="font-size:12px;font-weight:700;color:white;background:#f59e0b;padding:3px 10px;border-radius:20px">0</span></div>'
+            + '<div id="tFacPendList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay pendientes</div></div></div>'
+
+            + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
+            + '<h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0">Facturados Hoy</h3>'
+            + '<span id="tFacDoneBadge" style="font-size:12px;font-weight:700;color:white;background:#22c55e;padding:3px 10px;border-radius:20px">0</span></div>'
+            + '<div id="tFacDoneList"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">Sin facturados hoy</div></div></div>';
         await this.facCargar();
         this.interval = setInterval(() => this.facCargar(), 15000);
     },

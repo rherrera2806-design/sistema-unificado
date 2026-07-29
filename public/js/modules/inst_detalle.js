@@ -39,96 +39,107 @@ App.registerModule('inst_detalle', {
         const estadoColor = { 'PROGRAMADA': '#3b82f6', 'EN_CAMINO': '#f59e0b', 'EN_CURSO': '#f59e0b', 'COMPLETADA': '#22c55e', 'CON_NOVEDADES': '#ef4444', 'CANCELADA': '#94a3b8' };
         const color = estadoColor[inst.estado] || '#3b82f6';
         const fecha = inst.fecha_programada ? inst.fecha_programada.substring(0, 10) : '-';
-        el.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-                <div style="display:flex;align-items:center;gap:12px">
-                    <button class="btn btn-sm btn-outline" onclick="App.loadModule('instalaciones')">← Volver</button>
-                    <h2 style="margin:0">Instalacion #${inst.id}</h2>
-                    <span style="background:${color};color:#fff;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600">${inst.estado}</span>
-                </div>
-                <div style="display:flex;gap:8px">
-                    ${(() => { const user = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = user.permisos || []; return (p.includes('instalaciones.eliminar') || p.includes('usuarios')) ?
-                        `<button class="btn btn-sm btn-primary" onclick="App.modules.inst_detalle.editarInstalacion(${inst.id})">✏️ Editar</button>
-                        <button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444" onclick="App.modules.inst_detalle.eliminarInstalacion(${inst.id})">🗑️ Eliminar</button>` : ''; })()}
-                    ${inst.estado === 'PROGRAMADA' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.inst_detalle.cambiarEstado(${inst.id},'EN_CAMINO')">🚗 En Camino</button>` : ''}
-                    ${inst.estado === 'EN_CAMINO' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.inst_detalle.cambiarEstado(${inst.id},'EN_CURSO')">⚙ En Curso</button>` : ''}
-                    ${inst.estado === 'EN_CURSO' ? `<button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="App.modules.inst_detalle.showCerrar(${inst.id})">✓ Completar</button>` : ''}
-                    ${inst.estado === 'EN_CURSO' ? `<button class="btn btn-sm" style="background:#ef4444;color:#fff" onclick="App.modules.inst_detalle.showNovedad(${inst.id})">⚠ Novedad</button>` : ''}
-                    ${inst.estado === 'CON_NOVEDADES' ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="App.modules.inst_detalle.cambiarEstado(${inst.id},'EN_CURSO')">↩ Reanudar</button>` : ''}
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-                <div class="card"><div class="card-body">
-                    <h3 style="margin:0 0 12px;font-size:16px">Informacion</h3>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
-                        <div><strong>Cliente:</strong> ${escapeHtml(inst.cliente)}</div>
-                        <div><strong>Tecnico:</strong> ${escapeHtml(inst.tecnico || '-')}</div>
-                        <div><strong>Vendedor:</strong> ${escapeHtml(inst.vendedor || '-')}</div>
-                        <div><strong>Orden:</strong> ${escapeHtml(inst.numero_orden || '-')}</div>
-                        <div><strong>Fecha:</strong> ${fecha} ${inst.hora_programada || ''}</div>
-                        <div style="grid-column:1/-1"><strong>Direccion:</strong> ${escapeHtml(inst.direccion)}
-                            ${(() => { const user = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = user.permisos || []; return (p.includes('instalaciones.nueva') || p.includes('usuarios')) ?
-                            `<span style="margin-left:8px;display:inline-flex;gap:4px;vertical-align:middle">
-                                <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inst.direccion)}" target="_blank" title="Google Maps" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534;text-decoration:none;border:1px solid #bbf7d0;transition:background .15s" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'">📍 Maps</a>
-                                <a href="https://www.waze.com/ul?q=${encodeURIComponent(inst.direccion)}" target="_blank" title="Waze" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af;text-decoration:none;border:1px solid #bfdbfe;transition:background .15s" onmouseover="this.style.background='#bfdbfe'" onmouseout="this.style.background='#dbeafe'">🚗 Waze</a>
-                            </span>` : ''; })()}
-                        </div>
-                        <div><strong>Fecha:</strong> ${fecha} ${inst.hora_programada || ''}</div>
-                        <div style="grid-column:1/-1"><strong>Descripcion:</strong> ${escapeHtml(inst.descripcion || '-')}</div>
-                        <div style="grid-column:1/-1"><strong>Notas Previas:</strong> ${escapeHtml(inst.notas_previas || '-')}</div>
-                        ${inst.notas_cierre ? `<div style="grid-column:1/-1"><strong>Notas Cierre:</strong> ${escapeHtml(inst.notas_cierre)}</div>` : ''}
-                        ${(() => {
-                            if (!inst.firma_cliente) return '';
-                            try {
-                                const f = JSON.parse(inst.firma_cliente);
-                                return `<div style="grid-column:1/-1"><strong>Firma Cliente:</strong> ${escapeHtml(f.nombre || '')}
-                                    <div style="margin-top:6px"><img src="${f.firma}" style="max-width:280px;border:1px solid var(--border);border-radius:6px;background:#fff;padding:4px"></div>
-                                </div>`;
-                            } catch(e) {
-                                return `<div style="grid-column:1/-1"><strong>Firma Cliente:</strong> ${escapeHtml(inst.firma_cliente)}</div>`;
-                            }
-                        })()}
-                        <div><strong>Creado por:</strong> ${escapeHtml(inst.creado_por || '-')}</div>
-                        <div><strong>Cerrado por:</strong> ${escapeHtml(inst.cerrado_por || '-')}</div>
-                    </div>
-                </div></div>
-                <div class="card"><div class="card-body">
-                    <h3 style="margin:0 0 12px;font-size:16px">Historial</h3>
-                    <div style="max-height:300px;overflow-y:auto">
-                        ${this.historial.length === 0 ? '<div style="color:var(--text-light);font-size:13px">Sin registros</div>' : this.historial.map(h => `
-                            <div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
-                                <span style="color:var(--text-light);min-width:130px">${h.created_at ? new Date(h.created_at).toLocaleString('es-CL') : '-'}</span>
-                                <span style="font-weight:600;min-width:100px">${h.accion}</span>
-                                <span style="flex:1">${escapeHtml(h.detalle || '')}</span>
-                                <span style="color:var(--text-light)">${escapeHtml(h.usuario_nombre || h.usuario)}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div></div>
-            </div>
-            <div class="card" style="margin-top:16px"><div class="card-body">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-                    <h3 style="margin:0;font-size:16px">Fotografias (${this.fotos.length})</h3>
-                    ${inst.estado === 'EN_CURSO' || inst.estado === 'COMPLETADA' || inst.estado === 'CON_NOVEDADES' ? `
-                        <div style="display:flex;gap:8px;align-items:center">
-                            <input type="file" id="instDetFotoInput" accept="image/*" multiple style="font-size:13px">
-                            <button class="btn btn-sm btn-primary" onclick="App.modules.inst_detalle.subirFotos(${inst.id})">Subir</button>
-                        </div>
-                    ` : ''}
-                </div>
-                ${this.fotos.length > 0 ? `
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        ${this.fotos.map(f => `
-                            <div style="position:relative;display:inline-block">
-                                <img src="/api/instalaciones/${inst.id}/foto/${f.id}" style="width:140px;height:105px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="App.modules.inst_detalle.verFoto(${inst.id},${f.id})" title="${escapeHtml(f.descripcion || '')}">
-                                ${(() => { const user = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = user.permisos || []; return (p.includes('instalaciones.eliminar') || p.includes('usuarios')) ?
-                                `<button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(${inst.id},${f.id})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#ef4444;color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Eliminar">✕</button>` : ''; })()}
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : '<div style="color:var(--text-light);font-size:13px">Sin fotografias</div>'}
-            </div></div>
-        `;
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const p = user.permisos || [];
+        const canEdit = p.includes('instalaciones.eliminar') || p.includes('usuarios');
+
+        const badge = '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:' + color + '18;color:' + color + ';border:1px solid ' + color + '40">' + inst.estado + '</span>';
+
+        let actionBtns = '';
+        if (canEdit) {
+            actionBtns += '<button onclick="App.modules.inst_detalle.editarInstalacion(' + inst.id + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>';
+            actionBtns += '<button onclick="App.modules.inst_detalle.eliminarInstalacion(' + inst.id + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:#dc2626;background:white;border:1px solid #fecaca;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Eliminar</button>';
+        }
+        if (inst.estado === 'PROGRAMADA') actionBtns += '<button onclick="App.modules.inst_detalle.cambiarEstado(' + inst.id + ',\'EN_CAMINO\')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.3)">En Camino</button>';
+        if (inst.estado === 'EN_CAMINO') actionBtns += '<button onclick="App.modules.inst_detalle.cambiarEstado(' + inst.id + ',\'EN_CURSO\')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.3)">En Curso</button>';
+        if (inst.estado === 'EN_CURSO') actionBtns += '<button onclick="App.modules.inst_detalle.showCerrar(' + inst.id + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(34,197,94,0.3)">Completar</button>';
+        if (inst.estado === 'EN_CURSO') actionBtns += '<button onclick="App.modules.inst_detalle.showNovedad(' + inst.id + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:linear-gradient(135deg,#ef4444,#dc2626);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(239,68,68,0.3)">Novedad</button>';
+        if (inst.estado === 'CON_NOVEDADES') actionBtns += '<button onclick="App.modules.inst_detalle.cambiarEstado(' + inst.id + ',\'EN_CURSO\')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.3)">Reanudar</button>';
+
+        el.innerHTML = '<style>'
+            + '@keyframes detFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.det-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.det-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
+            + '.det-foto{transition:all 0.2s ease;cursor:pointer}'
+            + '.det-foto:hover{transform:scale(1.03);box-shadow:0 8px 20px rgba(0,0,0,0.15)!important}'
+            + '</style>'
+
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
+            + '<div style="display:flex;align-items:center;gap:16px">'
+            + '<button onclick="App.loadModule(\'instalaciones\')" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
+            + '<div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Instalacion #' + inst.id + '</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">' + escapeHtml(inst.cliente) + ' &middot; ' + escapeHtml(inst.direccion || '') + '</p></div>'
+            + '</div>'
+            + '<div style="display:flex;align-items:center;gap:10px">' + badge + actionBtns + '</div>'
+            + '</div></div>'
+
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">'
+
+            + '<div class="det-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:detFadeUp 0.5s ease 0ms both">'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e2e8f0">'
+            + '<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>'
+            + '<h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Informacion</h3></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px">'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Cliente</span><span style="font-weight:600;color:#0f172a">' + escapeHtml(inst.cliente) + '</span></div>'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Tecnico</span><span style="color:#475569">' + escapeHtml(inst.tecnico || '-') + '</span></div>'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Vendedor</span><span style="color:#475569">' + escapeHtml(inst.vendedor || '-') + '</span></div>'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Orden</span><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#475569">' + escapeHtml(inst.numero_orden || '-') + '</span></div>'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Fecha</span><span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#475569">' + fecha + ' ' + (inst.hora_programada || '') + '</span></div>'
+            + '<div style="grid-column:1/-1"><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Direccion</span><span style="color:#475569">' + escapeHtml(inst.direccion)
+            + (canEdit ? ' <a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(inst.direccion) + '" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:6px;font-size:11px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;text-decoration:none;margin-left:6px;transition:all 0.15s" onmouseover="this.style.background=\'#dcfce7\'" onmouseout="this.style.background=\'#f0fdf4\'"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Maps</a> <a href="https://www.waze.com/ul?q=' + encodeURIComponent(inst.direccion) + '" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:6px;font-size:11px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;text-decoration:none;transition:all 0.15s" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Waze</a>' : '')
+            + '</span></div>'
+            + '<div style="grid-column:1/-1"><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Descripcion</span><span style="color:#475569;line-height:1.5">' + escapeHtml(inst.descripcion || '-') + '</span></div>'
+            + '<div style="grid-column:1/-1"><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Notas Previas</span><span style="color:#475569">' + escapeHtml(inst.notas_previas || '-') + '</span></div>'
+            + (inst.notas_cierre ? '<div style="grid-column:1/-1"><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Notas Cierre</span><span style="color:#475569">' + escapeHtml(inst.notas_cierre) + '</span></div>' : '')
+            + (() => {
+                if (!inst.firma_cliente) return '';
+                try {
+                    const f = JSON.parse(inst.firma_cliente);
+                    return '<div style="grid-column:1/-1"><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Firma: ' + escapeHtml(f.nombre || '') + '</span><img src="' + f.firma + '" style="max-width:280px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:4px;margin-top:4px"></div>';
+                } catch(e) { return '<div style="grid-column:1/-1"><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Firma</span><span style="color:#475569">' + escapeHtml(inst.firma_cliente) + '</span></div>'; }
+            })()
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Creado por</span><span style="color:#475569">' + escapeHtml(inst.creado_por || '-') + '</span></div>'
+            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Cerrado por</span><span style="color:#475569">' + escapeHtml(inst.cerrado_por || '-') + '</span></div>'
+            + '</div></div>'
+
+            + '<div class="det-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:detFadeUp 0.5s ease 100ms both">'
+            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e2e8f0">'
+            + '<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>'
+            + '<h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Historial</h3></div>'
+            + '<div style="max-height:340px;overflow-y:auto">'
+            + (this.historial.length === 0
+                ? '<div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">Sin registros de actividad</div>'
+                : this.historial.map(h => '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:12px" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'transparent\'">'
+                    + '<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:#94a3b8;min-width:130px;flex-shrink:0">' + (h.created_at ? new Date(h.created_at).toLocaleString('es-CL') : '-') + '</span>'
+                    + '<span style="font-weight:600;color:#0f172a;min-width:100px;flex-shrink:0">' + h.accion + '</span>'
+                    + '<span style="flex:1;color:#475569">' + escapeHtml(h.detalle || '') + '</span>'
+                    + '<span style="color:#94a3b8;flex-shrink:0">' + escapeHtml(h.usuario_nombre || h.usuario) + '</span>'
+                    + '</div>').join('')
+            )
+            + '</div></div>'
+            + '</div>'
+
+            + '<div class="det-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:detFadeUp 0.5s ease 200ms both">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e2e8f0">'
+            + '<div style="display:flex;align-items:center;gap:10px">'
+            + '<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>'
+            + '<h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Fotografias (' + this.fotos.length + ')</h3></div>'
+            + ((inst.estado === 'EN_CURSO' || inst.estado === 'COMPLETADA' || inst.estado === 'CON_NOVEDADES')
+                ? '<div style="display:flex;gap:8px;align-items:center"><input type="file" id="instDetFotoInput" accept="image/*" multiple style="font-size:12px"><button onclick="App.modules.inst_detalle.subirFotos(' + inst.id + ')" style="padding:6px 14px;font-size:12px;font-weight:600;color:white;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(59,130,246,0.3)">Subir</button></div>'
+                : '')
+            + '</div>'
+            + (this.fotos.length > 0
+                ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'
+                + this.fotos.map(f => '<div class="det-foto" style="position:relative;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">'
+                    + '<img src="/api/instalaciones/' + inst.id + '/foto/' + f.id + '" style="width:100%;height:120px;object-fit:cover;display:block" onclick="App.modules.inst_detalle.verFoto(' + inst.id + ',' + f.id + ')" title="' + escapeHtml(f.descripcion || '') + '">'
+                    + (canEdit ? '<button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(' + inst.id + ',' + f.id + ')" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:rgba(239,68,68,0.9);color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.2)" title="Eliminar">&#10005;</button>' : '')
+                    + '</div>').join('')
+                + '</div>'
+                : '<div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">Sin fotografias</div>'
+            )
+            + '</div>';
     },
 
     async cambiarEstado(id, estado) {
