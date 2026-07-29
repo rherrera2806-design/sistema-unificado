@@ -21,17 +21,25 @@ ${puedeEditar ? `
                 </div>` : ''}
 </div></div>
 
-            <div class="card">
+<style>
+@keyframes prec_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.prec-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.prec-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.prec-row{transition:all 0.2s}
+.prec-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+
+            <div class="card prec-card">
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <h3 style="margin:0">Listado de Recetas</h3>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <select class="form-control" id="recFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_recetas.filter()">
+                        <select class="form-control" id="recFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_recetas.filter()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                             <option value="">Todos los grupos</option>
                         </select>
-                        <select class="form-control" id="recFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_recetas.filter()">
+                        <select class="form-control" id="recFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_recetas.filter()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                             <option value="">Todas las familias</option>
                         </select>
-                        <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar codigo..." oninput="App.modules.prod_recetas.filter()" style="width:200px;font-size:12px;padding:4px 8px">
+                        <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar codigo..." oninput="App.modules.prod_recetas.filter()" style="width:200px;font-size:12px;padding:4px 8px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     </div>
                 </div>
                 <div class="card-body" style="padding:0">
@@ -47,12 +55,12 @@ ${puedeEditar ? `
                 <div class="modal" style="max-width:500px">
                     <div class="modal-header"><h3 id="recModalTitle">Nueva Receta BOM</h3><button class="modal-close" onclick="App.modules.prod_recetas.hideCreateModal()">&times;</button></div>
                     <div class="modal-body">
-                        <div class="form-group"><label>Codigo SAP Padre *</label><input class="form-control" id="recCodigoPadre" placeholder="Ej: 500 (Termopanel)"></div>
-                        <div class="form-group"><label>Codigo Materia Prima *</label><input class="form-control" id="recCodigoMP" placeholder="Ej: VID-4MM"></div>
-                        <div class="form-group"><label>Descripcion</label><input class="form-control" id="recDescripcion" placeholder="Vidrio 4mm templado"></div>
+                        <div class="form-group"><label>Codigo SAP Padre *</label><input class="form-control" id="recCodigoPadre" placeholder="Ej: 500 (Termopanel)" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>Codigo Materia Prima *</label><input class="form-control" id="recCodigoMP" placeholder="Ej: VID-4MM" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>Descripcion</label><input class="form-control" id="recDescripcion" placeholder="Vidrio 4mm templado" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Espesor (mm)</label><input class="form-control" id="recEspesor" type="number" value="4"></div>
-                            <div class="form-group"><label>Cantidad</label><input class="form-control" id="recCantidad" type="number" value="1"></div>
+                            <div class="form-group"><label>Espesor (mm)</label><input class="form-control" id="recEspesor" type="number" value="4" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                            <div class="form-group"><label>Cantidad</label><input class="form-control" id="recCantidad" type="number" value="1" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -126,9 +134,9 @@ ${puedeEditar ? `
         let html = '';
         for (const [padre, items] of Object.entries(grupos)) {
             const desc = getDesc(padre);
-            html += `<tr style="background:#f8fafc;line-height:1.3"><td colspan="5" style="padding:6px 12px"><strong style="color:var(--primary)">Codigo: ${padre}</strong> ${desc ? `<span style="font-size:12px;color:var(--text)"> - ${desc}</span>` : ''} <span style="font-size:11px;color:var(--text-light)">(${items.length} componentes)</span></td></tr>`;
+            html += `<tr class="prec-row" style="background:#f8fafc;line-height:1.3"><td colspan="5" style="padding:6px 12px"><strong style="color:var(--primary)">Codigo: ${padre}</strong> ${desc ? `<span style="font-size:12px;color:var(--text)"> - ${desc}</span>` : ''} <span style="font-size:11px;color:var(--text-light)">(${items.length} componentes)</span></td></tr>`;
             items.forEach(r => {
-                html += `<tr style="line-height:1.3">
+                html += `<tr class="prec-row" style="line-height:1.3">
                     <td style="padding:6px 12px"><strong>${r.codigo_materia_prima}</strong></td>
                     <td style="padding:6px 12px">${r.descripcion || '-'}</td>
                     <td style="padding:6px 12px">${r.espesor}mm</td>

@@ -20,12 +20,19 @@ App.registerModule('spareparts', {
             <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Control de inventario de repuestos industriales</p></div>
                 <button class="btn btn-primary" onclick="App.modules.spareparts.showForm()">+ Nuevo Repuesto</button>
             </div></div>
+            <style>
+@keyframes spare_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.spare-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.spare-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.spare-row{transition:all 0.2s}
+.spare-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
             <div class="stats-grid">
-                <div class="stat-card"><div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="stat-info"><h4>${repuestos.length}</h4><p>Total repuestos</p></div></div>
-                <div class="stat-card"><div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><h4>${criticos.length}</h4><p>Stock crítico</p></div></div>
-                <div class="stat-card"><div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div><div class="stat-info"><h4>${normales.length}</h4><p>Stock normal</p></div></div>
+                <div class="stat-card spare-card"><div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="stat-info"><h4>${repuestos.length}</h4><p>Total repuestos</p></div></div>
+                <div class="stat-card spare-card"><div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><h4>${criticos.length}</h4><p>Stock crítico</p></div></div>
+                <div class="stat-card spare-card"><div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div><div class="stat-info"><h4>${normales.length}</h4><p>Stock normal</p></div></div>
             </div>
-            <div class="card">
+            <div class="card spare-card">
                 <div class="card-header">
                     <select class="form-control" id="filterCritico" style="width:auto;min-width:150px" onchange="App.modules.spareparts.render()">
                         <option value="">Todos</option>

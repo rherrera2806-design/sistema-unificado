@@ -19,10 +19,17 @@ App.registerModule('components', {
             <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Biblioteca de componentes industriales</p></div>
                 <button class="btn btn-primary" onclick="App.modules.components.showForm()">+ Nuevo Componente</button>
             </div></div>
+            <style>
+@keyframes comp_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.comp-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.comp-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.comp-row{transition:all 0.2s}
+.comp-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
             <div class="form-group" style="margin-bottom:12px">
                 <input class="form-control" id="compSearch" placeholder="Buscar componente..." oninput="App.modules.components._filter()">
             </div>
-            <div class="card"><div class="card-body" id="compBody"></div></div>`;
+            <div class="card comp-card"><div class="card-body" id="compBody"></div></div>`;
         this._filter();
     },
 

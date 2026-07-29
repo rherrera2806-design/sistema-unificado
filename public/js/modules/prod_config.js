@@ -119,9 +119,9 @@ App.registerModule('prod_config', {
     showEstacionForm(id) {
         const est = id ? this._estaciones.find(e => e.id === id) : null;
         App.showModal(`
-            <div class="form-group"><label>Nombre de Estacion *</label><input class="form-control" id="estNombre" value="${est ? est.nombre_estacion : ''}" placeholder="Ej: Corte, Pulido, Templado..."></div>
-            <div class="form-group"><label>Orden de Secuencia *</label><input type="number" class="form-control" id="estOrden" value="${est ? est.orden_secuencia_defecto : (this._estaciones.length + 1)}" min="1"></div>
-            <div class="form-group"><label>Capacidad Maxima (m²/dia) *</label><input type="number" class="form-control" id="estCapacidad" value="${est ? (est.capacidad_max_m2_dia || 100) : 100}" min="1" step="0.01"></div>
+            <div class="form-group"><label>Nombre de Estacion *</label><input class="form-control" id="estNombre" value="${est ? est.nombre_estacion : ''}" placeholder="Ej: Corte, Pulido, Templado..." onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+            <div class="form-group"><label>Orden de Secuencia *</label><input type="number" class="form-control" id="estOrden" value="${est ? est.orden_secuencia_defecto : (this._estaciones.length + 1)}" min="1" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+            <div class="form-group"><label>Capacidad Maxima (m²/dia) *</label><input type="number" class="form-control" id="estCapacidad" value="${est ? (est.capacidad_max_m2_dia || 100) : 100}" min="1" step="0.01" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             <div class="form-group"><label><input type="checkbox" id="estCuelloBotella" ${est && est.es_cuello_botella ? 'checked' : ''}> Es Cuello de Botella (limita capacidad diaria en m²)</label></div>
             <div class="form-group"><label><input type="checkbox" id="estActiva" ${!est || est.activa ? 'checked' : ''}> Activa</label></div>
         `, { title: est ? 'Editar Estacion' : 'Nueva Estacion' });
@@ -195,12 +195,12 @@ App.registerModule('prod_config', {
         const estIds = fam ? (familia => (familia.estaciones_base || []).map(e => e.estacion_id))(fam) : [];
         App.showModal(`
             <div class="form-row">
-                <div class="form-group"><label>Codigo Familia *</label><input class="form-control" id="famCodigo" value="${fam ? fam.codigo_familia : ''}" placeholder="Ej: TEMPLADO"></div>
-                <div class="form-group"><label>Nombre *</label><input class="form-control" id="famNombre" value="${fam ? fam.nombre_familia : ''}" placeholder="Ej: Templado"></div>
+                <div class="form-group"><label>Codigo Familia *</label><input class="form-control" id="famCodigo" value="${fam ? fam.codigo_familia : ''}" placeholder="Ej: TEMPLADO" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Nombre *</label><input class="form-control" id="famNombre" value="${fam ? fam.nombre_familia : ''}" placeholder="Ej: Templado" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             </div>
             <div class="form-row">
-                <div class="form-group"><label>Costo Hora Hombre ($/m2)</label><input type="number" class="form-control" id="famHH" value="${fam ? fam.costo_hh : 0}" min="0"></div>
-                <div class="form-group"><label>Costo Energia ($/m2)</label><input type="number" class="form-control" id="famEnergia" value="${fam ? fam.costo_energia : 0}" min="0"></div>
+                <div class="form-group"><label>Costo Hora Hombre ($/m2)</label><input type="number" class="form-control" id="famHH" value="${fam ? fam.costo_hh : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Costo Energia ($/m2)</label><input type="number" class="form-control" id="famEnergia" value="${fam ? fam.costo_energia : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             </div>
             <div class="form-group"><label>Estaciones Base del Proceso</label>
                 <div style="border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:4px 12px">
@@ -272,14 +272,14 @@ App.registerModule('prod_config', {
         const m = id ? this._materias.find(x => x.id === id) : null;
         App.showModal(`
             <div class="form-row">
-                <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? m.codigo_mp : ''}" placeholder="SKU interno"></div>
-                <div class="form-group"><label>Nombre *</label><input class="form-control" id="mpNombre" value="${m ? m.nombre : ''}" placeholder="Ej: Vidrio 6mm"></div>
+                <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? m.codigo_mp : ''}" placeholder="SKU interno" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Nombre *</label><input class="form-control" id="mpNombre" value="${m ? m.nombre : ''}" placeholder="Ej: Vidrio 6mm" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             </div>
             <div class="form-row">
-                <div class="form-group"><label>Espesor (mm)</label><input type="number" class="form-control" id="mpEspesor" value="${m ? m.espesor_mm : 0}" min="0" step="0.5"></div>
-                <div class="form-group"><label>Costo Unitario ($/m2)</label><input type="number" class="form-control" id="mpCosto" value="${m ? m.costo_unitario_mp : 0}" min="0"></div>
+                <div class="form-group"><label>Espesor (mm)</label><input type="number" class="form-control" id="mpEspesor" value="${m ? m.espesor_mm : 0}" min="0" step="0.5" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Costo Unitario ($/m2)</label><input type="number" class="form-control" id="mpCosto" value="${m ? m.costo_unitario_mp : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             </div>
-            <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2">${m ? m.observacion || '' : ''}</textarea></div>
+            <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">${m ? m.observacion || '' : ''}</textarea></div>
         `, { title: m ? 'Editar Materia Prima' : 'Nueva Materia Prima' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
@@ -346,9 +346,9 @@ App.registerModule('prod_config', {
     showReglaForm(id) {
         const r = id ? this._reglas.find(x => x.id === id) : null;
         App.showModal(`
-            <div class="form-group"><label>Nombre Flag Excel *</label><input class="form-control" id="regFlag" value="${r ? r.nombre_flag : ''}" placeholder="Ej: radio, pulido, mecanizado..."><small style="color:var(--text-light)">Nombre exacto de la columna en el Excel (sin espacios, minusculas)</small></div>
+            <div class="form-group"><label>Nombre Flag Excel *</label><input class="form-control" id="regFlag" value="${r ? r.nombre_flag : ''}" placeholder="Ej: radio, pulido, mecanizado..." onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"><small style="color:var(--text-light)">Nombre exacto de la columna en el Excel (sin espacios, minusculas)</small></div>
             <div class="form-group"><label>Estacion a Asignar *</label>
-                <select class="form-control" id="regEstacion">
+                <select class="form-control" id="regEstacion" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     <option value="">Seleccionar...</option>
                     ${this._estaciones.filter(e => e.activa).map(e => `<option value="${e.id}" ${r && r.estacion_id === e.id ? 'selected' : ''}>${e.orden_secuencia_defecto}. ${e.nombre_estacion}</option>`).join('')}
                 </select>

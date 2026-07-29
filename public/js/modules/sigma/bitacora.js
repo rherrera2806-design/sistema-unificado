@@ -7,7 +7,14 @@ App.registerModule('bitacora', {
             <div class="page-header">
                 <div><h2>Bitácora de Mantención</h2><div class="subtitle">Historial completo de mantenciones realizadas</div></div>
             </div>
-            <div class="card">
+            <style>
+@keyframes bita_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.bita-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.bita-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.bita-row{transition:all 0.2s}
+.bita-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+            <div class="card bita-card">
                 <div class="card-body">
                     <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:12px;align-items:end">
                         <div class="form-group"><label>Fecha Desde</label><input type="date" class="form-control" id="bitFechaDesde" onchange="App.modules.bitacora.applyFilters()"></div>
@@ -34,7 +41,7 @@ App.registerModule('bitacora', {
                     </div>
                 </div>
             </div>
-            <div class="card">
+            <div class="card bita-card">
                 <div class="card-body" style="padding:0" id="bitacoraContent">
                     <div class="empty-state"><p>Cargando...</p></div>
                 </div>

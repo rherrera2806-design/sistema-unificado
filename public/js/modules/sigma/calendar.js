@@ -24,6 +24,13 @@ App.registerModule('calendar', {
                     <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.calendar.navigate(1)">Siguiente ▶</button>
                 </div>
             </div></div>
+            <style>
+@keyframes cal_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.cal-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.cal-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.cal-row{transition:all 0.2s}
+.cal-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
             <div style="text-align:center;margin-bottom:16px"><h3 style="font-size:22px">${monthNames[this.currentMonth]} ${this.currentYear}</h3></div>
             <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
                 <span class="status-badge" style="background:#ffebee;color:#c62828;padding:4px 12px">Vencida</span>

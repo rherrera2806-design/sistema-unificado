@@ -10,7 +10,14 @@ App.registerModule('history', {
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
             <div style="position:relative;z-index:1"><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Historial por Máquina</h2>
             <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Ficha completa de intervenciones</p></div></div>
-            <div class="card">
+            <style>
+@keyframes hist_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.hist-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.hist-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.hist-row{transition:all 0.2s}
+.hist-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+            <div class="card hist-card">
                 <div class="card-header">
                     <div class="flex items-center gap-16">
                         <label style="font-weight:500">Máquina:</label>
@@ -41,7 +48,7 @@ App.registerModule('history', {
             corrRows += `<tr><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(c.fecha_falla)}</td><td>${c.descripcion_falla}</td><td>${c.diagnostico || '-'}</td><td>${c.turno || 'Dia'}</td><td>${c.horas_detencion}</td></tr>`;
         }
         return `
-            <div class="card">
+            <div class="card hist-card">
                 <div class="card-header"><h3>${maquina.codigo} - ${maquina.nombre}</h3>
                     <span class="status-badge ${App.getEstadoClass(maquina.estado_operativo)}">${maquina.estado_operativo}</span>
                 </div>
@@ -57,29 +64,29 @@ App.registerModule('history', {
                 </div>
             </div>
             <div class="stats-grid">
-                <div class="stat-card"><div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><div class="stat-info"><h4>${preventivos.length}</h4><p>Mantenciones</p></div></div>
-                <div class="stat-card"><div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div><div class="stat-info"><h4>${correctivos.length}</h4><p>Fallas</p></div></div>
-                <div class="stat-card"><div class="stat-icon orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="stat-info"><h4>${totalHorasDet}</h4><p>Horas detención</p></div></div>
-                <div class="stat-card"><div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><div class="stat-info"><h4>${componentes.length}</h4><p>Componentes</p></div></div>
+                <div class="stat-card hist-card"><div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><div class="stat-info"><h4>${preventivos.length}</h4><p>Mantenciones</p></div></div>
+                <div class="stat-card hist-card"><div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div><div class="stat-info"><h4>${correctivos.length}</h4><p>Fallas</p></div></div>
+                <div class="stat-card hist-card"><div class="stat-icon orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="stat-info"><h4>${totalHorasDet}</h4><p>Horas detención</p></div></div>
+                <div class="stat-card hist-card"><div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><div class="stat-info"><h4>${componentes.length}</h4><p>Componentes</p></div></div>
             </div>
-            <div class="card">
+            <div class="card hist-card">
                 <div class="card-header"><h3>Componentes</h3></div>
                 <div class="card-body">${componentes.map(c => `<span class="status-badge status-programada" style="margin:2px">${c.nombre}</span>`).join(' ') || 'Sin componentes'}</div>
             </div>
-            <div class="card">
+            <div class="card hist-card">
                 <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Preventivas</h3></div>
                 <div class="card-body" style="padding:0">
                     ${preventivos.length === 0 ? '<div class="empty-state"><p>Sin registros</p></div>' : `<table><thead><tr><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Estado</th></tr></thead><tbody>${prevRows}</tbody></table>`}
                 </div>
             </div>
-            <div class="card">
+            <div class="card hist-card">
                 <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Fallas</h3></div>
                 <div class="card-body" style="padding:0">
                     ${correctivos.length === 0 ? '<div class="empty-state"><p>Sin registros</p></div>' : `<table><thead><tr><th>Componente</th><th>Fecha</th><th>Falla</th><th>Diagnóstico</th><th>Turno</th><th>Horas Det.</th></tr></thead><tbody>${corrRows}</tbody></table>`}
                 </div>
             </div>
             ${repuestosUsados.length > 0 ? `
-            <div class="card">
+            <div class="card hist-card">
                 <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Repuestos Utilizados</h3></div>
                 <div class="card-body"><ul style="margin-left:20px">${repuestosUsados.map(r => `<li style="margin:4px 0">${r}</li>`).join('')}</ul></div>
             </div>` : ''}

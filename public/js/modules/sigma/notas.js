@@ -8,7 +8,14 @@ App.registerModule('notas', {
             <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Comunicación entre turnos</p></div>
                 <button class="btn btn-primary" onclick="App.modules.notas.showForm()">+ Nueva Nota</button>
             </div></div>
-            <div class="card">
+            <style>
+@keyframes nota_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.nota-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.nota-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.nota-row{transition:all 0.2s}
+.nota-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+            <div class="card nota-card">
                 <div class="card-body" style="padding:0" id="notasContent">
                     <div class="empty-state"><p>Cargando...</p></div>
                 </div>

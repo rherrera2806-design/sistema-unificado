@@ -59,19 +59,19 @@ App.modules.planificacion = {
         const color = pct > 100 ? '#ef4444' : pct > 85 ? '#f59e0b' : '#10b981';
         el.innerHTML = `
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-                <div class="card" style="text-align:center"><div class="card-body" style="padding:12px">
+                <div class="card plan-card" style="text-align:center"><div class="card-body" style="padding:12px">
                     <div style="font-size:22px;font-weight:700;color:var(--primary)">${totalCap.toLocaleString('es-CL')}</div>
                     <div style="color:var(--text-light);font-size:12px">Capacidad (kg/dia)</div>
                 </div></div>
-                <div class="card" style="text-align:center"><div class="card-body" style="padding:12px">
+                <div class="card plan-card" style="text-align:center"><div class="card-body" style="padding:12px">
                     <div style="font-size:22px;font-weight:700;color:${color}">${totalUsado.toLocaleString('es-CL', {maximumFractionDigits:1})}</div>
                     <div style="color:var(--text-light);font-size:12px">Kg Asignados</div>
                 </div></div>
-                <div class="card" style="text-align:center"><div class="card-body" style="padding:12px">
+                <div class="card plan-card" style="text-align:center"><div class="card-body" style="padding:12px">
                     <div style="font-size:22px;font-weight:700;color:${color}">${pct}%</div>
                     <div style="color:var(--text-light);font-size:12px">Ocupacion</div>
                 </div></div>
-                <div class="card" style="text-align:center"><div class="card-body" style="padding:12px">
+                <div class="card plan-card" style="text-align:center"><div class="card-body" style="padding:12px">
                     <div style="font-size:22px;font-weight:700;color:var(--info)">${totalOrdenes}</div>
                     <div style="color:var(--text-light);font-size:12px">Ordenes Asignadas</div>
                 </div></div>
@@ -96,7 +96,7 @@ App.modules.planificacion = {
             const colorBar = pct > 100 ? '#ef4444' : pct > 85 ? '#f59e0b' : (c.color || '#3b82f6');
             const status = pct > 100 ? 'SOBRECARGADO' : pct > 85 ? 'CASI LLENO' : pct > 0 ? 'OK' : 'VACIO';
             return `
-                <div class="card" style="border-left:4px solid ${c.color || '#3b82f6'}">
+                <div class="card plan-card" style="border-left:4px solid ${c.color || '#3b82f6'}">
                     <div class="card-body" style="padding:12px">
                         <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
                             <div>
@@ -144,7 +144,7 @@ App.modules.planificacion = {
         html += sinAsignar.map(o => {
             const grupoColor = o.grupo ? '#dcfce7' : '#fee2e2';
             const grupoText = o.grupo ? '#166534' : '#991b1b';
-            return `<tr style="line-height:1.3;border-bottom:1px solid var(--border)">
+            return `<tr class="plan-row" style="line-height:1.3;border-bottom:1px solid var(--border)">
                 <td style="${td}"><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
                 <td style="${td}">${escapeHtml(o.cliente || '-')}</td>
                 <td style="${td}"><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
@@ -199,7 +199,7 @@ App.modules.planificacion = {
             ${this.capacidadGrupo.map(c => `
                 <div style="display:grid;grid-template-columns:1fr 120px 60px;gap:8px;align-items:center;margin-bottom:8px">
                     <div style="font-weight:500"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c.color};margin-right:6px"></span>${c.grupo}</div>
-                    <input type="number" class="form-control" value="${c.capacidad_kg_dia}" id="planCapG_${c.id}" min="0">
+                    <input type="number" class="form-control" value="${c.capacidad_kg_dia}" id="planCapG_${c.id}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     <button class="btn btn-sm btn-primary" onclick="App.modules.planificacion.guardarCapacidadGrupo(${c.id})">💾</button>
                 </div>
             `).join('')}
@@ -228,11 +228,11 @@ App.modules.planificacion = {
             <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Reparte las ordenes PENDIENTES a los proximos dias respetando la capacidad maxima por grupo (kg/dia). Solo dias habiles.</p>
             <div class="form-group">
                 <label style="font-weight:500">Desde</label>
-                <input type="date" class="form-control" id="planAutoGInicio" value="${this.fechaGrupo}">
+                <input type="date" class="form-control" id="planAutoGInicio" value="${this.fechaGrupo}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
             </div>
             <div class="form-group">
                 <label style="font-weight:500">Cantidad de dias habiles a buscar</label>
-                <input type="number" class="form-control" id="planAutoGDias" value="14" min="1" max="60">
+                <input type="number" class="form-control" id="planAutoGDias" value="14" min="1" max="60" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
             </div>
             <div id="planAutoGResultado" style="margin-top:12px"></div>
         `;
@@ -305,8 +305,16 @@ App.modules.planificacion = {
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Carga por grupo (kg) + calendario por estacion (m2) - 15 dias corridos</p></div>
 </div></div>
 
+<style>
+@keyframes plan_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.plan-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.plan-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.plan-row{transition:all 0.2s}
+.plan-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+
             <!-- VISTA POR GRUPO (kg/dia) - nueva -->
-            <div class="card" style="margin-bottom:20px;border:2px solid #3b82f6">
+            <div class="card plan-card" style="margin-bottom:20px;border:2px solid #3b82f6">
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#eff6ff,#fff)">
                     <div>
                         <h3 style="margin:0;font-size:16px">⚖️ Vista por Grupo (kg/dia)</h3>
@@ -314,7 +322,7 @@ App.modules.planificacion = {
                     </div>
                     <div style="display:flex;gap:6px;align-items:center">
                         <label style="font-size:12px;color:var(--text-light)">Fecha:</label>
-                        <input type="date" class="form-control" id="planGrupoFecha" value="${this.fechaGrupo}" onchange="App.modules.planificacion.cambiarFechaGrupo()" style="width:140px;padding:4px 8px;font-size:12px">
+                        <input type="date" class="form-control" id="planGrupoFecha" value="${this.fechaGrupo}" onchange="App.modules.planificacion.cambiarFechaGrupo()" style="width:140px;padding:4px 8px;font-size:12px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(-1)">◀</button>
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(1)">▶</button>
                         ${puedeEditar ? '<button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.showCapacidadGrupo()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Capacidad</button>' : ''}
@@ -338,7 +346,7 @@ App.modules.planificacion = {
             <div id="planChart" style="margin-top:24px"></div>
 
             <!-- CARGA POR ESTACIONES -->
-            <div class="card" style="margin-top:24px;border:2px solid #f59e0b">
+            <div class="card plan-card" style="margin-top:24px;border:2px solid #f59e0b">
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#fffbeb,#fff)">
                     <div>
                         <h3 style="margin:0;font-size:16px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg> Carga por Estaciones</h3>
@@ -448,7 +456,7 @@ App.modules.planificacion = {
                         </tr></thead>
                         <tbody>${this.pendientes.map(o => {
                             const progreso = o.total_pasos > 0 ? `0/${o.total_pasos}` : '-';
-                            return `<tr style="border-bottom:1px solid var(--border)">
+                            return `<tr class="plan-row" style="border-bottom:1px solid var(--border)">
                                 <td style="padding:8px"><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
                                 <td style="padding:8px">${o.item_numero || '-'}</td>
                                 <td style="padding:8px">${escapeHtml(o.cliente || '-')}</td>
@@ -528,7 +536,7 @@ App.modules.planificacion = {
                         </tr></thead>
                         <tbody>${this.gruposSemana.map(g => {
                             const colorBorde = g.color || '#3b82f6';
-                            return `<tr style="border-bottom:1px solid var(--border)">
+                            return `<tr class="plan-row" style="border-bottom:1px solid var(--border)">
                                 <td style="padding:8px;border-left:3px solid ${colorBorde}">
                                     <strong>${escapeHtml(g.grupo)}</strong>
                                 </td>
@@ -585,7 +593,7 @@ App.modules.planificacion = {
             </div>
             <div class="form-group">
                 <label>Fecha de Entrega Propuesta *</label>
-                <input class="form-control" type="date" id="planFechaEntrega" min="${new Date().toISOString().split('T')[0]}">
+                <input class="form-control" type="date" id="planFechaEntrega" min="${new Date().toISOString().split('T')[0]}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
             </div>
             <div id="planError" style="display:none;background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:12px;margin-top:12px;color:#991b1b;font-size:13px"></div>
             <div style="margin-top:16px;text-align:right">
@@ -834,7 +842,7 @@ App.modules.planificacion = {
         html += '</tr></thead><tbody>';
 
         estaciones.forEach(est => {
-            html += '<tr style="border-bottom:1px solid var(--border)">';
+            html += '<tr class="plan-row" style="border-bottom:1px solid var(--border)">';
             html += `<td style="padding:8px;font-weight:600;white-space:nowrap">${est.nombre}${est.es_cuello_botella ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#fef2f2;color:#ef4444">CB</span>' : ''}</td>`;
             html += `<td style="padding:6px 2px 6px 0;text-align:left;font-size:11px;color:var(--text-light)">${est.capacidad_m2_dia}</td>`;
 

@@ -9,9 +9,16 @@ const InvHistorial = {
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
 <div style="position:relative;z-index:1"><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Historial</h2>
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Consultar movimientos de inventario</p></div></div>
-                <div class="card" style="margin-bottom:20px;">
-                    <div class="card-header">Filtros de Busqueda</div>
-                    <div class="card-body">
+                <style>
+@keyframes invHist_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.invHist-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.invHist-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.invHist-row{transition:all 0.2s}
+.invHist-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+                <div class="card invHist-card"" style="margin-bottom:20px;">
+                    <div class="card invHist-card"-header">Filtros de Busqueda</div>
+                    <div class="card invHist-card"-body">
                         <form onsubmit="InvHistorial.buscar(event)">
                             <div class="form-row">
                                 <div class="form-group"><label>Fecha Inicio</label><input type="date" id="hFechaInicio" class="form-control"></div>
@@ -28,9 +35,9 @@ const InvHistorial = {
                     <button onclick="InvHistorial.exportarExcel()" class="btn btn-success btn-sm">Exportar Excel</button>
                     <button onclick="window.print()" class="btn btn-outline btn-sm">Imprimir</button>
                 </div>
-                <div class="card">
-                    <div class="card-header">Historial <span id="hCount" style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
-                    <div class="card-body">
+                <div class="card invHist-card"">
+                    <div class="card invHist-card"-header">Historial <span id="hCount" style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
+                    <div class="card invHist-card"-body">
                         ${movimientos.length === 0 ? '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>No hay movimientos</p></div>' : `<div class="table-responsive"><table id="hTable"><thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Obs</th></tr></thead><tbody id="hBody">${this.renderRows(movimientos)}</tbody></table></div>`}
                     </div>
                 </div>`;

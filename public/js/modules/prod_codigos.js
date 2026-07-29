@@ -21,36 +21,44 @@ ${puedeEditar ? `
                 </div>` : ''}
 </div></div>
 
+<style>
+@keyframes pcod_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.pcod-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.pcod-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.pcod-row{transition:all 0.2s}
+.pcod-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
-                <div class="card" style="text-align:center"><div class="card-body">
+                <div class="card pcod-card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--primary)" id="codTotal">0</div>
                     <div style="color:var(--text-light);font-size:13px">Total Codigos</div>
                 </div></div>
-                <div class="card" style="text-align:center"><div class="card-body">
+                <div class="card pcod-card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--info)" id="codGrupos">0</div>
                     <div style="color:var(--text-light);font-size:13px">Grupos</div>
                 </div></div>
-                <div class="card" style="text-align:center"><div class="card-body">
+                <div class="card pcod-card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--success)" id="codFamilias">0</div>
                     <div style="color:var(--text-light);font-size:13px">Familias</div>
                 </div></div>
-                <div class="card" style="text-align:center"><div class="card-body">
+                <div class="card pcod-card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--warning)" id="codBloques">0</div>
                     <div style="color:var(--text-light);font-size:13px">Con Bloqueo Tela</div>
                 </div></div>
             </div>
 
-            <div class="card">
+            <div class="card pcod-card">
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <h3 style="margin:0">Listado de Codigos</h3>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <select class="form-control" id="codFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.onGrupoChange()">
+                        <select class="form-control" id="codFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.onGrupoChange()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                             <option value="">Todos los grupos</option>
                         </select>
-                        <select class="form-control" id="codFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.filter()">
+                        <select class="form-control" id="codFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.filter()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                             <option value="">Todas las familias</option>
                         </select>
-                        <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo... (min 2 caracteres)" oninput="App.modules.prod_codigos.filter()" style="width:200px;font-size:12px;padding:4px 8px">
+                        <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo... (min 2 caracteres)" oninput="App.modules.prod_codigos.filter()" style="width:200px;font-size:12px;padding:4px 8px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     </div>
                 </div>
                 <div class="card-body" style="padding:0">
@@ -66,12 +74,12 @@ ${puedeEditar ? `
                 <div class="modal" style="max-width:500px">
                     <div class="modal-header"><h3>Nuevo Codigo</h3><button class="modal-close" onclick="App.modules.prod_codigos.hideCreateModal()">&times;</button></div>
                     <div class="modal-body">
-                        <div class="form-group"><label>Codigo SAP *</label><input class="form-control" id="codCodigo" placeholder="Ej: V659, 100, P123"></div>
-                        <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm"></div>
-                        <div class="form-group"><label>Grupo</label><input class="form-control" id="codGrupo" placeholder="Ej: TEMPLADO"></div>
-                        <div class="form-group"><label>Familia</label><input class="form-control" id="codFamilia" placeholder="Ej: PINTADO, LAMINADO"></div>
+                        <div class="form-group"><label>Codigo SAP *</label><input class="form-control" id="codCodigo" placeholder="Ej: V659, 100, P123" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>Grupo</label><input class="form-control" id="codGrupo" placeholder="Ej: TEMPLADO" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>Familia</label><input class="form-control" id="codFamilia" placeholder="Ej: PINTADO, LAMINADO" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         <div class="form-group"><label>Bloqueo de Tela</label>
-                            <select class="form-control" id="codBloqueo">
+                            <select class="form-control" id="codBloqueo" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                                 <option value="false">No</option>
                                 <option value="true">Si</option>
                             </select>
@@ -173,7 +181,7 @@ ${puedeEditar ? `
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
         const fmtDate = (d) => { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
         const td = 'padding:6px 12px';
-        tbody.innerHTML = codigos.map(c => `<tr style="line-height:1.3">
+        tbody.innerHTML = codigos.map(c => `<tr class="pcod-row" style="line-height:1.3">
             <td style="${td}"><strong>${c.codigo}</strong></td>
             <td style="${td}">${c.descripcion || '-'}</td>
             <td style="${td}">${c.grupo ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af">${c.grupo}</span>` : '-'}</td>

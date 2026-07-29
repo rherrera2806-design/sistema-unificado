@@ -157,8 +157,8 @@ App.registerModule('inst_detalle', {
 
     showCerrar(id) {
         App.showModal(`
-            <div class="form-group"><label>Notas de Cierre</label><textarea class="form-control" id="instCierreNotas" rows="3" placeholder="Observaciones finales" style="text-transform:capitalize"></textarea></div>
-            <div class="form-group"><label>Nombre de quien recibe *</label><input class="form-control" id="instCierreFirma" placeholder="Nombre completo" style="text-transform:capitalize"></div>
+            <div class="form-group"><label>Notas de Cierre</label><textarea class="form-control" id="instCierreNotas" rows="3" placeholder="Observaciones finales" style="text-transform:capitalize" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></textarea></div>
+            <div class="form-group"><label>Nombre de quien recibe *</label><input class="form-control" id="instCierreFirma" placeholder="Nombre completo" style="text-transform:capitalize" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             <div class="form-group">
                 <label>Firma del Cliente *</label>
                 <div style="position:relative;border:2px solid #334155;border-radius:8px;overflow:hidden;background:#fff">
@@ -268,7 +268,7 @@ App.registerModule('inst_detalle', {
 
     showNovedad(id) {
         App.showModal(`
-            <div class="form-group"><label>Descripcion de la Novedad *</label><textarea class="form-control" id="instNovedadDesc" rows="4" placeholder="Describe que sucedio..." style="text-transform:capitalize"></textarea></div>
+            <div class="form-group"><label>Descripcion de la Novedad *</label><textarea class="form-control" id="instNovedadDesc" rows="4" placeholder="Describe que sucedio..." style="text-transform:capitalize" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></textarea></div>
             <div class="form-group"><label>Fotos de la Novedad (opcional)</label><input type="file" id="instNovedadFotos" accept="image/*" multiple style="font-size:13px"></div>
         `, { title: 'Registrar Novedad #' + id });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
@@ -346,26 +346,26 @@ App.registerModule('inst_detalle', {
         App.showModal(`
             ${datalistHtml}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div class="form-group"><label>Cliente *</label><input class="form-control" id="instCliente" value="${escapeHtml(inst.cliente)}" placeholder="Nombre del cliente" style="text-transform:uppercase"></div>
-                <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${escapeHtml(inst.tecnico || '')}" placeholder="Nombre del tecnico" style="text-transform:capitalize" list="tecnicosList"></div>
+                <div class="form-group"><label>Cliente *</label><input class="form-control" id="instCliente" value="${escapeHtml(inst.cliente)}" placeholder="Nombre del cliente" style="text-transform:uppercase" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Tecnico Asignado</label><input class="form-control" id="instTecnico" value="${escapeHtml(inst.tecnico || '')}" placeholder="Nombre del tecnico" style="text-transform:capitalize" list="tecnicosList" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div class="form-group"><label>Vendedor</label><input class="form-control" id="instVendedor" value="${escapeHtml(inst.vendedor || '')}" placeholder="Nombre del vendedor" style="text-transform:capitalize" list="vendedoresList"></div>
-                <div class="form-group"><label>Numero de Orden</label><input class="form-control" id="instNumeroOrden" value="${escapeHtml(inst.numero_orden || '')}" placeholder="Numero de orden" style="text-transform:uppercase"></div>
+                <div class="form-group"><label>Vendedor</label><input class="form-control" id="instVendedor" value="${escapeHtml(inst.vendedor || '')}" placeholder="Nombre del vendedor" style="text-transform:capitalize" list="vendedoresList" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Numero de Orden</label><input class="form-control" id="instNumeroOrden" value="${escapeHtml(inst.numero_orden || '')}" placeholder="Numero de orden" style="text-transform:uppercase" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             </div>
             <div class="form-group"><label>Direccion *</label>
                 <div style="display:flex;gap:6px;align-items:center">
-                    <input class="form-control" id="instDireccion" value="${escapeHtml(inst.direccion)}" placeholder="Direccion de la instalacion" style="text-transform:capitalize;flex:1">
+                    <input class="form-control" id="instDireccion" value="${escapeHtml(inst.direccion)}" placeholder="Direccion de la instalacion" style="text-transform:capitalize;flex:1" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     <a href="https://www.google.com/maps/search/?api=1&query=" target="_blank" id="instMapGoogle" title="Google Maps" style="display:inline-flex;align-items:center;padding:6px 10px;border-radius:6px;font-size:12px;background:#dcfce7;color:#166534;text-decoration:none;border:1px solid #bbf7d0;white-space:nowrap" onclick="this.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(document.getElementById('instDireccion').value)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Maps</a>
                     <a href="https://www.waze.com/ul?q=" target="_blank" id="instMapWaze" title="Waze" style="display:inline-flex;align-items:center;padding:6px 10px;border-radius:6px;font-size:12px;background:#dbeafe;color:#1e40af;text-decoration:none;border:1px solid #bfdbfe;white-space:nowrap" onclick="this.href='https://www.waze.com/ul?q='+encodeURIComponent(document.getElementById('instDireccion').value)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg> Waze</a>
                 </div>
             </div>
-            <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="instDescripcion" rows="2" placeholder="Detalle de vidrios o estructuras a instalar" style="text-transform:capitalize">${escapeHtml(inst.descripcion || '')}</textarea></div>
+            <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="instDescripcion" rows="2" placeholder="Detalle de vidrios o estructuras a instalar" style="text-transform:capitalize" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">${escapeHtml(inst.descripcion || '')}</textarea></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div class="form-group"><label>Fecha Programada *</label><input type="date" class="form-control" id="instFecha" value="${inst.fecha_programada ? inst.fecha_programada.substring(0, 10) : ''}"></div>
-                <div class="form-group"><label>Hora</label><input type="time" class="form-control" id="instHora" value="${inst.hora_programada || '09:00'}"></div>
+                <div class="form-group"><label>Fecha Programada *</label><input type="date" class="form-control" id="instFecha" value="${inst.fecha_programada ? inst.fecha_programada.substring(0, 10) : ''}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Hora</label><input type="time" class="form-control" id="instHora" value="${inst.hora_programada || '09:00'}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             </div>
-            <div class="form-group"><label>Notas Previas</label><textarea class="form-control" id="instNotas" rows="2" placeholder="Notas o instrucciones previas" style="text-transform:capitalize">${escapeHtml(inst.notas_previas || '')}</textarea></div>
+            <div class="form-group"><label>Notas Previas</label><textarea class="form-control" id="instNotas" rows="2" placeholder="Notas o instrucciones previas" style="text-transform:capitalize" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">${escapeHtml(inst.notas_previas || '')}</textarea></div>
         `, { title: 'Editar Instalacion #' + id });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>

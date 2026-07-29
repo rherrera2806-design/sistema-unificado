@@ -14,9 +14,16 @@ const InvMovimientos = {
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
 <div style="position:relative;z-index:1"><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Movimientos</h2>
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Registrar entradas y salidas de inventario</p></div></div>
-                <div class="card" style="margin-bottom:20px;">
-                    <div class="card-header">Nuevo Movimiento</div>
-                    <div class="card-body">
+                <style>
+@keyframes invMov_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.invMov-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.invMov-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.invMov-row{transition:all 0.2s}
+.invMov-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+                <div class="card invMov-card"" style="margin-bottom:20px;">
+                    <div class="card invMov-card"-header">Nuevo Movimiento</div>
+                    <div class="card invMov-card"-body">
                         <form onsubmit="InvMovimientos.guardar(event)">
                             <div class="form-group"><label>Tipo de Movimiento *</label>
                                 <div style="display:flex; gap:12px;">
@@ -57,9 +64,9 @@ const InvMovimientos = {
                     <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</a>
                     <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</a>
                 </div>
-                <div class="card">
-                    <div class="card-header">Movimientos <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
-                    <div class="card-body">
+                <div class="card invMov-card"">
+                    <div class="card invMov-card"-header">Movimientos <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
+                    <div class="card invMov-card"-body">
                         ${movimientos.length === 0 ? '<div class="empty-state"><p>No hay movimientos</p></div>' : `<div class="table-responsive"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Acciones</th></tr></thead><tbody id="invMovBody">${this.renderRows(movimientos)}</tbody></table></div>`}
                     </div>
                 </div>`;

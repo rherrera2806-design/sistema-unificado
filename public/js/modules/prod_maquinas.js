@@ -20,22 +20,30 @@ ${puedeEditar ? `
                 </div>` : ''}
 </div></div>
 
+<style>
+@keyframes pmq_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.pmq-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.pmq-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.pmq-row{transition:all 0.2s}
+.pmq-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
-                <div class="card" style="text-align:center"><div class="card-body">
+                <div class="card pmq-card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--primary)" id="mqTotal">0</div>
                     <div style="color:var(--text-light);font-size:13px">Total Maquinas</div>
                 </div></div>
-                <div class="card" style="text-align:center"><div class="card-body">
+                <div class="card pmq-card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--success)" id="mqActivas">0</div>
                     <div style="color:var(--text-light);font-size:13px">Activas</div>
                 </div></div>
-                <div class="card" style="text-align:center"><div class="card-body">
+                <div class="card pmq-card" style="text-align:center"><div class="card-body">
                     <div style="font-size:28px;font-weight:700;color:var(--warning)" id="mqCapacidad">0</div>
                     <div style="color:var(--text-light);font-size:13px">Total m²/día</div>
                 </div></div>
             </div>
 
-            <div class="card">
+            <div class="card pmq-card">
                 <div class="card-header"><h3 style="margin:0">Listado de Maquinas</h3></div>
                 <div class="card-body" style="padding:0">
                     <table style="font-size:13px"><thead><tr>
@@ -50,13 +58,13 @@ ${puedeEditar ? `
                 <div class="modal" style="max-width:450px">
                     <div class="modal-header"><h3 id="mqModalTitle">Nueva Maquina</h3><button class="modal-close" onclick="App.modules.prod_maquinas.hideCreateModal()">&times;</button></div>
                     <div class="modal-body">
-                        <div class="form-group"><label>Nombre *</label><input class="form-control" id="mqNombre" placeholder="Ej: Cortadora CNC"></div>
-                        <div class="form-group"><label>Codigo *</label><input class="form-control" id="mqCodigo" placeholder="Ej: COR-01"></div>
-                        <div class="form-group"><label>Tipo Proceso</label><input class="form-control" id="mqTipoProceso" placeholder="Ej: Corte, Pulido"></div>
-                        <div class="form-group"><label>N° Operacion</label><input class="form-control" id="mqNumOp" type="number" min="0"></div>
-                        <div class="form-group"><label>Capacidad Maxima m²/dia</label><input class="form-control" id="mqCapacidadInput" type="number" step="0.01" value="50"></div>
+                        <div class="form-group"><label>Nombre *</label><input class="form-control" id="mqNombre" placeholder="Ej: Cortadora CNC" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>Codigo *</label><input class="form-control" id="mqCodigo" placeholder="Ej: COR-01" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>Tipo Proceso</label><input class="form-control" id="mqTipoProceso" placeholder="Ej: Corte, Pulido" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>N° Operacion</label><input class="form-control" id="mqNumOp" type="number" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>Capacidad Maxima m²/dia</label><input class="form-control" id="mqCapacidadInput" type="number" step="0.01" value="50" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         <div class="form-group"><label>Estado</label>
-                            <select class="form-control" id="mqEstado">
+                            <select class="form-control" id="mqEstado" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                                 <option value="ACTIVA">Activa</option>
                                 <option value="INACTIVA">Inactiva</option>
                                 <option value="MANTENCION">En Mantencion</option>
@@ -105,7 +113,7 @@ ${puedeEditar ? `
             return `<span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;${cols[e] || ''}">${e}</span>`;
         };
         const td = 'padding:6px 12px';
-        tbody.innerHTML = this.maquinas.map(m => `<tr style="line-height:1.3">
+        tbody.innerHTML = this.maquinas.map(m => `<tr class="pmq-row" style="line-height:1.3">
             <td style="${td}"><strong>${m.codigo}</strong></td>
             <td style="${td}">${m.nombre}</td>
             <td style="${td}">${m.tipo_proceso || '-'}</td>

@@ -34,7 +34,14 @@ App.registerModule('machines', {
             <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Registro y control de equipos industriales</p></div>
                 <button class="btn btn-primary" onclick="App.modules.machines.showForm()">+ Nueva Máquina</button>
             </div></div>
-            <div class="card">
+            <style>
+@keyframes mach_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.mach-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.mach-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.mach-row{transition:all 0.2s}
+.mach-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+            <div class="card mach-card">
                 <div class="card-header">
                     <div class="flex items-center gap-16" style="flex-wrap:wrap">
                         <div class="search-box">

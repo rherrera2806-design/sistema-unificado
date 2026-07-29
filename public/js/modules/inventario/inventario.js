@@ -9,6 +9,13 @@ const InvInventario = {
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
 <div style="position:relative;z-index:1"><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Inventario</h2>
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p></div></div>
+                <style>
+@keyframes inv_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.inv-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.inv-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.inv-row{transition:all 0.2s}
+.inv-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
                 <div class="filters-bar">
                     <span style="font-weight:500; color:var(--gray-700); font-size:13px;">Filtrar:</span>
                     <a class="filter-chip active" onclick="InvInventario.filtrar('')" id="invFAll">Todos</a>
@@ -18,7 +25,7 @@ const InvInventario = {
                     <button onclick="InvInventario.exportarExcel()" class="btn btn-success btn-sm">Exportar Excel</button>
                     <button onclick="window.print()" class="btn btn-outline btn-sm">Imprimir</button>
                 </div>
-                <div class="card">
+                <div class="card inv-card">
                     <div class="card-header">Inventario Actual <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${items.length} tipos)</span></div>
                     <div class="card-body">
                         ${items.length === 0 ? '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><p>No hay items en inventario</p></div>' : `<div class="table-responsive"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(items)}</tbody></table></div>`}

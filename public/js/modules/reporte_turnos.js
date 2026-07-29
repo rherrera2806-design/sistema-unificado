@@ -12,15 +12,24 @@ App.registerModule('reporte_turnos', {
 <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Reporte de Turnos</h2>
 <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Flujo completo por cliente: llegada, atencion, bodega y entrega</p></div>
 </div></div>
+
+<style>
+@keyframes rtur_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.rtur-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.rtur-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.rtur-row{transition:all 0.2s}
+.rtur-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
                 <div style="display:flex;gap:16px;align-items:end;flex-wrap:wrap">
                     <div style="margin:0">
                         <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Desde</label>
-                        <input type="date" id="rtDesde" class="form-control" value="${hace30}" style="font-size:13px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;width:160px">
+                        <input type="date" id="rtDesde" class="form-control" value="${hace30}" style="font-size:13px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;width:160px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     </div>
                     <div style="margin:0">
                         <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Hasta</label>
-                        <input type="date" id="rtHasta" class="form-control" value="${hoy}" style="font-size:13px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;width:160px">
+                        <input type="date" id="rtHasta" class="form-control" value="${hoy}" style="font-size:13px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;width:160px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     </div>
                     <button onclick="App.modules.reporte_turnos.cargar()" style="font-size:13px;background:#1e40af;color:white;border:none;padding:9px 24px;border-radius:8px;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#1e3a8a'" onmouseout="this.style.background='#1e40af'">Buscar</button>
                     <div id="rtFilterInfo" style="font-size:12px;color:#64748b;margin-left:8px"></div>
@@ -31,7 +40,7 @@ App.registerModule('reporte_turnos', {
                 <div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:24px;width:90%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
                     <h3 style="font-size:16px;font-weight:700;margin:0 0 8px;color:#1e293b">Confirmar eliminacion</h3>
                     <p style="font-size:13px;color:#64748b;margin:0 0 16px">Ingresa la contrasena de administrador para eliminar este registro.</p>
-                    <input id="rtPassInput" type="password" placeholder="Contrasena admin" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box" onkeydown="if(event.key==='Enter')App.modules.reporte_turnos.confirmarEliminar()">
+                    <input id="rtPassInput" type="password" placeholder="Contrasena admin" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box" onkeydown="if(event.key==='Enter')App.modules.reporte_turnos.confirmarEliminar()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     <p id="rtPassError" style="color:#dc2626;font-size:12px;display:none;margin:8px 0 0"></p>
                     <div style="display:flex;gap:8px;margin-top:16px">
                         <button onclick="App.modules.reporte_turnos.cerrarModal()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>
@@ -274,7 +283,7 @@ App.registerModule('reporte_turnos', {
             }[estado] || { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
             const tipoBadge = r.tipo ? `<span style="font-size:9px;padding:2px 6px;border-radius:4px;background:${r.tipo==='Despacho'?'#fef3c7':'#dcfce7'};color:${r.tipo==='Despacho'?'#92400e':'#166534'};margin-left:4px;font-weight:600">${r.tipo}</span>` : '';
             const rowBg = i % 2 === 0 ? 'white' : '#f8fafc';
-            return `<tr style="border-bottom:1px solid #f1f5f9;background:${rowBg};transition:background 0.1s" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
+            return `<tr class="rtur-row" style="border-bottom:1px solid #f1f5f9;background:${rowBg};transition:background 0.1s" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
                 <td style="padding:8px 10px;font-size:11px;color:#64748b;white-space:nowrap">${r.fecha_fmt || '-'}</td>
                 <td style="padding:8px 10px;text-align:center;font-weight:700;color:#1e40af;font-size:12px">${r.numero ? '#' + r.numero : (r._origen === 'bodega' ? 'BOD' : '-')}</td>
                 <td style="padding:8px 10px;font-weight:600;color:#1e293b;white-space:nowrap">${escapeHtml(r.nombre)}</td>

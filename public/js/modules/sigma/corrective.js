@@ -20,7 +20,14 @@ App.registerModule('corrective', {
             <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Registro de fallas y acciones correctivas</p></div>
                 <button class="btn btn-danger" onclick="App.modules.corrective.showForm()">+ Registrar Falla</button>
             </div></div>
-            <div class="card">
+            <style>
+@keyframes corr_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.corr-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.corr-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.corr-row{transition:all 0.2s}
+.corr-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+            <div class="card corr-card">
                 <div class="card-header">
                     <select class="form-control" id="filterCorrMaq" style="width:auto;min-width:180px" onchange="App.modules.corrective.render()">
                         <option value="">Todas las máquinas</option>

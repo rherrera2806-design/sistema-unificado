@@ -25,7 +25,14 @@ App.registerModule('preventive', {
                     <button class="btn btn-primary" onclick="App.modules.preventive.showForm()">+ Nueva Mantención</button>
                 </div>
             </div></div>
-            <div class="card">
+            <style>
+@keyframes prev_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.prev-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.prev-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.prev-row{transition:all 0.2s}
+.prev-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+            <div class="card prev-card">
                 <div class="card-header">
                     <div class="flex items-center gap-16" style="flex-wrap:wrap">
                         <select class="form-control" id="filterPrevMaq" style="width:auto;min-width:180px" onchange="App.modules.preventive.render()">
