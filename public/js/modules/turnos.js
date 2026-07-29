@@ -69,11 +69,8 @@ App.registerModule('turnos', {
 
             + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
             + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
-            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
-            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Recepcion y Control de Turnos</h2>'
-            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestion de cola de espera</p></div>'
-            + '</div></div>'
+            + '<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Recepcion y Control de Turnos</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestion de cola de espera</p></div></div>'
 
             + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">'
             + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
@@ -269,11 +266,8 @@ App.registerModule('turnos', {
 
             + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
             + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(34,197,94,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
-            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
-            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Verificacion Bodega</h2>'
-            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Verificar stock y derivar a almacen</p></div>'
-            + '</div></div>'
+            + '<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Verificacion Bodega</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Verificar stock y derivar a almacen</p></div></div>'
 
             + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
             + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer" onclick="App.modules.turnos.toggleFormBodega()">'
@@ -456,11 +450,8 @@ App.registerModule('turnos', {
 
             + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
             + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(245,158,11,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
-            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
-            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">QR Clientes</h2>'
-            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Codigo QR para que los clientes tomen turno</p></div>'
-            + '</div></div>'
+            + '<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">QR Clientes</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Codigo QR para que los clientes tomen turno</p></div></div>'
 
             + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;text-align:center;margin-bottom:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
             + '<h3 style="font-size:14px;font-weight:700;margin:0 0 16px;color:#1e293b">Escanea para tomar turno</h3>'
@@ -514,11 +505,8 @@ App.registerModule('turnos', {
 
             + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
             + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(245,158,11,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
-            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
-            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Almacen</h2>'
-            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Carga de productos y picking</p></div>'
-            + '</div></div>'
+            + '<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Almacen</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Carga de productos y picking</p></div></div>'
 
             + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
             + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer" onclick="App.modules.turnos.toggleFormTecAlm()">'
@@ -663,11 +651,8 @@ App.registerModule('turnos', {
 
             + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
             + '<div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(124,58,237,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px">'
-            + '<button onclick="App.modules.turnos.renderMenu()" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
-            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Por Facturar</h2>'
-            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Ingresar numero y monto de factura</p></div>'
-            + '</div></div>'
+            + '<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px">Por Facturar</h2>'
+            + '<p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Ingresar numero y monto de factura</p></div></div>'
 
             + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
             + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
