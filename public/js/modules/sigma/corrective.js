@@ -36,7 +36,7 @@ App.registerModule('corrective', {
                     <span class="text-muted">${filtered.length} registros</span>
                 </div>
                 <div class="card-body" style="padding:0">
-                    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div><h4>No hay fallas registradas</h4></div>' : `
+                    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay fallas registradas</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra la primera falla</p></div>' : `
                     <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha</th><th>Descripción</th><th>Estado</th><th>Días</th><th>Hs.Det.</th><th>Responsable</th><th>Acciones</th></tr></thead>
                     <tbody>${filtered.map(r => {
                         const dias = r.estado === 'Reparada' && r.fecha_falla && r.fecha_reparacion ? Math.round((new Date(r.fecha_reparacion) - new Date(r.fecha_falla)) / 86400000) : '-';

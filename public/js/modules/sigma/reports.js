@@ -53,7 +53,7 @@ App.registerModule('reports', {
         if (startDate && endDate) {
             registros = await db.getMaintenanceByPeriod(startDate, endDate);
         } else if (startDate || endDate) {
-            content = '<div class="empty-state"><p>Ingrese ambas fechas para buscar</p></div>';
+            content = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Ingrese ambas fechas para buscar</h4><p style="margin:0;color:#94a3b8;font-size:13px">Selecciona fecha inicio y fin</p></div>';
         }
         if (registros.length > 0) {
             content = `
@@ -75,7 +75,7 @@ App.registerModule('reports', {
                 </div>
             </div>`;
         } else if (startDate && endDate) {
-            content = '<div class="empty-state"><p>No se encontraron registros</p></div>';
+            content = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No se encontraron registros</h4><p style="margin:0;color:#94a3b8;font-size:13px">Intenta con otro rango de fechas</p></div>';
         }
         return `
             <div class="card rep-card">
@@ -145,7 +145,7 @@ App.registerModule('reports', {
         return `
             <div class="card rep-card">
                 <div class="card-header"><h3>Máquinas con más Fallas</h3></div>
-                <div class="card-body">${data.length === 0 ? '<div class="empty-state"><p>Sin fallas</p></div>' : `<table><thead><tr><th>#</th><th>Máquina</th><th>Código</th><th>Fallas</th><th>Horas Det.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
+                <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin fallas</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay fallas registradas</p></div>' : `<table><thead><tr><th>#</th><th>Máquina</th><th>Código</th><th>Fallas</th><th>Horas Det.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
                 </div>
             </div>`;
     },
@@ -172,7 +172,7 @@ App.registerModule('reports', {
         return `
             <div class="card rep-card">
                 <div class="card-header"><h3>Componentes más Intervenidos</h3></div>
-                <div class="card-body">${data.length === 0 ? '<div class="empty-state"><p>Sin datos</p></div>' : `<table><thead><tr><th>#</th><th>Componente</th><th>Fallas</th><th>Prev.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
+                <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin datos</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay componentes intervenidos</p></div>' : `<table><thead><tr><th>#</th><th>Componente</th><th>Fallas</th><th>Prev.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
                 </div>
             </div>`;
     },
@@ -192,7 +192,7 @@ App.registerModule('reports', {
             <div class="card rep-card">
                 <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Vencidas (${vencidas.length})</h3></div>
                 <div class="card-body" style="padding:0">
-                    ${vencidas.length === 0 ? '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div><h4>No hay vencidas</h4></div>' : `
+                    ${vencidas.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay vencidas</h4><p style="margin:0;color:#94a3b8;font-size:13px">¡Todo al día!</p></div>' : `
                     <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Días</th><th>Técnico</th></tr></thead><tbody>${rows}</tbody></table>
                     <div style="padding:16px;border-top:1px solid var(--border)"><p class="text-muted">Total: ${vencidas.length} vencidas. Reprogramar a la brevedad.</p></div>`}
                 </div>
@@ -252,7 +252,7 @@ App.registerModule('reports', {
                         <div><span style="display:inline-block;width:12px;height:12px;background:#28a745;border-radius:2px;margin-right:4px"></span> Preventivas</div>
                         <div><span style="display:inline-block;width:12px;height:12px;background:#dc3545;border-radius:2px;margin-right:4px"></span> Correctivas</div>
                     </div>
-                    ${sorted.length === 0 ? '<div class="empty-state"><p>Sin datos</p></div>' : bars}
+                    ${sorted.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin datos</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay mantenciones por mes</p></div>' : bars}
                 </div>
             </div>
             ${sorted.length > 0 ? `

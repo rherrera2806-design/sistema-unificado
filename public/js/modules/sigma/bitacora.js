@@ -57,7 +57,7 @@ App.registerModule('bitacora', {
             this.applyFilters();
         } catch(e) {
             console.error('Error loading bitacora:', e);
-            document.getElementById('bitacoraContent').innerHTML = '<div class="empty-state"><p>Error al cargar datos</p></div>';
+            document.getElementById('bitacoraContent').innerHTML = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Error al cargar datos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Intenta recargar la página</p></div>';
         }
     },
 
@@ -90,7 +90,7 @@ App.registerModule('bitacora', {
     renderTable(data) {
         const container = document.getElementById('bitacoraContent');
         if (!data || data.length === 0) {
-            container.innerHTML = '<div class="empty-state"><p>No hay registros con los filtros seleccionados</p></div>';
+            container.innerHTML = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay registros con los filtros seleccionados</h4><p style="margin:0;color:#94a3b8;font-size:13px">Intenta con otros criterios de búsqueda</p></div>';
             return;
         }
         let rows = '';

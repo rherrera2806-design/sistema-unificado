@@ -41,7 +41,7 @@ App.registerModule('spareparts', {
                     </select>
                 </div>
                 <div class="card-body" style="padding:0">
-                    ${filtered.length === 0 ? '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h4>No hay repuestos</h4></div>' : `
+                    ${filtered.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay repuestos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer repuesto</p></div>' : `
                     <table><thead><tr><th>Código</th><th>Descripción</th><th>Componente</th><th>Stock Actual</th><th>Stock Mín.</th><th>Estado</th><th>Proveedor</th><th>Ubicación</th><th>Acciones</th></tr></thead>
                     <tbody>${filtered.map(r => {
                         const critico = r.stock_actual <= r.stock_minimo;

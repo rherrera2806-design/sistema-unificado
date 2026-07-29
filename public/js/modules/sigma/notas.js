@@ -34,7 +34,7 @@ App.registerModule('notas', {
                 return fechaHoraB.localeCompare(fechaHoraA);
             });
             if (!data || data.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h4>Sin notas</h4><p>Registra la primera nota</p></div>';
+                container.innerHTML = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin notas</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra la primera nota</p></div>';
                 return;
             }
             let html = '<div style="padding:0">';
@@ -58,7 +58,7 @@ App.registerModule('notas', {
             container.innerHTML = html;
         } catch(e) {
             console.error('Error loading notas:', e);
-            document.getElementById('notasContent').innerHTML = '<div class="empty-state"><p>Error al cargar notas</p></div>';
+            document.getElementById('notasContent').innerHTML = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Error al cargar notas</h4><p style="margin:0;color:#94a3b8;font-size:13px">Intenta recargar la página</p></div>';
         }
     },
 
