@@ -68,9 +68,9 @@ App.registerModule('reports', {
                 <div class="card-header"><h3>Resumen</h3></div>
                 <div class="card-body">
                     <div class="stats-grid" style="grid-template-columns:1fr 1fr 1fr">
-                        <div class="stat-card"><div class="stat-info"><h4>${registros.filter(r => r.estado === 'Realizada').length}</h4><p>Realizadas</p></div></div>
-                        <div class="stat-card"><div class="stat-info"><h4>${registros.filter(r => r.estado === 'Vencida').length}</h4><p>Vencidas</p></div></div>
-                        <div class="stat-card"><div class="stat-info"><h4>${registros.filter(r => r.estado === 'Programada').length}</h4><p>Programadas</p></div></div>
+                        <div class="stat-card rep-card" style="border-left:4px solid #22c55e"><div class="stat-info"><h4>${registros.filter(r => r.estado === 'Realizada').length}</h4><p>Realizadas</p></div></div>
+                        <div class="stat-card rep-card" style="border-left:4px solid #ef4444"><div class="stat-info"><h4>${registros.filter(r => r.estado === 'Vencida').length}</h4><p>Vencidas</p></div></div>
+                        <div class="stat-card rep-card" style="border-left:4px solid #3b82f6"><div class="stat-info"><h4>${registros.filter(r => r.estado === 'Programada').length}</h4><p>Programadas</p></div></div>
                     </div>
                 </div>
             </div>`;
