@@ -10,183 +10,127 @@ App.registerModule('produccion', {
         const esAdmin = permisos.includes('usuarios');
         const puedeImportar = esAdmin || permisos.includes('produccion');
 
-        el.innerHTML = `
-            <div class="page-header">
-                <div>
-                    <h2 style="margin:0">Produccion</h2>
-                    <div class="subtitle">Gestion de ordenes de produccion y planificacion</div>
-                </div>
-                ${puedeImportar ? `
-                    <div style="display:flex;gap:8px">
-                        <button class="btn btn-primary" onclick="App.modules.produccion.showImportModal()">+ Importar SAP</button>
-                        <button class="btn btn-outline" onclick="App.modules.produccion.showNewOrderModal()">+ Nueva Orden</button>
-                    </div>
-                ` : ''}
-            </div>
+        el.innerHTML = '<style>'
+            + '@keyframes poFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+            + '.po-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+            + '.po-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-2px)}'
+            + '.po-table tbody tr{transition:background 0.15s}'
+            + '.po-table tbody tr:hover{background:#f8fafc!important}'
+            + '</style>'
 
-            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px">
-                <div class="card" style="text-align:center"><div class="card-body">
-                    <div style="font-size:28px;font-weight:700;color:var(--primary)" id="prodTotal">0</div>
-                    <div style="color:var(--text-light);font-size:13px">Total Ordenes</div>
-                </div></div>
-                <div class="card" style="text-align:center"><div class="card-body">
-                    <div style="font-size:28px;font-weight:700;color:var(--warning)" id="prodPendientes">0</div>
-                    <div style="color:var(--text-light);font-size:13px">Pendientes</div>
-                </div></div>
-                <div class="card" style="text-align:center"><div class="card-body">
-                    <div style="font-size:28px;font-weight:700;color:#3b82f6" id="prodProgramadas">0</div>
-                    <div style="color:var(--text-light);font-size:13px">Programadas</div>
-                </div></div>
-                <div class="card" style="text-align:center"><div class="card-body">
-                    <div style="font-size:28px;font-weight:700;color:var(--info)" id="prodProceso">0</div>
-                    <div style="color:var(--text-light);font-size:13px">En Proceso</div>
-                </div></div>
-                <div class="card" style="text-align:center"><div class="card-body">
-                    <div style="font-size:28px;font-weight:700;color:var(--success)" id="prodTerminadas">0</div>
-                    <div style="color:var(--text-light);font-size:13px">Terminadas</div>
-                </div></div>
-            </div>
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Produccion</h2>'
+            + '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestion de ordenes de produccion y planificacion</p></div>'
+            + (puedeImportar ? '<div style="display:flex;gap:8px">'
+            + '<button onclick="App.modules.produccion.showImportModal()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3);transition:all 0.2s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar SAP</button>'
+            + '<button onclick="App.modules.produccion.showNewOrderModal()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Orden</button>'
+            + '</div>' : '')
+            + '</div></div>'
 
-            <div class="card">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                    <h3 style="margin:0;display:flex;align-items:center;gap:12px">
-                        <span>Ordenes de Produccion</span>
-                        <span id="prodTotales" style="display:inline-flex;gap:8px;font-size:12px;font-weight:500"></span>
-                    </h3>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <input type="text" class="form-control" id="prodFilterSearch" placeholder="Buscar codigo, pedido..." oninput="App.modules.produccion.filter()" style="width:180px">
-                        <input type="date" class="form-control" id="prodFilterFecha" onchange="App.modules.produccion.filter()" style="width:140px" title="Filtrar por fecha programada">
-                        <select class="form-control" id="prodFilterGrupo" onchange="App.modules.produccion.filter()" style="width:130px">
-                            <option value="todos">Todos Grupos</option>
-                        </select>
-                        <select class="form-control" id="prodFilterFamilia" onchange="App.modules.produccion.filter()" style="width:140px">
-                            <option value="todos">Todas Familias</option>
-                        </select>
-                        <select class="form-control" id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="width:130px">
-                            <option value="todos">Todos</option>
-                            <option value="PENDIENTE">Pendientes</option>
-                            <option value="PROGRAMADO">Programadas</option>
-                            <option value="EN_PROCESO">En Proceso</option>
-                            <option value="TERMINADO">Terminados</option>
-                            <option value="CERRADO">Cerrados</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="card-body" style="padding:0">
-                    <table style="font-size:13px"><thead><tr>
-                        <th style="padding:6px 12px">Pedido</th><th style="padding:6px 12px">Item</th><th style="padding:6px 12px">Cliente</th><th style="padding:6px 12px">Cod. Padre</th><th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Nombre MP</th><th style="padding:6px 12px">Dimensiones</th><th style="padding:6px 12px">m2</th><th style="padding:6px 12px">Kilos</th><th style="padding:6px 12px">Cant.</th><th style="padding:6px 12px">Tipo Venta</th><th style="padding:6px 12px">F. Programado</th>                        <th style="padding:6px 12px">Ruta</th><th style="padding:6px 12px">C. Botella</th><th style="padding:6px 12px">Estado</th><th style="padding:6px 12px">Acciones</th>
-                    </tr></thead><tbody id="prodTable">
-                        <tr><td colspan="15" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
-                    </tbody></table>
-                </div>
-            </div>
+            + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px">'
+            + '<div class="po-card" style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);text-align:center;animation:poFadeUp 0.5s ease both;position:relative;overflow:hidden"><div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(59,130,246,0.1) 0%,transparent 70%);border-radius:50%"></div><div style="font-size:32px;font-weight:800;color:#0f172a;line-height:1" id="prodTotal">0</div><div style="color:#64748b;font-size:12px;font-weight:500;margin-top:4px">Total Ordenes</div></div>'
+            + '<div class="po-card" style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);text-align:center;animation:poFadeUp 0.5s ease 0.05s both;position:relative;overflow:hidden"><div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(245,158,11,0.1) 0%,transparent 70%);border-radius:50%"></div><div style="font-size:32px;font-weight:800;color:#f59e0b;line-height:1" id="prodPendientes">0</div><div style="color:#64748b;font-size:12px;font-weight:500;margin-top:4px">Pendientes</div></div>'
+            + '<div class="po-card" style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);text-align:center;animation:poFadeUp 0.5s ease 0.1s both;position:relative;overflow:hidden"><div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(59,130,246,0.1) 0%,transparent 70%);border-radius:50%"></div><div style="font-size:32px;font-weight:800;color:#3b82f6;line-height:1" id="prodProgramadas">0</div><div style="color:#64748b;font-size:12px;font-weight:500;margin-top:4px">Programadas</div></div>'
+            + '<div class="po-card" style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);text-align:center;animation:poFadeUp 0.5s ease 0.15s both;position:relative;overflow:hidden"><div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(139,92,246,0.1) 0%,transparent 70%);border-radius:50%"></div><div style="font-size:32px;font-weight:800;color:#8b5cf6;line-height:1" id="prodProceso">0</div><div style="color:#64748b;font-size:12px;font-weight:500;margin-top:4px">En Proceso</div></div>'
+            + '<div class="po-card" style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);text-align:center;animation:poFadeUp 0.5s ease 0.2s both;position:relative;overflow:hidden"><div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(34,197,94,0.1) 0%,transparent 70%);border-radius:50%"></div><div style="font-size:32px;font-weight:800;color:#22c55e;line-height:1" id="prodTerminadas">0</div><div style="color:#64748b;font-size:12px;font-weight:500;margin-top:4px">Terminadas</div></div>'
+            + '</div>'
 
-            <div class="modal-overlay" id="prodImportModal">
-                <div class="modal" style="max-width:500px">
-                    <div class="modal-header"><h3>Importar desde Excel</h3><button class="modal-close" onclick="App.modules.produccion.hideImportModal()">&times;</button></div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label style="font-weight:500">Archivo Excel</label>
-                            <div id="prodImportArea" style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all .2s"
-                                 onclick="document.getElementById('prodImportFile').click()">
-                                <div style="font-size:32px;margin-bottom:8px">📊</div>
-                                <div style="color:var(--text-light)">Arrastra un Excel o haz clic para seleccionar</div>
-                                <div id="prodImportName" style="color:var(--success);font-weight:500;margin-top:8px;display:none"></div>
-                            </div>
-                            <input type="file" id="prodImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.produccion.handleImportFile(event)">
-                        </div>
-                        <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-light)">
-                            <strong>Columnas esperadas:</strong><br>
-                            codigo, pedido, item, cliente, descripcion, cantidad, anho, alto, perforaciones, pintado, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>
-                            <em>Filas iguales (pedido+item+codigo) se fusionan sumando cantidad. Cada fila = 1 item.</em>
-                        </div>
-                        <div id="prodImportPreview" style="max-height:200px;overflow-y:auto;margin-top:12px"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="App.modules.produccion.hideImportModal()">Cancelar</button>
-                        <button class="btn btn-primary" id="prodImportBtn" onclick="App.modules.produccion.importar()" disabled>Importar</button>
-                    </div>
-                </div>
-            </div>
+            + '<div style="background:white;border-radius:14px;padding:24px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:poFadeUp 0.5s ease 0.25s both">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">'
+            + '<div style="display:flex;align-items:center;gap:12px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a">Ordenes de Produccion</h3><span id="prodTotales" style="display:inline-flex;gap:8px;font-size:12px;font-weight:500"></span></div>'
+            + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+            + '<div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="prodFilterSearch" placeholder="Buscar codigo, pedido..." oninput="App.modules.produccion.filter()" style="width:170px;padding:8px 8px 8px 32px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor=\'#3b82f6\'" onblur="this.style.borderColor=\'#e2e8f0\'"></div>'
+            + '<input type="date" id="prodFilterFecha" onchange="App.modules.produccion.filter()" style="width:130px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none" title="Filtrar por fecha programada">'
+            + '<select id="prodFilterGrupo" onchange="App.modules.produccion.filter()" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todos">Todos Grupos</option></select>'
+            + '<select id="prodFilterFamilia" onchange="App.modules.produccion.filter()" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todas">Todas Familias</option></select>'
+            + '<select id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todos">Todos</option><option value="PENDIENTE">Pendientes</option><option value="PROGRAMADO">Programadas</option><option value="EN_PROCESO">En Proceso</option><option value="TERMINADO">Terminados</option><option value="CERRADO">Cerrados</option></select>'
+            + '</div></div>'
 
-            <div class="modal-overlay" id="prodPasosModal">
-                <div class="modal" style="max-width:600px">
-                    <div class="modal-header"><h3>Pasos de Produccion</h3><button class="modal-close" onclick="App.modules.produccion.hidePasosModal()">&times;</button></div>
-                    <div class="modal-body" id="prodPasosBody"></div>
-                </div>
-            </div>
+            + '<div style="overflow-x:auto"><table class="po-table" style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Pedido</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Item</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cliente</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cod. Padre</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Codigo</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Nombre MP</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Dimensiones</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">m2</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Kilos</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cant.</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Tipo Venta</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Programado</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Ruta</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">C. Botella</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Estado</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Acciones</th>'
+            + '</tr></thead><tbody id="prodTable"><tr><td colspan="16" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div>Cargando...</div></td></tr></tbody></table></div></div>'
 
-            <div class="modal-overlay" id="prodNewOrderModal">
-                <div class="modal" style="max-width:500px">
-                    <div class="modal-header"><h3>Nueva Orden Manual</h3><button class="modal-close" onclick="App.modules.produccion.hideNewOrderModal()">&times;</button></div>
-                    <div class="modal-body">
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Pedido *</label><input class="form-control" id="newOrdPedido" placeholder="Ej: 100500"></div>
-                            <div class="form-group"><label>Item</label><input class="form-control" id="newOrdItem" type="number" value="1" min="1"></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Cliente</label><input class="form-control" id="newOrdCliente" placeholder="NOMBRE DEL CLIENTE" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
-                            <div class="form-group"><label>Codigo Producto *</label><input class="form-control" id="newOrdCodigo" placeholder="Ej: 1240, 730"></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Ancho (mm) *</label><input class="form-control" id="newOrdAncho" type="number" value="0"></div>
-                            <div class="form-group"><label>Alto (mm) *</label><input class="form-control" id="newOrdAlto" type="number" value="0"></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Perforaciones</label>
-                                <select class="form-control" id="newOrdPerforaciones"><option value="0">No</option><option value="1">Si</option></select>
-                            </div>
-                            <div class="form-group"><label>Pintado</label>
-                                <select class="form-control" id="newOrdPintado"><option value="0">No (0)</option><option value="1">Si (1)</option></select>
-                            </div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Tipo de Venta</label>
-                                <select class="form-control" id="newOrdTipoVenta">
-                                    <option value="Normal">Normal</option>
-                                    <option value="Express">Express</option>
-                                    <option value="Vta Region">Vta Region</option>
-                                    <option value="Urgencia">Urgencia</option>
-                                </select>
-                            </div>
-                            <div class="form-group"><label>Cantidad</label><input class="form-control" id="newOrdCantidad" type="number" value="1" min="1"></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Tipo de Entrega</label>
-                                <select class="form-control" id="newOrdTipoEntrega">
-                                    <option value="Despacho">Despacho</option>
-                                    <option value="Retira">Retira</option>
-                                </select>
-                            </div>
-                            <div class="form-group"><label>Orden de Compra</label><input class="form-control" id="newOrdOC" placeholder="OC-001"></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Posicion</label><input class="form-control" id="newOrdPosicion" placeholder="Ej: 1, 2, A1"></div>
-                            <div class="form-group"><label>Fecha Creacion</label><input class="form-control" id="newOrdFechaCreacion" type="date"></div>
-                        </div>
-                        <div class="form-group"><label>Nota</label><textarea class="form-control" id="newOrdNota" rows="2" placeholder="Observaciones..."></textarea></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="App.modules.produccion.hideNewOrderModal()">Cancelar</button>
-                        <button class="btn btn-primary" onclick="App.modules.produccion.saveNewOrder()">Crear Orden</button>
-                    </div>
-                </div>
-            </div>
+            + '<div class="modal-overlay" id="prodImportModal">'
+            + '<div class="modal" style="max-width:500px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
+            + '<div class="modal-header" style="border-bottom:1px solid #e2e8f0;padding:20px 24px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar desde Excel</h3><button class="modal-close" onclick="App.modules.produccion.hideImportModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+            + '<div class="modal-body" style="padding:24px">'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Archivo Excel</label>'
+            + '<div id="prodImportArea" style="border:2px dashed #cbd5e1;border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:#f8fafc"'
+            + ' onclick="document.getElementById(\'prodImportFile\').click()">'
+            + '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+            + '<div style="color:#64748b;font-size:13px">Arrastra un Excel o haz clic para seleccionar</div>'
+            + '<div id="prodImportName" style="color:#22c55e;font-weight:600;margin-top:8px;display:none;font-size:13px"></div></div>'
+            + '<input type="file" id="prodImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.produccion.handleImportFile(event)">'
+            + '</div>'
+            + '<div style="background:#f1f5f9;border-radius:10px;padding:14px;margin-top:12px;font-size:12px;color:#64748b;line-height:1.6">'
+            + '<strong style="color:#334155">Columnas esperadas:</strong><br>'
+            + 'codigo, pedido, item, cliente, descripcion, cantidad, anho, alto, perforaciones, pintado, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>'
+            + '<em style="color:#94a3b8">Filas iguales (pedido+item+codigo) se fusionan sumando cantidad.</em></div>'
+            + '<div id="prodImportPreview" style="max-height:200px;overflow-y:auto;margin-top:12px"></div></div>'
+            + '<div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:16px 24px">'
+            + '<button onclick="App.modules.produccion.hideImportModal()" style="padding:10px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b">Cancelar</button>'
+            + '<button id="prodImportBtn" onclick="App.modules.produccion.importar()" disabled style="padding:10px 20px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3)">Importar</button></div></div></div>'
 
-            <div class="modal-overlay" id="prodCerrarModal">
-                <div class="modal" style="max-width:400px">
-                    <div class="modal-header"><h3>Cerrar Orden</h3><button class="modal-close" onclick="App.modules.produccion.hideCerrarModal()">&times;</button></div>
-                    <div class="modal-body">
-                        <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Indica el motivo por el cual se cierra esta linea:</p>
-                        <textarea class="form-control" id="cerrarNota" rows="3" placeholder="Ej: Cliente cancelo el pedido..."></textarea>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-outline" onclick="App.modules.produccion.hideCerrarModal()">Cancelar</button>
-                        <button class="btn btn-primary" onclick="App.modules.produccion.confirmCerrar()">Cerrar Orden</button>
-                    </div>
-                </div>
-            </div>
-        `;
+            + '<div class="modal-overlay" id="prodPasosModal">'
+            + '<div class="modal" style="max-width:600px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
+            + '<div class="modal-header" style="border-bottom:1px solid #e2e8f0;padding:20px 24px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Pasos de Produccion</h3><button class="modal-close" onclick="App.modules.produccion.hidePasosModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+            + '<div class="modal-body" id="prodPasosBody" style="padding:24px"></div></div></div>'
+
+            + '<div class="modal-overlay" id="prodNewOrderModal">'
+            + '<div class="modal" style="max-width:500px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
+            + '<div class="modal-header" style="border-bottom:1px solid #e2e8f0;padding:20px 24px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nueva Orden Manual</h3><button class="modal-close" onclick="App.modules.produccion.hideNewOrderModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+            + '<div class="modal-body" style="padding:24px">'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Pedido *</label><input class="form-control" id="newOrdPedido" placeholder="Ej: 100500" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Item</label><input class="form-control" id="newOrdItem" type="number" value="1" min="1" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Cliente</label><input class="form-control" id="newOrdCliente" placeholder="NOMBRE DEL CLIENTE" style="text-transform:uppercase;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" oninput="this.value=this.value.toUpperCase()"></div>'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Codigo Producto *</label><input class="form-control" id="newOrdCodigo" placeholder="Ej: 1240, 730" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Ancho (mm) *</label><input class="form-control" id="newOrdAncho" type="number" value="0" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Alto (mm) *</label><input class="form-control" id="newOrdAlto" type="number" value="0" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Perforaciones</label><select class="form-control" id="newOrdPerforaciones" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"><option value="0">No</option><option value="1">Si</option></select></div>'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Pintado</label><select class="form-control" id="newOrdPintado" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"><option value="0">No (0)</option><option value="1">Si (1)</option></select></div></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Tipo de Venta</label><select class="form-control" id="newOrdTipoVenta" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"><option value="Normal">Normal</option><option value="Express">Express</option><option value="Vta Region">Vta Region</option><option value="Urgencia">Urgencia</option></select></div>'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Cantidad</label><input class="form-control" id="newOrdCantidad" type="number" value="1" min="1" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Tipo de Entrega</label><select class="form-control" id="newOrdTipoEntrega" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"><option value="Despacho">Despacho</option><option value="Retira">Retira</option></select></div>'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Orden de Compra</label><input class="form-control" id="newOrdOC" placeholder="OC-001" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Posicion</label><input class="form-control" id="newOrdPosicion" placeholder="Ej: 1, 2, A1" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Fecha Creacion</label><input class="form-control" id="newOrdFechaCreacion" type="date" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div></div>'
+            + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Nota</label><textarea class="form-control" id="newOrdNota" rows="2" placeholder="Observaciones..." style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical"></textarea></div></div>'
+            + '<div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:16px 24px">'
+            + '<button onclick="App.modules.produccion.hideNewOrderModal()" style="padding:10px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b">Cancelar</button>'
+            + '<button onclick="App.modules.produccion.saveNewOrder()" style="padding:10px 20px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3)">Crear Orden</button></div></div></div>'
+
+            + '<div class="modal-overlay" id="prodCerrarModal">'
+            + '<div class="modal" style="max-width:400px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
+            + '<div class="modal-header" style="border-bottom:1px solid #e2e8f0;padding:20px 24px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Cerrar Orden</h3><button class="modal-close" onclick="App.modules.produccion.hideCerrarModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+            + '<div class="modal-body" style="padding:24px">'
+            + '<p style="font-size:13px;color:#64748b;margin-bottom:12px">Indica el motivo por el cual se cierra esta linea:</p>'
+            + '<textarea class="form-control" id="cerrarNota" rows="3" placeholder="Ej: Cliente cancelo el pedido..." style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical"></textarea></div>'
+            + '<div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:16px 24px">'
+            + '<button onclick="App.modules.produccion.hideCerrarModal()" style="padding:10px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b">Cancelar</button>'
+            + '<button onclick="App.modules.produccion.confirmCerrar()" style="padding:10px 20px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3)">Cerrar Orden</button></div></div></div>';
 
         await this.load();
         this.setupDragDrop();
@@ -236,15 +180,15 @@ App.registerModule('produccion', {
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
         this.renderTotales(ordenes);
-        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:24px;color:#64748b">No hay ordenes de produccion</td></tr>'; return; }
+        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>'; return; }
 
         const estadoBadge = (e) => {
-            if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">✓ TERMINADO</span>';
-            if (e === 'PROGRAMADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dbeafe;color:#1e40af">📅 PROGRAMADO</span>';
-            if (e === 'EN_PROCESO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dbeafe;color:#1e40af">⚙ EN PROCESO</span>';
-            if (e === 'MERMADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fee2e2;color:#991b1b">✗ MERMADO</span>';
-            if (e === 'CERRADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#e5e7eb;color:#374151">✕ CERRADO</span>';
-            return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">⏳ PENDIENTE</span>';
+            if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">TERMINADO</span>';
+            if (e === 'PROGRAMADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dbeafe;color:#1e40af">PROGRAMADO</span>';
+            if (e === 'EN_PROCESO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dbeafe;color:#1e40af">EN PROCESO</span>';
+            if (e === 'MERMADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fee2e2;color:#991b1b">MERMADO</span>';
+            if (e === 'CERRADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#e5e7eb;color:#374151">CERRADO</span>';
+            return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">PENDIENTE</span>';
         };
 
         const tipoBadge = (t) => {
@@ -253,29 +197,28 @@ App.registerModule('produccion', {
         };
 
         tbody.innerHTML = ordenes.map(o => {
-            const progreso = o.total_pasos > 0 ? `${o.pasos_terminados}/${o.total_pasos}` : '-';
-            return `<tr style="line-height:1.3">
-                <td style="padding:6px 12px"><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
-                <td style="padding:6px 12px">${o.item_numero || '-'}</td>
-                <td style="padding:6px 12px">${escapeHtml(o.cliente || '-')}</td>
-                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${o.codigo_padre ? escapeHtml(o.codigo_padre) + (o.nombre_codigo_padre ? ' - ' + escapeHtml(o.nombre_codigo_padre) : '') : '-'}</td>
-                <td style="padding:6px 12px"><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
-                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${escapeHtml(o.nombre_mp || o.descripcion || '-')}</td>
-                <td style="padding:6px 12px">${o.ancho} x ${o.alto} mm</td>
-                <td style="padding:6px 12px">${o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-'}</td>
-                <td style="padding:6px 12px;font-weight:600">${o.kilos ? Number(o.kilos).toFixed(1) : '-'}</td>
-                <td style="padding:6px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(${o.id}, ${o.cantidad || 1})"><strong>${o.cantidad || 1}</strong></td>
-                <td style="padding:6px 12px">${tipoBadge(o.tipo_venta)}</td>
-                <td style="padding:6px 12px;font-size:11px;color:#6b7280">${(() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })()}</td>
-                <td style="padding:6px 12px">${progreso}</td>
-                <td style="padding:6px 12px">${o.cuello_botella ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600">' + escapeHtml(o.cuello_botella) + '</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
-                <td style="padding:6px 12px">${estadoBadge(o.estado_programacion)}${o.cerrado_nota ? ` <span title="${o.cerrado_nota.replace(/"/g, '&quot;')}" style="cursor:pointer;font-size:10px">ℹ️</span>` : ''}</td>
-                <td style="padding:6px 12px">
-                    <button class="btn btn-sm btn-outline" onclick="App.modules.produccion.verPasos(${o.id})" style="padding:2px 8px;font-size:11px">Ver Pasos</button>
-                    ${o.estado_programacion !== 'CERRADO' ? `<button class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:11px;margin-left:4px" onclick="App.modules.produccion.cerrarOrden(${o.id})">Cerrar</button>` : ''}
-                    <button class="btn btn-sm btn-outline" style="padding:2px 8px;font-size:11px;margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.produccion.eliminarOrden(${o.id})">Eliminar</button>
-                </td>
-            </tr>`;
+            const progreso = o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos : '-';
+            return '<tr style="line-height:1.3;border-bottom:1px solid #f1f5f9">'
+                + '<td style="padding:10px 12px"><strong style="color:#0f172a">' + escapeHtml(o.pedido_sap_id || '-') + '</strong></td>'
+                + '<td style="padding:10px 12px;color:#475569">' + (o.item_numero || '-') + '</td>'
+                + '<td style="padding:10px 12px;color:#475569">' + escapeHtml(o.cliente || '-') + '</td>'
+                + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (o.codigo_padre ? escapeHtml(o.codigo_padre) + (o.nombre_codigo_padre ? ' - ' + escapeHtml(o.nombre_codigo_padre) : '') : '-') + '</td>'
+                + '<td style="padding:10px 12px"><strong style="color:#0f172a">' + escapeHtml(o.codigo_producto) + '</strong>' + (o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed;font-weight:600">BOM</span>' : '') + '</td>'
+                + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + escapeHtml(o.nombre_mp || o.descripcion || '-') + '</td>'
+                + '<td style="padding:10px 12px;color:#475569">' + o.ancho + ' x ' + o.alto + ' mm</td>'
+                + '<td style="padding:10px 12px;color:#475569">' + (o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-') + '</td>'
+                + '<td style="padding:10px 12px;font-weight:600;color:#0f172a">' + (o.kilos ? Number(o.kilos).toFixed(1) : '-') + '</td>'
+                + '<td style="padding:10px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(' + o.id + ', ' + (o.cantidad || 1) + ')"><strong style="color:#3b82f6">' + (o.cantidad || 1) + '</strong></td>'
+                + '<td style="padding:10px 12px">' + tipoBadge(o.tipo_venta) + '</td>'
+                + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
+                + '<td style="padding:10px 12px;color:#475569">' + progreso + '</td>'
+                + '<td style="padding:10px 12px">' + (o.cuello_botella ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600">' + escapeHtml(o.cuello_botella) + '</span>' : '<span style="color:#cbd5e1">-</span>') + '</td>'
+                + '<td style="padding:10px 12px">' + estadoBadge(o.estado_programacion) + (o.cerrado_nota ? ' <span title="' + o.cerrado_nota.replace(/"/g, '&quot;') + '" style="cursor:pointer;font-size:10px;color:#94a3b8"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>' : '') + '</td>'
+                + '<td style="padding:10px 12px;white-space:nowrap">'
+                + '<button onclick="App.modules.produccion.verPasos(' + o.id + ')" style="padding:5px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:#475569;transition:all 0.2s" onmouseover="this.style.background=\'#eff6ff\';this.style.borderColor=\'#3b82f6\';this.style.color=\'#3b82f6\'" onmouseout="this.style.background=\'#f8fafc\';this.style.borderColor=\'#e2e8f0\';this.style.color=\'#475569\'">Ver Pasos</button>'
+                + (o.estado_programacion !== 'CERRADO' ? ' <button onclick="App.modules.produccion.cerrarOrden(' + o.id + ')" style="padding:5px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:#ef4444;transition:all 0.2s" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">Cerrar</button>' : '')
+                + ' <button onclick="App.modules.produccion.eliminarOrden(' + o.id + ')" style="padding:5px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:#ef4444;transition:all 0.2s" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+                + '</td></tr>';
         }).join('');
     },
 
