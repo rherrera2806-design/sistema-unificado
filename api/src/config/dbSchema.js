@@ -523,89 +523,111 @@ async function seedSigma() {
 
 async function seedBusinessData() {
     const existingMachines = await query('SELECT COUNT(*) as c FROM machines');
-    if (Number(existingMachines.rows[0].c) > 0) return;
-    
+    const machinesExist = Number(existingMachines.rows[0].c) > 0;
+
+    const pmCount = await query('SELECT COUNT(*) as c FROM preventive_maintenance');
+    const cmCount = await query('SELECT COUNT(*) as c FROM corrective_maintenance');
+    const turnosCount = await query('SELECT COUNT(*) as c FROM turnos');
+    const movimientosCount = await query('SELECT COUNT(*) as c FROM movimientos');
+    const pedidosCount = await query('SELECT COUNT(*) as c FROM pedidos');
+    const prodMachinesCount = await query('SELECT COUNT(*) as c FROM produccion_maquinas');
+    const prodOrdenesCount = await query('SELECT COUNT(*) as c FROM produccion_ordenes');
+
+    const allSeeded = Number(pmCount.rows[0].c) > 0 && Number(cmCount.rows[0].c) > 0
+        && Number(turnosCount.rows[0].c) > 0 && Number(movimientosCount.rows[0].c) > 0
+        && Number(pedidosCount.rows[0].c) > 0 && Number(prodMachinesCount.rows[0].c) > 0
+        && Number(prodOrdenesCount.rows[0].c) > 0;
+    if (allSeeded) return;
+
     await query('BEGIN');
     try {
-        // SIGMA machines
-        await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            ['CMP-001', 'Compresor Principal', 1, 'Atlas Copco', 'GA 37', 'Planta Baja', 'Operativo']);
-        await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            ['BMB-001', 'Bomba de Vacío', 2, 'Edwards', 'E2M18', 'Planta Alta', 'Operativo']);
-        await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            ['GEN-001', 'Generador Eléctrico', 3, 'Caterpillar', 'C9.3', 'Exterior', 'Operativo']);
-        await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            ['TRN-001', 'Transportador de Cinta', 4, 'Hytrol', 'EZLogic', 'Línea 1', 'Mantenimiento']);
-        await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            ['MZC-001', 'Mezclador Industrial', 5, 'Hobart', 'HL800', 'Planta Baja', 'Operativo']);
+        if (!machinesExist) {
+            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                ['CMP-001', 'Compresor Principal', 1, 'Atlas Copco', 'GA 37', 'Planta Baja', 'Operativo']);
+            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                ['BMB-001', 'Bomba de Vacío', 2, 'Edwards', 'E2M18', 'Planta Alta', 'Operativo']);
+            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                ['GEN-001', 'Generador Eléctrico', 3, 'Caterpillar', 'C9.3', 'Exterior', 'Operativo']);
+            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                ['TRN-001', 'Transportador de Cinta', 4, 'Hytrol', 'EZLogic', 'Línea 1', 'Mantenimiento']);
+            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                ['MZC-001', 'Mezclador Industrial', 5, 'Hobart', 'HL800', 'Planta Baja', 'Operativo']);
+        }
 
-        // Preventive maintenance
-        await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado) VALUES ($1,$2,$3,$4,$5)`,
-            [1, 1, '2026-08-15', 'Carlos Muñoz', 'Programada']);
-        await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado) VALUES ($1,$2,$3,$4,$5)`,
-            [1, 5, '2026-08-20', 'Carlos Muñoz', 'Programada']);
-        await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado, fecha_ejecutada) VALUES ($1,$2,$3,$4,$5,$6)`,
-            [2, 4, '2026-07-10', 'Pedro Soto', 'Completada', '2026-07-10']);
-        await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado, fecha_ejecutada) VALUES ($1,$2,$3,$4,$5,$6)`,
-            [3, 1, '2026-07-25', 'Carlos Muñoz', 'Completada', '2026-07-25']);
+        if (Number(pmCount.rows[0].c) === 0) {
+            await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado) VALUES ($1,$2,$3,$4,$5)`,
+                [1, 1, '2026-08-15', 'Carlos Muñoz', 'Programada']);
+            await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado) VALUES ($1,$2,$3,$4,$5)`,
+                [1, 5, '2026-08-20', 'Carlos Muñoz', 'Programada']);
+            await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado, fecha_ejecutada) VALUES ($1,$2,$3,$4,$5,$6)`,
+                [2, 4, '2026-07-10', 'Pedro Soto', 'Completada', '2026-07-10']);
+            await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado, fecha_ejecutada) VALUES ($1,$2,$3,$4,$5,$6)`,
+                [3, 1, '2026-07-25', 'Carlos Muñoz', 'Completada', '2026-07-25']);
+            console.log('[SEED] Mantención preventiva insertada');
+        }
 
-        // Corrective maintenance
-        await query(`INSERT INTO corrective_maintenance (maquina_id, componente_id, fecha_falla, descripcion_falla, diagnostico, accion_correctiva, responsable, horas_detencion, estado) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [4, 2, '2026-07-28', 'Correa cortada', 'Desgaste natural', 'Reemplazo de correa', 'Pedro Soto', 4.5, 'Reparada']);
-        await query(`INSERT INTO corrective_maintenance (maquina_id, componente_id, fecha_falla, descripcion_falla, diagnostico, responsable, estado) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [5, 3, '2026-07-30', 'Ruido anormal en polea', 'Desalineación', 'Carlos Muñoz', 'En Mantención']);
+        if (Number(cmCount.rows[0].c) === 0) {
+            await query(`INSERT INTO corrective_maintenance (maquina_id, componente_id, fecha_falla, descripcion_falla, diagnostico, accion_correctiva, responsable, horas_detencion, estado) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+                [4, 2, '2026-07-28', 'Correa cortada', 'Desgaste natural', 'Reemplazo de correa', 'Pedro Soto', 4.5, 'Reparada']);
+            await query(`INSERT INTO corrective_maintenance (maquina_id, componente_id, fecha_falla, descripcion_falla, diagnostico, responsable, estado) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                [5, 3, '2026-07-30', 'Ruido anormal en polea', 'Desalineación', 'Carlos Muñoz', 'En Mantención']);
+            console.log('[SEED] Mantención correctiva insertada');
+        }
 
-        // Turnos
-        await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-            ['María González', 1, 'atendido', '2026-07-30']);
-        await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-            ['Juan Pérez', 2, 'espera', '2026-07-30']);
-        await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-            ['Ana López', 3, 'espera', '2026-07-30']);
-        await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-            ['Pedro Martínez', 4, 'llamado', '2026-07-30']);
-        await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-            ['Laura Soto', 5, 'espera', '2026-07-30']);
+        if (Number(turnosCount.rows[0].c) === 0) {
+            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                ['María González', 1, 'atendido', '2026-07-30']);
+            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                ['Juan Pérez', 2, 'espera', '2026-07-30']);
+            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                ['Ana López', 3, 'espera', '2026-07-30']);
+            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                ['Pedro Martínez', 4, 'llamado', '2026-07-30']);
+            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                ['Laura Soto', 5, 'espera', '2026-07-30']);
+            console.log('[SEED] Turnos insertados');
+        }
 
-        // Entregas
-        await query(`INSERT INTO entregas (turno_id, cliente_nombre, descripcion, pedidos, tipo, estado, fecha) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [1, 'Vidriería Los Andes', 'Pedido vidrio templado', 'PED-001,PED-002', 'Retira', 'entregado', '2026-07-30']);
-        await query(`INSERT INTO entregas (turno_id, cliente_nombre, descripcion, pedidos, tipo, estado, fecha) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [null, 'Constructora Sur', 'Vidrio laminado 10mm', 'PED-003', 'Despacho', 'pendiente', '2026-07-30']);
-        await query(`INSERT INTO entregas (turno_id, cliente_nombre, descripcion, pedidos, tipo, estado, fecha) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [null, 'Inmobiliaria Norte', 'Cristal espejado', 'PED-004', 'Retira', 'pendiente', '2026-07-30']);
+        if (Number(movimientosCount.rows[0].c) === 0) {
+            await query(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+                [1, 'entrada', 'Clear', 6, 2000, 1500, 20, 60.0, 'Vidrios Chile', 'Compra mensual']);
+            await query(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, tipo_salida, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+                [1, 'salida', 'Clear', 6, 2000, 1500, 5, 15.0, 'Producción', 'Para orden PRD-001']);
+            await query(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+                [1, 'entrada', 'Templado', 8, 1800, 1200, 10, 21.6, 'Vidrios Chile', 'Pedido urgente']);
+            console.log('[SEED] Movimientos de inventario insertados');
+        }
 
-        // Movimientos de inventario
-        await query(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-            [1, 'entrada', 'Clear', 6, 2000, 1500, 20, 60.0, 'Vidrios Chile', 'Compra mensual']);
-        await query(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, tipo_salida, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-            [1, 'salida', 'Clear', 6, 2000, 1500, 5, 15.0, 'Producción', 'Para orden PRD-001']);
-        await query(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-            [1, 'entrada', 'Templado', 8, 1800, 1200, 10, 21.6, 'Vidrios Chile', 'Pedido urgente']);
+        if (Number(pedidosCount.rows[0].c) === 0) {
+            await query(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
+                ['PED-2026-001', 'Vidriería Los Andes', 'vendedor@vidrieria.com', 'aprobado']);
+            await query(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
+                ['PED-2026-002', 'Constructora Sur', 'vendedor@vidrieria.com', 'pendiente']);
+            await query(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
+                ['PED-2026-003', 'Inmobiliaria Norte', 'vendedor2@vidrieria.com', 'aprobado']);
+            console.log('[SEED] Pedidos insertados');
+        }
 
-        // Pedidos
-        await query(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
-            ['PED-2026-001', 'Vidriería Los Andes', 'vendedor@vidrieria.com', 'aprobado']);
-        await query(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
-            ['PED-2026-002', 'Constructora Sur', 'vendedor@vidrieria.com', 'pendiente']);
-        await query(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
-            ['PED-2026-003', 'Inmobiliaria Norte', 'vendedor2@vidrieria.com', 'aprobado']);
+        if (Number(prodMachinesCount.rows[0].c) === 0) {
+            await query(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
+                ['Corte CNC', 'CNC-01', 'ACTIVA', 120.00, 'Corte']);
+            await query(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
+                ['Horno Templado', 'HT-01', 'ACTIVA', 80.00, 'Templado']);
+            await query(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
+                ['Laminadora', 'LAM-01', 'ACTIVA', 60.00, 'Laminado']);
+            console.log('[SEED] Máquinas de producción insertadas');
+        }
 
-        // Producción
-        await query(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
-            ['Corte CNC', 'CNC-01', 'ACTIVA', 120.00, 'Corte']);
-        await query(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
-            ['Horno Templado', 'HT-01', 'ACTIVA', 80.00, 'Templado']);
-        await query(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
-            ['Laminadora', 'LAM-01', 'ACTIVA', 60.00, 'Laminado']);
-
-        await query(`INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, estado_programacion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-            ['PED-2026-001', 'Vidriería Los Andes', 'VT-001', 'Vidrio templado 8mm', 1500, 1000, 1.5, 'EN PRODUCCIÓN']);
-        await query(`INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, estado_programacion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-            ['PED-2026-003', 'Inmobiliaria Norte', 'VL-001', 'Vidrio laminado 10mm', 2000, 1200, 2.4, 'PENDIENTE']);
+        if (Number(prodOrdenesCount.rows[0].c) === 0) {
+            await query(`INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, estado_programacion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                ['PED-2026-001', 'Vidriería Los Andes', 'VT-001', 'Vidrio templado 8mm', 1500, 1000, 1.5, 'EN PRODUCCIÓN']);
+            await query(`INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, estado_programacion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                ['PED-2026-003', 'Inmobiliaria Norte', 'VL-001', 'Vidrio laminado 10mm', 2000, 1200, 2.4, 'PENDIENTE']);
+            console.log('[SEED] Órdenes de producción insertadas');
+        }
 
         await query('COMMIT');
-        console.log('[SEED] Datos de negocio creados exitosamente');
+        console.log('[SEED] Datos de negocio insertados exitosamente');
     } catch(e) { await query('ROLLBACK'); console.error('[SEED] Error:', e.message); }
 }
 
