@@ -3,8 +3,8 @@ const router = express.Router();
 
 router.use(require('./authRoutes'));
 router.use(require('./catalogosInventario'));
-router.use(require('./sigmaTurnosRoutes'));
 router.use(require('./sigmaExtended'));
+router.use(require('./sigmaTurnosRoutes'));
 router.use(require('./turnosExtended'));
 router.use(require('./instalaciones'));
 router.use(require('./produccionOrdenes'));
