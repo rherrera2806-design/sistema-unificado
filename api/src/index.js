@@ -64,7 +64,15 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-    if (req.url !== '/api/health' && req.url !== '/api/auth/login') {
+
+    const { path: urlPath, query: q } = parseQuery(req.url);
+
+    if (urlPath === '/api/health') {
+        json(res, { status: 'ok', db: dbReady ? 'connected' : dbError ? 'error' : 'initializing', version: '4.0.0' });
+        return;
+    }
+
+    if (req.url !== '/api/auth/login') {
         if (!checkGlobalRateLimit(clientIp)) {
             json(res, { error: 'Demasiadas peticiones. Espera 1 minuto.' }, 429);
             return;
@@ -73,8 +81,6 @@ const server = http.createServer(async (req, res) => {
 
     if (!dbReady && !dbError) { json(res, { error: 'Base de datos inicializando...' }, 503); return; }
     if (dbError) { json(res, { error: dbError }, 500); return; }
-
-    const { path: urlPath, query: q } = parseQuery(req.url);
 
     try {
         const handled = await handleRoute(req, res, urlPath, q);
