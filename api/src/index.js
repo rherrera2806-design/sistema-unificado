@@ -5,7 +5,7 @@ const { Server } = require('socket.io');
 
 const { initDB } = require('./config/database');
 const { MIME } = require('./config/constants');
-const PUBLIC_DIR = path.join(__dirname, '..', '..', 'web', 'public');
+const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, '..', '..', 'web', 'public');
 
 const { setSecurityHeaders, checkGlobalRateLimit } = require('./middleware/security');
 const { json, parseQuery, compressAndSend } = require('./middleware/parser');
