@@ -1,8 +1,9 @@
+const express = require('express');
+const router = express.Router();
 const { query } = require('../config/database');
-const { parseBody, json } = require('../middleware/parser');
 
-const handlePedidos = async (req, res, urlPath) => {
-    if (urlPath === '/api/pedidos' && req.method === 'GET') {
+router.get('/api/pedidos', async (req, res, next) => {
+    try {
         const userEmail = req.headers['x-user-email'] || '';
         const userPerm = req.headers['x-user-permisos'] || '';
         const esAdmin = userPerm.includes('pedidos.autorizar') || userPerm.includes('usuarios');
@@ -12,14 +13,14 @@ const handlePedidos = async (req, res, urlPath) => {
         const result = esAdmin
             ? await query(joinQuery + ' ORDER BY p.fecha_subida DESC')
             : await query(joinQuery + ' WHERE p.vendedor = $1 ORDER BY p.fecha_subida DESC', [userEmail]);
-        json(res, result.rows);
-        return true;
-    }
+        res.json(result.rows);
+    } catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/pedidos' && req.method === 'POST') {
-        const body = await parseBody(req);
-        const { numero_pedido, cliente, vendedor, archivo_url, pdf_base64 } = body;
-        if (!numero_pedido || !cliente) { json(res, { error: 'Numero de pedido y cliente requeridos' }, 400); return true; }
+router.post('/api/pedidos', async (req, res, next) => {
+    try {
+        const { numero_pedido, cliente, vendedor, archivo_url, pdf_base64 } = req.body;
+        if (!numero_pedido || !cliente) return res.status(400).json({ error: 'Numero de pedido y cliente requeridos' });
         let pdfBuffer = null;
         if (pdf_base64) {
             pdfBuffer = Buffer.from(pdf_base64.replace(/^data:application\/pdf;base64,/, ''), 'base64');
@@ -28,56 +29,58 @@ const handlePedidos = async (req, res, urlPath) => {
             'INSERT INTO pedidos (numero_pedido, cliente, vendedor, archivo_url, archivo_pdf, estado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
             [numero_pedido, cliente, vendedor || '', archivo_url || '', pdfBuffer, 'pendiente']
         );
-        json(res, result.rows[0], 201);
-        return true;
-    }
+        res.status(201).json(result.rows[0]);
+    } catch (e) { next(e); }
+});
 
-    const pedidoPdfMatch = urlPath.match(/^\/api\/pedidos\/(\d+)\/pdf$/);
-    if (pedidoPdfMatch && req.method === 'GET') {
-        const id = Number(pedidoPdfMatch[1]);
+router.get('/api/pedidos/:id/pdf', async (req, res, next) => {
+    try {
+        const id = Number(req.params.id);
         const result = await query('SELECT archivo_pdf, archivo_url, numero_pedido FROM pedidos WHERE id = $1', [id]);
-        if (result.rows.length === 0) { json(res, { error: 'Pedido no encontrado' }, 404); return true; }
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
         const row = result.rows[0];
         if (row.archivo_pdf) {
-            res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${row.numero_pedido}.pdf"`, 'Cache-Control': 'public, max-age=3600' });
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="${row.numero_pedido}.pdf"`);
+            res.setHeader('Cache-Control', 'public, max-age=3600');
             res.end(row.archivo_pdf);
         } else if (row.archivo_url) {
-            res.writeHead(302, { 'Location': row.archivo_url }); res.end();
-        } else { json(res, { error: 'PDF no disponible' }, 404); }
-        return true;
-    }
+            res.redirect(row.archivo_url);
+        } else { res.status(404).json({ error: 'PDF no disponible' }); }
+    } catch (e) { next(e); }
+});
 
-    const pedidoIdMatch = urlPath.match(/^\/api\/pedidos\/(\d+)$/);
-    if (pedidoIdMatch && req.method === 'GET') {
-        const id = Number(pedidoIdMatch[1]);
-        const result = await query('SELECT * FROM pedidos WHERE id = $1', [id]);
-        if (result.rows.length === 0) { json(res, { error: 'Pedido no encontrado' }, 404); return true; }
-        json(res, result.rows[0]);
-        return true;
-    }
+router.get('/api/pedidos/:id', async (req, res, next) => {
+    try {
+        const result = await query('SELECT * FROM pedidos WHERE id = $1', [Number(req.params.id)]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
+        res.json(result.rows[0]);
+    } catch (e) { next(e); }
+});
 
-    if (pedidoIdMatch && req.method === 'PUT') {
-        const id = Number(pedidoIdMatch[1]);
-        const body = await parseBody(req);
-        const { estado, motivo_rechazo, revisado_por } = body;
-        if (!estado || !['aprobado', 'rechazado'].includes(estado)) { json(res, { error: 'Estado debe ser aprobado o rechazado' }, 400); return true; }
-        const result = await query('UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
-            [estado, motivo_rechazo || null, revisado_por || '', id]);
-        if (result.rows.length === 0) { json(res, { error: 'Pedido no encontrado' }, 404); return true; }
-        json(res, result.rows[0]);
-        return true;
-    }
+router.put('/api/pedidos/:id', async (req, res, next) => {
+    try {
+        const id = Number(req.params.id);
+        const { estado, motivo_rechazo, revisado_por } = req.body;
+        if (!estado || !['aprobado', 'rechazado'].includes(estado)) {
+            return res.status(400).json({ error: 'Estado debe ser aprobado o rechazado' });
+        }
+        const result = await query(
+            'UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+            [estado, motivo_rechazo || null, revisado_por || '', id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
+        res.json(result.rows[0]);
+    } catch (e) { next(e); }
+});
 
-    if (pedidoIdMatch && req.method === 'DELETE') {
+router.delete('/api/pedidos/:id', async (req, res, next) => {
+    try {
         const userPerms = (req.headers['x-user-permisos'] || '').split(',').filter(Boolean);
-        if (!userPerms.includes('usuarios')) { json(res, { error: 'Sin permisos' }, 403); return true; }
-        const id = Number(pedidoIdMatch[1]);
-        await query('DELETE FROM pedidos WHERE id = $1', [id]);
-        json(res, { ok: true });
-        return true;
-    }
+        if (!userPerms.includes('usuarios')) return res.status(403).json({ error: 'Sin permisos' });
+        await query('DELETE FROM pedidos WHERE id = $1', [Number(req.params.id)]);
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
 
-    return false;
-};
-
-module.exports = { handlePedidos };
+module.exports = router;

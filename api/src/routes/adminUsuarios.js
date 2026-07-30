@@ -1,47 +1,35 @@
-const { parseBody, json } = require('../middleware/parser');
+const express = require('express');
+const router = express.Router();
 const adminService = require('../services/adminUsuarios');
+const { parseBody } = require('../middleware/parser');
 
-const handleAdminUsuarios = async (req, res, urlPath, q) => {
-    if (urlPath === '/api/admin/usuarios' && req.method === 'GET') {
-        json(res, await adminService.getAll());
-        return true;
-    }
+router.get('/api/admin/usuarios', async (req, res, next) => {
+    try { res.json(await adminService.getAll()); }
+    catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/admin/usuarios/export' && req.method === 'GET') {
-        try {
-            const txt = await adminService.exportTxt();
-            res.writeHead(200, {
-                'Content-Type': 'text/plain; charset=utf-8',
-                'Content-Disposition': 'attachment; filename="usuarios_vitroflow.txt"'
-            });
-            res.end(txt);
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/admin/usuarios/export', async (req, res, next) => {
+    try {
+        const txt = await adminService.exportTxt();
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="usuarios_vitroflow.txt"');
+        res.send(txt);
+    } catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/admin/usuarios' && req.method === 'POST') {
-        const body = await parseBody(req);
-        try { json(res, await adminService.create(body), 201); }
-        catch (e) { json(res, { error: e.message }, 400); }
-        return true;
-    }
+router.post('/api/admin/usuarios', async (req, res, next) => {
+    try { res.status(201).json(await adminService.create(req.body)); }
+    catch (e) { res.status(400).json({ error: e.message }); }
+});
 
-    const idMatch = urlPath.match(/^\/api\/admin\/usuarios\/(\d+)$/);
-    if (idMatch && req.method === 'PUT') {
-        const id = Number(idMatch[1]);
-        const body = await parseBody(req);
-        try { json(res, await adminService.update(id, body)); }
-        catch (e) { json(res, { error: e.message }, 400); }
-        return true;
-    }
+router.put('/api/admin/usuarios/:id', async (req, res, next) => {
+    try { res.json(await adminService.update(Number(req.params.id), req.body)); }
+    catch (e) { res.status(400).json({ error: e.message }); }
+});
 
-    if (idMatch && req.method === 'DELETE') {
-        const id = Number(idMatch[1]);
-        json(res, await adminService.remove(id));
-        return true;
-    }
+router.delete('/api/admin/usuarios/:id', async (req, res, next) => {
+    try { res.json(await adminService.remove(Number(req.params.id))); }
+    catch (e) { next(e); }
+});
 
-    return false;
-};
-
-module.exports = { handleAdminUsuarios };
+module.exports = router;

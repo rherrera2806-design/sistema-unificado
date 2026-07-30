@@ -1,93 +1,54 @@
-const { parseBody, json } = require('../middleware/parser');
+const express = require('express');
+const router = express.Router();
 const ordenes = require('../services/produccionOrdenes');
 
-const handleProduccionOrdenes = async (req, res, urlPath, q) => {
-    // Órdenes
-    if (urlPath === '/api/produccion/ordenes' && req.method === 'GET') {
-        json(res, await ordenes.getOrdenes());
-        return true;
-    }
+router.get('/api/produccion/ordenes', async (req, res, next) => {
+    try { res.json(await ordenes.getOrdenes()); }
+    catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/produccion/ordenes' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.pedido_sap_id || !body.codigo_producto || !body.ancho || !body.alto) {
-            json(res, { error: 'Pedido, codigo, ancho y alto requeridos' }, 400);
-            return true;
-        }
-        try {
-            json(res, { ok: true, ...await ordenes.crearOrden(body) }, 201);
-        } catch (e) {
-            console.error('[PROD] Error crear orden manual:', e.message);
-            json(res, { error: 'Error al crear orden: ' + e.message }, 500);
-        }
-        return true;
-    }
+router.post('/api/produccion/ordenes', async (req, res, next) => {
+    const { pedido_sap_id, codigo_producto, ancho, alto } = req.body;
+    if (!pedido_sap_id || !codigo_producto || !ancho || !alto) return res.status(400).json({ error: 'Pedido, codigo, ancho y alto requeridos' });
+    try { res.status(201).json({ ok: true, ...await ordenes.crearOrden(req.body) }); }
+    catch (e) { res.status(500).json({ error: 'Error al crear orden: ' + e.message }); }
+});
 
-    const cerrarMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)\/cerrar$/);
-    if (cerrarMatch && req.method === 'PUT') {
-        const body = await parseBody(req);
-        if (!body.nota) { json(res, { error: 'Motivo de cierre requerido' }, 400); return true; }
-        try {
-            await ordenes.cerrarOrden(Number(cerrarMatch[1]), body.nota);
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.put('/api/produccion/ordenes/:id/cerrar', async (req, res, next) => {
+    if (!req.body.nota) return res.status(400).json({ error: 'Motivo de cierre requerido' });
+    try { await ordenes.cerrarOrden(Number(req.params.id), req.body.nota); res.json({ ok: true }); }
+    catch (e) { next(e); }
+});
 
-    const pasosGetMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)\/pasos$/);
-    if (pasosGetMatch && req.method === 'GET') {
-        json(res, await ordenes.getPasos(Number(pasosGetMatch[1])));
-        return true;
-    }
+router.get('/api/produccion/ordenes/:id/pasos', async (req, res, next) => {
+    res.json(await ordenes.getPasos(Number(req.params.id)));
+});
 
-    if (pasosGetMatch && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.estacion_id) { json(res, { error: 'Estacion requerida' }, 400); return true; }
-        try {
-            await ordenes.agregarPaso(Number(pasosGetMatch[1]), body.estacion_id);
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 400); }
-        return true;
-    }
+router.post('/api/produccion/ordenes/:id/pasos', async (req, res, next) => {
+    if (!req.body.estacion_id) return res.status(400).json({ error: 'Estacion requerida' });
+    try { await ordenes.agregarPaso(Number(req.params.id), req.body.estacion_id); res.json({ ok: true }); }
+    catch (e) { res.status(400).json({ error: e.message }); }
+});
 
-    const ordenMatch = urlPath.match(/^\/api\/produccion\/ordenes\/(\d+)$/);
-    if (ordenMatch && req.method === 'PUT') {
-        const body = await parseBody(req);
-        try {
-            json(res, await ordenes.editarOrden(Number(ordenMatch[1]), body));
-        } catch (e) { json(res, { error: e.message }, e.message.includes('Sin campos') ? 400 : 500); }
-        return true;
-    }
+router.put('/api/produccion/ordenes/:id', async (req, res, next) => {
+    try { res.json(await ordenes.editarOrden(Number(req.params.id), req.body)); }
+    catch (e) { res.status(e.message.includes('Sin campos') ? 400 : 500).json({ error: e.message }); }
+});
 
-    if (ordenMatch && req.method === 'DELETE') {
-        try {
-            await ordenes.eliminarOrden(Number(ordenMatch[1]));
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.delete('/api/produccion/ordenes/:id', async (req, res, next) => {
+    try { await ordenes.eliminarOrden(Number(req.params.id)); res.json({ ok: true }); }
+    catch (e) { next(e); }
+});
 
-    // Pasos
-    const pasoMatch = urlPath.match(/^\/api\/produccion\/pasos\/(\d+)$/);
-    if (pasoMatch && req.method === 'PUT') {
-        const body = await parseBody(req);
-        if (!body.estado) { json(res, { error: 'Estado requerido' }, 400); return true; }
-        try {
-            await ordenes.actualizarPaso(Number(pasoMatch[1]), body);
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.put('/api/produccion/pasos/:id', async (req, res, next) => {
+    if (!req.body.estado) return res.status(400).json({ error: 'Estado requerido' });
+    try { await ordenes.actualizarPaso(Number(req.params.id), req.body); res.json({ ok: true }); }
+    catch (e) { next(e); }
+});
 
-    if (pasoMatch && req.method === 'DELETE') {
-        try {
-            await ordenes.eliminarPaso(Number(pasoMatch[1]));
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.delete('/api/produccion/pasos/:id', async (req, res, next) => {
+    try { await ordenes.eliminarPaso(Number(req.params.id)); res.json({ ok: true }); }
+    catch (e) { next(e); }
+});
 
-    return false;
-};
-
-module.exports = { handleProduccionOrdenes };
+module.exports = router;

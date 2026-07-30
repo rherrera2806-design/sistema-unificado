@@ -1,48 +1,35 @@
-const { R2_ACCESS_KEY_ID } = require('../config/r2');
-const { parseBody, json } = require('../middleware/parser');
+const express = require('express');
+const router = express.Router();
 const r2Service = require('../services/r2Storage');
+const { R2_ACCESS_KEY_ID } = require('../config/r2');
 
-const requireR2 = (res) => {
-    if (!R2_ACCESS_KEY_ID) { json(res, { error: 'R2 no configurado' }, 500); return false; }
-    return true;
+const requireR2 = (req, res, next) => {
+    if (!R2_ACCESS_KEY_ID) return res.status(500).json({ error: 'R2 no configurado' });
+    next();
 };
 
-const handleR2Storage = async (req, res, urlPath, q) => {
-    if (urlPath === '/api/r2/presign-post' && req.method === 'POST') {
-        if (!requireR2(res)) return true;
-        const body = await parseBody(req);
-        if (!body.fileName) { json(res, { error: 'fileName requerido' }, 400); return true; }
-        try { json(res, r2Service.generatePresignPost(body.fileName)); }
-        catch (e) { json(res, { error: 'Error al generar presign' }, 500); }
-        return true;
-    }
+router.post('/api/r2/presign-post', requireR2, async (req, res, next) => {
+    if (!req.body.fileName) return res.status(400).json({ error: 'fileName requerido' });
+    try { res.json(r2Service.generatePresignPost(req.body.fileName)); }
+    catch (e) { res.status(500).json({ error: 'Error al generar presign' }); }
+});
 
-    if (urlPath === '/api/r2/presign-put' && req.method === 'POST') {
-        if (!requireR2(res)) return true;
-        const body = await parseBody(req);
-        if (!body.fileName) { json(res, { error: 'fileName requerido' }, 400); return true; }
-        try { json(res, r2Service.generatePresignPut(body.fileName)); }
-        catch (e) { json(res, { error: 'Error al generar presign PUT' }, 500); }
-        return true;
-    }
+router.post('/api/r2/presign-put', requireR2, async (req, res, next) => {
+    if (!req.body.fileName) return res.status(400).json({ error: 'fileName requerido' });
+    try { res.json(r2Service.generatePresignPut(req.body.fileName)); }
+    catch (e) { res.status(500).json({ error: 'Error al generar presign PUT' }); }
+});
 
-    if (urlPath === '/api/r2/download' && req.method === 'GET') {
-        const urlObj = new URL(req.url, `http://${req.headers.host}`);
-        const key = urlObj.searchParams.get('key');
-        if (!key) { json(res, { error: 'key es requerida' }, 400); return true; }
-        json(res, r2Service.getPublicUrl(key));
-        return true;
-    }
+router.get('/api/r2/download', (req, res, next) => {
+    const key = req.query.key;
+    if (!key) return res.status(400).json({ error: 'key es requerida' });
+    res.json(r2Service.getPublicUrl(key));
+});
 
-    if (urlPath === '/api/r2/delete' && req.method === 'DELETE') {
-        const body = await parseBody(req);
-        if (!body.key) { json(res, { error: 'key es requerida' }, 400); return true; }
-        try { json(res, await r2Service.deleteFile(body.key)); }
-        catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.delete('/api/r2/delete', async (req, res, next) => {
+    if (!req.body.key) return res.status(400).json({ error: 'key es requerida' });
+    try { res.json(await r2Service.deleteFile(req.body.key)); }
+    catch (e) { res.status(500).json({ error: e.message }); }
+});
 
-    return false;
-};
-
-module.exports = { handleR2Storage };
+module.exports = router;

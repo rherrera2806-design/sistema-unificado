@@ -4,11 +4,14 @@
   "description": "Sistema Unificado - Mantencion + Inventario",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "aws4": "^1.12.0",
     "bcryptjs": "^3.0.3",
+    "express": "^5.2.1",
     "pg": "^8.22.0",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.0",
@@ -16,5 +19,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
   }
 }

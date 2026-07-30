@@ -1,4 +1,5 @@
-const { parseBody, json } = require('../middleware/parser');
+const express = require('express');
+const router = express.Router();
 const { query } = require('../config/database');
 const catalogos = require('../services/produccionCatalogos');
 
@@ -8,156 +9,101 @@ const checkAdmin = async (req) => {
     return userRes.rows.length > 0 && userRes.rows[0].permisos.includes('usuarios');
 };
 
-const idDeUrl = (urlPath, base) => {
-    const m = urlPath.match(new RegExp('^' + base + '/(\\\\d+)$'));
-    return m ? Number(m[1]) : null;
-};
+router.get('/api/produccion/recetas-bom', async (req, res, next) => { res.json(await catalogos.getRecetasBom()); });
 
-const handleProduccionCatalogos = async (req, res, urlPath, q) => {
-    // ============ RECETAS BOM (NUEVA) ============
-    if (urlPath === '/api/produccion/recetas-bom' && req.method === 'GET') {
-        json(res, await catalogos.getRecetasBom());
-        return true;
-    }
-    if (urlPath === '/api/produccion/recetas-bom' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.codigo_sap_padre || !body.materia_prima_id) {
-            json(res, { error: 'Código SAP y materia prima requeridos' }, 400);
-            return true;
-        }
-        json(res, await catalogos.crearRecetaBom(body));
-        return true;
-    }
-    const rbId = idDeUrl(urlPath, '/api/produccion/recetas-bom');
-    if (rbId && req.method === 'DELETE') {
-        await catalogos.eliminarRecetaBom(rbId);
-        json(res, { ok: true });
-        return true;
-    }
+router.post('/api/produccion/recetas-bom', async (req, res, next) => {
+    if (!req.body.codigo_sap_padre || !req.body.materia_prima_id) return res.status(400).json({ error: 'Código SAP y materia prima requeridos' });
+    res.json(await catalogos.crearRecetaBom(req.body));
+});
 
-    // ============ RECETAS (ANTIGUA) ============
-    if (urlPath === '/api/produccion/recetas/all' && req.method === 'DELETE') {
-        if (!(await checkAdmin(req))) { json(res, { error: 'No autorizado' }, 403); return true; }
-        json(res, { eliminados: await catalogos.eliminarTodasRecetasAntiguas() });
-        return true;
-    }
-    if (urlPath === '/api/produccion/recetas/importar' && req.method === 'POST') {
-        const body = await parseBody(req);
-        let parsedRows = body.rows;
-        if (!parsedRows && body.excel_data) {
-            try {
-                const XLSX = require('xlsx');
-                const buffer = Buffer.from(body.excel_data, 'base64');
-                const workbook = XLSX.read(buffer, { type: 'buffer' });
-                parsedRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            } catch (e) { json(res, { error: 'Error al parsear Excel: ' + e.message }, 400); return true; }
-        }
-        if (!Array.isArray(parsedRows) || !parsedRows.length) {
-            json(res, { error: 'No hay datos para importar' }, 400);
-            return true;
-        }
-        json(res, await catalogos.importarRecetasAntiguas(parsedRows));
-        return true;
-    }
-    if (urlPath === '/api/produccion/recetas' && req.method === 'GET') {
-        json(res, await catalogos.getRecetasAntiguas());
-        return true;
-    }
-    if (urlPath === '/api/produccion/recetas' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.codigo_sap_padre || !body.codigo_materia_prima) {
-            json(res, { error: 'Código padre y materia prima requeridos' }, 400);
-            return true;
-        }
+router.delete('/api/produccion/recetas-bom/:id', async (req, res, next) => {
+    await catalogos.eliminarRecetaBom(Number(req.params.id));
+    res.json({ ok: true });
+});
+
+router.delete('/api/produccion/recetas/all', async (req, res, next) => {
+    if (!(await checkAdmin(req))) return res.status(403).json({ error: 'No autorizado' });
+    res.json({ eliminados: await catalogos.eliminarTodasRecetasAntiguas() });
+});
+
+router.post('/api/produccion/recetas/importar', async (req, res, next) => {
+    let parsedRows = req.body.rows;
+    if (!parsedRows && req.body.excel_data) {
         try {
-            json(res, await catalogos.crearRecetaAntigua(body), 201);
-        } catch (e) { json(res, { error: 'Error al crear receta: ' + e.message }, 500); }
-        return true;
+            const XLSX = require('xlsx');
+            const buffer = Buffer.from(req.body.excel_data, 'base64');
+            const workbook = XLSX.read(buffer, { type: 'buffer' });
+            parsedRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        } catch (e) { return res.status(400).json({ error: 'Error al parsear Excel: ' + e.message }); }
     }
-    const recId = idDeUrl(urlPath, '/api/produccion/recetas');
-    if (recId && req.method === 'DELETE') {
-        await catalogos.eliminarRecetaAntigua(recId);
-        json(res, { ok: true });
-        return true;
-    }
+    if (!Array.isArray(parsedRows) || !parsedRows.length) return res.status(400).json({ error: 'No hay datos para importar' });
+    res.json(await catalogos.importarRecetasAntiguas(parsedRows));
+});
 
-    // ============ REGLAS EXTRAS ============
-    if (urlPath === '/api/produccion/reglas-extras' && req.method === 'GET') {
-        json(res, await catalogos.getReglasExtras());
-        return true;
-    }
-    if (urlPath === '/api/produccion/reglas-extras' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.nombre_flag || !body.estacion_id) {
-            json(res, { error: 'Flag y estación requeridos' }, 400);
-            return true;
-        }
-        json(res, await catalogos.crearReglaExtra(body));
-        return true;
-    }
-    const regId = idDeUrl(urlPath, '/api/produccion/reglas-extras');
-    if (regId && req.method === 'PUT') {
-        await catalogos.editarReglaExtra(regId, await parseBody(req));
-        json(res, { ok: true });
-        return true;
-    }
-    if (regId && req.method === 'DELETE') {
-        await catalogos.eliminarReglaExtra(regId);
-        json(res, { ok: true });
-        return true;
-    }
+router.get('/api/produccion/recetas', async (req, res, next) => { res.json(await catalogos.getRecetasAntiguas()); });
 
-    // ============ TÉCNICOS ============
-    if (urlPath === '/api/produccion/tecnicos' && req.method === 'GET') {
-        json(res, await catalogos.getTecnicos());
-        return true;
-    }
-    if (urlPath === '/api/produccion/tecnicos' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.nombre || !body.nombre.trim()) { json(res, { error: 'Nombre requerido' }, 400); return true; }
-        try {
-            json(res, await catalogos.crearTecnico(body.nombre));
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
-    const tecId = idDeUrl(urlPath, '/api/produccion/tecnicos');
-    if (tecId && req.method === 'PUT') {
-        await catalogos.editarTecnico(tecId, await parseBody(req));
-        json(res, { ok: true });
-        return true;
-    }
-    if (tecId && req.method === 'DELETE') {
-        await catalogos.eliminarTecnico(tecId);
-        json(res, { ok: true });
-        return true;
-    }
+router.post('/api/produccion/recetas', async (req, res, next) => {
+    if (!req.body.codigo_sap_padre || !req.body.codigo_materia_prima) return res.status(400).json({ error: 'Código padre y materia prima requeridos' });
+    try { res.status(201).json(await catalogos.crearRecetaAntigua(req.body)); }
+    catch (e) { res.status(500).json({ error: 'Error al crear receta: ' + e.message }); }
+});
 
-    // ============ VENDEDORES ============
-    if (urlPath === '/api/produccion/vendedores' && req.method === 'GET') {
-        json(res, await catalogos.getVendedores());
-        return true;
-    }
-    if (urlPath === '/api/produccion/vendedores' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.nombre || !body.nombre.trim()) { json(res, { error: 'Nombre requerido' }, 400); return true; }
-        try {
-            json(res, await catalogos.crearVendedor(body.nombre));
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
-    const venId = idDeUrl(urlPath, '/api/produccion/vendedores');
-    if (venId && req.method === 'PUT') {
-        await catalogos.editarVendedor(venId, await parseBody(req));
-        json(res, { ok: true });
-        return true;
-    }
-    if (venId && req.method === 'DELETE') {
-        await catalogos.eliminarVendedor(venId);
-        json(res, { ok: true });
-        return true;
-    }
+router.delete('/api/produccion/recetas/:id', async (req, res, next) => {
+    await catalogos.eliminarRecetaAntigua(Number(req.params.id));
+    res.json({ ok: true });
+});
 
-    return false;
-};
+router.get('/api/produccion/reglas-extras', async (req, res, next) => { res.json(await catalogos.getReglasExtras()); });
 
-module.exports = { handleProduccionCatalogos };
+router.post('/api/produccion/reglas-extras', async (req, res, next) => {
+    if (!req.body.nombre_flag || !req.body.estacion_id) return res.status(400).json({ error: 'Flag y estación requeridos' });
+    res.json(await catalogos.crearReglaExtra(req.body));
+});
+
+router.put('/api/produccion/reglas-extras/:id', async (req, res, next) => {
+    await catalogos.editarReglaExtra(Number(req.params.id), req.body);
+    res.json({ ok: true });
+});
+
+router.delete('/api/produccion/reglas-extras/:id', async (req, res, next) => {
+    await catalogos.eliminarReglaExtra(Number(req.params.id));
+    res.json({ ok: true });
+});
+
+router.get('/api/produccion/tecnicos', async (req, res, next) => { res.json(await catalogos.getTecnicos()); });
+
+router.post('/api/produccion/tecnicos', async (req, res, next) => {
+    if (!req.body.nombre || !req.body.nombre.trim()) return res.status(400).json({ error: 'Nombre requerido' });
+    try { res.json(await catalogos.crearTecnico(req.body.nombre)); }
+    catch (e) { next(e); }
+});
+
+router.put('/api/produccion/tecnicos/:id', async (req, res, next) => {
+    await catalogos.editarTecnico(Number(req.params.id), req.body);
+    res.json({ ok: true });
+});
+
+router.delete('/api/produccion/tecnicos/:id', async (req, res, next) => {
+    await catalogos.eliminarTecnico(Number(req.params.id));
+    res.json({ ok: true });
+});
+
+router.get('/api/produccion/vendedores', async (req, res, next) => { res.json(await catalogos.getVendedores()); });
+
+router.post('/api/produccion/vendedores', async (req, res, next) => {
+    if (!req.body.nombre || !req.body.nombre.trim()) return res.status(400).json({ error: 'Nombre requerido' });
+    try { res.json(await catalogos.crearVendedor(req.body.nombre)); }
+    catch (e) { next(e); }
+});
+
+router.put('/api/produccion/vendedores/:id', async (req, res, next) => {
+    await catalogos.editarVendedor(Number(req.params.id), req.body);
+    res.json({ ok: true });
+});
+
+router.delete('/api/produccion/vendedores/:id', async (req, res, next) => {
+    await catalogos.eliminarVendedor(Number(req.params.id));
+    res.json({ ok: true });
+});
+
+module.exports = router;

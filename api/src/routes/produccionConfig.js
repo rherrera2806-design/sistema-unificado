@@ -1,4 +1,5 @@
-const { parseBody, json } = require('../middleware/parser');
+const express = require('express');
+const router = express.Router();
 const { query } = require('../config/database');
 const config = require('../services/produccionConfig');
 const catalogos = require('../services/produccionCatalogos');
@@ -9,165 +10,113 @@ const checkAdmin = async (req) => {
     return userRes.rows.length > 0 && userRes.rows[0].permisos.includes('usuarios');
 };
 
-const idDeUrl = (urlPath, base) => {
-    const m = urlPath.match(new RegExp('^' + base + '/(\\\\d+)$'));
-    return m ? Number(m[1]) : null;
-};
+router.get('/api/produccion/maquinas', async (req, res, next) => { res.json(await config.getMaquinas()); });
 
-const handleProduccionConfig = async (req, res, urlPath, q) => {
-    // ============ MÁQUINAS ============
-    if (urlPath === '/api/produccion/maquinas/import' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!Array.isArray(body.maquinas) || body.maquinas.length === 0) {
-            json(res, { error: 'No hay máquinas para importar' }, 400);
-            return true;
-        }
-        json(res, await config.importarMaquinas(body.maquinas));
-        return true;
-    }
-    if (urlPath === '/api/produccion/maquinas' && req.method === 'GET') {
-        json(res, await config.getMaquinas());
-        return true;
-    }
-    if (urlPath === '/api/produccion/maquinas' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.nombre || !body.codigo) { json(res, { error: 'Nombre y código requeridos' }, 400); return true; }
-        try {
-            json(res, await config.crearMaquina(body), 201);
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
-    const maqId = idDeUrl(urlPath, '/api/produccion/maquinas');
-    if (maqId && req.method === 'PUT') {
-        try {
-            await config.editarMaquina(maqId, await parseBody(req));
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
-    if (maqId && req.method === 'DELETE') {
-        await config.eliminarMaquina(maqId);
-        json(res, { ok: true });
-        return true;
-    }
+router.post('/api/produccion/maquinas/import', async (req, res, next) => {
+    if (!Array.isArray(req.body.maquinas) || req.body.maquinas.length === 0) return res.status(400).json({ error: 'No hay máquinas para importar' });
+    res.json(await config.importarMaquinas(req.body.maquinas));
+});
 
-    // ============ CÓDIGOS SAP ============
-    if (urlPath === '/api/produccion/codigos/all' && req.method === 'DELETE') {
-        if (!(await checkAdmin(req))) { json(res, { error: 'Solo admin' }, 403); return true; }
-        json(res, { ok: true, eliminados: await config.eliminarTodosCodigos() });
-        return true;
-    }
-    if (urlPath === '/api/produccion/codigos/importar' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.excel_data) { json(res, { error: 'Datos del archivo requeridos' }, 400); return true; }
-        try {
-            const XLSX = require('xlsx');
-            const buffer = Buffer.from(body.excel_data, 'base64');
-            const workbook = XLSX.read(buffer, { type: 'buffer' });
-            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            if (!rows.length) { json(res, { error: 'Archivo vacio' }, 400); return true; }
-            json(res, await config.importarCodigos(rows));
-        } catch (e) { json(res, { error: 'Error al procesar: ' + e.message }, 500); }
-        return true;
-    }
-    if (urlPath === '/api/produccion/codigos' && req.method === 'GET') {
-        json(res, await config.getCodigos(q.search || '', parseInt(q.limit) || 0));
-        return true;
-    }
-    if (urlPath === '/api/produccion/codigos' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.codigo) { json(res, { error: 'Codigo requerido' }, 400); return true; }
-        try {
-            json(res, await config.crearCodigo(body), 201);
-        } catch (e) {
-            if (e.code === '23505') { json(res, { error: 'El codigo ya existe' }, 400); return true; }
-            json(res, { error: e.message }, 500);
-        }
-        return true;
-    }
-    const codId = idDeUrl(urlPath, '/api/produccion/codigos');
-    if (codId && req.method === 'DELETE') {
-        await config.eliminarCodigo(codId);
-        json(res, { ok: true });
-        return true;
-    }
+router.post('/api/produccion/maquinas', async (req, res, next) => {
+    if (!req.body.nombre || !req.body.codigo) return res.status(400).json({ error: 'Nombre y código requeridos' });
+    try { res.status(201).json(await config.crearMaquina(req.body)); }
+    catch (e) { next(e); }
+});
 
-    // ============ ESTACIONES ============
-    if (urlPath === '/api/produccion/estaciones' && req.method === 'GET') {
-        json(res, await config.getEstaciones());
-        return true;
-    }
-    if (urlPath === '/api/produccion/estaciones' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.nombre_estacion || !body.orden_secuencia_defecto) {
-            json(res, { error: 'Nombre y orden requeridos' }, 400);
-            return true;
-        }
-        json(res, await config.crearEstacion(body));
-        return true;
-    }
-    const estId = idDeUrl(urlPath, '/api/produccion/estaciones');
-    if (estId && req.method === 'PUT') {
-        const result = await config.editarEstacion(estId, await parseBody(req));
-        json(res, result || { error: 'No encontrado' }, result ? 200 : 404);
-        return true;
-    }
-    if (estId && req.method === 'DELETE') {
-        await config.eliminarEstacion(estId);
-        json(res, { ok: true });
-        return true;
-    }
+router.put('/api/produccion/maquinas/:id', async (req, res, next) => {
+    try { await config.editarMaquina(Number(req.params.id), req.body); res.json({ ok: true }); }
+    catch (e) { next(e); }
+});
 
-    // ============ FAMILIAS ============
-    if (urlPath === '/api/produccion/familias' && req.method === 'GET') {
-        json(res, await config.getFamilias());
-        return true;
-    }
-    if (urlPath === '/api/produccion/familias' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.codigo_familia || !body.nombre_familia) {
-            json(res, { error: 'Código y nombre requeridos' }, 400);
-            return true;
-        }
-        json(res, await config.crearFamilia(body));
-        return true;
-    }
-    const famId = idDeUrl(urlPath, '/api/produccion/familias');
-    if (famId && req.method === 'PUT') {
-        await config.editarFamilia(famId, await parseBody(req));
-        json(res, { ok: true });
-        return true;
-    }
-    if (famId && req.method === 'DELETE') {
-        await config.eliminarFamilia(famId);
-        json(res, { ok: true });
-        return true;
-    }
+router.delete('/api/produccion/maquinas/:id', async (req, res, next) => {
+    await config.eliminarMaquina(Number(req.params.id));
+    res.json({ ok: true });
+});
 
-    // ============ MATERIAS PRIMAS ============
-    if (urlPath === '/api/produccion/materias-primas' && req.method === 'GET') {
-        json(res, await catalogos.getMateriasPrimas());
-        return true;
-    }
-    if (urlPath === '/api/produccion/materias-primas' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.codigo_mp || !body.nombre) { json(res, { error: 'Código y nombre requeridos' }, 400); return true; }
-        json(res, await catalogos.crearMateriaPrima(body));
-        return true;
-    }
-    const mpId = idDeUrl(urlPath, '/api/produccion/materias-primas');
-    if (mpId && req.method === 'PUT') {
-        const result = await catalogos.editarMateriaPrima(mpId, await parseBody(req));
-        json(res, result || { error: 'No encontrado' }, result ? 200 : 404);
-        return true;
-    }
-    if (mpId && req.method === 'DELETE') {
-        await catalogos.eliminarMateriaPrima(mpId);
-        json(res, { ok: true });
-        return true;
-    }
+router.delete('/api/produccion/codigos/all', async (req, res, next) => {
+    if (!(await checkAdmin(req))) return res.status(403).json({ error: 'Solo admin' });
+    res.json({ ok: true, eliminados: await config.eliminarTodosCodigos() });
+});
 
-    return false;
-};
+router.post('/api/produccion/codigos/importar', async (req, res, next) => {
+    if (!req.body.excel_data) return res.status(400).json({ error: 'Datos del archivo requeridos' });
+    try {
+        const XLSX = require('xlsx');
+        const buffer = Buffer.from(req.body.excel_data, 'base64');
+        const workbook = XLSX.read(buffer, { type: 'buffer' });
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        if (!rows.length) return res.status(400).json({ error: 'Archivo vacio' });
+        res.json(await config.importarCodigos(rows));
+    } catch (e) { res.status(500).json({ error: 'Error al procesar: ' + e.message }); }
+});
 
-module.exports = { handleProduccionConfig };
+router.get('/api/produccion/codigos', async (req, res, next) => {
+    res.json(await config.getCodigos(req.query.search || '', parseInt(req.query.limit) || 0));
+});
+
+router.post('/api/produccion/codigos', async (req, res, next) => {
+    if (!req.body.codigo) return res.status(400).json({ error: 'Codigo requerido' });
+    try { res.status(201).json(await config.crearCodigo(req.body)); }
+    catch (e) {
+        if (e.code === '23505') return res.status(400).json({ error: 'El codigo ya existe' });
+        next(e);
+    }
+});
+
+router.delete('/api/produccion/codigos/:id', async (req, res, next) => {
+    await config.eliminarCodigo(Number(req.params.id));
+    res.json({ ok: true });
+});
+
+router.get('/api/produccion/estaciones', async (req, res, next) => { res.json(await config.getEstaciones()); });
+
+router.post('/api/produccion/estaciones', async (req, res, next) => {
+    if (!req.body.nombre_estacion || !req.body.orden_secuencia_defecto) return res.status(400).json({ error: 'Nombre y orden requeridos' });
+    res.json(await config.crearEstacion(req.body));
+});
+
+router.put('/api/produccion/estaciones/:id', async (req, res, next) => {
+    const result = await config.editarEstacion(Number(req.params.id), req.body);
+    res.json(result || { error: 'No encontrado' });
+});
+
+router.delete('/api/produccion/estaciones/:id', async (req, res, next) => {
+    await config.eliminarEstacion(Number(req.params.id));
+    res.json({ ok: true });
+});
+
+router.get('/api/produccion/familias', async (req, res, next) => { res.json(await config.getFamilias()); });
+
+router.post('/api/produccion/familias', async (req, res, next) => {
+    if (!req.body.codigo_familia || !req.body.nombre_familia) return res.status(400).json({ error: 'Código y nombre requeridos' });
+    res.json(await config.crearFamilia(req.body));
+});
+
+router.put('/api/produccion/familias/:id', async (req, res, next) => {
+    await config.editarFamilia(Number(req.params.id), req.body);
+    res.json({ ok: true });
+});
+
+router.delete('/api/produccion/familias/:id', async (req, res, next) => {
+    await config.eliminarFamilia(Number(req.params.id));
+    res.json({ ok: true });
+});
+
+router.get('/api/produccion/materias-primas', async (req, res, next) => { res.json(await catalogos.getMateriasPrimas()); });
+
+router.post('/api/produccion/materias-primas', async (req, res, next) => {
+    if (!req.body.codigo_mp || !req.body.nombre) return res.status(400).json({ error: 'Código y nombre requeridos' });
+    res.json(await catalogos.crearMateriaPrima(req.body));
+});
+
+router.put('/api/produccion/materias-primas/:id', async (req, res, next) => {
+    const result = await catalogos.editarMateriaPrima(Number(req.params.id), req.body);
+    res.json(result || { error: 'No encontrado' });
+});
+
+router.delete('/api/produccion/materias-primas/:id', async (req, res, next) => {
+    await catalogos.eliminarMateriaPrima(Number(req.params.id));
+    res.json({ ok: true });
+});
+
+module.exports = router;

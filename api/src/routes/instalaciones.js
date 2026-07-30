@@ -1,144 +1,106 @@
-const { parseBody, json } = require('../middleware/parser');
+const express = require('express');
+const router = express.Router();
 const instalaciones = require('../services/instalaciones');
 
 const getUserEmail = (req) => req.headers['x-user-email'] || 'Sistema';
 
-const handleInstalaciones = async (req, res, urlPath, q) => {
-    if (urlPath === '/api/instalaciones/calendario' && req.method === 'GET') {
-        if (!q.inicio || !q.fin) { json(res, { error: 'Fechas requeridas' }, 400); return true; }
-        try {
-            json(res, await instalaciones.getCalendario(q.inicio, q.fin));
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/instalaciones/calendario', async (req, res, next) => {
+    if (!req.query.inicio || !req.query.fin) return res.status(400).json({ error: 'Fechas requeridas' });
+    try { res.json(await instalaciones.getCalendario(req.query.inicio, req.query.fin)); }
+    catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/instalaciones/tecnicos' && req.method === 'GET') {
-        try {
-            json(res, await instalaciones.getTecnicos());
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/instalaciones/tecnicos', async (req, res, next) => {
+    try { res.json(await instalaciones.getTecnicos()); }
+    catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/instalaciones/vendedores' && req.method === 'GET') {
-        try {
-            json(res, await instalaciones.getVendedores());
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/instalaciones/vendedores', async (req, res, next) => {
+    try { res.json(await instalaciones.getVendedores()); }
+    catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/instalaciones' && req.method === 'GET') {
-        try {
-            json(res, await instalaciones.getInstalaciones());
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/instalaciones', async (req, res, next) => {
+    try { res.json(await instalaciones.getInstalaciones()); }
+    catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/instalaciones' && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.cliente || !body.direccion || !body.fecha_programada) {
-            json(res, { error: 'Cliente, dirección y fecha requeridos' }, 400);
-            return true;
-        }
-        try {
-            json(res, await instalaciones.crearInstalacion(body, getUserEmail(req)), 201);
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.post('/api/instalaciones', async (req, res, next) => {
+    const { cliente, direccion, fecha_programada } = req.body;
+    if (!cliente || !direccion || !fecha_programada) return res.status(400).json({ error: 'Cliente, dirección y fecha requeridos' });
+    try { res.status(201).json(await instalaciones.crearInstalacion(req.body, getUserEmail(req))); }
+    catch (e) { next(e); }
+});
 
-    // Rutas con ID
-    const estadoMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/estado$/);
-    if (estadoMatch && req.method === 'PUT') {
-        const body = await parseBody(req);
-        try {
-            await instalaciones.cambiarEstado(parseInt(estadoMatch[1]), body.estado, body.detalle, getUserEmail(req));
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, e.message === 'Estado inválido' ? 400 : 500); }
-        return true;
-    }
+router.put('/api/instalaciones/:id/estado', async (req, res, next) => {
+    try {
+        await instalaciones.cambiarEstado(Number(req.params.id), req.body.estado, req.body.detalle, getUserEmail(req));
+        res.json({ ok: true });
+    } catch (e) { res.status(e.message === 'Estado inválido' ? 400 : 500).json({ error: e.message }); }
+});
 
-    const cerrarMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/cerrar$/);
-    if (cerrarMatch && req.method === 'PUT') {
-        const body = await parseBody(req);
-        try {
-            await instalaciones.cerrarInstalacion(parseInt(cerrarMatch[1]), body.notas_cierre, body.firma_cliente, getUserEmail(req));
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.put('/api/instalaciones/:id/cerrar', async (req, res, next) => {
+    try {
+        await instalaciones.cerrarInstalacion(Number(req.params.id), req.body.notas_cierre, req.body.firma_cliente, getUserEmail(req));
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
 
-    const fotosMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/fotos$/);
-    if (fotosMatch && req.method === 'POST') {
-        const body = await parseBody(req);
-        if (!body.fotos || !Array.isArray(body.fotos)) { json(res, { error: 'fotos array requerido' }, 400); return true; }
-        try {
-            await instalaciones.subirFotos(parseInt(fotosMatch[1]), body.fotos, getUserEmail(req));
-            json(res, { ok: true, count: body.fotos.length });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.post('/api/instalaciones/:id/fotos', async (req, res, next) => {
+    if (!req.body.fotos || !Array.isArray(req.body.fotos)) return res.status(400).json({ error: 'fotos array requerido' });
+    try {
+        await instalaciones.subirFotos(Number(req.params.id), req.body.fotos, getUserEmail(req));
+        res.json({ ok: true, count: req.body.fotos.length });
+    } catch (e) { next(e); }
+});
 
-    if (fotosMatch && req.method === 'GET') {
-        try {
-            json(res, await instalaciones.getFotos(parseInt(fotosMatch[1])));
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/instalaciones/:id/fotos', async (req, res, next) => {
+    try { res.json(await instalaciones.getFotos(Number(req.params.id))); }
+    catch (e) { next(e); }
+});
 
-    const fotoMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/foto\/(\d+)$/);
-    if (fotoMatch && req.method === 'GET') {
-        try {
-            const foto = await instalaciones.getFoto(parseInt(fotoMatch[2]));
-            if (!foto) { json(res, { error: 'Foto no encontrada' }, 404); return true; }
-            res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=3600' });
-            res.end(foto);
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/instalaciones/:instId/foto/:fotoId', async (req, res, next) => {
+    try {
+        const foto = await instalaciones.getFoto(Number(req.params.fotoId));
+        if (!foto) return res.status(404).json({ error: 'Foto no encontrada' });
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.end(foto);
+    } catch (e) { next(e); }
+});
 
-    if (fotoMatch && req.method === 'DELETE') {
-        try {
-            await instalaciones.eliminarFoto(parseInt(fotoMatch[1]), parseInt(fotoMatch[2]), getUserEmail(req));
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.delete('/api/instalaciones/:instId/foto/:fotoId', async (req, res, next) => {
+    try {
+        await instalaciones.eliminarFoto(Number(req.params.instId), Number(req.params.fotoId), getUserEmail(req));
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
 
-    const historialMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)\/historial$/);
-    if (historialMatch && req.method === 'GET') {
-        try {
-            json(res, await instalaciones.getHistorial(parseInt(historialMatch[1])));
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/instalaciones/:id/historial', async (req, res, next) => {
+    try { res.json(await instalaciones.getHistorial(Number(req.params.id))); }
+    catch (e) { next(e); }
+});
 
-    const idMatch = urlPath.match(/^\/api\/instalaciones\/(\d+)$/);
-    if (idMatch && req.method === 'GET') {
-        try {
-            const inst = await instalaciones.getInstalacion(parseInt(idMatch[1]));
-            if (!inst) { json(res, { error: 'No encontrada' }, 404); return true; }
-            json(res, inst);
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/instalaciones/:id', async (req, res, next) => {
+    try {
+        const inst = await instalaciones.getInstalacion(Number(req.params.id));
+        if (!inst) return res.status(404).json({ error: 'No encontrada' });
+        res.json(inst);
+    } catch (e) { next(e); }
+});
 
-    if (idMatch && req.method === 'PUT') {
-        const body = await parseBody(req);
-        try {
-            await instalaciones.editarInstalacion(parseInt(idMatch[1]), body, getUserEmail(req));
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.put('/api/instalaciones/:id', async (req, res, next) => {
+    try {
+        await instalaciones.editarInstalacion(Number(req.params.id), req.body, getUserEmail(req));
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
 
-    if (idMatch && req.method === 'DELETE') {
-        try {
-            await instalaciones.eliminarInstalacion(parseInt(idMatch[1]));
-            json(res, { ok: true });
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.delete('/api/instalaciones/:id', async (req, res, next) => {
+    try {
+        await instalaciones.eliminarInstalacion(Number(req.params.id));
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
 
-    return false;
-};
-
-module.exports = { handleInstalaciones };
+module.exports = router;

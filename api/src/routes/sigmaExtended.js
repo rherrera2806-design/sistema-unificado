@@ -1,5 +1,6 @@
+const express = require('express');
+const router = express.Router();
 const { query } = require('../config/database');
-const { parseBody, json } = require('../middleware/parser');
 const sigmaReports = require('../services/sigmaReports');
 const sigmaService = require('../services/sigma');
 
@@ -9,133 +10,90 @@ const checkAdmin = async (req) => {
     return userRes.rows.length > 0 && userRes.rows[0].permisos.includes('usuarios');
 };
 
-const handleSigmaExtended = async (req, res, urlPath, q) => {
-    // Datos combinados
-    if (urlPath === '/api/sigma/calendar-data' && req.method === 'GET') {
-        try {
-            const urlObj = new URL(req.url, `http://${req.headers.host}`);
-            const month = parseInt(urlObj.searchParams.get('month')) || new Date().getMonth() + 1;
-            const year = parseInt(urlObj.searchParams.get('year')) || new Date().getFullYear();
-            json(res, await sigmaReports.getCalendarData(month, year));
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/sigma/calendar-data', async (req, res, next) => {
+    try {
+        const month = parseInt(req.query.month) || new Date().getMonth() + 1;
+        const year = parseInt(req.query.year) || new Date().getFullYear();
+        res.json(await sigmaReports.getCalendarData(month, year));
+    } catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/sigma/dashboard-data' && req.method === 'GET') {
-        try {
-            json(res, await sigmaReports.getDashboardData(sigmaService.getSigmaStats));
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/sigma/dashboard-data', async (req, res, next) => {
+    try { res.json(await sigmaReports.getDashboardData(sigmaService.getSigmaStats)); }
+    catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/sigma/preventive-data' && req.method === 'GET') {
-        try {
-            json(res, await sigmaReports.getPreventiveData());
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/sigma/preventive-data', async (req, res, next) => {
+    try { res.json(await sigmaReports.getPreventiveData()); }
+    catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/sigma/corrective-data' && req.method === 'GET') {
-        try {
-            json(res, await sigmaReports.getCorrectiveData());
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/sigma/corrective-data', async (req, res, next) => {
+    try { res.json(await sigmaReports.getCorrectiveData()); }
+    catch (e) { next(e); }
+});
 
-    if (urlPath === '/api/sigma/machine-types-data' && req.method === 'GET') {
-        try {
-            json(res, await sigmaReports.getMachineTypesData());
-        } catch (e) { json(res, { error: e.message }, 500); }
-        return true;
-    }
+router.get('/api/sigma/machine-types-data', async (req, res, next) => {
+    try { res.json(await sigmaReports.getMachineTypesData()); }
+    catch (e) { next(e); }
+});
 
-    // Stats summary
-    if (urlPath === '/api/sigma/stats/summary' && req.method === 'GET') {
-        json(res, await sigmaReports.getStatsSummary());
-        return true;
-    }
+router.get('/api/sigma/stats/summary', async (req, res, next) => {
+    try { res.json(await sigmaReports.getStatsSummary()); }
+    catch (e) { next(e); }
+});
 
-    // Components by type
-    const compByTypeMatch = urlPath.match(/^\/api\/sigma\/components\/by-type\/(\d+)$/);
-    if (compByTypeMatch && req.method === 'GET') {
-        json(res, await sigmaReports.getComponentsByType(Number(compByTypeMatch[1])));
-        return true;
-    }
+router.get('/api/sigma/components/by-type/:id', async (req, res, next) => {
+    res.json(await sigmaReports.getComponentsByType(Number(req.params.id)));
+});
 
-    // Machine details
-    const machineDetailsMatch = urlPath.match(/^\/api\/sigma\/machines\/(\d+)\/details$/);
-    if (machineDetailsMatch && req.method === 'GET') {
-        const details = await sigmaReports.getMachineDetails(Number(machineDetailsMatch[1]));
-        if (!details) {
-            json(res, { error: 'No encontrada' }, 404);
-            return true;
-        }
-        json(res, details);
-        return true;
-    }
+router.get('/api/sigma/machines/:id/details', async (req, res, next) => {
+    const details = await sigmaReports.getMachineDetails(Number(req.params.id));
+    if (!details) return res.status(404).json({ error: 'No encontrada' });
+    res.json(details);
+});
 
-    // Machine components
-    const machineCompsMatch = urlPath.match(/^\/api\/sigma\/machines\/(\d+)\/components$/);
-    if (machineCompsMatch && req.method === 'GET') {
-        json(res, await sigmaReports.getMachineComponents(Number(machineCompsMatch[1])));
-        return true;
-    }
+router.get('/api/sigma/machines/:id/components', async (req, res, next) => {
+    res.json(await sigmaReports.getMachineComponents(Number(req.params.id)));
+});
 
-    if (machineCompsMatch && req.method === 'PUT') {
-        const body = await parseBody(req);
-        await sigmaReports.setMachineComponents(Number(machineCompsMatch[1]), body.componentes || []);
-        json(res, { ok: true });
-        return true;
-    }
+router.put('/api/sigma/machines/:id/components', async (req, res, next) => {
+    await sigmaReports.setMachineComponents(Number(req.params.id), req.body.componentes || []);
+    res.json({ ok: true });
+});
 
-    // Reportes
-    if (urlPath === '/api/sigma/reports/overdue' && req.method === 'GET') {
-        json(res, await sigmaReports.getOverdue());
-        return true;
-    }
+router.get('/api/sigma/reports/overdue', async (req, res, next) => {
+    res.json(await sigmaReports.getOverdue());
+});
 
-    if (urlPath === '/api/sigma/reports/upcoming' && req.method === 'GET') {
-        json(res, await sigmaReports.getUpcoming(Number(q.days) || 15));
-        return true;
-    }
+router.get('/api/sigma/reports/upcoming', async (req, res, next) => {
+    res.json(await sigmaReports.getUpcoming(Number(req.query.days) || 15));
+});
 
-    if (urlPath === '/api/sigma/reports/completed' && req.method === 'GET') {
-        json(res, await sigmaReports.getCompleted());
-        return true;
-    }
+router.get('/api/sigma/reports/completed', async (req, res, next) => {
+    res.json(await sigmaReports.getCompleted());
+});
 
-    if (urlPath === '/api/sigma/reports/recent-completed' && req.method === 'GET') {
-        json(res, await sigmaReports.getRecentCompleted());
-        return true;
-    }
+router.get('/api/sigma/reports/recent-completed', async (req, res, next) => {
+    res.json(await sigmaReports.getRecentCompleted());
+});
 
-    if (urlPath === '/api/sigma/reports/top-failing-machines' && req.method === 'GET') {
-        json(res, await sigmaReports.getTopFailingMachines());
-        return true;
-    }
+router.get('/api/sigma/reports/top-failing-machines', async (req, res, next) => {
+    res.json(await sigmaReports.getTopFailingMachines());
+});
 
-    if (urlPath === '/api/sigma/reports/by-period' && req.method === 'GET') {
-        json(res, await sigmaReports.getByPeriod(q.start, q.end));
-        return true;
-    }
+router.get('/api/sigma/reports/by-period', async (req, res, next) => {
+    res.json(await sigmaReports.getByPeriod(req.query.start, req.query.end));
+});
 
-    if (urlPath === '/api/sigma/reports/bitacora' && req.method === 'GET') {
-        json(res, await sigmaReports.getBitacora());
-        return true;
-    }
+router.get('/api/sigma/reports/bitacora', async (req, res, next) => {
+    res.json(await sigmaReports.getBitacora());
+});
 
-    // Reset (admin only)
-    if (urlPath === '/api/sigma/reset' && req.method === 'POST') {
-        if (!(await checkAdmin(req))) {
-            json(res, { error: 'Solo admin' }, 403);
-            return true;
-        }
-        await sigmaService.clearAllSigma();
-        json(res, { ok: true, message: 'Base de datos reiniciada' });
-        return true;
-    }
+router.post('/api/sigma/reset', async (req, res, next) => {
+    if (!(await checkAdmin(req))) return res.status(403).json({ error: 'Solo admin' });
+    await sigmaService.clearAllSigma();
+    res.json({ ok: true, message: 'Base de datos reiniciada' });
+});
 
-    return false;
-};
-
-module.exports = { handleSigmaExtended };
+module.exports = router;
