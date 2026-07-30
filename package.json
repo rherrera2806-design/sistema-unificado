@@ -1,0 +1,19 @@
+{
+  "name": "sistema-unificado",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node api/src/index.js",
+    "postinstall": "cd api && npm install"
+  },
+  "dependencies": {
+    "aws4": "^1.12.0",
+    "bcryptjs": "^3.0.3",
+    "pg": "^8.22.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.0",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
