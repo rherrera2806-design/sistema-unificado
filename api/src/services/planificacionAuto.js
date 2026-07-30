@@ -1,0 +1,323 @@
+const { query } = require('../config/database');
+
+async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
+  const inicioDate = inicio ? new Date(inicio + 'T00:00:00') : new Date();
+  inicioDate.setHours(0, 0, 0, 0);
+
+  // 2. Capacidades por grupo
+  const capRes = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE');
+  const capMap = {};
+  for (const r of capRes.rows) {
+    capMap[r.grupo] = Number(r.capacidad_kg_dia) || 0;
+  }
+
+  // 3. Cuellos de botella
+  const cuelloRes = await query('SELECT id, nombre_estacion, capacidad_max_m2_dia FROM estaciones_maestras WHERE es_cuello_botella = TRUE AND activa = TRUE');
+  const cuellosMap = {};
+  const cuelloIds = new Set();
+  for (const e of cuelloRes.rows) {
+    cuellosMap[e.id] = Number(e.capacidad_max_m2_dia) || 0;
+    cuelloIds.add(e.id);
+  }
+
+  // 4. Carga actual de m2 por estación por día
+  const cargaEstRes = await query(
+    `SELECT cp.fecha_programada, cp.estacion_id, COALESCE(SUM(cp.m2_asignados),0) as m2_total
+     FROM cola_produccion_pasos cp
+     JOIN produccion_ordenes o ON o.id = cp.orden_produccion_id
+     WHERE cp.fecha_programada IS NOT NULL AND cp.estado != 'TERMINADO'
+     AND cp.estacion_id = ANY($1)
+     GROUP BY cp.fecha_programada, cp.estacion_id`,
+    [cuelloRes.rows.map(e => e.id)]
+  );
+  const cargaEstMap = {};
+  for (const r of cargaEstRes.rows) {
+    const fs = fmt(new Date(r.fecha_programada));
+    cargaEstMap[fs + '|' + r.estacion_id] = Number(r.m2_total) || 0;
+  }
+
+  // 5. Backfill
+  // 5a: Backfill grupo
+  await query(
+    `UPDATE produccion_ordenes o
+     SET grupo = CASE
+         WHEN o.es_compuesto = TRUE THEN COALESCE(
+             (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+             (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+         )
+         ELSE (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto)
+     END
+     WHERE o.grupo IS NULL`
+  );
+
+  // 5b: Re-resolver BOM
+  await query(
+    `UPDATE produccion_ordenes o
+     SET grupo = COALESCE(
+         (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+         (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
+     )
+     WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL`
+  );
+
+  // 5c: Forzar espesor desde recetas
+  await query(
+    `UPDATE produccion_ordenes o
+     SET espesor_mm = COALESCE(
+         (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+         o.espesor_mm, 6
+     )
+     WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL`
+  );
+
+  // 5d: Backfill kilos
+  await query(
+    `UPDATE produccion_ordenes
+     SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
+     WHERE (kilos IS NULL OR kilos = 0) AND metros_cuadrados > 0`
+  );
+
+  // 6. Pendientes
+  const pendRes = await query(
+    `SELECT o.* FROM produccion_ordenes o
+     WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL
+     ORDER BY o.created_at`
+  );
+
+  // 7. Grupo del padre para BOM
+  const padreRes = await query(
+    `SELECT o.id as orden_id, o.bom_padre_id, o.codigo_padre, COALESCE(
+         (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+         (SELECT cc2.grupo FROM produccion_recetas_bom rb2 JOIN produccion_codigos cc2 ON cc2.codigo = rb2.codigo_sap_padre WHERE rb2.id = o.bom_padre_id)
+     ) as grupo_padre
+     FROM produccion_ordenes o
+     WHERE o.es_compuesto = TRUE`
+  );
+  const padreGrupoMap = {};
+  for (const r of padreRes.rows) {
+    if (r.bom_padre_id != null && r.grupo_padre != null) {
+      padreGrupoMap[r.bom_padre_id] = r.grupo_padre;
+    }
+  }
+
+  // 8. Carga actual por fecha/grupo
+  const cargaRes = await query(
+    `SELECT fecha_programada, grupo, COALESCE(SUM(kilos),0) as kg
+     FROM produccion_ordenes
+     WHERE fecha_programada IS NOT NULL AND estado_programacion NOT IN ('CERRADO','TERMINADO')
+     GROUP BY fecha_programada, grupo`
+  );
+  const cargaMap = {};
+  for (const r of cargaRes.rows) {
+    const fs = fmt(new Date(r.fecha_programada));
+    if (!cargaMap[fs]) cargaMap[fs] = {};
+    cargaMap[fs][r.grupo] = Number(r.kg) || 0;
+  }
+
+  // 9. Calendario laboral
+  const calMap = {};
+  try {
+    const calRes = await query(`SELECT to_char(fecha, 'YYYY-MM-DD') as fs, es_laboral FROM calendario_produccion`);
+    for (const r of calRes.rows) {
+      calMap[r.fs] = r.es_laboral;
+    }
+  } catch (e) {
+    // silencioso
+  }
+
+  // 10. Helpers
+  function fmt(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+
+  function esLaboral(fStr) {
+    if (Object.prototype.hasOwnProperty.call(calMap, fStr)) {
+      return !!calMap[fStr];
+    }
+    const d = new Date(fStr + 'T00:00:00');
+    const dow = d.getDay();
+    return dow !== 0 && dow !== 6;
+  }
+
+  function findDateWithCapacity(grupo, kg, m2, estacionesIds) {
+    const capGrupo = capMap[grupo] || 0;
+    for (let i = 0; i < dias; i++) {
+      const d = new Date(inicioDate);
+      d.setDate(d.getDate() + i);
+      const fs = fmt(d);
+      if (!esLaboral(fs)) continue;
+      const usados = (cargaMap[fs] && cargaMap[fs][grupo]) || 0;
+      if (usados + kg > capGrupo) continue;
+      let ok = true;
+      for (const estId of (estacionesIds || [])) {
+        if (!cuelloIds.has(estId)) continue;
+        const capEst = cuellosMap[estId] || 0;
+        const usadosEst = cargaEstMap[fs + '|' + estId] || 0;
+        if (usadosEst + m2 > capEst) { ok = false; break; }
+      }
+      if (ok) return fs;
+    }
+    return null;
+  }
+
+  function calcUnitsForDay(grupo, kgPorUnidad, m2PorUnidad, estacionesIds) {
+    const capGrupo = capMap[grupo] || 0;
+    let best = { units: 0, fecha: null };
+    for (let i = 0; i < dias; i++) {
+      const d = new Date(inicioDate);
+      d.setDate(d.getDate() + i);
+      const fs = fmt(d);
+      if (!esLaboral(fs)) continue;
+      let units = Infinity;
+      if (kgPorUnidad > 0) {
+        const usados = (cargaMap[fs] && cargaMap[fs][grupo]) || 0;
+        units = Math.min(units, Math.floor((capGrupo - usados) / kgPorUnidad));
+      }
+      for (const estId of (estacionesIds || [])) {
+        if (!cuelloIds.has(estId)) continue;
+        const capEst = cuellosMap[estId] || 0;
+        const usadosEst = cargaEstMap[fs + '|' + estId] || 0;
+        if (m2PorUnidad > 0) {
+          units = Math.min(units, Math.floor((capEst - usadosEst) / m2PorUnidad));
+        }
+      }
+      if (units === Infinity) units = 0;
+      if (units > 0) {
+        best = { units, fecha: fs };
+        break;
+      }
+    }
+    return best;
+  }
+
+  function addToCarga(fecha, grupo, kg) {
+    if (!cargaMap[fecha]) cargaMap[fecha] = {};
+    cargaMap[fecha][grupo] = (cargaMap[fecha][grupo] || 0) + kg;
+  }
+
+  function addToCargaEst(fecha, estacionId, m2) {
+    const k = fecha + '|' + estacionId;
+    cargaEstMap[k] = (cargaEstMap[k] || 0) + m2;
+  }
+
+  // 11. Procesar pendientes
+  const asignados = [];
+  const noAsignados = [];
+
+  for (let idx = 0; idx < pendRes.rows.length; idx++) {
+    const o = pendRes.rows[idx];
+    const kg = Number(o.kilos) || 0;
+    const m2 = Number(o.metros_cuadrados) || 0;
+    const cantidad = Number(o.cantidad) || 1;
+
+    let grupo;
+    if (o.es_compuesto && o.bom_padre_id) {
+      grupo = padreGrupoMap[o.bom_padre_id] || o.grupo;
+    } else {
+      grupo = o.grupo;
+    }
+
+    if (!grupo || kg <= 0) {
+      noAsignados.push({ orden_id: o.id, motivo: 'Sin grupo o sin kilos' });
+      continue;
+    }
+
+    const rutaRes = await query(
+      'SELECT estacion_id FROM cola_produccion_pasos WHERE orden_produccion_id = $1',
+      [o.id]
+    );
+    const estacionesIds = rutaRes.rows.map(r => r.estacion_id);
+
+    const kgPorUnidad = cantidad > 0 ? kg / cantidad : kg;
+    const m2PorUnidad = cantidad > 0 ? m2 / cantidad : m2;
+
+    const fit = calcUnitsForDay(grupo, kgPorUnidad, m2PorUnidad, estacionesIds);
+
+    if (fit.fecha && fit.units >= cantidad) {
+      // Asignación completa
+      await query(
+        `UPDATE produccion_ordenes SET fecha_programada = $1, estado_programacion = 'PROGRAMADO' WHERE id = $2`,
+        [fit.fecha, o.id]
+      );
+      await query(
+        `UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3`,
+        [fit.fecha, m2, o.id]
+      );
+      addToCarga(fit.fecha, grupo, kg);
+      for (const estId of estacionesIds) {
+        addToCargaEst(fit.fecha, estId, m2);
+      }
+      asignados.push({ orden_id: o.id, fecha: fit.fecha, grupo, kg, unidades: cantidad });
+    } else if (fit.fecha && fit.units >= 1) {
+      // SPLIT parcial
+      const unitsAsignadas = fit.units;
+      const kgAsignados = kgPorUnidad * unitsAsignadas;
+      const m2Asignados = m2PorUnidad * unitsAsignadas;
+      const resto = cantidad - unitsAsignadas;
+
+      await query(
+        `UPDATE produccion_ordenes
+         SET fecha_programada = $1, estado_programacion = 'PROGRAMADO',
+             cantidad = $2, kilos = $3, metros_cuadrados = $4
+         WHERE id = $5`,
+        [fit.fecha, unitsAsignadas, kgAsignados, m2Asignados, o.id]
+      );
+
+      const nuevaRes = await query(
+        `INSERT INTO produccion_ordenes (
+            pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto,
+            familia_id, espesor_mm, tipo_venta, item_numero, nota, posicion,
+            orden_compra, tipo_entrega, grupo, codigo_padre, bom_padre_id, es_compuesto,
+            cantidad, kilos, metros_cuadrados,
+            estado_programacion, fecha_programada, created_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'PENDIENTE',NULL,NOW())
+        RETURNING id`,
+        [
+          o.pedido_sap_id, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto,
+          o.familia_id, o.espesor_mm, o.tipo_venta, o.item_numero, o.nota, o.posicion,
+          o.orden_compra, o.tipo_entrega, o.grupo, o.codigo_padre, o.bom_padre_id, o.es_compuesto,
+          resto, kgPorUnidad * resto, m2PorUnidad * resto
+        ]
+      );
+      const nuevaOrdenId = nuevaRes.rows[0].id;
+
+      const pasosRes = await query(
+        'SELECT estacion_id, orden_secuencia FROM cola_produccion_pasos WHERE orden_produccion_id = $1',
+        [o.id]
+      );
+      for (const p of pasosRes.rows) {
+        await query(
+          `INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia) VALUES ($1, $2, $3)`,
+          [nuevaOrdenId, p.estacion_id, p.orden_secuencia]
+        );
+      }
+
+      addToCarga(fit.fecha, grupo, kgAsignados);
+      for (const estId of estacionesIds) {
+        addToCargaEst(fit.fecha, estId, m2Asignados);
+      }
+
+      pendRes.rows.push({
+        ...o,
+        id: nuevaOrdenId,
+        cantidad: resto,
+        kilos: kgPorUnidad * resto,
+        metros_cuadrados: m2PorUnidad * resto,
+        estado_programacion: 'PENDIENTE',
+        fecha_programada: null
+      });
+
+      asignados.push({ orden_id: o.id, fecha: fit.fecha, grupo, kg: kgAsignados, unidades: unitsAsignadas, nota: 'Split parcial' });
+    } else {
+      noAsignados.push({ orden_id: o.id, motivo: 'Sin capacidad en los próximos ' + dias + ' días' });
+    }
+  }
+
+  // 12. Resultado
+  return { asignados, noAsignados, total_procesados: pendRes.rows.length };
+}
+
+module.exports = { autoAsignarPendientes };
