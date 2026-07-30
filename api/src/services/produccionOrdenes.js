@@ -1,6 +1,5 @@
 const { query } = require('../config/database');
-
-// Órdenes de producción y sus pasos (cola de producción)
+const { getPasos, actualizarPaso, eliminarPaso, agregarPaso, crearPasos } = require('./produccionPasos');
 
 const getOrdenes = async () => {
     const result = await query(`
@@ -102,15 +101,6 @@ const buscarRecetasBom = async (codigo) => {
     return bomOld.rows;
 };
 
-const crearPasos = async (ordenId, estacionesBaseIds) => {
-    for (let s = 0; s < estacionesBaseIds.length; s++) {
-        await query(
-            'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1,$2,$3,$4)',
-            [ordenId, estacionesBaseIds[s], s + 1, 'PENDIENTE']
-        );
-    }
-};
-
 const crearOrden = async (body) => {
     const { pedido_sap_id, cliente, codigo_producto, ancho, alto, perforaciones, pintado, tipo_venta, item_numero, cantidad, fecha_creacion, tipo_entrega, orden_compra, posicion, nota } = body;
 
@@ -177,55 +167,6 @@ const editarOrden = async (id, body) => {
 
 const eliminarOrden = async (id) => {
     await query('DELETE FROM produccion_ordenes WHERE id = $1', [id]);
-};
-
-const getPasos = async (ordenId) => {
-    const result = await query(`
-        SELECT p.*, e.nombre_estacion, e.orden_secuencia_defecto
-        FROM cola_produccion_pasos p
-        LEFT JOIN estaciones_maestras e ON p.estacion_id = e.id
-        WHERE p.orden_produccion_id = $1
-        ORDER BY p.orden_secuencia
-    `, [ordenId]);
-    return result.rows;
-};
-
-const actualizarPaso = async (id, { estado, operario_id }) => {
-    const updates = ['estado = $1'];
-    const params = [estado];
-    let idx = 2;
-    if (estado === 'EN_PROCESO') updates.push('hora_inicio = COALESCE(hora_inicio, NOW())');
-    if (estado === 'TERMINADO') updates.push('hora_fin = NOW()');
-    if (operario_id !== undefined) { updates.push(`operario_id = $${idx}`); params.push(operario_id); idx++; }
-    params.push(id);
-    await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx}`, params);
-};
-
-const eliminarPaso = async (id) => {
-    await query('DELETE FROM cola_produccion_pasos WHERE id = $1', [id]);
-};
-
-const agregarPaso = async (ordenId, estacion_id) => {
-    const existente = await query(
-        'SELECT id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND estacion_id = $2',
-        [ordenId, estacion_id]
-    );
-    if (existente.rows.length > 0) throw new Error('Esa estacion ya esta en la ruta');
-
-    await query(
-        "INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, 0, 'PENDIENTE')",
-        [ordenId, estacion_id]
-    );
-    await query(`
-        UPDATE cola_produccion_pasos SET orden_secuencia = sub.nueva_seq
-        FROM (
-            SELECT p.id, ROW_NUMBER() OVER (ORDER BY e.orden_secuencia_defecto ASC NULLS LAST) as nueva_seq
-            FROM cola_produccion_pasos p
-            JOIN estaciones_maestras e ON p.estacion_id = e.id
-            WHERE p.orden_produccion_id = $1
-        ) sub
-        WHERE cola_produccion_pasos.id = sub.id
-    `, [ordenId]);
 };
 
 module.exports = {
