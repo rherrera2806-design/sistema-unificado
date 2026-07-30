@@ -50,6 +50,22 @@ router.get('/api/pedidos/:id/pdf', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.get('/api/pedidos/:id/download-pdf', async (req, res, next) => {
+    try {
+        const id = Number(req.params.id);
+        const result = await query('SELECT archivo_pdf, archivo_url, numero_pedido FROM pedidos WHERE id = $1', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
+        const row = result.rows[0];
+        if (row.archivo_pdf) {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${row.numero_pedido}.pdf"`);
+            res.end(row.archivo_pdf);
+        } else if (row.archivo_url) {
+            res.redirect(row.archivo_url);
+        } else { res.status(404).json({ error: 'PDF no disponible' }); }
+    } catch (e) { next(e); }
+});
+
 router.get('/api/pedidos/:id', async (req, res, next) => {
     try {
         const result = await query('SELECT * FROM pedidos WHERE id = $1', [Number(req.params.id)]);
