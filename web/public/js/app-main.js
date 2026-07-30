@@ -394,7 +394,7 @@ const SIDEBAR_SECTIONS = {
     inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
     atencion: ['turnos_recepcion','turnos_bodega','turnos_almacen','turnos_facturar','turnos_qr','turnos_reporte'],
     ventas: ['pedidos'],
-    produccion: ['prod_ordenes','prod_planificacion','prod_notas','prod_config'],
+    produccion: ['prod_ordenes','prod_planificacion','prod_reportes','prod_notas','prod_config'],
     instalaciones: ['instalaciones','inst_detalle','inst_historial'],
     administracion: ['usuarios']
 };
@@ -475,6 +475,7 @@ function renderSidebar() {
         html += `<div class="nav-section-group" id="section-produccion">`;
         if (canSeeItem('prod_ordenes','produccion')) html += navI('produccion', 'Produccion', SVG.box);
         if (canSeeItem('prod_planificacion','produccion')) html += navI('planificacion', 'Planificacion', SVG.calendar);
+        if (canSeeItem('prod_reportes','produccion')) html += navI('prod_reportes', 'Reporte Fechas', SVG.chart);
         if (canSeeItem('prod_notas','produccion')) html += navI('prod_notas', 'Mis Pendientes', SVG.clipboard);
         if (canSeeItem('prod_config','produccion')) html += navI('prod_config', 'Configuracion', SVG.settings);
         html += `<div class="nav-item" onclick="window.open('/taller/','_blank')"><span class="nav-icon">${SVG.home}</span><span class="nav-text">Taller</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
