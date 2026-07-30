@@ -323,6 +323,8 @@
     .dashboard-hero { padding: var(--space-5); }
     .dashboard-hero h1 { font-size: 1.125rem; }
     .page-header { flex-direction: column; }
+    .page-header h2 { font-size: 1.125rem; }
+    .dashboard-two-col { grid-template-columns: 1fr !important; }
 }
 
 @media (max-width: 480px) {

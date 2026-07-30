@@ -43,7 +43,7 @@ App.registerModule('dashboard', {
             + '<div class="hero-stat"><div class="hero-stat-value">' + componentes.length + '</div><div class="hero-stat-label">Componentes</div></div>'
             + '</div></div></div>'
 
-            + '<div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">'
+            + '<div class="stats-grid">'
             + this.statCard(totalMant, 'Total Mantenciones', 'blue', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', 'M+R completados')
             + this.statCard(stats.completedMaintenance || 0, 'Preventivas', 'green', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 'Realizadas')
             + this.statCard(stats.totalFailures || 0, 'Fallas', 'red', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', 'Registradas')
