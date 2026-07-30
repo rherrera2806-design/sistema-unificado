@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
+const { validate, pedidosSchema } = require('../middleware/validate');
 
 router.get('/api/pedidos', async (req, res, next) => {
     try {
@@ -17,10 +18,9 @@ router.get('/api/pedidos', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.post('/api/pedidos', async (req, res, next) => {
+router.post('/api/pedidos', validate(pedidosSchema), async (req, res, next) => {
     try {
         const { numero_pedido, cliente, vendedor, archivo_url, pdf_base64 } = req.body;
-        if (!numero_pedido || !cliente) return res.status(400).json({ error: 'Numero de pedido y cliente requeridos' });
         let pdfBuffer = null;
         if (pdf_base64) {
             pdfBuffer = Buffer.from(pdf_base64.replace(/^data:application\/pdf;base64,/, ''), 'base64');

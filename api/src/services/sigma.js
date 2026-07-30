@@ -1,22 +1,45 @@
 const { query } = require('../config/database');
 const { SIGMA_TABLES } = require('../config/constants');
 
+/**
+ * Validates that a table name is in the allowed SIGMA_TABLES list.
+ * Prevents SQL injection by whitelist validation.
+ * @param {string} table - Table name to validate
+ * @throws {Error} If table is not in SIGMA_TABLES
+ */
 function validateSigmaTable(table) {
     if (!SIGMA_TABLES.includes(table)) throw new Error('Tabla invalida: ' + table);
 }
 
+/**
+ * Get all rows from a SIGMA table.
+ * @param {string} table - Table name (must be in SIGMA_TABLES)
+ * @returns {Promise<Array>} Array of rows
+ */
 async function getAll(table) {
     validateSigmaTable(table);
     const result = await query(`SELECT * FROM ${table} ORDER BY id`);
     return result.rows;
 }
 
+/**
+ * Get a single row by ID from a SIGMA table.
+ * @param {string} table - Table name
+ * @param {number} id - Row ID
+ * @returns {Promise<Object|null>} Row object or null
+ */
 async function getById(table, id) {
     validateSigmaTable(table);
     const result = await query(`SELECT * FROM ${table} WHERE id = $1`, [id]);
     return result.rows[0] || null;
 }
 
+/**
+ * Insert a new row into a SIGMA table.
+ * @param {string} table - Table name
+ * @param {Object} body - Key-value pairs to insert
+ * @returns {Promise<Object>} Inserted row
+ */
 async function insert(table, body) {
     validateSigmaTable(table);
     const keys = Object.keys(body);
@@ -26,6 +49,13 @@ async function insert(table, body) {
     return result.rows[0];
 }
 
+/**
+ * Update an existing row in a SIGMA table.
+ * @param {string} table - Table name
+ * @param {number} id - Row ID
+ * @param {Object} body - Key-value pairs to update
+ * @returns {Promise<Object>} Updated row
+ */
 async function update(table, id, body) {
     validateSigmaTable(table);
     const keys = Object.keys(body);
@@ -37,12 +67,22 @@ async function update(table, id, body) {
     return await getById(table, id);
 }
 
+/**
+ * Delete a row from a SIGMA table.
+ * @param {string} table - Table name
+ * @param {number} id - Row ID
+ * @returns {Promise<boolean>} true if deleted, false if not found
+ */
 async function del(table, id) {
     validateSigmaTable(table);
     const result = await query(`DELETE FROM ${table} WHERE id = $1`, [id]);
     return result.rowCount > 0;
 }
 
+/**
+ * Export all SIGMA tables as a JSON object.
+ * @returns {Promise<Object>} Object with table names as keys and row arrays as values
+ */
 async function exportJSON() {
     const data = {};
     for (const t of SIGMA_TABLES) data[t] = await getAll(t);

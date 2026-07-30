@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 
 const { initDB } = require('./config/database');
 const { setSecurityHeaders, checkGlobalRateLimit } = require('./middleware/security');
+const { logger, requestLogger } = require('./config/logger');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, '..', '..', 'web', 'public');
@@ -15,15 +16,16 @@ let dbError = null;
 
 initDB().then(() => {
     dbReady = true;
-    console.log('Base de datos: PostgreSQL conectada');
+    logger.info('Base de datos: PostgreSQL conectada');
 }).catch(e => {
     dbError = e.message;
-    console.error('Error DB:', e.message);
+    logger.error('Error DB:', { message: e.message, stack: e.stack });
 });
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(requestLogger);
 
 app.use((req, res, next) => {
     setSecurityHeaders(res);
@@ -43,12 +45,14 @@ app.use((req, res, next) => {
     if (req.path === '/api/auth/login') return next();
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
     if (!checkGlobalRateLimit(clientIp)) {
+        logger.warn('Rate limit exceeded', { ip: clientIp, path: req.path });
         return res.status(429).json({ error: 'Demasiadas peticiones. Espera 1 minuto.' });
     }
     next();
 });
 
 app.use((req, res, next) => {
+    if (req.path === '/api/health') return next();
     if (!dbReady && !dbError) return res.status(503).json({ error: 'Base de datos inicializando...' });
     if (dbError) return res.status(500).json({ error: dbError });
     next();
@@ -66,12 +70,12 @@ app.get('/{*path}', (req, res) => {
 });
 
 app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err.message);
+    logger.error('Unhandled error:', { message: err.message, stack: err.stack, path: req.path });
     res.status(500).json({ error: 'Error interno del servidor' });
 });
 
 const server = app.listen(PORT, () => {
-    console.log(`Servidor corriendo en puerto ${PORT}`);
+    logger.info(`Servidor corriendo en puerto ${PORT}`);
 });
 
 const io = new Server(server, {
@@ -79,9 +83,9 @@ const io = new Server(server, {
 });
 
 io.on('connection', (socket) => {
-    console.log('Cliente conectado:', socket.id);
+    logger.debug('Cliente conectado', { socketId: socket.id });
     socket.on('disconnect', () => {
-        console.log('Cliente desconectado:', socket.id);
+        logger.debug('Cliente desconectado', { socketId: socket.id });
     });
 });
 
