@@ -24,9 +24,6 @@ App.registerModule('dashboard', {
         el.innerHTML = '<style>'
             + '@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
             + '@keyframes countUp{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}'
-            + '@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}'
-            + '@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}'
-            + '@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}'
             + '.dash-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
             + '.dash-card:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,0.12)!important}'
             + '.dash-podium{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
@@ -35,33 +32,23 @@ App.registerModule('dashboard', {
             + '.dash-row:hover{transform:translateX(4px)!important;background:#f8fafc!important}'
             + '.dash-section{animation:fadeUp 0.5s ease both}'
             + '.dash-stat-num{animation:countUp 0.6s ease both}'
-            + '.dash-badge{transition:all 0.2s ease}'
-            + '.dash-badge:hover{transform:scale(1.08)}'
-            + '.dash-btn{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}'
-            + '.dash-btn:hover{transform:translateY(-1px)!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}'
             + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:32px 36px;margin-bottom:28px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
-            + '<div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:absolute;bottom:-60px;left:30%;width:300px;height:200px;background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
-            + '<div><h2 style="margin:0;font-size:28px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Dashboard Mantencion</h2>'
-            + '<p style="margin:8px 0 0;font-size:14px;color:rgba(255,255,255,0.7)">Vista general del estado de mantencion y fallas</p></div>'
-            + '<div style="display:flex;gap:8px">'
-            + '<div style="background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:12px 20px;text-align:center">'
-            + '<div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.5px">Maquinas</div>'
-            + '<div style="font-size:22px;font-weight:800;color:white;font-family:\'JetBrains Mono\',monospace">' + maquinas.length + '</div></div>'
-            + '<div style="background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:12px 20px;text-align:center">'
-            + '<div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.5px">Componentes</div>'
-            + '<div style="font-size:22px;font-weight:800;color:white;font-family:\'JetBrains Mono\',monospace">' + componentes.length + '</div></div>'
+            + '<div class="dashboard-hero">'
+            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">'
+            + '<div><h1>Dashboard Mantencion</h1>'
+            + '<p class="subtitle">Vista general del estado de mantencion y fallas</p></div>'
+            + '<div class="hero-stats">'
+            + '<div class="hero-stat"><div class="hero-stat-value">' + maquinas.length + '</div><div class="hero-stat-label">Maquinas</div></div>'
+            + '<div class="hero-stat"><div class="hero-stat-value">' + componentes.length + '</div><div class="hero-stat-label">Componentes</div></div>'
             + '</div></div></div>'
 
-            + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:28px">'
-            + this.statCard(totalMant, 'Total Mantenciones', '#3b82f6', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', 'M+R completados', 0)
-            + this.statCard(stats.completedMaintenance || 0, 'Preventivas', '#22c55e', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 'Realizadas', 100)
-            + this.statCard(stats.totalFailures || 0, 'Fallas', '#ef4444', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', 'Registradas', 200)
-            + this.statCard(stats.overdueMaintenance || 0, 'Vencidas', '#f59e0b', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', 'Requieren accion', 300)
-            + this.statCard(stats.upcomingMaintenance || 0, 'Proximas (15d)', '#8b5cf6', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', 'Programadas', 400)
+            + '<div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">'
+            + this.statCard(totalMant, 'Total Mantenciones', 'blue', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', 'M+R completados')
+            + this.statCard(stats.completedMaintenance || 0, 'Preventivas', 'green', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 'Realizadas')
+            + this.statCard(stats.totalFailures || 0, 'Fallas', 'red', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', 'Registradas')
+            + this.statCard(stats.overdueMaintenance || 0, 'Vencidas', 'amber', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', 'Requieren accion')
+            + this.statCard(stats.upcomingMaintenance || 0, 'Proximas (15d)', 'glass', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', 'Programadas')
             + '</div>'
 
             + this.renderTopFailing(topFailing)
@@ -75,14 +62,12 @@ App.registerModule('dashboard', {
             + this.renderRecentPreventiveLocal(recentPreventive, maqMap, compMap);
     },
 
-    statCard(value, label, color, icon, subtitle, delay) {
-        return '<div class="dash-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:22px;border-left:4px solid ' + color + ';box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:fadeUp 0.5s ease ' + delay + 'ms both;position:relative;overflow:hidden">'
-            + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:' + color + ';opacity:0.04;border-radius:50%"></div>'
-            + '<div style="display:flex;align-items:flex-start;gap:16px;position:relative;z-index:1">'
-            + '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
-            + '<div><div class="dash-stat-num" style="font-size:30px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1;animation-delay:' + (delay + 200) + 'ms">' + value + '</div>'
-            + '<div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px">' + label + '</div>'
-            + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">' + subtitle + '</div></div></div></div>';
+    statCard(value, label, accent, icon, subtitle) {
+        return '<div class="stat-card" data-accent="' + accent + '">'
+            + '<div class="stat-icon ' + accent + '">' + icon + '</div>'
+            + '<div class="stat-info"><h4 class="dash-stat-num">' + value + '</h4>'
+            + '<p>' + label + '</p>'
+            + '<div style="font-size:0.6875rem;color:#94a3b8;margin-top:2px">' + subtitle + '</div></div></div>';
     },
 
     renderTopFailing(data) {
