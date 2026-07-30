@@ -5,16 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="VitroFlow - Mantencion, Inventario y Turnos">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#0f172a">
     <title>VitroFlow</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-    <link rel="dns-prefetch" href="//fonts.googleapis.com">
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/layout.css">
     <style>
-        /* Critical CSS inlined for faster FCP */
-        body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#f8fafc}
         .login-container{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
         .selector-container{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+        .login-box,.selector-box{background:white;border-radius:var(--radius-xl);padding:var(--space-8);width:100%;max-width:400px;box-shadow:var(--shadow-lg);text-align:center}
+        .login-box h1{font-size:1.5rem;margin:var(--space-4) 0 var(--space-1)}
+        .login-logo{width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));border-radius:var(--radius-xl);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;color:var(--primary);margin:0 auto;box-shadow:0 4px 12px rgba(245,158,11,0.3)}
+        .selector-box h2{font-size:1.25rem;margin-bottom:var(--space-1)}
+        .selector-box .sub{color:var(--text-secondary);font-size:0.875rem;margin-bottom:var(--space-6)}
+        .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4)}
+        .module-card{padding:var(--space-5);border:2px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;transition:all var(--transition-base);text-align:center}
+        .module-card:hover{border-color:var(--glass);background:var(--glass-light);transform:translateY(-2px)}
+        .module-card .icon{font-size:2rem;margin-bottom:var(--space-2)}
+        .module-card .name{font-weight:600;font-size:0.875rem}
+        .user-avatar{width:56px;height:56px;background:var(--glass);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1.25rem;font-weight:700;margin:0 auto var(--space-4)}
     </style>
 </head>
 <body>
