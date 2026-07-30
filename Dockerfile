@@ -1,7 +1,11 @@
 FROM node:18-slim
 WORKDIR /app
-COPY package*.json ./
+
+COPY api/package*.json ./
 RUN npm install --omit=dev
-COPY . .
+
+COPY api/src/ ./src/
+COPY web/public/ ./public/
+
 EXPOSE 8080
-CMD ["node", "server.js"]
+CMD ["node", "src/index.js"]

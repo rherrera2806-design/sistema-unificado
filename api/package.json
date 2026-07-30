@@ -2,9 +2,9 @@
   "name": "sistema-unificado",
   "version": "1.0.0",
   "description": "Sistema Unificado - Mantencion + Inventario",
-  "main": "server.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node src/index.js"
   },
   "dependencies": {
     "aws4": "^1.12.0",
