@@ -25,6 +25,12 @@ router.get('/api/instalaciones', async (req, res, next) => {
     catch (e) { next(e); }
 });
 
+router.get('/api/instalaciones/dashboard', async (req, res, next) => {
+    try {
+        res.json(await instalaciones.getDashboard());
+    } catch (e) { next(e); }
+});
+
 router.post('/api/instalaciones', async (req, res, next) => {
     const { cliente, direccion, fecha_programada } = req.body;
     if (!cliente || !direccion || !fecha_programada) return res.status(400).json({ error: 'Cliente, dirección y fecha requeridos' });
@@ -100,49 +106,6 @@ router.delete('/api/instalaciones/:id', async (req, res, next) => {
     try {
         await instalaciones.eliminarInstalacion(Number(req.params.id));
         res.json({ ok: true });
-    } catch (e) { next(e); }
-});
-
-router.get('/api/instalaciones/dashboard', async (req, res, next) => {
-    try {
-        const now = new Date();
-        const mesActual = now.getMonth() + 1;
-        const anioActual = now.getFullYear();
-
-        const programadas = await require('../config/database').query(
-            `SELECT COUNT(*) as total FROM instalaciones 
-             WHERE estado = 'PROGRAMADA' 
-             AND EXTRACT(MONTH FROM fecha_programada) = $1 AND EXTRACT(YEAR FROM fecha_programada) = $2`,
-            [mesActual, anioActual]
-        );
-
-        const enCurso = await require('../config/database').query(
-            `SELECT COUNT(*) as total FROM instalaciones 
-             WHERE estado IN ('EN_CAMINO', 'EN_CURSO')
-             AND EXTRACT(MONTH FROM fecha_programada) = $1 AND EXTRACT(YEAR FROM fecha_programada) = $2`,
-            [mesActual, anioActual]
-        );
-
-        const completadas = await require('../config/database').query(
-            `SELECT COUNT(*) as total FROM instalaciones 
-             WHERE estado = 'COMPLETADA'
-             AND EXTRACT(MONTH FROM fecha_programada) = $1 AND EXTRACT(YEAR FROM fecha_programada) = $2`,
-            [mesActual, anioActual]
-        );
-
-        const novedades = await require('../config/database').query(
-            `SELECT COUNT(*) as total FROM instalaciones 
-             WHERE estado = 'CON_NOVEDADES'
-             AND EXTRACT(MONTH FROM fecha_programada) = $1 AND EXTRACT(YEAR FROM fecha_programada) = $2`,
-            [mesActual, anioActual]
-        );
-
-        res.json({
-            programadas: parseInt(programadas.rows[0].total),
-            enCurso: parseInt(enCurso.rows[0].total),
-            completadas: parseInt(completadas.rows[0].total),
-            novedades: parseInt(novedades.rows[0].total)
-        });
     } catch (e) { next(e); }
 });
 

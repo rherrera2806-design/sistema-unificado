@@ -117,6 +117,47 @@ const eliminarInstalacion = async (id) => {
     await query('DELETE FROM instalaciones WHERE id = $1', [id]);
 };
 
+const getDashboard = async () => {
+    const now = new Date();
+    const mesActual = now.getMonth() + 1;
+    const anioActual = now.getFullYear();
+
+    const programadas = await query(
+        `SELECT COUNT(*) as total FROM instalaciones 
+         WHERE estado = 'PROGRAMADA' 
+         AND EXTRACT(MONTH FROM fecha_programada) = $1 AND EXTRACT(YEAR FROM fecha_programada) = $2`,
+        [mesActual, anioActual]
+    );
+
+    const enCurso = await query(
+        `SELECT COUNT(*) as total FROM instalaciones 
+         WHERE estado IN ('EN_CAMINO', 'EN_CURSO')
+         AND EXTRACT(MONTH FROM fecha_programada) = $1 AND EXTRACT(YEAR FROM fecha_programada) = $2`,
+        [mesActual, anioActual]
+    );
+
+    const completadas = await query(
+        `SELECT COUNT(*) as total FROM instalaciones 
+         WHERE estado = 'COMPLETADA'
+         AND EXTRACT(MONTH FROM fecha_programada) = $1 AND EXTRACT(YEAR FROM fecha_programada) = $2`,
+        [mesActual, anioActual]
+    );
+
+    const novedades = await query(
+        `SELECT COUNT(*) as total FROM instalaciones 
+         WHERE estado = 'CON_NOVEDADES'
+         AND EXTRACT(MONTH FROM fecha_programada) = $1 AND EXTRACT(YEAR FROM fecha_programada) = $2`,
+        [mesActual, anioActual]
+    );
+
+    return {
+        programadas: parseInt(programadas.rows[0].total),
+        enCurso: parseInt(enCurso.rows[0].total),
+        completadas: parseInt(completadas.rows[0].total),
+        novedades: parseInt(novedades.rows[0].total)
+    };
+};
+
 module.exports = {
     getInstalaciones,
     getCalendario,
@@ -132,5 +173,6 @@ module.exports = {
     getFoto,
     eliminarFoto,
     getHistorial,
-    eliminarInstalacion
+    eliminarInstalacion,
+    getDashboard
 };
