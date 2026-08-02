@@ -61,16 +61,20 @@ App.registerModule('components', {
                 .comp-btn-edit:hover { background:#ede9fe }
                 .comp-btn-del { background:#fef2f2; color:#dc2626 }
                 .comp-btn-del:hover { background:#fee2e2 }
+                #compSearch::placeholder { color: rgba(255,255,255,0.6); }
             </style>
             <div class="comp-hero" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
                 <div>
                     <h2>Componentes</h2>
                     <div class="subtitle">Biblioteca de componentes industriales</div>
                 </div>
-                <button class="btn-new" onclick="App.modules.components.showForm()" style="margin-top:0">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                    Nuevo Componente
-                </button>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div style="position:relative"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="compSearch" placeholder="Buscar componente..." oninput="App.modules.components._filter()" style="width:240px;padding:10px 14px 10px 38px;border:none;border-radius:10px;font-size:13px;color:white;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);outline:none;transition:all 0.2s" onfocus="this.style.background='rgba(255,255,255,0.25)'" onblur="this.style.background='rgba(255,255,255,0.15)'"></div>
+                    <button class="btn-new" onclick="App.modules.components.showForm()" style="margin-top:0">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        Nuevo Componente
+                    </button>
+                </div>
             </div>
             <div class="comp-stats">
                 <div class="comp-stat comp-card">
@@ -109,9 +113,6 @@ App.registerModule('components', {
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="comp-filter-wrap">
-                <input id="compSearch" placeholder="Buscar componente..." oninput="App.modules.components._filter()">
             </div>
             <div class="comp-table-wrap" id="compBody"></div>`;
         this._filter();
