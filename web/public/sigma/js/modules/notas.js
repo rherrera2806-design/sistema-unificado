@@ -168,6 +168,7 @@ App.registerModule('notas', {
                     margin: 0;
                     font-size: .85rem;
                 }
+                #notaSearch::placeholder { color: rgba(255,255,255,0.6); }
             </style>
             <div class="nota-hero">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;position:relative;z-index:1">
@@ -176,8 +177,8 @@ App.registerModule('notas', {
                         <div class="subtitle">Comunicacion entre turnos</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px">
-                        <div style="position:relative"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="notaSearch" placeholder="Buscar por autor, contenido o fecha..." oninput="App.modules.notas.filtrar()" style="width:260px;padding:10px 14px 10px 38px;border:none;border-radius:10px;font-size:13px;color:white;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);outline:none;transition:all 0.2s" onfocus="this.style.background='rgba(255,255,255,0.25)'" onblur="this.style.background='rgba(255,255,255,0.15)'"></div>
-                        <div class="nota-hero-actions"><button onclick="App.modules.notas.showForm()">+ Nueva Nota</button></div>
+                        <div style="position:relative"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="notaSearch" placeholder="Buscar por autor, contenido o fecha..." oninput="App.modules.notas.filtrar()" style="width:260px;padding:10px 14px 10px 38px;border:none;border-radius:10px;font-size:13px;color:white;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);outline:none;transition:all 0.2s" onfocus="this.style.background='rgba(255,255,255,0.25)'" onblur="this.style.background='rgba(255,255,255,0.15)'"></div>
+                        <div class="nota-hero-actions"><button class="btn" onclick="App.modules.notas.showForm()">+ Nueva Nota</button></div>
                     </div>
                 </div>
             </div>
