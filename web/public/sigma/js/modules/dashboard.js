@@ -44,11 +44,11 @@ App.registerModule('dashboard', {
             + '</div></div></div>'
 
             + '<div class="stats-grid">'
-            + this.statCard(totalMant, 'Total Mantenciones', 'blue', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', 'M+R completados')
-            + this.statCard(stats.completedMaintenance || 0, 'Preventivas', 'green', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 'Realizadas')
-            + this.statCard(stats.totalFailures || 0, 'Fallas', 'red', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', 'Registradas')
-            + this.statCard(stats.overdueMaintenance || 0, 'Vencidas', 'amber', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', 'Requieren accion')
-            + this.statCard(stats.upcomingMaintenance || 0, 'Proximas (15d)', 'glass', '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', 'Programadas')
+            + this.statCard(totalMant, 'Total Mantenciones', 'blue', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', 'M+R completados')
+            + this.statCard(stats.completedMaintenance || 0, 'Preventivas', 'green', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 'Realizadas')
+            + this.statCard(stats.totalFailures || 0, 'Fallas', 'red', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', 'Registradas')
+            + this.statCard(stats.overdueMaintenance || 0, 'Vencidas', 'amber', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', 'Requieren accion')
+            + this.statCard(stats.upcomingMaintenance || 0, 'Proximas (15d)', 'glass', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', 'Programadas')
             + '</div>'
 
             + this.renderTopFailing(topFailing)
@@ -78,51 +78,33 @@ App.registerModule('dashboard', {
             { bg: 'linear-gradient(135deg,#fff7ed,#fed7aa)', border: '#fb923c', shadow: '0 6px 20px rgba(251,146,60,0.2)', glow: '#fb923c', text: '#7c2d12', num: '#c2410c', ring: '#ea580c' }
         ];
         const medalEmoji = ['&#127942;', '&#129352;', '&#129353;'];
-        const order = [1, 0, 2];
+        const top5 = data.slice(0, 5);
 
-        let podium = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:20px;padding:16px 0 8px">';
-        order.forEach((dataIdx, i) => {
-            const item = data[dataIdx];
-            if (!item) return;
-            const ms = medalStyles[dataIdx];
-            const isCenter = dataIdx === 0;
-            const w = isCenter ? 180 : 160;
-            const numSize = isCenter ? 36 : 28;
-            const nameSize = isCenter ? 13 : 12;
-            podium += '<div class="dash-podium" style="width:' + w + 'px;background:' + ms.bg + ';border:2px solid ' + ms.border + ';border-radius:16px;padding:16px 14px 14px;text-align:center;box-shadow:' + ms.shadow + ';cursor:pointer;animation:fadeUp 0.6s ease ' + (i * 150) + 'ms both;position:relative;overflow:hidden">'
-                + '<div style="position:absolute;top:-30px;right:-30px;width:80px;height:80px;background:radial-gradient(circle,' + ms.glow + '30 0%,transparent 70%);border-radius:50%"></div>'
+        let cards = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:14px;padding:12px 0 6px">';
+        top5.forEach((item, i) => {
+            const ms = medalStyles[i] || { bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '#86efac', shadow: '0 4px 12px rgba(34,197,94,0.12)', glow: '#22c55e', text: '#14532d', num: '#15803d', ring: '#16a34a' };
+            const emoji = medalEmoji[i] || ('&#' + (8304 + i) + ';');
+            const w = i === 0 ? 170 : 140;
+            const numSize = i === 0 ? 32 : 24;
+            const nameSize = i === 0 ? 13 : 11;
+            cards += '<div class="dash-podium" style="width:' + w + 'px;background:' + ms.bg + ';border:2px solid ' + ms.border + ';border-radius:14px;padding:12px 10px 10px;text-align:center;box-shadow:' + ms.shadow + ';cursor:pointer;animation:fadeUp 0.6s ease ' + (i * 100) + 'ms both;position:relative;overflow:hidden">'
+                + '<div style="position:absolute;top:-20px;right:-20px;width:60px;height:60px;background:radial-gradient(circle,' + ms.glow + '30 0%,transparent 70%);border-radius:50%"></div>'
                 + '<div style="position:relative;z-index:1">'
-                + '<div style="font-size:' + (isCenter ? '32' : '26') + 'px;margin-bottom:4px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1))">' + medalEmoji[dataIdx] + '</div>'
-                + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + ms.ring + ';color:white;font-size:11px;font-weight:800;margin-bottom:6px;font-family:\'JetBrains Mono\',monospace">' + (dataIdx + 1) + '</div>'
-                + '<div style="font-size:' + nameSize + 'px;font-weight:700;color:' + ms.text + ';margin-bottom:8px;line-height:1.3;min-height:28px;display:flex;align-items:center;justify-content:center">' + escapeHtml(item.nombre || 'Sin nombre') + '</div>'
+                + '<div style="font-size:' + (i === 0 ? '26' : '20') + 'px;margin-bottom:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1))">' + emoji + '</div>'
+                + '<div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:' + ms.ring + ';color:white;font-size:10px;font-weight:800;margin-bottom:4px;font-family:\'JetBrains Mono\',monospace">' + (i + 1) + '</div>'
+                + '<div style="font-size:' + nameSize + 'px;font-weight:700;color:' + ms.text + ';margin-bottom:6px;line-height:1.2;min-height:24px;display:flex;align-items:center;justify-content:center">' + escapeHtml(item.nombre || 'Sin nombre') + '</div>'
                 + '<div style="font-size:' + numSize + 'px;font-weight:900;color:' + ms.num + ';font-family:\'JetBrains Mono\',monospace;line-height:1">' + item.total_fallas + '</div>'
-                + '<div style="font-size:10px;font-weight:700;color:' + ms.ring + ';text-transform:uppercase;letter-spacing:1px;margin-top:4px">FALLAS</div>'
+                + '<div style="font-size:9px;font-weight:700;color:' + ms.ring + ';text-transform:uppercase;letter-spacing:0.8px;margin-top:3px">FALLAS</div>'
                 + '</div></div>';
         });
-        podium += '</div>';
-
-        let extras = '';
-        if (data.length > 3) {
-            extras = '<div style="border-top:1px solid #e2e8f0;margin-top:12px;padding-top:10px">';
-            data.slice(3, 5).forEach((item, i) => {
-                extras += '<div class="dash-row" style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-radius:8px;cursor:pointer;margin-bottom:4px;border:1px solid transparent;transition:all 0.2s ease" '
-                    + 'onmouseover="this.style.background=\'#f8fafc\';this.style.borderColor=\'#e2e8f0\';this.style.transform=\'translateX(4px)\'" '
-                    + 'onmouseout="this.style.background=\'transparent\';this.style.borderColor=\'transparent\';this.style.transform=\'none\'" '
-                    + 'onclick="App.modules.dashboard.goToCorrective(' + item.maquina_id + ')">'
-                    + '<div style="display:flex;align-items:center;gap:10px">'
-                    + '<div style="width:26px;height:26px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (i + 4) + '°</div>'
-                    + '<span style="font-size:13px;font-weight:600;color:#1e293b">' + escapeHtml(item.nombre || 'Sin nombre') + '</span></div>'
-                    + '<span style="font-size:12px;font-weight:700;color:#ef4444;font-family:\'JetBrains Mono\',monospace;background:#fef2f2;padding:3px 10px;border-radius:20px;border:1px solid #fecaca">' + item.total_fallas + ' fallas</span></div>';
-            });
-            extras += '</div>';
-        }
+        cards += '</div>';
 
         return '<div class="dash-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:fadeUp 0.5s ease 200ms both">'
             + '<div style="padding:16px 22px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
             + '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(251,191,36,0.3)">&#127942;</div>'
-            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Top Maquinas con mas Fallas</h3>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Top 5 Maquinas con mas Fallas</h3>'
             + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Ranking de maquinas con mayor cantidad de fallas registradas</p></div></div>'
-            + '<div style="padding:12px 22px">' + podium + extras + '</div></div>';
+            + '<div style="padding:12px 22px">' + cards + '</div></div>';
     },
 
     renderOverdueLocal(data, maqMap, compMap) {

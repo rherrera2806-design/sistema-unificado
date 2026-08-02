@@ -482,21 +482,21 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .stat-card {
     background: var(--bg-card);
     border-radius: 8px;
-    padding: 20px;
+    padding: 12px;
     box-shadow: var(--shadow);
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 10px;
 }
 
 .stat-icon {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 20px;
     flex-shrink: 0;
 }
 
@@ -505,7 +505,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .stat-icon.orange { background: #fff3e0; color: var(--warning); }
 .stat-icon.red { background: #ffebee; color: var(--danger); }
 
-.stat-info h4 { font-size: 24px; font-weight: 700; line-height: 1.2; }
+.stat-info h4 { font-size: 18px; font-weight: 700; line-height: 1.2; }
 .stat-info p { font-size: 13px; color: var(--text-light); }
 
 .chart-container {
@@ -656,10 +656,10 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     .calendar-day { min-height: 60px; padding: 4px; }
     .calendar-event { font-size: 9px; padding: 1px 2px; }
     .calendar-header { font-size: 10px; padding: 6px 2px; }
-    .stat-card { padding: 12px; }
-    .stat-info h4 { font-size: 18px; }
+    .stat-card { padding: 10px; }
+    .stat-info h4 { font-size: 16px; }
     .stat-info p { font-size: 11px; }
-    .stat-icon { width: 40px; height: 40px; font-size: 20px; }
+    .stat-icon { width: 36px; height: 36px; font-size: 18px; }
     .header { padding: 0 12px; }
     .header-title { font-size: 14px; }
     .main-content { padding: 12px; }
