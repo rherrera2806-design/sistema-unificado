@@ -21,12 +21,12 @@ App.registerModule('components', {
                 @keyframes compFadeUp { from { opacity:0; transform:translateY(18px) } to { opacity:1; transform:translateY(0) } }
                 .comp-card { transition: transform .2s, box-shadow .2s }
                 .comp-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(88,28,135,.15) }
-                .comp-hero { position:relative; background:linear-gradient(135deg,#0f172a 0%,#4c1d95 50%,#6d28d9 100%); border-radius:16px; padding:40px 36px 32px; margin-bottom:28px; overflow:hidden; animation:compFadeUp .5s ease }
+                .comp-hero { position:relative; background:linear-gradient(135deg,#0f172a 0%,#4c1d95 50%,#6d28d9 100%); border-radius:16px; padding:24px 36px; margin-bottom:28px; overflow:hidden; animation:compFadeUp .5s ease }
                 .comp-hero::before { content:''; position:absolute; top:-40px; right:-40px; width:180px; height:180px; background:radial-gradient(circle,rgba(139,92,246,.35) 0%,transparent 70%); border-radius:50%; pointer-events:none }
                 .comp-hero::after { content:''; position:absolute; bottom:-30px; left:20%; width:120px; height:120px; background:radial-gradient(circle,rgba(196,181,253,.2) 0%,transparent 70%); border-radius:50%; pointer-events:none }
                 .comp-hero h2 { color:#fff; margin:0 0 6px; font-size:28px; font-weight:700; position:relative; z-index:1 }
                 .comp-hero .subtitle { color:#c4b5fd; font-size:14px; position:relative; z-index:1 }
-                .comp-hero .btn-new { position:relative; z-index:1; margin-top:16px; display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); color:#fff; padding:8px 20px; border-radius:8px; font-size:14px; cursor:pointer; transition:background .2s }
+                .comp-hero .btn-new { position:relative; z-index:1; display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); color:#fff; padding:8px 20px; border-radius:8px; font-size:14px; cursor:pointer; transition:background .2s }
                 .comp-hero .btn-new:hover { background:rgba(255,255,255,.25) }
                 .comp-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:24px; animation:compFadeUp .5s ease .1s both }
                 .comp-stat { background:#fff; border-radius:12px; padding:20px; border-left:4px solid #8b5cf6; box-shadow:0 2px 8px rgba(0,0,0,.06); transition:transform .2s,box-shadow .2s }
@@ -62,10 +62,12 @@ App.registerModule('components', {
                 .comp-btn-del { background:#fef2f2; color:#dc2626 }
                 .comp-btn-del:hover { background:#fee2e2 }
             </style>
-            <div class="comp-hero">
-                <h2>Componentes</h2>
-                <div class="subtitle">Biblioteca de componentes industriales</div>
-                <button class="btn-new" onclick="App.modules.components.showForm()">
+            <div class="comp-hero" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
+                <div>
+                    <h2>Componentes</h2>
+                    <div class="subtitle">Biblioteca de componentes industriales</div>
+                </div>
+                <button class="btn-new" onclick="App.modules.components.showForm()" style="margin-top:0">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                     Nuevo Componente
                 </button>
