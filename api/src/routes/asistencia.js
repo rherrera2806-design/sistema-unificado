@@ -186,6 +186,32 @@ router.put('/api/asistencia/permisos/:id/estado', async (req, res) => {
     }
 });
 
+// PUT - Editar permiso
+router.put('/api/asistencia/permisos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { trabajador_id, tipo, fecha_inicio, fecha_fin, motivo } = req.body;
+        const result = await pool.query(
+            `UPDATE permisos SET trabajador_id = $1, tipo = $2, fecha_inicio = $3, fecha_fin = $4, motivo = $5 WHERE id = $6 RETURNING *`,
+            [trabajador_id, tipo, fecha_inicio, fecha_fin, motivo, id]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// DELETE - Eliminar permiso
+router.delete('/api/asistencia/permisos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM permisos WHERE id = $1', [id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ═══════════════════════════════════════════════════════
 // VACACIONES
 // ═══════════════════════════════════════════════════════
@@ -221,6 +247,32 @@ router.get('/api/asistencia/vacaciones', async (req, res) => {
         query += ' ORDER BY v.fecha_inicio DESC';
         const result = await pool.query(query, params);
         res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// PUT - Editar vacación
+router.put('/api/asistencia/vacaciones/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { trabajador_id, fecha_inicio, fecha_fin, dias } = req.body;
+        const result = await pool.query(
+            `UPDATE vacaciones SET trabajador_id = $1, fecha_inicio = $2, fecha_fin = $3, dias = $4 WHERE id = $5 RETURNING *`,
+            [trabajador_id, fecha_inicio, fecha_fin, dias, id]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// DELETE - Eliminar vacación
+router.delete('/api/asistencia/vacaciones/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM vacaciones WHERE id = $1', [id]);
+        res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -333,6 +385,32 @@ router.put('/api/asistencia/licencias/:id/estado', async (req, res) => {
             [estado, id]
         );
         res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// PUT - Editar licencia
+router.put('/api/asistencia/licencias/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { trabajador_id, fecha_inicio, fecha_fin, diagnostico, medico } = req.body;
+        const result = await pool.query(
+            `UPDATE licencias_medicas SET trabajador_id = $1, fecha_inicio = $2, fecha_fin = $3, diagnostico = $4, medico = $5 WHERE id = $6 RETURNING *`,
+            [trabajador_id, fecha_inicio, fecha_fin, diagnostico, medico, id]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// DELETE - Eliminar licencia
+router.delete('/api/asistencia/licencias/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM licencias_medicas WHERE id = $1', [id]);
+        res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
