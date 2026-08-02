@@ -420,93 +420,70 @@ function renderSidebar() {
     const nav = document.getElementById('sidebarNav');
     let html = '';
 
-    // MANTENCION
-    if (hasSection('mantencion')) {
-        html += `<div class="nav-section" onclick="toggleSection('mantencion')"><span>MANTENCION</span><span class="toggle-icon">▼</span></div>`;
-        html += `<div class="nav-section-group" id="section-mantencion">`;
-        if (canSeeItem('dashboard','mantencion')) html += navI('dashboard', 'Dashboard', SVG.dashboard);
-        if (canSeeItem('machineTypes','mantencion')) html += navI('machineTypes', 'Tipos de Area', SVG.layers);
-        if (canSeeItem('machines','mantencion')) html += navI('machines', 'Maquinas', SVG.box);
-        if (canSeeItem('components','mantencion')) html += navI('components', 'Componentes', SVG.wrench);
-        if (canSeeItem('preventive','mantencion')) html += navI('preventive', 'Preventivo', SVG.check);
-        if (canSeeItem('corrective','mantencion')) html += navI('corrective', 'Correctivo', SVG.alert);
-        if (canSeeItem('calendar','mantencion')) html += navI('calendar', 'Calendario', SVG.calendar);
-        if (canSeeItem('notas','mantencion')) html += navI('notas', 'Notas', SVG.file);
-        if (canSeeItem('reports','mantencion')) html += navI('reports', 'Reportes', SVG.chart);
-        if (canSeeItem('history','mantencion')) html += navI('history', 'Historial', SVG.clock);
-        if (canSeeItem('bitacora','mantencion')) html += navI('bitacora', 'Bitacora de Mantencion', SVG.book);
-        html += `</div>`;
-    }
+    const sections = [
+        { key: 'administracion', label: 'ADMINISTRACION', items: [
+            { id: 'usuarios', label: 'Usuarios', icon: SVG.users }
+        ]},
+        { key: 'asistencia', label: 'ASISTENCIA', items: [
+            { id: 'asistencia_control', label: 'Control de Asistencia', icon: SVG.clipboard }
+        ]},
+        { key: 'atencion', label: 'ATENCION', items: [
+            { id: 'turnos_recepcion', label: 'Recepcion y Control', icon: SVG.users },
+            { id: 'turnos_bodega', label: 'Verificación Bodega', icon: SVG.package },
+            { id: 'turnos_almacen', label: 'Almacén', icon: SVG.warehouse },
+            { id: 'turnos_facturar', label: 'Por Facturar', icon: SVG.receipt },
+            { id: 'turnos_qr', label: 'QR Clientes', icon: SVG.qrcode },
+            { id: 'turnos_reporte', label: 'Reporte', icon: SVG.barChart }
+        ]},
+        { key: 'instalaciones', label: 'INSTALACIONES', items: [
+            { id: 'instalaciones', label: 'Instalaciones', icon: SVG.tool },
+            { id: 'inst_historial', label: 'Historial', icon: SVG.clock }
+        ]},
+        { key: 'inventario', label: 'INVENTARIO', items: [
+            { id: 'inv_inventario', label: 'Inventario', icon: SVG.clipboard },
+            { id: 'inv_movimientos', label: 'Movimientos', icon: SVG.list },
+            { id: 'inv_historial', label: 'Historial Inventario', icon: SVG.clock },
+            { id: 'inv_catalogos', label: 'Catalogos', icon: SVG.settings }
+        ]},
+        { key: 'mantencion', label: 'MANTENCION', items: [
+            { id: 'dashboard', label: 'Dashboard', icon: SVG.dashboard },
+            { id: 'machineTypes', label: 'Tipos de Area', icon: SVG.layers },
+            { id: 'machines', label: 'Maquinas', icon: SVG.box },
+            { id: 'components', label: 'Componentes', icon: SVG.wrench },
+            { id: 'preventive', label: 'Preventivo', icon: SVG.check },
+            { id: 'corrective', label: 'Correctivo', icon: SVG.alert },
+            { id: 'calendar', label: 'Calendario', icon: SVG.calendar },
+            { id: 'notas', label: 'Notas', icon: SVG.file },
+            { id: 'reports', label: 'Reportes', icon: SVG.chart },
+            { id: 'history', label: 'Historial', icon: SVG.clock },
+            { id: 'bitacora', label: 'Bitacora de Mantencion', icon: SVG.book }
+        ]},
+        { key: 'produccion', label: 'PRODUCCION', items: [
+            { id: 'prod_ordenes', label: 'Produccion', icon: SVG.box },
+            { id: 'prod_planificacion', label: 'Planificacion', icon: SVG.calendar },
+            { id: 'prod_reportes', label: 'Reporte Fechas', icon: SVG.chart },
+            { id: 'prod_notas', label: 'Mis Pendientes', icon: SVG.clipboard },
+            { id: 'prod_config', label: 'Configuracion', icon: SVG.settings },
+            { id: 'taller', label: 'Taller', icon: SVG.home, external: '/taller/' }
+        ]},
+        { key: 'ventas', label: 'VENTAS', items: [
+            { id: 'pedidos', label: 'Pedidos / Ordenes', icon: SVG.file }
+        ]}
+    ];
 
-    // INVENTARIO
-    if (hasSection('inventario')) {
-        html += `<div class="nav-section" onclick="toggleSection('inventario')"><span>INVENTARIO</span><span class="toggle-icon">▼</span></div>`;
-        html += `<div class="nav-section-group" id="section-inventario">`;
-        if (canSeeItem('inv_inventario','inventario')) html += navI('inv_inventario', 'Inventario', SVG.clipboard);
-        if (canSeeItem('inv_movimientos','inventario')) html += navI('inv_movimientos', 'Movimientos', SVG.list);
-        if (canSeeItem('inv_historial','inventario')) html += navI('inv_historial', 'Historial Inventario', SVG.clock);
-        if (canSeeItem('inv_catalogos','inventario')) html += navI('inv_catalogos', 'Catalogos', SVG.settings);
+    sections.forEach(section => {
+        if (!hasSection(section.key)) return;
+        html += `<div class="nav-section" onclick="toggleSection('${section.key}')"><span>${section.label}</span><span class="toggle-icon">▼</span></div>`;
+        html += `<div class="nav-section-group" id="section-${section.key}">`;
+        section.items.forEach(item => {
+            if (item.external) {
+                html += `<div class="nav-item" onclick="window.open('${item.external}','_blank')"><span class="nav-icon">${item.icon}</span><span class="nav-text">${item.label}</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
+            } else if (canSeeItem(item.id, section.key)) {
+                html += navI(item.id, item.label, item.icon);
+            }
+        });
         html += `</div>`;
-    }
-
-    // ATENCION
-    if (hasSection('atencion')) {
-        html += `<div class="nav-section" onclick="toggleSection('atencion')"><span>ATENCION</span><span class="toggle-icon">▼</span></div>`;
-        html += `<div class="nav-section-group" id="section-atencion">`;
-        if (canSeeItem('turnos_recepcion','atencion')) html += navI('turnos_recepcion', 'Recepcion y Control', SVG.users);
-        if (canSeeItem('turnos_bodega','atencion')) html += navI('turnos_bodega', 'Verificación Bodega', SVG.package);
-        if (canSeeItem('turnos_almacen','atencion')) html += navI('turnos_almacen', 'Almacén', SVG.warehouse);
-        if (canSeeItem('turnos_facturar','atencion')) html += navI('turnos_facturar', 'Por Facturar', SVG.receipt);
-        if (canSeeItem('turnos_qr','atencion')) html += navI('turnos_qr', 'QR Clientes', SVG.qrcode);
-        if (canSeeItem('turnos_reporte','atencion')) html += navI('turnos_reporte', 'Reporte', SVG.barChart);
-        html += `</div>`;
-    }
-
-    // VENTAS
-    if (hasSection('ventas')) {
-        html += `<div class="nav-section" onclick="toggleSection('ventas')"><span>VENTAS</span><span class="toggle-icon">▼</span></div>`;
-        html += `<div class="nav-section-group" id="section-ventas">`;
-        if (canSeeItem('pedidos','ventas')) html += navI('pedidos', 'Pedidos / Ordenes', SVG.file);
-        html += `</div>`;
-    }
-
-    // PRODUCCION
-    if (hasSection('produccion')) {
-        html += `<div class="nav-section" onclick="toggleSection('produccion')"><span>PRODUCCION</span><span class="toggle-icon">▼</span></div>`;
-        html += `<div class="nav-section-group" id="section-produccion">`;
-        if (canSeeItem('prod_ordenes','produccion')) html += navI('produccion', 'Produccion', SVG.box);
-        if (canSeeItem('prod_planificacion','produccion')) html += navI('planificacion', 'Planificacion', SVG.calendar);
-        if (canSeeItem('prod_reportes','produccion')) html += navI('prod_reportes', 'Reporte Fechas', SVG.chart);
-        if (canSeeItem('prod_notas','produccion')) html += navI('prod_notas', 'Mis Pendientes', SVG.clipboard);
-        if (canSeeItem('prod_config','produccion')) html += navI('prod_config', 'Configuracion', SVG.settings);
-        html += `<div class="nav-item" onclick="window.open('/taller/','_blank')"><span class="nav-icon">${SVG.home}</span><span class="nav-text">Taller</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
-        html += `</div>`;
-    }
-
-    // INSTALACIONES
-    if (hasSection('instalaciones')) {
-        html += `<div class="nav-section" onclick="toggleSection('instalaciones')"><span>INSTALACIONES</span><span class="toggle-icon">▼</span></div>`;
-        html += `<div class="nav-section-group" id="section-instalaciones">`;
-        if (canSeeItem('instalaciones','instalaciones')) html += navI('instalaciones', 'Instalaciones', SVG.tool);
-        if (canSeeItem('inst_historial','instalaciones')) html += navI('inst_historial', 'Historial', SVG.clock);
-        html += `</div>`;
-    }
-
-    // ADMINISTRACION
-    if (hasSection('administracion')) {
-        html += `<div class="nav-section" onclick="toggleSection('administracion')"><span>ADMINISTRACION</span><span class="toggle-icon">▼</span></div>`;
-        html += `<div class="nav-section-group" id="section-administracion">`;
-        if (canSeeItem('usuarios','administracion')) html += navI('usuarios', 'Usuarios', SVG.users);
-        html += `</div>`;
-    }
-
-    // ASISTENCIA
-    if (hasSection('asistencia')) {
-        html += `<div class="nav-section" onclick="toggleSection('asistencia')"><span>ASISTENCIA</span><span class="toggle-icon">▼</span></div>`;
-        html += `<div class="nav-section-group" id="section-asistencia">`;
-        if (canSeeItem('asistencia_control','asistencia')) html += navI('asistencia_control', 'Control de Asistencia', SVG.clipboard);
-        html += `</div>`;
-    }
+    });
 
     // Cerrar sesion
     html += `<div style="flex:1"></div>`;
@@ -541,7 +518,7 @@ function renderSidebar() {
             } else if (page === 'pedidos') {
                 App.loadModule('pedidos');
             } else if (page === 'asistencia_control') {
-                openModule('/asistencia/', 'Control de Asistencia');
+                App.loadModule('asistencia');
             } else {
                 App.loadModule(page);
             }
