@@ -578,9 +578,13 @@ const Asistencia = {
                     + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(p.fecha_fin) + '</td>'
                     + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + (p.motivo || '-') + '</td>'
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + p.estado + '</span></td>'
-                    + '<td style="padding:12px 16px;text-align:center">' + (p.estado === 'pendiente'
-                        ? '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">✓</button><button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px">✗</button>'
-                        : '-') + '</td></tr>';
+                    + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
+                    + (p.estado === 'pendiente'
+                        ? '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10003;</button><button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10005;</button>'
+                        : '')
+                    + '<button onclick="Asistencia.editarPermiso(' + p.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998;</button>'
+                    + '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465;</button>'
+                    + '</td></tr>';
             }).join('');
         } catch(e) { console.error('Error:', e); }
     },
@@ -590,12 +594,40 @@ const Asistencia = {
         this.cargarPermisos();
     },
 
+    editarPermiso(id) {
+        fetch('/api/asistencia/permisos?mes=' + new Date().getMonth() + 1 + '&anio=' + new Date().getFullYear()).then(r => r.json()).then(permisos => {
+            const p = permisos.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('permiso-trabajador').value = p.trabajador_id;
+            document.getElementById('permiso-tipo').value = p.tipo;
+            document.getElementById('permiso-inicio').value = p.fecha_inicio ? p.fecha_inicio.split('T')[0] : '';
+            document.getElementById('permiso-fin').value = p.fecha_fin ? p.fecha_fin.split('T')[0] : '';
+            document.getElementById('permiso-motivo').value = p.motivo || '';
+            document.getElementById('modalPermiso').dataset.editId = id;
+            document.getElementById('modalPermiso').classList.add('show');
+        });
+    },
+
+    async eliminarPermiso(id) {
+        if (!confirm('¿Eliminar este permiso?')) return;
+        try {
+            await fetch('/api/asistencia/permisos/' + id, { method: 'DELETE' });
+            this.cargarPermisos();
+        } catch(e) { console.error('Error:', e); }
+    },
+
     abrirModalPermiso() { document.getElementById('modalPermiso').classList.add('show'); },
     cerrarModalPermiso() { document.getElementById('modalPermiso').classList.remove('show'); },
     async guardarPermiso() {
+        const editId = document.getElementById('modalPermiso').dataset.editId;
         const d = { trabajador_id: document.getElementById('permiso-trabajador').value, tipo: document.getElementById('permiso-tipo').value, fecha_inicio: document.getElementById('permiso-inicio').value, fecha_fin: document.getElementById('permiso-fin').value, motivo: document.getElementById('permiso-motivo').value };
         if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin) return;
-        await fetch('/api/asistencia/permisos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        if (editId) {
+            await fetch('/api/asistencia/permisos/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            delete document.getElementById('modalPermiso').dataset.editId;
+        } else {
+            await fetch('/api/asistencia/permisos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        }
         this.cerrarModalPermiso(); this.cargarPermisos();
     },
 
@@ -649,9 +681,13 @@ const Asistencia = {
                     + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + dias + '</strong> días</td>'
                     + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + (l.diagnostico || '-') + '</td>'
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + l.estado + '</span></td>'
-                    + '<td style="padding:12px 16px;text-align:center">' + (l.estado === 'pendiente'
-                        ? '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">✓</button><button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px">✗</button>'
-                        : '-') + '</td></tr>';
+                    + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
+                    + (l.estado === 'pendiente'
+                        ? '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10003;</button><button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10005;</button>'
+                        : '')
+                    + '<button onclick="Asistencia.editarLicencia(' + l.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998;</button>'
+                    + '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465;</button>'
+                    + '</td></tr>';
             }).join('');
         } catch(e) { console.error('Error:', e); }
     },
@@ -661,21 +697,56 @@ const Asistencia = {
         this.cargarLicencias();
     },
 
+    editarLicencia(id) {
+        fetch('/api/asistencia/licencias?mes=' + new Date().getMonth() + 1 + '&anio=' + new Date().getFullYear()).then(r => r.json()).then(licencias => {
+            const l = licencias.find(x => x.id === id);
+            if (!l) return;
+            document.getElementById('licencia-trabajador').value = l.trabajador_id;
+            document.getElementById('licencia-inicio').value = l.fecha_inicio ? l.fecha_inicio.split('T')[0] : '';
+            document.getElementById('licencia-fin').value = l.fecha_fin ? l.fecha_fin.split('T')[0] : '';
+            document.getElementById('licencia-diagnostico').value = l.diagnostico || '';
+            document.getElementById('licencia-medico').value = l.medico || '';
+            document.getElementById('modalLicencia').dataset.editId = id;
+            document.getElementById('modalLicencia').classList.add('show');
+        });
+    },
+
+    async eliminarLicencia(id) {
+        if (!confirm('¿Eliminar esta licencia?')) return;
+        try {
+            await fetch('/api/asistencia/licencias/' + id, { method: 'DELETE' });
+            this.cargarLicencias();
+        } catch(e) { console.error('Error:', e); }
+    },
+
     abrirModalLicencia() { document.getElementById('modalLicencia').classList.add('show'); },
     cerrarModalLicencia() { document.getElementById('modalLicencia').classList.remove('show'); },
     async guardarLicencia() {
+        const editId = document.getElementById('modalLicencia').dataset.editId;
         const d = { trabajador_id: document.getElementById('licencia-trabajador').value, fecha_inicio: document.getElementById('licencia-inicio').value, fecha_fin: document.getElementById('licencia-fin').value, diagnostico: document.getElementById('licencia-diagnostico').value, medico: document.getElementById('licencia-medico').value };
         if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin) return;
-        await fetch('/api/asistencia/licencias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        if (editId) {
+            await fetch('/api/asistencia/licencias/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            delete document.getElementById('modalLicencia').dataset.editId;
+        } else {
+            await fetch('/api/asistencia/licencias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        }
         this.cerrarModalLicencia(); this.cargarLicencias();
     },
 
     // ═══════ VACACIONES ═══════
     renderVacacionesTab(c) {
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === new Date().getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
+
         c.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
                 <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#dbeafe,#93c5fd);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Gestión de Vacaciones</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Control de vacaciones del personal</p></div></div>
-                <button onclick="Asistencia.abrirModalVacacion()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nueva Vacación</button>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <select id="ast-vac-mes" class="ast-input" style="width:auto">${opts}</select>
+                    <button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0">Filtrar</button>
+                    <button onclick="Asistencia.abrirModalVacacion()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nueva Vacación</button>
+                </div>
             </div>
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;overflow:hidden">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -685,36 +756,69 @@ const Asistencia = {
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fin</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
                     </tr></thead>
-                    <tbody id="ast-tabla-vacaciones"><tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                    <tbody id="ast-tabla-vacaciones"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
                 </table>
             </div>`;
         this.cargarVacaciones();
     },
 
     async cargarVacaciones() {
+        const mes = document.getElementById('ast-vac-mes')?.value;
         try {
-            const r = await fetch('/api/asistencia/vacaciones');
+            const url = '/api/asistencia/vacaciones' + (mes ? '?mes=' + mes + '&anio=' + new Date().getFullYear() : '');
+            const r = await fetch(url);
             const vacaciones = await r.json();
             const tbody = document.getElementById('ast-tabla-vacaciones');
             if (!tbody) return;
-            if (vacaciones.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Sin vacaciones registradas</td></tr>'; return; }
+            if (vacaciones.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin vacaciones registradas</td></tr>'; return; }
             tbody.innerHTML = vacaciones.map(v => '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(v.fecha_inicio) + '</td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(v.fecha_fin) + '</td>'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.dias + '</strong> días</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#dbeafe;color:#2563eb">' + (v.estado || 'Programado') + '</span></td>'
-                + '</tr>').join('');
+                + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
+                + '<button onclick="Asistencia.editarVacacion(' + v.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998; Editar</button>'
+                + '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465; Eliminar</button>'
+                + '</td></tr>').join('');
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    editarVacacion(id) {
+        fetch('/api/asistencia/vacaciones').then(r => r.json()).then(vacaciones => {
+            const v = vacaciones.find(x => x.id === id);
+            if (!v) return;
+            document.getElementById('vacacion-trabajador').value = v.trabajador_id;
+            document.getElementById('vacacion-inicio').value = v.fecha_inicio ? v.fecha_inicio.split('T')[0] : '';
+            document.getElementById('vacacion-fin').value = v.fecha_fin ? v.fecha_fin.split('T')[0] : '';
+            document.getElementById('vacacion-dias').value = v.dias;
+            document.getElementById('modalVacacion').dataset.editId = id;
+            document.getElementById('modalVacacion').classList.add('show');
+        });
+    },
+
+    async eliminarVacacion(id) {
+        if (!confirm('¿Eliminar este registro de vacaciones?')) return;
+        try {
+            await fetch('/api/asistencia/vacaciones/' + id, { method: 'DELETE' });
+            this.cargarVacaciones();
         } catch(e) { console.error('Error:', e); }
     },
 
     abrirModalVacacion() { document.getElementById('modalVacacion').classList.add('show'); },
     cerrarModalVacacion() { document.getElementById('modalVacacion').classList.remove('show'); },
     async guardarVacacion() {
+        const editId = document.getElementById('modalVacacion').dataset.editId;
         const d = { trabajador_id: document.getElementById('vacacion-trabajador').value, fecha_inicio: document.getElementById('vacacion-inicio').value, fecha_fin: document.getElementById('vacacion-fin').value, dias: parseInt(document.getElementById('vacacion-dias').value) };
         if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin || !d.dias) return;
-        await fetch('/api/asistencia/vacaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        if (editId) {
+            await fetch('/api/asistencia/vacaciones/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            delete document.getElementById('modalVacacion').dataset.editId;
+        } else {
+            await fetch('/api/asistencia/vacaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        }
         this.cerrarModalVacacion(); this.cargarVacaciones();
     },
 
@@ -762,7 +866,7 @@ const Asistencia = {
         try {
             const [reporteR, rankAR] = await Promise.all([
                 fetch('/api/asistencia/reporte-mensual?mes=' + mes + '&anio=' + anio),
-                fetch('/api/asistencia/ranking?mes=' + mes + '&anio=' + mes + '&tipo=asistencia')
+                fetch('/api/asistencia/ranking?mes=' + mes + '&anio=' + anio + '&tipo=asistencia')
             ]);
             const reporte = await reporteR.json();
             const ranking = await rankAR.json();
