@@ -494,6 +494,10 @@ const App = {
                     </div>
 
                 </div>
+
+                <div style="position:fixed;bottom:20px;right:20px;opacity:0.15;pointer-events:none;z-index:0">
+                    <img src="/img/vitroflow-logo-final.png" alt="VitroFlow" style="height:120px;width:auto">
+                </div>
             </div>
         `;
         document.getElementById('mainContent').innerHTML = `<div class="page active" id="page-welcome" style="padding:24px 16px">${html}</div>`;
