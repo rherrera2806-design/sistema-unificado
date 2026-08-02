@@ -38,6 +38,8 @@ const Asistencia = {
             + '.ast-cal-cell.presente{background:#d1fae5}.ast-cal-cell.falta{background:#fee2e2;color:#dc2626;font-weight:700}'
             + '.ast-cal-cell.vacaciones{background:#dbeafe;color:#2563eb}.ast-cal-cell.licencia{background:#fef3c7;color:#d97706}'
             + '.ast-cal-cell.fin-semana{background:#f8fafc}.ast-cal-cell.hoy{outline:2px solid #3b82f6;outline-offset:-2px}'
+            + '#ast-hero-buscar::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
+            + '#ast-hero-mes option,#ast-hero-anio option{color:#1e293b;background:white}'
             + '@media(max-width:768px){.ast-podium{flex-direction:column;align-items:center}}'
             + '</style>'
 
@@ -122,36 +124,36 @@ const Asistencia = {
                 + '</div>'
                 + '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.buscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2);font-size:11px">'
+                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.buscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + (canEditT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 12px">+ Nuevo</button>' : '');
         } else         if (tab === 'permisos') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>'
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+                + '<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
                 + '<button onclick="Asistencia.abrirModalPermiso()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 12px">+ Nuevo</button>';
         } else if (tab === 'licencias') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>'
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+                + '<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
                 + '<button onclick="Asistencia.abrirModalLicencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#d97706;font-weight:700;font-size:11px;padding:6px 12px">+ Nuevo</button>';
         } else if (tab === 'vacaciones') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>'
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+                + '<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
                 + '<button onclick="Asistencia.abrirModalVacacion()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 12px">+ Nuevo</button>';
         } else if (tab === 'calendario') {
             let mesOpts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             let yearOpts = '';
             const yearActual = new Date().getFullYear();
             for (let y = 2024; y <= 2027; y++) yearOpts += '<option value="' + y + '"' + (y === yearActual ? ' selected' : '') + '>' + y + '</option>';
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + mesOpts + '</select>'
-                + '<select id="ast-hero-anio" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + yearOpts + '</select>'
-                + '<button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Cargar</button>';
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + mesOpts + '</select>'
+                + '<select id="ast-hero-anio" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + yearOpts + '</select>'
+                + '<button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Cargar</button>';
         } else if (tab === 'reportes') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Generar</button>';
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+                + '<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Generar</button>';
         } else {
             container.innerHTML = '';
         }
