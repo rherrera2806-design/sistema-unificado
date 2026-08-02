@@ -25,6 +25,7 @@ App.registerModule('pedidos', {
             + '.ped-badge:hover{transform:scale(1.08)}'
             + '.ped-btn{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}'
             + '.ped-btn:hover{transform:translateY(-1px)!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}'
+            + '#pedFilterSearch::placeholder{color:rgba(255,255,255,0.6)}'
             + '</style>'
 
             + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:20px 36px;margin-bottom:28px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
