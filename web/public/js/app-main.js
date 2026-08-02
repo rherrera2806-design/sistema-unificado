@@ -396,7 +396,8 @@ const SIDEBAR_SECTIONS = {
     ventas: ['pedidos'],
     produccion: ['prod_ordenes','prod_planificacion','prod_reportes','prod_notas','prod_config'],
     instalaciones: ['instalaciones','inst_detalle','inst_historial'],
-    administracion: ['usuarios']
+    administracion: ['usuarios'],
+    asistencia: ['asistencia_control']
 };
 
 function getUserPerms() {
@@ -499,6 +500,14 @@ function renderSidebar() {
         html += `</div>`;
     }
 
+    // ASISTENCIA
+    if (hasSection('asistencia')) {
+        html += `<div class="nav-section" onclick="toggleSection('asistencia')"><span>ASISTENCIA</span><span class="toggle-icon">▼</span></div>`;
+        html += `<div class="nav-section-group" id="section-asistencia">`;
+        if (canSeeItem('asistencia_control','asistencia')) html += navI('asistencia_control', 'Control de Asistencia', SVG.clipboard);
+        html += `</div>`;
+    }
+
     // Cerrar sesion
     html += `<div style="flex:1"></div>`;
     html += `<div class="nav-item" onclick="doLogout()" style="opacity:0.4;margin-top:8px">
@@ -531,6 +540,8 @@ function renderSidebar() {
                 App.loadModule('reporte_turnos');
             } else if (page === 'pedidos') {
                 App.loadModule('pedidos');
+            } else if (page === 'asistencia_control') {
+                window.open('/asistencia/', '_blank');
             } else {
                 App.loadModule(page);
             }
