@@ -19,9 +19,31 @@
         <div style="position:absolute;bottom:-60px;left:-60px;width:250px;height:250px;background:radial-gradient(circle,rgba(245,158,11,0.1) 0%,transparent 70%);border-radius:50%"></div>
 
         <div style="background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;position:relative;z-index:1;animation:vfFadeUp 0.6s ease both">
-            <div style="width:64px;height:64px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;color:white;margin:0 auto 16px;box-shadow:0 4px 16px rgba(245,158,11,0.4)">S</div>
-            <h1 style="margin:0 0 4px;font-size:24px;font-weight:800;color:#0f172a;letter-spacing:-0.5px">VitroFlow</h1>
-            <p style="margin:0 0 24px;font-size:13px;color:#64748b;font-weight:500">Mantencion + Inventario</p>
+            <div style="width:120px;height:80px;margin:0 auto 12px">
+                <svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="vfGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#0ea5e9"/>
+                            <stop offset="50%" style="stop-color:#0284c7"/>
+                            <stop offset="100%" style="stop-color:#0369a1"/>
+                        </linearGradient>
+                        <linearGradient id="vfGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#38bdf8"/>
+                            <stop offset="100%" style="stop-color:#0ea5e9"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M30 50 Q30 20 60 20 Q90 20 90 50 Q90 20 120 20 Q150 20 150 50 Q150 80 120 80 Q100 80 100 65 Q100 80 80 80 Q50 80 50 50 Q50 20 80 20" 
+                          fill="none" stroke="url(#vfGrad1)" stroke-width="8" stroke-linecap="round"/>
+                    <path d="M55 50 Q55 35 75 35 Q95 35 95 50 Q95 35 115 35 Q135 35 135 50 Q135 65 115 65 Q105 65 100 58" 
+                          fill="none" stroke="url(#vfGrad2)" stroke-width="5" stroke-linecap="round"/>
+                    <circle cx="50" cy="50" r="6" fill="#0ea5e9"/>
+                    <circle cx="150" cy="50" r="6" fill="#0284c7"/>
+                    <path d="M85 50 L95 50 L90 42 Z" fill="#0ea5e9"/>
+                    <path d="M115 50 L105 50 L110 58 Z" fill="#0284c7"/>
+                </svg>
+            </div>
+            <h1 style="margin:0 0 2px;font-size:28px;font-weight:800;color:#0f172a;letter-spacing:1px;font-style:italic">VITROFLOW</h1>
+            <p style="margin:0 0 24px;font-size:11px;color:#64748b;font-weight:500;letter-spacing:1px;text-transform:uppercase">Sistema de Produccion de Vidrieria</p>
 
             <div id="loginError" style="display:none;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;color:#ef4444;font-size:12px;font-weight:500;margin-bottom:16px"></div>
 
@@ -44,7 +66,12 @@
         <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);border-radius:50%"></div>
 
         <div style="background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:20px;padding:36px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;position:relative;z-index:1;animation:vfFadeUp 0.6s ease both">
-            <div id="userAvatar" style="width:56px;height:56px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1.25rem;font-weight:700;margin:0 auto 14px;box-shadow:0 4px 12px rgba(59,130,246,0.3)">U</div>
+            <div id="userAvatar" style="width:56px;height:56px;background:linear-gradient(135deg,#0ea5e9,#0284c7);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 4px 12px rgba(14,165,233,0.3)">
+                <svg viewBox="0 0 200 100" width="32" height="18" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M30 50 Q30 20 60 20 Q90 20 90 50 Q90 20 120 20 Q150 20 150 50 Q150 80 120 80 Q100 80 100 65 Q100 80 80 80 Q50 80 50 50 Q50 20 80 20" fill="none" stroke="white" stroke-width="10" stroke-linecap="round"/>
+                    <circle cx="50" cy="50" r="7" fill="white"/><circle cx="150" cy="50" r="7" fill="white"/>
+                </svg>
+            </div>
             <h2 style="margin:0 0 4px;font-size:20px;font-weight:700;color:#0f172a">Bienvenido, <span id="userName">Usuario</span></h2>
             <p style="margin:0 0 24px;font-size:13px;color:#64748b">Selecciona un modulo para continuar</p>
 
@@ -137,7 +164,6 @@
             document.getElementById('adminScreen').style.display = 'none';
             document.getElementById('inventarioApp').style.display = 'none';
             document.getElementById('userName').textContent = user.nombre;
-            document.getElementById('userAvatar').textContent = user.nombre.charAt(0).toUpperCase();
             renderModules();
         }
 
