@@ -133,31 +133,36 @@
 
 /* ── Nav Sections ── */
 .nav-section {
-    padding: var(--space-4) var(--space-5) var(--space-2);
-    font-size: 0.5625rem;
+    padding: var(--space-3) var(--space-5) var(--space-2);
+    font-size: 0.625rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: rgba(255,255,255,0.22);
+    color: rgba(255,255,255,0.35);
     cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
     user-select: none;
     transition: color var(--transition-fast);
-    margin-top: var(--space-1);
+    margin-top: var(--space-2);
+    border-top: 1px solid rgba(255,255,255,0.04);
+}
+.nav-section:first-child {
+    border-top: none;
+    margin-top: 0;
 }
 .nav-section::after {
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, rgba(255,255,255,0.08), transparent);
+    background: linear-gradient(90deg, rgba(255,255,255,0.06), transparent);
     margin-left: var(--space-3);
 }
-.nav-section:hover { color: rgba(255,255,255,0.45); }
-.nav-section .toggle-icon { font-size: 0.5625rem; transition: transform var(--transition-base); margin-left: var(--space-2); }
+.nav-section:hover { color: rgba(255,255,255,0.55); }
+.nav-section .toggle-icon { font-size: 0.5rem; transition: transform var(--transition-base); margin-left: var(--space-2); opacity: 0.5; }
 .nav-section.collapsed .toggle-icon { transform: rotate(-90deg); }
-.nav-section-group { overflow: hidden; transition: max-height var(--transition-slow); max-height: 500px; }
+.nav-section-group { overflow: hidden; transition: max-height var(--transition-slow); max-height: 800px; }
 .nav-section-group.collapsed { max-height: 0 !important; }
 
 /* ── Nav Items ── */
@@ -165,12 +170,12 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: 10px var(--space-5);
-    margin: 1px var(--space-2);
+    padding: 9px var(--space-5);
+    margin: 1px var(--space-3);
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: all var(--transition-base);
-    color: rgba(255,255,255,0.42);
+    color: rgba(255,255,255,0.45);
     text-decoration: none;
     font-size: 0.8125rem;
     font-weight: 500;
