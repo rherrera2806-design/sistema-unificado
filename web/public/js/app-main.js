@@ -274,13 +274,19 @@ const App = {
         
         let asistenciaStats = { faltas: 0, licencias: 0, licencias_dias: 0, vacaciones: 0, vacaciones_trabajadores: 0, trabajadores_total: 0 };
         let instalacionesStats = { programadas: 0, enCurso: 0, completadas: 0, novedades: 0 };
+        let inventarioStats = { totalMovimientos: 0, totalEntradas: 0, totalSalidas: 0, tiposCristal: 0, stockM2: 0 };
         try {
-            const [asistenciaRes, instalacionesRes] = await Promise.all([
+            const [asistenciaRes, instalacionesRes, inventarioRes] = await Promise.all([
                 fetch('/api/asistencia/dashboard'),
-                fetch('/api/instalaciones/dashboard')
+                fetch('/api/instalaciones/dashboard'),
+                fetch('/api/inv/estadisticas')
             ]);
             if (asistenciaRes.ok) asistenciaStats = await asistenciaRes.json();
             if (instalacionesRes.ok) instalacionesStats = await instalacionesRes.json();
+            if (inventarioRes.ok) {
+                const inv = await inventarioRes.json();
+                inventarioStats = { totalMovimientos: inv.totalMovimientos || 0, totalEntradas: inv.totalEntradas || 0, totalSalidas: inv.totalSalidas || 0, tiposCristal: (inv.tiposCristal || []).length, stockM2: Math.round(inv.stockM2 || 0) };
+            }
         } catch(e) {}
 
         const html = `
@@ -350,6 +356,37 @@ const App = {
                             <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dcfce7">
                                 <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${instalacionesStats.novedades}</div>
                                 <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Novedades</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- INVENTARIO -->
+                    <div onclick="App.loadModule('inv_inventario')" style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #93c5fd;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(59,130,246,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(59,130,246,0.25)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                            </div>
+                            <div>
+                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">INVENTARIO</h3>
+                                <p style="margin:0;font-size:10px;color:#64748b">${inventarioStats.stockM2.toLocaleString('es-CL')} m2 en stock</p>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dbeafe">
+                                <div style="font-size:18px;font-weight:800;color:#0ea5e9;line-height:1">${inventarioStats.tiposCristal}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Tipos</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dbeafe">
+                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${inventarioStats.totalEntradas}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Entradas</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dbeafe">
+                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${inventarioStats.totalSalidas}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Salidas</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dbeafe">
+                                <div style="font-size:18px;font-weight:800;color:#8b5cf6;line-height:1">${inventarioStats.totalMovimientos}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Movimientos</div>
                             </div>
                         </div>
                     </div>
