@@ -25,7 +25,7 @@ App.registerModule('usuarios', {
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Nombre</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Email</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Rol</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Permisos</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0;min-width:320px">Permisos</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Estado</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Acciones</th>'
             + '</tr></thead><tbody id="uTableBody"><tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div>Cargando...</div></td></tr></tbody></table></div></div></div>'
@@ -66,8 +66,37 @@ App.registerModule('usuarios', {
         const tbody = document.getElementById('uTableBody');
         if (!tbody) return;
         if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8">Sin resultados</td></tr>'; return; }
+        const MOD_SUBS = {
+            asistencia: ['Control de Asistencia'],
+            atencion: ['Recepcion','Bodega','Almacen','Facturar','QR','Reporte'],
+            instalaciones: ['Instalaciones','Historial'],
+            inventario: ['Inventario','Movimientos','Historial','Catalogos'],
+            mantencion: ['Dashboard','Areas','Maquinas','Componentes','Preventivo','Correctivo','Calendario','Notas','Reportes','Historial','Bitacora'],
+            pedidos: ['Pedidos'],
+            produccion: ['Produccion','Planificacion','Reportes','Pendientes','Config','Taller']
+        };
+        const MOD_LABELS = {asistencia:'ASIST',atencion:'ATENC',instalaciones:'INST',inventario:'INV',mantencion:'MANT',pedidos:'PED',produccion:'PROD'};
+        function permCell(up) {
+            let h = '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+            Object.keys(MOD_SUBS).forEach(mod => {
+                const hasVer = up.includes(mod);
+                const hasEd = up.includes(mod+'.editar');
+                const hasEl = up.includes(mod+'.eliminar');
+                if (!hasVer && !hasEd && !hasEl) return;
+                const dots = [];
+                if (hasVer) dots.push('<span title="Ver" style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block"></span>');
+                if (hasEd) dots.push('<span title="Editar" style="width:7px;height:7px;border-radius:50%;background:#3b82f6;display:inline-block"></span>');
+                if (hasEl) dots.push('<span title="Eliminar" style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block"></span>');
+                h += '<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:6px;background:#f1f5f9;border:1px solid #e2e8f0">';
+                h += '<span style="font-size:9px;font-weight:700;color:#475569">' + MOD_LABELS[mod] + '</span>';
+                h += dots.join('');
+                h += '</div>';
+            });
+            h += '</div>';
+            return h;
+        }
         tbody.innerHTML = users.map(u => {
-                const permisos = (u.permisos || []).map(p => '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;background:#eff6ff;color:#3b82f6;margin:2px">' + p + '</span>').join('');
+                const up = Array.isArray(u.permisos) ? u.permisos : [];
                 const rolBadge = u.rol === 'admin'
                     ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed">admin</span>'
                     : '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#f1f5f9;color:#64748b">usuario</span>';
@@ -78,7 +107,7 @@ App.registerModule('usuarios', {
                     + '<td style="padding:12px"><strong style="color:#0f172a">' + escapeHtml(u.nombre) + '</strong></td>'
                     + '<td style="padding:12px;font-size:13px;color:#64748b">' + escapeHtml(u.email) + '</td>'
                     + '<td style="padding:12px">' + rolBadge + '</td>'
-                    + '<td style="padding:12px">' + (permisos || '<span style="color:#94a3b8;font-size:12px">Sin permisos</span>') + '</td>'
+                    + '<td style="padding:12px">' + permCell(up) + '</td>'
                     + '<td style="padding:12px">' + estadoBadge + '</td>'
                     + '<td style="padding:12px;white-space:nowrap">'
                     + '<div style="display:flex;gap:6px;align-items:center">'
@@ -101,37 +130,37 @@ App.registerModule('usuarios', {
         const up = Array.isArray(user.permisos) ? user.permisos : [];
 
         const SECTIONS = [
-            { key: 'asistencia', label: 'ASISTENCIA', items: [
+            { key: 'asistencia', label: 'ASISTENCIA', subs: ['Control de Asistencia'], items: [
                 { key: 'asistencia', label: 'Ver' },
                 { key: 'asistencia.editar', label: 'Editar' },
                 { key: 'asistencia.eliminar', label: 'Eliminar' }
             ]},
-            { key: 'atencion', label: 'ATENCION', items: [
+            { key: 'atencion', label: 'ATENCION', subs: ['Recepcion y Control','Verificación Bodega','Almacén','Por Facturar','QR Clientes','Reporte'], items: [
                 { key: 'atencion', label: 'Ver' },
                 { key: 'atencion.editar', label: 'Editar' },
                 { key: 'atencion.eliminar', label: 'Eliminar' }
             ]},
-            { key: 'instalaciones', label: 'INSTALACIONES', items: [
+            { key: 'instalaciones', label: 'INSTALACIONES', subs: ['Instalaciones','Historial'], items: [
                 { key: 'instalaciones', label: 'Ver' },
                 { key: 'instalaciones.editar', label: 'Editar' },
                 { key: 'instalaciones.eliminar', label: 'Eliminar' }
             ]},
-            { key: 'inventario', label: 'INVENTARIO', items: [
+            { key: 'inventario', label: 'INVENTARIO', subs: ['Inventario','Movimientos','Historial Inventario','Catalogos'], items: [
                 { key: 'inventario', label: 'Ver' },
                 { key: 'inventario.editar', label: 'Editar' },
                 { key: 'inventario.eliminar', label: 'Eliminar' }
             ]},
-            { key: 'mantencion', label: 'MANTENCION', items: [
+            { key: 'mantencion', label: 'MANTENCION', subs: ['Dashboard','Tipos de Area','Maquinas','Componentes','Preventivo','Correctivo','Calendario','Notas','Reportes','Historial','Bitacora'], items: [
                 { key: 'mantencion', label: 'Ver' },
                 { key: 'mantencion.editar', label: 'Editar' },
                 { key: 'mantencion.eliminar', label: 'Eliminar' }
             ]},
-            { key: 'pedidos', label: 'PEDIDOS', items: [
+            { key: 'pedidos', label: 'PEDIDOS', subs: ['Pedidos / Ordenes'], items: [
                 { key: 'pedidos', label: 'Ver' },
                 { key: 'pedidos.editar', label: 'Editar' },
                 { key: 'pedidos.eliminar', label: 'Eliminar' }
             ]},
-            { key: 'produccion', label: 'PRODUCCION', items: [
+            { key: 'produccion', label: 'PRODUCCION', subs: ['Produccion','Planificacion','Reporte Fechas','Mis Pendientes','Configuracion','Taller'], items: [
                 { key: 'produccion', label: 'Ver' },
                 { key: 'produccion.editar', label: 'Editar' },
                 { key: 'produccion.eliminar', label: 'Eliminar' }
@@ -146,7 +175,15 @@ App.registerModule('usuarios', {
             permTreeHtml += '<div onclick="App.modules.usuarios.toggleSection(\'' + sec.key + '\')" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;cursor:pointer;user-select:none;transition:background 0.15s" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'#f8fafc\'">';
             permTreeHtml += '<input type="checkbox" class="perm-sec-check" data-section="' + sec.key + '" ' + (allChecked ? 'checked' : '') + ' ' + (someChecked && !allChecked ? 'style="accent-color:#3b82f6"' : '') + ' onclick="event.stopPropagation();App.modules.usuarios.toggleSection(\'' + sec.key + '\')">';
             permTreeHtml += '<span style="font-size:12px;font-weight:700;color:#334155;letter-spacing:0.5px">' + sec.label + '</span>';
-            permTreeHtml += '</div><div class="perm-items" id="permItems_' + sec.key + '" style="padding:8px 14px 10px 28px;display:flex;flex-wrap:wrap;gap:4px 14px">';
+            permTreeHtml += '</div>';
+            if (sec.subs && sec.subs.length) {
+                permTreeHtml += '<div style="padding:6px 14px 2px 28px;display:flex;flex-wrap:wrap;gap:4px 10px">';
+                sec.subs.forEach(sub => {
+                    permTreeHtml += '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;background:#e0f2fe;color:#0369a1">' + sub + '</span>';
+                });
+                permTreeHtml += '</div>';
+            }
+            permTreeHtml += '<div class="perm-items" id="permItems_' + sec.key + '" style="padding:8px 14px 10px 28px;display:flex;flex-wrap:wrap;gap:4px 14px">';
             sec.items.forEach(it => {
                 permTreeHtml += '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-item-check" data-section="' + sec.key + '" data-item="' + it.key + '" ' + (up.includes(it.key) ? 'checked' : '') + ' style="accent-color:#3b82f6"> ' + it.label + '</label>';
             });

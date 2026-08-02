@@ -103,10 +103,12 @@ const Asistencia = {
 
     // ═══════ TRABAJADORES ═══════
     async renderTrabajadoresTab(c) {
+        const canEdit = typeof canEdit === 'function' ? canEdit('asistencia') : true;
+        const canDelete = typeof canDelete === 'function' ? canDelete('asistencia') : true;
         c.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
                 <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Gestión de Trabajadores</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Administrar personal activo e inactivo</p></div></div>
-                <button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Trabajador</button>
+                ${canEdit ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Trabajador</button>' : ''}
             </div>
 
             <div id="ast-form-trabajador" style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:20px 24px;margin-bottom:20px;animation:astFadeUp 0.3s ease both">

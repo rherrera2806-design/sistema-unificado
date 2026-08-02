@@ -529,6 +529,10 @@ function renderSidebar() {
                 App.loadModule('usuarios');
             } else if (page === 'asistencia') {
                 App.loadModule('asistencia');
+            } else if (page === 'prod_ordenes') {
+                App.loadModule('produccion');
+            } else if (page === 'prod_planificacion') {
+                App.loadModule('planificacion');
             } else {
                 App.loadModule(page);
             }
