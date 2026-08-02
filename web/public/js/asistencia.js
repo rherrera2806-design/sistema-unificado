@@ -5,27 +5,235 @@
 const Asistencia = {
     trabajadores: [],
     asistenciaHoy: [],
+    loaded: false,
+    
+    // ── Render (para App.registerModule) ──
+    async render() {
+        const page = document.getElementById('page-asistencia');
+        if (!page) return;
+        
+        page.innerHTML = `
+            <div style="padding: var(--space-6); max-width: 1200px; margin: 0 auto;">
+                <div class="asistencia-hero">
+                    <h1>Control de Asistencia</h1>
+                    <p class="subtitle">Gestión diaria de asistencia, permisos y vacaciones</p>
+                </div>
+                
+                <div class="tab-nav">
+                    <button class="tab-btn active" onclick="Asistencia.showTab('diaria')">Asistencia Diaria</button>
+                    <button class="tab-btn" onclick="Asistencia.showTab('calendario')">Calendario Mensual</button>
+                    <button class="tab-btn" onclick="Asistencia.showTab('permisos')">Permisos</button>
+                    <button class="tab-btn" onclick="Asistencia.showTab('licencias')">Licencias Médicas</button>
+                    <button class="tab-btn" onclick="Asistencia.showTab('vacaciones')">Vacaciones</button>
+                    <button class="tab-btn" onclick="Asistencia.showTab('reportes')">Reportes & Rankings</button>
+                </div>
+                
+                <div id="asistencia-content"></div>
+            </div>
+        `;
+        
+        await this.loadTabContent('diaria');
+    },
+    
+    showTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
+        this.loadTabContent(tab);
+    },
+    
+    async loadTabContent(tab) {
+        const container = document.getElementById('asistencia-content');
+        if (!container) return;
+        
+        if (tab === 'diaria') {
+            container.innerHTML = this.getTabDiaria();
+            await this.init();
+        } else if (tab === 'calendario') {
+            container.innerHTML = this.getTabCalendario();
+            this.setCalendarioFecha();
+            await this.cargarCalendario();
+        } else if (tab === 'permisos') {
+            container.innerHTML = this.getTabPermisos();
+            document.getElementById('filtro-mes-permiso').value = new Date().getMonth() + 1;
+            await this.cargarPermisos();
+        } else if (tab === 'licencias') {
+            container.innerHTML = this.getTabLicencias();
+            document.getElementById('filtro-mes-licencia').value = new Date().getMonth() + 1;
+            await this.cargarLicencias();
+        } else if (tab === 'vacaciones') {
+            container.innerHTML = this.getTabVacaciones();
+            await this.cargarVacaciones();
+        } else if (tab === 'reportes') {
+            container.innerHTML = this.getTabReportes();
+            document.getElementById('filtro-mes-reporte').value = new Date().getMonth() + 1;
+        }
+    },
+    
+    getTabDiaria() {
+        return `
+            <div class="stats-grid">
+                <div class="stat-card" data-accent="green">
+                    <div class="stat-icon green">✓</div>
+                    <div class="stat-info"><h4 id="stat-presentes">0</h4><p>Presentes</p></div>
+                </div>
+                <div class="stat-card" data-accent="red">
+                    <div class="stat-icon red">✗</div>
+                    <div class="stat-info"><h4 id="stat-faltas">0</h4><p>Faltas</p></div>
+                </div>
+                <div class="stat-card" data-accent="blue">
+                    <div class="stat-icon blue">👥</div>
+                    <div class="stat-info"><h4 id="stat-total">0</h4><p>Total</p></div>
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>Registrar Asistencia</h3>
+                    <div class="flex items-center gap-3">
+                        <input type="date" id="fecha-selector" class="form-control" style="width:auto">
+                        <button class="btn btn-primary" onclick="Asistencia.cargarAsistencia()">Cargar</button>
+                    </div>
+                </div>
+                <div class="card-body"><div id="trabajadores-list"></div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3>Faltas del Día</h3><span class="badge badge-danger" id="badge-dia">0 faltas</span></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead><tr><th>Trabajador</th><th>RUT</th><th>Estado</th><th>Acción</th></tr></thead>
+                            <tbody id="tabla-asistencia"><tr><td colspan="4" class="text-center text-muted">Cargando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+    
+    getTabCalendario() {
+        return `
+            <div class="page-header">
+                <div><h2>Calendario Mensual</h2><p class="subtitle">Vista general de asistencia, vacaciones y licencias</p></div>
+                <div class="flex gap-3">
+                    <select id="cal-mes" class="form-control" style="width:auto">
+                        <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                        <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                        <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                        <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                    </select>
+                    <select id="cal-anio" class="form-control" style="width:auto">
+                        <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="Asistencia.cargarCalendario()">Cargar</button>
+                </div>
+            </div>
+            <div class="flex gap-4 mb-4 flex-wrap">
+                <div class="flex items-center gap-2"><div style="width:16px;height:16px;border-radius:3px;background:var(--success)"></div><span class="text-sm">Presente</span></div>
+                <div class="flex items-center gap-2"><div style="width:16px;height:16px;border-radius:3px;background:var(--danger)"></div><span class="text-sm">Falta</span></div>
+                <div class="flex items-center gap-2"><div style="width:16px;height:16px;border-radius:3px;background:var(--info)"></div><span class="text-sm">Vacaciones</span></div>
+                <div class="flex items-center gap-2"><div style="width:16px;height:16px;border-radius:3px;background:var(--accent)"></div><span class="text-sm">Licencia Médica</span></div>
+            </div>
+            <div class="card"><div class="card-body" style="overflow-x:auto"><div id="calendario-container"></div></div></div>
+        `;
+    },
+    
+    getTabPermisos() {
+        return `
+            <div class="page-header">
+                <div><h2>Gestión de Permisos</h2><p class="subtitle">Solicitudes de permiso y ausencias</p></div>
+                <button class="btn btn-primary" onclick="Asistencia.abrirModalPermiso()">+ Nuevo Permiso</button>
+            </div>
+            <div class="filters-bar">
+                <select id="filtro-mes-permiso" class="form-control" style="width:auto">
+                    <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                    <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                    <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                </select>
+                <button class="btn btn-outline" onclick="Asistencia.cargarPermisos()">Filtrar</button>
+            </div>
+            <div class="card"><div class="card-body"><div class="table-responsive">
+                <table class="admin-table">
+                    <thead><tr><th>Trabajador</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="tabla-permisos"><tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr></tbody>
+                </table>
+            </div></div></div>
+        `;
+    },
+    
+    getTabLicencias() {
+        return `
+            <div class="page-header">
+                <div><h2>Licencias Médicas</h2><p class="subtitle">Control de licencias médicas</p></div>
+                <button class="btn btn-primary" onclick="Asistencia.abrirModalLicencia()">+ Nueva Licencia</button>
+            </div>
+            <div class="filters-bar">
+                <select id="filtro-mes-licencia" class="form-control" style="width:auto">
+                    <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                    <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                    <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                </select>
+                <button class="btn btn-outline" onclick="Asistencia.cargarLicencias()">Filtrar</button>
+            </div>
+            <div class="card"><div class="card-body"><div class="table-responsive">
+                <table class="admin-table">
+                    <thead><tr><th>Trabajador</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Diagnóstico</th><th>Médico</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="tabla-licencias"><tr><td colspan="8" class="text-center text-muted">Cargando...</td></tr></tbody>
+                </table>
+            </div></div></div>
+        `;
+    },
+    
+    getTabVacaciones() {
+        return `
+            <div class="page-header">
+                <div><h2>Gestión de Vacaciones</h2><p class="subtitle">Control de vacaciones</p></div>
+                <button class="btn btn-primary" onclick="Asistencia.abrirModalVacacion()">+ Nueva Vacación</button>
+            </div>
+            <div class="card"><div class="card-body"><div class="table-responsive">
+                <table class="admin-table">
+                    <thead><tr><th>Trabajador</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Estado</th></tr></thead>
+                    <tbody id="tabla-vacaciones"><tr><td colspan="5" class="text-center text-muted">Cargando...</td></tr></tbody>
+                </table>
+            </div></div></div>
+        `;
+    },
+    
+    getTabReportes() {
+        return `
+            <div class="page-header">
+                <div><h2>Reportes y Rankings</h2><p class="subtitle">Análisis mensual</p></div>
+                <div class="flex gap-3">
+                    <select id="filtro-mes-reporte" class="form-control" style="width:auto">
+                        <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+                        <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+                        <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+                        <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="Asistencia.cargarReportes()">Generar</button>
+                </div>
+            </div>
+            <div class="mb-6"><h3 class="mb-4">Top Asistencia</h3><div id="ranking-asistencia" class="podium"></div></div>
+            <div class="card"><div class="card-header"><h3>Reporte Mensual</h3></div><div class="card-body"><div class="table-responsive">
+                <table class="admin-table">
+                    <thead><tr><th>#</th><th>Trabajador</th><th>Asistidos</th><th>Faltas</th><th>Permisos</th><th>Lic. Médicas</th><th>Vacaciones</th><th>% Asistencia</th></tr></thead>
+                    <tbody id="tabla-reporte"><tr><td colspan="8" class="text-center text-muted">Selecciona un mes</td></tr></tbody>
+                </table>
+            </div></div></div>
+        `;
+    },
     
     // ── Inicialización ──
     async init() {
         this.setFechaActual();
         await this.cargarTrabajadores();
         await this.cargarAsistencia();
-        this.cargarPermisos();
-        this.cargarLicencias();
-        this.cargarVacaciones();
-        this.setCalendarioFecha();
     },
     
     setFechaActual() {
         const hoy = new Date().toISOString().split('T')[0];
-        document.getElementById('fecha-selector').value = hoy;
-        
-        // Setear mes actual en filtros
-        const mesActual = new Date().getMonth() + 1;
-        document.getElementById('filtro-mes-permiso').value = mesActual;
-        document.getElementById('filtro-mes-reporte').value = mesActual;
-        document.getElementById('filtro-mes-licencia').value = mesActual;
+        const fs = document.getElementById('fecha-selector');
+        if (fs) fs.value = hoy;
     },
     
     setCalendarioFecha() {
@@ -701,5 +909,7 @@ function abrirModalVacacion() { Asistencia.abrirModalVacacion(); }
 function cerrarModalVacacion() { Asistencia.cerrarModalVacacion(); }
 function guardarVacacion() { Asistencia.guardarVacacion(); }
 
-// ═══════ Auto-init ═══════
-document.addEventListener('DOMContentLoaded', () => Asistencia.init());
+// ═══════ Registrar módulo con App ═══════
+if (typeof App !== 'undefined') {
+    App.registerModule('asistencia', Asistencia);
+}
