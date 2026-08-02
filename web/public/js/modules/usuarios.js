@@ -12,11 +12,12 @@ App.registerModule('usuarios', {
             + '<div style="max-width:1100px;margin:0 auto;padding:0 16px">'
             + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</h2>'
+            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</h2>'
             + '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestionar usuarios y permisos del sistema</p></div>'
-            + '<div style="display:flex;gap:8px">'
-            + '<button onclick="App.modules.usuarios.showForm()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(34,197,94,0.3);transition:all 0.2s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo Usuario</button>'
-            + '<button onclick="window.open(\'/api/admin/usuarios/export\',\'_blank\')" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar TXT</button>'
+            + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+            + '<div style="position:relative"><svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="uSearch" placeholder="Buscar nombre o email..." oninput="App.modules.usuarios.filterUsers()" style="padding:9px 14px 9px 32px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);color:white;font-size:12px;outline:none;width:180px" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.25)\'"></div>'
+            + '<button onclick="App.modules.usuarios.showForm()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(34,197,94,0.3);transition:all 0.2s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
+            + '<button onclick="window.open(\'/api/admin/usuarios/export\',\'_blank\')" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar</button>'
             + '</div></div></div>'
 
             + '<div style="background:white;border-radius:14px;padding:24px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:usFadeUp 0.5s ease both">'
@@ -44,14 +45,28 @@ App.registerModule('usuarios', {
     },
 
     editingId: null,
+    allUsers: [],
 
     async loadUsers() {
         try {
             const res = await fetch('/api/admin/usuarios');
-            const users = await res.json();
-            const tbody = document.getElementById('uTableBody');
-            if (!tbody) return;
-            tbody.innerHTML = users.map(u => {
+            this.allUsers = await res.json();
+            this.renderUsers(this.allUsers);
+        } catch(e) { console.error(e); }
+    },
+
+    filterUsers() {
+        const q = (document.getElementById('uSearch')?.value || '').toLowerCase();
+        if (!q) return this.renderUsers(this.allUsers);
+        const filtered = this.allUsers.filter(u => u.nombre.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+        this.renderUsers(filtered);
+    },
+
+    renderUsers(users) {
+        const tbody = document.getElementById('uTableBody');
+        if (!tbody) return;
+        if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8">Sin resultados</td></tr>'; return; }
+        tbody.innerHTML = users.map(u => {
                 const permisos = (u.permisos || []).map(p => '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;background:#eff6ff;color:#3b82f6;margin:2px">' + p + '</span>').join('');
                 const rolBadge = u.rol === 'admin'
                     ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed">admin</span>'
@@ -71,7 +86,6 @@ App.registerModule('usuarios', {
                     + (u.rol !== 'admin' ? '<button onclick="App.modules.usuarios.remove(' + u.id + ')" style="padding:6px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:#ef4444;transition:all 0.2s;display:inline-flex;align-items:center;gap:4px" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar</button>' : '')
                     + '</div></td></tr>';
             }).join('');
-        } catch(e) { console.error(e); }
     },
 
     async showForm(id) {
@@ -87,62 +101,40 @@ App.registerModule('usuarios', {
         const up = Array.isArray(user.permisos) ? user.permisos : [];
 
         const SECTIONS = [
-            { key: 'administracion', label: 'ADMINISTRACION', items: [
-                { key: 'usuarios', label: 'Usuarios' }
-            ]},
             { key: 'asistencia', label: 'ASISTENCIA', items: [
-                { key: 'asistencia.trabajadores', label: 'Trabajadores' },
-                { key: 'asistencia.diaria', label: 'Asistencia Diaria' },
-                { key: 'asistencia.calendario', label: 'Calendario' },
-                { key: 'asistencia.permisos', label: 'Permisos' },
-                { key: 'asistencia.licencias', label: 'Licencias Medicas' },
-                { key: 'asistencia.vacaciones', label: 'Vacaciones' },
-                { key: 'asistencia.reportes', label: 'Reportes' }
+                { key: 'asistencia', label: 'Ver' },
+                { key: 'asistencia.editar', label: 'Editar' },
+                { key: 'asistencia.eliminar', label: 'Eliminar' }
             ]},
             { key: 'atencion', label: 'ATENCION', items: [
-                { key: 'turnos_recepcion', label: 'Recepcion y Control' },
-                { key: 'turnos_bodega', label: 'Verificacion Bodega' },
-                { key: 'turnos_almacen', label: 'Almacen' },
-                { key: 'turnos_facturar', label: 'Por Facturar' },
-                { key: 'turnos_qr', label: 'QR Clientes' },
-                { key: 'turnos_reporte', label: 'Reporte' },
-                { key: 'turnos_eliminar', label: 'Eliminar' }
+                { key: 'atencion', label: 'Ver' },
+                { key: 'atencion.editar', label: 'Editar' },
+                { key: 'atencion.eliminar', label: 'Eliminar' }
             ]},
             { key: 'instalaciones', label: 'INSTALACIONES', items: [
-                { key: 'instalaciones', label: 'Instalaciones' },
-                { key: 'inst_detalle', label: 'Detalle' },
-                { key: 'inst_historial', label: 'Historial' },
-                { key: 'instalaciones.nueva', label: 'Nueva' },
+                { key: 'instalaciones', label: 'Ver' },
+                { key: 'instalaciones.editar', label: 'Editar' },
                 { key: 'instalaciones.eliminar', label: 'Eliminar' }
             ]},
             { key: 'inventario', label: 'INVENTARIO', items: [
-                { key: 'inv_inventario', label: 'Inventario' },
-                { key: 'inv_movimientos', label: 'Movimientos' },
-                { key: 'inv_historial', label: 'Historial Inventario' },
-                { key: 'inv_catalogos', label: 'Catalogos' }
+                { key: 'inventario', label: 'Ver' },
+                { key: 'inventario.editar', label: 'Editar' },
+                { key: 'inventario.eliminar', label: 'Eliminar' }
             ]},
             { key: 'mantencion', label: 'MANTENCION', items: [
-                { key: 'dashboard', label: 'Dashboard' },
-                { key: 'machineTypes', label: 'Tipos de Area' },
-                { key: 'machines', label: 'Maquinas' },
-                { key: 'components', label: 'Componentes' },
-                { key: 'preventive', label: 'Preventivo' },
-                { key: 'corrective', label: 'Correctivo' },
-                { key: 'calendar', label: 'Calendario' },
-                { key: 'notas', label: 'Notas' },
-                { key: 'reports', label: 'Reportes' },
-                { key: 'history', label: 'Historial' },
-                { key: 'bitacora', label: 'Bitacora' }
+                { key: 'mantencion', label: 'Ver' },
+                { key: 'mantencion.editar', label: 'Editar' },
+                { key: 'mantencion.eliminar', label: 'Eliminar' }
             ]},
             { key: 'pedidos', label: 'PEDIDOS', items: [
-                { key: 'pedidos', label: 'Pedidos / Ordenes' },
-                { key: 'pedidos.autorizar', label: 'Autorizar Pedidos' }
+                { key: 'pedidos', label: 'Ver' },
+                { key: 'pedidos.editar', label: 'Editar' },
+                { key: 'pedidos.eliminar', label: 'Eliminar' }
             ]},
             { key: 'produccion', label: 'PRODUCCION', items: [
-                { key: 'prod_ordenes', label: 'Produccion' },
-                { key: 'prod_planificacion', label: 'Planificacion' },
-                { key: 'prod_notas', label: 'Mis Pendientes' },
-                { key: 'prod_config', label: 'Configuracion' }
+                { key: 'produccion', label: 'Ver' },
+                { key: 'produccion.editar', label: 'Editar' },
+                { key: 'produccion.eliminar', label: 'Eliminar' }
             ]}
         ];
 

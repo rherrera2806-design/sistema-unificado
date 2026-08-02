@@ -390,14 +390,13 @@ function doLogout() {
 
 // ─── Sidebar Structure (permisos jerárquicos) ────
 const SIDEBAR_SECTIONS = {
-    administracion: ['usuarios'],
-    asistencia: ['asistencia.trabajadores','asistencia.diaria','asistencia.calendario','asistencia.permisos','asistencia.licencias','asistencia.vacaciones','asistencia.reportes'],
-    atencion: ['turnos_recepcion','turnos_bodega','turnos_almacen','turnos_facturar','turnos_qr','turnos_reporte'],
-    instalaciones: ['instalaciones','inst_detalle','inst_historial'],
-    inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
-    mantencion: ['dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora'],
-    produccion: ['prod_ordenes','prod_planificacion','prod_reportes','prod_notas','prod_config'],
-    ventas: ['pedidos']
+    asistencia: ['asistencia'],
+    atencion: ['atencion'],
+    instalaciones: ['instalaciones'],
+    inventario: ['inventario'],
+    mantencion: ['mantencion'],
+    pedidos: ['pedidos'],
+    produccion: ['produccion']
 };
 
 function getUserPerms() {
@@ -408,12 +407,16 @@ function hasPerm(p) { return getUserPerms().includes(p); }
 function isAdmin() { const u = getUser(); return u && u.rol === 'admin'; }
 function hasSection(section) {
     if (isAdmin()) return true;
-    if (hasPerm(section)) return true;
-    const items = SIDEBAR_SECTIONS[section] || [];
-    return items.some(it => hasPerm(it));
+    return hasPerm(section);
 }
 function canSeeItem(item, section) {
-    return isAdmin() || hasPerm(section) || hasPerm(item);
+    return isAdmin() || hasPerm(section);
+}
+function canEdit(section) {
+    return isAdmin() || hasPerm(section + '.editar');
+}
+function canDelete(section) {
+    return isAdmin() || hasPerm(section + '.eliminar');
 }
 
 function renderSidebar() {
@@ -421,11 +424,8 @@ function renderSidebar() {
     let html = '';
 
     const sections = [
-        { key: 'administracion', label: 'ADMINISTRACION', items: [
-            { id: 'usuarios', label: 'Usuarios', icon: SVG.users }
-        ]},
         { key: 'asistencia', label: 'ASISTENCIA', items: [
-            { id: 'asistencia_diaria', label: 'Control de Asistencia', icon: SVG.clipboard }
+            { id: 'asistencia', label: 'Control de Asistencia', icon: SVG.clipboard }
         ]},
         { key: 'atencion', label: 'ATENCION', items: [
             { id: 'turnos_recepcion', label: 'Recepcion y Control', icon: SVG.users },
@@ -458,6 +458,9 @@ function renderSidebar() {
             { id: 'history', label: 'Historial', icon: SVG.clock },
             { id: 'bitacora', label: 'Bitacora de Mantencion', icon: SVG.book }
         ]},
+        { key: 'pedidos', label: 'PEDIDOS', items: [
+            { id: 'pedidos', label: 'Pedidos / Ordenes', icon: SVG.file }
+        ]},
         { key: 'produccion', label: 'PRODUCCION', items: [
             { id: 'prod_ordenes', label: 'Produccion', icon: SVG.box },
             { id: 'prod_planificacion', label: 'Planificacion', icon: SVG.calendar },
@@ -465,9 +468,6 @@ function renderSidebar() {
             { id: 'prod_notas', label: 'Mis Pendientes', icon: SVG.clipboard },
             { id: 'prod_config', label: 'Configuracion', icon: SVG.settings },
             { id: 'taller', label: 'Taller', icon: SVG.home, external: '/taller/' }
-        ]},
-        { key: 'ventas', label: 'VENTAS', items: [
-            { id: 'pedidos', label: 'Pedidos / Ordenes', icon: SVG.file }
         ]}
     ];
 
@@ -487,6 +487,14 @@ function renderSidebar() {
 
     // Cerrar sesion
     html += `<div style="flex:1"></div>`;
+    // Admin section (solo admins)
+    if (isAdmin()) {
+        html += `<div class="nav-section" onclick="toggleSection('admin')"><span>ADMINISTRACION</span><span class="toggle-icon">▼</span></div>`;
+        html += `<div class="nav-section-group" id="section-admin">`;
+        html += navI('usuarios', 'Usuarios', SVG.users);
+        html += `</div>`;
+    }
+
     html += `<div class="nav-item" onclick="doLogout()" style="opacity:0.4;margin-top:8px">
         <span class="nav-icon">${SVG.logOut}</span> Cerrar Sesion</div>`;
 
@@ -517,7 +525,9 @@ function renderSidebar() {
                 App.loadModule('reporte_turnos');
             } else if (page === 'pedidos') {
                 App.loadModule('pedidos');
-            } else if (page === 'asistencia_diaria') {
+            } else if (page === 'usuarios') {
+                App.loadModule('usuarios');
+            } else if (page === 'asistencia') {
                 App.loadModule('asistencia');
             } else {
                 App.loadModule(page);

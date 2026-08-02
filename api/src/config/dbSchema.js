@@ -460,14 +460,14 @@ async function initDB() {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     const ALL_PERMS = [
-        'administracion','usuarios',
-        'asistencia','asistencia.trabajadores','asistencia.diaria','asistencia.calendario','asistencia.permisos','asistencia.licencias','asistencia.vacaciones','asistencia.reportes',
-        'atencion','turnos_recepcion','turnos_bodega','turnos_almacen','turnos_facturar','turnos_qr','turnos_reporte','turnos_eliminar',
-        'instalaciones','inst_detalle','inst_historial','instalaciones.nueva','instalaciones.eliminar',
-        'inventario','inv_inventario','inv_movimientos','inv_historial','inv_catalogos',
-        'mantencion','dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora',
-        'pedidos','pedidos.autorizar',
-        'produccion','prod_ordenes','prod_planificacion','prod_notas','prod_config'
+        'asistencia','asistencia.editar','asistencia.eliminar',
+        'atencion','atencion.editar','atencion.eliminar',
+        'instalaciones','instalaciones.editar','instalaciones.eliminar',
+        'inventario','inventario.editar','inventario.eliminar',
+        'mantencion','mantencion.editar','mantencion.eliminar',
+        'pedidos','pedidos.editar','pedidos.eliminar',
+        'produccion','produccion.editar','produccion.eliminar',
+        'usuarios'
     ];
     const adminCheck = await query("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
     if (adminCheck.rows.length === 0) {
