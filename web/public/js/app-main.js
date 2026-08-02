@@ -242,22 +242,29 @@ const App = {
 
     // ── Sidebar ──
     toggleSidebar() {
-        document.querySelector('.sidebar').classList.toggle('open');
-        const overlay = document.getElementById('sidebarOverlay');
-        if (overlay) overlay.classList.toggle('show');
+        const sidebar = document.querySelector('.sidebar');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        sidebar.classList.toggle('open');
+        if (backdrop) backdrop.classList.toggle('show', sidebar.classList.contains('open'));
     },
     closeSidebar() {
-        document.querySelector('.sidebar').classList.remove('open');
-        const overlay = document.getElementById('sidebarOverlay');
-        if (overlay) overlay.classList.remove('show');
+        const sidebar = document.querySelector('.sidebar');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        if (sidebar) sidebar.classList.remove('open');
+        if (backdrop) backdrop.classList.remove('show');
     },
-    toggleSidebarCollapse() {
+    toggleCollapse() {
+        const sidebar = document.getElementById('sidebar');
         const layout = document.querySelector('.app-layout');
-        const btn = document.querySelector('.sidebar-collapse-btn');
+        sidebar.classList.toggle('collapsed');
         layout.classList.toggle('sidebar-collapsed');
-        const collapsed = layout.classList.contains('sidebar-collapsed');
-        btn.textContent = collapsed ? '▶' : '◀';
-        try { localStorage.setItem('sidebar_collapsed_state', collapsed ? '1' : '0'); } catch(e) {}
+        const icon = document.querySelector('#sidebarCollapseBtn svg polyline');
+        if (sidebar.classList.contains('collapsed')) {
+            if (icon) icon.setAttribute('points', '9 18 15 12 9 6');
+        } else {
+            if (icon) icon.setAttribute('points', '15 18 9 12 15 6');
+        }
+        try { localStorage.setItem('sidebar_collapsed', sidebar.classList.contains('collapsed')); } catch(e) {}
     },
 
     showWelcome() {
@@ -636,11 +643,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSidebar();
     // Restaurar estado del sidebar colapsado
     try {
-        const collapsed = localStorage.getItem('sidebar_collapsed_state');
-        if (collapsed === '1') {
+        if (localStorage.getItem('sidebar_collapsed') === 'true') {
+            document.getElementById('sidebar').classList.add('collapsed');
             document.querySelector('.app-layout').classList.add('sidebar-collapsed');
-            const btn = document.querySelector('.sidebar-collapse-btn');
-            if (btn) btn.textContent = '▶';
+            const icon = document.querySelector('#sidebarCollapseBtn svg polyline');
+            if (icon) icon.setAttribute('points', '9 18 15 12 9 6');
         }
     } catch(e) {}
     await App.updateNavBadge();
