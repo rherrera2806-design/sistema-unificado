@@ -1,5 +1,6 @@
 App.registerModule('inst_historial', {
     instalaciones: [],
+    _ready: false,
 
     async render() {
         const el = document.getElementById('page-inst_historial');
@@ -36,6 +37,7 @@ App.registerModule('inst_historial', {
             this.instalaciones = await res.json();
             this.renderStats();
             this.renderTabla();
+            this._ready = true;
         } catch(e) { console.error('Error cargando historial:', e); }
     },
 
@@ -135,9 +137,14 @@ App.registerModule('inst_historial', {
     },
 
     filtrar() {
-        const search = (document.getElementById('iHistSearch')?.value || '').toLowerCase();
-        const estado = document.getElementById('iHistEstado')?.value || 'todos';
-        const tipo = document.getElementById('iHistTipo')?.value || 'todos';
+        if (!this._ready) return;
+        const searchEl = document.getElementById('iHistSearch');
+        const estadoEl = document.getElementById('iHistEstado');
+        const tipoEl = document.getElementById('iHistTipo');
+        if (!searchEl || !estadoEl || !tipoEl) return;
+        const search = searchEl.value.toLowerCase();
+        const estado = estadoEl.value;
+        const tipo = tipoEl.value;
         let filtered = this.instalaciones;
         if (search) filtered = filtered.filter(i =>
             (i.cliente || '').toLowerCase().includes(search) ||
