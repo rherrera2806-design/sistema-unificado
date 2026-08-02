@@ -103,12 +103,14 @@ const Asistencia = {
 
     // ═══════ TRABAJADORES ═══════
     async renderTrabajadoresTab(c) {
-        const canEdit = typeof canEdit === 'function' ? canEdit('asistencia') : true;
-        const canDelete = typeof canDelete === 'function' ? canDelete('asistencia') : true;
+        const permUser = typeof getUser === 'function' ? getUser() : null;
+        const permPerms = permUser && permUser.permisos ? permUser.permisos : [];
+        const canEditT = permPerms.includes('asistencia.editar') || permPerms.includes('asistencia') || permPerms.length === 0;
+        const canDeleteT = permPerms.includes('asistencia.eliminar') || permPerms.length === 0;
         c.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
                 <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Gestión de Trabajadores</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Administrar personal activo e inactivo</p></div></div>
-                ${canEdit ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Trabajador</button>' : ''}
+                ${canEditT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Trabajador</button>' : ''}
             </div>
 
             <div id="ast-form-trabajador" style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:20px 24px;margin-bottom:20px;animation:astFadeUp 0.3s ease both">
@@ -451,16 +453,22 @@ const Asistencia = {
                         <button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white">Cargar</button>
                     </div>
                 </div>
-                <div style="padding:14px 22px;display:flex;gap:16px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9">
+                <div style="padding:14px 22px;display:flex;gap:16px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;align-items:center">
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#d1fae5"></div><span style="font-size:11px;color:#64748b;font-weight:500">Presente</span></div>
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#fee2e2"></div><span style="font-size:11px;color:#64748b;font-weight:500">Falta</span></div>
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#dbeafe"></div><span style="font-size:11px;color:#64748b;font-weight:500">Vacaciones</span></div>
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#fef3c7"></div><span style="font-size:11px;color:#64748b;font-weight:500">Licencia</span></div>
+                    <div style="margin-left:auto;position:relative">
+                        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="ast-cal-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.filtrarCalendario()" style="padding-left:32px;width:200px;font-size:12px">
+                    </div>
                 </div>
                 <div style="overflow-x:auto;max-height:520px;overflow-y:auto"><div id="ast-calendario"></div></div>
             </div>`;
         this.cargarCalendario();
     },
+
+    calendarioData: null,
 
     async cargarCalendario() {
         const mes = document.getElementById('ast-cal-mes')?.value;
@@ -468,9 +476,13 @@ const Asistencia = {
         if (!mes || !anio) return;
         try {
             const r = await fetch('/api/asistencia/calendario?mes=' + mes + '&anio=' + anio);
-            const data = await r.json();
-            this.renderCalendarioGrid(data);
+            this.calendarioData = await r.json();
+            this.renderCalendarioGrid(this.calendarioData);
         } catch(e) { console.error('Error:', e); }
+    },
+
+    filtrarCalendario() {
+        if (this.calendarioData) this.renderCalendarioGrid(this.calendarioData);
     },
 
     renderCalendarioGrid(data) {
@@ -480,8 +492,10 @@ const Asistencia = {
         const diasEnMes = new Date(anio, mes, 0).getDate();
         const hoy = new Date();
         const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+        const busqueda = (document.getElementById('ast-cal-buscar')?.value || '').toLowerCase();
+        const filtered = busqueda ? trabajadores.filter(t => t.nombre.toLowerCase().includes(busqueda) || (t.rut && t.rut.toLowerCase().includes(busqueda))) : trabajadores;
 
-        let html = '<div class="ast-cal-header" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
+        let html = '<div class="ast-cal-header" style="grid-template-columns:180px repeat(' + diasEnMes + ',1fr)">';
         html += '<div style="padding:10px 12px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #e2e8f0">Trabajador</div>';
         for (let d = 1; d <= diasEnMes; d++) {
             const fecha = new Date(anio, mes - 1, d);
@@ -491,9 +505,9 @@ const Asistencia = {
         }
         html += '</div>';
 
-        trabajadores.forEach(t => {
-            html += '<div class="ast-cal-row" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
-            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:700">' + t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2) + '</div><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t.nombre.split(' ').slice(-1)[0] + '</span></div>';
+        filtered.forEach(t => {
+            html += '<div class="ast-cal-row" style="grid-template-columns:180px repeat(' + diasEnMes + ',1fr)">';
+            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:700">' + t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2) + '</div><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + '">' + t.nombre + '</span></div>';
 
             for (let d = 1; d <= diasEnMes; d++) {
                 const fechaStr = anio + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
