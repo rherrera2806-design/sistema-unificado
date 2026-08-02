@@ -15,7 +15,7 @@ App.registerModule('usuarios', {
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</h2>'
             + '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestionar usuarios y permisos del sistema</p></div>'
             + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-            + '<div style="position:relative"><svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="uSearch" placeholder="Buscar nombre o email..." oninput="App.modules.usuarios.filterUsers()" style="padding:9px 14px 9px 32px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);color:white;font-size:12px;outline:none;width:180px" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.25)\'"></div>'
+            + '<div style="position:relative"><svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="uSearch" placeholder="Buscar nombre, email o area..." oninput="App.modules.usuarios.filterUsers()" style="padding:9px 14px 9px 32px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);color:white;font-size:12px;outline:none;width:180px" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.25)\'"></div>'
             + '<button onclick="App.modules.usuarios.showForm()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(34,197,94,0.3);transition:all 0.2s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
             + '<button onclick="window.open(\'/api/admin/usuarios/export\',\'_blank\')" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar</button>'
             + '</div></div></div>'
@@ -25,10 +25,11 @@ App.registerModule('usuarios', {
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Nombre</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Email</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Rol</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Area</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0;min-width:320px">Permisos</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Estado</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Acciones</th>'
-            + '</tr></thead><tbody id="uTableBody"><tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div>Cargando...</div></td></tr></tbody></table></div></div></div>'
+            + '</tr></thead><tbody id="uTableBody"><tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div>Cargando...</div></td></tr></tbody></table></div></div></div>'
 
             + '<div id="uModalOverlay" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px)" onclick="if(event.target===this)App.modules.usuarios.closeModal()">'
             + '<div onclick="event.stopPropagation()" style="background:white;border-radius:16px;width:90%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">'
@@ -58,14 +59,14 @@ App.registerModule('usuarios', {
     filterUsers() {
         const q = (document.getElementById('uSearch')?.value || '').toLowerCase();
         if (!q) return this.renderUsers(this.allUsers);
-        const filtered = this.allUsers.filter(u => u.nombre.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+        const filtered = this.allUsers.filter(u => u.nombre.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.area && u.area.toLowerCase().includes(q)));
         this.renderUsers(filtered);
     },
 
     renderUsers(users) {
         const tbody = document.getElementById('uTableBody');
         if (!tbody) return;
-        if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8">Sin resultados</td></tr>'; return; }
+        if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8">Sin resultados</td></tr>'; return; }
         const MOD_SUBS = {
             asistencia: [{id:'asistencia',l:'ASIST'}],
             atencion: [{id:'turnos_recepcion',l:'Recep'},{id:'turnos_bodega',l:'Bodega'},{id:'turnos_almacen',l:'Almacen'},{id:'turnos_facturar',l:'Facturar'},{id:'turnos_qr',l:'QR'},{id:'turnos_reporte',l:'Reporte'}],
@@ -105,6 +106,7 @@ App.registerModule('usuarios', {
                     + '<td style="padding:12px"><strong style="color:#0f172a">' + escapeHtml(u.nombre) + '</strong></td>'
                     + '<td style="padding:12px;font-size:13px;color:#64748b">' + escapeHtml(u.email) + '</td>'
                     + '<td style="padding:12px">' + rolBadge + '</td>'
+                    + '<td style="padding:12px;font-size:12px;color:#475569">' + (u.area ? escapeHtml(u.area) : '<span style="color:#cbd5e1">-</span>') + '</td>'
                     + '<td style="padding:12px">' + permCell(up) + '</td>'
                     + '<td style="padding:12px">' + estadoBadge + '</td>'
                     + '<td style="padding:12px;white-space:nowrap">'
@@ -117,7 +119,7 @@ App.registerModule('usuarios', {
 
     async showForm(id) {
         this.editingId = id || null;
-        let user = { nombre: '', email: '', password: '', rol: 'usuario', permisos: [] };
+        let user = { nombre: '', email: '', password: '', rol: 'usuario', area: '', permisos: [] };
         if (id) {
             try {
                 const res = await fetch('/api/admin/usuarios');
@@ -217,6 +219,8 @@ App.registerModule('usuarios', {
             + '<select id="fURol" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">'
             + '<option value="usuario" ' + (user.rol === 'usuario' ? 'selected' : '') + '>Usuario</option>'
             + '<option value="admin" ' + (user.rol === 'admin' ? 'selected' : '') + '>Administrador</option></select></div>'
+            + '<div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">Area</label>'
+            + '<input id="fUArea" type="text" autocomplete="off" value="' + escapeHtml(user.area || '') + '" placeholder="Ej: Mantencion, Produccion, Ventas..." style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
             + '<div style="margin-bottom:4px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px;color:#334155">Permisos del sistema</label>'
             + permTreeHtml
             + '</div>';
@@ -242,6 +246,7 @@ App.registerModule('usuarios', {
             nombre: document.getElementById('fUNombre').value.trim(),
             email: document.getElementById('fUEmail').value.trim(),
             rol: document.getElementById('fURol').value,
+            area: document.getElementById('fUArea').value.trim(),
             permisos: [...new Set(subPerms)]
         };
         const pw = document.getElementById('fUPassword').value;

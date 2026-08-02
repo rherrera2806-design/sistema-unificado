@@ -14,6 +14,7 @@ async function initDB() {
     )`);
     await query(`DO $$ BEGIN ALTER TABLE usuarios ADD COLUMN permisos TEXT[] DEFAULT '{}'; EXCEPTION WHEN duplicate_column THEN null; END $$`);
     await query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_plain TEXT DEFAULT ''`);
+    try { await query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS area TEXT DEFAULT ''"); } catch(e) {}
 
     await query(`CREATE TABLE IF NOT EXISTS catalogo_tipos_cristal (
         id SERIAL PRIMARY KEY,

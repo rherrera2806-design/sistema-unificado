@@ -2,12 +2,12 @@ const { query, hashPassword } = require('../config/database');
 
 const getAll = async () => {
     const result = await query(
-        "SELECT id, nombre, email, rol, permisos, activo FROM usuarios ORDER BY id"
+        "SELECT id, nombre, email, rol, area, permisos, activo FROM usuarios ORDER BY id"
     );
     return result.rows;
 };
 
-const create = async ({ nombre, email, password, rol, permisos }) => {
+const create = async ({ nombre, email, password, rol, area, permisos }) => {
     if (!nombre || !email || !password) {
         throw new Error('Nombre, email y contraseña requeridos');
     }
@@ -16,22 +16,22 @@ const create = async ({ nombre, email, password, rol, permisos }) => {
         throw new Error('El email ya está registrado');
     }
     const result = await query(
-        "INSERT INTO usuarios (nombre, email, password, password_plain, rol, permisos) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nombre, email, rol, permisos",
-        [nombre, email, hashPassword(password), password, rol || 'usuario', permisos || []]
+        "INSERT INTO usuarios (nombre, email, password, password_plain, rol, area, permisos) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, nombre, email, rol, area, permisos",
+        [nombre, email, hashPassword(password), password, rol || 'usuario', area || '', permisos || []]
     );
     return result.rows[0];
 };
 
-const update = async (id, { nombre, email, password, rol, permisos }) => {
+const update = async (id, { nombre, email, password, rol, area, permisos }) => {
     if (password) {
         await query(
-            'UPDATE usuarios SET nombre=$1, email=$2, password=$3, password_plain=$4, rol=$5, permisos=$6 WHERE id=$7',
-            [nombre, email, hashPassword(password), password, rol, permisos || [], id]
+            'UPDATE usuarios SET nombre=$1, email=$2, password=$3, password_plain=$4, rol=$5, area=$6, permisos=$7 WHERE id=$8',
+            [nombre, email, hashPassword(password), password, rol, area || '', permisos || [], id]
         );
     } else {
         await query(
-            'UPDATE usuarios SET nombre=$1, email=$2, rol=$3, permisos=$4 WHERE id=$5',
-            [nombre, email, rol, permisos || [], id]
+            'UPDATE usuarios SET nombre=$1, email=$2, rol=$3, area=$4, permisos=$5 WHERE id=$6',
+            [nombre, email, rol, area || '', permisos || [], id]
         );
     }
     return { ok: true };
