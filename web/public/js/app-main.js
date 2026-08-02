@@ -305,190 +305,190 @@ const App = {
                     <p style="margin:4px 0 0;font-size:12px;color:#64748b">Resumen del mes de ${mesActual}</p>
                 </div>
 
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
                     
                     <!-- ASISTENCIA -->
-                    <div onclick="App.loadModule('asistencia')" style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #bae6fd;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(14,165,233,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div onclick="App.loadModule('asistencia')" style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #bae6fd;border-radius:14px;padding:20px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(14,165,233,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#0ea5e9,#0284c7);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(14,165,233,0.25)">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+                            <div style="width:36px;height:36px;background:linear-gradient(135deg,#0ea5e9,#0284c7);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(14,165,233,0.25)">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
                             </div>
                             <div>
-                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">ASISTENCIA</h3>
-                                <p style="margin:0;font-size:10px;color:#64748b">${asistenciaStats.trabajadores_total} trabajadores</p>
+                                <h3 style="margin:0;font-size:13px;font-weight:700;color:#0f172a">ASISTENCIA</h3>
+                                <p style="margin:0;font-size:11px;color:#64748b">${asistenciaStats.trabajadores_total} trabajadores</p>
                             </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #e0f2fe">
-                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${asistenciaStats.faltas}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Faltas</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #e0f2fe">
+                                <div style="font-size:22px;font-weight:800;color:#ef4444;line-height:1">${asistenciaStats.faltas}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Faltas</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #e0f2fe">
-                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${asistenciaStats.licencias}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Licencias</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #e0f2fe">
+                                <div style="font-size:22px;font-weight:800;color:#f59e0b;line-height:1">${asistenciaStats.licencias}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Licencias</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #e0f2fe">
-                                <div style="font-size:18px;font-weight:800;color:#8b5cf6;line-height:1">${asistenciaStats.licencias_dias}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Dias Lic.</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #e0f2fe">
+                                <div style="font-size:22px;font-weight:800;color:#8b5cf6;line-height:1">${asistenciaStats.licencias_dias}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Dias Lic.</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #e0f2fe">
-                                <div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">${asistenciaStats.vacaciones}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Dias Vac.</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #e0f2fe">
+                                <div style="font-size:22px;font-weight:800;color:#3b82f6;line-height:1">${asistenciaStats.vacaciones}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Dias Vac.</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- INSTALACIONES -->
-                    <div onclick="App.loadModule('inst_historial')" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1px solid #86efac;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(34,197,94,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div onclick="App.loadModule('inst_historial')" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1px solid #86efac;border-radius:14px;padding:20px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(34,197,94,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(34,197,94,0.25)">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            <div style="width:36px;height:36px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(34,197,94,0.25)">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                             </div>
                             <div>
-                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">INSTALACIONES</h3>
-                                <p style="margin:0;font-size:10px;color:#64748b">Mes actual</p>
+                                <h3 style="margin:0;font-size:13px;font-weight:700;color:#0f172a">INSTALACIONES</h3>
+                                <p style="margin:0;font-size:11px;color:#64748b">Mes actual</p>
                             </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dcfce7">
-                                <div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">${instalacionesStats.programadas}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Programadas</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #dcfce7">
+                                <div style="font-size:22px;font-weight:800;color:#3b82f6;line-height:1">${instalacionesStats.programadas}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Programadas</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dcfce7">
-                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${instalacionesStats.enCurso}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">En curso</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #dcfce7">
+                                <div style="font-size:22px;font-weight:800;color:#f59e0b;line-height:1">${instalacionesStats.enCurso}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">En curso</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dcfce7">
-                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${instalacionesStats.completadas}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Completadas</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #dcfce7">
+                                <div style="font-size:22px;font-weight:800;color:#22c55e;line-height:1">${instalacionesStats.completadas}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Completadas</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dcfce7">
-                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${instalacionesStats.novedades}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Novedades</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #dcfce7">
+                                <div style="font-size:22px;font-weight:800;color:#ef4444;line-height:1">${instalacionesStats.novedades}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Novedades</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- INVENTARIO -->
-                    <div onclick="App.loadModule('inv_inventario')" style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #93c5fd;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(59,130,246,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div onclick="App.loadModule('inv_inventario')" style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border:1px solid #93c5fd;border-radius:14px;padding:20px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(59,130,246,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(59,130,246,0.25)">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                            <div style="width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(59,130,246,0.25)">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                             </div>
                             <div>
-                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">INVENTARIO</h3>
-                                <p style="margin:0;font-size:10px;color:#64748b">${inventarioStats.stockM2.toLocaleString('es-CL')} m2 en stock</p>
+                                <h3 style="margin:0;font-size:13px;font-weight:700;color:#0f172a">INVENTARIO</h3>
+                                <p style="margin:0;font-size:11px;color:#64748b">${inventarioStats.stockM2.toLocaleString('es-CL')} m2 en stock</p>
                             </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dbeafe">
-                                <div style="font-size:18px;font-weight:800;color:#0ea5e9;line-height:1">${inventarioStats.tiposCristal}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Tipos</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #dbeafe">
+                                <div style="font-size:22px;font-weight:800;color:#0ea5e9;line-height:1">${inventarioStats.tiposCristal}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Tipos</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dbeafe">
-                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${inventarioStats.totalEntradas}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Entradas</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #dbeafe">
+                                <div style="font-size:22px;font-weight:800;color:#22c55e;line-height:1">${inventarioStats.totalEntradas}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Entradas</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dbeafe">
-                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${inventarioStats.totalSalidas}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Salidas</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #dbeafe">
+                                <div style="font-size:22px;font-weight:800;color:#ef4444;line-height:1">${inventarioStats.totalSalidas}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Salidas</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dbeafe">
-                                <div style="font-size:18px;font-weight:800;color:#8b5cf6;line-height:1">${inventarioStats.totalMovimientos}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Movimientos</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #dbeafe">
+                                <div style="font-size:22px;font-weight:800;color:#8b5cf6;line-height:1">${inventarioStats.totalMovimientos}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Movimientos</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- MANTENCION -->
-                    <div onclick="App.loadModule('preventive')" style="background:linear-gradient(135deg,#fdf4ff 0%,#fae8ff 100%);border:1px solid #e879f9;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(168,85,247,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div onclick="App.loadModule('preventive')" style="background:linear-gradient(135deg,#fdf4ff 0%,#fae8ff 100%);border:1px solid #e879f9;border-radius:14px;padding:20px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(168,85,247,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#a855f7,#9333ea);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(168,85,247,0.25)">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                            <div style="width:36px;height:36px;background:linear-gradient(135deg,#a855f7,#9333ea);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(168,85,247,0.25)">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
                             </div>
                             <div>
-                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">MANTENCION</h3>
-                                <p style="margin:0;font-size:10px;color:#64748b">${mantencionStats.preventivasTotal + mantencionStats.correctivasTotal} registros</p>
+                                <h3 style="margin:0;font-size:13px;font-weight:700;color:#0f172a">MANTENCION</h3>
+                                <p style="margin:0;font-size:11px;color:#64748b">${mantencionStats.preventivasTotal + mantencionStats.correctivasTotal} registros</p>
                             </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fae8ff">
-                                <div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">${mantencionStats.preventivasProgramadas}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Proximas</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #fae8ff">
+                                <div style="font-size:22px;font-weight:800;color:#3b82f6;line-height:1">${mantencionStats.preventivasProgramadas}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Proximas</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fae8ff">
-                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${mantencionStats.preventivasRealizadas}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Realizadas</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #fae8ff">
+                                <div style="font-size:22px;font-weight:800;color:#22c55e;line-height:1">${mantencionStats.preventivasRealizadas}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Realizadas</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fae8ff">
-                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${mantencionStats.preventivasVencidas}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Vencidas</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #fae8ff">
+                                <div style="font-size:22px;font-weight:800;color:#ef4444;line-height:1">${mantencionStats.preventivasVencidas}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Vencidas</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fae8ff">
-                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${mantencionStats.correctivasEnMantencion}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">En repar.</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #fae8ff">
+                                <div style="font-size:22px;font-weight:800;color:#f59e0b;line-height:1">${mantencionStats.correctivasEnMantencion}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">En repar.</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- PEDIDOS -->
-                    <div onclick="App.loadModule('pedidos')" style="background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);border:1px solid #fcd34d;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(245,158,11,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div onclick="App.loadModule('pedidos')" style="background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);border:1px solid #fcd34d;border-radius:14px;padding:20px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(245,158,11,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(245,158,11,0.25)">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                            <div style="width:36px;height:36px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(245,158,11,0.25)">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
                             </div>
                             <div>
-                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">PEDIDOS</h3>
-                                <p style="margin:0;font-size:10px;color:#64748b">${pedidosStats.total} pedidos</p>
+                                <h3 style="margin:0;font-size:13px;font-weight:700;color:#0f172a">PEDIDOS</h3>
+                                <p style="margin:0;font-size:11px;color:#64748b">${pedidosStats.total} pedidos</p>
                             </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fef3c7">
-                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${pedidosStats.pendientes}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Pendientes</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #fef3c7">
+                                <div style="font-size:22px;font-weight:800;color:#f59e0b;line-height:1">${pedidosStats.pendientes}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Pendientes</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fef3c7">
-                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${pedidosStats.aprobados}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Aprobados</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #fef3c7">
+                                <div style="font-size:22px;font-weight:800;color:#22c55e;line-height:1">${pedidosStats.aprobados}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Aprobados</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fef3c7">
-                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${pedidosStats.rechazados}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Rechazados</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #fef3c7">
+                                <div style="font-size:22px;font-weight:800;color:#ef4444;line-height:1">${pedidosStats.rechazados}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Rechazados</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fef3c7">
-                                <div style="font-size:18px;font-weight:800;color:#0f172a;line-height:1">${pedidosStats.total}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Total</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #fef3c7">
+                                <div style="font-size:22px;font-weight:800;color:#0f172a;line-height:1">${pedidosStats.total}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Total</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- PRODUCCION -->
-                    <div onclick="App.loadModule('prod_ordenes')" style="background:linear-gradient(135deg,#f0fdfa 0%,#ccfbf1 100%);border:1px solid #5eead4;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(20,184,166,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                    <div onclick="App.loadModule('prod_ordenes')" style="background:linear-gradient(135deg,#f0fdfa 0%,#ccfbf1 100%);border:1px solid #5eead4;border-radius:14px;padding:20px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(20,184,166,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#14b8a6,#0d9488);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(20,184,166,0.25)">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                            <div style="width:36px;height:36px;background:linear-gradient(135deg,#14b8a6,#0d9488);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(20,184,166,0.25)">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                             </div>
                             <div>
-                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">PRODUCCION</h3>
-                                <p style="margin:0;font-size:10px;color:#64748b">${produccionStats.total} ordenes</p>
+                                <h3 style="margin:0;font-size:13px;font-weight:700;color:#0f172a">PRODUCCION</h3>
+                                <p style="margin:0;font-size:11px;color:#64748b">${produccionStats.total} ordenes</p>
                             </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #ccfbf1">
-                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${produccionStats.pendientes}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Pendientes</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #ccfbf1">
+                                <div style="font-size:22px;font-weight:800;color:#f59e0b;line-height:1">${produccionStats.pendientes}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Pendientes</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #ccfbf1">
-                                <div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">${produccionStats.enProceso}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">En proceso</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #ccfbf1">
+                                <div style="font-size:22px;font-weight:800;color:#3b82f6;line-height:1">${produccionStats.enProceso}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">En proceso</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #ccfbf1">
-                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${produccionStats.completadas}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Completadas</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #ccfbf1">
+                                <div style="font-size:22px;font-weight:800;color:#22c55e;line-height:1">${produccionStats.completadas}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Completadas</div>
                             </div>
-                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #ccfbf1">
-                                <div style="font-size:18px;font-weight:800;color:#8b5cf6;line-height:1">${produccionStats.pasosCompletados}/${produccionStats.totalPasos}</div>
-                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Pasos</div>
+                            <div style="background:white;border-radius:8px;padding:10px;text-align:center;border:1px solid #ccfbf1">
+                                <div style="font-size:22px;font-weight:800;color:#8b5cf6;line-height:1">${produccionStats.pasosCompletados}/${produccionStats.totalPasos}</div>
+                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Pasos</div>
                             </div>
                         </div>
                     </div>
