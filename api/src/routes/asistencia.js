@@ -424,4 +424,54 @@ router.get('/api/asistencia/ranking', async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════
+// DASHBOARD STATS
+// ═══════════════════════════════════════════════════════
+
+router.get('/api/asistencia/dashboard', async (req, res) => {
+    try {
+        const now = new Date();
+        const mesActual = now.getMonth() + 1;
+        const anioActual = now.getFullYear();
+
+        const faltas = await pool.query(
+            `SELECT COUNT(*) as total FROM asistencia 
+             WHERE EXTRACT(MONTH FROM fecha) = $1 AND EXTRACT(YEAR FROM fecha) = $2`,
+            [mesActual, anioActual]
+        );
+
+        const licencias = await pool.query(
+            `SELECT COUNT(*) as total, 
+                    COALESCE(SUM(licencias_medicas.fecha_fin - licencias_medicas.fecha_inicio + 1), 0) as dias
+             FROM licencias_medicas 
+             WHERE EXTRACT(MONTH FROM fecha_inicio) = $1 AND EXTRACT(YEAR FROM fecha_inicio) = $2
+             AND estado != 'rechazada'`,
+            [mesActual, anioActual]
+        );
+
+        const vacaciones = await pool.query(
+            `SELECT COUNT(*) as trabajadores, COALESCE(SUM(dias), 0) as total_dias
+             FROM vacaciones 
+             WHERE EXTRACT(MONTH FROM fecha_inicio) = $1 AND EXTRACT(YEAR FROM fecha_inicio) = $2
+             AND estado != 'rechazado'`,
+            [mesActual, anioActual]
+        );
+
+        const trabajadores = await pool.query(
+            `SELECT COUNT(*) as total FROM trabajadores WHERE activo = true`
+        );
+
+        res.json({
+            faltas: parseInt(faltas.rows[0].total),
+            licencias: parseInt(licencias.rows[0].total),
+            licencias_dias: parseInt(licencias.rows[0].dias),
+            vacaciones: parseInt(vacaciones.rows[0].total_dias),
+            vacaciones_trabajadores: parseInt(vacaciones.rows[0].trabajadores),
+            trabajadores_total: parseInt(trabajadores.rows[0].total)
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
