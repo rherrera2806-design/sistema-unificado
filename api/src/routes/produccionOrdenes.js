@@ -1,6 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const ordenes = require('../services/produccionOrdenes');
+const { query } = require('../config/database');
+
+router.get('/api/produccion/dashboard', async (req, res, next) => {
+    try {
+        const [total, pendientes, enProceso, completadas, totalPasos, pasosCompletados] = await Promise.all([
+            query('SELECT COUNT(*) as c FROM produccion_ordenes'),
+            query("SELECT COUNT(*) as c FROM produccion_ordenes WHERE estado_programacion = 'PENDIENTE'"),
+            query("SELECT COUNT(DISTINCT o.id) as c FROM produccion_ordenes o INNER JOIN produccion_pasos p ON p.orden_produccion_id = o.id WHERE p.estado != 'PENDIENTE' AND o.estado_programacion != 'CERRADA'"),
+            query("SELECT COUNT(*) as c FROM produccion_ordenes WHERE estado_programacion = 'CERRADA'"),
+            query('SELECT COUNT(*) as c FROM produccion_pasos'),
+            query("SELECT COUNT(*) as c FROM produccion_pasos WHERE estado = 'COMPLETADO'")
+        ]);
+        res.json({
+            total: Number(total.rows[0].c),
+            pendientes: Number(pendientes.rows[0].c),
+            enProceso: Number(enProceso.rows[0].c),
+            completadas: Number(completadas.rows[0].c),
+            totalPasos: Number(totalPasos.rows[0].c),
+            pasosCompletados: Number(pasosCompletados.rows[0].c)
+        });
+    } catch (e) { next(e); }
+});
 
 router.get('/api/produccion/ordenes', async (req, res, next) => {
     try { res.json(await ordenes.getOrdenes()); }

@@ -3,6 +3,23 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { validate, pedidosSchema } = require('../middleware/validate');
 
+router.get('/api/pedidos/dashboard', async (req, res, next) => {
+    try {
+        const [total, pendientes, aprobados, rechazados] = await Promise.all([
+            query('SELECT COUNT(*) as c FROM pedidos'),
+            query("SELECT COUNT(*) as c FROM pedidos WHERE estado = 'pendiente'"),
+            query("SELECT COUNT(*) as c FROM pedidos WHERE estado = 'aprobado'"),
+            query("SELECT COUNT(*) as c FROM pedidos WHERE estado = 'rechazado'")
+        ]);
+        res.json({
+            total: Number(total.rows[0].c),
+            pendientes: Number(pendientes.rows[0].c),
+            aprobados: Number(aprobados.rows[0].c),
+            rechazados: Number(rechazados.rows[0].c)
+        });
+    } catch (e) { next(e); }
+});
+
 router.get('/api/pedidos', async (req, res, next) => {
     try {
         const userEmail = req.headers['x-user-email'] || '';

@@ -276,12 +276,16 @@ const App = {
         let instalacionesStats = { programadas: 0, enCurso: 0, completadas: 0, novedades: 0 };
         let inventarioStats = { totalMovimientos: 0, totalEntradas: 0, totalSalidas: 0, tiposCristal: 0, stockM2: 0 };
         let mantencionStats = { preventivasTotal: 0, preventivasProgramadas: 0, preventivasRealizadas: 0, preventivasVencidas: 0, correctivasTotal: 0, correctivasEnMantencion: 0, correctivasReparadas: 0 };
+        let pedidosStats = { total: 0, pendientes: 0, aprobados: 0, rechazados: 0 };
+        let produccionStats = { total: 0, pendientes: 0, enProceso: 0, completadas: 0, totalPasos: 0, pasosCompletados: 0 };
         try {
-            const [asistenciaRes, instalacionesRes, inventarioRes, mantencionRes] = await Promise.all([
+            const [asistenciaRes, instalacionesRes, inventarioRes, mantencionRes, pedidosRes, produccionRes] = await Promise.all([
                 fetch('/api/asistencia/dashboard'),
                 fetch('/api/instalaciones/dashboard'),
                 fetch('/api/inv/estadisticas'),
-                fetch('/api/maintenance/dashboard')
+                fetch('/api/maintenance/dashboard'),
+                fetch('/api/pedidos/dashboard'),
+                fetch('/api/produccion/dashboard')
             ]);
             if (asistenciaRes.ok) asistenciaStats = await asistenciaRes.json();
             if (instalacionesRes.ok) instalacionesStats = await instalacionesRes.json();
@@ -290,6 +294,8 @@ const App = {
                 inventarioStats = { totalMovimientos: inv.totalMovimientos || 0, totalEntradas: inv.totalEntradas || 0, totalSalidas: inv.totalSalidas || 0, tiposCristal: (inv.tiposCristal || []).length, stockM2: Math.round(inv.stockM2 || 0) };
             }
             if (mantencionRes.ok) mantencionStats = await mantencionRes.json();
+            if (pedidosRes.ok) pedidosStats = await pedidosRes.json();
+            if (produccionRes.ok) produccionStats = await produccionRes.json();
         } catch(e) {}
 
         const html = `
@@ -421,6 +427,68 @@ const App = {
                             <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fae8ff">
                                 <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${mantencionStats.correctivasEnMantencion}</div>
                                 <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">En repar.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PEDIDOS -->
+                    <div onclick="App.loadModule('pedidos')" style="background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);border:1px solid #fcd34d;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(245,158,11,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(245,158,11,0.25)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                            </div>
+                            <div>
+                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">PEDIDOS</h3>
+                                <p style="margin:0;font-size:10px;color:#64748b">${pedidosStats.total} pedidos</p>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fef3c7">
+                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${pedidosStats.pendientes}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Pendientes</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fef3c7">
+                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${pedidosStats.aprobados}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Aprobados</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fef3c7">
+                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${pedidosStats.rechazados}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Rechazados</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fef3c7">
+                                <div style="font-size:18px;font-weight:800;color:#0f172a;line-height:1">${pedidosStats.total}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Total</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PRODUCCION -->
+                    <div onclick="App.loadModule('prod_ordenes')" style="background:linear-gradient(135deg,#f0fdfa 0%,#ccfbf1 100%);border:1px solid #5eead4;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(20,184,166,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#14b8a6,#0d9488);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(20,184,166,0.25)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                            </div>
+                            <div>
+                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">PRODUCCION</h3>
+                                <p style="margin:0;font-size:10px;color:#64748b">${produccionStats.total} ordenes</p>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #ccfbf1">
+                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${produccionStats.pendientes}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Pendientes</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #ccfbf1">
+                                <div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">${produccionStats.enProceso}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">En proceso</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #ccfbf1">
+                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${produccionStats.completadas}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Completadas</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #ccfbf1">
+                                <div style="font-size:18px;font-weight:800;color:#8b5cf6;line-height:1">${produccionStats.pasosCompletados}/${produccionStats.totalPasos}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Pasos</div>
                             </div>
                         </div>
                     </div>
