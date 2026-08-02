@@ -47,8 +47,8 @@ const Asistencia = {
             + '<div style="position:absolute;bottom:-50px;left:30%;width:250px;height:160px;background:radial-gradient(circle,rgba(245,158,11,0.12) 0%,transparent 70%);border-radius:50%"></div>'
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
             + '<div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Control de Asistencia</h2>'
-            + '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestión diaria de asistencia, permisos y vacaciones</p></div>'
-            + '<div id="ast-hero-date" style="background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);padding:8px 16px;border-radius:8px;color:white;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,0.2)"></div>'
+            + '<p id="ast-hero-subtitle" style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestión diaria de asistencia, permisos y vacaciones</p></div>'
+            + '<div id="ast-hero-filters" style="display:flex;gap:8px;align-items:center"></div>'
             + '</div></div>'
 
             // Tabs
@@ -58,7 +58,6 @@ const Asistencia = {
             + '<div id="ast-content"></div>';
 
         this.renderTabs();
-        this.setHeroDate();
         this.showTab('diaria');
     },
 
@@ -84,6 +83,19 @@ const Asistencia = {
         event.target.closest('.ast-tab')?.classList.add('active');
         this.renderTabs();
 
+        // Update subtitle and hero filters
+        const subtitles = {
+            trabajadores: 'Administrar personal activo e inactivo',
+            diaria: 'Marca faltas del día',
+            calendario: 'Vista mensual de asistencia',
+            permisos: 'Solicitudes de permiso y ausencias',
+            licencias: 'Control de licencias médicas',
+            vacaciones: 'Control de vacaciones del personal',
+            reportes: 'Estadísticas y rankings de asistencia'
+        };
+        document.getElementById('ast-hero-subtitle').textContent = subtitles[tab] || '';
+        this.renderHeroFilters(tab);
+
         const c = document.getElementById('ast-content');
         if (tab === 'trabajadores') this.renderTrabajadoresTab(c);
         else if (tab === 'diaria') this.renderDiaria(c);
@@ -92,6 +104,40 @@ const Asistencia = {
         else if (tab === 'licencias') this.renderLicenciasTab(c);
         else if (tab === 'vacaciones') this.renderVacacionesTab(c);
         else if (tab === 'reportes') this.renderReportesTab(c);
+    },
+
+    renderHeroFilters(tab) {
+        const container = document.getElementById('ast-hero-filters');
+        if (!container) return;
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const mesActual = new Date().getMonth();
+        if (tab === 'permisos') {
+            let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
+                + '<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>';
+        } else if (tab === 'licencias') {
+            let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
+                + '<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>';
+        } else if (tab === 'vacaciones') {
+            let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
+                + '<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>';
+        } else if (tab === 'calendario') {
+            let mesOpts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
+            let yearOpts = '';
+            const yearActual = new Date().getFullYear();
+            for (let y = 2024; y <= 2027; y++) yearOpts += '<option value="' + y + '"' + (y === yearActual ? ' selected' : '') + '>' + y + '</option>';
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + mesOpts + '</select>'
+                + '<select id="ast-hero-anio" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + yearOpts + '</select>'
+                + '<button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Cargar</button>';
+        } else if (tab === 'reportes') {
+            let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
+                + '<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Generar</button>';
+        } else {
+            container.innerHTML = '';
+        }
     },
 
     setHeroDate() {
@@ -108,8 +154,7 @@ const Asistencia = {
         const canEditT = permPerms.includes('asistencia.editar') || permPerms.includes('asistencia') || permPerms.length === 0;
         const canDeleteT = permPerms.includes('asistencia.eliminar') || permPerms.length === 0;
         c.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Gestión de Trabajadores</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Administrar personal activo e inactivo</p></div></div>
+            <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
                 ${canEditT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Trabajador</button>' : ''}
             </div>
 
@@ -434,25 +479,8 @@ const Asistencia = {
 
     // ═══════ CALENDARIO ═══════
     renderCalendarioTab(c) {
-        const hoy = new Date();
-        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === hoy.getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
-        let yearOpts = '';
-        for (let y = 2024; y <= 2027; y++) yearOpts += '<option value="' + y + '"' + (y === hoy.getFullYear() ? ' selected' : '') + '>' + y + '</option>';
-
         c.innerHTML = `
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <div style="padding:18px 22px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-                    <div style="display:flex;align-items:center;gap:10px">
-                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg></div>
-                        <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Calendario Mensual</h3>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <select id="ast-cal-mes" class="ast-input" style="width:auto">${opts}</select>
-                        <select id="ast-cal-anio" class="ast-input" style="width:auto">${yearOpts}</select>
-                        <button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white">Cargar</button>
-                    </div>
-                </div>
                 <div style="padding:14px 22px;display:flex;gap:16px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;align-items:center">
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#d1fae5"></div><span style="font-size:11px;color:#64748b;font-weight:500">Presente</span></div>
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#fee2e2"></div><span style="font-size:11px;color:#64748b;font-weight:500">Falta</span></div>
@@ -471,13 +499,13 @@ const Asistencia = {
     calendarioData: null,
 
     async cargarCalendario() {
-        const mes = document.getElementById('ast-cal-mes')?.value;
-        const anio = document.getElementById('ast-cal-anio')?.value;
+        const mes = document.getElementById('ast-hero-mes')?.value;
+        const anio = document.getElementById('ast-hero-anio')?.value;
         if (!mes || !anio) return;
         try {
             const r = await fetch('/api/asistencia/calendario?mes=' + mes + '&anio=' + anio);
             this.calendarioData = await r.json();
-            this.renderCalendarioGrid(this.calendarioData);
+            if (this.calendarioData) this.renderCalendarioGrid(this.calendarioData);
         } catch(e) { console.error('Error:', e); }
     },
 
@@ -530,17 +558,9 @@ const Asistencia = {
 
     // ═══════ PERMISOS ═══════
     renderPermisosTab(c) {
-        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === new Date().getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
-
         c.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Gestión de Permisos</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Solicitudes de permiso y ausencias</p></div></div>
+            <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
                 <button onclick="Asistencia.abrirModalPermiso()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Permiso</button>
-            </div>
-            <div style="display:flex;gap:8px;margin-bottom:16px;animation:astFadeUp 0.4s ease 60ms both">
-                <select id="ast-perm-mes" class="ast-input" style="width:auto">${opts}</select>
-                <button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0">Filtrar</button>
             </div>
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -560,7 +580,7 @@ const Asistencia = {
     },
 
     async cargarPermisos() {
-        const mes = document.getElementById('ast-perm-mes')?.value;
+        const mes = document.getElementById('ast-hero-mes')?.value;
         if (!mes) return;
         try {
             const r = await fetch('/api/asistencia/permisos?mes=' + mes + '&anio=' + new Date().getFullYear());
@@ -633,17 +653,9 @@ const Asistencia = {
 
     // ═══════ LICENCIAS ═══════
     renderLicenciasTab(c) {
-        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === new Date().getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
-
         c.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Licencias Médicas</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Control de licencias médicas</p></div></div>
+            <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
                 <button onclick="Asistencia.abrirModalLicencia()" class="ast-btn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;box-shadow:0 2px 8px rgba(245,158,11,0.3);padding:10px 20px;font-size:13px">+ Nueva Licencia</button>
-            </div>
-            <div style="display:flex;gap:8px;margin-bottom:16px;animation:astFadeUp 0.4s ease 60ms both">
-                <select id="ast-lic-mes" class="ast-input" style="width:auto">${opts}</select>
-                <button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0">Filtrar</button>
             </div>
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -663,7 +675,7 @@ const Asistencia = {
     },
 
     async cargarLicencias() {
-        const mes = document.getElementById('ast-lic-mes')?.value;
+        const mes = document.getElementById('ast-hero-mes')?.value;
         if (!mes) return;
         try {
             const r = await fetch('/api/asistencia/licencias?mes=' + mes + '&anio=' + new Date().getFullYear());
@@ -736,17 +748,9 @@ const Asistencia = {
 
     // ═══════ VACACIONES ═══════
     renderVacacionesTab(c) {
-        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === new Date().getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
-
         c.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#dbeafe,#93c5fd);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Gestión de Vacaciones</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Control de vacaciones del personal</p></div></div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <select id="ast-vac-mes" class="ast-input" style="width:auto">${opts}</select>
-                    <button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0">Filtrar</button>
-                    <button onclick="Asistencia.abrirModalVacacion()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nueva Vacación</button>
-                </div>
+            <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
+                <button onclick="Asistencia.abrirModalVacacion()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nueva Vacación</button>
             </div>
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;overflow:hidden">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -765,7 +769,7 @@ const Asistencia = {
     },
 
     async cargarVacaciones() {
-        const mes = document.getElementById('ast-vac-mes')?.value;
+        const mes = document.getElementById('ast-hero-mes')?.value;
         try {
             const url = '/api/asistencia/vacaciones' + (mes ? '?mes=' + mes + '&anio=' + new Date().getFullYear() : '');
             const r = await fetch(url);
@@ -824,25 +828,10 @@ const Asistencia = {
 
     // ═══════ REPORTES ═══════
     renderReportesTab(c) {
-        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === new Date().getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
-
         c.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Reportes y Rankings</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Análisis mensual de asistencia</p></div></div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <select id="ast-rep-mes" class="ast-input" style="width:auto">${opts}</select>
-                    <button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:white;box-shadow:0 2px 8px rgba(34,197,94,0.3);padding:10px 20px;font-size:13px">Generar</button>
-                </div>
-            </div>
-
             <div id="ast-ranking-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
 
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
-                <div style="padding:18px 22px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px">
-                    <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Reporte Mensual</h3>
-                </div>
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">#</th>
@@ -860,7 +849,7 @@ const Asistencia = {
     },
 
     async cargarReportes() {
-        const mes = document.getElementById('ast-rep-mes')?.value;
+        const mes = document.getElementById('ast-hero-mes')?.value;
         if (!mes) return;
         const anio = new Date().getFullYear();
         try {
