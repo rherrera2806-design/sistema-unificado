@@ -131,10 +131,14 @@ const Asistencia = {
                 <input type="hidden" id="ast-trab-id">
             </div>
 
-            <div style="display:flex;gap:8px;margin-bottom:16px;animation:astFadeUp 0.4s ease 60ms both">
+            <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;animation:astFadeUp 0.4s ease 60ms both">
                 <button onclick="Asistencia.filtrarTrabajadores('todos')" class="ast-btn ast-trab-filter active" style="background:linear-gradient(135deg,#1e40af,#2563eb);color:white" data-filter="todos">Todos</button>
                 <button onclick="Asistencia.filtrarTrabajadores('activos')" class="ast-btn ast-trab-filter" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0" data-filter="activos">Activos</button>
                 <button onclick="Asistencia.filtrarTrabajadores('inactivos')" class="ast-btn ast-trab-filter" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0" data-filter="inactivos">Inactivos</button>
+                <div style="margin-left:auto;position:relative">
+                    <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="ast-trab-buscar" class="ast-input" placeholder="Buscar por nombre o RUT..." oninput="Asistencia.buscarTrabajadoresAdmin()" style="padding-left:32px;width:220px">
+                </div>
             </div>
 
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
@@ -168,6 +172,8 @@ const Asistencia = {
         const tbody = document.getElementById('ast-tabla-trabajadores');
         if (!tbody) return;
         let data = this.todosTrabajadores;
+        const busqueda = (document.getElementById('ast-trab-buscar')?.value || '').toLowerCase();
+        if (busqueda) data = data.filter(t => t.nombre.toLowerCase().includes(busqueda) || t.rut.toLowerCase().includes(busqueda));
         if (this.trabFilter === 'activos') data = data.filter(t => t.activo);
         else if (this.trabFilter === 'inactivos') data = data.filter(t => !t.activo);
 
@@ -206,6 +212,10 @@ const Asistencia = {
             active.style.border = 'none';
             active.classList.add('active');
         }
+        this.renderTablaTrabajadores();
+    },
+
+    buscarTrabajadoresAdmin() {
         this.renderTablaTrabajadores();
     },
 
