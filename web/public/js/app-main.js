@@ -560,15 +560,13 @@ function toggleSection(section) {
     const sectionEl = group?.previousElementSibling;
     if (!group || !sectionEl) return;
 
-    const isCollapsed = group.classList.contains('collapsed');
-    if (isCollapsed) {
-        group.classList.remove('collapsed');
-        group.style.maxHeight = group.scrollHeight + 'px';
-        sectionEl.classList.remove('collapsed');
+    const isExpanded = group.classList.contains('expanded');
+    if (isExpanded) {
+        group.classList.remove('expanded');
+        sectionEl.classList.remove('expanded');
     } else {
-        group.style.maxHeight = '0px';
-        group.classList.add('collapsed');
-        sectionEl.classList.add('collapsed');
+        group.classList.add('expanded');
+        sectionEl.classList.add('expanded');
     }
     try { localStorage.setItem('sidebar_collapsed', JSON.stringify({ [section]: !isCollapsed })); } catch(e) {}
 }
