@@ -390,14 +390,14 @@ function doLogout() {
 
 // ─── Sidebar Structure (permisos jerárquicos) ────
 const SIDEBAR_SECTIONS = {
-    mantencion: ['dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora'],
-    inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
-    atencion: ['turnos_recepcion','turnos_bodega','turnos_almacen','turnos_facturar','turnos_qr','turnos_reporte'],
-    ventas: ['pedidos'],
-    produccion: ['prod_ordenes','prod_planificacion','prod_reportes','prod_notas','prod_config'],
-    instalaciones: ['instalaciones','inst_detalle','inst_historial'],
     administracion: ['usuarios'],
-    asistencia: ['asistencia_control']
+    asistencia: ['asistencia.trabajadores','asistencia.diaria','asistencia.calendario','asistencia.permisos','asistencia.licencias','asistencia.vacaciones','asistencia.reportes'],
+    atencion: ['turnos_recepcion','turnos_bodega','turnos_almacen','turnos_facturar','turnos_qr','turnos_reporte'],
+    instalaciones: ['instalaciones','inst_detalle','inst_historial'],
+    inventario: ['inv_inventario','inv_movimientos','inv_historial','inv_catalogos'],
+    mantencion: ['dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora'],
+    produccion: ['prod_ordenes','prod_planificacion','prod_reportes','prod_notas','prod_config'],
+    ventas: ['pedidos']
 };
 
 function getUserPerms() {
@@ -425,7 +425,7 @@ function renderSidebar() {
             { id: 'usuarios', label: 'Usuarios', icon: SVG.users }
         ]},
         { key: 'asistencia', label: 'ASISTENCIA', items: [
-            { id: 'asistencia_control', label: 'Control de Asistencia', icon: SVG.clipboard }
+            { id: 'asistencia_diaria', label: 'Control de Asistencia', icon: SVG.clipboard }
         ]},
         { key: 'atencion', label: 'ATENCION', items: [
             { id: 'turnos_recepcion', label: 'Recepcion y Control', icon: SVG.users },
@@ -517,7 +517,7 @@ function renderSidebar() {
                 App.loadModule('reporte_turnos');
             } else if (page === 'pedidos') {
                 App.loadModule('pedidos');
-            } else if (page === 'asistencia_control') {
+            } else if (page === 'asistencia_diaria') {
                 App.loadModule('asistencia');
             } else {
                 App.loadModule(page);

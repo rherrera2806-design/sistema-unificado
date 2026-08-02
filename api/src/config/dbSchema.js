@@ -460,12 +460,14 @@ async function initDB() {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     const ALL_PERMS = [
-        'mantencion','dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora',
+        'administracion','usuarios',
+        'asistencia','asistencia.trabajadores','asistencia.diaria','asistencia.calendario','asistencia.permisos','asistencia.licencias','asistencia.vacaciones','asistencia.reportes',
+        'atencion','turnos_recepcion','turnos_bodega','turnos_almacen','turnos_facturar','turnos_qr','turnos_reporte','turnos_eliminar',
+        'instalaciones','inst_detalle','inst_historial','instalaciones.nueva','instalaciones.eliminar',
         'inventario','inv_inventario','inv_movimientos','inv_historial','inv_catalogos',
-        'atencion','turnos_recepcion','turnos_bodega','turnos_qr','turnos_eliminar',
-        'ventas','pedidos',
-        'produccion','prod_ordenes','prod_maquinas','prod_recetas','prod_codigos','prod_notas','prod_config',
-        'administracion','usuarios','pedidos.autorizar'
+        'mantencion','dashboard','machineTypes','machines','components','preventive','corrective','calendar','notas','reports','history','bitacora',
+        'pedidos','pedidos.autorizar',
+        'produccion','prod_ordenes','prod_planificacion','prod_notas','prod_config'
     ];
     const adminCheck = await query("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
     if (adminCheck.rows.length === 0) {

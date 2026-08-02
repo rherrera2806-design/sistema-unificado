@@ -87,6 +87,40 @@ App.registerModule('usuarios', {
         const up = Array.isArray(user.permisos) ? user.permisos : [];
 
         const SECTIONS = [
+            { key: 'administracion', label: 'ADMINISTRACION', items: [
+                { key: 'usuarios', label: 'Usuarios' }
+            ]},
+            { key: 'asistencia', label: 'ASISTENCIA', items: [
+                { key: 'asistencia.trabajadores', label: 'Trabajadores' },
+                { key: 'asistencia.diaria', label: 'Asistencia Diaria' },
+                { key: 'asistencia.calendario', label: 'Calendario' },
+                { key: 'asistencia.permisos', label: 'Permisos' },
+                { key: 'asistencia.licencias', label: 'Licencias Medicas' },
+                { key: 'asistencia.vacaciones', label: 'Vacaciones' },
+                { key: 'asistencia.reportes', label: 'Reportes' }
+            ]},
+            { key: 'atencion', label: 'ATENCION', items: [
+                { key: 'turnos_recepcion', label: 'Recepcion y Control' },
+                { key: 'turnos_bodega', label: 'Verificacion Bodega' },
+                { key: 'turnos_almacen', label: 'Almacen' },
+                { key: 'turnos_facturar', label: 'Por Facturar' },
+                { key: 'turnos_qr', label: 'QR Clientes' },
+                { key: 'turnos_reporte', label: 'Reporte' },
+                { key: 'turnos_eliminar', label: 'Eliminar' }
+            ]},
+            { key: 'instalaciones', label: 'INSTALACIONES', items: [
+                { key: 'instalaciones', label: 'Instalaciones' },
+                { key: 'inst_detalle', label: 'Detalle' },
+                { key: 'inst_historial', label: 'Historial' },
+                { key: 'instalaciones.nueva', label: 'Nueva' },
+                { key: 'instalaciones.eliminar', label: 'Eliminar' }
+            ]},
+            { key: 'inventario', label: 'INVENTARIO', items: [
+                { key: 'inv_inventario', label: 'Inventario' },
+                { key: 'inv_movimientos', label: 'Movimientos' },
+                { key: 'inv_historial', label: 'Historial Inventario' },
+                { key: 'inv_catalogos', label: 'Catalogos' }
+            ]},
             { key: 'mantencion', label: 'MANTENCION', items: [
                 { key: 'dashboard', label: 'Dashboard' },
                 { key: 'machineTypes', label: 'Tipos de Area' },
@@ -100,38 +134,15 @@ App.registerModule('usuarios', {
                 { key: 'history', label: 'Historial' },
                 { key: 'bitacora', label: 'Bitacora' }
             ]},
-            { key: 'inventario', label: 'INVENTARIO', items: [
-                { key: 'inv_inventario', label: 'Inventario' },
-                { key: 'inv_movimientos', label: 'Movimientos' },
-                { key: 'inv_historial', label: 'Historial Inventario' },
-                { key: 'inv_catalogos', label: 'Catalogos' }
-            ]},
-            { key: 'atencion', label: 'ATENCION', items: [
-                { key: 'turnos_recepcion', label: 'Recepcion y Control' },
-                { key: 'turnos_bodega', label: 'Verificación Bodega' },
-                { key: 'turnos_almacen', label: 'Almacén' },
-                { key: 'turnos_facturar', label: 'Por Facturar' },
-                { key: 'turnos_qr', label: 'QR Clientes' },
-                { key: 'turnos_reporte', label: 'Reporte' },
-                { key: 'turnos_eliminar', label: 'Eliminar' }
-            ]},
-            { key: 'ventas', label: 'VENTAS', items: [
-                { key: 'pedidos', label: 'Pedidos / Ordenes' }
+            { key: 'pedidos', label: 'PEDIDOS', items: [
+                { key: 'pedidos', label: 'Pedidos / Ordenes' },
+                { key: 'pedidos.autorizar', label: 'Autorizar Pedidos' }
             ]},
             { key: 'produccion', label: 'PRODUCCION', items: [
                 { key: 'prod_ordenes', label: 'Produccion' },
                 { key: 'prod_planificacion', label: 'Planificacion' },
-                { key: 'prod_notas', label: 'Mis Pendientes' }
-            ]},
-            { key: 'instalaciones', label: 'INSTALACIONES', items: [
-                { key: 'instalaciones', label: 'Instalaciones' },
-                { key: 'inst_detalle', label: 'Detalle' },
-                { key: 'inst_historial', label: 'Historial' },
-                { key: 'instalaciones.nueva', label: 'Nueva' },
-                { key: 'instalaciones.eliminar', label: 'Eliminar' }
-            ]},
-            { key: 'administracion', label: 'ADMINISTRACION', items: [
-                { key: 'usuarios', label: 'Usuarios' }
+                { key: 'prod_notas', label: 'Mis Pendientes' },
+                { key: 'prod_config', label: 'Configuracion' }
             ]}
         ];
 
@@ -149,7 +160,7 @@ App.registerModule('usuarios', {
             });
             permTreeHtml += '</div></div>';
         });
-        permTreeHtml += '<div style="margin-top:8px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:#475569"><input type="checkbox" class="uPermCheck" value="pedidos.autorizar" ' + (up.includes('pedidos.autorizar') ? 'checked' : '') + ' style="accent-color:#3b82f6"> Autorizar Pedidos</label></div>';
+        permTreeHtml += '</div>';
 
         document.getElementById('uModalTitle').innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' + (id ? 'Editar Usuario' : 'Nuevo Usuario');
         document.getElementById('uModalError').style.display = 'none';
