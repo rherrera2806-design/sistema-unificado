@@ -111,18 +111,35 @@ const Asistencia = {
         if (!container) return;
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const mesActual = new Date().getMonth();
-        if (tab === 'permisos') {
+        if (tab === 'trabajadores') {
+            const permUser = typeof getUser === 'function' ? getUser() : null;
+            const permPerms = permUser && permUser.permisos ? permUser.permisos : [];
+            const canEditT = permPerms.includes('asistencia.editar') || permPerms.includes('asistencia') || permPerms.length === 0;
+            container.innerHTML = '<div style="display:flex;gap:6px;align-items:center">'
+                + '<button onclick="Asistencia.filtrarTrabajadores(\'todos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.4);font-size:11px;padding:6px 12px" data-filter="todos">Todos</button>'
+                + '<button onclick="Asistencia.filtrarTrabajadores(\'activos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.2);font-size:11px;padding:6px 12px" data-filter="activos">Activos</button>'
+                + '<button onclick="Asistencia.filtrarTrabajadores(\'inactivos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.2);font-size:11px;padding:6px 12px" data-filter="inactivos">Inactivos</button>'
+                + '</div>'
+                + '<div style="position:relative">'
+                + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.buscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2);font-size:11px">'
+                + '</div>'
+                + (canEditT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 12px">+ Nuevo</button>' : '');
+        } else         if (tab === 'permisos') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>';
+                + '<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>'
+                + '<button onclick="Asistencia.abrirModalPermiso()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 12px">+ Nuevo</button>';
         } else if (tab === 'licencias') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>';
+                + '<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>'
+                + '<button onclick="Asistencia.abrirModalLicencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#d97706;font-weight:700;font-size:11px;padding:6px 12px">+ Nuevo</button>';
         } else if (tab === 'vacaciones') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>';
+                + '<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);backdrop-filter:blur(8px)">Filtrar</button>'
+                + '<button onclick="Asistencia.abrirModalVacacion()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 12px">+ Nuevo</button>';
         } else if (tab === 'calendario') {
             let mesOpts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             let yearOpts = '';
@@ -154,10 +171,6 @@ const Asistencia = {
         const canEditT = permPerms.includes('asistencia.editar') || permPerms.includes('asistencia') || permPerms.length === 0;
         const canDeleteT = permPerms.includes('asistencia.eliminar') || permPerms.length === 0;
         c.innerHTML = `
-            <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                ${canEditT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Trabajador</button>' : ''}
-            </div>
-
             <div id="ast-form-trabajador" style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:20px 24px;margin-bottom:20px;animation:astFadeUp 0.3s ease both">
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
                     <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
@@ -178,16 +191,6 @@ const Asistencia = {
                     </div>
                 </div>
                 <input type="hidden" id="ast-trab-id">
-            </div>
-
-            <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;animation:astFadeUp 0.4s ease 60ms both">
-                <button onclick="Asistencia.filtrarTrabajadores('todos')" class="ast-btn ast-trab-filter active" style="background:linear-gradient(135deg,#1e40af,#2563eb);color:white" data-filter="todos">Todos</button>
-                <button onclick="Asistencia.filtrarTrabajadores('activos')" class="ast-btn ast-trab-filter" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0" data-filter="activos">Activos</button>
-                <button onclick="Asistencia.filtrarTrabajadores('inactivos')" class="ast-btn ast-trab-filter" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0" data-filter="inactivos">Inactivos</button>
-                <div style="margin-left:auto;position:relative">
-                    <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" id="ast-trab-buscar" class="ast-input" placeholder="Buscar por nombre o RUT..." oninput="Asistencia.buscarTrabajadoresAdmin()" style="padding-left:32px;width:220px">
-                </div>
             </div>
 
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
@@ -221,7 +224,7 @@ const Asistencia = {
         const tbody = document.getElementById('ast-tabla-trabajadores');
         if (!tbody) return;
         let data = this.todosTrabajadores;
-        const busqueda = (document.getElementById('ast-trab-buscar')?.value || '').toLowerCase();
+        const busqueda = (document.getElementById('ast-hero-buscar')?.value || '').toLowerCase();
         if (busqueda) data = data.filter(t => t.nombre.toLowerCase().includes(busqueda) || t.rut.toLowerCase().includes(busqueda));
         if (this.trabFilter === 'activos') data = data.filter(t => t.activo);
         else if (this.trabFilter === 'inactivos') data = data.filter(t => !t.activo);
@@ -248,18 +251,16 @@ const Asistencia = {
 
     filtrarTrabajadores(filtro) {
         this.trabFilter = filtro;
-        document.querySelectorAll('.ast-trab-filter').forEach(b => {
-            b.style.background = '#f1f5f9';
-            b.style.color = '#475569';
-            b.style.border = '1px solid #e2e8f0';
-            b.classList.remove('active');
+        document.querySelectorAll('.ast-hero-trab-filter').forEach(b => {
+            b.style.background = 'rgba(255,255,255,0.15)';
+            b.style.color = 'rgba(255,255,255,0.8)';
+            b.style.border = '1px solid rgba(255,255,255,0.2)';
         });
         const active = document.querySelector('[data-filter="' + filtro + '"]');
         if (active) {
-            active.style.background = 'linear-gradient(135deg,#1e40af,#2563eb)';
+            active.style.background = 'rgba(255,255,255,0.3)';
             active.style.color = 'white';
-            active.style.border = 'none';
-            active.classList.add('active');
+            active.style.border = '1px solid rgba(255,255,255,0.4)';
         }
         this.renderTablaTrabajadores();
     },
@@ -559,9 +560,6 @@ const Asistencia = {
     // ═══════ PERMISOS ═══════
     renderPermisosTab(c) {
         c.innerHTML = `
-            <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <button onclick="Asistencia.abrirModalPermiso()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Permiso</button>
-            </div>
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
@@ -654,9 +652,6 @@ const Asistencia = {
     // ═══════ LICENCIAS ═══════
     renderLicenciasTab(c) {
         c.innerHTML = `
-            <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <button onclick="Asistencia.abrirModalLicencia()" class="ast-btn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;box-shadow:0 2px 8px rgba(245,158,11,0.3);padding:10px 20px;font-size:13px">+ Nueva Licencia</button>
-            </div>
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
@@ -749,9 +744,6 @@ const Asistencia = {
     // ═══════ VACACIONES ═══════
     renderVacacionesTab(c) {
         c.innerHTML = `
-            <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <button onclick="Asistencia.abrirModalVacacion()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nueva Vacación</button>
-            </div>
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;overflow:hidden">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
