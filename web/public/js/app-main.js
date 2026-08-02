@@ -279,47 +279,44 @@ const App = {
         } catch(e) {}
 
         const html = `
-            <div style="max-width:1200px;margin:0 auto;padding:0 16px">
-                <div style="margin-bottom:28px">
-                    <h1 style="margin:0;font-size:24px;font-weight:800;color:#0f172a;letter-spacing:-0.5px">Bienvenido, ${escapeHtml(nombre)}</h1>
-                    <p style="margin:6px 0 0;font-size:13px;color:#64748b">Resumen del mes de ${mesActual}</p>
+            <div style="max-width:1400px;margin:0 auto;padding:0 16px">
+                <div style="margin-bottom:24px">
+                    <h1 style="margin:0;font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.5px">Bienvenido, ${escapeHtml(nombre)}</h1>
+                    <p style="margin:4px 0 0;font-size:12px;color:#64748b">Resumen del mes de ${mesActual}</p>
                 </div>
 
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
                     
                     <!-- ASISTENCIA -->
-                    <div onclick="App.loadModule('asistencia')" style="background:linear-gradient(135deg,#f8fafc 0%,#e0f2fe 100%);border:1.5px solid #bae6fd;border-radius:16px;padding:24px;cursor:pointer;transition:all 0.3s;position:relative;overflow:hidden" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(14,165,233,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-                        <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;background:radial-gradient(circle,rgba(14,165,233,0.1) 0%,transparent 70%);border-radius:50%"></div>
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-                            <div style="width:40px;height:40px;background:linear-gradient(135deg,#0ea5e9,#0284c7);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(14,165,233,0.3)">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+                    <div onclick="App.loadModule('asistencia')" style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #bae6fd;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(14,165,233,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#0ea5e9,#0284c7);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(14,165,233,0.25)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
                             </div>
                             <div>
-                                <h3 style="margin:0;font-size:14px;font-weight:700;color:#0f172a">ASISTENCIA</h3>
-                                <p style="margin:0;font-size:11px;color:#64748b">${asistenciaStats.trabajadores_total} trabajadores activos</p>
+                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">ASISTENCIA</h3>
+                                <p style="margin:0;font-size:10px;color:#64748b">${asistenciaStats.trabajadores_total} trabajadores</p>
                             </div>
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div style="background:white;border-radius:10px;padding:12px;text-align:center;border:1px solid #e0f2fe">
-                                <div style="font-size:24px;font-weight:800;color:#ef4444">${asistenciaStats.faltas}</div>
-                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Faltas</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #e0f2fe">
+                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${asistenciaStats.faltas}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Faltas</div>
                             </div>
-                            <div style="background:white;border-radius:10px;padding:12px;text-align:center;border:1px solid #e0f2fe">
-                                <div style="font-size:24px;font-weight:800;color:#f59e0b">${asistenciaStats.licencias}</div>
-                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Licencias</div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #e0f2fe">
+                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${asistenciaStats.licencias}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Licencias</div>
                             </div>
-                            <div style="background:white;border-radius:10px;padding:12px;text-align:center;border:1px solid #e0f2fe">
-                                <div style="font-size:24px;font-weight:800;color:#8b5cf6">${asistenciaStats.licencias_dias}</div>
-                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Dias Licencia</div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #e0f2fe">
+                                <div style="font-size:18px;font-weight:800;color:#8b5cf6;line-height:1">${asistenciaStats.licencias_dias}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Dias Lic.</div>
                             </div>
-                            <div style="background:white;border-radius:10px;padding:12px;text-align:center;border:1px solid #e0f2fe">
-                                <div style="font-size:24px;font-weight:800;color:#3b82f6">${asistenciaStats.vacaciones}</div>
-                                <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Dias Vacaciones</div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #e0f2fe">
+                                <div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">${asistenciaStats.vacaciones}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Dias Vac.</div>
                             </div>
                         </div>
-                        <div style="margin-top:12px;text-align:center;padding:8px;background:rgba(14,165,233,0.08);border-radius:8px">
-                            <span style="font-size:11px;font-weight:600;color:#0284c7">🏖 ${asistenciaStats.vacaciones_trabajadores} trabajadores en vacaciones</span>
-                        </div>
+                        ${asistenciaStats.vacaciones_trabajadores > 0 ? `<div style="margin-top:8px;text-align:center;padding:4px;background:rgba(14,165,233,0.06);border-radius:6px"><span style="font-size:9px;font-weight:600;color:#0284c7">🏖 ${asistenciaStats.vacaciones_trabajadores} en vacaciones</span></div>` : ''}
                     </div>
 
                 </div>
