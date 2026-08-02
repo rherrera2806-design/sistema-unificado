@@ -80,23 +80,23 @@ App.registerModule('dashboard', {
         const medalEmoji = ['&#127942;', '&#129352;', '&#129353;'];
         const order = [1, 0, 2];
 
-        let podium = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:28px;padding:30px 0 10px">';
+        let podium = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:20px;padding:16px 0 8px">';
         order.forEach((dataIdx, i) => {
             const item = data[dataIdx];
             if (!item) return;
             const ms = medalStyles[dataIdx];
             const isCenter = dataIdx === 0;
-            const w = isCenter ? 220 : 190;
-            const numSize = isCenter ? 48 : 38;
-            const nameSize = isCenter ? 14 : 13;
-            podium += '<div class="dash-podium" style="width:' + w + 'px;background:' + ms.bg + ';border:2px solid ' + ms.border + ';border-radius:20px;padding:28px 20px 24px;text-align:center;box-shadow:' + ms.shadow + ';cursor:pointer;animation:fadeUp 0.6s ease ' + (i * 150) + 'ms both;position:relative;overflow:hidden">'
-                + '<div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;background:radial-gradient(circle,' + ms.glow + '30 0%,transparent 70%);border-radius:50%"></div>'
+            const w = isCenter ? 180 : 160;
+            const numSize = isCenter ? 36 : 28;
+            const nameSize = isCenter ? 13 : 12;
+            podium += '<div class="dash-podium" style="width:' + w + 'px;background:' + ms.bg + ';border:2px solid ' + ms.border + ';border-radius:16px;padding:16px 14px 14px;text-align:center;box-shadow:' + ms.shadow + ';cursor:pointer;animation:fadeUp 0.6s ease ' + (i * 150) + 'ms both;position:relative;overflow:hidden">'
+                + '<div style="position:absolute;top:-30px;right:-30px;width:80px;height:80px;background:radial-gradient(circle,' + ms.glow + '30 0%,transparent 70%);border-radius:50%"></div>'
                 + '<div style="position:relative;z-index:1">'
-                + '<div style="font-size:' + (isCenter ? '44' : '36') + 'px;margin-bottom:6px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1))">' + medalEmoji[dataIdx] + '</div>'
-                + '<div style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:' + ms.ring + ';color:white;font-size:13px;font-weight:800;margin-bottom:10px;font-family:\'JetBrains Mono\',monospace">' + (dataIdx + 1) + '</div>'
-                + '<div style="font-size:' + nameSize + 'px;font-weight:700;color:' + ms.text + ';margin-bottom:14px;line-height:1.3;min-height:36px;display:flex;align-items:center;justify-content:center">' + escapeHtml(item.nombre || 'Sin nombre') + '</div>'
+                + '<div style="font-size:' + (isCenter ? '32' : '26') + 'px;margin-bottom:4px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.1))">' + medalEmoji[dataIdx] + '</div>'
+                + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + ms.ring + ';color:white;font-size:11px;font-weight:800;margin-bottom:6px;font-family:\'JetBrains Mono\',monospace">' + (dataIdx + 1) + '</div>'
+                + '<div style="font-size:' + nameSize + 'px;font-weight:700;color:' + ms.text + ';margin-bottom:8px;line-height:1.3;min-height:28px;display:flex;align-items:center;justify-content:center">' + escapeHtml(item.nombre || 'Sin nombre') + '</div>'
                 + '<div style="font-size:' + numSize + 'px;font-weight:900;color:' + ms.num + ';font-family:\'JetBrains Mono\',monospace;line-height:1">' + item.total_fallas + '</div>'
-                + '<div style="font-size:11px;font-weight:700;color:' + ms.ring + ';text-transform:uppercase;letter-spacing:1.5px;margin-top:8px">FALLAS</div>'
+                + '<div style="font-size:10px;font-weight:700;color:' + ms.ring + ';text-transform:uppercase;letter-spacing:1px;margin-top:4px">FALLAS</div>'
                 + '</div></div>';
         });
         podium += '</div>';
@@ -118,11 +118,11 @@ App.registerModule('dashboard', {
         }
 
         return '<div class="dash-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:fadeUp 0.5s ease 200ms both">'
-            + '<div style="padding:22px 28px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
-            + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 8px rgba(251,191,36,0.3)">&#127942;</div>'
-            + '<div><h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Top Maquinas con mas Fallas</h3>'
-            + '<p style="margin:2px 0 0;font-size:12px;color:#94a3b8">Ranking de maquinas con mayor cantidad de fallas registradas</p></div></div>'
-            + '<div style="padding:24px 28px">' + podium + extras + '</div></div>';
+            + '<div style="padding:16px 22px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
+            + '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(251,191,36,0.3)">&#127942;</div>'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Top Maquinas con mas Fallas</h3>'
+            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Ranking de maquinas con mayor cantidad de fallas registradas</p></div></div>'
+            + '<div style="padding:12px 22px">' + podium + extras + '</div></div>';
     },
 
     renderOverdueLocal(data, maqMap, compMap) {
