@@ -64,7 +64,8 @@ const Asistencia = {
 
     renderTabs() {
         const tabs = [
-            { id: 'diaria', label: 'Asistencia Diaria', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>' },
+            { id: 'trabajadores', label: 'Trabajadores', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
+            { id: 'diaria', label: 'Asistencia Diaria', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' },
             { id: 'calendario', label: 'Calendario', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' },
             { id: 'permisos', label: 'Permisos', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' },
             { id: 'licencias', label: 'Licencias', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' },
@@ -84,7 +85,8 @@ const Asistencia = {
         this.renderTabs();
 
         const c = document.getElementById('ast-content');
-        if (tab === 'diaria') this.renderDiaria(c);
+        if (tab === 'trabajadores') this.renderTrabajadoresTab(c);
+        else if (tab === 'diaria') this.renderDiaria(c);
         else if (tab === 'calendario') this.renderCalendarioTab(c);
         else if (tab === 'permisos') this.renderPermisosTab(c);
         else if (tab === 'licencias') this.renderLicenciasTab(c);
@@ -97,6 +99,170 @@ const Asistencia = {
         const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         document.getElementById('ast-hero-date').innerHTML = dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()];
+    },
+
+    // ═══════ TRABAJADORES ═══════
+    async renderTrabajadoresTab(c) {
+        c.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
+                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Gestión de Trabajadores</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Administrar personal activo e inactivo</p></div></div>
+                <button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Trabajador</button>
+            </div>
+
+            <div id="ast-form-trabajador" style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:20px 24px;margin-bottom:20px;animation:astFadeUp 0.3s ease both">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+                    <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+                    <h4 id="ast-form-title" style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Nuevo Trabajador</h4>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end">
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">RUT</label>
+                        <input type="text" id="ast-trab-rut" class="ast-input" placeholder="12.345.678-9" style="width:100%">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Nombre Completo</label>
+                        <input type="text" id="ast-trab-nombre" class="ast-input" placeholder="Nombre del trabajador" style="width:100%">
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button onclick="Asistencia.guardarTrabajador()" class="ast-btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:white;padding:10px 20px">Guardar</button>
+                        <button onclick="Asistencia.hideFormTrabajador()" class="ast-btn" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:10px 16px">Cancelar</button>
+                    </div>
+                </div>
+                <input type="hidden" id="ast-trab-id">
+            </div>
+
+            <div style="display:flex;gap:8px;margin-bottom:16px;animation:astFadeUp 0.4s ease 60ms both">
+                <button onclick="Asistencia.filtrarTrabajadores('todos')" class="ast-btn ast-trab-filter active" style="background:linear-gradient(135deg,#1e40af,#2563eb);color:white" data-filter="todos">Todos</button>
+                <button onclick="Asistencia.filtrarTrabajadores('activos')" class="ast-btn ast-trab-filter" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0" data-filter="activos">Activos</button>
+                <button onclick="Asistencia.filtrarTrabajadores('inactivos')" class="ast-btn ast-trab-filter" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0" data-filter="inactivos">Inactivos</button>
+            </div>
+
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">RUT</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                    </tr></thead>
+                    <tbody id="ast-tabla-trabajadores"><tr><td colspan="4" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                </table>
+            </div>`;
+
+        this.trabFilter = 'todos';
+        await this.cargarTodosTrabajadores();
+    },
+
+    trabFilter: 'todos',
+    todosTrabajadores: [],
+
+    async cargarTodosTrabajadores() {
+        try {
+            const r = await fetch('/api/asistencia/trabajadores');
+            this.todosTrabajadores = await r.json();
+            this.renderTablaTrabajadores();
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    renderTablaTrabajadores() {
+        const tbody = document.getElementById('ast-tabla-trabajadores');
+        if (!tbody) return;
+        let data = this.todosTrabajadores;
+        if (this.trabFilter === 'activos') data = data.filter(t => t.activo);
+        else if (this.trabFilter === 'inactivos') data = data.filter(t => !t.activo);
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:#94a3b8">Sin trabajadores</td></tr>';
+            return;
+        }
+
+        const colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#6366f1'];
+        tbody.innerHTML = data.map((t, i) => {
+            const ini = t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2);
+            const bg = colors[i % colors.length];
+            return '<tr style="border-bottom:1px solid #f1f5f9' + (t.activo ? '' : ';opacity:0.55') + '">'
+                + '<td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,' + bg + ',' + bg + 'dd);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700">' + ini + '</div><strong style="color:#1e293b">' + t.nombre + '</strong></div></td>'
+                + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + t.rut + '</td>'
+                + '<td style="padding:12px 16px"><span class="ast-badge" style="' + (t.activo ? 'background:#d1fae5;color:#059669' : 'background:#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span></td>'
+                + '<td style="padding:12px 16px;text-align:center"><div style="display:flex;gap:4px;justify-content:center">'
+                + '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="ast-btn" style="background:#eff6ff;color:#3b82f6;font-size:10px;padding:5px 10px;border:1px solid #bfdbfe">Editar</button>'
+                + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="ast-btn" style="background:' + (t.activo ? '#fef3c7;color:#d97706;border:1px solid #fde68a' : '#d1fae5;color:#059669;border:1px solid #a7f3d0') + ';font-size:10px;padding:5px 10px">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
+                + '</div></td></tr>';
+        }).join('');
+    },
+
+    filtrarTrabajadores(filtro) {
+        this.trabFilter = filtro;
+        document.querySelectorAll('.ast-trab-filter').forEach(b => {
+            b.style.background = '#f1f5f9';
+            b.style.color = '#475569';
+            b.style.border = '1px solid #e2e8f0';
+            b.classList.remove('active');
+        });
+        const active = document.querySelector('[data-filter="' + filtro + '"]');
+        if (active) {
+            active.style.background = 'linear-gradient(135deg,#1e40af,#2563eb)';
+            active.style.color = 'white';
+            active.style.border = 'none';
+            active.classList.add('active');
+        }
+        this.renderTablaTrabajadores();
+    },
+
+    showFormTrabajador(id) {
+        document.getElementById('ast-form-trabajador').style.display = 'block';
+        document.getElementById('ast-trab-id').value = '';
+        document.getElementById('ast-trab-rut').value = '';
+        document.getElementById('ast-trab-nombre').value = '';
+        document.getElementById('ast-form-title').textContent = 'Nuevo Trabajador';
+    },
+
+    hideFormTrabajador() {
+        document.getElementById('ast-form-trabajador').style.display = 'none';
+    },
+
+    editarTrabajador(id) {
+        const t = this.todosTrabajadores.find(w => w.id === id);
+        if (!t) return;
+        document.getElementById('ast-form-trabajador').style.display = 'block';
+        document.getElementById('ast-trab-id').value = t.id;
+        document.getElementById('ast-trab-rut').value = t.rut;
+        document.getElementById('ast-trab-nombre').value = t.nombre;
+        document.getElementById('ast-form-title').textContent = 'Editar Trabajador';
+    },
+
+    async guardarTrabajador() {
+        const id = document.getElementById('ast-trab-id').value;
+        const rut = document.getElementById('ast-trab-rut').value.trim();
+        const nombre = document.getElementById('ast-trab-nombre').value.trim();
+        if (!rut || !nombre) return;
+
+        if (id) {
+            await fetch('/api/asistencia/trabajadores/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rut, nombre })
+            });
+        } else {
+            await fetch('/api/asistencia/trabajadores', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rut, nombre })
+            });
+        }
+        this.hideFormTrabajador();
+        await this.cargarTodosTrabajadores();
+        this.llenarSelectores();
+    },
+
+    async toggleTrabajador(id, activo) {
+        await fetch('/api/asistencia/trabajadores/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activo: !activo })
+        });
+        await this.cargarTodosTrabajadores();
+        this.llenarSelectores();
     },
 
     // ═══════ ASISTENCIA DIARIA ═══════
@@ -159,7 +325,7 @@ const Asistencia = {
 
     async cargarTrabajadores() {
         try {
-            const r = await fetch('/api/asistencia/trabajadores');
+            const r = await fetch('/api/asistencia/trabajadores/activos');
             this.trabajadores = await r.json();
             this.renderTrabajadores();
             this.llenarSelectores();

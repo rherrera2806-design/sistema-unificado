@@ -13,6 +13,17 @@ const pool = new Pool({
 router.get('/api/asistencia/trabajadores', async (req, res) => {
     try {
         const result = await pool.query(
+            'SELECT * FROM trabajadores ORDER BY activo DESC, nombre'
+        );
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/api/asistencia/trabajadores/activos', async (req, res) => {
+    try {
+        const result = await pool.query(
             'SELECT * FROM trabajadores WHERE activo = true ORDER BY nombre'
         );
         res.json(result.rows);
@@ -29,6 +40,30 @@ router.post('/api/asistencia/trabajadores', async (req, res) => {
             [rut, nombre]
         );
         res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/api/asistencia/trabajadores/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre, rut, activo } = req.body;
+        const result = await pool.query(
+            'UPDATE trabajadores SET nombre = COALESCE($1, nombre), rut = COALESCE($2, rut), activo = COALESCE($3, activo) WHERE id = $4 RETURNING *',
+            [nombre, rut, activo, id]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.delete('/api/asistencia/trabajadores/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM trabajadores WHERE id = $1', [id]);
+        res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
