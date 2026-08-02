@@ -474,28 +474,4 @@ router.get('/api/asistencia/dashboard', async (req, res) => {
     }
 });
 
-// TEMP: Reordenar nombres de "Apellido1 Apellido2 Nombre1 Nombre2" a "Nombre1 Nombre2 Apellido1 Apellido2"
-router.post('/api/asistencia/reordenar-nombres', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT id, nombre FROM trabajadores');
-        let updated = 0;
-        for (const row of result.rows) {
-            const parts = row.nombre.trim().split(/\s+/);
-            let newName = row.nombre;
-            if (parts.length === 4) {
-                newName = parts[2] + ' ' + parts[3] + ' ' + parts[0] + ' ' + parts[1];
-            } else if (parts.length === 3) {
-                newName = parts[2] + ' ' + parts[0] + ' ' + parts[1];
-            }
-            if (newName !== row.nombre) {
-                await pool.query('UPDATE trabajadores SET nombre = $1 WHERE id = $2', [newName, row.id]);
-                updated++;
-            }
-        }
-        res.json({ ok: true, updated, total: result.rows.length });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
 module.exports = router;
