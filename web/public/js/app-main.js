@@ -273,9 +273,14 @@ const App = {
         const mesActual = new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
         
         let asistenciaStats = { faltas: 0, licencias: 0, licencias_dias: 0, vacaciones: 0, vacaciones_trabajadores: 0, trabajadores_total: 0 };
+        let instalacionesStats = { programadas: 0, enCurso: 0, completadas: 0, novedades: 0 };
         try {
-            const res = await fetch('/api/asistencia/dashboard');
-            if (res.ok) asistenciaStats = await res.json();
+            const [asistenciaRes, instalacionesRes] = await Promise.all([
+                fetch('/api/asistencia/dashboard'),
+                fetch('/api/instalaciones/dashboard')
+            ]);
+            if (asistenciaRes.ok) asistenciaStats = await asistenciaRes.json();
+            if (instalacionesRes.ok) instalacionesStats = await instalacionesRes.json();
         } catch(e) {}
 
         const html = `
@@ -316,7 +321,37 @@ const App = {
                                 <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Dias Vac.</div>
                             </div>
                         </div>
-                        ${asistenciaStats.vacaciones_trabajadores > 0 ? `<div style="margin-top:8px;text-align:center;padding:4px;background:rgba(14,165,233,0.06);border-radius:6px"><span style="font-size:9px;font-weight:600;color:#0284c7">🏖 ${asistenciaStats.vacaciones_trabajadores} en vacaciones</span></div>` : ''}
+                    </div>
+
+                    <!-- INSTALACIONES -->
+                    <div onclick="App.loadModule('inst_historial')" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1px solid #86efac;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(34,197,94,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(34,197,94,0.25)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            </div>
+                            <div>
+                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">INSTALACIONES</h3>
+                                <p style="margin:0;font-size:10px;color:#64748b">Mes actual</p>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dcfce7">
+                                <div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">${instalacionesStats.programadas}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Programadas</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dcfce7">
+                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${instalacionesStats.enCurso}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">En curso</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dcfce7">
+                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${instalacionesStats.completadas}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Completadas</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dcfce7">
+                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${instalacionesStats.novedades}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Novedades</div>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
