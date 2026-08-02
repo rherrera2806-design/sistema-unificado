@@ -414,11 +414,13 @@ function hasPerm(p) { return getUserPerms().includes(p); }
 function isAdmin() { const u = getUser(); return u && u.rol === 'admin'; }
 function hasSection(section) {
     if (isAdmin()) return true;
-    return hasPerm(section);
+    if (hasPerm(section)) return true;
+    const p = getUserPerms();
+    return p.some(perm => perm.startsWith(section + '.') || perm.startsWith(section + '_'));
 }
 function canSeeItem(item, section) {
     if (isAdmin()) return true;
-    return hasPerm(item) || hasPerm(section);
+    return hasPerm(item) || hasPerm(section) || hasPerm(section + '.editar') || hasPerm(section + '.eliminar');
 }
 function canEdit(item, section) {
     if (isAdmin()) return true;
