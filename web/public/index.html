@@ -10,78 +10,83 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/variables.css">
-    <link rel="stylesheet" href="/css/base.css">
-    <link rel="stylesheet" href="/css/components.css">
-    <link rel="stylesheet" href="/css/layout.css">
-    <style>
-        .login-container{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-        .selector-container{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-        .login-box,.selector-box{background:white;border-radius:var(--radius-xl);padding:var(--space-8);width:100%;max-width:400px;box-shadow:var(--shadow-lg);text-align:center}
-        .login-box h1{font-size:1.5rem;margin:var(--space-4) 0 var(--space-1)}
-        .login-logo{width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));border-radius:var(--radius-xl);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;color:var(--primary);margin:0 auto;box-shadow:0 4px 12px rgba(245,158,11,0.3)}
-        .selector-box h2{font-size:1.25rem;margin-bottom:var(--space-1)}
-        .selector-box .sub{color:var(--text-secondary);font-size:0.875rem;margin-bottom:var(--space-6)}
-        .module-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-4)}
-        .module-card{padding:var(--space-5);border:2px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;transition:all var(--transition-base);text-align:center}
-        .module-card:hover{border-color:var(--glass);background:var(--glass-light);transform:translateY(-2px)}
-        .module-card .icon{font-size:2rem;margin-bottom:var(--space-2)}
-        .module-card .name{font-weight:600;font-size:0.875rem}
-        .user-avatar{width:56px;height:56px;background:var(--glass);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1.25rem;font-weight:700;margin:0 auto var(--space-4)}
-    </style>
 </head>
-<body>
+<body style="margin:0;padding:0;font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh">
+
     <!-- LOGIN -->
-    <div class="login-container" id="loginScreen">
-        <div class="login-box">
-            <div class="login-logo">S</div>
-            <h1>VitroFlow</h1>
-            <p class="subtitle">Mantencion + Inventario</p>
-            <div id="loginError" class="alert-danger" style="display:none;"></div>
+    <div id="loginScreen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);position:relative;overflow:hidden">
+        <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);border-radius:50%"></div>
+        <div style="position:absolute;bottom:-60px;left:-60px;width:250px;height:250px;background:radial-gradient(circle,rgba(245,158,11,0.1) 0%,transparent 70%);border-radius:50%"></div>
+
+        <div style="background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;position:relative;z-index:1;animation:vfFadeUp 0.6s ease both">
+            <div style="width:64px;height:64px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;color:white;margin:0 auto 16px;box-shadow:0 4px 16px rgba(245,158,11,0.4)">S</div>
+            <h1 style="margin:0 0 4px;font-size:24px;font-weight:800;color:#0f172a;letter-spacing:-0.5px">VitroFlow</h1>
+            <p style="margin:0 0 24px;font-size:13px;color:#64748b;font-weight:500">Mantencion + Inventario</p>
+
+            <div id="loginError" style="display:none;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;color:#ef4444;font-size:12px;font-weight:500;margin-bottom:16px"></div>
+
             <form onsubmit="doLogin(event)">
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="loginEmail" class="form-control" placeholder="admin@vidrieria.com" required>
+                <div style="margin-bottom:14px;text-align:left">
+                    <label style="display:block;font-size:12px;font-weight:600;color:#334155;margin-bottom:6px">Email</label>
+                    <input type="email" id="loginEmail" placeholder="admin@templaglass.cl" required style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none;transition:all 0.2s;box-sizing:border-box;background:#f8fafc" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)';this.style.background='white'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none';this.style.background='#f8fafc'">
                 </div>
-                <div class="form-group">
-                    <label>Contrasena</label>
-                    <input type="password" id="loginPassword" class="form-control" placeholder="Tu contrasena" required>
+                <div style="margin-bottom:20px;text-align:left">
+                    <label style="display:block;font-size:12px;font-weight:600;color:#334155;margin-bottom:6px">Contrasena</label>
+                    <input type="password" id="loginPassword" placeholder="Tu contrasena" required style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none;transition:all 0.2s;box-sizing:border-box;background:#f8fafc" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)';this.style.background='white'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none';this.style.background='#f8fafc'">
                 </div>
-                <button type="submit" class="btn btn-primary" id="loginBtn">Iniciar Sesion</button>
+                <button type="submit" id="loginBtn" style="width:100%;padding:12px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 16px rgba(59,130,246,0.3);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(59,130,246,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(59,130,246,0.3)'">Iniciar Sesion</button>
             </form>
         </div>
     </div>
 
     <!-- SELECTOR DE MODULO -->
-    <div class="selector-container" id="selectorScreen" style="display:none;">
-        <div class="selector-box">
-            <div class="user-avatar" id="userAvatar">U</div>
-            <h2>Bienvenido, <span id="userName">Usuario</span></h2>
-            <p class="sub">Selecciona un modulo para continuar</p>
-            <div class="module-grid" id="moduleGrid"></div>
-            <button class="btn btn-outline" onclick="doLogout()" style="margin-top:8px;">Cerrar Sesion</button>
+    <div id="selectorScreen" style="display:none;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);position:relative;overflow:hidden">
+        <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;background:radial-gradient(circle,rgba(59,130,246,0.15) 0%,transparent 70%);border-radius:50%"></div>
+
+        <div style="background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:20px;padding:36px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;position:relative;z-index:1;animation:vfFadeUp 0.6s ease both">
+            <div id="userAvatar" style="width:56px;height:56px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1.25rem;font-weight:700;margin:0 auto 14px;box-shadow:0 4px 12px rgba(59,130,246,0.3)">U</div>
+            <h2 style="margin:0 0 4px;font-size:20px;font-weight:700;color:#0f172a">Bienvenido, <span id="userName">Usuario</span></h2>
+            <p style="margin:0 0 24px;font-size:13px;color:#64748b">Selecciona un modulo para continuar</p>
+
+            <div id="moduleGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px"></div>
+
+            <button onclick="doLogout()" style="padding:10px 20px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;color:#64748b;transition:all 0.2s" onmouseover="this.style.background='#f1f5f9';this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='#f8fafc';this.style.borderColor='#e2e8f0'">Cerrar Sesion</button>
         </div>
     </div>
 
     <!-- ADMIN PANEL -->
-    <div class="admin-container" id="adminScreen" style="display:none;">
-        <div class="admin-header">
-            <h1>Panel de Administracion</h1>
-            <button class="btn btn-success btn-sm" onclick="showSelector()" style="padding:8px 18px;font-size:14px;">Volver a menu</button>
+    <div id="adminScreen" style="display:none;min-height:100vh;background:#f1f5f9">
+        <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);padding:28px 32px;position:relative;overflow:hidden">
+            <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;max-width:1100px;margin:0 auto">
+                <div>
+                    <h1 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Panel de Administracion</h1>
+                    <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestionar usuarios y permisos del sistema</p>
+                </div>
+                <button onclick="showSelector()" style="padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>Volver a menu</button>
+            </div>
         </div>
-        <div class="admin-body">
-            <div class="admin-card">
-                <div class="admin-card-header">
-                    <h2>Usuarios</h2>
+        <div style="max-width:1100px;margin:24px auto;padding:0 16px">
+            <div style="background:white;border-radius:14px;padding:24px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+                    <h2 style="margin:0;font-size:16px;font-weight:700;color:#0f172a">Usuarios</h2>
                     <div style="display:flex;gap:8px">
-                        <button class="btn btn-success btn-sm" onclick="showUserForm()">+ Nuevo Usuario</button>
-                        <button class="btn btn-outline btn-sm" onclick="exportUsers()">Exportar TXT</button>
+                        <button onclick="showUserForm()" style="padding:8px 16px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(34,197,94,0.3);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">+ Nuevo</button>
+                        <button onclick="exportUsers()" style="padding:8px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;color:#475569;transition:all 0.2s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">Exportar</button>
                     </div>
                 </div>
-                <table class="admin-table">
-                    <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Permisos</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody id="usersTable"></tbody>
-                </table>
+                <div style="overflow-x:auto">
+                    <table style="width:100%;font-size:13px;border-collapse:collapse">
+                        <thead><tr>
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Nombre</th>
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Email</th>
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Rol</th>
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Estado</th>
+                            <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Acciones</th>
+                        </tr></thead>
+                        <tbody id="usersTable"><tr><td colspan="5" style="text-align:center;padding:40px;color:#94a3b8">Cargando...</td></tr></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -90,13 +95,20 @@
     <div id="inventarioApp" style="display:none;"></div>
 
     <!-- MODAL -->
-    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
-        <div class="modal">
-            <h3 id="modalTitle"></h3>
-            <div id="modalBody"></div>
-            <div class="modal-actions" id="modalActions"></div>
+    <div id="modalOverlay" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeModal()">
+        <div onclick="event.stopPropagation()" style="background:white;border-radius:16px;width:90%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+            <div style="padding:24px 28px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">
+                <h3 id="modalTitle" style="margin:0;font-size:18px;font-weight:700;color:#0f172a"></h3>
+                <button onclick="closeModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8;line-height:1">&times;</button>
+            </div>
+            <div id="modalBody" style="padding:24px 28px"></div>
+            <div id="modalActions" style="padding:16px 28px 24px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #e2e8f0"></div>
         </div>
     </div>
+
+    <style>
+        @keyframes vfFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    </style>
 
     <script>
         const USER_KEY = 'unified_user';
@@ -135,23 +147,25 @@
             const grid = document.getElementById('moduleGrid');
             
             const modules = [
-                { key: 'sigma', icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`, iconBg: '#10b981', title: 'SIGMA', desc: 'Mantenimiento preventivo y correctivo de maquinaria', href: '/sigma/' },
-                { key: 'inventario', icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`, iconBg: '#3b82f6', title: 'Inventario', desc: 'Control de stock, entradas y salidas de cristales', href: '/inventario/' },
-                { key: 'turnos', icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>`, iconBg: '#f59e0b', title: 'Turnos QR', desc: 'Sistema de turnos con codigo QR en tiempo real', href: '/turnos/' },
-                { key: 'pedidos', icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`, iconBg: '#ec4899', title: 'Pedidos', desc: 'Gestión de pedidos y documentos PDF', href: '/pedidos/' },
-                { key: 'usuarios', icon: `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`, iconBg: '#8b5cf6', title: 'Usuarios', desc: 'Gestionar usuarios y permisos del sistema', action: 'admin' }
+                { key: 'sigma', icon: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`, iconBg: '#10b981', title: 'SIGMA', desc: 'Mantenimiento preventivo y correctivo', href: '/sigma/' },
+                { key: 'inventario', icon: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`, iconBg: '#3b82f6', title: 'Inventario', desc: 'Control de stock y cristales', href: '/inventario/' },
+                { key: 'turnos', icon: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>`, iconBg: '#f59e0b', title: 'Turnos QR', desc: 'Sistema de turnos en tiempo real', href: '/turnos/' },
+                { key: 'pedidos', icon: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`, iconBg: '#ec4899', title: 'Pedidos', desc: 'Gestion de pedidos y PDF', href: '/pedidos/' },
+                { key: 'usuarios', icon: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`, iconBg: '#8b5cf6', title: 'Usuarios', desc: 'Gestionar usuarios y permisos', action: 'admin' }
             ];
 
             grid.innerHTML = '';
             
             for (const mod of modules) {
-                if (permisos.includes(mod.key)) {
+                if (permisos.includes(mod.key) || permisos.some(p => p.startsWith(mod.key + '_'))) {
                     const card = document.createElement('div');
-                    card.className = 'module-card';
+                    card.style.cssText = 'padding:20px;border:1.5px solid #e2e8f0;border-radius:14px;cursor:pointer;transition:all 0.2s;text-align:center;background:white';
+                    card.onmouseover = function() { this.style.borderColor='#3b82f6'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(59,130,246,0.12)'; };
+                    card.onmouseout = function() { this.style.borderColor='#e2e8f0'; this.style.transform=''; this.style.boxShadow=''; };
                     card.innerHTML = `
-                        <div class="module-icon" style="background:${mod.iconBg}">${mod.icon}</div>
-                        <h3>${mod.title}</h3>
-                        <p>${mod.desc}</p>
+                        <div style="width:48px;height:48px;background:${mod.iconBg};border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:white;box-shadow:0 4px 12px ${mod.iconBg}33">${mod.icon}</div>
+                        <h3 style="margin:0 0 4px;font-size:14px;font-weight:700;color:#0f172a">${mod.title}</h3>
+                        <p style="margin:0;font-size:11px;color:#64748b;line-height:1.4">${mod.desc}</p>
                     `;
                     
                     if (mod.action === 'admin') {
@@ -174,6 +188,7 @@
             
             btn.textContent = 'Ingresando...';
             btn.disabled = true;
+            btn.style.opacity = '0.7';
             errDiv.style.display = 'none';
             
             try {
@@ -192,6 +207,7 @@
             } finally {
                 btn.textContent = 'Iniciar Sesion';
                 btn.disabled = false;
+                btn.style.opacity = '1';
             }
         }
 
@@ -213,17 +229,26 @@
                 const res = await fetch('/api/admin/usuarios');
                 const users = await res.json();
                 const tbody = document.getElementById('usersTable');
-                tbody.innerHTML = users.map(u => `<tr>
-                    <td><strong>${u.nombre}</strong></td>
-                    <td>${u.email}</td>
-                    <td><span class="badge badge-${u.rol}">${u.rol}</span></td>
-                    <td>${(u.permisos||[]).map(p => `<span class="badge badge-${p}">${p}</span>`).join(' ') || 'Sin permisos'}</td>
-                    <td><span class="badge badge-${u.activo ? 'active' : 'inactive'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
-                    <td>
-                        <button class="btn btn-outline btn-sm" onclick="showUserForm(${u.id})">Editar</button>
-                        ${u.rol !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">Eliminar</button>` : ''}
-                    </td>
-                </tr>`).join('');
+                if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:#94a3b8">Sin usuarios</td></tr>'; return; }
+                tbody.innerHTML = users.map(u => {
+                    const rolBadge = u.rol === 'admin'
+                        ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed">admin</span>'
+                        : '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#f1f5f9;color:#64748b">usuario</span>';
+                    const estadoBadge = u.activo !== false
+                        ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#dcfce7;color:#16a34a"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Activo</span>'
+                        : '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#fee2e2;color:#ef4444"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Inactivo</span>';
+                    return `<tr style="border-bottom:1px solid #f1f5f9">
+                        <td style="padding:12px"><strong style="color:#0f172a">${u.nombre}</strong></td>
+                        <td style="padding:12px;font-size:13px;color:#64748b">${u.email}</td>
+                        <td style="padding:12px">${rolBadge}</td>
+                        <td style="padding:12px">${estadoBadge}</td>
+                        <td style="padding:12px;white-space:nowrap">
+                            <div style="display:flex;gap:6px">
+                                <button onclick="showUserForm(${u.id})" style="padding:6px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:#475569;font-family:inherit;transition:all 0.2s" onmouseover="this.style.background='#eff6ff';this.style.borderColor='#3b82f6';this.style.color='#3b82f6'" onmouseout="this.style.background='#f8fafc';this.style.borderColor='#e2e8f0';this.style.color='#475569'">Editar</button>
+                                ${u.rol !== 'admin' ? `<button onclick="deleteUser(${u.id})" style="padding:6px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;color:#ef4444;font-family:inherit;transition:all 0.2s" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">Eliminar</button>` : ''}
+                            </div>
+                        </td></tr>`;
+                }).join('');
             } catch(e) { console.error(e); }
         }
 
@@ -239,29 +264,30 @@
             const up = getPermisos(user);
             document.getElementById('modalTitle').textContent = id ? 'Editar Usuario' : 'Nuevo Usuario';
             document.getElementById('modalBody').innerHTML = `
-                <div class="form-group"><label>Nombre</label><input class="form-control" id="fNombre" value="${user.nombre}"></div>
-                <div class="form-group"><label>Email</label><input class="form-control" id="fEmail" type="email" value="${user.email}"></div>
-                <div class="form-group"><label>${id ? 'Nueva contrasena (dejar vacio para no cambiar)' : 'Contrasena'}</label><input class="form-control" id="fPassword" type="password" ${id ? '' : 'required'}></div>
-                <div class="form-group"><label>Rol</label>
-                    <select class="form-control" id="fRol">
-                        <option value="usuario" ${user.rol==='usuario'?'selected':''}>Usuario</option>
-                        <option value="admin" ${user.rol==='admin'?'selected':''}>Administrador</option>
-                    </select>
-                </div>
-                <div class="form-group"><label>Modulos permitidos</label>
-                    <div class="check-grid">
-                        <label class="check-label"><input type="checkbox" class="perm-check" value="sigma" ${up.includes('sigma')?'checked':''}> Mantencion (SIGMA)</label>
-                        <label class="check-label"><input type="checkbox" class="perm-check" value="inventario" ${up.includes('inventario')?'checked':''}> Inventario</label>
-                        <label class="check-label"><input type="checkbox" class="perm-check" value="turnos" ${up.includes('turnos')?'checked':''}> Turnos QR</label>
-                        <label class="check-label"><input type="checkbox" class="perm-check" value="pedidos" ${up.includes('pedidos')?'checked':''}> Pedidos</label>
-                        <label class="check-label"><input type="checkbox" class="perm-check" value="pedidos.autorizar" ${up.includes('pedidos.autorizar')?'checked':''}> Autorizar Pedidos</label>
-                        <label class="check-label"><input type="checkbox" class="perm-check" value="usuarios" ${up.includes('usuarios')?'checked':''}> Administrar Usuarios</label>
+                <div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">Nombre</label>
+                <input class="form-control" id="fNombre" value="${user.nombre}" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"></div>
+                <div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">Email</label>
+                <input class="form-control" id="fEmail" type="email" value="${user.email}" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"></div>
+                <div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">${id ? 'Nueva contrasena (dejar vacio para no cambiar)' : 'Contrasena'}</label>
+                <input class="form-control" id="fPassword" type="password" ${id ? '' : 'required'} style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box"></div>
+                <div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">Rol</label>
+                <select class="form-control" id="fRol" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:white">
+                    <option value="usuario" ${user.rol==='usuario'?'selected':''}>Usuario</option>
+                    <option value="admin" ${user.rol==='admin'?'selected':''}>Administrador</option>
+                </select></div>
+                <div style="margin-bottom:4px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px;color:#334155">Modulos permitidos</label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-check" value="sigma" ${up.includes('sigma')?'checked':''} style="accent-color:#3b82f6"> Mantencion</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-check" value="inventario" ${up.includes('inventario')?'checked':''} style="accent-color:#3b82f6"> Inventario</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-check" value="turnos" ${up.includes('turnos')?'checked':''} style="accent-color:#3b82f6"> Turnos QR</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-check" value="pedidos" ${up.includes('pedidos')?'checked':''} style="accent-color:#3b82f6"> Pedidos</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-check" value="usuarios" ${up.includes('usuarios')?'checked':''} style="accent-color:#3b82f6"> Usuarios</label>
                     </div>
                 </div>`;
             document.getElementById('modalActions').innerHTML = `
-                <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-                <button class="btn btn-primary" style="width:auto" onclick="saveUser(${id || 0})">${id ? 'Actualizar' : 'Crear'}</button>`;
-            document.getElementById('modalOverlay').classList.add('show');
+                <button onclick="closeModal()" style="padding:10px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;font-family:inherit">Cancelar</button>
+                <button onclick="saveUser(${id || 0})" style="padding:10px 24px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(59,130,246,0.3)">${id ? 'Actualizar' : 'Crear'}</button>`;
+            document.getElementById('modalOverlay').style.display = 'flex';
         }
 
         async function saveUser(id) {
@@ -294,7 +320,7 @@
             window.open('/api/admin/usuarios/export', '_blank');
         }
 
-        function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+        function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
 
         // Init
         if (new URLSearchParams(window.location.search).get('admin') === '1' && getUser()) openAdmin();
