@@ -119,5 +119,44 @@
 
     <!-- Asistencia Module -->
     <script src="/js/asistencia.js"></script>
+
+    <!-- Asistencia Modals -->
+    <div class="modal-overlay" id="modalPermiso">
+        <div class="modal">
+            <div class="modal-header"><h3>Nuevo Permiso</h3><button class="modal-close" onclick="Asistencia.cerrarModalPermiso()">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Trabajador</label><select id="permiso-trabajador" class="form-control"><option value="">Seleccionar...</option></select></div>
+                <div class="form-group"><label>Tipo</label><select id="permiso-tipo" class="form-control"><option value="medico">Médico</option><option value="personal">Personal</option><option value="familiar">Familiar</option><option value="otro">Otro</option></select></div>
+                <div class="form-row"><div class="form-group"><label>Inicio</label><input type="date" id="permiso-inicio" class="form-control"></div><div class="form-group"><label>Fin</label><input type="date" id="permiso-fin" class="form-control"></div></div>
+                <div class="form-group"><label>Motivo</label><textarea id="permiso-motivo" class="form-control" rows="3"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" onclick="Asistencia.cerrarModalPermiso()">Cancelar</button><button class="btn btn-primary" onclick="Asistencia.guardarPermiso()">Guardar</button></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="modalLicencia">
+        <div class="modal">
+            <div class="modal-header"><h3>Nueva Licencia Médica</h3><button class="modal-close" onclick="Asistencia.cerrarModalLicencia()">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Trabajador</label><select id="licencia-trabajador" class="form-control"><option value="">Seleccionar...</option></select></div>
+                <div class="form-row"><div class="form-group"><label>Inicio</label><input type="date" id="licencia-inicio" class="form-control"></div><div class="form-group"><label>Fin</label><input type="date" id="licencia-fin" class="form-control"></div></div>
+                <div class="form-group"><label>Diagnóstico</label><input type="text" id="licencia-diagnostico" class="form-control"></div>
+                <div class="form-group"><label>Médico</label><input type="text" id="licencia-medico" class="form-control"></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" onclick="Asistencia.cerrarModalLicencia()">Cancelar</button><button class="btn btn-primary" onclick="Asistencia.guardarLicencia()">Guardar</button></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="modalVacacion">
+        <div class="modal">
+            <div class="modal-header"><h3>Nueva Vacación</h3><button class="modal-close" onclick="Asistencia.cerrarModalVacacion()">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Trabajador</label><select id="vacacion-trabajador" class="form-control"><option value="">Seleccionar...</option></select></div>
+                <div class="form-row"><div class="form-group"><label>Inicio</label><input type="date" id="vacacion-inicio" class="form-control"></div><div class="form-group"><label>Fin</label><input type="date" id="vacacion-fin" class="form-control"></div></div>
+                <div class="form-group"><label>Días</label><input type="number" id="vacacion-dias" class="form-control" min="1"></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline" onclick="Asistencia.cerrarModalVacacion()">Cancelar</button><button class="btn btn-primary" onclick="Asistencia.guardarVacacion()">Guardar</button></div>
+        </div>
+    </div>
+
+
 </body>
 </html>

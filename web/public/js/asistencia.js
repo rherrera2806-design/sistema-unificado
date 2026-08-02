@@ -5,286 +5,191 @@
 const Asistencia = {
     trabajadores: [],
     asistenciaHoy: [],
-    loaded: false,
-    
-    // ── Render (para App.registerModule) ──
+    currentTab: 'diaria',
+
     async render() {
-        const page = document.getElementById('page-asistencia');
-        if (!page) return;
-        
-        page.innerHTML = `
-            <div style="padding: var(--space-6); max-width: 1200px; margin: 0 auto;">
-                <div class="asistencia-hero">
-                    <h1>Control de Asistencia</h1>
-                    <p class="subtitle">Gestión diaria de asistencia, permisos y vacaciones</p>
-                </div>
-                
-                <div class="tab-nav">
-                    <button class="tab-btn active" onclick="Asistencia.showTab('diaria')">Asistencia Diaria</button>
-                    <button class="tab-btn" onclick="Asistencia.showTab('calendario')">Calendario Mensual</button>
-                    <button class="tab-btn" onclick="Asistencia.showTab('permisos')">Permisos</button>
-                    <button class="tab-btn" onclick="Asistencia.showTab('licencias')">Licencias Médicas</button>
-                    <button class="tab-btn" onclick="Asistencia.showTab('vacaciones')">Vacaciones</button>
-                    <button class="tab-btn" onclick="Asistencia.showTab('reportes')">Reportes & Rankings</button>
-                </div>
-                
-                <div id="asistencia-content"></div>
-            </div>
-        `;
-        
-        await this.loadTabContent('diaria');
+        const el = document.getElementById('page-asistencia');
+        if (!el) return;
+
+        el.innerHTML = '<style>'
+            + '@keyframes astFadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}'
+            + '.ast-card{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}'
+            + '.ast-card:hover{transform:translateY(-2px)!important;box-shadow:0 8px 20px rgba(0,0,0,0.1)!important}'
+            + '.ast-row{transition:all 0.15s ease;border-left:3px solid transparent}'
+            + '.ast-row:hover{background:#f8fafc!important;border-left-color:#3b82f6}'
+            + '.ast-tab{padding:8px 18px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white;color:#64748b;cursor:pointer;transition:all 0.15s}'
+            + '.ast-tab:hover{border-color:#93c5fd;color:#3b82f6}'
+            + '.ast-tab.active{background:linear-gradient(135deg,#1e40af,#2563eb);color:white;border-color:#1e40af;box-shadow:0 2px 8px rgba(30,64,175,0.3)}'
+            + '.ast-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.3px}'
+            + '.ast-btn{padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s}'
+            + '.ast-btn:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.12)}'
+            + '.ast-input{padding:9px 14px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;outline:none;transition:all 0.15s;font-family:inherit}'
+            + '.ast-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}'
+            + '.ast-worker{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #f1f5f9;transition:all 0.15s}'
+            + '.ast-worker:last-child{border-bottom:none}'
+            + '.ast-worker:hover{background:#f8fafc}'
+            + '.ast-avatar{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:white;flex-shrink:0}'
+            + '.ast-podium{display:flex;justify-content:center;align-items:flex-end;gap:20px;margin:24px 0}'
+            + '.ast-rank{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-align:center;transition:all 0.2s;min-width:160px}'
+            + '.ast-rank:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}'
+            + '.ast-cal-header{display:grid;border-bottom:2px solid #e2e8f0;background:#f8fafc}'
+            + '.ast-cal-row{display:grid;border-bottom:1px solid #f1f5f9}'
+            + '.ast-cal-cell{padding:4px;text-align:center;font-size:10px;display:flex;align-items:center;justify-content:center;min-height:28px}'
+            + '.ast-cal-cell.presente{background:#d1fae5}.ast-cal-cell.falta{background:#fee2e2;color:#dc2626;font-weight:700}'
+            + '.ast-cal-cell.vacaciones{background:#dbeafe;color:#2563eb}.ast-cal-cell.licencia{background:#fef3c7;color:#d97706}'
+            + '.ast-cal-cell.fin-semana{background:#f8fafc}.ast-cal-cell.hoy{outline:2px solid #3b82f6;outline-offset:-2px}'
+            + '@media(max-width:768px){.ast-podium{flex-direction:column;align-items:center}}'
+            + '</style>'
+
+            // Hero
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:absolute;bottom:-50px;left:30%;width:250px;height:160px;background:radial-gradient(circle,rgba(245,158,11,0.12) 0%,transparent 70%);border-radius:50%"></div>'
+            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
+            + '<div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Control de Asistencia</h2>'
+            + '<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestión diaria de asistencia, permisos y vacaciones</p></div>'
+            + '<div id="ast-hero-date" style="background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);padding:8px 16px;border-radius:8px;color:white;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,0.2)"></div>'
+            + '</div></div>'
+
+            // Tabs
+            + '<div id="ast-tabs" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"></div>'
+
+            // Content
+            + '<div id="ast-content"></div>';
+
+        this.renderTabs();
+        this.setHeroDate();
+        this.showTab('diaria');
     },
-    
+
+    renderTabs() {
+        const tabs = [
+            { id: 'diaria', label: 'Asistencia Diaria', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>' },
+            { id: 'calendario', label: 'Calendario', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' },
+            { id: 'permisos', label: 'Permisos', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' },
+            { id: 'licencias', label: 'Licencias', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' },
+            { id: 'vacaciones', label: 'Vacaciones', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>' },
+            { id: 'reportes', label: 'Reportes', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>' }
+        ];
+
+        document.getElementById('ast-tabs').innerHTML = tabs.map(t =>
+            `<button class="ast-tab${t.id === this.currentTab ? ' active' : ''}" onclick="Asistencia.showTab('${t.id}')" style="display:inline-flex;align-items:center;gap:6px">${t.icon}${t.label}</button>`
+        ).join('');
+    },
+
     showTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        event.target.classList.add('active');
-        this.loadTabContent(tab);
+        this.currentTab = tab;
+        document.querySelectorAll('.ast-tab').forEach(el => el.classList.remove('active'));
+        event.target.closest('.ast-tab')?.classList.add('active');
+        this.renderTabs();
+
+        const c = document.getElementById('ast-content');
+        if (tab === 'diaria') this.renderDiaria(c);
+        else if (tab === 'calendario') this.renderCalendarioTab(c);
+        else if (tab === 'permisos') this.renderPermisosTab(c);
+        else if (tab === 'licencias') this.renderLicenciasTab(c);
+        else if (tab === 'vacaciones') this.renderVacacionesTab(c);
+        else if (tab === 'reportes') this.renderReportesTab(c);
     },
-    
-    async loadTabContent(tab) {
-        const container = document.getElementById('asistencia-content');
-        if (!container) return;
-        
-        if (tab === 'diaria') {
-            container.innerHTML = this.getTabDiaria();
-            await this.init();
-        } else if (tab === 'calendario') {
-            container.innerHTML = this.getTabCalendario();
-            this.setCalendarioFecha();
-            await this.cargarCalendario();
-        } else if (tab === 'permisos') {
-            container.innerHTML = this.getTabPermisos();
-            document.getElementById('filtro-mes-permiso').value = new Date().getMonth() + 1;
-            await this.cargarPermisos();
-        } else if (tab === 'licencias') {
-            container.innerHTML = this.getTabLicencias();
-            document.getElementById('filtro-mes-licencia').value = new Date().getMonth() + 1;
-            await this.cargarLicencias();
-        } else if (tab === 'vacaciones') {
-            container.innerHTML = this.getTabVacaciones();
-            await this.cargarVacaciones();
-        } else if (tab === 'reportes') {
-            container.innerHTML = this.getTabReportes();
-            document.getElementById('filtro-mes-reporte').value = new Date().getMonth() + 1;
-        }
+
+    setHeroDate() {
+        const d = new Date();
+        const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        document.getElementById('ast-hero-date').innerHTML = dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()];
     },
-    
-    getTabDiaria() {
-        return `
-            <div class="stats-grid">
-                <div class="stat-card" data-accent="green">
-                    <div class="stat-icon green">✓</div>
-                    <div class="stat-info"><h4 id="stat-presentes">0</h4><p>Presentes</p></div>
+
+    // ═══════ ASISTENCIA DIARIA ═══════
+    async renderDiaria(c) {
+        c.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #22c55e;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 0ms both">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div><div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Presentes</div></div>
+                    <div id="ast-stat-presentes" style="font-size:28px;font-weight:800;color:#059669;line-height:1">0</div>
                 </div>
-                <div class="stat-card" data-accent="red">
-                    <div class="stat-icon red">✗</div>
-                    <div class="stat-info"><h4 id="stat-faltas">0</h4><p>Faltas</p></div>
+                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div><div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Faltas</div></div>
+                    <div id="ast-stat-faltas" style="font-size:28px;font-weight:800;color:#dc2626;line-height:1">0</div>
                 </div>
-                <div class="stat-card" data-accent="blue">
-                    <div class="stat-icon blue">👥</div>
-                    <div class="stat-info"><h4 id="stat-total">0</h4><p>Total</p></div>
+                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Total</div></div>
+                    <div id="ast-stat-total" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">0</div>
                 </div>
             </div>
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h3>Registrar Asistencia</h3>
-                    <div class="flex items-center gap-3">
-                        <input type="date" id="fecha-selector" class="form-control" style="width:auto">
-                        <button class="btn btn-primary" onclick="Asistencia.cargarAsistencia()">Cargar</button>
+
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:20px;animation:astFadeUp 0.4s ease 180ms both">
+                <div style="padding:18px 22px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg></div>
+                        <div><h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Lista de Trabajadores</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Marca faltas del día</p></div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <input type="date" id="ast-fecha" class="ast-input" style="width:auto">
+                        <button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3)">Cargar</button>
                     </div>
                 </div>
-                <div class="card-body"><div id="trabajadores-list"></div></div>
+                <div id="ast-trabajadores" style="max-height:500px;overflow-y:auto"></div>
             </div>
-            <div class="card">
-                <div class="card-header"><h3>Faltas del Día</h3><span class="badge badge-danger" id="badge-dia">0 faltas</span></div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="admin-table">
-                            <thead><tr><th>Trabajador</th><th>RUT</th><th>Estado</th><th>Acción</th></tr></thead>
-                            <tbody id="tabla-asistencia"><tr><td colspan="4" class="text-center text-muted">Cargando...</td></tr></tbody>
-                        </table>
+
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 240ms both">
+                <div style="padding:18px 22px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+                        <div><h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Faltas del Día</h3></div>
                     </div>
+                    <span id="ast-badge-faltas" style="background:#fee2e2;color:#dc2626;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700">0 faltas</span>
                 </div>
-            </div>
-        `;
-    },
-    
-    getTabCalendario() {
-        return `
-            <div class="page-header">
-                <div><h2>Calendario Mensual</h2><p class="subtitle">Vista general de asistencia, vacaciones y licencias</p></div>
-                <div class="flex gap-3">
-                    <select id="cal-mes" class="form-control" style="width:auto">
-                        <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
-                        <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
-                        <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
-                        <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-                    </select>
-                    <select id="cal-anio" class="form-control" style="width:auto">
-                        <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
-                    </select>
-                    <button class="btn btn-primary" onclick="Asistencia.cargarCalendario()">Cargar</button>
+                <div style="overflow-x:auto">
+                    <table style="width:100%;border-collapse:collapse;font-size:13px">
+                        <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">RUT</th>
+                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                            <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acción</th>
+                        </tr></thead>
+                        <tbody id="ast-tabla-faltas"><tr><td colspan="4" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">Cargando datos...</td></tr></tbody>
+                    </table>
                 </div>
-            </div>
-            <div class="flex gap-4 mb-4 flex-wrap">
-                <div class="flex items-center gap-2"><div style="width:16px;height:16px;border-radius:3px;background:var(--success)"></div><span class="text-sm">Presente</span></div>
-                <div class="flex items-center gap-2"><div style="width:16px;height:16px;border-radius:3px;background:var(--danger)"></div><span class="text-sm">Falta</span></div>
-                <div class="flex items-center gap-2"><div style="width:16px;height:16px;border-radius:3px;background:var(--info)"></div><span class="text-sm">Vacaciones</span></div>
-                <div class="flex items-center gap-2"><div style="width:16px;height:16px;border-radius:3px;background:var(--accent)"></div><span class="text-sm">Licencia Médica</span></div>
-            </div>
-            <div class="card"><div class="card-body" style="overflow-x:auto"><div id="calendario-container"></div></div></div>
-        `;
-    },
-    
-    getTabPermisos() {
-        return `
-            <div class="page-header">
-                <div><h2>Gestión de Permisos</h2><p class="subtitle">Solicitudes de permiso y ausencias</p></div>
-                <button class="btn btn-primary" onclick="Asistencia.abrirModalPermiso()">+ Nuevo Permiso</button>
-            </div>
-            <div class="filters-bar">
-                <select id="filtro-mes-permiso" class="form-control" style="width:auto">
-                    <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
-                    <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
-                    <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
-                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-                </select>
-                <button class="btn btn-outline" onclick="Asistencia.cargarPermisos()">Filtrar</button>
-            </div>
-            <div class="card"><div class="card-body"><div class="table-responsive">
-                <table class="admin-table">
-                    <thead><tr><th>Trabajador</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody id="tabla-permisos"><tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr></tbody>
-                </table>
-            </div></div></div>
-        `;
-    },
-    
-    getTabLicencias() {
-        return `
-            <div class="page-header">
-                <div><h2>Licencias Médicas</h2><p class="subtitle">Control de licencias médicas</p></div>
-                <button class="btn btn-primary" onclick="Asistencia.abrirModalLicencia()">+ Nueva Licencia</button>
-            </div>
-            <div class="filters-bar">
-                <select id="filtro-mes-licencia" class="form-control" style="width:auto">
-                    <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
-                    <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
-                    <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
-                    <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-                </select>
-                <button class="btn btn-outline" onclick="Asistencia.cargarLicencias()">Filtrar</button>
-            </div>
-            <div class="card"><div class="card-body"><div class="table-responsive">
-                <table class="admin-table">
-                    <thead><tr><th>Trabajador</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Diagnóstico</th><th>Médico</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody id="tabla-licencias"><tr><td colspan="8" class="text-center text-muted">Cargando...</td></tr></tbody>
-                </table>
-            </div></div></div>
-        `;
-    },
-    
-    getTabVacaciones() {
-        return `
-            <div class="page-header">
-                <div><h2>Gestión de Vacaciones</h2><p class="subtitle">Control de vacaciones</p></div>
-                <button class="btn btn-primary" onclick="Asistencia.abrirModalVacacion()">+ Nueva Vacación</button>
-            </div>
-            <div class="card"><div class="card-body"><div class="table-responsive">
-                <table class="admin-table">
-                    <thead><tr><th>Trabajador</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Estado</th></tr></thead>
-                    <tbody id="tabla-vacaciones"><tr><td colspan="5" class="text-center text-muted">Cargando...</td></tr></tbody>
-                </table>
-            </div></div></div>
-        `;
-    },
-    
-    getTabReportes() {
-        return `
-            <div class="page-header">
-                <div><h2>Reportes y Rankings</h2><p class="subtitle">Análisis mensual</p></div>
-                <div class="flex gap-3">
-                    <select id="filtro-mes-reporte" class="form-control" style="width:auto">
-                        <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
-                        <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
-                        <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
-                        <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-                    </select>
-                    <button class="btn btn-primary" onclick="Asistencia.cargarReportes()">Generar</button>
-                </div>
-            </div>
-            <div class="mb-6"><h3 class="mb-4">Top Asistencia</h3><div id="ranking-asistencia" class="podium"></div></div>
-            <div class="card"><div class="card-header"><h3>Reporte Mensual</h3></div><div class="card-body"><div class="table-responsive">
-                <table class="admin-table">
-                    <thead><tr><th>#</th><th>Trabajador</th><th>Asistidos</th><th>Faltas</th><th>Permisos</th><th>Lic. Médicas</th><th>Vacaciones</th><th>% Asistencia</th></tr></thead>
-                    <tbody id="tabla-reporte"><tr><td colspan="8" class="text-center text-muted">Selecciona un mes</td></tr></tbody>
-                </table>
-            </div></div></div>
-        `;
-    },
-    
-    // ── Inicialización ──
-    async init() {
-        this.setFechaActual();
+            </div>`;
+
+        document.getElementById('ast-fecha').value = new Date().toISOString().split('T')[0];
         await this.cargarTrabajadores();
         await this.cargarAsistencia();
     },
-    
-    setFechaActual() {
-        const hoy = new Date().toISOString().split('T')[0];
-        const fs = document.getElementById('fecha-selector');
-        if (fs) fs.value = hoy;
-    },
-    
-    setCalendarioFecha() {
-        const hoy = new Date();
-        document.getElementById('cal-mes').value = hoy.getMonth();
-        document.getElementById('cal-anio').value = hoy.getFullYear();
-    },
-    
-    // ── Trabajadores ──
+
     async cargarTrabajadores() {
         try {
             const r = await fetch('/api/asistencia/trabajadores');
             this.trabajadores = await r.json();
             this.renderTrabajadores();
             this.llenarSelectores();
-        } catch(e) {
-            console.error('Error cargando trabajadores:', e);
-        }
+        } catch(e) { console.error('Error:', e); }
     },
-    
+
     renderTrabajadores() {
-        const container = document.getElementById('trabajadores-list');
-        if (!container) return;
-        
-        container.innerHTML = this.trabajadores.map(t => {
+        const c = document.getElementById('ast-trabajadores');
+        if (!c) return;
+        c.innerHTML = this.trabajadores.map((t, i) => {
             const falta = this.asistenciaHoy.find(a => a.trabajador_id === t.id);
-            const iniciales = t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2);
-            
-            return `
-                <div class="trabajador-item">
-                    <div class="trabajador-avatar">${iniciales}</div>
-                    <div class="trabajador-info">
-                        <div class="trabajador-name">${t.nombre}</div>
-                        <div class="trabajador-rut">${t.rut}</div>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        ${falta ? 
-                            `<span class="badge badge-danger">Falta</span>
-                             <button class="check-btn" style="background:var(--success);color:white" 
-                                     onclick="Asistencia.marcar(${t.id}, false)">✓ Corregir</button>` :
-                            `<span class="badge badge-success">Presente</span>
-                             <button class="check-btn" style="background:var(--danger);color:white" 
-                                     onclick="Asistencia.marcar(${t.id}, true)">✗ Marcar Falta</button>`
-                        }
-                    </div>
+            const ini = t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2);
+            const colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#6366f1'];
+            const bg = colors[i % colors.length];
+            return `<div class="ast-worker">
+                <div class="ast-avatar" style="background:linear-gradient(135deg,${bg},${bg}dd)">${ini}</div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.nombre}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:1px">${t.rut}</div>
                 </div>
-            `;
+                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+                    ${falta
+                        ? '<span class="ast-badge" style="background:#fee2e2;color:#dc2626">Falta</span><button onclick="Asistencia.marcar(' + t.id + ',false)" class="ast-btn" style="background:#22c55e;color:white;font-size:11px;padding:6px 12px">Corregir</button>'
+                        : '<span class="ast-badge" style="background:#d1fae5;color:#059669">Presente</span><button onclick="Asistencia.marcar(' + t.id + ',true)" class="ast-btn" style="background:#ef4444;color:white;font-size:11px;padding:6px 12px">Marcar Falta</button>'
+                    }
+                </div>
+            </div>`;
         }).join('');
     },
-    
-    // ── Marcar Falta ──
+
     async marcar(trabajadorId, falta) {
         try {
             const r = await fetch('/api/asistencia/marcar', {
@@ -292,624 +197,436 @@ const Asistencia = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ trabajador_id: trabajadorId, falta })
             });
-            
-            if (r.ok) {
-                await this.cargarAsistencia();
-                this.mostrarExito(falta ? 'Falta registrada' : 'Falta eliminada');
-            } else {
-                const e = await r.json();
-                this.mostrarError(e.error);
-            }
-        } catch(e) {
-            this.mostrarError('Error de conexión');
-        }
+            if (r.ok) await this.cargarAsistencia();
+        } catch(e) { console.error('Error:', e); }
     },
-    
-    // ── Asistencia Diaria ──
+
     async cargarAsistencia() {
-        const fecha = document.getElementById('fecha-selector').value;
+        const fecha = document.getElementById('ast-fecha')?.value;
+        if (!fecha) return;
         try {
-            const r = await fetch(`/api/asistencia/diaria?fecha=${fecha}`);
+            const r = await fetch('/api/asistencia/diaria?fecha=' + fecha);
             this.asistenciaHoy = await r.json();
             this.renderTrabajadores();
-            this.renderTablaAsistencia();
+            this.renderTablaFaltas();
             this.actualizarStats();
-        } catch(e) {
-            console.error('Error cargando asistencia:', e);
-        }
+        } catch(e) { console.error('Error:', e); }
     },
-    
-    renderTablaAsistencia() {
-        const tbody = document.getElementById('tabla-asistencia');
-        const badge = document.getElementById('badge-dia');
-        
+
+    renderTablaFaltas() {
+        const tbody = document.getElementById('ast-tabla-faltas');
+        const badge = document.getElementById('ast-badge-faltas');
         if (!tbody) return;
-        
-        const faltas = this.asistenciaHoy.length;
-        badge.textContent = `${faltas} faltas`;
-        
-        if (faltas === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Todos presentes hoy</td></tr>';
+        const f = this.asistenciaHoy;
+        if (badge) badge.textContent = f.length + ' faltas';
+        if (f.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:#22c55e;font-size:13px;font-weight:600">Todos presentes hoy</td></tr>';
             return;
         }
-        
-        tbody.innerHTML = this.asistenciaHoy.map(a => `
-            <tr>
-                <td><strong>${a.nombre}</strong></td>
-                <td class="text-muted">${a.rut}</td>
-                <td><span class="badge badge-danger">Falta</span></td>
-                <td>
-                    <button class="btn btn-sm btn-success" 
-                            onclick="Asistencia.marcar(${a.trabajador_id}, false)">✓ Corregir</button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = f.map(a => '<tr style="border-bottom:1px solid #f1f5f9">'
+            + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + a.nombre + '</strong></td>'
+            + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + a.rut + '</td>'
+            + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#fee2e2;color:#dc2626">Falta</span></td>'
+            + '<td style="padding:12px 16px;text-align:center"><button onclick="Asistencia.marcar(' + a.trabajador_id + ',false)" class="ast-btn" style="background:#22c55e;color:white;font-size:11px">Corregir</button></td>'
+            + '</tr>').join('');
     },
-    
+
     actualizarStats() {
         const total = this.trabajadores.length;
         const faltas = this.asistenciaHoy.length;
-        const presentes = total - faltas;
-        
-        document.getElementById('stat-presentes').textContent = presentes;
-        document.getElementById('stat-faltas').textContent = faltas;
-        document.getElementById('stat-total').textContent = total;
+        const p = document.getElementById('ast-stat-presentes');
+        const f = document.getElementById('ast-stat-faltas');
+        const t = document.getElementById('ast-stat-total');
+        if (p) p.textContent = total - faltas;
+        if (f) f.textContent = faltas;
+        if (t) t.textContent = total;
     },
-    
-    // ── Permisos ──
-    async cargarPermisos() {
-        const mes = document.getElementById('filtro-mes-permiso').value;
-        const anio = new Date().getFullYear();
-        
-        try {
-            const r = await fetch(`/api/asistencia/permisos?mes=${mes}&anio=${anio}`);
-            const permisos = await r.json();
-            this.renderTablaPermisos(permisos);
-        } catch(e) {
-            console.error('Error cargando permisos:', e);
-        }
-    },
-    
-    renderTablaPermisos(permisos) {
-        const tbody = document.getElementById('tabla-permisos');
-        if (!tbody) return;
-        
-        if (permisos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Sin permisos registrados</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = permisos.map(p => {
-            const estadoBadge = p.estado === 'aprobado' ? 'badge-success' : 
-                               p.estado === 'rechazado' ? 'badge-danger' : 'badge-warning';
-            
-            return `
-                <tr>
-                    <td><strong>${p.nombre}</strong></td>
-                    <td>${this.tipoPermisoLabel(p.tipo)}</td>
-                    <td>${this.formatDate(p.fecha_inicio)}</td>
-                    <td>${this.formatDate(p.fecha_fin)}</td>
-                    <td class="text-muted">${p.motivo || '-'}</td>
-                    <td><span class="badge ${estadoBadge}">${p.estado}</span></td>
-                    <td class="table-actions">
-                        ${p.estado === 'pendiente' ? `
-                            <button class="btn btn-sm btn-success" onclick="Asistencia.cambiarEstadoPermiso(${p.id}, 'aprobado')">✓</button>
-                            <button class="btn btn-sm btn-danger" onclick="Asistencia.cambiarEstadoPermiso(${p.id}, 'rechazado')">✗</button>
-                        ` : ''}
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    },
-    
-    async cambiarEstadoPermiso(id, estado) {
-        try {
-            await fetch(`/api/asistencia/permisos/${id}/estado`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ estado })
-            });
-            this.cargarPermisos();
-        } catch(e) {
-            this.mostrarError('Error actualizando permiso');
-        }
-    },
-    
-    tipoPermisoLabel(tipo) {
-        const labels = {
-            medico: 'Permiso Médico',
-            personal: 'Permiso Personal',
-            familiar: 'Permiso Familiar',
-            otro: 'Otro'
-        };
-        return labels[tipo] || tipo;
-    },
-    
-    // ── Calendario Mensual ──
-    async cargarCalendario() {
-        const mes = parseInt(document.getElementById('cal-mes').value) + 1;
-        const anio = document.getElementById('cal-anio').value;
-        
-        try {
-            const r = await fetch(`/api/asistencia/calendario?mes=${mes}&anio=${anio}`);
-            const data = await r.json();
-            this.renderCalendario(data);
-        } catch(e) {
-            console.error('Error cargando calendario:', e);
-        }
-    },
-    
-    renderCalendario(data) {
-        const container = document.getElementById('calendario-container');
-        if (!container) return;
-        
-        const { trabajadores, faltas, vacaciones, licencias, mes, anio } = data;
-        
-        const diasEnMes = new Date(anio, mes, 0).getDate();
-        const primerDia = new Date(anio, mes - 1, 1).getDay();
+
+    // ═══════ CALENDARIO ═══════
+    renderCalendarioTab(c) {
         const hoy = new Date();
-        const diaActual = hoy.getDate();
-        const mesActual = hoy.getMonth() + 1;
-        const anioActual = hoy.getFullYear();
-        
-        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-        
-        let html = '<div class="calendar-scroll">';
-        html += '<div class="calendar-fixed-header">';
-        html += '<div class="worker-row" style="border-bottom:2px solid var(--border)">';
-        html += '<div class="worker-name-cell" style="font-weight:700;background:var(--gray-100)">Trabajador</div>';
-        html += `<div class="worker-days" style="grid-template-columns:repeat(${diasEnMes}, 1fr)">`;
-        
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === hoy.getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
+        let yearOpts = '';
+        for (let y = 2024; y <= 2027; y++) yearOpts += '<option value="' + y + '"' + (y === hoy.getFullYear() ? ' selected' : '') + '>' + y + '</option>';
+
+        c.innerHTML = `
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
+                <div style="padding:18px 22px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg></div>
+                        <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Calendario Mensual</h3>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <select id="ast-cal-mes" class="ast-input" style="width:auto">${opts}</select>
+                        <select id="ast-cal-anio" class="ast-input" style="width:auto">${yearOpts}</select>
+                        <button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white">Cargar</button>
+                    </div>
+                </div>
+                <div style="padding:14px 22px;display:flex;gap:16px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9">
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#d1fae5"></div><span style="font-size:11px;color:#64748b;font-weight:500">Presente</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#fee2e2"></div><span style="font-size:11px;color:#64748b;font-weight:500">Falta</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#dbeafe"></div><span style="font-size:11px;color:#64748b;font-weight:500">Vacaciones</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#fef3c7"></div><span style="font-size:11px;color:#64748b;font-weight:500">Licencia</span></div>
+                </div>
+                <div style="overflow-x:auto;max-height:520px;overflow-y:auto"><div id="ast-calendario"></div></div>
+            </div>`;
+        this.cargarCalendario();
+    },
+
+    async cargarCalendario() {
+        const mes = document.getElementById('ast-cal-mes')?.value;
+        const anio = document.getElementById('ast-cal-anio')?.value;
+        if (!mes || !anio) return;
+        try {
+            const r = await fetch('/api/asistencia/calendario?mes=' + mes + '&anio=' + anio);
+            const data = await r.json();
+            this.renderCalendarioGrid(data);
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    renderCalendarioGrid(data) {
+        const c = document.getElementById('ast-calendario');
+        if (!c) return;
+        const { trabajadores, faltas, vacaciones, licencias, mes, anio } = data;
+        const diasEnMes = new Date(anio, mes, 0).getDate();
+        const hoy = new Date();
+        const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+        let html = '<div class="ast-cal-header" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
+        html += '<div style="padding:10px 12px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #e2e8f0">Trabajador</div>';
         for (let d = 1; d <= diasEnMes; d++) {
             const fecha = new Date(anio, mes - 1, d);
-            const diaSemana = diasSemana[fecha.getDay()];
-            const esFinSemana = fecha.getDay() === 0 || fecha.getDay() === 6;
-            const esHoy = d === diaActual && mes === mesActual && parseInt(anio) === anioActual;
-            
-            html += `<div class="worker-day ${esFinSemana ? 'fin-semana' : ''} ${esHoy ? 'hoy' : ''}" 
-                         style="flex-direction:column;padding:4px 2px">
-                <div style="font-weight:600">${d}</div>
-                <div style="font-size:0.5rem;opacity:0.7">${diaSemana}</div>
-            </div>`;
+            const esFin = fecha.getDay() === 0 || fecha.getDay() === 6;
+            const esHoy = d === hoy.getDate() && mes === (hoy.getMonth() + 1) && parseInt(anio) === hoy.getFullYear();
+            html += '<div class="ast-cal-cell' + (esFin ? ' fin-semana' : '') + (esHoy ? ' hoy' : '') + '" style="flex-direction:column;padding:4px 2px;border-right:1px solid #f1f5f9"><div style="font-weight:600;font-size:10px">' + d + '</div><div style="font-size:8px;opacity:0.6">' + diasSemana[fecha.getDay()] + '</div></div>';
         }
-        
-        html += '</div></div></div>';
-        
-        // Filas de trabajadores
-        trabajadores.forEach(t => {
-            html += '<div class="worker-row">';
-            html += `<div class="worker-name-cell">
-                <div class="trabajador-avatar" style="width:24px;height:24px;font-size:0.625rem">
-                    ${t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                </div>
-                <span style="font-size:0.75rem">${t.nombre}</span>
-            </div>`;
-            
-            html += `<div class="worker-days" style="grid-template-columns:repeat(${diasEnMes}, 1fr)">`;
-            
-            for (let d = 1; d <= diasEnMes; d++) {
-                const fechaStr = `${anio}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                const fecha = new Date(anio, mes - 1, d);
-                const esFinSemana = fecha.getDay() === 0 || fecha.getDay() === 6;
-                const esHoy = d === diaActual && mes === mesActual && parseInt(anio) === anioActual;
-                
-                let clase = '';
-                let tooltip = '';
-                
-                if (esFinSemana) {
-                    clase = 'fin-semana';
-                    tooltip = 'Fin de semana';
-                } else {
-                    // Verificar si tiene vacaciones este día
-                    const enVacaciones = vacaciones.some(v => 
-                        v.trabajador_id === t.id && 
-                        new Date(v.fecha_inicio) <= fecha && 
-                        new Date(v.fecha_fin) >= fecha
-                    );
-                    
-                    // Verificar si tiene licencia médica este día
-                    const enLicencia = licencias.some(l => 
-                        l.trabajador_id === t.id && 
-                        new Date(l.fecha_inicio) <= fecha && 
-                        new Date(l.fecha_fin) >= fecha
-                    );
-                    
-                    // Verificar si falta
-                    const falta = faltas.some(f => 
-                        f.trabajador_id === t.id && 
-                        f.fecha === fechaStr
-                    );
-                    
-                    if (enVacaciones) {
-                        clase = 'vacaciones';
-                        tooltip = 'Vacaciones';
-                    } else if (enLicencia) {
-                        clase = 'licencia';
-                        tooltip = 'Licencia Médica';
-                    } else if (falta) {
-                        clase = 'falta';
-                        tooltip = 'Falta';
-                    } else if (d <= diaActual || mes < mesActual || parseInt(anio) < anioActual) {
-                        clase = 'presente';
-                        tooltip = 'Presente';
-                    }
-                }
-                
-                html += `<div class="worker-day ${clase} ${esHoy ? 'hoy' : ''}" 
-                             title="${tooltip}" style="cursor:default"></div>`;
-            }
-            
-            html += '</div></div>';
-        });
-        
         html += '</div>';
-        
-        container.innerHTML = html;
+
+        trabajadores.forEach(t => {
+            html += '<div class="ast-cal-row" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
+            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:700">' + t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2) + '</div><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + t.nombre.split(' ').slice(-1)[0] + '</span></div>';
+
+            for (let d = 1; d <= diasEnMes; d++) {
+                const fechaStr = anio + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                const fecha = new Date(anio, mes - 1, d);
+                const esFin = fecha.getDay() === 0 || fecha.getDay() === 6;
+                let clase = esFin ? 'fin-semana' : '';
+                let title = '';
+                if (!esFin) {
+                    if (vacaciones.some(v => v.trabajador_id === t.id && new Date(v.fecha_inicio) <= fecha && new Date(v.fecha_fin) >= fecha)) { clase = 'vacaciones'; title = 'Vacaciones'; }
+                    else if (licencias.some(l => l.trabajador_id === t.id && new Date(l.fecha_inicio) <= fecha && new Date(l.fecha_fin) >= fecha)) { clase = 'licencia'; title = 'Licencia'; }
+                    else if (faltas.some(f => f.trabajador_id === t.id && f.fecha === fechaStr)) { clase = 'falta'; title = 'Falta'; }
+                    else if (d <= hoy.getDate() && mes <= (hoy.getMonth() + 1) && parseInt(anio) <= hoy.getFullYear()) { clase = 'presente'; title = 'Presente'; }
+                }
+                html += '<div class="ast-cal-cell ' + clase + '" title="' + title + '" style="border-right:1px solid #f1f5f9;cursor:default"></div>';
+            }
+            html += '</div>';
+        });
+        c.innerHTML = html;
     },
-    
-    // ── Licencias Médicas ──
+
+    // ═══════ PERMISOS ═══════
+    renderPermisosTab(c) {
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === new Date().getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
+
+        c.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
+                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Gestión de Permisos</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Solicitudes de permiso y ausencias</p></div></div>
+                <button onclick="Asistencia.abrirModalPermiso()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nuevo Permiso</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;animation:astFadeUp 0.4s ease 60ms both">
+                <select id="ast-perm-mes" class="ast-input" style="width:auto">${opts}</select>
+                <button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0">Filtrar</button>
+            </div>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tipo</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Inicio</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fin</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Motivo</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                    </tr></thead>
+                    <tbody id="ast-tabla-permisos"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                </table>
+            </div>`;
+        this.cargarPermisos();
+    },
+
+    async cargarPermisos() {
+        const mes = document.getElementById('ast-perm-mes')?.value;
+        if (!mes) return;
+        try {
+            const r = await fetch('/api/asistencia/permisos?mes=' + mes + '&anio=' + new Date().getFullYear());
+            const permisos = await r.json();
+            const tbody = document.getElementById('ast-tabla-permisos');
+            if (!tbody) return;
+            if (permisos.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin permisos registrados</td></tr>'; return; }
+            const tipoL = { medico: 'Médico', personal: 'Personal', familiar: 'Familiar', otro: 'Otro' };
+            tbody.innerHTML = permisos.map(p => {
+                const ec = p.estado === 'aprobado' ? 'background:#d1fae5;color:#059669' : p.estado === 'rechazado' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
+                return '<tr style="border-bottom:1px solid #f1f5f9">'
+                    + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + p.nombre + '</strong></td>'
+                    + '<td style="padding:12px 16px;color:#475569">' + (tipoL[p.tipo] || p.tipo) + '</td>'
+                    + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(p.fecha_inicio) + '</td>'
+                    + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(p.fecha_fin) + '</td>'
+                    + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + (p.motivo || '-') + '</td>'
+                    + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + p.estado + '</span></td>'
+                    + '<td style="padding:12px 16px;text-align:center">' + (p.estado === 'pendiente'
+                        ? '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">✓</button><button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px">✗</button>'
+                        : '-') + '</td></tr>';
+            }).join('');
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    async estadoPermiso(id, estado) {
+        await fetch('/api/asistencia/permisos/' + id + '/estado', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) });
+        this.cargarPermisos();
+    },
+
+    abrirModalPermiso() { document.getElementById('modalPermiso').classList.add('show'); },
+    cerrarModalPermiso() { document.getElementById('modalPermiso').classList.remove('show'); },
+    async guardarPermiso() {
+        const d = { trabajador_id: document.getElementById('permiso-trabajador').value, tipo: document.getElementById('permiso-tipo').value, fecha_inicio: document.getElementById('permiso-inicio').value, fecha_fin: document.getElementById('permiso-fin').value, motivo: document.getElementById('permiso-motivo').value };
+        if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin) return;
+        await fetch('/api/asistencia/permisos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        this.cerrarModalPermiso(); this.cargarPermisos();
+    },
+
+    // ═══════ LICENCIAS ═══════
+    renderLicenciasTab(c) {
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === new Date().getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
+
+        c.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
+                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Licencias Médicas</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Control de licencias médicas</p></div></div>
+                <button onclick="Asistencia.abrirModalLicencia()" class="ast-btn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;box-shadow:0 2px 8px rgba(245,158,11,0.3);padding:10px 20px;font-size:13px">+ Nueva Licencia</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;animation:astFadeUp 0.4s ease 60ms both">
+                <select id="ast-lic-mes" class="ast-input" style="width:auto">${opts}</select>
+                <button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0">Filtrar</button>
+            </div>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Inicio</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fin</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Diagnóstico</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                    </tr></thead>
+                    <tbody id="ast-tabla-licencias"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                </table>
+            </div>`;
+        this.cargarLicencias();
+    },
+
     async cargarLicencias() {
-        const mes = document.getElementById('filtro-mes-licencia').value;
-        const anio = new Date().getFullYear();
-        
+        const mes = document.getElementById('ast-lic-mes')?.value;
+        if (!mes) return;
         try {
-            const r = await fetch(`/api/asistencia/licencias?mes=${mes}&anio=${anio}`);
+            const r = await fetch('/api/asistencia/licencias?mes=' + mes + '&anio=' + new Date().getFullYear());
             const licencias = await r.json();
-            this.renderTablaLicencias(licencias);
-        } catch(e) {
-            console.error('Error cargando licencias:', e);
-        }
+            const tbody = document.getElementById('ast-tabla-licencias');
+            if (!tbody) return;
+            if (licencias.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin licencias registradas</td></tr>'; return; }
+            tbody.innerHTML = licencias.map(l => {
+                const ec = l.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : l.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
+                const dias = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / 86400000) + 1;
+                return '<tr style="border-bottom:1px solid #f1f5f9">'
+                    + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + l.nombre + '</strong></td>'
+                    + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(l.fecha_inicio) + '</td>'
+                    + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(l.fecha_fin) + '</td>'
+                    + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + dias + '</strong> días</td>'
+                    + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + (l.diagnostico || '-') + '</td>'
+                    + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + l.estado + '</span></td>'
+                    + '<td style="padding:12px 16px;text-align:center">' + (l.estado === 'pendiente'
+                        ? '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">✓</button><button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px">✗</button>'
+                        : '-') + '</td></tr>';
+            }).join('');
+        } catch(e) { console.error('Error:', e); }
     },
-    
-    renderTablaLicencias(licencias) {
-        const tbody = document.getElementById('tabla-licencias');
-        if (!tbody) return;
-        
-        if (licencias.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Sin licencias médicas registradas</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = licencias.map(l => {
-            const estadoBadge = l.estado === 'aprobada' ? 'badge-success' : 
-                               l.estado === 'rechazada' ? 'badge-danger' : 'badge-warning';
-            
-            const dias = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / (1000 * 60 * 60 * 24)) + 1;
-            
-            return `
-                <tr>
-                    <td><strong>${l.nombre}</strong></td>
-                    <td>${this.formatDate(l.fecha_inicio)}</td>
-                    <td>${this.formatDate(l.fecha_fin)}</td>
-                    <td><strong>${dias}</strong> días</td>
-                    <td class="text-muted">${l.diagnostico || '-'}</td>
-                    <td class="text-muted">${l.medico || '-'}</td>
-                    <td><span class="badge ${estadoBadge}">${l.estado}</span></td>
-                    <td class="table-actions">
-                        ${l.estado === 'pendiente' ? `
-                            <button class="btn btn-sm btn-success" onclick="Asistencia.cambiarEstadoLicencia(${l.id}, 'aprobada')">✓</button>
-                            <button class="btn btn-sm btn-danger" onclick="Asistencia.cambiarEstadoLicencia(${l.id}, 'rechazada')">✗</button>
-                        ` : ''}
-                    </td>
-                </tr>
-            `;
-        }).join('');
+
+    async estadoLicencia(id, estado) {
+        await fetch('/api/asistencia/licencias/' + id + '/estado', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) });
+        this.cargarLicencias();
     },
-    
-    async cambiarEstadoLicencia(id, estado) {
-        try {
-            await fetch(`/api/asistencia/licencias/${id}/estado`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ estado })
-            });
-            this.cargarLicencias();
-        } catch(e) {
-            this.mostrarError('Error actualizando licencia');
-        }
+
+    abrirModalLicencia() { document.getElementById('modalLicencia').classList.add('show'); },
+    cerrarModalLicencia() { document.getElementById('modalLicencia').classList.remove('show'); },
+    async guardarLicencia() {
+        const d = { trabajador_id: document.getElementById('licencia-trabajador').value, fecha_inicio: document.getElementById('licencia-inicio').value, fecha_fin: document.getElementById('licencia-fin').value, diagnostico: document.getElementById('licencia-diagnostico').value, medico: document.getElementById('licencia-medico').value };
+        if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin) return;
+        await fetch('/api/asistencia/licencias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        this.cerrarModalLicencia(); this.cargarLicencias();
     },
-    
-    // ── Vacaciones ──
+
+    // ═══════ VACACIONES ═══════
+    renderVacacionesTab(c) {
+        c.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
+                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#dbeafe,#93c5fd);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Gestión de Vacaciones</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Control de vacaciones del personal</p></div></div>
+                <button onclick="Asistencia.abrirModalVacacion()" class="ast-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:10px 20px;font-size:13px">+ Nueva Vacación</button>
+            </div>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;overflow:hidden">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Inicio</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fin</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                    </tr></thead>
+                    <tbody id="ast-tabla-vacaciones"><tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                </table>
+            </div>`;
+        this.cargarVacaciones();
+    },
+
     async cargarVacaciones() {
         try {
             const r = await fetch('/api/asistencia/vacaciones');
             const vacaciones = await r.json();
-            this.renderTablaVacaciones(vacaciones);
-        } catch(e) {
-            console.error('Error cargando vacaciones:', e);
-        }
+            const tbody = document.getElementById('ast-tabla-vacaciones');
+            if (!tbody) return;
+            if (vacaciones.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Sin vacaciones registradas</td></tr>'; return; }
+            tbody.innerHTML = vacaciones.map(v => '<tr style="border-bottom:1px solid #f1f5f9">'
+                + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.nombre + '</strong></td>'
+                + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(v.fecha_inicio) + '</td>'
+                + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(v.fecha_fin) + '</td>'
+                + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.dias + '</strong> días</td>'
+                + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#dbeafe;color:#2563eb">' + (v.estado || 'Programado') + '</span></td>'
+                + '</tr>').join('');
+        } catch(e) { console.error('Error:', e); }
     },
-    
-    renderTablaVacaciones(vacaciones) {
-        const tbody = document.getElementById('tabla-vacaciones');
-        if (!tbody) return;
-        
-        if (vacaciones.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin vacaciones registradas</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = vacaciones.map(v => `
-            <tr>
-                <td><strong>${v.nombre}</strong></td>
-                <td>${this.formatDate(v.fecha_inicio)}</td>
-                <td>${this.formatDate(v.fecha_fin)}</td>
-                <td><strong>${v.dias}</strong> días</td>
-                <td><span class="badge badge-info">${v.estado || 'Programado'}</span></td>
-            </tr>
-        `).join('');
-    },
-    
-    // ── Reportes y Rankings ──
-    async cargarReportes() {
-        const mes = document.getElementById('filtro-mes-reporte').value;
-        const anio = new Date().getFullYear();
-        
-        try {
-            const [reporteR, rankingAsistenciaR, rankingHorasR] = await Promise.all([
-                fetch(`/api/asistencia/reporte-mensual?mes=${mes}&anio=${anio}`),
-                fetch(`/api/asistencia/ranking?mes=${mes}&anio=${anio}&tipo=asistencia`),
-                fetch(`/api/asistencia/ranking?mes=${mes}&anio=${anio}&tipo=horas`)
-            ]);
-            
-            const reporte = await reporteR.json();
-            const rankingAsistencia = await rankingAsistenciaR.json();
-            const rankingHoras = await rankingHorasR.json();
-            
-            this.renderReporte(reporte);
-            this.renderRanking('ranking-asistencia', rankingAsistencia, 'días');
-            this.renderRanking('ranking-horas', rankingHoras, 'horas');
-        } catch(e) {
-            console.error('Error cargando reportes:', e);
-        }
-    },
-    
-    renderReporte(reporte) {
-        const tbody = document.getElementById('tabla-reporte');
-        if (!tbody) return;
-        
-        if (reporte.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Sin datos para este mes</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = reporte.map((r, i) => {
-            const diasLaborables = 22;
-            const asistidos = diasLaborables - r.faltas;
-            const porcentaje = ((asistidos / diasLaborables) * 100).toFixed(0);
-            
-            return `
-                <tr>
-                    <td><strong>${i + 1}</strong></td>
-                    <td><strong>${r.nombre}</strong></td>
-                    <td>${asistidos}</td>
-                    <td><span class="text-danger font-semibold">${r.faltas}</span></td>
-                    <td>${r.permisos_aprobados}</td>
-                    <td>${r.dias_licencia} días</td>
-                    <td>${r.vacaciones}</td>
-                    <td>
-                        <div class="flex items-center gap-2">
-                            <div style="width:60px;height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden">
-                                <div style="width:${porcentaje}%;height:100%;background:${porcentaje >= 80 ? 'var(--success)' : porcentaje >= 60 ? 'var(--warning)' : 'var(--danger)'};border-radius:3px"></div>
-                            </div>
-                            <span class="text-sm font-semibold">${porcentaje}%</span>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    },
-    
-    renderRanking(containerId, ranking, unidad) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        
-        if (ranking.length === 0) {
-            container.innerHTML = '<p class="text-center text-muted">Sin datos</p>';
-            return;
-        }
-        
-        const medals = ['🥇', '🥈', '🥉'];
-        
-        container.innerHTML = ranking.slice(0, 3).map((r, i) => {
-            const value = unidad === 'días' ? r.dias_asistidos : parseFloat(r.horas_totales).toFixed(1);
-            const sizeClass = i === 0 ? 'podium-first' : i === 1 ? 'podium-second' : 'podium-third';
-            
-            return `
-                <div class="ranking-card ${sizeClass}" style="min-width:150px">
-                    <div class="ranking-position">${medals[i]}</div>
-                    <div class="ranking-name">${r.nombre}</div>
-                    <div class="ranking-value">${value}</div>
-                    <div class="ranking-label">${unidad}</div>
-                </div>
-            `;
-        }).join('');
-    },
-    
-    // ── Modales ──
-    abrirModalPermiso() {
-        document.getElementById('modalPermiso').classList.add('show');
-    },
-    
-    cerrarModalPermiso() {
-        document.getElementById('modalPermiso').classList.remove('show');
-    },
-    
-    async guardarPermiso() {
-        const trabajador_id = document.getElementById('permiso-trabajador').value;
-        const tipo = document.getElementById('permiso-tipo').value;
-        const fecha_inicio = document.getElementById('permiso-inicio').value;
-        const fecha_fin = document.getElementById('permiso-fin').value;
-        const motivo = document.getElementById('permiso-motivo').value;
-        
-        if (!trabajador_id || !fecha_inicio || !fecha_fin) {
-            this.mostrarError('Completa todos los campos obligatorios');
-            return;
-        }
-        
-        try {
-            const r = await fetch('/api/asistencia/permisos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trabajador_id, tipo, fecha_inicio, fecha_fin, motivo })
-            });
-            
-            if (r.ok) {
-                this.cerrarModalPermiso();
-                this.cargarPermisos();
-                this.mostrarExito('Permiso registrado');
-            }
-        } catch(e) {
-            this.mostrarError('Error guardando permiso');
-        }
-    },
-    
-    abrirModalLicencia() {
-        document.getElementById('modalLicencia').classList.add('show');
-    },
-    
-    cerrarModalLicencia() {
-        document.getElementById('modalLicencia').classList.remove('show');
-    },
-    
-    async guardarLicencia() {
-        const trabajador_id = document.getElementById('licencia-trabajador').value;
-        const fecha_inicio = document.getElementById('licencia-inicio').value;
-        const fecha_fin = document.getElementById('licencia-fin').value;
-        const diagnostico = document.getElementById('licencia-diagnostico').value;
-        const medico = document.getElementById('licencia-medico').value;
-        
-        if (!trabajador_id || !fecha_inicio || !fecha_fin) {
-            this.mostrarError('Completa todos los campos obligatorios');
-            return;
-        }
-        
-        try {
-            const r = await fetch('/api/asistencia/licencias', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trabajador_id, fecha_inicio, fecha_fin, diagnostico, medico })
-            });
-            
-            if (r.ok) {
-                this.cerrarModalLicencia();
-                this.cargarLicencias();
-                this.mostrarExito('Licencia médica registrada');
-            }
-        } catch(e) {
-            this.mostrarError('Error guardando licencia');
-        }
-    },
-    
-    abrirModalVacacion() {
-        document.getElementById('modalVacacion').classList.add('show');
-    },
-    
-    cerrarModalVacacion() {
-        document.getElementById('modalVacacion').classList.remove('show');
-    },
-    
+
+    abrirModalVacacion() { document.getElementById('modalVacacion').classList.add('show'); },
+    cerrarModalVacacion() { document.getElementById('modalVacacion').classList.remove('show'); },
     async guardarVacacion() {
-        const trabajador_id = document.getElementById('vacacion-trabajador').value;
-        const fecha_inicio = document.getElementById('vacacion-inicio').value;
-        const fecha_fin = document.getElementById('vacacion-fin').value;
-        const dias = document.getElementById('vacacion-dias').value;
-        
-        if (!trabajador_id || !fecha_inicio || !fecha_fin || !dias) {
-            this.mostrarError('Completa todos los campos obligatorios');
-            return;
-        }
-        
+        const d = { trabajador_id: document.getElementById('vacacion-trabajador').value, fecha_inicio: document.getElementById('vacacion-inicio').value, fecha_fin: document.getElementById('vacacion-fin').value, dias: parseInt(document.getElementById('vacacion-dias').value) };
+        if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin || !d.dias) return;
+        await fetch('/api/asistencia/vacaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        this.cerrarModalVacacion(); this.cargarVacaciones();
+    },
+
+    // ═══════ REPORTES ═══════
+    renderReportesTab(c) {
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === new Date().getMonth() ? ' selected' : '') + '>' + m + '</option>').join('');
+
+        c.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
+                <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div><h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Reportes y Rankings</h3><p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Análisis mensual de asistencia</p></div></div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <select id="ast-rep-mes" class="ast-input" style="width:auto">${opts}</select>
+                    <button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:white;box-shadow:0 2px 8px rgba(34,197,94,0.3);padding:10px 20px;font-size:13px">Generar</button>
+                </div>
+            </div>
+
+            <div id="ast-ranking-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
+
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
+                <div style="padding:18px 22px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px">
+                    <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Reporte Mensual</h3>
+                </div>
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">#</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Asistidos</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Faltas</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Permisos</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Licencias</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Vacaciones</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">% Asistencia</th>
+                    </tr></thead>
+                    <tbody id="ast-tabla-reporte"><tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">Selecciona un mes y haz clic en Generar</td></tr></tbody>
+                </table>
+            </div>`;
+    },
+
+    async cargarReportes() {
+        const mes = document.getElementById('ast-rep-mes')?.value;
+        if (!mes) return;
+        const anio = new Date().getFullYear();
         try {
-            const r = await fetch('/api/asistencia/vacaciones', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trabajador_id, fecha_inicio, fecha_fin, dias: parseInt(dias) })
-            });
-            
-            if (r.ok) {
-                this.cerrarModalVacacion();
-                this.cargarVacaciones();
-                this.mostrarExito('Vacación registrada');
-            }
-        } catch(e) {
-            this.mostrarError('Error guardando vacación');
-        }
+            const [reporteR, rankAR] = await Promise.all([
+                fetch('/api/asistencia/reporte-mensual?mes=' + mes + '&anio=' + anio),
+                fetch('/api/asistencia/ranking?mes=' + mes + '&anio=' + mes + '&tipo=asistencia')
+            ]);
+            const reporte = await reporteR.json();
+            const ranking = await rankAR.json();
+            this.renderReporte(reporte);
+            this.renderRanking(ranking);
+        } catch(e) { console.error('Error:', e); }
     },
-    
-    // ── Helpers ──
+
+    renderReporte(reporte) {
+        const tbody = document.getElementById('ast-tabla-reporte');
+        if (!tbody) return;
+        if (reporte.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">Sin datos</td></tr>'; return; }
+        tbody.innerHTML = reporte.map((r, i) => {
+            const asistidos = 22 - r.faltas;
+            const pct = Math.round((asistidos / 22) * 100);
+            const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+            return '<tr style="border-bottom:1px solid #f1f5f9">'
+                + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + (i + 1) + '</strong></td>'
+                + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + r.nombre + '</strong></td>'
+                + '<td style="padding:12px 16px;color:#475569">' + asistidos + '</td>'
+                + '<td style="padding:12px 16px"><strong style="color:#dc2626">' + r.faltas + '</strong></td>'
+                + '<td style="padding:12px 16px;color:#475569">' + r.permisos_aprobados + '</td>'
+                + '<td style="padding:12px 16px;color:#475569">' + r.dias_licencia + ' días</td>'
+                + '<td style="padding:12px 16px;color:#475569">' + r.vacaciones + '</td>'
+                + '<td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px"></div></div><span style="font-size:12px;font-weight:700;color:' + color + '">' + pct + '%</span></div></td>'
+                + '</tr>';
+        }).join('');
+    },
+
+    renderRanking(ranking) {
+        const c = document.getElementById('ast-ranking-container');
+        if (!c) return;
+        if (ranking.length === 0) { c.innerHTML = ''; return; }
+        const medals = ['🥇','🥈','🥉'];
+        const sizes = [180, 160, 150];
+        const orders = [2, 1, 3];
+        const colors = ['#f59e0b','#94a3b8','#cd7f32'];
+        c.innerHTML = '<div class="ast-podium">' + ranking.slice(0, 3).map((r, i) =>
+            '<div class="ast-rank" style="order:' + orders[i] + ';min-width:' + sizes[i] + 'px">'
+            + '<div style="font-size:32px;margin-bottom:6px">' + medals[i] + '</div>'
+            + '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + r.nombre + '</div>'
+            + '<div style="font-size:24px;font-weight:800;color:' + colors[i] + '">' + (r.dias_asistidos || 0) + '</div>'
+            + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;font-weight:600;margin-top:2px">días</div>'
+            + '</div>'
+        ).join('') + '</div>';
+    },
+
+    // ═══════ HELPERS ═══════
     llenarSelectores() {
-        const options = this.trabajadores.map(t => 
-            `<option value="${t.id}">${t.nombre}</option>`
-        ).join('');
-        
-        const defaultOption = '<option value="">Seleccionar...</option>';
-        
-        const permisoSelect = document.getElementById('permiso-trabajador');
-        const licenciaSelect = document.getElementById('licencia-trabajador');
-        const vacacionSelect = document.getElementById('vacacion-trabajador');
-        
-        if (permisoSelect) permisoSelect.innerHTML = defaultOption + options;
-        if (licenciaSelect) licenciaSelect.innerHTML = defaultOption + options;
-        if (vacacionSelect) vacacionSelect.innerHTML = defaultOption + options;
+        const opts = this.trabajadores.map(t => '<option value="' + t.id + '">' + t.nombre + '</option>').join('');
+        const def = '<option value="">Seleccionar...</option>';
+        const ps = document.getElementById('permiso-trabajador');
+        const ls = document.getElementById('licencia-trabajador');
+        const vs = document.getElementById('vacacion-trabajador');
+        if (ps) ps.innerHTML = def + opts;
+        if (ls) ls.innerHTML = def + opts;
+        if (vs) vs.innerHTML = def + opts;
     },
-    
-    formatTime(timeStr) {
-        if (!timeStr) return '-';
-        return timeStr.slice(0, 5);
-    },
-    
-    formatDate(dateStr) {
-        if (!dateStr) return '-';
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('es-CL');
-    },
-    
-    mostrarExito(msg) {
-        // TODO: Integrar con sistema de notificaciones
-        alert(msg);
-    },
-    
-    mostrarError(msg) {
-        alert('Error: ' + msg);
+
+    fmtDate(d) {
+        if (!d) return '-';
+        return new Date(d).toLocaleDateString('es-CL');
     }
 };
 
-// ═══════ Funciones globales para onclick ═══════
-function showTab(tab) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    
-    document.getElementById(`tab-${tab}`).classList.add('active');
-    event.target.classList.add('active');
-    
-    if (tab === 'reportes') {
-        Asistencia.cargarReportes();
-    }
-    if (tab === 'calendario') {
-        Asistencia.cargarCalendario();
-    }
-}
-
-function marcarFalta(id) { Asistencia.marcar(id, true); }
-function corregirFalta(id) { Asistencia.marcar(id, false); }
-function cargarAsistencia() { Asistencia.cargarAsistencia(); }
-function cargarPermisos() { Asistencia.cargarPermisos(); }
-function cargarLicencias() { Asistencia.cargarLicencias(); }
-function cargarVacaciones() { Asistencia.cargarVacaciones(); }
-function cargarReportes() { Asistencia.cargarReportes(); }
-function cargarCalendario() { Asistencia.cargarCalendario(); }
-function abrirModalPermiso() { Asistencia.abrirModalPermiso(); }
-function cerrarModalPermiso() { Asistencia.cerrarModalPermiso(); }
-function guardarPermiso() { Asistencia.guardarPermiso(); }
-function abrirModalLicencia() { Asistencia.abrirModalLicencia(); }
-function cerrarModalLicencia() { Asistencia.cerrarModalLicencia(); }
-function guardarLicencia() { Asistencia.guardarLicencia(); }
-function abrirModalVacacion() { Asistencia.abrirModalVacacion(); }
-function cerrarModalVacacion() { Asistencia.cerrarModalVacacion(); }
-function guardarVacacion() { Asistencia.guardarVacacion(); }
-
-// ═══════ Registrar módulo con App ═══════
+// ═══════ Registrar módulo ═══════
 if (typeof App !== 'undefined') {
     App.registerModule('asistencia', Asistencia);
 }
