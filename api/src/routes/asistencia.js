@@ -1,0 +1,392 @@
+const express = require('express');
+const router = express.Router();
+const { Pool } = require('pg');
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/vitroflow'
+});
+
+// ═══════════════════════════════════════════════════════
+// TRABAJADORES
+// ═══════════════════════════════════════════════════════
+
+router.get('/api/asistencia/trabajadores', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM trabajadores WHERE activo = true ORDER BY nombre'
+        );
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/api/asistencia/trabajadores', async (req, res) => {
+    try {
+        const { rut, nombre } = req.body;
+        const result = await pool.query(
+            'INSERT INTO trabajadores (rut, nombre) VALUES ($1, $2) RETURNING *',
+            [rut, nombre]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// ASISTENCIA DIARIA
+// ═══════════════════════════════════════════════════════
+
+router.post('/api/asistencia/marcar', async (req, res) => {
+    try {
+        const { trabajador_id, falta } = req.body;
+        const hoy = new Date().toISOString().split('T')[0];
+        
+        const existing = await pool.query(
+            'SELECT * FROM asistencia WHERE trabajador_id = $1 AND fecha = $2',
+            [trabajador_id, hoy]
+        );
+        
+        if (existing.rows.length > 0) {
+            if (falta) {
+                await pool.query(
+                    'DELETE FROM asistencia WHERE trabajador_id = $1 AND fecha = $2',
+                    [trabajador_id, hoy]
+                );
+                return res.json({ eliminado: true });
+            }
+            return res.json(existing.rows[0]);
+        }
+        
+        if (falta) {
+            const result = await pool.query(
+                'INSERT INTO asistencia (trabajador_id, fecha) VALUES ($1, $2) RETURNING *',
+                [trabajador_id, hoy]
+            );
+            return res.json(result.rows[0]);
+        }
+        
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/api/asistencia/diaria', async (req, res) => {
+    try {
+        const { fecha } = req.query;
+        const fechaConsulta = fecha || new Date().toISOString().split('T')[0];
+        
+        const result = await pool.query(
+            `SELECT a.fecha, a.trabajador_id, t.nombre, t.rut 
+             FROM asistencia a 
+             JOIN trabajadores t ON a.trabajador_id = t.id 
+             WHERE a.fecha = $1 
+             ORDER BY t.nombre`,
+            [fechaConsulta]
+        );
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// PERMISOS
+// ═══════════════════════════════════════════════════════
+
+router.post('/api/asistencia/permisos', async (req, res) => {
+    try {
+        const { trabajador_id, fecha_inicio, fecha_fin, motivo, tipo } = req.body;
+        const result = await pool.query(
+            `INSERT INTO permisos (trabajador_id, fecha_inicio, fecha_fin, motivo, tipo)
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [trabajador_id, fecha_inicio, fecha_fin, motivo, tipo]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/api/asistencia/permisos', async (req, res) => {
+    try {
+        const { trabajador_id, mes, anio } = req.query;
+        let query = `SELECT p.*, t.nombre, t.rut 
+                     FROM permisos p 
+                     JOIN trabajadores t ON p.trabajador_id = t.id 
+                     WHERE 1=1`;
+        const params = [];
+        
+        if (trabajador_id) {
+            params.push(trabajador_id);
+            query += ` AND p.trabajador_id = $${params.length}`;
+        }
+        if (mes && anio) {
+            params.push(mes, anio);
+            query += ` AND EXTRACT(MONTH FROM p.fecha_inicio) = $${params.length - 1} 
+                       AND EXTRACT(YEAR FROM p.fecha_inicio) = $${params.length}`;
+        }
+        
+        query += ' ORDER BY p.fecha_inicio DESC';
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/api/asistencia/permisos/:id/estado', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { estado } = req.body;
+        const result = await pool.query(
+            'UPDATE permisos SET estado = $1 WHERE id = $2 RETURNING *',
+            [estado, id]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// VACACIONES
+// ═══════════════════════════════════════════════════════
+
+router.post('/api/asistencia/vacaciones', async (req, res) => {
+    try {
+        const { trabajador_id, fecha_inicio, fecha_fin, dias } = req.body;
+        const result = await pool.query(
+            `INSERT INTO vacaciones (trabajador_id, fecha_inicio, fecha_fin, dias)
+             VALUES ($1, $2, $3, $4) RETURNING *`,
+            [trabajador_id, fecha_inicio, fecha_fin, dias]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/api/asistencia/vacaciones', async (req, res) => {
+    try {
+        const { trabajador_id } = req.query;
+        let query = `SELECT v.*, t.nombre, t.rut 
+                     FROM vacaciones v 
+                     JOIN trabajadores t ON v.trabajador_id = t.id 
+                     WHERE 1=1`;
+        const params = [];
+        
+        if (trabajador_id) {
+            params.push(trabajador_id);
+            query += ` AND v.trabajador_id = $${params.length}`;
+        }
+        
+        query += ' ORDER BY v.fecha_inicio DESC';
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// CALENDARIO MENSUAL
+// ═══════════════════════════════════════════════════════
+
+router.get('/api/asistencia/calendario', async (req, res) => {
+    try {
+        const { mes, anio } = req.query;
+        const mesActual = mes || new Date().getMonth() + 1;
+        const anioActual = anio || new Date().getFullYear();
+        
+        const trabajadores = await pool.query(
+            'SELECT * FROM trabajadores WHERE activo = true ORDER BY nombre'
+        );
+        
+        const faltas = await pool.query(
+            `SELECT trabajador_id, fecha FROM asistencia 
+             WHERE EXTRACT(MONTH FROM fecha) = $1 AND EXTRACT(YEAR FROM fecha) = $2`,
+            [mesActual, anioActual]
+        );
+        
+        const vacaciones = await pool.query(
+            `SELECT trabajador_id, fecha_inicio, fecha_fin FROM vacaciones 
+             WHERE EXTRACT(MONTH FROM fecha_inicio) <= $1 
+             AND EXTRACT(YEAR FROM fecha_inicio) <= $2
+             AND EXTRACT(MONTH FROM fecha_fin) >= $1 
+             AND EXTRACT(YEAR FROM fecha_fin) >= $2`,
+            [mesActual, anioActual]
+        );
+        
+        const licencias = await pool.query(
+            `SELECT trabajador_id, fecha_inicio, fecha_fin FROM licencias_medicas 
+             WHERE EXTRACT(MONTH FROM fecha_inicio) <= $1 
+             AND EXTRACT(YEAR FROM fecha_inicio) <= $2
+             AND EXTRACT(MONTH FROM fecha_fin) >= $1 
+             AND EXTRACT(YEAR FROM fecha_fin) >= $2
+             AND estado = 'aprobada'`,
+            [mesActual, anioActual]
+        );
+        
+        res.json({
+            trabajadores: trabajadores.rows,
+            faltas: faltas.rows,
+            vacaciones: vacaciones.rows,
+            licencias: licencias.rows,
+            mes: mesActual,
+            anio: anioActual
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// LICENCIAS MÉDICAS
+// ═══════════════════════════════════════════════════════
+
+router.post('/api/asistencia/licencias', async (req, res) => {
+    try {
+        const { trabajador_id, fecha_inicio, fecha_fin, diagnostico, medico } = req.body;
+        const result = await pool.query(
+            `INSERT INTO licencias_medicas (trabajador_id, fecha_inicio, fecha_fin, diagnostico, medico)
+             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [trabajador_id, fecha_inicio, fecha_fin, diagnostico, medico]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/api/asistencia/licencias', async (req, res) => {
+    try {
+        const { trabajador_id, mes, anio } = req.query;
+        let query = `SELECT l.*, t.nombre, t.rut 
+                     FROM licencias_medicas l 
+                     JOIN trabajadores t ON l.trabajador_id = t.id 
+                     WHERE 1=1`;
+        const params = [];
+        
+        if (trabajador_id) {
+            params.push(trabajador_id);
+            query += ` AND l.trabajador_id = $${params.length}`;
+        }
+        if (mes && anio) {
+            params.push(mes, anio);
+            query += ` AND (EXTRACT(MONTH FROM l.fecha_inicio) = $${params.length - 1} 
+                       OR EXTRACT(MONTH FROM l.fecha_fin) = $${params.length - 1})
+                       AND EXTRACT(YEAR FROM l.fecha_inicio) = $${params.length}`;
+        }
+        
+        query += ' ORDER BY l.fecha_inicio DESC';
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/api/asistencia/licencias/:id/estado', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { estado } = req.body;
+        const result = await pool.query(
+            'UPDATE licencias_medicas SET estado = $1 WHERE id = $2 RETURNING *',
+            [estado, id]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// REPORTES Y RANKINGS
+// ═══════════════════════════════════════════════════════
+
+router.get('/api/asistencia/reporte-mensual', async (req, res) => {
+    try {
+        const { mes, anio } = req.query;
+        const mesActual = mes || new Date().getMonth() + 1;
+        const anioActual = anio || new Date().getFullYear();
+        
+        const result = await pool.query(
+            `SELECT 
+                t.id,
+                t.nombre,
+                t.rut,
+                (SELECT COUNT(*) FROM asistencia a 
+                 WHERE a.trabajador_id = t.id 
+                 AND EXTRACT(MONTH FROM a.fecha) = $1 
+                 AND EXTRACT(YEAR FROM a.fecha) = $2) as faltas,
+                (SELECT COUNT(*) FROM permisos p 
+                 WHERE p.trabajador_id = t.id 
+                 AND EXTRACT(MONTH FROM p.fecha_inicio) = $1 
+                 AND EXTRACT(YEAR FROM p.fecha_inicio) = $2
+                 AND p.estado = 'aprobado') as permisos_aprobados,
+                (SELECT COUNT(*) FROM licencias_medicas l 
+                 WHERE l.trabajador_id = t.id 
+                 AND EXTRACT(MONTH FROM l.fecha_inicio) = $1 
+                 AND EXTRACT(YEAR FROM l.fecha_inicio) = $2
+                 AND l.estado = 'aprobada') as licencias_medicas,
+                (SELECT COALESCE(SUM(
+                    CASE 
+                        WHEN l.fecha_fin >= l.fecha_inicio THEN 
+                            EXTRACT(DAY FROM (l.fecha_fin - l.fecha_inicio)) + 1
+                        ELSE 1
+                    END
+                ), 0) FROM licencias_medicas l 
+                 WHERE l.trabajador_id = t.id 
+                 AND EXTRACT(MONTH FROM l.fecha_inicio) = $1 
+                 AND EXTRACT(YEAR FROM l.fecha_inicio) = $2
+                 AND l.estado = 'aprobada') as dias_licencia,
+                (SELECT COUNT(*) FROM vacaciones v 
+                 WHERE v.trabajador_id = t.id 
+                 AND EXTRACT(MONTH FROM v.fecha_inicio) = $1 
+                 AND EXTRACT(YEAR FROM v.fecha_inicio) = $2) as vacaciones
+             FROM trabajadores t
+             WHERE t.activo = true
+             ORDER BY t.nombre`,
+            [mesActual, anioActual]
+        );
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/api/asistencia/ranking', async (req, res) => {
+    try {
+        const { mes, anio } = req.query;
+        const mesActual = mes || new Date().getMonth() + 1;
+        const anioActual = anio || new Date().getFullYear();
+        
+        const result = await pool.query(
+            `SELECT 
+                t.id,
+                t.nombre,
+                (SELECT COUNT(*) FROM asistencia a 
+                 WHERE a.trabajador_id = t.id 
+                 AND EXTRACT(MONTH FROM a.fecha) = $1 
+                 AND EXTRACT(YEAR FROM a.fecha) = $2) as faltas,
+                (SELECT COUNT(*) FROM permisos p 
+                 WHERE p.trabajador_id = t.id 
+                 AND EXTRACT(MONTH FROM p.fecha_inicio) = $1 
+                 AND EXTRACT(YEAR FROM p.fecha_inicio) = $2
+                 AND p.estado = 'aprobado') as permisos_aprobados
+             FROM trabajadores t
+             WHERE t.activo = true
+             ORDER BY faltas ASC
+             LIMIT 10`,
+            [mesActual, anioActual]
+        );
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+module.exports = router;

@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Asistencia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/layout.css">
+    <style>
+        .asistencia-hero {
+            background: linear-gradient(135deg, var(--gray-900) 0%, #1e3a5f 40%, var(--glass) 100%);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6) var(--space-8);
+            margin-bottom: var(--space-6);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        .asistencia-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 65%);
+            pointer-events: none;
+        }
+        .asistencia-hero h1 {
+            font-size: 1.375rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
+        }
+        .asistencia-hero .subtitle {
+            font-size: 0.8125rem;
+            opacity: 0.7;
+            position: relative;
+            z-index: 1;
+        }
+        .tab-nav {
+            display: flex;
+            gap: var(--space-2);
+            margin-bottom: var(--space-5);
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            background: white;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            font-family: inherit;
+            transition: all var(--transition-fast);
+        }
+        .tab-btn:hover { border-color: var(--info); }
+        .tab-btn.active {
+            background: var(--glass);
+            color: white;
+            border-color: var(--glass);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .trabajador-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-3) var(--space-4);
+            border-bottom: 1px solid var(--gray-100);
+            transition: background var(--transition-fast);
+        }
+        .trabajador-item:hover { background: var(--gray-50); }
+        .trabajador-item:last-child { border-bottom: none; }
+        .trabajador-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--glass-light);
+            color: var(--glass-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8125rem;
+        }
+        .trabajador-info { flex: 1; margin-left: var(--space-3); }
+        .trabajador-name { font-weight: 600; font-size: 0.875rem; }
+        .trabajador-rut { font-size: 0.75rem; color: var(--text-secondary); }
+        .check-btn {
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.75rem;
+            transition: all var(--transition-fast);
+        }
+        .check-in { background: var(--success); color: white; }
+        .check-in:hover { background: var(--success-dark); }
+        .check-out { background: var(--danger); color: white; }
+        .check-out:hover { background: var(--danger-dark); }
+        .check-in:disabled, .check-out:disabled { opacity: 0.5; cursor: not-allowed; }
+        .ranking-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: transform var(--transition-base), box-shadow var(--transition-base);
+        }
+        .ranking-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .ranking-position {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+        .ranking-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin: var(--space-2) 0;
+        }
+        .ranking-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--glass);
+        }
+        .ranking-label {
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .podium { display: flex; justify-content: center; align-items: flex-end; gap: var(--space-4); margin: var(--space-6) 0; }
+        .podium-first { order: 2; }
+        .podium-second { order: 1; }
+        .podium-third { order: 3; }
+        
+        /* Calendar Styles */
+        .calendar-grid {
+            display: grid;
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        .calendar-header-cell {
+            background: var(--gray-100);
+            padding: var(--space-2);
+            text-align: center;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        .calendar-cell {
+            background: white;
+            padding: var(--space-1);
+            min-height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.625rem;
+            font-weight: 500;
+        }
+        .calendar-cell.empty { background: var(--gray-50); }
+        .calendar-cell.presente { background: var(--success-light); color: var(--success-dark); }
+        .calendar-cell.falta { background: var(--danger-light); color: var(--danger-dark); }
+        .calendar-cell.vacaciones { background: var(--info-light); color: var(--info-dark); }
+        .calendar-cell.licencia { background: var(--accent-light); color: var(--accent-dark); }
+        .calendar-cell.fin-semana { background: var(--gray-50); color: var(--gray-400); }
+        
+        .worker-row {
+            display: grid;
+            border-bottom: 1px solid var(--border);
+        }
+        .worker-name-cell {
+            background: var(--gray-50);
+            padding: var(--space-2) var(--space-3);
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            border-right: 1px solid var(--border);
+            min-width: 180px;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+        }
+        .worker-days {
+            display: grid;
+            flex: 1;
+        }
+        .worker-day {
+            padding: var(--space-1);
+            text-align: center;
+            font-size: 0.625rem;
+            border-right: 1px solid var(--gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .worker-day.presente { background: var(--success-light); }
+        .worker-day.falta { background: var(--danger-light); color: var(--danger-dark); font-weight: 700; }
+        .worker-day.vacaciones { background: var(--info-light); color: var(--info-dark); }
+        .worker-day.licencia { background: var(--accent-light); color: var(--accent-dark); }
+        .worker-day.fin-semana { background: var(--gray-50); }
+        .worker-day.hoy { outline: 2px solid var(--glass); outline-offset: -2px; }
+        
+        .calendar-scroll {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .calendar-fixed-header {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: white;
+        }
+        
+        @media (max-width: 600px) {
+            .podium { flex-direction: column; align-items: center; }
+            .podium-first, .podium-second, .podium-third { order: unset; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-title"><span>Asistencia</span> - Control Diario</div>
+    <div class="header-right">
+        <a href="/" class="btn-back">← Volver al Panel</a>
+    </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div style="padding: var(--space-6); max-width: 1200px; margin: 0 auto;">
+
+    <!-- HERO -->
+    <div class="asistencia-hero">
+        <h1>Control de Asistencia</h1>
+        <p class="subtitle">Gestión diaria de asistencia, permisos y vacaciones</p>
+    </div>
+
+    <!-- TABS -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="showTab('diaria')">Asistencia Diaria</button>
+        <button class="tab-btn" onclick="showTab('calendario')">Calendario Mensual</button>
+        <button class="tab-btn" onclick="showTab('permisos')">Permisos</button>
+        <button class="tab-btn" onclick="showTab('licencias')">Licencias Médicas</button>
+        <button class="tab-btn" onclick="showTab('vacaciones')">Vacaciones</button>
+        <button class="tab-btn" onclick="showTab('reportes')">Reportes & Rankings</button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- TAB: CALENDARIO MENSUAL -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div id="tab-calendario" class="tab-content">
+        
+        <div class="page-header">
+            <div>
+                <h2>Calendario Mensual</h2>
+                <p class="subtitle">Vista general de asistencia, vacaciones y licencias</p>
+            </div>
+            <div class="flex gap-3">
+                <select id="cal-mes" class="form-control" style="width: auto;">
+                    <option value="0">Enero</option>
+                    <option value="1">Febrero</option>
+                    <option value="2">Marzo</option>
+                    <option value="3">Abril</option>
+                    <option value="4">Mayo</option>
+                    <option value="5">Junio</option>
+                    <option value="6">Julio</option>
+                    <option value="7">Agosto</option>
+                    <option value="8">Septiembre</option>
+                    <option value="9">Octubre</option>
+                    <option value="10">Noviembre</option>
+                    <option value="11">Diciembre</option>
+                </select>
+                <select id="cal-anio" class="form-control" style="width: auto;">
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2027">2027</option>
+                </select>
+                <button class="btn btn-primary" onclick="cargarCalendario()">Cargar</button>
+            </div>
+        </div>
+
+        <!-- LEYENDA -->
+        <div class="flex gap-4 mb-4 flex-wrap">
+            <div class="flex items-center gap-2">
+                <div style="width:16px;height:16px;border-radius:3px;background:var(--success)"></div>
+                <span class="text-sm">Presente</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div style="width:16px;height:16px;border-radius:3px;background:var(--danger)"></div>
+                <span class="text-sm">Falta</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div style="width:16px;height:16px;border-radius:3px;background:var(--info)"></div>
+                <span class="text-sm">Vacaciones</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div style="width:16px;height:16px;border-radius:3px;background:var(--accent)"></div>
+                <span class="text-sm">Licencia Médica</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div style="width:16px;height:16px;border-radius:3px;background:var(--gray-300)"></div>
+                <span class="text-sm">Sin registro</span>
+            </div>
+        </div>
+
+        <!-- CALENDARIO -->
+        <div class="card">
+            <div class="card-body" style="overflow-x:auto">
+                <div id="calendario-container">
+                    <!-- Se carga dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- TAB: ASISTENCIA DIARIA -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div id="tab-diaria" class="tab-content active">
+        
+    <!-- STATS -->
+    <div class="stats-grid">
+        <div class="stat-card" data-accent="green">
+            <div class="stat-icon green">✓</div>
+            <div class="stat-info">
+                <h4 id="stat-presentes">0</h4>
+                <p>Presentes</p>
+            </div>
+        </div>
+        <div class="stat-card" data-accent="red">
+            <div class="stat-icon red">✗</div>
+            <div class="stat-info">
+                <h4 id="stat-faltas">0</h4>
+                <p>Faltas</p>
+            </div>
+        </div>
+        <div class="stat-card" data-accent="blue">
+            <div class="stat-icon blue">👥</div>
+            <div class="stat-info">
+                <h4 id="stat-total">0</h4>
+                <p>Total Trabajadores</p>
+            </div>
+        </div>
+    </div>
+
+        <!-- FECHA Y CONTROLES -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Registrar Asistencia</h3>
+                <div class="flex items-center gap-3">
+                    <input type="date" id="fecha-selector" class="form-control" style="width: auto;">
+                    <button class="btn btn-primary" onclick="cargarAsistencia()">Cargar</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="trabajadores-list">
+                    <!-- Se carga dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- LISTA DEL DÍA -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Faltas del Día</h3>
+                <span class="badge badge-danger" id="badge-dia">0 faltas</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Trabajador</th>
+                                <th>RUT</th>
+                                <th>Estado</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-asistencia">
+                            <tr><td colspan="4" class="text-center text-muted">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- TAB: PERMISOS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div id="tab-permisos" class="tab-content">
+        
+        <div class="page-header">
+            <div>
+                <h2>Gestión de Permisos</h2>
+                <p class="subtitle">Solicitudes de permiso y ausencias</p>
+            </div>
+            <button class="btn btn-primary" onclick="abrirModalPermiso()">+ Nuevo Permiso</button>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="filters-bar">
+            <select id="filtro-mes-permiso" class="form-control" style="width: auto;">
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+            </select>
+            <button class="btn btn-outline" onclick="cargarPermisos()">Filtrar</button>
+        </div>
+
+        <!-- LISTA PERMISOS -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Trabajador</th>
+                                <th>Tipo</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Fin</th>
+                                <th>Motivo</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-permisos">
+                            <tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- TAB: LICENCIAS MÉDICAS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div id="tab-licencias" class="tab-content">
+        
+        <div class="page-header">
+            <div>
+                <h2>Licencias Médicas</h2>
+                <p class="subtitle">Control de licencias médicas de trabajadores</p>
+            </div>
+            <button class="btn btn-primary" onclick="abrirModalLicencia()">+ Nueva Licencia</button>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="filters-bar">
+            <select id="filtro-mes-licencia" class="form-control" style="width: auto;">
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+            </select>
+            <button class="btn btn-outline" onclick="cargarLicencias()">Filtrar</button>
+        </div>
+
+        <!-- LISTA LICENCIAS -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Trabajador</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Fin</th>
+                                <th>Días</th>
+                                <th>Diagnóstico</th>
+                                <th>Médico</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-licencias">
+                            <tr><td colspan="8" class="text-center text-muted">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- TAB: VACACIONES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div id="tab-vacaciones" class="tab-content">
+        
+        <div class="page-header">
+            <div>
+                <h2>Gestión de Vacaciones</h2>
+                <p class="subtitle">Control de vacaciones y periodos de descanso</p>
+            </div>
+            <button class="btn btn-primary" onclick="abrirModalVacacion()">+ Nueva Vacación</button>
+        </div>
+
+        <!-- LISTA VACACIONES -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Trabajador</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Fin</th>
+                                <th>Días</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-vacaciones">
+                            <tr><td colspan="5" class="text-center text-muted">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- TAB: REPORTES & RANKINGS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div id="tab-reportes" class="tab-content">
+        
+        <div class="page-header">
+            <div>
+                <h2>Reportes y Rankings Mensuales</h2>
+                <p class="subtitle">Análisis de asistencia por mes</p>
+            </div>
+            <div class="flex gap-3">
+                <select id="filtro-mes-reporte" class="form-control" style="width: auto;">
+                    <option value="1">Enero</option>
+                    <option value="2">Febrero</option>
+                    <option value="3">Marzo</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Mayo</option>
+                    <option value="6">Junio</option>
+                    <option value="7">Julio</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+                <button class="btn btn-primary" onclick="cargarReportes()">Generar</button>
+            </div>
+        </div>
+
+        <!-- RANKINGS -->
+        <div class="mb-6">
+            <h3 class="mb-4">Top Asistencia</h3>
+            <div id="ranking-asistencia" class="podium">
+                <!-- Se carga dinámicamente -->
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <h3 class="mb-4">Top Horas Trabajadas</h3>
+            <div id="ranking-horas" class="podium">
+                <!-- Se carga dinámicamente -->
+            </div>
+        </div>
+
+        <!-- REPORTE COMPLETO -->
+        <div class="card">
+            <div class="card-header">
+                <h3>Reporte Mensual Completo</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Trabajador</th>
+                                <th>Días Asistidos</th>
+                                <th>Días Ausentes</th>
+                                <th>Permisos</th>
+                                <th>Lic. Médicas</th>
+                                <th>Vacaciones</th>
+                                <th>% Asistencia</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-reporte">
+                            <tr><td colspan="8" class="text-center text-muted">Selecciona un mes para generar el reporte</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- MODAL: NUEVA LICENCIA MÉDICA -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalLicencia">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Nueva Licencia Médica</h3>
+            <button class="modal-close" onclick="cerrarModalLicencia()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Trabajador</label>
+                <select id="licencia-trabajador" class="form-control">
+                    <option value="">Seleccionar...</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha Inicio</label>
+                    <input type="date" id="licencia-inicio" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Fecha Fin</label>
+                    <input type="date" id="licencia-fin" class="form-control">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Diagnóstico</label>
+                <input type="text" id="licencia-diagnostico" class="form-control" placeholder="Ej: Gripe, Fractura, etc.">
+            </div>
+            <div class="form-group">
+                <label>Médico Tratante</label>
+                <input type="text" id="licencia-medico" class="form-control" placeholder="Nombre del médico">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarModalLicencia()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardarLicencia()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- MODAL: NUEVO PERMISO -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalPermiso">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Nuevo Permiso</h3>
+            <button class="modal-close" onclick="cerrarModalPermiso()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Trabajador</label>
+                <select id="permiso-trabajador" class="form-control">
+                    <option value="">Seleccionar...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Tipo de Permiso</label>
+                <select id="permiso-tipo" class="form-control">
+                    <option value="medico">Permiso Médico</option>
+                    <option value="personal">Permiso Personal</option>
+                    <option value="familiar">Permiso Familiar</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha Inicio</label>
+                    <input type="date" id="permiso-inicio" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Fecha Fin</label>
+                    <input type="date" id="permiso-fin" class="form-control">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Motivo</label>
+                <textarea id="permiso-motivo" class="form-control" rows="3" placeholder="Describe el motivo del permiso..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarModalPermiso()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardarPermiso()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- MODAL: NUEVA VACACIÓN -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalVacacion">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Nueva Vacación</h3>
+            <button class="modal-close" onclick="cerrarModalVacacion()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Trabajador</label>
+                <select id="vacacion-trabajador" class="form-control">
+                    <option value="">Seleccionar...</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha Inicio</label>
+                    <input type="date" id="vacacion-inicio" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Fecha Fin</label>
+                    <input type="date" id="vacacion-fin" class="form-control">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Días</label>
+                <input type="number" id="vacacion-dias" class="form-control" min="1">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarModalVacacion()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardarVacacion()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<script src="/js/asistencia.js"></script>
+
+</body>
+</html>
