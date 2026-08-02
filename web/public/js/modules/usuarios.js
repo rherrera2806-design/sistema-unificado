@@ -67,30 +67,28 @@ App.registerModule('usuarios', {
         if (!tbody) return;
         if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8">Sin resultados</td></tr>'; return; }
         const MOD_SUBS = {
-            asistencia: ['Control de Asistencia'],
-            atencion: ['Recepcion','Bodega','Almacen','Facturar','QR','Reporte'],
-            instalaciones: ['Instalaciones','Historial'],
-            inventario: ['Inventario','Movimientos','Historial','Catalogos'],
-            mantencion: ['Dashboard','Areas','Maquinas','Componentes','Preventivo','Correctivo','Calendario','Notas','Reportes','Historial','Bitacora'],
-            pedidos: ['Pedidos'],
-            produccion: ['Produccion','Planificacion','Reportes','Pendientes','Config','Taller']
+            asistencia: [{id:'asistencia',l:'ASIST'}],
+            atencion: [{id:'turnos_recepcion',l:'Recep'},{id:'turnos_bodega',l:'Bodega'},{id:'turnos_almacen',l:'Almacen'},{id:'turnos_facturar',l:'Facturar'},{id:'turnos_qr',l:'QR'},{id:'turnos_reporte',l:'Reporte'}],
+            instalaciones: [{id:'instalaciones',l:'Inst'},{id:'inst_historial',l:'Historial'}],
+            inventario: [{id:'inv_inventario',l:'Inv'},{id:'inv_movimientos',l:'Mov'},{id:'inv_historial',l:'Historial'},{id:'inv_catalogos',l:'Catalogos'}],
+            mantencion: [{id:'dashboard',l:'Dash'},{id:'machineTypes',l:'Areas'},{id:'machines',l:'Maq'},{id:'components',l:'Comp'},{id:'preventive',l:'Prev'},{id:'corrective',l:'Correc'},{id:'calendar',l:'Cal'},{id:'notas',l:'Notas'},{id:'reports',l:'Rep'},{id:'history',l:'Hist'},{id:'bitacora',l:'Bitac'}],
+            pedidos: [{id:'pedidos',l:'Pedidos'}],
+            produccion: [{id:'prod_ordenes',l:'Prod'},{id:'prod_planificacion',l:'Plan'},{id:'prod_reportes',l:'Reportes'},{id:'prod_notas',l:'Pend'},{id:'prod_config',l:'Config'},{id:'taller',l:'Taller'}]
         };
-        const MOD_LABELS = {asistencia:'ASIST',atencion:'ATENC',instalaciones:'INST',inventario:'INV',mantencion:'MANT',pedidos:'PED',produccion:'PROD'};
         function permCell(up) {
-            let h = '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+            let h = '<div style="display:flex;flex-wrap:wrap;gap:3px">';
             Object.keys(MOD_SUBS).forEach(mod => {
-                const hasVer = up.includes(mod);
-                const hasEd = up.includes(mod+'.editar');
-                const hasEl = up.includes(mod+'.eliminar');
-                if (!hasVer && !hasEd && !hasEl) return;
-                const dots = [];
-                if (hasVer) dots.push('<span title="Ver" style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block"></span>');
-                if (hasEd) dots.push('<span title="Editar" style="width:7px;height:7px;border-radius:50%;background:#3b82f6;display:inline-block"></span>');
-                if (hasEl) dots.push('<span title="Eliminar" style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block"></span>');
-                h += '<div style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:6px;background:#f1f5f9;border:1px solid #e2e8f0">';
-                h += '<span style="font-size:9px;font-weight:700;color:#475569">' + MOD_LABELS[mod] + '</span>';
-                h += dots.join('');
-                h += '</div>';
+                MOD_SUBS[mod].forEach(sub => {
+                    const hasVer = up.includes(sub.id);
+                    const hasEd = up.includes(sub.id+'.editar');
+                    const hasEl = up.includes(sub.id+'.eliminar');
+                    if (!hasVer && !hasEd && !hasEl) return;
+                    const dots = [];
+                    if (hasVer) dots.push('<span title="Ver" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block"></span>');
+                    if (hasEd) dots.push('<span title="Editar" style="width:6px;height:6px;border-radius:50%;background:#3b82f6;display:inline-block"></span>');
+                    if (hasEl) dots.push('<span title="Eliminar" style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block"></span>');
+                    h += '<span title="' + sub.l + '" style="display:inline-flex;align-items:center;gap:2px;padding:2px 5px;border-radius:5px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:8px;font-weight:700;color:#475569">' + sub.l + ' ' + dots.join('') + '</span>';
+                });
             });
             h += '</div>';
             return h;
@@ -130,64 +128,79 @@ App.registerModule('usuarios', {
         const up = Array.isArray(user.permisos) ? user.permisos : [];
 
         const SECTIONS = [
-            { key: 'asistencia', label: 'ASISTENCIA', subs: ['Control de Asistencia'], items: [
-                { key: 'asistencia', label: 'Ver' },
-                { key: 'asistencia.editar', label: 'Editar' },
-                { key: 'asistencia.eliminar', label: 'Eliminar' }
+            { key: 'asistencia', label: 'ASISTENCIA', subs: [
+                { id: 'asistencia', label: 'Control de Asistencia' }
             ]},
-            { key: 'atencion', label: 'ATENCION', subs: ['Recepcion y Control','Verificación Bodega','Almacén','Por Facturar','QR Clientes','Reporte'], items: [
-                { key: 'atencion', label: 'Ver' },
-                { key: 'atencion.editar', label: 'Editar' },
-                { key: 'atencion.eliminar', label: 'Eliminar' }
+            { key: 'atencion', label: 'ATENCION', subs: [
+                { id: 'turnos_recepcion', label: 'Recepcion y Control' },
+                { id: 'turnos_bodega', label: 'Verificación Bodega' },
+                { id: 'turnos_almacen', label: 'Almacén' },
+                { id: 'turnos_facturar', label: 'Por Facturar' },
+                { id: 'turnos_qr', label: 'QR Clientes' },
+                { id: 'turnos_reporte', label: 'Reporte' }
             ]},
-            { key: 'instalaciones', label: 'INSTALACIONES', subs: ['Instalaciones','Historial'], items: [
-                { key: 'instalaciones', label: 'Ver' },
-                { key: 'instalaciones.editar', label: 'Editar' },
-                { key: 'instalaciones.eliminar', label: 'Eliminar' }
+            { key: 'instalaciones', label: 'INSTALACIONES', subs: [
+                { id: 'instalaciones', label: 'Instalaciones' },
+                { id: 'inst_historial', label: 'Historial' }
             ]},
-            { key: 'inventario', label: 'INVENTARIO', subs: ['Inventario','Movimientos','Historial Inventario','Catalogos'], items: [
-                { key: 'inventario', label: 'Ver' },
-                { key: 'inventario.editar', label: 'Editar' },
-                { key: 'inventario.eliminar', label: 'Eliminar' }
+            { key: 'inventario', label: 'INVENTARIO', subs: [
+                { id: 'inv_inventario', label: 'Inventario' },
+                { id: 'inv_movimientos', label: 'Movimientos' },
+                { id: 'inv_historial', label: 'Historial Inventario' },
+                { id: 'inv_catalogos', label: 'Catalogos' }
             ]},
-            { key: 'mantencion', label: 'MANTENCION', subs: ['Dashboard','Tipos de Area','Maquinas','Componentes','Preventivo','Correctivo','Calendario','Notas','Reportes','Historial','Bitacora'], items: [
-                { key: 'mantencion', label: 'Ver' },
-                { key: 'mantencion.editar', label: 'Editar' },
-                { key: 'mantencion.eliminar', label: 'Eliminar' }
+            { key: 'mantencion', label: 'MANTENCION', subs: [
+                { id: 'dashboard', label: 'Dashboard' },
+                { id: 'machineTypes', label: 'Tipos de Area' },
+                { id: 'machines', label: 'Maquinas' },
+                { id: 'components', label: 'Componentes' },
+                { id: 'preventive', label: 'Preventivo' },
+                { id: 'corrective', label: 'Correctivo' },
+                { id: 'calendar', label: 'Calendario' },
+                { id: 'notas', label: 'Notas' },
+                { id: 'reports', label: 'Reportes' },
+                { id: 'history', label: 'Historial' },
+                { id: 'bitacora', label: 'Bitacora' }
             ]},
-            { key: 'pedidos', label: 'PEDIDOS', subs: ['Pedidos / Ordenes'], items: [
-                { key: 'pedidos', label: 'Ver' },
-                { key: 'pedidos.editar', label: 'Editar' },
-                { key: 'pedidos.eliminar', label: 'Eliminar' }
+            { key: 'pedidos', label: 'PEDIDOS', subs: [
+                { id: 'pedidos', label: 'Pedidos / Ordenes' }
             ]},
-            { key: 'produccion', label: 'PRODUCCION', subs: ['Produccion','Planificacion','Reporte Fechas','Mis Pendientes','Configuracion','Taller'], items: [
-                { key: 'produccion', label: 'Ver' },
-                { key: 'produccion.editar', label: 'Editar' },
-                { key: 'produccion.eliminar', label: 'Eliminar' }
+            { key: 'produccion', label: 'PRODUCCION', subs: [
+                { id: 'prod_ordenes', label: 'Produccion' },
+                { id: 'prod_planificacion', label: 'Planificacion' },
+                { id: 'prod_reportes', label: 'Reporte Fechas' },
+                { id: 'prod_notas', label: 'Mis Pendientes' },
+                { id: 'prod_config', label: 'Configuracion' },
+                { id: 'taller', label: 'Taller' }
             ]}
         ];
 
         let permTreeHtml = '';
         SECTIONS.forEach(sec => {
-            const allChecked = sec.items.every(it => up.includes(it.key));
-            const someChecked = sec.items.some(it => up.includes(it.key));
+            const allSubKeys = sec.subs.map(s => s.id);
+            const allVer = allSubKeys.every(k => up.includes(k));
+            const someVer = allSubKeys.some(k => up.includes(k));
+            const allEd = allSubKeys.every(k => up.includes(k + '.editar'));
+            const allEl = allSubKeys.every(k => up.includes(k + '.eliminar'));
             permTreeHtml += '<div style="margin-bottom:10px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">';
-            permTreeHtml += '<div onclick="App.modules.usuarios.toggleSection(\'' + sec.key + '\')" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;cursor:pointer;user-select:none;transition:background 0.15s" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'#f8fafc\'">';
-            permTreeHtml += '<input type="checkbox" class="perm-sec-check" data-section="' + sec.key + '" ' + (allChecked ? 'checked' : '') + ' ' + (someChecked && !allChecked ? 'style="accent-color:#3b82f6"' : '') + ' onclick="event.stopPropagation();App.modules.usuarios.toggleSection(\'' + sec.key + '\')">';
+            permTreeHtml += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc">';
             permTreeHtml += '<span style="font-size:12px;font-weight:700;color:#334155;letter-spacing:0.5px">' + sec.label + '</span>';
+            permTreeHtml += '<label style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allVer ? 'checked' : '') + ' style="accent-color:#22c55e" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'ver\',this.checked)"> Todo Ver</label>';
+            permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allEd ? 'checked' : '') + ' style="accent-color:#3b82f6" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'editar\',this.checked)"> Todo Editar</label>';
+            permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allEl ? 'checked' : '') + ' style="accent-color:#ef4444" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'eliminar\',this.checked)"> Todo Eliminar</label>';
             permTreeHtml += '</div>';
-            if (sec.subs && sec.subs.length) {
-                permTreeHtml += '<div style="padding:6px 14px 2px 28px;display:flex;flex-wrap:wrap;gap:4px 10px">';
-                sec.subs.forEach(sub => {
-                    permTreeHtml += '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;background:#e0f2fe;color:#0369a1">' + sub + '</span>';
-                });
+            sec.subs.forEach(sub => {
+                const hasVer = up.includes(sub.id);
+                const hasEd = up.includes(sub.id + '.editar');
+                const hasEl = up.includes(sub.id + '.eliminar');
+                permTreeHtml += '<div style="display:flex;align-items:center;gap:10px;padding:8px 14px 8px 28px;border-top:1px solid #f1f5f9">';
+                permTreeHtml += '<span style="font-size:12px;color:#475569;min-width:160px">' + sub.label + '</span>';
+                permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="ver" ' + (hasVer ? 'checked' : '') + ' style="accent-color:#22c55e"> Ver</label>';
+                permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="editar" ' + (hasEd ? 'checked' : '') + ' style="accent-color:#3b82f6"> Editar</label>';
+                permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="eliminar" ' + (hasEl ? 'checked' : '') + ' style="accent-color:#ef4444"> Eliminar</label>';
                 permTreeHtml += '</div>';
-            }
-            permTreeHtml += '<div class="perm-items" id="permItems_' + sec.key + '" style="padding:8px 14px 10px 28px;display:flex;flex-wrap:wrap;gap:4px 14px">';
-            sec.items.forEach(it => {
-                permTreeHtml += '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-item-check" data-section="' + sec.key + '" data-item="' + it.key + '" ' + (up.includes(it.key) ? 'checked' : '') + ' style="accent-color:#3b82f6"> ' + it.label + '</label>';
             });
-            permTreeHtml += '</div></div>';
+            permTreeHtml += '</div>';
         });
         permTreeHtml += '</div>';
 
@@ -211,25 +224,25 @@ App.registerModule('usuarios', {
         document.getElementById('uModalOverlay').style.display = 'flex';
     },
 
-    toggleSection(sectionKey) {
-        const secCheck = document.querySelector(`.perm-sec-check[data-section="${sectionKey}"]`);
-        const itemChecks = document.querySelectorAll(`.perm-item-check[data-section="${sectionKey}"]`);
-        const newState = !secCheck.checked;
-        secCheck.checked = newState;
-        itemChecks.forEach(cb => cb.checked = newState);
+    toggleSubPerm(sectionKey, type, checked) {
+        document.querySelectorAll(`.perm-sub-check[data-section="${sectionKey}"][data-type="${type}"]`).forEach(cb => cb.checked = checked);
     },
 
     closeModal() { document.getElementById('uModalOverlay').style.display = 'none'; },
 
     async save() {
         const id = this.editingId;
-        const itemPerms = Array.from(document.querySelectorAll('.perm-item-check:checked')).map(c => c.dataset.item);
-        const extraPerms = Array.from(document.querySelectorAll('.uPermCheck:checked')).map(c => c.value);
+        const subPerms = Array.from(document.querySelectorAll('.perm-sub-check:checked')).map(c => {
+            const sub = c.dataset.sub;
+            const type = c.dataset.type;
+            if (type === 'ver') return sub;
+            return sub + '.' + type;
+        });
         const data = {
             nombre: document.getElementById('fUNombre').value.trim(),
             email: document.getElementById('fUEmail').value.trim(),
             rol: document.getElementById('fURol').value,
-            permisos: [...new Set([...itemPerms, ...extraPerms])]
+            permisos: [...new Set(subPerms)]
         };
         const pw = document.getElementById('fUPassword').value;
         if (pw) data.password = pw;

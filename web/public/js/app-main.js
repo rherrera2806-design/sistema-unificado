@@ -410,13 +410,16 @@ function hasSection(section) {
     return hasPerm(section);
 }
 function canSeeItem(item, section) {
-    return isAdmin() || hasPerm(section);
+    if (isAdmin()) return true;
+    return hasPerm(item) || hasPerm(section);
 }
-function canEdit(section) {
-    return isAdmin() || hasPerm(section + '.editar');
+function canEdit(item, section) {
+    if (isAdmin()) return true;
+    return hasPerm(item + '.editar') || hasPerm(section + '.editar');
 }
-function canDelete(section) {
-    return isAdmin() || hasPerm(section + '.eliminar');
+function canDelete(item, section) {
+    if (isAdmin()) return true;
+    return hasPerm(item + '.eliminar') || hasPerm(section + '.eliminar');
 }
 
 function renderSidebar() {
