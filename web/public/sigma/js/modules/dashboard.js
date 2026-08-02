@@ -77,13 +77,13 @@ App.registerModule('dashboard', {
             { bg: 'linear-gradient(135deg,#f8fafc,#e2e8f0)', border: '#94a3b8', shadow: '0 6px 20px rgba(148,163,184,0.2)', glow: '#94a3b8', text: '#334155', num: '#475569', ring: '#64748b' },
             { bg: 'linear-gradient(135deg,#fff7ed,#fed7aa)', border: '#fb923c', shadow: '0 6px 20px rgba(251,146,60,0.2)', glow: '#fb923c', text: '#7c2d12', num: '#c2410c', ring: '#ea580c' }
         ];
-        const medalEmoji = ['&#127942;', '&#129352;', '&#129353;'];
+        const medalEmoji = ['&#127942;', '&#129352;', '&#129353;', '&#11088;', '&#11088;'];
         const top5 = data.slice(0, 5);
 
         let cards = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:14px;padding:12px 0 6px">';
         top5.forEach((item, i) => {
             const ms = medalStyles[i] || { bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '#86efac', shadow: '0 4px 12px rgba(34,197,94,0.12)', glow: '#22c55e', text: '#14532d', num: '#15803d', ring: '#16a34a' };
-            const emoji = medalEmoji[i] || ('&#' + (8304 + i) + ';');
+            const emoji = medalEmoji[i] || '&#11088;';
             const w = i === 0 ? 170 : 140;
             const numSize = i === 0 ? 32 : 24;
             const nameSize = i === 0 ? 13 : 11;
