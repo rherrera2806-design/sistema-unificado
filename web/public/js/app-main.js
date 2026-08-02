@@ -541,7 +541,7 @@ function renderSidebar() {
             } else if (page === 'pedidos') {
                 App.loadModule('pedidos');
             } else if (page === 'asistencia_control') {
-                window.open('/asistencia/', '_blank');
+                openModule('/asistencia/', 'Control de Asistencia');
             } else {
                 App.loadModule(page);
             }
@@ -616,6 +616,20 @@ function navigateToInv(name) {
 // ─── External Page (legacy, no longer used) ────
 function openExternalPage(url, label) {
     window.open(url, '_blank');
+}
+
+// ─── Module Iframe View ────
+function openModule(url, label) {
+    document.getElementById('launcherView').style.display = 'none';
+    document.getElementById('moduleView').style.display = 'flex';
+    document.getElementById('moduleLabel').textContent = label || '';
+    document.getElementById('moduleFrame').src = url;
+}
+
+function closeModule() {
+    document.getElementById('moduleView').style.display = 'none';
+    document.getElementById('launcherView').style.display = '';
+    document.getElementById('moduleFrame').src = '';
 }
 
 // ─── Init ────
