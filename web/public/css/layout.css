@@ -41,9 +41,13 @@
 .sidebar.collapsed .nav-section::after,
 .sidebar.collapsed .nav-badge,
 .sidebar.collapsed #sidebarLogout span,
-.sidebar.collapsed .sidebar-nav,
 .sidebar.collapsed #sidebarCollapseBtn {
     display: none;
+}
+.sidebar.collapsed .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 .sidebar.collapsed .sidebar-header {
     padding: var(--space-4) var(--space-2);
@@ -123,6 +127,8 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--space-2) 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ── Nav Sections ── */

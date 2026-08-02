@@ -495,8 +495,6 @@ function renderSidebar() {
         html += `</div>`;
     });
 
-    // Cerrar sesion
-    html += `<div style="flex:1"></div>`;
     // Admin section (solo admins)
     if (isAdmin()) {
         html += `<div class="nav-section" onclick="toggleSection('admin')"><span>ADMINISTRACION</span><span class="toggle-icon">▼</span></div>`;
@@ -505,8 +503,12 @@ function renderSidebar() {
         html += `</div>`;
     }
 
-    html += `<div class="nav-item" onclick="doLogout()" style="opacity:0.4;margin-top:8px">
-        <span class="nav-icon">${SVG.logOut}</span> Cerrar Sesion</div>`;
+    // Cerrar sesion (siempre al fondo)
+    html += `<div style="flex:1"></div>`;
+    html += `<div style="padding:8px 12px 16px;border-top:1px solid rgba(255,255,255,0.06)">`;
+    html += `<div class="nav-item" onclick="doLogout()" style="opacity:0.5;justify-content:center">
+        <span class="nav-icon">${SVG.logOut}</span><span class="nav-text">Cerrar Sesion</span></div>`;
+    html += `</div>`;
 
     nav.innerHTML = html;
 
