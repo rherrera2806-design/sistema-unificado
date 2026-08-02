@@ -9,7 +9,7 @@ async function login(email, password) {
     if (verification.migrated) {
         await query("UPDATE usuarios SET password = $1 WHERE id = $2", [verification.newHash, user.id]);
     }
-    return { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol, permisos: Array.isArray(user.permisos) ? user.permisos : [] };
+    return { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol, area: user.area || '', permisos: Array.isArray(user.permisos) ? user.permisos : [] };
 }
 
 async function getUsuario(id) {

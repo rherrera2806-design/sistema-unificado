@@ -54,7 +54,7 @@ App.registerModule('turnos', {
     fmtSec(s) { if (s == null) return '-'; const m = Math.round(s / 60); return `${m}m`; },
     fmtTime(t) { if (!t) return '-'; return String(t).slice(0, 8); },
     timeToSec(t) { if (!t) return 0; const p = String(t).slice(0,8).split(':').map(Number); return p[0]*3600 + p[1]*60 + (p[2]||0); },
-    canEliminar() { const u = JSON.parse(localStorage.getItem('unified_user') || '{}'); return (u.permisos || []).includes('turnos_eliminar'); },
+    canEliminar() { const u = JSON.parse(localStorage.getItem('unified_user') || '{}'); const p = u.permisos || []; return u.rol === 'admin' || p.includes('turnos') || p.includes('turnos_recepcion.eliminar') || p.includes('turnos_bodega.eliminar'); },
 
     // ═══════ RECEPCION ═══════
     async showRecepcion() {

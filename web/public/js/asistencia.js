@@ -76,14 +76,14 @@ const Asistencia = {
         ];
 
         document.getElementById('ast-tabs').innerHTML = tabs.map(t =>
-            `<button class="ast-tab${t.id === this.currentTab ? ' active' : ''}" onclick="Asistencia.showTab('${t.id}')" style="display:inline-flex;align-items:center;gap:6px">${t.icon}${t.label}</button>`
+            `<button class="ast-tab${t.id === this.currentTab ? ' active' : ''}" onclick="Asistencia.showTab('${t.id}', event)" style="display:inline-flex;align-items:center;gap:6px">${t.icon}${t.label}</button>`
         ).join('');
     },
 
-    showTab(tab) {
+    showTab(tab, evt) {
         this.currentTab = tab;
         document.querySelectorAll('.ast-tab').forEach(el => el.classList.remove('active'));
-        event.target.closest('.ast-tab')?.classList.add('active');
+        evt?.target?.closest('.ast-tab')?.classList.add('active');
         this.renderTabs();
 
         // Update subtitle and hero filters

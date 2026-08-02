@@ -787,7 +787,7 @@ function toggleSection(section) {
         group.classList.add('expanded');
         sectionEl.classList.add('expanded');
     }
-    try { localStorage.setItem('sidebar_collapsed', JSON.stringify({ [section]: !isCollapsed })); } catch(e) {}
+    try { localStorage.setItem('sidebar_collapsed', JSON.stringify({ [section]: !isExpanded })); } catch(e) {}
 }
 
 function navI(id, label, icon) {
