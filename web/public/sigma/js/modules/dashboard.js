@@ -103,16 +103,16 @@ App.registerModule('dashboard', {
 
         let extras = '';
         if (data.length > 3) {
-            extras = '<div style="border-top:1px solid #e2e8f0;margin-top:16px;padding-top:16px">';
+            extras = '<div style="border-top:1px solid #e2e8f0;margin-top:12px;padding-top:10px">';
             data.slice(3, 5).forEach((item, i) => {
-                extras += '<div class="dash-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-radius:10px;cursor:pointer;margin-bottom:6px;border:1px solid transparent;transition:all 0.2s ease" '
+                extras += '<div class="dash-row" style="display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-radius:8px;cursor:pointer;margin-bottom:4px;border:1px solid transparent;transition:all 0.2s ease" '
                     + 'onmouseover="this.style.background=\'#f8fafc\';this.style.borderColor=\'#e2e8f0\';this.style.transform=\'translateX(4px)\'" '
                     + 'onmouseout="this.style.background=\'transparent\';this.style.borderColor=\'transparent\';this.style.transform=\'none\'" '
                     + 'onclick="App.modules.dashboard.goToCorrective(' + item.maquina_id + ')">'
-                    + '<div style="display:flex;align-items:center;gap:14px">'
-                    + '<div style="width:32px;height:32px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (i + 4) + '°</div>'
-                    + '<span style="font-size:14px;font-weight:600;color:#1e293b">' + escapeHtml(item.nombre || 'Sin nombre') + '</span></div>'
-                    + '<span style="font-size:13px;font-weight:700;color:#ef4444;font-family:\'JetBrains Mono\',monospace;background:#fef2f2;padding:4px 12px;border-radius:20px;border:1px solid #fecaca">' + item.total_fallas + ' fallas</span></div>';
+                    + '<div style="display:flex;align-items:center;gap:10px">'
+                    + '<div style="width:26px;height:26px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (i + 4) + '°</div>'
+                    + '<span style="font-size:13px;font-weight:600;color:#1e293b">' + escapeHtml(item.nombre || 'Sin nombre') + '</span></div>'
+                    + '<span style="font-size:12px;font-weight:700;color:#ef4444;font-family:\'JetBrains Mono\',monospace;background:#fef2f2;padding:3px 10px;border-radius:20px;border:1px solid #fecaca">' + item.total_fallas + ' fallas</span></div>';
             });
             extras += '</div>';
         }
