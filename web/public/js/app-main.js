@@ -275,11 +275,13 @@ const App = {
         let asistenciaStats = { faltas: 0, licencias: 0, licencias_dias: 0, vacaciones: 0, vacaciones_trabajadores: 0, trabajadores_total: 0 };
         let instalacionesStats = { programadas: 0, enCurso: 0, completadas: 0, novedades: 0 };
         let inventarioStats = { totalMovimientos: 0, totalEntradas: 0, totalSalidas: 0, tiposCristal: 0, stockM2: 0 };
+        let mantencionStats = { preventivasTotal: 0, preventivasProgramadas: 0, preventivasRealizadas: 0, preventivasVencidas: 0, correctivasTotal: 0, correctivasEnMantencion: 0, correctivasReparadas: 0 };
         try {
-            const [asistenciaRes, instalacionesRes, inventarioRes] = await Promise.all([
+            const [asistenciaRes, instalacionesRes, inventarioRes, mantencionRes] = await Promise.all([
                 fetch('/api/asistencia/dashboard'),
                 fetch('/api/instalaciones/dashboard'),
-                fetch('/api/inv/estadisticas')
+                fetch('/api/inv/estadisticas'),
+                fetch('/api/maintenance/dashboard')
             ]);
             if (asistenciaRes.ok) asistenciaStats = await asistenciaRes.json();
             if (instalacionesRes.ok) instalacionesStats = await instalacionesRes.json();
@@ -287,6 +289,7 @@ const App = {
                 const inv = await inventarioRes.json();
                 inventarioStats = { totalMovimientos: inv.totalMovimientos || 0, totalEntradas: inv.totalEntradas || 0, totalSalidas: inv.totalSalidas || 0, tiposCristal: (inv.tiposCristal || []).length, stockM2: Math.round(inv.stockM2 || 0) };
             }
+            if (mantencionRes.ok) mantencionStats = await mantencionRes.json();
         } catch(e) {}
 
         const html = `
@@ -387,6 +390,37 @@ const App = {
                             <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #dbeafe">
                                 <div style="font-size:18px;font-weight:800;color:#8b5cf6;line-height:1">${inventarioStats.totalMovimientos}</div>
                                 <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Movimientos</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MANTENCION -->
+                    <div onclick="App.loadModule('preventive')" style="background:linear-gradient(135deg,#fdf4ff 0%,#fae8ff 100%);border:1px solid #e879f9;border-radius:14px;padding:16px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(168,85,247,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#a855f7,#9333ea);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(168,85,247,0.25)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                            </div>
+                            <div>
+                                <h3 style="margin:0;font-size:12px;font-weight:700;color:#0f172a">MANTENCION</h3>
+                                <p style="margin:0;font-size:10px;color:#64748b">${mantencionStats.preventivasTotal + mantencionStats.correctivasTotal} registros</p>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fae8ff">
+                                <div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">${mantencionStats.preventivasProgramadas}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Proximas</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fae8ff">
+                                <div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">${mantencionStats.preventivasRealizadas}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Realizadas</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fae8ff">
+                                <div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">${mantencionStats.preventivasVencidas}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">Vencidas</div>
+                            </div>
+                            <div style="background:white;border-radius:8px;padding:8px;text-align:center;border:1px solid #fae8ff">
+                                <div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">${mantencionStats.correctivasEnMantencion}</div>
+                                <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase">En repar.</div>
                             </div>
                         </div>
                     </div>

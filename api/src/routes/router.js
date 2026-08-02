@@ -18,5 +18,6 @@ router.use(require('./r2Storage'));
 router.use(require('./r2Legacy'));
 router.use(require('./pedidos'));
 router.use(require('./asistencia'));
+router.use(require('./maintenance'));
 
 module.exports = router;
