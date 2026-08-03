@@ -520,19 +520,19 @@ const Asistencia = {
         const busqueda = (document.getElementById('ast-cal-buscar')?.value || '').toLowerCase();
         const filtered = busqueda ? trabajadores.filter(t => t.nombre.toLowerCase().includes(busqueda) || (t.rut && t.rut.toLowerCase().includes(busqueda))) : trabajadores;
 
-        let html = '<div class="ast-cal-header" style="grid-template-columns:180px repeat(' + diasEnMes + ',1fr)">';
-        html += '<div style="padding:10px 12px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #e2e8f0">Trabajador</div>';
+        let html = '<div style="overflow-x:auto;max-width:100%"><div class="ast-cal-header" style="grid-template-columns:130px repeat(' + diasEnMes + ',32px);min-width:fit-content">';
+        html += '<div style="padding:10px 12px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #e2e8f0;position:sticky;left:0;z-index:2;background:#f8fafc">Trabajador</div>';
         for (let d = 1; d <= diasEnMes; d++) {
             const fecha = new Date(anio, mes - 1, d);
             const esFin = fecha.getDay() === 0 || fecha.getDay() === 6;
             const esHoy = d === hoy.getDate() && mes === (hoy.getMonth() + 1) && parseInt(anio) === hoy.getFullYear();
-            html += '<div class="ast-cal-cell' + (esFin ? ' fin-semana' : '') + (esHoy ? ' hoy' : '') + '" style="flex-direction:column;padding:4px 2px;border-right:1px solid #f1f5f9"><div style="font-weight:600;font-size:10px">' + d + '</div><div style="font-size:8px;opacity:0.6">' + diasSemana[fecha.getDay()] + '</div></div>';
+            html += '<div class="ast-cal-cell' + (esFin ? ' fin-semana' : '') + (esHoy ? ' hoy' : '') + '" style="flex-direction:column;padding:2px 1px;border-right:1px solid #f1f5f9"><div style="font-weight:600;font-size:9px">' + d + '</div><div style="font-size:7px;opacity:0.6">' + diasSemana[fecha.getDay()] + '</div></div>';
         }
         html += '</div>';
 
         filtered.forEach(t => {
-            html += '<div class="ast-cal-row" style="grid-template-columns:180px repeat(' + diasEnMes + ',1fr)">';
-            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:700">' + t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2) + '</div><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + '">' + t.nombre + '</span></div>';
+            html += '<div class="ast-cal-row" style="grid-template-columns:130px repeat(' + diasEnMes + ',32px);min-width:fit-content">';
+            html += '<div style="padding:4px 8px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:6px;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><div style="width:20px;height:20px;border-radius:5px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;color:white;font-size:7px;font-weight:700">' + t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2) + '</div><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px" title="' + t.nombre + '">' + t.nombre + '</span></div>';
 
             for (let d = 1; d <= diasEnMes; d++) {
                 const fechaStr = anio + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
@@ -550,7 +550,7 @@ const Asistencia = {
             }
             html += '</div>';
         });
-        c.innerHTML = html;
+        c.innerHTML = html + '</div>';
     },
 
     // ═══════ PERMISOS ═══════
