@@ -979,8 +979,36 @@ const Asistencia = {
         } catch(e) { console.error('Error:', e); }
     },
 
-    abrirModalHorasExtras() { document.getElementById('modalHorasExtras').classList.add('show'); },
+    abrirModalHorasExtras() {
+        document.getElementById('he-trabajador').value = '';
+        document.getElementById('he-fecha').value = new Date().toISOString().split('T')[0];
+        document.getElementById('he-hora-inicio').value = '';
+        document.getElementById('he-hora-fin').value = '';
+        document.getElementById('he-horas').value = '';
+        document.getElementById('he-motivo').value = '';
+        delete document.getElementById('modalHorasExtras').dataset.editId;
+        this.cargarTrabajadoresSelect('he-trabajador');
+        document.getElementById('modalHorasExtras').classList.add('show');
+    },
     cerrarModalHorasExtras() { document.getElementById('modalHorasExtras').classList.remove('show'); },
+    calcularHorasExtras() {
+        const inicio = document.getElementById('he-hora-inicio').value;
+        const fin = document.getElementById('he-hora-fin').value;
+        if (!inicio || !fin) return;
+        const [h1, m1] = inicio.split(':').map(Number);
+        const [h2, m2] = fin.split(':').map(Number);
+        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+        if (diff < 0) diff += 24 * 60;
+        const horas = Math.round(diff / 60 * 2) / 2;
+        document.getElementById('he-horas').value = horas > 0 ? horas.toFixed(1) : '';
+    },
+    cargarTrabajadoresSelect(selectId) {
+        fetch('/api/asistencia/trabajadores').then(r => r.json()).then(trabajadores => {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            sel.innerHTML = '<option value="">Seleccionar...</option>' + trabajadores.filter(t => t.activo !== false).map(t => '<option value="' + t.id + '">' + t.nombre + '</option>').join('');
+        });
+    },
     async guardarHorasExtras() {
         const editId = document.getElementById('modalHorasExtras').dataset.editId;
         const d = { trabajador_id: document.getElementById('he-trabajador').value, fecha: document.getElementById('he-fecha').value, horas: parseFloat(document.getElementById('he-horas').value), motivo: document.getElementById('he-motivo').value };
