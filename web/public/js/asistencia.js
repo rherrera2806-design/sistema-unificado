@@ -131,7 +131,9 @@ const Asistencia = {
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.buscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
-                + (canAgT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">+ Nuevo</button>' : '');
+                + (canAgT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">+ Nuevo</button>' : '')
+                + '<button onclick="Asistencia.exportExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">Excel</button>'
+                + '<button onclick="Asistencia.exportPDFTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#dc2626;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(220,38,38,0.15)">PDF</button>';
         } else         if (tab === 'permisos') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
@@ -170,9 +172,7 @@ const Asistencia = {
                 + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.buscarTrabajadores()" style="padding-left:32px;width:160px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + '<input type="date" id="ast-hero-fecha" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
-                + '<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>'
-                + '<button onclick="Asistencia.exportExcel()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">Excel</button>'
-                + '<button onclick="Asistencia.exportPDF()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#dc2626;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(220,38,38,0.15)">PDF</button>';
+                + '<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>';
         } else {
             container.innerHTML = '';
         }
@@ -460,6 +460,38 @@ const Asistencia = {
             this.renderTablaFaltas();
             this.actualizarStats();
         } catch(e) { console.error('Error:', e); }
+    },
+
+    exportExcelTrabajadores() {
+        const trabajadores = this.trabajadoresAdmin || this.trabajadores || [];
+        let csv = 'Nombre,RUT,Estado\n';
+        trabajadores.forEach(t => {
+            csv += `"${t.nombre}","${t.rut || ''}","${t.activo ? 'Activo' : 'Inactivo'}"\n`;
+        });
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'trabajadores_' + new Date().toISOString().split('T')[0] + '.csv';
+        link.click();
+    },
+
+    exportPDFTrabajadores() {
+        const trabajadores = this.trabajadoresAdmin || this.trabajadores || [];
+        const total = trabajadores.length;
+        const activos = trabajadores.filter(t => t.activo).length;
+        const inactivos = total - activos;
+        let html = '<html><head><style>body{font-family:Arial,sans-serif;padding:20px}h1{font-size:18px;color:#0f172a}table{width:100%;border-collapse:collapse;margin-top:15px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;font-size:12px}th{background:#f8fafc;font-weight:700;color:#64748b}.activo{color:#22c55e;font-weight:700}.inactivo{color:#dc2626}.stats{margin:15px 0;display:flex;gap:20px}.stat{padding:10px 15px;border-radius:8px;background:#f8fafc}</style></head><body>';
+        html += '<h1>Listado de Trabajadores</h1>';
+        html += '<div class="stats"><div class="stat"><strong>Total:</strong> ' + total + '</div><div class="stat"><strong>Activos:</strong> ' + activos + '</div><div class="stat"><strong>Inactivos:</strong> ' + inactivos + '</div></div>';
+        html += '<table><thead><tr><th>Nombre</th><th>RUT</th><th>Estado</th></tr></thead><tbody>';
+        trabajadores.forEach(t => {
+            html += '<tr><td>' + t.nombre + '</td><td>' + (t.rut || '') + '</td><td class="' + (t.activo ? 'activo' : 'inactivo') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</td></tr>';
+        });
+        html += '</tbody></table></body></html>';
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+        setTimeout(() => { win.print(); }, 500);
     },
 
     exportExcel() {
