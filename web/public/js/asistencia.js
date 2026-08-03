@@ -735,7 +735,6 @@ const Asistencia = {
             document.getElementById('licencia-inicio').value = l.fecha_inicio ? l.fecha_inicio.split('T')[0] : '';
             document.getElementById('licencia-fin').value = l.fecha_fin ? l.fecha_fin.split('T')[0] : '';
             document.getElementById('licencia-diagnostico').value = l.diagnostico || '';
-            document.getElementById('licencia-medico').value = l.medico || '';
             document.getElementById('modalLicencia').dataset.editId = id;
             document.getElementById('modalLicencia').classList.add('show');
         });
@@ -753,7 +752,7 @@ const Asistencia = {
     cerrarModalLicencia() { document.getElementById('modalLicencia').classList.remove('show'); },
     async guardarLicencia() {
         const editId = document.getElementById('modalLicencia').dataset.editId;
-        const d = { trabajador_id: document.getElementById('licencia-trabajador').value, fecha_inicio: document.getElementById('licencia-inicio').value, fecha_fin: document.getElementById('licencia-fin').value, diagnostico: document.getElementById('licencia-diagnostico').value, medico: document.getElementById('licencia-medico').value };
+        const d = { trabajador_id: document.getElementById('licencia-trabajador').value, fecha_inicio: document.getElementById('licencia-inicio').value, fecha_fin: document.getElementById('licencia-fin').value, diagnostico: document.getElementById('licencia-diagnostico').value };
         if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin) return;
         if (editId) {
             await fetch('/api/asistencia/licencias/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
