@@ -38,6 +38,8 @@ router.get('/api/pedidos', async (req, res, next) => {
 router.post('/api/pedidos', validate(pedidosSchema), async (req, res, next) => {
     try {
         const { numero_pedido, cliente, vendedor, archivo_url, pdf_base64 } = req.body;
+        const exists = await query('SELECT id FROM pedidos WHERE numero_pedido = $1 LIMIT 1', [numero_pedido]);
+        if (exists.rows.length > 0) return res.status(400).json({ error: 'Ya existe un pedido con este número' });
         let pdfBuffer = null;
         if (pdf_base64) {
             pdfBuffer = Buffer.from(pdf_base64.replace(/^data:application\/pdf;base64,/, ''), 'base64');
