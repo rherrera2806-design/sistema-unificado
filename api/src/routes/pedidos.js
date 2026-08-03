@@ -37,7 +37,7 @@ router.get('/api/pedidos', async (req, res, next) => {
 
 router.post('/api/pedidos', validate(pedidosSchema), async (req, res, next) => {
     try {
-        const { numero_pedido, cliente, vendedor, archivo_url, pdf_base64 } = req.body;
+        const { numero_pedido, cliente, tipo_ov, vendedor, archivo_url, pdf_base64 } = req.body;
         const exists = await query('SELECT id FROM pedidos WHERE numero_pedido = $1 LIMIT 1', [numero_pedido]);
         if (exists.rows.length > 0) return res.status(400).json({ error: 'Ya existe un pedido con este número' });
         let pdfBuffer = null;
@@ -45,8 +45,8 @@ router.post('/api/pedidos', validate(pedidosSchema), async (req, res, next) => {
             pdfBuffer = Buffer.from(pdf_base64.replace(/^data:application\/pdf;base64,/, ''), 'base64');
         }
         const result = await query(
-            'INSERT INTO pedidos (numero_pedido, cliente, vendedor, archivo_url, archivo_pdf, estado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [numero_pedido, cliente, vendedor || '', archivo_url || '', pdfBuffer, 'pendiente']
+            'INSERT INTO pedidos (numero_pedido, cliente, tipo_ov, vendedor, archivo_url, archivo_pdf, estado) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [numero_pedido, cliente, tipo_ov || 'Normal', vendedor || '', archivo_url || '', pdfBuffer, 'pendiente']
         );
         res.status(201).json(result.rows[0]);
     } catch (e) { next(e); }
@@ -96,14 +96,24 @@ router.get('/api/pedidos/:id', async (req, res, next) => {
 router.put('/api/pedidos/:id', async (req, res, next) => {
     try {
         const id = Number(req.params.id);
-        const { estado, motivo_rechazo, revisado_por } = req.body;
-        if (!estado || !['aprobado', 'rechazado'].includes(estado)) {
-            return res.status(400).json({ error: 'Estado debe ser aprobado o rechazado' });
+        const { estado, motivo_rechazo, revisado_por, cliente, tipo_ov } = req.body;
+        let result;
+        if (estado && ['aprobado', 'rechazado'].includes(estado)) {
+            result = await query(
+                'UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+                [estado, motivo_rechazo || null, revisado_por || '', id]
+            );
+        } else if (cliente || tipo_ov) {
+            const fields = [];
+            const values = [];
+            let idx = 1;
+            if (cliente) { fields.push('cliente = $' + idx++); values.push(cliente); }
+            if (tipo_ov) { fields.push('tipo_ov = $' + idx++); values.push(tipo_ov); }
+            values.push(id);
+            result = await query('UPDATE pedidos SET ' + fields.join(', ') + ' WHERE id = $' + idx + ' RETURNING *', values);
+        } else {
+            return res.status(400).json({ error: 'Datos invalidos' });
         }
-        const result = await query(
-            'UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
-            [estado, motivo_rechazo || null, revisado_por || '', id]
-        );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
         res.json(result.rows[0]);
     } catch (e) { next(e); }
