@@ -452,7 +452,7 @@ App.registerModule('pedidos', {
         });
 
         const maxVal = Math.max(1, ...Object.values(porDia).flatMap(d => Object.values(d)));
-        const barH = 160;
+        const barH = 300;
 
         const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
