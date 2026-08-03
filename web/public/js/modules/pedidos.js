@@ -58,9 +58,10 @@ App.registerModule('pedidos', {
             + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
             + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Revisor</th>'
             + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha Revision</th>'
+            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tiempo</th>'
             + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
             + '</tr></thead><tbody id="pedidosTable">'
-            + '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8"><div style="font-size:14px">Cargando pedidos...</div></td></tr>'
+            + '<tr><td colspan="9" style="text-align:center;padding:48px;color:#94a3b8"><div style="font-size:14px">Cargando pedidos...</div></td></tr>'
             + '</tbody></table></div></div>'
 
             + this.uploadModalHtml()
@@ -130,7 +131,7 @@ App.registerModule('pedidos', {
             this.filter();
         } catch(e) {
             console.error('Error loading pedidos:', e);
-            document.getElementById('pedidosTable').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8">Error al cargar pedidos</td></tr>';
+            document.getElementById('pedidosTable').innerHTML = '<tr><td colspan="9" style="text-align:center;padding:48px;color:#94a3b8">Error al cargar pedidos</td></tr>';
         }
     },
 
@@ -170,7 +171,7 @@ App.registerModule('pedidos', {
     renderTable(pedidos) {
         const tbody = document.getElementById('pedidosTable');
         if (!pedidos.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:56px 20px">'
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:56px 20px">'
                 + '<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
                 + '<div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:4px">Sin pedidos</div>'
                 + '<div style="color:#94a3b8;font-size:13px">No hay pedidos que mostrar</div></td></tr>';
@@ -188,6 +189,7 @@ App.registerModule('pedidos', {
                 + '<td style="padding:12px 14px">' + badge + '</td>'
                 + '<td style="padding:12px 14px;color:#475569">' + escapeHtml(p.revisor_nombre || '-') + '</td>'
                 + '<td style="padding:12px 14px"><span style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</span></td>'
+                + '<td style="padding:12px 14px"><span style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + this.fmtTiempo(p.fecha_subida, p.fecha_revision) + '</span></td>'
                 + '<td style="padding:12px 14px;text-align:center;white-space:nowrap">'
                 + (p.estado === 'pendiente' ? '<button onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')" class="ped-btn" style="background:white;color:#3b82f6;border:1px solid #bfdbfe;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Ver PDF</button> ' : '')
                 + (this.canAuthorize && p.estado === 'pendiente' ? '<button onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')" class="ped-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(59,130,246,0.3)">Revisar</button> ' : '')
@@ -323,5 +325,15 @@ App.registerModule('pedidos', {
     },
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); },
-    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }); }
+    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }); },
+    fmtTiempo(inicio, fin) {
+        if (!inicio || !fin) return '<span style="color:#cbd5e1">-</span>';
+        const diff = new Date(fin) - new Date(inicio);
+        if (diff < 0) return '-';
+        const mins = Math.floor(diff / 60000);
+        if (mins < 60) return mins + ' min';
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return h + 'h ' + m + 'min';
+    }
 });
