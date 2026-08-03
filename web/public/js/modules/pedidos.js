@@ -11,7 +11,8 @@ App.registerModule('pedidos', {
         const permisos = user.permisos || [];
         this.isVendedor = permisos.includes('pedidos') && !permisos.includes('pedidos.agregar');
         this.canAuthorize = permisos.includes('pedidos.editar') || permisos.includes('usuarios');
-        const showNew = this.isVendedor || this.canAuthorize;
+        this.canCreate = permisos.includes('pedidos.agregar') || permisos.includes('usuarios');
+        const showNew = this.isVendedor || this.canAuthorize || this.canCreate;
 
         el.innerHTML = '<style>'
             + '@keyframes pedFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
