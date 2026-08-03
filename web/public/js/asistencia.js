@@ -1052,19 +1052,19 @@ const Asistencia = {
     },
 
     async cargarReportes() {
-        const mes = document.getElementById('ast-hero-mes')?.value;
-        if (!mes) return;
+        const mes = document.getElementById('ast-hero-mes')?.value || (new Date().getMonth() + 1);
         const anio = new Date().getFullYear();
         try {
             const [reporteR, rankAR] = await Promise.all([
                 fetch('/api/asistencia/reporte-mensual?mes=' + mes + '&anio=' + anio),
                 fetch('/api/asistencia/ranking?mes=' + mes + '&anio=' + anio + '&tipo=asistencia')
             ]);
+            if (!reporteR.ok) { console.error('Reporte API error:', await reporteR.text()); return; }
             const reporte = await reporteR.json();
-            const ranking = await rankAR.json();
+            const ranking = rankAR.ok ? await rankAR.json() : [];
             this.renderReporte(reporte);
             this.renderRanking(ranking);
-        } catch(e) { console.error('Error:', e); }
+        } catch(e) { console.error('Error cargando reportes:', e); }
     },
 
     renderReporte(reporte) {
