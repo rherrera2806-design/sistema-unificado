@@ -474,7 +474,7 @@ App.registerModule('pedidos', {
                     const val = porDia[d][t];
                     if (val > 0) {
                         const h = Math.max((val / maxVal) * barH, 4);
-                        stack += '<div style="width:100%;height:' + h + 'px;background:' + colores[t] + ';display:block" title="Dia ' + d + ' - ' + t + ': ' + val + '"></div>';
+                        stack += '<div style="width:100%;height:' + h + 'px;background:' + colores[t] + ';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.3)" title="Dia ' + d + ' - ' + t + ': ' + val + '">' + val + '</div>';
                     }
                 }
                 segmentsHtml = '<div style="display:flex;flex-direction:column-reverse;width:100%;height:' + barH + 'px;justify-content:flex-start">' + stack + '</div>';
