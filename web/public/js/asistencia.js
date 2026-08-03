@@ -556,8 +556,16 @@ const Asistencia = {
                 let clase = esFin ? 'fin-semana' : '';
                 let title = '';
                 if (!esFin) {
-                    if (vacaciones.some(v => v.trabajador_id === t.id && new Date(v.fecha_inicio) <= fecha && new Date(v.fecha_fin) >= fecha)) { clase = 'vacaciones'; title = 'Vacaciones'; }
-                    else if (licencias.some(l => l.trabajador_id === t.id && new Date(l.fecha_inicio) <= fecha && new Date(l.fecha_fin) >= fecha)) { clase = 'licencia'; title = 'Licencia'; }
+                    if (vacaciones.some(v => {
+                        const ini = new Date(v.fecha_inicio.split('T')[0]);
+                        const fin = new Date(v.fecha_fin.split('T')[0]);
+                        return v.trabajador_id === t.id && ini <= fecha && fin >= fecha;
+                    })) { clase = 'vacaciones'; title = 'Vacaciones'; }
+                    else if (licencias.some(l => {
+                        const ini = new Date(l.fecha_inicio.split('T')[0]);
+                        const fin = new Date(l.fecha_fin.split('T')[0]);
+                        return l.trabajador_id === t.id && ini <= fecha && fin >= fecha;
+                    })) { clase = 'licencia'; title = 'Licencia'; }
                     else if (faltas.some(f => f.trabajador_id === t.id && f.fecha === fechaStr)) { clase = 'falta'; title = 'Falta'; }
                     else if (d <= hoy.getDate() && mes <= (hoy.getMonth() + 1) && parseInt(anio) <= hoy.getFullYear()) { clase = 'presente'; title = 'Presente'; }
                 }
