@@ -284,9 +284,11 @@ router.delete('/api/asistencia/vacaciones/:id', async (req, res) => {
 
 router.get('/api/asistencia/calendario', async (req, res) => {
     try {
-        const { mes, anio } = req.query;
-        const mesActual = mes || new Date().getMonth() + 1;
-        const anioActual = anio || new Date().getFullYear();
+        const mesActual = parseInt(req.query.mes) || new Date().getMonth() + 1;
+        const anioActual = parseInt(req.query.anio) || new Date().getFullYear();
+        const mesStr = String(mesActual).padStart(2, '0');
+        const fechaInicio = anioActual + '-' + mesStr + '-01';
+        const fechaFin = anioActual + '-' + mesStr + '-28';
         
         const trabajadores = await pool.query(
             'SELECT * FROM trabajadores WHERE activo = true ORDER BY nombre'
@@ -294,26 +296,22 @@ router.get('/api/asistencia/calendario', async (req, res) => {
         
         const faltas = await pool.query(
             `SELECT trabajador_id, fecha FROM asistencia 
-             WHERE EXTRACT(MONTH FROM fecha) = $1 AND EXTRACT(YEAR FROM fecha) = $2`,
-            [mesActual, anioActual]
+             WHERE fecha >= $1::date AND fecha <= $2::date`,
+            [fechaInicio, fechaFin]
         );
         
         const vacaciones = await pool.query(
             `SELECT trabajador_id, fecha_inicio, fecha_fin FROM vacaciones 
-             WHERE EXTRACT(MONTH FROM fecha_inicio) <= $1 
-             AND EXTRACT(YEAR FROM fecha_inicio) <= $2
-             AND EXTRACT(MONTH FROM fecha_fin) >= $1 
-             AND EXTRACT(YEAR FROM fecha_fin) >= $2`,
-            [mesActual, anioActual]
+             WHERE fecha_inicio <= $2::date 
+             AND (fecha_fin >= $1::date OR fecha_fin IS NULL)`,
+            [fechaInicio, fechaFin]
         );
         
         const licencias = await pool.query(
             `SELECT trabajador_id, fecha_inicio, fecha_fin FROM licencias_medicas 
-             WHERE EXTRACT(MONTH FROM fecha_inicio) <= $1 
-             AND EXTRACT(YEAR FROM fecha_inicio) <= $2
-             AND EXTRACT(MONTH FROM fecha_fin) >= $1 
-             AND EXTRACT(YEAR FROM fecha_fin) >= $2`,
-            [mesActual, anioActual]
+             WHERE fecha_inicio <= $2::date 
+             AND (fecha_fin >= $1::date OR fecha_fin IS NULL)`,
+            [fechaInicio, fechaFin]
         );
         
         res.json({
@@ -446,7 +444,7 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                 (SELECT COALESCE(SUM(
                     CASE 
                         WHEN l.fecha_fin >= l.fecha_inicio THEN 
-                            EXTRACT(DAY FROM (l.fecha_fin - l.fecha_inicio)) + 1
+                            (l.fecha_fin - l.fecha_inicio) + 1
                         ELSE 1
                     END
                 ), 0) FROM licencias_medicas l 
