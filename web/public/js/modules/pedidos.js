@@ -437,7 +437,7 @@ App.registerModule('pedidos', {
 
         const pedidosMes = this.allPedidos.filter(p => {
             const f = new Date(p.fecha_subida);
-            return f.getMonth() === mes && f.getFullYear() === anio;
+            return f.getMonth() === mes && f.getFullYear() === anio && p.estado !== 'rechazado';
         });
 
         const porDia = {};
@@ -452,7 +452,7 @@ App.registerModule('pedidos', {
         });
 
         const maxVal = Math.max(1, ...Object.values(porDia).flatMap(d => Object.values(d)));
-        const barH = 300;
+        const barH = 450;
 
         const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
