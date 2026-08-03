@@ -312,8 +312,7 @@ router.get('/api/asistencia/calendario', async (req, res) => {
              WHERE EXTRACT(MONTH FROM fecha_inicio) <= $1 
              AND EXTRACT(YEAR FROM fecha_inicio) <= $2
              AND EXTRACT(MONTH FROM fecha_fin) >= $1 
-             AND EXTRACT(YEAR FROM fecha_fin) >= $2
-             AND estado = 'aprobada'`,
+             AND EXTRACT(YEAR FROM fecha_fin) >= $2`,
             [mesActual, anioActual]
         );
         

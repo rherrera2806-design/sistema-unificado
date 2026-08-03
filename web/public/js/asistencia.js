@@ -6,6 +6,7 @@ const Asistencia = {
     trabajadores: [],
     asistenciaHoy: [],
     currentTab: 'diaria',
+    lastLoadedDate: null,
 
     async render() {
         const el = document.getElementById('page-asistencia');
@@ -388,6 +389,7 @@ const Asistencia = {
             </div>`;
 
         document.getElementById('ast-hero-fecha').value = new Date().toISOString().split('T')[0];
+        document.getElementById('ast-hero-fecha').addEventListener('change', () => { this.lastLoadedDate = null; });
         await this.cargarTrabajadores();
         await this.cargarAsistencia();
     },
@@ -445,9 +447,13 @@ const Asistencia = {
     async cargarAsistencia() {
         const fecha = document.getElementById('ast-hero-fecha')?.value;
         if (!fecha) return;
+        if (this.lastLoadedDate === fecha && this.asistenciaHoy.length > 0) {
+            return;
+        }
         try {
             const r = await fetch('/api/asistencia/diaria?fecha=' + fecha);
             this.asistenciaHoy = await r.json();
+            this.lastLoadedDate = fecha;
             this.renderTrabajadores();
             this.renderTablaFaltas();
             this.actualizarStats();
@@ -991,7 +997,8 @@ const Asistencia = {
 
     fmtDate(d) {
         if (!d) return '-';
-        return new Date(d).toLocaleDateString('es-CL');
+        const parts = d.split('T')[0].split('-');
+        return parts[2] + '/' + parts[1] + '/' + parts[0];
     }
 };
 
