@@ -4,6 +4,7 @@ App.registerModule('pedidos', {
     selectedFile: null,
     isVendedor: false,
     canAuthorize: false,
+    uploading: false,
 
     async render() {
         const el = document.getElementById('page-pedidos');
@@ -251,6 +252,8 @@ App.registerModule('pedidos', {
         const cliente = document.getElementById('pedCliente').value.trim().toUpperCase();
         if (!numero || !cliente) { alert('Numero de pedido y cliente son requeridos'); return; }
         if (!this.selectedFile) { alert('Por favor selecciona un archivo PDF'); return; }
+        if (this.uploading) return;
+        this.uploading = true;
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const pdfBase64 = await new Promise((resolve, reject) => {
@@ -267,6 +270,7 @@ App.registerModule('pedidos', {
             if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }
             else { const data = await res.json(); alert(data.error || 'Error al guardar pedido'); }
         } catch(e) { alert('Error al subir pedido: ' + e.message); }
+        this.uploading = false;
     },
 
     showReviewModal(id) {
