@@ -322,9 +322,6 @@ App.registerModule('pedidos', {
         frame.style.display = 'block';
         errorDiv.style.display = 'none';
         frame.src = '/api/pedidos/' + id + '/pdf';
-        fetch('/api/pedidos/' + id + '/pdf').then(r => {
-            if (!r.ok) { frame.style.display = 'none'; errorDiv.style.display = 'block'; }
-        }).catch(() => { frame.style.display = 'none'; errorDiv.style.display = 'block'; });
         document.getElementById('pedViewPdfModal').style.display = 'flex';
     },
     hideViewPdf() {
