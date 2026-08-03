@@ -297,8 +297,9 @@ App.registerModule('pedidos', {
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                await fetch('/api/pedidos/' + this.currentPedido.id + '/clear-pdf', { method: 'PUT' });
                 this.hideReviewModal(); this.load();
-                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado.' : 'Pedido rechazado. PDF descargado.');
+                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado y limpiado de BD.' : 'Pedido rechazado. PDF descargado y limpiado de BD.');
             }
             else { const data = await res.json(); alert(data.error || 'Error al revisar pedido'); }
         } catch(e) { alert('Error al revisar pedido: ' + e.message); }

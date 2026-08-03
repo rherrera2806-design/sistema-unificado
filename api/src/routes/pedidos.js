@@ -107,6 +107,14 @@ router.put('/api/pedidos/:id', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.put('/api/pedidos/:id/clear-pdf', async (req, res, next) => {
+    try {
+        const id = Number(req.params.id);
+        await query('UPDATE pedidos SET archivo_pdf = NULL WHERE id = $1', [id]);
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
+
 router.delete('/api/pedidos/:id', async (req, res, next) => {
     try {
         const userPerms = (req.headers['x-user-permisos'] || '').split(',').filter(Boolean);
