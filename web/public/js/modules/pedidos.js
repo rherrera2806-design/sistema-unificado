@@ -247,7 +247,7 @@ App.registerModule('pedidos', {
 
     async upload() {
         const numero = document.getElementById('pedNumero').value.trim();
-        const cliente = document.getElementById('pedCliente').value.trim().replace(/\b\w/g, c => c.toUpperCase());
+        const cliente = document.getElementById('pedCliente').value.trim().toUpperCase();
         if (!numero || !cliente) { alert('Numero de pedido y cliente son requeridos'); return; }
         if (!this.selectedFile) { alert('Por favor selecciona un archivo PDF'); return; }
         try {
