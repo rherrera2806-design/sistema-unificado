@@ -1030,8 +1030,9 @@ const Asistencia = {
             <div id="ast-ranking-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
 
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
+                <div style="overflow:auto;max-height:65vh">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                    <thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">#</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Asistidos</th>
@@ -1039,11 +1040,15 @@ const Asistencia = {
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Permisos</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Licencias</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Vacaciones</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">H. Extras</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">% Asistencia</th>
                     </tr></thead>
-                    <tbody id="ast-tabla-reporte"><tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">Selecciona un mes y haz clic en Generar</td></tr></tbody>
+                    <tbody id="ast-tabla-reporte"><tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8">Cargando reporte...</td></tr></tbody>
                 </table>
+                </div>
             </div>`;
+
+        setTimeout(() => this.cargarReportes(), 100);
     },
 
     async cargarReportes() {
@@ -1065,11 +1070,12 @@ const Asistencia = {
     renderReporte(reporte) {
         const tbody = document.getElementById('ast-tabla-reporte');
         if (!tbody) return;
-        if (reporte.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">Sin datos</td></tr>'; return; }
+        if (reporte.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8">Sin datos</td></tr>'; return; }
         tbody.innerHTML = reporte.map((r, i) => {
             const asistidos = 22 - r.faltas;
             const pct = Math.round((asistidos / 22) * 100);
             const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+            const he = Number(r.horas_extras) || 0;
             return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + (i + 1) + '</strong></td>'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + r.nombre + '</strong></td>'
@@ -1078,6 +1084,7 @@ const Asistencia = {
                 + '<td style="padding:12px 16px;color:#475569">' + r.permisos_aprobados + '</td>'
                 + '<td style="padding:12px 16px;color:#475569">' + r.dias_licencia + ' días</td>'
                 + '<td style="padding:12px 16px;color:#475569">' + r.vacaciones + '</td>'
+                + '<td style="padding:12px 16px"><span style="font-weight:700;color:' + (he > 0 ? '#8b5cf6' : '#94a3b8') + '">' + he.toFixed(1) + ' hrs</span></td>'
                 + '<td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px"></div></div><span style="font-size:12px;font-weight:700;color:' + color + '">' + pct + '%</span></div></td>'
                 + '</tr>';
         }).join('');

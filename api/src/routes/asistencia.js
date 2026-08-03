@@ -458,7 +458,12 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                 (SELECT COUNT(*) FROM vacaciones v 
                  WHERE v.trabajador_id = t.id 
                  AND EXTRACT(MONTH FROM v.fecha_inicio) = $1 
-                 AND EXTRACT(YEAR FROM v.fecha_inicio) = $2) as vacaciones
+                 AND EXTRACT(YEAR FROM v.fecha_inicio) = $2) as vacaciones,
+                (SELECT COALESCE(SUM(he.horas), 0) FROM horas_extras he 
+                 WHERE he.trabajador_id = t.id 
+                 AND EXTRACT(MONTH FROM he.fecha) = $1 
+                 AND EXTRACT(YEAR FROM he.fecha) = $2
+                 AND he.estado = 'aprobada') as horas_extras
              FROM trabajadores t
              WHERE t.activo = true
              ORDER BY t.nombre`,
