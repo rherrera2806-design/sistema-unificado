@@ -298,7 +298,9 @@ App.registerModule('pedidos', {
             });
             if (res.ok) {
                 window.open('/api/pedidos/' + this.currentPedido.id + '/download-pdf', '_blank');
-                await fetch('/api/pedidos/' + this.currentPedido.id + '/clear-pdf', { method: 'PUT' });
+                setTimeout(() => {
+                    fetch('/api/pedidos/' + this.currentPedido.id + '/clear-pdf', { method: 'PUT' });
+                }, 3000);
                 this.hideReviewModal(); this.load();
                 App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado y limpiado de BD.' : 'Pedido rechazado. PDF descargado y limpiado de BD.');
             }
