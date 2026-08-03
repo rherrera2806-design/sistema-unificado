@@ -421,9 +421,11 @@ router.delete('/api/asistencia/licencias/:id', async (req, res) => {
 
 router.get('/api/asistencia/reporte-mensual', async (req, res) => {
     try {
-        const { mes, anio } = req.query;
-        const mesActual = parseInt(mes) || new Date().getMonth() + 1;
-        const anioActual = parseInt(anio) || new Date().getFullYear();
+        const mesActual = parseInt(req.query.mes) || new Date().getMonth() + 1;
+        const anioActual = parseInt(req.query.anio) || new Date().getFullYear();
+        const mesStr = String(mesActual).padStart(2, '0');
+        const fechaInicio = anioActual + '-' + mesStr + '-01';
+        const fechaFin = anioActual + '-' + mesStr + '-28';
         
         const result = await pool.query(
             `SELECT 
@@ -432,17 +434,14 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                 t.rut,
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM a.fecha) = $1::int 
-                 AND EXTRACT(YEAR FROM a.fecha) = $2::int) as faltas,
+                 AND a.fecha >= $1::date AND a.fecha <= $2::date) as faltas,
                 (SELECT COUNT(*) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM p.fecha_inicio) = $1::int 
-                 AND EXTRACT(YEAR FROM p.fecha_inicio) = $2::int
+                 AND p.fecha_inicio >= $1::date AND p.fecha_inicio <= $2::date
                  AND p.estado = 'aprobado') as permisos_aprobados,
                 (SELECT COUNT(*) FROM licencias_medicas l 
                  WHERE l.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM l.fecha_inicio) = $1::int 
-                 AND EXTRACT(YEAR FROM l.fecha_inicio) = $2::int
+                 AND l.fecha_inicio >= $1::date AND l.fecha_inicio <= $2::date
                  AND l.estado = 'aprobada') as licencias_medicas,
                 (SELECT COALESCE(SUM(
                     CASE 
@@ -452,22 +451,19 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                     END
                 ), 0) FROM licencias_medicas l 
                  WHERE l.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM l.fecha_inicio) = $1::int 
-                 AND EXTRACT(YEAR FROM l.fecha_inicio) = $2::int
+                 AND l.fecha_inicio >= $1::date AND l.fecha_inicio <= $2::date
                  AND l.estado = 'aprobada') as dias_licencia,
                 (SELECT COUNT(*) FROM vacaciones v 
                  WHERE v.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM v.fecha_inicio) = $1::int 
-                 AND EXTRACT(YEAR FROM v.fecha_inicio) = $2::int) as vacaciones,
+                 AND v.fecha_inicio >= $1::date AND v.fecha_inicio <= $2::date) as vacaciones,
                 (SELECT COALESCE(SUM(he.horas), 0) FROM horas_extras he 
                  WHERE he.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM he.fecha) = $1::int 
-                 AND EXTRACT(YEAR FROM he.fecha) = $2::int
+                 AND he.fecha >= $1::date AND he.fecha <= $2::date
                  AND he.estado = 'aprobada') as horas_extras
              FROM trabajadores t
              WHERE t.activo = true
              ORDER BY t.nombre`,
-            [mesActual, anioActual]
+            [fechaInicio, fechaFin]
         );
         res.json(result.rows);
     } catch (e) {
@@ -477,9 +473,11 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
 
 router.get('/api/asistencia/ranking', async (req, res) => {
     try {
-        const { mes, anio } = req.query;
-        const mesActual = parseInt(mes) || new Date().getMonth() + 1;
-        const anioActual = parseInt(anio) || new Date().getFullYear();
+        const mesActual = parseInt(req.query.mes) || new Date().getMonth() + 1;
+        const anioActual = parseInt(req.query.anio) || new Date().getFullYear();
+        const mesStr = String(mesActual).padStart(2, '0');
+        const fechaInicio = anioActual + '-' + mesStr + '-01';
+        const fechaFin = anioActual + '-' + mesStr + '-28';
         
         const result = await pool.query(
             `SELECT 
@@ -487,18 +485,16 @@ router.get('/api/asistencia/ranking', async (req, res) => {
                 t.nombre,
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM a.fecha) = $1::int 
-                 AND EXTRACT(YEAR FROM a.fecha) = $2::int) as faltas,
+                 AND a.fecha >= $1::date AND a.fecha <= $2::date) as faltas,
                 (SELECT COUNT(*) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM p.fecha_inicio) = $1::int 
-                 AND EXTRACT(YEAR FROM p.fecha_inicio) = $2::int
+                 AND p.fecha_inicio >= $1::date AND p.fecha_inicio <= $2::date
                  AND p.estado = 'aprobado') as permisos_aprobados
              FROM trabajadores t
              WHERE t.activo = true
              ORDER BY faltas ASC
              LIMIT 10`,
-            [mesActual, anioActual]
+            [fechaInicio, fechaFin]
         );
         res.json(result.rows);
     } catch (e) {
