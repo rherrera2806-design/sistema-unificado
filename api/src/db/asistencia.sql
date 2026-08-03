@@ -56,12 +56,25 @@ CREATE TABLE IF NOT EXISTS licencias_medicas (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- ═══════ TABLA: HORAS EXTRAS ═══════
+CREATE TABLE IF NOT EXISTS horas_extras (
+    id SERIAL PRIMARY KEY,
+    trabajador_id INTEGER REFERENCES trabajadores(id),
+    fecha DATE NOT NULL,
+    horas DECIMAL(4,2) NOT NULL,
+    motivo TEXT,
+    estado VARCHAR(20) DEFAULT 'pendiente', -- pendiente, aprobada, rechazada
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- ═══════ ÍNDICES ═══════
 CREATE INDEX IF NOT EXISTS idx_asistencia_fecha ON asistencia(fecha);
 CREATE INDEX IF NOT EXISTS idx_asistencia_trabajador ON asistencia(trabajador_id);
 CREATE INDEX IF NOT EXISTS idx_permisos_trabajador ON permisos(trabajador_id);
 CREATE INDEX IF NOT EXISTS idx_licencias_trabajador ON licencias_medicas(trabajador_id);
 CREATE INDEX IF NOT EXISTS idx_vacaciones_trabajador ON vacaciones(trabajador_id);
+CREATE INDEX IF NOT EXISTS idx_horas_extras_trabajador ON horas_extras(trabajador_id);
+CREATE INDEX IF NOT EXISTS idx_horas_extras_fecha ON horas_extras(fecha);
 
 -- ═══════ DATOS INICIALES: TRABAJADORES ═══════
 INSERT INTO trabajadores (rut, nombre) VALUES

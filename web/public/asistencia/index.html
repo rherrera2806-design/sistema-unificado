@@ -761,6 +761,44 @@
     </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- MODAL: NUEVAS HORAS EXTRAS -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalHorasExtras">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Nuevas Horas Extras</h3>
+            <button class="modal-close" onclick="cerrarModalHorasExtras()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Trabajador</label>
+                <select id="he-trabajador" class="form-control">
+                    <option value="">Seleccionar...</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="he-fecha" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Horas</label>
+                    <input type="number" id="he-horas" class="form-control" min="0.5" step="0.5">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Motivo</label>
+                <textarea id="he-motivo" class="form-control" rows="2"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="cerrarModalHorasExtras()">Cancelar</button>
+            <button class="btn btn-primary" onclick="guardarHorasExtras()">Guardar</button>
+        </div>
+    </div>
+</div>
+
 <script src="/js/asistencia.js"></script>
 
 </body>

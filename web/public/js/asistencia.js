@@ -72,6 +72,7 @@ const Asistencia = {
             { id: 'permisos', label: 'Permisos', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' },
             { id: 'licencias', label: 'Licencias', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>' },
             { id: 'vacaciones', label: 'Vacaciones', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>' },
+            { id: 'horas_extras', label: 'Horas Extras', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
             { id: 'reportes', label: 'Reportes', icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>' }
         ];
 
@@ -94,6 +95,7 @@ const Asistencia = {
             permisos: 'Solicitudes de permiso y ausencias',
             licencias: 'Control de licencias médicas',
             vacaciones: 'Control de vacaciones del personal',
+            horas_extras: 'Registro de horas extras trabajadas',
             reportes: 'Estadísticas y rankings de asistencia'
         };
         document.getElementById('ast-hero-subtitle').textContent = subtitles[tab] || '';
@@ -106,6 +108,7 @@ const Asistencia = {
         else if (tab === 'permisos') this.renderPermisosTab(c);
         else if (tab === 'licencias') this.renderLicenciasTab(c);
         else if (tab === 'vacaciones') this.renderVacacionesTab(c);
+        else if (tab === 'horas_extras') this.renderHorasExtrasTab(c);
         else if (tab === 'reportes') this.renderReportesTab(c);
     },
 
@@ -143,6 +146,11 @@ const Asistencia = {
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
                 + '<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
                 + '<button onclick="Asistencia.abrirModalVacacion()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 12px">+ Nuevo</button>';
+        } else if (tab === 'horas_extras') {
+            let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
+            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+                + '<button onclick="Asistencia.cargarHorasExtras()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
+                + '<button onclick="Asistencia.abrirModalHorasExtras()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 12px">+ Nueva</button>';
         } else if (tab === 'calendario') {
             let mesOpts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             let yearOpts = '';
@@ -477,18 +485,18 @@ const Asistencia = {
     // ═══════ CALENDARIO ═══════
     renderCalendarioTab(c) {
         c.innerHTML = `
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:20px;animation:astFadeUp 0.4s ease 0ms both">
-                <div style="padding:14px 22px;display:flex;gap:16px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;align-items:center">
-                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#d1fae5"></div><span style="font-size:11px;color:#64748b;font-weight:500">Presente</span></div>
-                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#fee2e2"></div><span style="font-size:11px;color:#64748b;font-weight:500">Falta</span></div>
-                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#dbeafe"></div><span style="font-size:11px;color:#64748b;font-weight:500">Vacaciones</span></div>
-                    <div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#fef3c7"></div><span style="font-size:11px;color:#64748b;font-weight:500">Licencia</span></div>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 0ms both;display:flex;flex-direction:column;height:calc(100vh - 160px)">
+                <div style="padding:10px 22px;display:flex;gap:16px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;align-items:center;flex-shrink:0">
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#d1fae5"></div><span style="font-size:11px;color:#64748b;font-weight:500">Presente</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#fee2e2"></div><span style="font-size:11px;color:#64748b;font-weight:500">Falta</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#dbeafe"></div><span style="font-size:11px;color:#64748b;font-weight:500">Vacaciones</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#fef3c7"></div><span style="font-size:11px;color:#64748b;font-weight:500">Licencia</span></div>
                     <div style="margin-left:auto;position:relative">
                         <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="ast-cal-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.filtrarCalendario()" style="padding-left:32px;width:200px;font-size:12px">
+                        <input type="text" id="ast-cal-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.filtrarCalendario()" style="padding-left:32px;width:180px;font-size:11px">
                     </div>
                 </div>
-                <div style="overflow-x:auto;height:calc(100vh - 240px);overflow-y:auto"><div id="ast-calendario"></div></div>
+                <div style="flex:1;overflow:auto;min-height:0"><div id="ast-calendario"></div></div>
             </div>`;
         this.cargarCalendario();
     },
@@ -812,6 +820,83 @@ const Asistencia = {
             await fetch('/api/asistencia/vacaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
         }
         this.cerrarModalVacacion(); this.cargarVacaciones();
+    },
+
+    // ═══════ HORAS EXTRAS ═══════
+    renderHorasExtrasTab(c) {
+        c.innerHTML = `
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;overflow:hidden">
+                <table style="width:100%;border-collapse:collapse;font-size:13px">
+                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Horas</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Motivo</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                    </tr></thead>
+                    <tbody id="ast-tabla-horas-extras"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                </table>
+            </div>`;
+        this.cargarHorasExtras();
+    },
+
+    async cargarHorasExtras() {
+        const mes = document.getElementById('ast-hero-mes')?.value;
+        try {
+            const url = '/api/asistencia/horas-extras' + (mes ? '?mes=' + mes + '&anio=' + new Date().getFullYear() : '');
+            const r = await fetch(url);
+            const horasExtras = await r.json();
+            const tbody = document.getElementById('ast-tabla-horas-extras');
+            if (!tbody) return;
+            if (horasExtras.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin horas extras registradas</td></tr>'; return; }
+            tbody.innerHTML = horasExtras.map(he => '<tr style="border-bottom:1px solid #f1f5f9">'
+                + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + he.nombre + '</strong></td>'
+                + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(he.fecha) + '</td>'
+                + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + he.horas + '</strong> hrs</td>'
+                + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + (he.motivo || '-') + '</td>'
+                + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#dbeafe;color:#2563eb">' + (he.estado || 'Pendiente') + '</span></td>'
+                + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
+                + '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998; Editar</button>'
+                + '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465; Eliminar</button>'
+                + '</td></tr>').join('');
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    editarHorasExtras(id) {
+        fetch('/api/asistencia/horas-extras').then(r => r.json()).then(horasExtras => {
+            const he = horasExtras.find(x => x.id === id);
+            if (!he) return;
+            document.getElementById('he-trabajador').value = he.trabajador_id;
+            document.getElementById('he-fecha').value = he.fecha ? he.fecha.split('T')[0] : '';
+            document.getElementById('he-horas').value = he.horas;
+            document.getElementById('he-motivo').value = he.motivo || '';
+            document.getElementById('modalHorasExtras').dataset.editId = id;
+            document.getElementById('modalHorasExtras').classList.add('show');
+        });
+    },
+
+    async eliminarHorasExtras(id) {
+        if (!confirm('¿Eliminar este registro de horas extras?')) return;
+        try {
+            await fetch('/api/asistencia/horas-extras/' + id, { method: 'DELETE' });
+            this.cargarHorasExtras();
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    abrirModalHorasExtras() { document.getElementById('modalHorasExtras').classList.add('show'); },
+    cerrarModalHorasExtras() { document.getElementById('modalHorasExtras').classList.remove('show'); },
+    async guardarHorasExtras() {
+        const editId = document.getElementById('modalHorasExtras').dataset.editId;
+        const d = { trabajador_id: document.getElementById('he-trabajador').value, fecha: document.getElementById('he-fecha').value, horas: parseFloat(document.getElementById('he-horas').value), motivo: document.getElementById('he-motivo').value };
+        if (!d.trabajador_id || !d.fecha || !d.horas) return;
+        if (editId) {
+            await fetch('/api/asistencia/horas-extras/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            delete document.getElementById('modalHorasExtras').dataset.editId;
+        } else {
+            await fetch('/api/asistencia/horas-extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+        }
+        this.cerrarModalHorasExtras(); this.cargarHorasExtras();
     },
 
     // ═══════ REPORTES ═══════

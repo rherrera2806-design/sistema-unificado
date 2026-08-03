@@ -462,6 +462,7 @@ async function initDB() {
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     const ALL_PERMS = [
         'asistencia','asistencia.editar','asistencia.eliminar',
+        'horas_extras','horas_extras.editar','horas_extras.eliminar',
         'turnos_recepcion','turnos_recepcion.editar','turnos_recepcion.eliminar',
         'turnos_bodega','turnos_bodega.editar','turnos_bodega.eliminar',
         'turnos_almacen','turnos_almacen.editar','turnos_almacen.eliminar',

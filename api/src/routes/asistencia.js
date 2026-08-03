@@ -552,4 +552,79 @@ router.get('/api/asistencia/dashboard', async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════
+// HORAS EXTRAS
+// ═══════════════════════════════════════════════════════
+
+router.get('/api/asistencia/horas-extras', async (req, res) => {
+    try {
+        const { mes, anio } = req.query;
+        const mesActual = mes || new Date().getMonth() + 1;
+        const anioActual = anio || new Date().getFullYear();
+        const result = await pool.query(
+            `SELECT he.*, t.nombre 
+             FROM horas_extras he 
+             JOIN trabajadores t ON he.trabajador_id = t.id 
+             WHERE EXTRACT(MONTH FROM he.fecha) = $1 AND EXTRACT(YEAR FROM he.fecha) = $2
+             ORDER BY he.fecha DESC, t.nombre`,
+            [mesActual, anioActual]
+        );
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/api/asistencia/horas-extras', async (req, res) => {
+    try {
+        const { trabajador_id, fecha, horas, motivo } = req.body;
+        const result = await pool.query(
+            `INSERT INTO horas_extras (trabajador_id, fecha, horas, motivo) 
+             VALUES ($1, $2, $3, $4) RETURNING *`,
+            [trabajador_id, fecha, horas, motivo]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/api/asistencia/horas-extras/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { trabajador_id, fecha, horas, motivo } = req.body;
+        const result = await pool.query(
+            `UPDATE horas_extras SET trabajador_id = $1, fecha = $2, horas = $3, motivo = $4 WHERE id = $5 RETURNING *`,
+            [trabajador_id, fecha, horas, motivo, id]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/api/asistencia/horas-extras/:id/estado', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { estado } = req.body;
+        const result = await pool.query(
+            'UPDATE horas_extras SET estado = $1 WHERE id = $2 RETURNING *',
+            [estado, id]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.delete('/api/asistencia/horas-extras/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM horas_extras WHERE id = $1', [id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
