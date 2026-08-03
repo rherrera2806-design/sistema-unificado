@@ -479,7 +479,7 @@ App.registerModule('pedidos', {
                 }
                 segmentsHtml = '<div style="display:flex;flex-direction:column-reverse;width:100%;height:' + barH + 'px;justify-content:flex-start">' + stack + '</div>';
             }
-            barsHtml += '<td style="width:' + (100 / diasEnMes) + '%;vertical-align:bottom;padding:0 1px">' + segmentsHtml + '</td>';
+            barsHtml += '<td style="width:' + (100 / diasEnMes) + '%;vertical-align:bottom;padding:0 1px">' + (total > 0 ? '<div style="text-align:center;font-size:11px;font-weight:800;color:#0f172a;margin-bottom:2px">' + total + '</div>' : '') + segmentsHtml + '</td>';
         }
 
         let labelsHtml = '';
