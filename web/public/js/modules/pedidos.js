@@ -297,12 +297,14 @@ App.registerModule('pedidos', {
                 body: JSON.stringify({ estado, motivo_rechazo: estado === 'rechazado' ? document.getElementById('pedMotivo').value.trim() : null, revisado_por: user.email || '' })
             });
             if (res.ok) {
-                window.open('/api/pedidos/' + this.currentPedido.id + '/download-pdf', '_blank');
-                setTimeout(() => {
-                    fetch('/api/pedidos/' + this.currentPedido.id + '/clear-pdf', { method: 'PUT' });
-                }, 3000);
+                const link = document.createElement('a');
+                link.href = '/api/pedidos/' + this.currentPedido.id + '/download-pdf';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
                 this.hideReviewModal(); this.load();
-                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado y limpiado de BD.' : 'Pedido rechazado. PDF descargado y limpiado de BD.');
+                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado.' : 'Pedido rechazado. PDF descargado.');
             }
             else { const data = await res.json(); alert(data.error || 'Error al revisar pedido'); }
         } catch(e) { alert('Error al revisar pedido: ' + e.message); }

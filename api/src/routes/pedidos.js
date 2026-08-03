@@ -75,7 +75,7 @@ router.get('/api/pedidos/:id/download-pdf', async (req, res, next) => {
         const row = result.rows[0];
         if (row.archivo_pdf) {
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `inline; filename="${row.numero_pedido}.pdf"`);
+            res.setHeader('Content-Disposition', `attachment; filename="${row.numero_pedido}.pdf"`);
             res.end(row.archivo_pdf);
         } else if (row.archivo_url) {
             res.redirect(row.archivo_url);
@@ -104,14 +104,6 @@ router.put('/api/pedidos/:id', async (req, res, next) => {
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
         res.json(result.rows[0]);
-    } catch (e) { next(e); }
-});
-
-router.put('/api/pedidos/:id/clear-pdf', async (req, res, next) => {
-    try {
-        const id = Number(req.params.id);
-        await query('UPDATE pedidos SET archivo_pdf = NULL WHERE id = $1', [id]);
-        res.json({ ok: true });
     } catch (e) { next(e); }
 });
 
