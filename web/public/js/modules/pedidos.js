@@ -47,10 +47,14 @@ App.registerModule('pedidos', {
             + '<div id="pedStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px"></div>'
 
             + '<div class="ped-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease 400ms both">'
-            + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:12px">'
+            + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">'
+            + '<div style="display:flex;align-items:center;gap:12px">'
             + '<div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(59,130,246,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>'
             + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Lista de Pedidos</h3>'
             + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Todos los pedidos registrados en el sistema</p></div></div>'
+            + '<button onclick="App.modules.pedidos.toggleGrafico()" id="pedBtnGrafico" style="display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:12px;font-weight:600;color:#1e40af;background:white;border:1px solid #bfdbfe;border-radius:8px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Ir a Gráfico</button></div>'
+            + '<div id="pedGraficoContainer" style="display:none;padding:20px 24px;border-bottom:1px solid #e2e8f0"></div>'
+            + '<div id="pedTablaContainer" style="display:block">'
             + '<div style="overflow:auto;max-height:65vh"><table style="width:100%;border-collapse:collapse;font-size:13px">'
             + '<thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
             + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">N Pedido</th>'
@@ -65,7 +69,7 @@ App.registerModule('pedidos', {
             + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
             + '</tr></thead><tbody id="pedidosTable">'
             + '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8"><div style="font-size:14px">Cargando pedidos...</div></td></tr>'
-            + '</tbody></table></div></div>'
+            + '</tbody></table></div></div></div>'
 
             + this.uploadModalHtml()
             + this.reviewModalHtml()
@@ -404,6 +408,86 @@ App.registerModule('pedidos', {
             if (res.ok) { this.load(); App.toast('Pedido eliminado'); }
             else { const data = await res.json(); alert(data.error || 'Error al eliminar'); }
         } catch(e) { alert('Error al eliminar: ' + e.message); }
+    },
+
+    toggleGrafico() {
+        const gc = document.getElementById('pedGraficoContainer');
+        const tc = document.getElementById('pedTablaContainer');
+        const btn = document.getElementById('pedBtnGrafico');
+        if (gc.style.display === 'none') {
+            gc.style.display = 'block';
+            tc.style.display = 'none';
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>Ir a Lista';
+            this.renderGrafico();
+        } else {
+            gc.style.display = 'none';
+            tc.style.display = 'block';
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Ir a Gráfico';
+        }
+    },
+
+    renderGrafico() {
+        const gc = document.getElementById('pedGraficoContainer');
+        const now = new Date();
+        const mes = now.getMonth();
+        const anio = now.getFullYear();
+        const diasEnMes = new Date(anio, mes + 1, 0).getDate();
+        const colores = { Normal: '#3b82f6', Express: '#f59e0b', 'Vta. Region': '#9333ea', Reposicion: '#dc2626' };
+        const tipos = ['Normal', 'Express', 'Vta. Region', 'Reposicion'];
+
+        const pedidosMes = this.allPedidos.filter(p => {
+            const f = new Date(p.fecha_subida);
+            return f.getMonth() === mes && f.getFullYear() === anio;
+        });
+
+        const porDia = {};
+        for (let d = 1; d <= diasEnMes; d++) {
+            porDia[d] = {};
+            tipos.forEach(t => porDia[d][t] = 0);
+        }
+        pedidosMes.forEach(p => {
+            const dia = new Date(p.fecha_subida).getDate();
+            const tipo = p.tipo_ov || 'Normal';
+            if (porDia[dia] && porDia[dia][tipo] !== undefined) porDia[dia][tipo]++;
+        });
+
+        const maxVal = Math.max(1, ...Object.values(porDia).flatMap(d => Object.values(d)));
+        const barH = 160;
+
+        const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+        let legendHtml = '<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">';
+        tipos.forEach(t => {
+            legendHtml += '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:' + colores[t] + '"></div>' + t + ' (' + pedidosMes.filter(p => (p.tipo_ov || 'Normal') === t).length + ')</div>';
+        });
+        legendHtml += '</div>';
+
+        let barsHtml = '<div style="display:flex;align-items:flex-end;gap:2px;height:' + barH + 'px;padding:0 4px">';
+        for (let d = 1; d <= diasEnMes; d++) {
+            let stack = '';
+            let y = 0;
+            tipos.forEach(t => {
+                const val = porDia[d][t];
+                if (val > 0) {
+                    const h = (val / maxVal) * barH;
+                    stack += '<div style="width:100%;height:' + h + 'px;background:' + colores[t] + ';border-radius:2px 2px 0 0;margin-bottom:' + y + 'px;position:relative" title="Dia ' + d + ' - ' + t + ': ' + val + '"></div>';
+                    y += h;
+                }
+            });
+            barsHtml += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">' + stack + '</div>';
+        }
+        barsHtml += '</div>';
+
+        let labelsHtml = '<div style="display:flex;gap:2px;padding:0 4px;margin-top:4px">';
+        for (let d = 1; d <= diasEnMes; d++) {
+            labelsHtml += '<div style="flex:1;text-align:center;font-size:9px;color:#94a3b8">' + d + '</div>';
+        }
+        labelsHtml += '</div>';
+
+        gc.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+            + '<div><h4 style="margin:0;font-size:14px;font-weight:700;color:#0f172a">Ingresos por Dia - ' + monthNames[mes] + ' ' + anio + '</h4>'
+            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Total: ' + pedidosMes.length + ' pedidos</p></div></div>'
+            + legendHtml + barsHtml + labelsHtml;
     },
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); },
