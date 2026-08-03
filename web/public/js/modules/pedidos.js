@@ -121,14 +121,14 @@ App.registerModule('pedidos', {
     },
 
     viewPdfModalHtml() {
-        return '<div id="pedViewPdfModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center">'
+        return '<div id="pedViewPdfModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);justify-content:center;align-items:center;padding:20px">'
             + '<div style="background:white;border-radius:16px;width:920px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:pedFadeUp 0.3s ease both">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;padding:24px 28px;border-bottom:1px solid #e2e8f0;flex-shrink:0">'
             + '<div style="display:flex;align-items:center;gap:12px">'
             + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
             + '<h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Ver PDF</h3></div>'
             + '<button onclick="App.modules.pedidos.hideViewPdf()" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:4px;line-height:1">&times;</button></div>'
-            + '<div style="padding:28px;flex:1;overflow:auto"><iframe id="pedViewPdfFrame" style="width:100%;height:600px;border:1px solid #e2e8f0;border-radius:12px"></iframe></div></div></div>';
+            + '<div style="padding:28px;flex:1;overflow:auto"><iframe id="pedViewPdfFrame" style="width:100%;height:600px;border:1px solid #e2e8f0;border-radius:12px"></iframe><div id="pedViewPdfError" style="display:none;text-align:center;padding:40px;color:#64748b"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p style="margin-top:12px;font-size:14px">No se pudo cargar el PDF</p><p style="margin-top:4px;font-size:12px;color:#94a3b8">El archivo PDF no está disponible para este pedido</p></div></div></div>';
     },
 
     async load() {
@@ -317,7 +317,14 @@ App.registerModule('pedidos', {
     },
 
     viewPdf(id) {
-        document.getElementById('pedViewPdfFrame').src = '/api/pedidos/' + id + '/pdf';
+        const frame = document.getElementById('pedViewPdfFrame');
+        const errorDiv = document.getElementById('pedViewPdfError');
+        frame.style.display = 'block';
+        errorDiv.style.display = 'none';
+        frame.src = '/api/pedidos/' + id + '/pdf';
+        fetch('/api/pedidos/' + id + '/pdf').then(r => {
+            if (!r.ok) { frame.style.display = 'none'; errorDiv.style.display = 'block'; }
+        }).catch(() => { frame.style.display = 'none'; errorDiv.style.display = 'block'; });
         document.getElementById('pedViewPdfModal').style.display = 'flex';
     },
     hideViewPdf() {
