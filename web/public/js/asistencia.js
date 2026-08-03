@@ -488,7 +488,7 @@ const Asistencia = {
                         <input type="text" id="ast-cal-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.filtrarCalendario()" style="padding-left:32px;width:200px;font-size:12px">
                     </div>
                 </div>
-                <div style="overflow-x:auto;max-height:520px;overflow-y:auto"><div id="ast-calendario"></div></div>
+                <div style="overflow-x:auto;height:calc(100vh - 240px);overflow-y:auto"><div id="ast-calendario"></div></div>
             </div>`;
         this.cargarCalendario();
     },
