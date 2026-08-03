@@ -432,17 +432,17 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                 t.rut,
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM a.fecha) = $1 
-                 AND EXTRACT(YEAR FROM a.fecha) = $2) as faltas,
+                 AND EXTRACT(MONTH FROM a.fecha) = $1::int 
+                 AND EXTRACT(YEAR FROM a.fecha) = $2::int) as faltas,
                 (SELECT COUNT(*) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM p.fecha_inicio) = $1 
-                 AND EXTRACT(YEAR FROM p.fecha_inicio) = $2
+                 AND EXTRACT(MONTH FROM p.fecha_inicio) = $1::int 
+                 AND EXTRACT(YEAR FROM p.fecha_inicio) = $2::int
                  AND p.estado = 'aprobado') as permisos_aprobados,
                 (SELECT COUNT(*) FROM licencias_medicas l 
                  WHERE l.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM l.fecha_inicio) = $1 
-                 AND EXTRACT(YEAR FROM l.fecha_inicio) = $2
+                 AND EXTRACT(MONTH FROM l.fecha_inicio) = $1::int 
+                 AND EXTRACT(YEAR FROM l.fecha_inicio) = $2::int
                  AND l.estado = 'aprobada') as licencias_medicas,
                 (SELECT COALESCE(SUM(
                     CASE 
@@ -452,17 +452,17 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                     END
                 ), 0) FROM licencias_medicas l 
                  WHERE l.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM l.fecha_inicio) = $1 
-                 AND EXTRACT(YEAR FROM l.fecha_inicio) = $2
+                 AND EXTRACT(MONTH FROM l.fecha_inicio) = $1::int 
+                 AND EXTRACT(YEAR FROM l.fecha_inicio) = $2::int
                  AND l.estado = 'aprobada') as dias_licencia,
                 (SELECT COUNT(*) FROM vacaciones v 
                  WHERE v.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM v.fecha_inicio) = $1 
-                 AND EXTRACT(YEAR FROM v.fecha_inicio) = $2) as vacaciones,
+                 AND EXTRACT(MONTH FROM v.fecha_inicio) = $1::int 
+                 AND EXTRACT(YEAR FROM v.fecha_inicio) = $2::int) as vacaciones,
                 (SELECT COALESCE(SUM(he.horas), 0) FROM horas_extras he 
                  WHERE he.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM he.fecha) = $1 
-                 AND EXTRACT(YEAR FROM he.fecha) = $2
+                 AND EXTRACT(MONTH FROM he.fecha) = $1::int 
+                 AND EXTRACT(YEAR FROM he.fecha) = $2::int
                  AND he.estado = 'aprobada') as horas_extras
              FROM trabajadores t
              WHERE t.activo = true
@@ -487,12 +487,12 @@ router.get('/api/asistencia/ranking', async (req, res) => {
                 t.nombre,
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM a.fecha) = $1 
-                 AND EXTRACT(YEAR FROM a.fecha) = $2) as faltas,
+                 AND EXTRACT(MONTH FROM a.fecha) = $1::int 
+                 AND EXTRACT(YEAR FROM a.fecha) = $2::int) as faltas,
                 (SELECT COUNT(*) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
-                 AND EXTRACT(MONTH FROM p.fecha_inicio) = $1 
-                 AND EXTRACT(YEAR FROM p.fecha_inicio) = $2
+                 AND EXTRACT(MONTH FROM p.fecha_inicio) = $1::int 
+                 AND EXTRACT(YEAR FROM p.fecha_inicio) = $2::int
                  AND p.estado = 'aprobado') as permisos_aprobados
              FROM trabajadores t
              WHERE t.activo = true
