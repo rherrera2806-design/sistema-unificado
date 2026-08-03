@@ -458,36 +458,40 @@ App.registerModule('pedidos', {
 
         let legendHtml = '<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">';
         tipos.forEach(t => {
-            legendHtml += '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:' + colores[t] + '"></div>' + t + ' (' + pedidosMes.filter(p => (p.tipo_ov || 'Normal') === t).length + ')</div>';
+            const count = pedidosMes.filter(p => (p.tipo_ov || 'Normal') === t).length;
+            legendHtml += '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:' + colores[t] + '"></div>' + t + ' (' + count + ')</div>';
         });
         legendHtml += '</div>';
 
-        let barsHtml = '<div style="display:flex;align-items:flex-end;gap:2px;height:' + barH + 'px;padding:0 4px">';
+        let barsHtml = '';
         for (let d = 1; d <= diasEnMes; d++) {
-            let stack = '';
-            let y = 0;
-            tipos.forEach(t => {
-                const val = porDia[d][t];
-                if (val > 0) {
-                    const h = (val / maxVal) * barH;
-                    stack += '<div style="width:100%;height:' + h + 'px;background:' + colores[t] + ';border-radius:2px 2px 0 0;margin-bottom:' + y + 'px;position:relative" title="Dia ' + d + ' - ' + t + ': ' + val + '"></div>';
-                    y += h;
+            const total = tipos.reduce((s, t) => s + porDia[d][t], 0);
+            let segmentsHtml = '';
+            if (total > 0) {
+                let stack = '';
+                for (let i = tipos.length - 1; i >= 0; i--) {
+                    const t = tipos[i];
+                    const val = porDia[d][t];
+                    if (val > 0) {
+                        const h = Math.max((val / maxVal) * barH, 4);
+                        stack += '<div style="width:100%;height:' + h + 'px;background:' + colores[t] + ';display:block" title="Dia ' + d + ' - ' + t + ': ' + val + '"></div>';
+                    }
                 }
-            });
-            barsHtml += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">' + stack + '</div>';
+                segmentsHtml = '<div style="display:flex;flex-direction:column-reverse;width:100%;height:' + barH + 'px;justify-content:flex-start">' + stack + '</div>';
+            }
+            barsHtml += '<td style="width:' + (100 / diasEnMes) + '%;vertical-align:bottom;padding:0 1px">' + segmentsHtml + '</td>';
         }
-        barsHtml += '</div>';
 
-        let labelsHtml = '<div style="display:flex;gap:2px;padding:0 4px;margin-top:4px">';
+        let labelsHtml = '';
         for (let d = 1; d <= diasEnMes; d++) {
-            labelsHtml += '<div style="flex:1;text-align:center;font-size:9px;color:#94a3b8">' + d + '</div>';
+            labelsHtml += '<td style="width:' + (100 / diasEnMes) + '%;text-align:center;font-size:9px;color:#94a3b8;padding:4px 1px">' + d + '</td>';
         }
-        labelsHtml += '</div>';
 
         gc.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
             + '<div><h4 style="margin:0;font-size:14px;font-weight:700;color:#0f172a">Ingresos por Dia - ' + monthNames[mes] + ' ' + anio + '</h4>'
             + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Total: ' + pedidosMes.length + ' pedidos</p></div></div>'
-            + legendHtml + barsHtml + labelsHtml;
+            + legendHtml
+            + '<table style="width:100%;border-collapse:collapse"><tr style="height:' + barH + 'px">' + barsHtml + '</tr><tr>' + labelsHtml + '</tr></table>';
     },
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); },
