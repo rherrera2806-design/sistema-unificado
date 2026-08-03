@@ -297,12 +297,7 @@ App.registerModule('pedidos', {
                 body: JSON.stringify({ estado, motivo_rechazo: estado === 'rechazado' ? document.getElementById('pedMotivo').value.trim() : null, revisado_por: user.email || '' })
             });
             if (res.ok) {
-                const link = document.createElement('a');
-                link.href = '/api/pedidos/' + this.currentPedido.id + '/download-pdf';
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                window.open('/api/pedidos/' + this.currentPedido.id + '/download-pdf', '_blank');
                 await fetch('/api/pedidos/' + this.currentPedido.id + '/clear-pdf', { method: 'PUT' });
                 this.hideReviewModal(); this.load();
                 App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado y limpiado de BD.' : 'Pedido rechazado. PDF descargado y limpiado de BD.');

@@ -75,7 +75,7 @@ router.get('/api/pedidos/:id/download-pdf', async (req, res, next) => {
         const row = result.rows[0];
         if (row.archivo_pdf) {
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename="${row.numero_pedido}.pdf"`);
+            res.setHeader('Content-Disposition', `inline; filename="${row.numero_pedido}.pdf"`);
             res.end(row.archivo_pdf);
         } else if (row.archivo_url) {
             res.redirect(row.archivo_url);
