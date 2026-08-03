@@ -645,7 +645,12 @@ const Asistencia = {
                     else if (faltas.some(f => f.trabajador_id === t.id && f.fecha === fechaStr)) { clase = 'falta'; title = 'Falta'; }
                     else if (d <= hoy.getDate() && mes <= (hoy.getMonth() + 1) && parseInt(anio) <= hoy.getFullYear()) { clase = 'presente'; title = 'Presente'; }
                 }
-                html += '<div class="ast-cal-cell ' + clase + '" title="' + title + '" style="border-right:1px solid #f1f5f9;cursor:default"></div>';
+                let symbol = '';
+                if (clase === 'presente') symbol = '<span style="color:#16a34a;font-weight:700;font-size:14px">&#10003;</span>';
+                else if (clase === 'falta') symbol = '<span style="color:#dc2626;font-weight:700;font-size:14px">&#10005;</span>';
+                else if (clase === 'vacaciones') symbol = '<span style="color:#2563eb;font-weight:700;font-size:12px">V</span>';
+                else if (clase === 'licencia') symbol = '<span style="color:#ca8a04;font-weight:700;font-size:12px">L</span>';
+                html += '<div class="ast-cal-cell ' + clase + '" title="' + title + '" style="border-right:1px solid #f1f5f9;cursor:default;display:flex;align-items:center;justify-content:center">' + symbol + '</div>';
             }
             html += '</div>';
         });
