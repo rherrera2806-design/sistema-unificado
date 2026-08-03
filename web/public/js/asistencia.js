@@ -557,13 +557,17 @@ const Asistencia = {
                 let title = '';
                 if (!esFin) {
                     if (vacaciones.some(v => {
-                        const ini = new Date(v.fecha_inicio.split('T')[0]);
-                        const fin = new Date(v.fecha_fin.split('T')[0]);
+                        const iniParts = v.fecha_inicio.split('T')[0].split('-');
+                        const finParts = v.fecha_fin.split('T')[0].split('-');
+                        const ini = new Date(parseInt(iniParts[0]), parseInt(iniParts[1]) - 1, parseInt(iniParts[2]));
+                        const fin = new Date(parseInt(finParts[0]), parseInt(finParts[1]) - 1, parseInt(finParts[2]));
                         return v.trabajador_id === t.id && ini <= fecha && fin >= fecha;
                     })) { clase = 'vacaciones'; title = 'Vacaciones'; }
                     else if (licencias.some(l => {
-                        const ini = new Date(l.fecha_inicio.split('T')[0]);
-                        const fin = new Date(l.fecha_fin.split('T')[0]);
+                        const iniParts = l.fecha_inicio.split('T')[0].split('-');
+                        const finParts = l.fecha_fin.split('T')[0].split('-');
+                        const ini = new Date(parseInt(iniParts[0]), parseInt(iniParts[1]) - 1, parseInt(iniParts[2]));
+                        const fin = new Date(parseInt(finParts[0]), parseInt(finParts[1]) - 1, parseInt(finParts[2]));
                         return l.trabajador_id === t.id && ini <= fecha && fin >= fecha;
                     })) { clase = 'licencia'; title = 'Licencia'; }
                     else if (faltas.some(f => f.trabajador_id === t.id && f.fecha === fechaStr)) { clase = 'falta'; title = 'Falta'; }
