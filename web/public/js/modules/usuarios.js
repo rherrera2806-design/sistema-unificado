@@ -182,23 +182,26 @@ App.registerModule('usuarios', {
         SECTIONS.forEach(sec => {
             const allSubKeys = sec.subs.map(s => s.id);
             const allVer = allSubKeys.every(k => up.includes(k));
-            const someVer = allSubKeys.some(k => up.includes(k));
+            const allAg = allSubKeys.every(k => up.includes(k + '.agregar'));
             const allEd = allSubKeys.every(k => up.includes(k + '.editar'));
             const allEl = allSubKeys.every(k => up.includes(k + '.eliminar'));
             permTreeHtml += '<div style="margin-bottom:10px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">';
             permTreeHtml += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc">';
             permTreeHtml += '<span style="font-size:12px;font-weight:700;color:#334155;letter-spacing:0.5px">' + sec.label + '</span>';
             permTreeHtml += '<label style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allVer ? 'checked' : '') + ' style="accent-color:#22c55e" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'ver\',this.checked)"> Todo Ver</label>';
+            permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allAg ? 'checked' : '') + ' style="accent-color:#f59e0b" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'agregar\',this.checked)"> Todo Agregar</label>';
             permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allEd ? 'checked' : '') + ' style="accent-color:#3b82f6" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'editar\',this.checked)"> Todo Editar</label>';
             permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allEl ? 'checked' : '') + ' style="accent-color:#ef4444" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'eliminar\',this.checked)"> Todo Eliminar</label>';
             permTreeHtml += '</div>';
             sec.subs.forEach(sub => {
                 const hasVer = up.includes(sub.id);
+                const hasAg = up.includes(sub.id + '.agregar');
                 const hasEd = up.includes(sub.id + '.editar');
                 const hasEl = up.includes(sub.id + '.eliminar');
                 permTreeHtml += '<div style="display:flex;align-items:center;gap:10px;padding:8px 14px 8px 28px;border-top:1px solid #f1f5f9">';
                 permTreeHtml += '<span style="font-size:12px;color:#475569;min-width:160px">' + sub.label + '</span>';
                 permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="ver" ' + (hasVer ? 'checked' : '') + ' style="accent-color:#22c55e"> Ver</label>';
+                permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="agregar" ' + (hasAg ? 'checked' : '') + ' style="accent-color:#f59e0b"> Agregar</label>';
                 permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="editar" ' + (hasEd ? 'checked' : '') + ' style="accent-color:#3b82f6"> Editar</label>';
                 permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="eliminar" ' + (hasEl ? 'checked' : '') + ' style="accent-color:#ef4444"> Eliminar</label>';
                 permTreeHtml += '</div>';

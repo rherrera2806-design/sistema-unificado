@@ -120,7 +120,7 @@ const Asistencia = {
         if (tab === 'trabajadores') {
             const permUser = typeof getUser === 'function' ? getUser() : null;
             const permPerms = permUser && permUser.permisos ? permUser.permisos : [];
-            const canEditT = permPerms.includes('asistencia.editar') || permPerms.includes('asistencia') || permPerms.length === 0;
+            const canAgT = permPerms.includes('asistencia.agregar') || permPerms.includes('asistencia') || permPerms.length === 0;
             container.innerHTML = '<div style="display:flex;gap:6px;align-items:center">'
                 + '<button onclick="Asistencia.filtrarTrabajadores(\'todos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.4);font-size:11px;padding:6px 12px" data-filter="todos">Todos</button>'
                 + '<button onclick="Asistencia.filtrarTrabajadores(\'activos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.2);font-size:11px;padding:6px 12px" data-filter="activos">Activos</button>'
@@ -130,7 +130,7 @@ const Asistencia = {
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.buscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
-                + (canEditT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">+ Nuevo</button>' : '');
+                + (canAgT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">+ Nuevo</button>' : '');
         } else         if (tab === 'permisos') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
@@ -186,6 +186,7 @@ const Asistencia = {
     async renderTrabajadoresTab(c) {
         const permUser = typeof getUser === 'function' ? getUser() : null;
         const permPerms = permUser && permUser.permisos ? permUser.permisos : [];
+        const canAgT = permPerms.includes('asistencia.agregar') || permPerms.includes('asistencia') || permPerms.length === 0;
         const canEditT = permPerms.includes('asistencia.editar') || permPerms.includes('asistencia') || permPerms.length === 0;
         const canDeleteT = permPerms.includes('asistencia.eliminar') || permPerms.length === 0;
         c.innerHTML = `

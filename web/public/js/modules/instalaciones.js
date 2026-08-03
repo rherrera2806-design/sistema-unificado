@@ -11,7 +11,7 @@ App.registerModule('instalaciones', {
         const el = document.getElementById('page-instalaciones');
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const permisos = user.permisos || [];
-        const puedeCrear = permisos.includes('instalaciones.nueva') || permisos.includes('usuarios');
+        const puedeCrear = permisos.includes('instalaciones.agregar') || permisos.includes('usuarios');
         el.innerHTML = '<style>'
             + '@keyframes instFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
             + '.inst-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'

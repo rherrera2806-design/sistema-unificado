@@ -9,8 +9,8 @@ App.registerModule('pedidos', {
         const el = document.getElementById('page-pedidos');
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const permisos = user.permisos || [];
-        this.isVendedor = permisos.includes('pedidos') && !permisos.includes('pedidos.autorizar');
-        this.canAuthorize = permisos.includes('pedidos.autorizar') || permisos.includes('usuarios');
+        this.isVendedor = permisos.includes('pedidos') && !permisos.includes('pedidos.agregar');
+        this.canAuthorize = permisos.includes('pedidos.agregar') || permisos.includes('usuarios');
         const showNew = this.isVendedor || this.canAuthorize;
 
         el.innerHTML = '<style>'
