@@ -728,7 +728,7 @@ const Asistencia = {
     },
 
     editarLicencia(id) {
-        fetch('/api/asistencia/licencias?mes=' + new Date().getMonth() + 1 + '&anio=' + new Date().getFullYear()).then(r => r.json()).then(licencias => {
+        fetch('/api/asistencia/licencias').then(r => r.json()).then(licencias => {
             const l = licencias.find(x => x.id === id);
             if (!l) return;
             document.getElementById('licencia-trabajador').value = l.trabajador_id;
