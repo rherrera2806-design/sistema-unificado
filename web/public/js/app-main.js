@@ -621,12 +621,12 @@ function doLogout() {
 // ─── Sidebar Structure (permisos jerárquicos) ────
 const SIDEBAR_SECTIONS = {
     asistencia: ['asistencia'],
-    atencion: ['atencion'],
-    instalaciones: ['instalaciones'],
-    inventario: ['inventario'],
-    mantencion: ['mantencion'],
+    atencion: ['turnos_recepcion', 'turnos_bodega', 'turnos_almacen', 'turnos_facturar', 'turnos_qr', 'turnos_reporte'],
+    instalaciones: ['instalaciones', 'inst_historial'],
+    inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_catalogos'],
+    mantencion: ['dashboard', 'machineTypes', 'machines', 'components', 'preventive', 'corrective', 'calendar', 'notas', 'reports', 'history', 'bitacora'],
     pedidos: ['pedidos'],
-    produccion: ['produccion']
+    produccion: ['prod_ordenes', 'prod_planificacion', 'prod_reportes', 'prod_notas', 'prod_config', 'taller']
 };
 
 function getUserPerms() {
@@ -639,7 +639,10 @@ function hasSection(section) {
     if (isAdmin()) return true;
     if (hasPerm(section)) return true;
     const p = getUserPerms();
-    return p.some(perm => perm.startsWith(section + '.') || perm.startsWith(section + '_'));
+    if (p.some(perm => perm.startsWith(section + '.') || perm.startsWith(section + '_'))) return true;
+    const sectionItems = SIDEBAR_SECTIONS[section] || [];
+    if (sectionItems.some(item => p.includes(item))) return true;
+    return false;
 }
 function canSeeItem(item, section) {
     if (isAdmin()) return true;
