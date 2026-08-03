@@ -32,9 +32,9 @@ const Asistencia = {
             + '.ast-podium{display:flex;justify-content:center;align-items:flex-end;gap:20px;margin:24px 0}'
             + '.ast-rank{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-align:center;transition:all 0.2s;min-width:160px}'
             + '.ast-rank:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}'
-            + '.ast-cal-header{display:grid;border-bottom:2px solid #e2e8f0;background:#f8fafc}'
+            + '.ast-cal-header{display:grid;border-bottom:2px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:2}'
             + '.ast-cal-row{display:grid;border-bottom:1px solid #f1f5f9}'
-            + '.ast-cal-cell{padding:4px;text-align:center;font-size:10px;display:flex;align-items:center;justify-content:center;min-height:28px}'
+            + '.ast-cal-cell{padding:4px;text-align:center;font-size:10px;display:flex;align-items:center;justify-content:center;min-height:24px}'
             + '.ast-cal-cell.presente{background:#d1fae5}.ast-cal-cell.falta{background:#fee2e2;color:#dc2626;font-weight:700}'
             + '.ast-cal-cell.vacaciones{background:#dbeafe;color:#2563eb}.ast-cal-cell.licencia{background:#fef3c7;color:#d97706}'
             + '.ast-cal-cell.fin-semana{background:#f8fafc}.ast-cal-cell.hoy{outline:2px solid #3b82f6;outline-offset:-2px}'
@@ -485,7 +485,7 @@ const Asistencia = {
     // ═══════ CALENDARIO ═══════
     renderCalendarioTab(c) {
         c.innerHTML = `
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 0ms both;display:flex;flex-direction:column;height:calc(100vh - 160px)">
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 0ms both;display:flex;flex-direction:column;height:calc(100vh - 240px)">
                 <div style="padding:10px 22px;display:flex;gap:16px;flex-wrap:wrap;border-bottom:1px solid #f1f5f9;align-items:center;flex-shrink:0">
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#d1fae5"></div><span style="font-size:11px;color:#64748b;font-weight:500">Presente</span></div>
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#fee2e2"></div><span style="font-size:11px;color:#64748b;font-weight:500">Falta</span></div>
@@ -528,18 +528,18 @@ const Asistencia = {
         const busqueda = (document.getElementById('ast-cal-buscar')?.value || '').toLowerCase();
         const filtered = busqueda ? trabajadores.filter(t => t.nombre.toLowerCase().includes(busqueda) || (t.rut && t.rut.toLowerCase().includes(busqueda))) : trabajadores;
 
-        let html = '<div class="ast-cal-header" style="grid-template-columns:180px repeat(' + diasEnMes + ',1fr)">';
-        html += '<div style="padding:10px 12px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #e2e8f0">Trabajador</div>';
+        let html = '<div class="ast-cal-header" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
+        html += '<div style="padding:8px 12px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #e2e8f0">Trabajador</div>';
         for (let d = 1; d <= diasEnMes; d++) {
             const fecha = new Date(anio, mes - 1, d);
             const esFin = fecha.getDay() === 0 || fecha.getDay() === 6;
             const esHoy = d === hoy.getDate() && mes === (hoy.getMonth() + 1) && parseInt(anio) === hoy.getFullYear();
-            html += '<div class="ast-cal-cell' + (esFin ? ' fin-semana' : '') + (esHoy ? ' hoy' : '') + '" style="flex-direction:column;padding:4px 2px;border-right:1px solid #f1f5f9"><div style="font-weight:600;font-size:10px">' + d + '</div><div style="font-size:8px;opacity:0.6">' + diasSemana[fecha.getDay()] + '</div></div>';
+            html += '<div class="ast-cal-cell' + (esFin ? ' fin-semana' : '') + (esHoy ? ' hoy' : '') + '" style="flex-direction:column;padding:3px 1px;border-right:1px solid #f1f5f9"><div style="font-weight:600;font-size:9px">' + d + '</div><div style="font-size:7px;opacity:0.6">' + diasSemana[fecha.getDay()] + '</div></div>';
         }
         html += '</div>';
 
         filtered.forEach(t => {
-            html += '<div class="ast-cal-row" style="grid-template-columns:180px repeat(' + diasEnMes + ',1fr)">';
+            html += '<div class="ast-cal-row" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
             html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:700">' + t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2) + '</div><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + '">' + t.nombre + '</span></div>';
 
             for (let d = 1; d <= diasEnMes; d++) {
