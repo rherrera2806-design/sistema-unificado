@@ -178,7 +178,7 @@ App.registerModule('pedidos', {
             return;
         }
         tbody.innerHTML = pedidos.map(p => {
-            const badge = this.badgeHtml(p.estado);
+            const badge = this.badgeHtml(p.estado, p.motivo_rechazo);
             return '<tr class="ped-row" style="border-bottom:1px solid #f1f5f9;cursor:pointer" '
                 + 'onmouseover="this.style.background=\'#f8fafc\';this.style.transform=\'translateX(4px)\'" '
                 + 'onmouseout="this.style.background=\'white\';this.style.transform=\'none\'">'
@@ -199,10 +199,14 @@ App.registerModule('pedidos', {
         this.updatePendingBadge(pedidos);
     },
 
-    badgeHtml(estado) {
+    badgeHtml(estado, motivo) {
         if (estado === 'aprobado') return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>APROBADO</span>';
-        if (estado === 'rechazado') return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>RECHAZADO</span>';
+        if (estado === 'rechazado') return '<span class="ped-badge" onclick="App.modules.pedidos.showMotivoRechazo(\'' + escapeHtml(motivo || '').replace(/'/g, "\\'") + '\')" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;cursor:pointer" title="Ver motivo de rechazo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>RECHAZADO</span>';
         return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fefce8;color:#ca8a04;border:1px solid #fde68a"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>PENDIENTE</span>';
+    },
+    showMotivoRechazo(motivo) {
+        if (!motivo) { App.toast('No hay motivo de rechazo registrado'); return; }
+        App.toast('Motivo: ' + motivo);
     },
 
     updatePendingBadge(pedidos) {
