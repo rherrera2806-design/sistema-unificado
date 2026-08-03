@@ -96,17 +96,18 @@ router.get('/api/pedidos/:id', async (req, res, next) => {
 router.put('/api/pedidos/:id', async (req, res, next) => {
     try {
         const id = Number(req.params.id);
-        const { estado, motivo_rechazo, revisado_por, cliente, tipo_ov } = req.body;
+        const { estado, motivo_rechazo, revisado_por, cliente, tipo_ov, numero_pedido } = req.body;
         let result;
         if (estado && ['aprobado', 'rechazado'].includes(estado)) {
             result = await query(
                 'UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
                 [estado, motivo_rechazo || null, revisado_por || '', id]
             );
-        } else if (cliente || tipo_ov) {
+        } else if (cliente || tipo_ov || numero_pedido) {
             const fields = [];
             const values = [];
             let idx = 1;
+            if (numero_pedido) { fields.push('numero_pedido = $' + idx++); values.push(numero_pedido); }
             if (cliente) { fields.push('cliente = $' + idx++); values.push(cliente); }
             if (tipo_ov) { fields.push('tipo_ov = $' + idx++); values.push(tipo_ov); }
             values.push(id);

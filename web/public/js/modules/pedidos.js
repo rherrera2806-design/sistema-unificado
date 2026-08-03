@@ -140,8 +140,8 @@ App.registerModule('pedidos', {
             + '<h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Editar Pedido</h3></div>'
             + '<button onclick="App.modules.pedidos.hideEditModal()" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;padding:4px;line-height:1">&times;</button></div>'
             + '<div style="padding:28px">'
-            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Numero de Pedido</label>'
-            + '<input type="text" id="pedEditNumero" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:#f8fafc;box-sizing:border-box"></div>'
+            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Numero de Pedido *</label>'
+            + '<input type="text" id="pedEditNumero" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
             + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Cliente *</label>'
             + '<input type="text" id="pedEditCliente" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
             + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Tipo de OV</label>'
@@ -346,15 +346,16 @@ App.registerModule('pedidos', {
     hideEditModal() { document.getElementById('pedEditModal').style.display = 'none'; this.currentPedido = null; },
     async saveEdit() {
         if (!this.currentPedido) return;
+        const numero = document.getElementById('pedEditNumero').value.trim();
         const cliente = document.getElementById('pedEditCliente').value.trim().toUpperCase();
         const tipo_ov = document.getElementById('pedEditTipoOV').value;
-        if (!cliente) { alert('El cliente es requerido'); return; }
+        if (!numero || !cliente) { alert('Numero y cliente son requeridos'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch('/api/pedidos/' + this.currentPedido.id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ cliente, tipo_ov })
+                body: JSON.stringify({ numero_pedido: numero, cliente, tipo_ov })
             });
             if (res.ok) { this.hideEditModal(); this.load(); App.toast('Pedido actualizado'); }
             else { const data = await res.json(); alert(data.error || 'Error al guardar'); }
