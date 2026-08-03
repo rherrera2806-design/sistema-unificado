@@ -170,7 +170,9 @@ const Asistencia = {
                 + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.buscarTrabajadores()" style="padding-left:32px;width:160px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + '<input type="date" id="ast-hero-fecha" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
-                + '<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>';
+                + '<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>'
+                + '<button onclick="Asistencia.exportExcel()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">Excel</button>'
+                + '<button onclick="Asistencia.exportPDF()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#dc2626;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(220,38,38,0.15)">PDF</button>';
         } else {
             container.innerHTML = '';
         }
@@ -458,6 +460,44 @@ const Asistencia = {
             this.renderTablaFaltas();
             this.actualizarStats();
         } catch(e) { console.error('Error:', e); }
+    },
+
+    exportExcel() {
+        const fecha = document.getElementById('ast-hero-fecha')?.value || new Date().toISOString().split('T')[0];
+        const faltas = this.asistenciaHoy || [];
+        const trabajadores = this.trabajadores || [];
+        let csv = 'Trabajador,RUT,Estado\n';
+        trabajadores.forEach(t => {
+            const tieneFalta = faltas.some(f => f.trabajador_id === t.id);
+            csv += `"${t.nombre}","${t.rut || ''}","${tieneFalta ? 'Falta' : 'Presente'}"\n`;
+        });
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'asistencia_' + fecha + '.csv';
+        link.click();
+    },
+
+    exportPDF() {
+        const fecha = document.getElementById('ast-hero-fecha')?.value || new Date().toISOString().split('T')[0];
+        const faltas = this.asistenciaHoy || [];
+        const trabajadores = this.trabajadores || [];
+        const total = trabajadores.length;
+        const totalFaltas = faltas.length;
+        const totalPresentes = total - totalFaltas;
+        let html = '<html><head><style>body{font-family:Arial,sans-serif;padding:20px}h1{font-size:18px;color:#0f172a}table{width:100%;border-collapse:collapse;margin-top:15px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;font-size:12px}th{background:#f8fafc;font-weight:700;color:#64748b}.falta{color:#dc2626;font-weight:700}.presente{color:#22c55e}.stats{margin:15px 0;display:flex;gap:20px}.stat{padding:10px 15px;border-radius:8px;background:#f8fafc}</style></head><body>';
+        html += '<h1>Control de Asistencia - ' + fecha + '</h1>';
+        html += '<div class="stats"><div class="stat"><strong>Total:</strong> ' + total + '</div><div class="stat"><strong>Presentes:</strong> ' + totalPresentes + '</div><div class="stat"><strong>Faltas:</strong> ' + totalFaltas + '</div></div>';
+        html += '<table><thead><tr><th>Trabajador</th><th>RUT</th><th>Estado</th></tr></thead><tbody>';
+        trabajadores.forEach(t => {
+            const tieneFalta = faltas.some(f => f.trabajador_id === t.id);
+            html += '<tr><td>' + t.nombre + '</td><td>' + (t.rut || '') + '</td><td class="' + (tieneFalta ? 'falta' : 'presente') + '">' + (tieneFalta ? 'Falta' : 'Presente') + '</td></tr>';
+        });
+        html += '</tbody></table></body></html>';
+        const win = window.open('', '_blank');
+        win.document.write(html);
+        win.document.close();
+        setTimeout(() => { win.print(); }, 500);
     },
 
     renderTablaFaltas() {
