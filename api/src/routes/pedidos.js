@@ -24,7 +24,7 @@ router.get('/api/pedidos', async (req, res, next) => {
     try {
         const userEmail = req.headers['x-user-email'] || '';
         const userPerm = req.headers['x-user-permisos'] || '';
-        const esAdmin = userPerm.includes('pedidos.autorizar') || userPerm.includes('usuarios');
+        const esAdmin = userPerm.includes('pedidos.editar') || userPerm.includes('pedidos.autorizar') || userPerm.includes('usuarios');
         const joinQuery = `SELECT p.*, v.nombre AS vendedor_nombre, r.nombre AS revisor_nombre
             FROM pedidos p LEFT JOIN usuarios u ON u.email = p.vendedor
             LEFT JOIN usuarios v ON v.email = p.vendedor LEFT JOIN usuarios r ON r.email = p.revisado_por`;
