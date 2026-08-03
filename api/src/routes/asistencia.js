@@ -422,8 +422,8 @@ router.delete('/api/asistencia/licencias/:id', async (req, res) => {
 router.get('/api/asistencia/reporte-mensual', async (req, res) => {
     try {
         const { mes, anio } = req.query;
-        const mesActual = mes || new Date().getMonth() + 1;
-        const anioActual = anio || new Date().getFullYear();
+        const mesActual = parseInt(mes) || new Date().getMonth() + 1;
+        const anioActual = parseInt(anio) || new Date().getFullYear();
         
         const result = await pool.query(
             `SELECT 
@@ -478,8 +478,8 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
 router.get('/api/asistencia/ranking', async (req, res) => {
     try {
         const { mes, anio } = req.query;
-        const mesActual = mes || new Date().getMonth() + 1;
-        const anioActual = anio || new Date().getFullYear();
+        const mesActual = parseInt(mes) || new Date().getMonth() + 1;
+        const anioActual = parseInt(anio) || new Date().getFullYear();
         
         const result = await pool.query(
             `SELECT 
