@@ -1071,19 +1071,41 @@ const Asistencia = {
         const tbody = document.getElementById('ast-tabla-reporte');
         if (!tbody) return;
         if (reporte.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8">Sin datos</td></tr>'; return; }
+        const mes = parseInt(document.getElementById('ast-hero-mes')?.value) || (new Date().getMonth() + 1);
+        const anio = new Date().getFullYear();
+        const hoy = new Date();
+        let diasHabiles = 0;
+        if (hoy.getFullYear() === anio && hoy.getMonth() + 1 === mes) {
+            for (let d = 1; d <= hoy.getDate(); d++) {
+                const fecha = new Date(anio, mes - 1, d);
+                const dow = fecha.getDay();
+                if (dow !== 0 && dow !== 6) diasHabiles++;
+            }
+        } else if (hoy.getFullYear() > anio || (hoy.getFullYear() === anio && hoy.getMonth() + 1 > mes)) {
+            const diasEnMes = new Date(anio, mes, 0).getDate();
+            for (let d = 1; d <= diasEnMes; d++) {
+                const fecha = new Date(anio, mes - 1, d);
+                const dow = fecha.getDay();
+                if (dow !== 0 && dow !== 6) diasHabiles++;
+            }
+        }
         tbody.innerHTML = reporte.map((r, i) => {
-            const asistidos = 22 - r.faltas;
-            const pct = Math.round((asistidos / 22) * 100);
+            const faltas = Number(r.faltas) || 0;
+            const asistidos = Math.max(0, diasHabiles - faltas);
+            const permisos = Number(r.permisos_aprobados) || 0;
+            const licencias = Number(r.dias_licencia) || 0;
+            const vacaciones = Number(r.dias_vacaciones) || 0;
+            const pct = diasHabiles > 0 ? Math.round((asistidos / diasHabiles) * 100) : 0;
             const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
             const he = Number(r.horas_extras) || 0;
             return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + (i + 1) + '</strong></td>'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + r.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px;color:#475569">' + asistidos + '</td>'
-                + '<td style="padding:12px 16px"><strong style="color:#dc2626">' + r.faltas + '</strong></td>'
-                + '<td style="padding:12px 16px;color:#475569">' + r.permisos_aprobados + '</td>'
-                + '<td style="padding:12px 16px;color:#475569">' + r.dias_licencia + ' días</td>'
-                + '<td style="padding:12px 16px;color:#475569">' + r.vacaciones + '</td>'
+                + '<td style="padding:12px 16px"><strong style="color:#dc2626">' + faltas + '</strong></td>'
+                + '<td style="padding:12px 16px;color:#475569">' + permisos + '</td>'
+                + '<td style="padding:12px 16px;color:#475569">' + licencias + ' días</td>'
+                + '<td style="padding:12px 16px;color:#475569">' + vacaciones + ' días</td>'
                 + '<td style="padding:12px 16px"><span style="font-weight:700;color:' + (he > 0 ? '#8b5cf6' : '#94a3b8') + '">' + he.toFixed(1) + ' hrs</span></td>'
                 + '<td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px"></div></div><span style="font-size:12px;font-weight:700;color:' + color + '">' + pct + '%</span></div></td>'
                 + '</tr>';

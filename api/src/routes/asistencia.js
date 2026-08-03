@@ -422,8 +422,11 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
         const mesActual = parseInt(req.query.mes) || new Date().getMonth() + 1;
         const anioActual = parseInt(req.query.anio) || new Date().getFullYear();
         const mesStr = String(mesActual).padStart(2, '0');
+        const siguienteMes = mesActual === 12 ? 1 : mesActual + 1;
+        const siguienteAnio = mesActual === 12 ? anioActual + 1 : anioActual;
+        const sigMesStr = String(siguienteMes).padStart(2, '0');
         const fechaInicio = anioActual + '-' + mesStr + '-01';
-        const fechaFin = anioActual + '-' + mesStr + '-28';
+        const fechaFin = siguienteAnio + '-' + sigMesStr + '-01';
         
         const result = await pool.query(
             `SELECT 
@@ -432,31 +435,34 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                 t.rut,
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
-                 AND a.fecha >= $1::date AND a.fecha <= $2::date) as faltas,
+                 AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,
                 (SELECT COUNT(*) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
-                 AND p.fecha_inicio >= $1::date AND p.fecha_inicio <= $2::date
+                 AND p.fecha_inicio < $2::date
+                 AND p.fecha_fin >= $1::date
                  AND p.estado = 'aprobado') as permisos_aprobados,
-                (SELECT COUNT(*) FROM licencias_medicas l 
-                 WHERE l.trabajador_id = t.id 
-                 AND l.fecha_inicio >= $1::date AND l.fecha_inicio <= $2::date
-                 AND l.estado = 'aprobada') as licencias_medicas,
                 (SELECT COALESCE(SUM(
                     CASE 
-                        WHEN l.fecha_fin >= l.fecha_inicio THEN 
-                            (l.fecha_fin - l.fecha_inicio) + 1
-                        ELSE 1
+                        WHEN l.fecha_fin IS NULL OR l.fecha_fin < l.fecha_inicio THEN 1
+                        ELSE (LEAST(l.fecha_fin, ($2::date - 1)::date) - GREATEST(l.fecha_inicio, $1::date)) + 1
                     END
                 ), 0) FROM licencias_medicas l 
                  WHERE l.trabajador_id = t.id 
-                 AND l.fecha_inicio >= $1::date AND l.fecha_inicio <= $2::date
+                 AND l.fecha_inicio < $2::date
+                 AND (l.fecha_fin IS NULL OR l.fecha_fin >= $1::date)
                  AND l.estado = 'aprobada') as dias_licencia,
-                (SELECT COUNT(*) FROM vacaciones v 
+                (SELECT COALESCE(SUM(
+                    CASE 
+                        WHEN v.fecha_fin IS NULL OR v.fecha_fin < v.fecha_inicio THEN COALESCE(v.dias, 1)
+                        ELSE (LEAST(v.fecha_fin, ($2::date - 1)::date) - GREATEST(v.fecha_inicio, $1::date)) + 1
+                    END
+                ), 0) FROM vacaciones v 
                  WHERE v.trabajador_id = t.id 
-                 AND v.fecha_inicio >= $1::date AND v.fecha_inicio <= $2::date) as vacaciones,
+                 AND v.fecha_inicio < $2::date
+                 AND (v.fecha_fin IS NULL OR v.fecha_fin >= $1::date)) as dias_vacaciones,
                 (SELECT COALESCE(SUM(he.horas), 0) FROM horas_extras he 
                  WHERE he.trabajador_id = t.id 
-                 AND he.fecha >= $1::date AND he.fecha <= $2::date
+                 AND he.fecha >= $1::date AND he.fecha < $2::date
                  AND he.estado = 'aprobada') as horas_extras
              FROM trabajadores t
              WHERE t.activo = true
