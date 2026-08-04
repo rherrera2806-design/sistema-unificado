@@ -5,6 +5,12 @@ App.registerModule('pedidos', {
     isVendedor: false,
     canAuthorize: false,
     uploading: false,
+    _filterTimer: null,
+
+    debouncedFilter() {
+        clearTimeout(this._filterTimer);
+        this._filterTimer = setTimeout(() => this.filter(), 200);
+    },
 
     async render() {
         const el = document.getElementById('page-pedidos');
@@ -15,67 +21,70 @@ App.registerModule('pedidos', {
         this.canCreate = permisos.includes('pedidos.agregar') || permisos.includes('usuarios');
         const showNew = this.isVendedor || this.canAuthorize || this.canCreate;
 
-        el.innerHTML = '<style>'
-            + '@keyframes pedFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
-            + '@keyframes pedCount{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}'
-            + '.ped-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
-            + '.ped-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 28px rgba(0,0,0,0.12)!important}'
-            + '.ped-row{transition:all 0.2s ease}'
-            + '.ped-row:hover{transform:translateX(4px)!important}'
-            + '.ped-section{animation:pedFadeUp 0.5s ease both}'
-            + '.ped-badge{transition:all 0.2s ease}'
-            + '.ped-badge:hover{transform:scale(1.08)}'
-            + '.ped-btn{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}'
-            + '.ped-btn:hover{transform:translateY(-1px)!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}'
-            + '#pedFilterSearch::placeholder{color:rgba(255,255,255,0.6)}'
-            + '</style>'
+        const modalesReady = document.getElementById('pedUploadModal');
+        if (!modalesReady) {
+            el.innerHTML = '<style>'
+                + '@keyframes pedFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
+                + '@keyframes pedCount{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}'
+                + '.ped-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+                + '.ped-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 28px rgba(0,0,0,0.12)!important}'
+                + '.ped-row{transition:all 0.2s ease}'
+                + '.ped-row:hover{transform:translateX(4px)!important}'
+                + '.ped-section{animation:pedFadeUp 0.5s ease both}'
+                + '.ped-badge{transition:all 0.2s ease}'
+                + '.ped-badge:hover{transform:scale(1.08)}'
+                + '.ped-btn{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}'
+                + '.ped-btn:hover{transform:translateY(-1px)!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}'
+                + '#pedFilterSearch::placeholder{color:rgba(255,255,255,0.6)}'
+                + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:20px 36px;margin-bottom:28px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
-            + '<div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:absolute;bottom:-60px;left:30%;width:300px;height:200px;background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
-            + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Pedidos / Ordenes</h2>'
-            + '<p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.7)">Gestion de pedidos y documentos de ventas</p></div>'
-            + '<div style="display:flex;align-items:center;gap:12px">'
-            + '<div style="position:relative"><svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-            + '<input type="text" id="pedFilterSearch" placeholder="N Pedido, Cliente..." oninput="App.modules.pedidos.filter()" style="font-size:13px;padding:10px 14px 10px 38px;border:none;border-radius:10px;color:white;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);outline:none;transition:all 0.2s;width:200px" onfocus="this.style.background=\'rgba(255,255,255,0.25)\'" onblur="this.style.background=\'rgba(255,255,255,0.15)\'"></div>'
-            + '<select id="pedFilterEstado" onchange="App.modules.pedidos.filter()" style="font-size:13px;padding:10px 14px;border:none;border-radius:10px;color:white;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.background=\'rgba(255,255,255,0.25)\'" onblur="this.style.background=\'rgba(255,255,255,0.15)\'">'
-            + '<option value="" style="color:#1e293b;background:white">Todos</option><option value="pendiente" style="color:#1e293b;background:white">Pendiente</option><option value="aprobado" style="color:#1e293b;background:white">Aprobado</option><option value="rechazado" style="color:#1e293b;background:white">Rechazado</option></select>'
-            + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" class="ped-btn" style="padding:10px 20px;font-size:13px;font-weight:600;color:#1e40af;background:white;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15)">+ Nuevo Pedido</button>' : '')
-            + '</div></div></div>'
+                + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:20px 36px;margin-bottom:28px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+                + '<div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+                + '<div style="position:absolute;bottom:-60px;left:30%;width:300px;height:200px;background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%);border-radius:50%"></div>'
+                + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
+                + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Pedidos / Ordenes</h2>'
+                + '<p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.7)">Gestion de pedidos y documentos de ventas</p></div>'
+                + '<div style="display:flex;align-items:center;gap:12px">'
+                + '<div style="position:relative"><svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+                + '<input type="text" id="pedFilterSearch" placeholder="N Pedido, Cliente..." oninput="App.modules.pedidos.debouncedFilter()" style="font-size:13px;padding:10px 14px 10px 38px;border:none;border-radius:10px;color:white;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);outline:none;transition:all 0.2s;width:200px" onfocus="this.style.background=\'rgba(255,255,255,0.25)\'" onblur="this.style.background=\'rgba(255,255,255,0.15)\'"></div>'
+                + '<select id="pedFilterEstado" onchange="App.modules.pedidos.filter()" style="font-size:13px;padding:10px 14px;border:none;border-radius:10px;color:white;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.background=\'rgba(255,255,255,0.25)\'" onblur="this.style.background=\'rgba(255,255,255,0.15)\'">'
+                + '<option value="" style="color:#1e293b;background:white">Todos</option><option value="pendiente" style="color:#1e293b;background:white">Pendiente</option><option value="aprobado" style="color:#1e293b;background:white">Aprobado</option><option value="rechazado" style="color:#1e293b;background:white">Rechazado</option></select>'
+                + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" class="ped-btn" style="padding:10px 20px;font-size:13px;font-weight:600;color:#1e40af;background:white;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15)">+ Nuevo Pedido</button>' : '')
+                + '</div></div></div>'
 
-            + '<div id="pedStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px"></div>'
+                + '<div id="pedStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px"></div>'
 
-            + '<div class="ped-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease 400ms both">'
-            + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">'
-            + '<div style="display:flex;align-items:center;gap:12px">'
-            + '<div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(59,130,246,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>'
-            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Lista de Pedidos</h3>'
-            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Todos los pedidos registrados en el sistema</p></div></div>'
-            + '<button onclick="App.modules.pedidos.toggleGrafico()" id="pedBtnGrafico" style="display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:12px;font-weight:600;color:#1e40af;background:white;border:1px solid #bfdbfe;border-radius:8px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Ir a Gráfico</button></div>'
-            + '<div id="pedGraficoContainer" style="display:none;padding:20px 24px;border-bottom:1px solid #e2e8f0"></div>'
-            + '<div id="pedTablaContainer" style="display:block">'
-            + '<div style="overflow:auto;max-height:65vh"><table style="width:100%;border-collapse:collapse;font-size:13px">'
-            + '<thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
-            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">N Pedido</th>'
-            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Cliente</th>'
-            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tipo OV</th>'
-            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Vendedor</th>'
-            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha Subida</th>'
-            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
-            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Revisor</th>'
-            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha Revision</th>'
-            + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tiempo</th>'
-            + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
-            + '</tr></thead><tbody id="pedidosTable">'
-            + '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8"><div style="font-size:14px">Cargando pedidos...</div></td></tr>'
-            + '</tbody></table></div></div></div>'
+                + '<div class="ped-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease 400ms both">'
+                + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">'
+                + '<div style="display:flex;align-items:center;gap:12px">'
+                + '<div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(59,130,246,0.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>'
+                + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Lista de Pedidos</h3>'
+                + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Todos los pedidos registrados en el sistema</p></div></div>'
+                + '<button onclick="App.modules.pedidos.toggleGrafico()" id="pedBtnGrafico" style="display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:12px;font-weight:600;color:#1e40af;background:white;border:1px solid #bfdbfe;border-radius:8px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Ir a Gráfico</button></div>'
+                + '<div id="pedGraficoContainer" style="display:none;padding:20px 24px;border-bottom:1px solid #e2e8f0"></div>'
+                + '<div id="pedTablaContainer" style="display:block">'
+                + '<div style="overflow:auto;max-height:65vh"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+                + '<thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
+                + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">N Pedido</th>'
+                + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Cliente</th>'
+                + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tipo OV</th>'
+                + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Vendedor</th>'
+                + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha Subida</th>'
+                + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
+                + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Revisor</th>'
+                + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha Revision</th>'
+                + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tiempo</th>'
+                + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
+                + '</tr></thead><tbody id="pedidosTable">'
+                + '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8"><div style="font-size:14px">Cargando pedidos...</div></td></tr>'
+                + '</tbody></table></div></div></div>'
 
-            + this.uploadModalHtml()
-            + this.reviewModalHtml()
-            + this.editModalHtml();
+                + this.uploadModalHtml()
+                + this.reviewModalHtml()
+                + this.editModalHtml();
 
-        this.setupDragDrop();
+            this.setupDragDrop();
+        }
         await this.load();
     },
 
@@ -178,10 +187,13 @@ App.registerModule('pedidos', {
 
     renderStats() {
         const p = this.allPedidos;
-        const total = p.length;
-        const pend = p.filter(x => x.estado === 'pendiente').length;
-        const apr = p.filter(x => x.estado === 'aprobado').length;
-        const rech = p.filter(x => x.estado === 'rechazado').length;
+        let total = p.length, pend = 0, apr = 0, rech = 0;
+        for (let i = 0; i < p.length; i++) {
+            const e = p[i].estado;
+            if (e === 'pendiente') pend++;
+            else if (e === 'aprobado') apr++;
+            else if (e === 'rechazado') rech++;
+        }
         document.getElementById('pedStats').innerHTML =
             this.statCard(total, 'Total Pedidos', '#64748b', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', 0)
             + this.statCard(pend, 'Pendientes', '#f59e0b', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', 100)
