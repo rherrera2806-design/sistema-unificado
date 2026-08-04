@@ -1135,17 +1135,17 @@ const Asistencia = {
         const c = document.getElementById('ast-ranking-container');
         if (!c) return;
         if (ranking.length === 0) { c.innerHTML = ''; return; }
-        const medals = ['🥇','🥈','🥉'];
-        const sizes = [180, 160, 150];
-        const orders = [2, 1, 3];
-        const colors = ['#f59e0b','#94a3b8','#cd7f32'];
-        c.innerHTML = '<div class="ast-podium">' + ranking.slice(0, 3).map((r, i) => {
+        const medals = ['🥇','🥈','🥉','4°','5°'];
+        const colors = ['#f59e0b','#94a3b8','#cd7f32','#6366f1','#10b981'];
+        c.innerHTML = '<div style="display:flex;gap:16px;justify-content:center;align-items:flex-end;padding:16px 0">' + ranking.slice(0, 5).map((r, i) => {
             const total = (Number(r.faltas) || 0) + (Number(r.permisos_dias) || 0) + (Number(r.licencias_dias) || 0) + (Number(r.vacaciones_dias) || 0);
-            return '<div class="ast-rank" style="order:' + orders[i] + ';min-width:' + sizes[i] + 'px">'
-            + '<div style="font-size:32px;margin-bottom:6px">' + medals[i] + '</div>'
-            + '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + r.nombre + '</div>'
-            + '<div style="font-size:24px;font-weight:800;color:' + colors[i] + '">' + total + '</div>'
-            + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;font-weight:600;margin-top:2px">días fuera</div>'
+            const s = i === 0 ? 1 : i === 1 ? 0.88 : i === 2 ? 0.78 : 0.7;
+            const medalSize = i < 3 ? 28 + (2 - i) * 4 : 20;
+            return '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:20px 18px 16px;text-align:center;min-width:' + Math.round(120 * s) + 'px;transform:scale(' + s + ');transform-origin:bottom center">'
+            + '<div style="font-size:' + medalSize + 'px;margin-bottom:6px">' + medals[i] + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">' + r.nombre + '</div>'
+            + '<div style="font-size:' + Math.round(22 * s) + 'px;font-weight:800;color:' + colors[i] + '">' + total + '</div>'
+            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;font-weight:600;margin-top:2px">días fuera</div>'
             + '</div>';
         }).join('') + '</div>';
     },
