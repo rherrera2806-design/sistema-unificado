@@ -23,10 +23,10 @@ App.registerModule('turnos', {
             + '.tmenu-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
             + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:14px 24px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px">Atencion al Cliente</h2>'
-            + '<p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Turnos, bodega y facturacion</p></div></div>'
+            + '<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Atencion al Cliente</h2>'
+            + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Turnos, bodega y facturacion</p></div></div>'
 
             + '<div style="display:grid;grid-template-columns:1fr;gap:14px">'
             + '<div class="tmenu-card" style="cursor:pointer;background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:tFadeUp 0.5s ease 0ms both;display:flex;align-items:center;gap:16px" onclick="App.modules.turnos.showRecepcion()">'
