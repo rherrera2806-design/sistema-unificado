@@ -38,12 +38,12 @@ App.registerModule('pedidos', {
                 + '#pedFilterSearch::placeholder{color:rgba(255,255,255,0.6)}'
                 + '</style>'
 
-                + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:20px 36px;margin-bottom:28px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+                + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:14px 24px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
                 + '<div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
                 + '<div style="position:absolute;bottom:-60px;left:30%;width:300px;height:200px;background:radial-gradient(circle,rgba(139,92,246,0.15) 0%,transparent 70%);border-radius:50%"></div>'
-                + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
-                + '<div><h2 style="margin:0;font-size:22px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Pedidos / Ordenes</h2>'
-                + '<p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.7)">Gestion de pedidos y documentos de ventas</p></div>'
+                + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'
+                + '<div><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Pedidos / Ordenes</h2>'
+                + '<p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Gestion de pedidos y documentos de ventas</p></div>'
                 + '<div style="display:flex;align-items:center;gap:12px">'
                 + '<div style="position:relative"><svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="pedFilterSearch" placeholder="N Pedido, Cliente..." oninput="App.modules.pedidos.debouncedFilter()" style="font-size:13px;padding:10px 14px 10px 38px;border:none;border-radius:10px;color:white;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);outline:none;transition:all 0.2s;width:200px" onfocus="this.style.background=\'rgba(255,255,255,0.25)\'" onblur="this.style.background=\'rgba(255,255,255,0.15)\'"></div>'
@@ -52,7 +52,7 @@ App.registerModule('pedidos', {
                 + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" class="ped-btn" style="padding:10px 20px;font-size:13px;font-weight:600;color:#1e40af;background:white;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15)">+ Nuevo Pedido</button>' : '')
                 + '</div></div></div>'
 
-                + '<div id="pedStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px"></div>'
+                + '<div id="pedStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>'
 
                 + '<div class="ped-section" style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease 400ms both">'
                 + '<div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">'
@@ -220,19 +220,19 @@ App.registerModule('pedidos', {
             else if (e === 'rechazado') rech++;
         }
         document.getElementById('pedStats').innerHTML =
-            this.statCard(total, 'Total Pedidos', '#64748b', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', 0)
-            + this.statCard(pend, 'Pendientes', '#f59e0b', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', 100)
-            + this.statCard(apr, 'Aprobados', '#22c55e', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 200)
-            + this.statCard(rech, 'Rechazados', '#ef4444', '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', 300);
+            this.statCard(total, 'Total Pedidos', '#64748b', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', 0)
+            + this.statCard(pend, 'Pendientes', '#f59e0b', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', 100)
+            + this.statCard(apr, 'Aprobados', '#22c55e', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 200)
+            + this.statCard(rech, 'Rechazados', '#ef4444', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', 300);
     },
 
     statCard(value, label, color, icon, delay) {
-        return '<div class="ped-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:22px;border-left:4px solid ' + color + ';box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease ' + delay + 'ms both;position:relative;overflow:hidden">'
+        return '<div class="ped-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:12px;border-left:4px solid ' + color + ';box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease ' + delay + 'ms both;position:relative;overflow:hidden">'
             + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:' + color + ';opacity:0.04;border-radius:50%"></div>'
-            + '<div style="display:flex;align-items:flex-start;gap:16px;position:relative;z-index:1">'
-            + '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
-            + '<div><div style="font-size:30px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1;animation:pedCount 0.6s ease ' + (delay + 200) + 'ms both">' + value + '</div>'
-            + '<div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:6px">' + label + '</div></div></div></div>';
+            + '<div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">'
+            + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
+            + '<div><div style="font-size:24px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1;animation:pedCount 0.6s ease ' + (delay + 200) + 'ms both">' + value + '</div>'
+            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">' + label + '</div></div></div></div>';
     },
 
     filter() {
