@@ -95,20 +95,39 @@ router.get('/api/pedidos/:id', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.get('/api/pedidos/:id/historial', async (req, res, next) => {
+    try {
+        const result = await query(
+            'SELECT id, accion, campos_antes, campos_despues, usuario, created_at FROM pedido_historial WHERE pedido_id = $1 ORDER BY created_at DESC',
+            [Number(req.params.id)]
+        );
+        res.json(result.rows);
+    } catch (e) { next(e); }
+});
+
 router.put('/api/pedidos/:id', async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const { estado, motivo_rechazo, revisado_por, cliente, tipo_ov, numero_pedido } = req.body;
+        const user = req.headers['x-user-email'] || '';
+        const beforeResult = await query('SELECT numero_pedido, cliente, tipo_ov, estado, motivo_rechazo, revisado_por FROM pedidos WHERE id = $1', [id]);
+        const before = beforeResult.rows[0] || {};
         let result;
         if (estado && ['aprobado', 'rechazado'].includes(estado)) {
             result = await query(
                 'UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
                 [estado, motivo_rechazo || null, revisado_por || '', id]
             );
-        } else if (cliente || tipo_ov || numero_pedido) {
+        } else if (estado === 'pendiente' || cliente || tipo_ov || numero_pedido) {
             const fields = [];
             const values = [];
             let idx = 1;
+            if (estado === 'pendiente') {
+                fields.push('estado = $' + idx++); values.push('pendiente');
+                fields.push('motivo_rechazo = NULL');
+                fields.push('revisado_por = NULL');
+                fields.push('fecha_revision = NULL');
+            }
             if (numero_pedido) { fields.push('numero_pedido = $' + idx++); values.push(numero_pedido); }
             if (cliente) { fields.push('cliente = $' + idx++); values.push(cliente); }
             if (tipo_ov) { fields.push('tipo_ov = $' + idx++); values.push(tipo_ov); }
@@ -118,7 +137,26 @@ router.put('/api/pedidos/:id', async (req, res, next) => {
             return res.status(400).json({ error: 'Datos invalidos' });
         }
         if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
-        res.json(result.rows[0]);
+        const after = result.rows[0];
+        const changes = {};
+        for (const key of ['numero_pedido', 'cliente', 'tipo_ov', 'estado', 'motivo_rechazo', 'revisado_por']) {
+            if (before[key] !== undefined && before[key] !== after[key]) {
+                changes[key] = { antes: before[key], despues: after[key] };
+            }
+        }
+        if (Object.keys(changes).length > 0) {
+            let accion = 'Edición';
+            if (before.estado !== after.estado) {
+                if (after.estado === 'aprobado') accion = 'Aprobado';
+                else if (after.estado === 'rechazado') accion = 'Rechazado';
+                else if (after.estado === 'pendiente') accion = 'Vuelto a pendiente';
+            }
+            await query(
+                'INSERT INTO pedido_historial (pedido_id, accion, campos_antes, campos_despues, usuario) VALUES ($1, $2, $3, $4, $5)',
+                [id, accion, JSON.stringify(before), JSON.stringify(changes), user]
+            );
+        }
+        res.json(after);
     } catch (e) { next(e); }
 });
 

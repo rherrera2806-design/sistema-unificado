@@ -254,6 +254,8 @@ App.registerModule('pedidos', {
                 + '<td style="padding:12px 14px;text-align:center;white-space:nowrap">'
                 + (p.estado === 'pendiente' ? '<button onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')" class="ped-btn" style="background:white;color:#3b82f6;border:1px solid #bfdbfe;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'white\'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button> ' : '')
                 + (this.canAuthorize && p.estado === 'pendiente' ? '<button onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')" class="ped-btn" style="background:white;color:#f59e0b;border:1px solid #fde68a;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer" onmouseover="this.style.background=\'#fef3c7\'" onmouseout="this.style.background=\'white\'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button> ' : '')
+                + (this.canAuthorize && p.estado === 'aprobado' ? '<button onclick="event.stopPropagation();App.modules.pedidos.rechazarAprobado(' + p.id + ')" class="ped-btn" style="background:white;color:#dc2626;border:1px solid #fecaca;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button> ' : '')
+                + (p.estado !== 'pendiente' ? '<button onclick="event.stopPropagation();App.modules.pedidos.showHistorial(' + p.id + ')" class="ped-btn" style="background:white;color:#8b5cf6;border:1px solid #ddd6fe;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer" onmouseover="this.style.background=\'#f5f3ff\'" onmouseout="this.style.background=\'white\'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button> ' : '')
                 + (this.canAuthorize ? '<button onclick="event.stopPropagation();App.modules.pedidos.deletePedido(' + p.id + ',\'' + escapeHtml(p.numero_pedido) + '\')" class="ped-btn" style="background:white;color:#dc2626;border:1px solid #fecaca;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : '')
                 + (this.canAuthorize ? '<button onclick="event.stopPropagation();App.modules.pedidos.showEditModal(' + p.id + ')" class="ped-btn" style="background:white;color:#3b82f6;border:1px solid #bfdbfe;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;margin-left:4px" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'white\'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
                 + '</td></tr>';
@@ -374,14 +376,17 @@ App.registerModule('pedidos', {
         const cliente = document.getElementById('pedEditCliente').value.trim().toUpperCase();
         const tipo_ov = document.getElementById('pedEditTipoOV').value;
         if (!numero || !cliente) { alert('Numero y cliente son requeridos'); return; }
+        const goingToPendiente = this.currentPedido.estado === 'aprobado';
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const body = { numero_pedido: numero, cliente, tipo_ov };
+            if (goingToPendiente) body.estado = 'pendiente';
             const res = await fetch('/api/pedidos/' + this.currentPedido.id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ numero_pedido: numero, cliente, tipo_ov })
+                body: JSON.stringify(body)
             });
-            if (res.ok) { this.hideEditModal(); this.load(); App.toast('Pedido actualizado'); }
+            if (res.ok) { this.hideEditModal(); this.load(); App.toast(goingToPendiente ? 'Pedido editado, vuelve a pendiente para revisión' : 'Pedido actualizado'); }
             else { const data = await res.json(); alert(data.error || 'Error al guardar'); }
         } catch(e) { alert('Error al guardar: ' + e.message); }
     },
@@ -428,6 +433,74 @@ App.registerModule('pedidos', {
             if (res.ok) { this.load(); App.toast('Pedido eliminado'); }
             else { const data = await res.json(); alert(data.error || 'Error al eliminar'); }
         } catch(e) { alert('Error al eliminar: ' + e.message); }
+    },
+
+    async rechazarAprobado(id) {
+        const motivo = prompt('Motivo del rechazo del pedido aprobado:');
+        if (motivo === null) return;
+        if (!motivo.trim()) { alert('Debes indicar un motivo'); return; }
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch('/api/pedidos/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ estado: 'rechazado', motivo_rechazo: motivo.trim(), revisado_por: user.email || '' })
+            });
+            if (res.ok) { this.load(); App.toast('Pedido rechazado'); }
+            else { const data = await res.json(); alert(data.error || 'Error al rechazar'); }
+        } catch(e) { alert('Error al rechazar: ' + e.message); }
+    },
+
+    async showHistorial(id) {
+        try {
+            const res = await fetch('/api/pedidos/' + id + '/historial');
+            if (!res.ok) { App.toast('Error al cargar historial'); return; }
+            const historial = await res.json();
+            const ped = this.allPedidos.find(x => x.id === id);
+            let html = '<div style="padding:0">';
+            if (historial.length === 0) {
+                html += '<div style="padding:32px;text-align:center;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style="font-size:13px">Sin cambios registrados</div></div>';
+            } else {
+                html += '<div style="padding:20px 24px 12px;border-bottom:1px solid #f1f5f9"><div style="font-size:14px;font-weight:600;color:#0f172a">' + escapeHtml(ped ? ped.numero_pedido : '') + '</div><div style="font-size:12px;color:#64748b;margin-top:2px">' + historial.length + ' evento(s)</div></div>';
+                html += '<div style="max-height:400px;overflow-y:auto">';
+                historial.forEach(h => {
+                    const fecha = h.created_at ? new Date(h.created_at).toLocaleString('es-CL') : '-';
+                    const iconColor = h.accion === 'Aprobado' ? '#16a34a' : h.accion === 'Rechazado' ? '#dc2626' : h.accion === 'Vuelto a pendiente' ? '#f59e0b' : '#8b5cf6';
+                    html += '<div style="padding:16px 24px;border-bottom:1px solid #f8fafc">';
+                    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">';
+                    html += '<div style="width:28px;height:28px;border-radius:50%;background:' + iconColor + '15;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + iconColor + '" stroke-width="2">';
+                    if (h.accion === 'Aprobado') html += '<polyline points="20 6 9 17 4 12"/>';
+                    else if (h.accion === 'Rechazado') html += '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>';
+                    else if (h.accion === 'Vuelto a pendiente') html += '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>';
+                    else html += '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>';
+                    html += '</svg></div>';
+                    html += '<div><div style="font-size:13px;font-weight:600;color:#0f172a">' + escapeHtml(h.accion) + '</div>';
+                    html += '<div style="font-size:11px;color:#94a3b8">' + fecha + (h.usuario ? ' · ' + escapeHtml(h.usuario) : '') + '</div></div></div>';
+                    if (h.campos_despues && typeof h.campos_despues === 'object') {
+                        html += '<div style="margin-left:38px;font-size:12px;color:#475569">';
+                        for (const [campo, vals] of Object.entries(h.campos_despues)) {
+                            html += '<div style="margin-top:4px"><span style="color:#64748b">' + escapeHtml(campo) + ':</span> ';
+                            if (vals.antes !== undefined && vals.antes !== null) html += '<span style="text-decoration:line-through;color:#dc2626">' + escapeHtml(String(vals.antes)) + '</span> ';
+                            html += '<span style="color:#0f172a;font-weight:500">' + escapeHtml(String(vals.despues)) + '</span></div>';
+                        }
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            html += '</div>';
+            const overlay = document.createElement('div');
+            overlay.id = 'pedHistorialModal';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+            overlay.innerHTML = '<div style="background:white;border-radius:16px;width:460px;max-width:95vw;box-shadow:0 25px 60px rgba(0,0,0,0.15);overflow:hidden">'
+                + '<div style="padding:20px 24px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">'
+                + '<div><div style="font-size:16px;font-weight:700;color:#0f172a">Historial de Cambios</div></div>'
+                + '<button onclick="document.getElementById(\'pedHistorialModal\').remove()" style="background:none;border:none;cursor:pointer;padding:4px;color:#94a3b8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+                + '</div>' + html + '</div>';
+            document.body.appendChild(overlay);
+        } catch(e) { alert('Error al cargar historial: ' + e.message); }
     },
 
     toggleGrafico() {

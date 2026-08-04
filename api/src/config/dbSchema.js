@@ -184,6 +184,17 @@ async function initDB() {
     await query("ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS tipo_ov VARCHAR(30) DEFAULT 'Normal'").catch(() => {});
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pedidos' AND column_name='archivo_pdf') THEN ALTER TABLE pedidos ADD COLUMN archivo_pdf BYTEA; END IF; END $$`);
 
+    await query(`CREATE TABLE IF NOT EXISTS pedido_historial (
+        id SERIAL PRIMARY KEY,
+        pedido_id INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+        accion VARCHAR(100) NOT NULL,
+        campos_antes JSONB,
+        campos_despues JSONB,
+        usuario VARCHAR(200) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await query('CREATE INDEX IF NOT EXISTS idx_pedido_historial_pedido ON pedido_historial(pedido_id)').catch(() => {});
+
     await query(`CREATE TABLE IF NOT EXISTS produccion_maquinas (
         id SERIAL PRIMARY KEY, nombre VARCHAR(100) NOT NULL,
         codigo VARCHAR(20) UNIQUE NOT NULL, estado VARCHAR(20) DEFAULT 'ACTIVA',
@@ -518,7 +529,7 @@ async function resetSequences() {
     const tables = ['usuarios', 'machine_types', 'machines', 'components', 'component_type_links',
                     'spare_parts', 'preventive_maintenance', 'corrective_maintenance',
                     'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
-                    'catalogo_tipos_cristal', 'catalogo_espesores',
+                    'pedido_historial', 'catalogo_tipos_cristal', 'catalogo_espesores',
                     'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos', 'prod_notas'];
     for (const table of tables) {
         try {
