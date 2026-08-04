@@ -132,7 +132,8 @@ App.registerModule('usuarios', {
 
         const SECTIONS = [
             { key: 'asistencia', label: 'ASISTENCIA', subs: [
-                { id: 'asistencia', label: 'Control de Asistencia' }
+                { id: 'asistencia', label: 'Ver' },
+                { id: 'asistencia.editar', label: 'Editar / Autorizar' }
             ]},
             { key: 'atencion', label: 'ATENCION', subs: [
                 { id: 'turnos_recepcion', label: 'Recepcion y Control' },

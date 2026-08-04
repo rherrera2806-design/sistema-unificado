@@ -699,7 +699,7 @@ const Asistencia = {
                     + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + (p.motivo || '-') + '</td>'
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + p.estado + '</span></td>'
                     + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                    + (p.estado === 'pendiente'
+                    + (p.estado === 'pendiente' && ((JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('asistencia.editar') || (JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('usuarios'))
                         ? '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10003;</button><button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10005;</button>'
                         : '')
                     + '<button onclick="Asistencia.editarPermiso(' + p.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998;</button>'
@@ -791,7 +791,7 @@ const Asistencia = {
                     + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + (l.diagnostico || '-') + '</td>'
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + l.estado + '</span></td>'
                     + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                    + (l.estado === 'pendiente'
+                    + (l.estado === 'pendiente' && ((JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('asistencia.editar') || (JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('usuarios'))
                         ? '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10003;</button><button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10005;</button>'
                         : '')
                     + '<button onclick="Asistencia.editarLicencia(' + l.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998;</button>'
@@ -951,7 +951,7 @@ const Asistencia = {
                 const ec = he.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : he.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#dbeafe;color:#2563eb';
                 const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
                 const permUser = user.permisos || [];
-                const puedeAprobar = permUser.includes('asistencia') || permUser.includes('usuarios');
+                const puedeAprobar = permUser.includes('asistencia.editar') || permUser.includes('usuarios');
                 return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + he.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(he.fecha) + '</td>'
