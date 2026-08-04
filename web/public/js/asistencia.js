@@ -1153,17 +1153,25 @@ const Asistencia = {
         const c = document.getElementById('ast-ranking-container');
         if (!c) return;
         if (ranking.length === 0) { c.innerHTML = ''; return; }
-        const medals = ['🥇','🥈','🥉','4°','5°'];
-        const colors = ['#f59e0b','#94a3b8','#cd7f32','#6366f1','#10b981'];
-        c.innerHTML = '<div style="display:flex;gap:16px;justify-content:center;align-items:flex-end;padding:16px 0">' + ranking.slice(0, 5).map((r, i) => {
+
+        const configs = [
+            { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', numColor: 'white', textColor: '#92400e', icon: '🏆', labelColor: '#b45309' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
+            { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' },
+            { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' }
+        ];
+
+        c.innerHTML = '<div style="display:flex;gap:16px;justify-content:center;align-items:flex-end;padding:20px 0">' + ranking.slice(0, 5).map((r, i) => {
             const total = (Number(r.faltas) || 0) + (Number(r.permisos_dias) || 0) + (Number(r.licencias_dias) || 0) + (Number(r.vacaciones_dias) || 0);
+            const cfg = configs[i] || configs[4];
             const s = i === 0 ? 1 : 0.88;
-            const medalSize = i < 3 ? 28 + (2 - i) * 4 : 20;
-            return '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:20px 18px 16px;text-align:center;transform:scale(' + s + ');transform-origin:bottom center">'
-            + '<div style="font-size:' + medalSize + 'px;margin-bottom:6px">' + medals[i] + '</div>'
-            + '<div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:4px">' + r.nombre + '</div>'
-            + '<div style="font-size:' + Math.round(22 * s) + 'px;font-weight:800;color:' + colors[i] + '">' + total.toFixed(1) + '</div>'
-            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;font-weight:600;margin-top:2px">días fuera</div>'
+            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:16px;padding:20px 22px 16px;text-align:center;min-width:150px;transform:scale(' + s + ');transform-origin:bottom center;box-shadow:0 2px 12px rgba(0,0,0,0.06);transition:all 0.2s">'
+            + '<div style="font-size:32px;margin-bottom:4px">' + cfg.icon + '</div>'
+            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:13px;font-weight:800;margin-bottom:6px">' + (i + 1) + '</div>'
+            + '<div style="font-size:13px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + r.nombre + '</div>'
+            + '<div style="font-size:26px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + total.toFixed(1) + '</div>'
+            + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Días fuera</div>'
             + '</div>';
         }).join('') + '</div>';
     },
