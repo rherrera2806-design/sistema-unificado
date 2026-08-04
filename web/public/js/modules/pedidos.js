@@ -246,10 +246,10 @@ App.registerModule('pedidos', {
                 + '<td style="padding:12px 14px;font-weight:600;color:#0f172a">' + escapeHtml(p.cliente) + '</td>'
                 + '<td style="padding:12px 14px">' + this.tipoOvBadge(p.tipo_ov) + '</td>'
                 + '<td style="padding:12px 14px;color:#475569">' + escapeHtml(p.vendedor_nombre || p.vendedor) + '</td>'
-                + '<td style="padding:12px 14px"><span style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + this.fmtDateTime(p.fecha_subida) + '</span></td>'
+                + '<td style="padding:12px 14px"><div style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + this.fmtDateTime(p.fecha_subida) + '</div></td>'
                 + '<td style="padding:12px 14px">' + badge + '</td>'
                 + '<td style="padding:12px 14px;color:#475569">' + escapeHtml(p.revisor_nombre || '-') + '</td>'
-                + '<td style="padding:12px 14px"><span style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</span></td>'
+                + '<td style="padding:12px 14px"><div style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</div></td>'
                 + '<td style="padding:12px 14px"><span style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + this.fmtTiempo(p.fecha_subida, p.fecha_revision) + '</span></td>'
                 + '<td style="padding:12px 14px;text-align:center;white-space:nowrap">'
                 + (p.estado === 'pendiente' ? '<button onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')" class="ped-btn" style="background:white;color:#3b82f6;border:1px solid #bfdbfe;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'white\'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button> ' : '')
@@ -515,7 +515,7 @@ App.registerModule('pedidos', {
     },
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); },
-    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' <span style="color:#94a3b8">' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + '</span>'; },
+    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return '<div style="line-height:1.4">' + f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '</div><div style="font-size:11px;color:#94a3b8;font-weight:400">' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + '</div>'; },
     fmtTiempo(inicio, fin) {
         if (!inicio || !fin) return '<span style="color:#cbd5e1">-</span>';
         const diff = new Date(fin) - new Date(inicio);
