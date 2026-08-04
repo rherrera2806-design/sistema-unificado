@@ -168,11 +168,12 @@ const App = {
 
     hideModal() { document.getElementById('modalOverlay').classList.remove('active'); },
 
-    toast(msg, type = 'success') {
+    toast(msg, type = 'success', duration = 3000) {
         const t = document.getElementById('toast');
         t.textContent = msg;
         t.className = 'toast ' + type + ' show';
-        setTimeout(() => { t.className = 'toast'; }, 3000);
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => { t.className = 'toast'; }, duration);
     }
 };
 

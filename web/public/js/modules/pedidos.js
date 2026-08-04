@@ -186,10 +186,28 @@ App.registerModule('pedidos', {
             this.allPedidos = Array.isArray(data) ? data : [];
             this.renderStats();
             this.filter();
+            this.notifyRechazados(user);
         } catch(e) {
             console.error('Error loading pedidos:', e);
             document.getElementById('pedidosTable').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8">Error al cargar pedidos: ' + (e.message || '') + '</td></tr>';
         }
+    },
+
+    notifyRechazados(user) {
+        if (!user.email) return;
+        const esAdmin = (user.permisos || []).includes('pedidos.editar');
+        if (esAdmin) return;
+        const seen = JSON.parse(localStorage.getItem('ped_rechazados_seen') || '[]');
+        const rechazados = this.allPedidos.filter(p => p.estado === 'rechazado' && p.vendedor === user.email && !seen.includes(p.id));
+        if (rechazados.length === 0) return;
+        setTimeout(() => {
+            rechazados.forEach((p, i) => {
+                setTimeout(() => {
+                    App.toast('Pedido ' + p.numero_pedido + ' RECHAZADO — Motivo: ' + (p.motivo_rechazo || 'No especificado'), 'error', 8000);
+                }, i * 2000);
+            });
+            localStorage.setItem('ped_rechazados_seen', JSON.stringify([...seen, ...rechazados.map(p => p.id)]));
+        }, 800);
     },
 
     renderStats() {
