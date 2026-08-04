@@ -133,11 +133,11 @@ router.get('/api/asistencia/diaria', async (req, res) => {
 
 router.post('/api/asistencia/permisos', async (req, res) => {
     try {
-        const { trabajador_id, fecha_inicio, fecha_fin, motivo, tipo } = req.body;
+        const { trabajador_id, fecha_inicio, fecha_fin, motivo, tipo, horas } = req.body;
         const result = await pool.query(
-            `INSERT INTO permisos (trabajador_id, fecha_inicio, fecha_fin, motivo, tipo)
-             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [trabajador_id, fecha_inicio, fecha_fin, motivo, tipo]
+            `INSERT INTO permisos (trabajador_id, fecha_inicio, fecha_fin, motivo, tipo, horas)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [trabajador_id, fecha_inicio, fecha_fin, motivo, tipo, horas || 0]
         );
         res.json(result.rows[0]);
     } catch (e) {
@@ -190,10 +190,10 @@ router.put('/api/asistencia/permisos/:id/estado', async (req, res) => {
 router.put('/api/asistencia/permisos/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { trabajador_id, tipo, fecha_inicio, fecha_fin, motivo } = req.body;
+        const { trabajador_id, tipo, fecha_inicio, fecha_fin, motivo, horas } = req.body;
         const result = await pool.query(
-            `UPDATE permisos SET trabajador_id = $1, tipo = $2, fecha_inicio = $3, fecha_fin = $4, motivo = $5 WHERE id = $6 RETURNING *`,
-            [trabajador_id, tipo, fecha_inicio, fecha_fin, motivo, id]
+            `UPDATE permisos SET trabajador_id = $1, tipo = $2, fecha_inicio = $3, fecha_fin = $4, motivo = $5, horas = $6 WHERE id = $7 RETURNING *`,
+            [trabajador_id, tipo, fecha_inicio, fecha_fin, motivo, horas || 0, id]
         );
         res.json(result.rows[0]);
     } catch (e) {
@@ -436,12 +436,7 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
                  AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,
-                (SELECT COALESCE(SUM(
-                    CASE 
-                        WHEN p.fecha_fin IS NULL OR p.fecha_fin < p.fecha_inicio THEN 1
-                        ELSE (LEAST(p.fecha_fin, ($2::date - 1)::date) - GREATEST(p.fecha_inicio, $1::date)) + 1
-                    END
-                ), 0) FROM permisos p 
+                (SELECT COALESCE(SUM(COALESCE(p.horas, 0)) / 8.0, 0) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
                  AND p.fecha_inicio < $2::date
                  AND (p.fecha_fin IS NULL OR p.fecha_fin >= $1::date)
@@ -498,12 +493,7 @@ router.get('/api/asistencia/ranking', async (req, res) => {
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
                  AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,
-                (SELECT COALESCE(SUM(
-                    CASE 
-                        WHEN p.fecha_fin IS NULL OR p.fecha_fin < p.fecha_inicio THEN 1
-                        ELSE (LEAST(p.fecha_fin, ($2::date - 1)::date) - GREATEST(p.fecha_inicio, $1::date)) + 1
-                    END
-                ), 0) FROM permisos p 
+                (SELECT COALESCE(SUM(COALESCE(p.horas, 0)) / 8.0, 0) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
                  AND p.fecha_inicio < $2::date
                  AND (p.fecha_fin IS NULL OR p.fecha_fin >= $1::date)

@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS permisos (
     tipo VARCHAR(50) NOT NULL, -- medico, personal, familiar, otro
     fecha_inicio DATE NOT NULL,
     fecha_fin DATE NOT NULL,
+    horas NUMERIC(5,2) DEFAULT 0, -- horas del permiso (jornada=8hrs/dia)
     motivo TEXT,
     estado VARCHAR(20) DEFAULT 'pendiente', -- pendiente, aprobado, rechazado
     created_at TIMESTAMP DEFAULT NOW()

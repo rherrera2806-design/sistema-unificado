@@ -669,11 +669,12 @@ const Asistencia = {
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tipo</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Inicio</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fin</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Horas</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Motivo</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
                         <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
                     </tr></thead>
-                    <tbody id="ast-tabla-permisos"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                    <tbody id="ast-tabla-permisos"><tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
                 </table>
             </div>`;
         this.cargarPermisos();
@@ -687,7 +688,7 @@ const Asistencia = {
             const permisos = await r.json();
             const tbody = document.getElementById('ast-tabla-permisos');
             if (!tbody) return;
-            if (permisos.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin permisos registrados</td></tr>'; return; }
+            if (permisos.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">Sin permisos registrados</td></tr>'; return; }
             const tipoL = { medico: 'Médico', personal: 'Personal', familiar: 'Familiar', otro: 'Otro' };
             tbody.innerHTML = permisos.map(p => {
                 const ec = p.estado === 'aprobado' ? 'background:#d1fae5;color:#059669' : p.estado === 'rechazado' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
@@ -696,6 +697,7 @@ const Asistencia = {
                     + '<td style="padding:12px 16px;color:#475569">' + (tipoL[p.tipo] || p.tipo) + '</td>'
                     + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(p.fecha_inicio) + '</td>'
                     + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(p.fecha_fin) + '</td>'
+                    + '<td style="padding:12px 16px;color:#475569;font-size:12px"><strong>' + (Number(p.horas) || 0) + ' hrs</strong></td>'
                     + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + (p.motivo || '-') + '</td>'
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + p.estado + '</span></td>'
                     + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
@@ -723,6 +725,7 @@ const Asistencia = {
             document.getElementById('permiso-inicio').value = p.fecha_inicio ? p.fecha_inicio.split('T')[0] : '';
             document.getElementById('permiso-fin').value = p.fecha_fin ? p.fecha_fin.split('T')[0] : '';
             document.getElementById('permiso-motivo').value = p.motivo || '';
+            if (document.getElementById('permiso-horas')) document.getElementById('permiso-horas').value = p.horas || 0;
             document.getElementById('modalPermiso').dataset.editId = id;
             document.getElementById('modalPermiso').classList.add('show');
         });
@@ -740,7 +743,7 @@ const Asistencia = {
     cerrarModalPermiso() { document.getElementById('modalPermiso').classList.remove('show'); },
     async guardarPermiso() {
         const editId = document.getElementById('modalPermiso').dataset.editId;
-        const d = { trabajador_id: document.getElementById('permiso-trabajador').value, tipo: document.getElementById('permiso-tipo').value, fecha_inicio: document.getElementById('permiso-inicio').value, fecha_fin: document.getElementById('permiso-fin').value, motivo: document.getElementById('permiso-motivo').value };
+        const d = { trabajador_id: document.getElementById('permiso-trabajador').value, tipo: document.getElementById('permiso-tipo').value, fecha_inicio: document.getElementById('permiso-inicio').value, fecha_fin: document.getElementById('permiso-fin').value, motivo: document.getElementById('permiso-motivo').value, horas: parseFloat(document.getElementById('permiso-horas')?.value) || 0 };
         if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin) return;
         if (editId) {
             await fetch('/api/asistencia/permisos/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });

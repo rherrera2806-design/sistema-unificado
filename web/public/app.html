@@ -130,6 +130,7 @@
                 <div class="form-group"><label>Trabajador</label><select id="permiso-trabajador" class="form-control"><option value="">Seleccionar...</option></select></div>
                 <div class="form-group"><label>Tipo</label><select id="permiso-tipo" class="form-control"><option value="medico">Médico</option><option value="personal">Personal</option><option value="familiar">Familiar</option><option value="otro">Otro</option></select></div>
                 <div class="form-row"><div class="form-group"><label>Inicio</label><input type="date" id="permiso-inicio" class="form-control"></div><div class="form-group"><label>Fin</label><input type="date" id="permiso-fin" class="form-control"></div></div>
+                <div class="form-group"><label>Horas del permiso (jornada = 8 hrs/día)</label><input type="number" id="permiso-horas" class="form-control" min="0" max="8" step="0.5" value="0" placeholder="Ej: 1, 2, 4, 8"></div>
                 <div class="form-group"><label>Motivo</label><textarea id="permiso-motivo" class="form-control" rows="3"></textarea></div>
             </div>
             <div class="modal-footer"><button class="btn btn-outline" onclick="Asistencia.cerrarModalPermiso()">Cancelar</button><button class="btn btn-primary" onclick="Asistencia.guardarPermiso()">Guardar</button></div>
