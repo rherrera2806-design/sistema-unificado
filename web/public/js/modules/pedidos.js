@@ -423,7 +423,7 @@ App.registerModule('pedidos', {
                 body: JSON.stringify({ estado, motivo_rechazo: estado === 'rechazado' ? document.getElementById('pedMotivo').value.trim() : null, revisado_por: user.email || '' })
             });
             if (res.ok) {
-                if (estado === 'rechazado') {
+                if (estado === 'aprobado') {
                     const link = document.createElement('a');
                     link.href = '/api/pedidos/' + this.currentPedido.id + '/download-pdf';
                     link.style.display = 'none';
@@ -432,7 +432,7 @@ App.registerModule('pedidos', {
                     document.body.removeChild(link);
                 }
                 this.hideReviewModal(); this.load();
-                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF eliminado de la DB.' : 'Pedido rechazado. PDF descargado.');
+                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado.' : 'Pedido rechazado. PDF eliminado.');
             }
             else { const data = await res.json(); alert(data.error || 'Error al revisar pedido'); }
         } catch(e) { alert('Error al revisar pedido: ' + e.message); }
