@@ -1,6 +1,5 @@
 const express = require('express');
 const path = require('path');
-const { Server } = require('socket.io');
 
 const { initDB } = require('./config/database');
 const { setSecurityHeaders, checkGlobalRateLimit } = require('./middleware/security');
@@ -23,8 +22,8 @@ initDB().then(() => {
 });
 
 const app = express();
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(requestLogger);
 
 app.use((req, res, next) => {
@@ -76,17 +75,11 @@ app.use((err, req, res, next) => {
 
 const server = app.listen(PORT, () => {
     logger.info(`Servidor corriendo en puerto ${PORT}`);
-});
-
-const io = new Server(server, {
-    cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] }
-});
-
-io.on('connection', (socket) => {
-    logger.debug('Cliente conectado', { socketId: socket.id });
-    socket.on('disconnect', () => {
-        logger.debug('Cliente desconectado', { socketId: socket.id });
-    });
+    const { query } = require('./config/dbPool');
+    query('CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)').catch(() => {});
+    query('CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado)').catch(() => {});
+    query('CREATE INDEX IF NOT EXISTS idx_pedidos_fecha ON pedidos(fecha_subida DESC)').catch(() => {});
+    query('CREATE INDEX IF NOT EXISTS idx_pedidos_vendedor ON pedidos(vendedor)').catch(() => {});
 });
 
 module.exports = { app, server };

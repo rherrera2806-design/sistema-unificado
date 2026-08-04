@@ -178,12 +178,17 @@ App.registerModule('pedidos', {
             const res = await fetch('/api/pedidos', {
                 headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
             });
-            this.allPedidos = await res.json();
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'HTTP ' + res.status);
+            }
+            const data = await res.json();
+            this.allPedidos = Array.isArray(data) ? data : [];
             this.renderStats();
             this.filter();
         } catch(e) {
             console.error('Error loading pedidos:', e);
-            document.getElementById('pedidosTable').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8">Error al cargar pedidos</td></tr>';
+            document.getElementById('pedidosTable').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8">Error al cargar pedidos: ' + (e.message || '') + '</td></tr>';
         }
     },
 
@@ -344,7 +349,7 @@ App.registerModule('pedidos', {
         document.getElementById('pedReviewNumero').textContent = this.currentPedido.numero_pedido;
         document.getElementById('pedReviewCliente').textContent = this.currentPedido.cliente;
         document.getElementById('pedReviewVendedor').textContent = this.currentPedido.vendedor_nombre || this.currentPedido.vendedor;
-        document.getElementById('pedReviewFecha').textContent = this.fmtDateTime(this.currentPedido.fecha_subida);
+        document.getElementById('pedReviewFecha').innerHTML = this.fmtDateTime(this.currentPedido.fecha_subida);
         document.getElementById('pedMotivo').value = '';
         document.getElementById('pedMotivoGroup').style.display = 'none';
         document.getElementById('pedBtnRechazar').style.display = '';
@@ -510,7 +515,7 @@ App.registerModule('pedidos', {
     },
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); },
-    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }); },
+    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' <span style="color:#94a3b8">' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + '</span>'; },
     fmtTiempo(inicio, fin) {
         if (!inicio || !fin) return '<span style="color:#cbd5e1">-</span>';
         const diff = new Date(fin) - new Date(inicio);

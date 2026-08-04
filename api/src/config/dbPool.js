@@ -5,7 +5,7 @@ const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres
 const pool = new Pool({
     connectionString: DATABASE_URL,
     ssl: DATABASE_URL.includes('railway') || DATABASE_URL.includes('render') ? { rejectUnauthorized: false } : false,
-    max: 20,
+    max: 15,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
 });

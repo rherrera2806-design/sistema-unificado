@@ -181,6 +181,7 @@ async function initDB() {
         fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         fecha_revision TIMESTAMP, revisado_por TEXT
     )`);
+    await query("ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS tipo_ov VARCHAR(30) DEFAULT 'Normal'").catch(() => {});
     await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pedidos' AND column_name='archivo_pdf') THEN ALTER TABLE pedidos ADD COLUMN archivo_pdf BYTEA; END IF; END $$`);
 
     await query(`CREATE TABLE IF NOT EXISTS produccion_maquinas (

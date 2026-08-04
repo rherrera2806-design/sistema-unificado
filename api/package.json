@@ -4,7 +4,7 @@
   "description": "Sistema Unificado - Mantencion + Inventario",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node --max-old-space-size=384 src/index.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -14,7 +14,6 @@
     "express": "^5.2.1",
     "pg": "^8.22.0",
     "qrcode": "^1.5.4",
-    "socket.io": "^4.8.0",
     "winston": "^3.19.0",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"
