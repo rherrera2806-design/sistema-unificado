@@ -486,39 +486,41 @@ router.get('/api/asistencia/ranking', async (req, res) => {
         const fechaInicio = anioActual + '-' + mesStr + '-01';
         const fechaFin = siguienteAnio + '-' + sigMesStr + '-01';
         
-        const result = await pool.query(
-            `SELECT 
-                t.id,
-                t.nombre,
-                (SELECT COUNT(*) FROM asistencia a 
-                 WHERE a.trabajador_id = t.id 
-                 AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,
-                (SELECT COALESCE(SUM(COALESCE(p.horas, 0)) / 8.0, 0) FROM permisos p 
-                 WHERE p.trabajador_id = t.id 
-                 AND p.fecha_inicio < $2::date
-                 AND (p.fecha_fin IS NULL OR p.fecha_fin >= $1::date)
-                 AND p.estado = 'aprobado') as permisos_dias,
-                (SELECT COALESCE(SUM(
-                    CASE 
-                        WHEN l.fecha_fin IS NULL OR l.fecha_fin < l.fecha_inicio THEN 1
-                        ELSE (LEAST(l.fecha_fin, ($2::date - 1)::date) - GREATEST(l.fecha_inicio, $1::date)) + 1
-                    END
-                ), 0) FROM licencias_medicas l 
-                 WHERE l.trabajador_id = t.id 
-                 AND l.fecha_inicio < $2::date
-                 AND (l.fecha_fin IS NULL OR l.fecha_fin >= $1::date)
-                 AND l.estado = 'aprobada') as licencias_dias,
-                (SELECT COALESCE(SUM(
-                    CASE 
-                        WHEN v.fecha_fin IS NULL OR v.fecha_fin < v.fecha_inicio THEN COALESCE(v.dias, 1)
-                        ELSE (LEAST(v.fecha_fin, ($2::date - 1)::date) - GREATEST(v.fecha_inicio, $1::date)) + 1
-                    END
-                ), 0) FROM vacaciones v 
-                 WHERE v.trabajador_id = t.id 
-                 AND v.fecha_inicio < $2::date
-                 AND (v.fecha_fin IS NULL OR v.fecha_fin >= $1::date)) as vacaciones_dias
-             FROM trabajadores t
-             WHERE t.activo = true
+         const result = await pool.query(
+            `SELECT * FROM (
+                SELECT 
+                    t.id,
+                    t.nombre,
+                    (SELECT COUNT(*) FROM asistencia a 
+                     WHERE a.trabajador_id = t.id 
+                     AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,
+                    (SELECT COALESCE(SUM(COALESCE(p.horas, 0)) / 8.0, 0) FROM permisos p 
+                     WHERE p.trabajador_id = t.id 
+                     AND p.fecha_inicio < $2::date
+                     AND (p.fecha_fin IS NULL OR p.fecha_fin >= $1::date)
+                     AND p.estado = 'aprobado') as permisos_dias,
+                    (SELECT COALESCE(SUM(
+                        CASE 
+                            WHEN l.fecha_fin IS NULL OR l.fecha_fin < l.fecha_inicio THEN 1
+                            ELSE (LEAST(l.fecha_fin, ($2::date - 1)::date) - GREATEST(l.fecha_inicio, $1::date)) + 1
+                        END
+                    ), 0) FROM licencias_medicas l 
+                     WHERE l.trabajador_id = t.id 
+                     AND l.fecha_inicio < $2::date
+                     AND (l.fecha_fin IS NULL OR l.fecha_fin >= $1::date)
+                     AND l.estado = 'aprobada') as licencias_dias,
+                    (SELECT COALESCE(SUM(
+                        CASE 
+                            WHEN v.fecha_fin IS NULL OR v.fecha_fin < v.fecha_inicio THEN COALESCE(v.dias, 1)
+                            ELSE (LEAST(v.fecha_fin, ($2::date - 1)::date) - GREATEST(v.fecha_inicio, $1::date)) + 1
+                        END
+                    ), 0) FROM vacaciones v 
+                     WHERE v.trabajador_id = t.id 
+                     AND v.fecha_inicio < $2::date
+                     AND (v.fecha_fin IS NULL OR v.fecha_fin >= $1::date)) as vacaciones_dias
+                 FROM trabajadores t
+                 WHERE t.activo = true
+             ) sub
              ORDER BY (faltas + permisos_dias + licencias_dias + vacaciones_dias) DESC
              LIMIT 10`,
             [fechaInicio, fechaFin]
