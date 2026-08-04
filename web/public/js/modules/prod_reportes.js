@@ -150,21 +150,21 @@ App.registerModule('prod_reportes', {
             totalKgs += f.totales.kgs;
         }
         el.innerHTML = `
-            <div class="pr-card" style="background:white;border-radius:10px;padding:10px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:20px;font-weight:800;color:#0f172a">${fechas.length}</div>
-                <div style="color:#64748b;font-size:10px;font-weight:500;margin-top:2px">Fechas</div>
+            <div class="pr-card" style="background:white;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;height:55px;display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                <div><div style="font-size:20px;font-weight:800;color:#0f172a;line-height:1">${fechas.length}</div><div style="color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Fechas</div></div>
             </div>
-            <div class="pr-card" style="background:white;border-radius:10px;padding:10px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:20px;font-weight:800;color:#3b82f6">${totalItems}</div>
-                <div style="color:#64748b;font-size:10px;font-weight:500;margin-top:2px">Items</div>
+            <div class="pr-card" style="background:white;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0;border-left:4px solid #8b5cf6;height:55px;display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#f5f3ff,#ddd6fe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+                <div><div style="font-size:20px;font-weight:800;color:#8b5cf6;line-height:1">${totalItems}</div><div style="color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Items</div></div>
             </div>
-            <div class="pr-card" style="background:white;border-radius:10px;padding:10px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:20px;font-weight:800;color:#8b5cf6">${totalM2.toFixed(1)}</div>
-                <div style="color:#64748b;font-size:10px;font-weight:500;margin-top:2px">M² Total</div>
+            <div class="pr-card" style="background:white;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0;border-left:4px solid #6366f1;height:55px;display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#eef2ff,#c7d2fe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
+                <div><div style="font-size:20px;font-weight:800;color:#6366f1;line-height:1">${totalM2.toFixed(1)}</div><div style="color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">M² Total</div></div>
             </div>
-            <div class="pr-card" style="background:white;border-radius:10px;padding:10px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:20px;font-weight:800;color:#f59e0b">${Math.round(totalKgs).toLocaleString('es-CL')}</div>
-                <div style="color:#64748b;font-size:10px;font-weight:500;margin-top:2px">Kgs Total</div>
+            <div class="pr-card" style="background:white;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;height:55px;display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/></svg></div>
+                <div><div style="font-size:20px;font-weight:800;color:#f59e0b;line-height:1">${Math.round(totalKgs).toLocaleString('es-CL')}</div><div style="color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Kgs Total</div></div>
             </div>
         `;
     },

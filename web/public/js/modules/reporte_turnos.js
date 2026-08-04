@@ -203,22 +203,22 @@ App.registerModule('reporte_turnos', {
         const promedio = tiempos.length > 0 ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : 0;
 
         let html = `
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px">
-                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #1e40af;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Total turnos</div>
-                    <div style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">${total}</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #1e40af;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);height:55px;display:flex;align-items:center;gap:10px">
+                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1e40af" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                    <div><div style="font-size:20px;font-weight:800;color:#1e293b;line-height:1">${total}</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Total turnos</div></div>
                 </div>
-                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #16a34a;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Entregados</div>
-                    <div style="font-size:28px;font-weight:800;color:#16a34a;line-height:1">${conEntrega}</div>
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #16a34a;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);height:55px;display:flex;align-items:center;gap:10px">
+                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div><div style="font-size:20px;font-weight:800;color:#16a34a;line-height:1">${conEntrega}</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Entregados</div></div>
                 </div>
-                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Pend. bodega</div>
-                    <div style="font-size:28px;font-weight:800;color:#f59e0b;line-height:1">${pendientes}</div>
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);height:55px;display:flex;align-items:center;gap:10px">
+                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                    <div><div style="font-size:20px;font-weight:800;color:#f59e0b;line-height:1">${pendientes}</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Pend. bodega</div></div>
                 </div>
-                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #7c3aed;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                    <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Tiempo prom. total</div>
-                    <div style="font-size:28px;font-weight:800;color:#7c3aed;line-height:1">${this.fmtSec(promedio)}</div>
+                <div style="background:white;border:1px solid #e2e8f0;border-left:4px solid #7c3aed;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);height:55px;display:flex;align-items:center;gap:10px">
+                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#f5f3ff,#ddd6fe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                    <div><div style="font-size:20px;font-weight:800;color:#7c3aed;line-height:1">${this.fmtSec(promedio)}</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Tiempo prom.</div></div>
                 </div>
             </div>
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)">

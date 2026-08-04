@@ -28,18 +28,18 @@ ${puedeEditar ? `
 .pmq-row:hover{transform:translateX(2px);background:#f8fafc!important}
 </style>
 
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
-                <div class="card pmq-card" style="text-align:center"><div class="card-body">
-                    <div style="font-size:28px;font-weight:700;color:var(--primary)" id="mqTotal">0</div>
-                    <div style="color:var(--text-light);font-size:13px">Total Maquinas</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+                <div class="card pmq-card" style="border-left:4px solid #3b82f6;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
+                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg></div>
+                    <div><div style="font-size:20px;font-weight:800;color:#3b82f6;line-height:1" id="mqTotal">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Total Maquinas</div></div>
                 </div></div>
-                <div class="card pmq-card" style="text-align:center"><div class="card-body">
-                    <div style="font-size:28px;font-weight:700;color:var(--success)" id="mqActivas">0</div>
-                    <div style="color:var(--text-light);font-size:13px">Activas</div>
+                <div class="card pmq-card" style="border-left:4px solid #22c55e;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
+                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div><div style="font-size:20px;font-weight:800;color:#22c55e;line-height:1" id="mqActivas">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Activas</div></div>
                 </div></div>
-                <div class="card pmq-card" style="text-align:center"><div class="card-body">
-                    <div style="font-size:28px;font-weight:700;color:var(--warning)" id="mqCapacidad">0</div>
-                    <div style="color:var(--text-light);font-size:13px">Total m²/día</div>
+                <div class="card pmq-card" style="border-left:4px solid #f59e0b;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
+                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
+                    <div><div style="font-size:20px;font-weight:800;color:#f59e0b;line-height:1" id="mqCapacidad">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Total m²/día</div></div>
                 </div></div>
             </div>
 
