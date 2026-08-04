@@ -106,6 +106,13 @@ router.get('/api/pedidos/:id/historial', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.post('/api/pedidos/cleanup-pdf', async (req, res, next) => {
+    try {
+        const result = await query("UPDATE pedidos SET archivo_pdf = NULL WHERE estado != 'pendiente' AND archivo_pdf IS NOT NULL");
+        res.json({ ok: true, cleaned: result.rowCount });
+    } catch (e) { next(e); }
+});
+
 router.put('/api/pedidos/:id', async (req, res, next) => {
     try {
         const id = Number(req.params.id);
@@ -116,7 +123,7 @@ router.put('/api/pedidos/:id', async (req, res, next) => {
         let result;
         if (estado && ['aprobado', 'rechazado'].includes(estado)) {
             result = await query(
-                'UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+                'UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP, archivo_pdf = NULL WHERE id = $4 RETURNING *',
                 [estado, motivo_rechazo || null, revisado_por || '', id]
             );
         } else if (estado === 'pendiente' || cliente || tipo_ov || numero_pedido) {
