@@ -487,7 +487,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 55px;
+    height: 58px;
 }
 
 .stat-icon {
