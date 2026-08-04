@@ -28,8 +28,11 @@ App.registerModule('machineTypes', {
         el.innerHTML = `
             <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Tipos de Área</h2>
-            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Catálogo de clasificación de equipos</p></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Tipos de Area</h2>
+            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Catalogo de clasificacion de equipos</p></div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Tipos</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${tiposCount}</div></div>
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Maquinas</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${maqsCount}</div></div>
                 <button class="btn btn-primary" onclick="App.modules.machineTypes.showForm()">+ Nuevo Tipo</button>
             </div></div>
             <div class="stats-grid">

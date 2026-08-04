@@ -30,9 +30,13 @@ App.registerModule('machines', {
         el.innerHTML = `
             <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Máquinas</h2>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Maquinas</h2>
             <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registro y control de equipos industriales</p></div>
-                <button class="btn btn-primary" onclick="App.modules.machines.showForm()">+ Nueva Máquina</button>
+            <div style="display:flex;gap:8px;align-items:center">
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Operativas</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${maquinas.filter(m => m.estado_operativo === 'Operativo').length}</div></div>
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Total</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${maquinas.length}</div></div>
+                <button class="btn btn-primary" onclick="App.modules.machines.showForm()">+ Nueva Maquina</button>
+                <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.machines.exportExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar Excel</button>
             </div></div>
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
