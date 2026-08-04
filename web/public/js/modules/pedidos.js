@@ -548,7 +548,7 @@ App.registerModule('pedidos', {
         const anio = now.getFullYear();
         const diasEnMes = new Date(anio, mes + 1, 0).getDate();
         const colores = { Normal: '#3b82f6', Express: '#f59e0b', 'Vta. Region': '#9333ea', Reposicion: '#dc2626', Urgencia: '#22c55e' };
-        const tipos = ['Normal', 'Express', 'Vta. Region', 'Reposicion'];
+        const tipos = ['Normal', 'Express', 'Vta. Region', 'Reposicion', 'Urgencia'];
 
         const pedidosMes = this.allPedidos.filter(p => {
             const f = new Date(p.fecha_subida);
