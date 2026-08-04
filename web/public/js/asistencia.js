@@ -1138,14 +1138,31 @@ const Asistencia = {
         const sizes = [180, 160, 150];
         const orders = [2, 1, 3];
         const colors = ['#f59e0b','#94a3b8','#cd7f32'];
-        c.innerHTML = '<div class="ast-podium">' + ranking.slice(0, 3).map((r, i) =>
-            '<div class="ast-rank" style="order:' + orders[i] + ';min-width:' + sizes[i] + 'px">'
+        const mes = parseInt(document.getElementById('ast-hero-mes')?.value) || (new Date().getMonth() + 1);
+        const anio = new Date().getFullYear();
+        const hoy = new Date();
+        let diasHabiles = 0;
+        if (hoy.getFullYear() === anio && hoy.getMonth() + 1 === mes) {
+            for (let d = 1; d <= hoy.getDate(); d++) {
+                const fecha = new Date(anio, mes - 1, d);
+                if (fecha.getDay() !== 0 && fecha.getDay() !== 6) diasHabiles++;
+            }
+        } else if (hoy.getFullYear() > anio || (hoy.getFullYear() === anio && hoy.getMonth() + 1 > mes)) {
+            const diasEnMes = new Date(anio, mes, 0).getDate();
+            for (let d = 1; d <= diasEnMes; d++) {
+                const fecha = new Date(anio, mes - 1, d);
+                if (fecha.getDay() !== 0 && fecha.getDay() !== 6) diasHabiles++;
+            }
+        }
+        c.innerHTML = '<div class="ast-podium">' + ranking.slice(0, 3).map((r, i) => {
+            const dias = Math.max(0, diasHabiles - (Number(r.faltas) || 0));
+            return '<div class="ast-rank" style="order:' + orders[i] + ';min-width:' + sizes[i] + 'px">'
             + '<div style="font-size:32px;margin-bottom:6px">' + medals[i] + '</div>'
             + '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + r.nombre + '</div>'
-            + '<div style="font-size:24px;font-weight:800;color:' + colors[i] + '">' + (r.dias_asistidos || 0) + '</div>'
+            + '<div style="font-size:24px;font-weight:800;color:' + colors[i] + '">' + dias + '</div>'
             + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;font-weight:600;margin-top:2px">días</div>'
-            + '</div>'
-        ).join('') + '</div>';
+            + '</div>';
+        }).join('') + '</div>';
     },
 
     // ═══════ HELPERS ═══════

@@ -480,8 +480,11 @@ router.get('/api/asistencia/ranking', async (req, res) => {
         const mesActual = parseInt(req.query.mes) || new Date().getMonth() + 1;
         const anioActual = parseInt(req.query.anio) || new Date().getFullYear();
         const mesStr = String(mesActual).padStart(2, '0');
+        const siguienteMes = mesActual === 12 ? 1 : mesActual + 1;
+        const siguienteAnio = mesActual === 12 ? anioActual + 1 : anioActual;
+        const sigMesStr = String(siguienteMes).padStart(2, '0');
         const fechaInicio = anioActual + '-' + mesStr + '-01';
-        const fechaFin = anioActual + '-' + mesStr + '-28';
+        const fechaFin = siguienteAnio + '-' + sigMesStr + '-01';
         
         const result = await pool.query(
             `SELECT 
@@ -489,10 +492,11 @@ router.get('/api/asistencia/ranking', async (req, res) => {
                 t.nombre,
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
-                 AND a.fecha >= $1::date AND a.fecha <= $2::date) as faltas,
+                 AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,
                 (SELECT COUNT(*) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
-                 AND p.fecha_inicio >= $1::date AND p.fecha_inicio <= $2::date
+                 AND p.fecha_inicio < $2::date
+                 AND p.fecha_fin >= $1::date
                  AND p.estado = 'aprobado') as permisos_aprobados
              FROM trabajadores t
              WHERE t.activo = true
