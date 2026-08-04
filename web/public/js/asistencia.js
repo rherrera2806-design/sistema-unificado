@@ -1120,9 +1120,9 @@ const Asistencia = {
             return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + (i + 1) + '</strong></td>'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + r.nombre + '</strong></td>'
-                + '<td style="padding:12px 16px;color:#475569">' + asistidos + '</td>'
+                + '<td style="padding:12px 16px;color:#475569">' + asistidos.toFixed(1) + '</td>'
                 + '<td style="padding:12px 16px"><strong style="color:' + (faltas > 0 ? '#dc2626' : '#475569') + '">' + faltas + '</strong></td>'
-                + '<td style="padding:12px 16px"><span style="font-weight:600;color:' + (permisos > 0 ? '#d97706' : '#475569') + '">' + permisos + '</span></td>'
+                + '<td style="padding:12px 16px"><span style="font-weight:600;color:' + (permisos > 0 ? '#d97706' : '#475569') + '">' + permisos.toFixed(1) + '</span></td>'
                 + '<td style="padding:12px 16px"><span style="font-weight:600;color:' + (licencias > 0 ? '#d97706' : '#475569') + '">' + licencias + ' días</span></td>'
                 + '<td style="padding:12px 16px"><span style="font-weight:600;color:' + (vacaciones > 0 ? '#d97706' : '#475569') + '">' + vacaciones + ' días</span></td>'
                 + '<td style="padding:12px 16px"><span style="font-weight:700;color:' + (he > 0 ? '#8b5cf6' : '#94a3b8') + '">' + he.toFixed(1) + ' hrs</span></td>'
@@ -1141,9 +1141,9 @@ const Asistencia = {
             const total = (Number(r.faltas) || 0) + (Number(r.permisos_dias) || 0) + (Number(r.licencias_dias) || 0) + (Number(r.vacaciones_dias) || 0);
             const s = i === 0 ? 1 : 0.88;
             const medalSize = i < 3 ? 28 + (2 - i) * 4 : 20;
-            return '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:20px 18px 16px;text-align:center;min-width:' + Math.round(120 * s) + 'px;transform:scale(' + s + ');transform-origin:bottom center">'
+            return '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:20px 18px 16px;text-align:center;transform:scale(' + s + ');transform-origin:bottom center">'
             + '<div style="font-size:' + medalSize + 'px;margin-bottom:6px">' + medals[i] + '</div>'
-            + '<div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">' + r.nombre + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:4px">' + r.nombre + '</div>'
             + '<div style="font-size:' + Math.round(22 * s) + 'px;font-weight:800;color:' + colors[i] + '">' + total + '</div>'
             + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;font-weight:600;margin-top:2px">días fuera</div>'
             + '</div>';
