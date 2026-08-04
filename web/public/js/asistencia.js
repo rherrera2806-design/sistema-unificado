@@ -947,16 +947,23 @@ const Asistencia = {
             const tbody = document.getElementById('ast-tabla-horas-extras');
             if (!tbody) return;
             if (horasExtras.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin horas extras registradas</td></tr>'; return; }
-            tbody.innerHTML = horasExtras.map(he => '<tr style="border-bottom:1px solid #f1f5f9">'
+            tbody.innerHTML = horasExtras.map(he => {
+                const ec = he.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : he.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#dbeafe;color:#2563eb';
+                const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+                const permUser = user.permisos || [];
+                const puedeAprobar = permUser.includes('asistencia') || permUser.includes('usuarios');
+                return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + he.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(he.fecha) + '</td>'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + he.horas + '</strong> hrs</td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + (he.motivo || '-') + '</td>'
-                + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#dbeafe;color:#2563eb">' + (he.estado || 'Pendiente') + '</span></td>'
+                + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + (he.estado || 'pendiente') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                + '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998; Editar</button>'
-                + '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465; Eliminar</button>'
-                + '</td></tr>').join('');
+                + (puedeAprobar && (!he.estado || he.estado === 'pendiente') ? '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'aprobada\')" style="background:#22c55e;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px">&#10003;</button><button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'rechazada\')" style="background:#ef4444;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px">&#10005;</button>' : '')
+                + '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998;</button>'
+                + '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465;</button>'
+                + '</td></tr>';
+            }).join('');
         } catch(e) { console.error('Error:', e); }
     },
 
@@ -977,6 +984,17 @@ const Asistencia = {
         if (!confirm('¿Eliminar este registro de horas extras?')) return;
         try {
             await fetch('/api/asistencia/horas-extras/' + id, { method: 'DELETE' });
+            this.cargarHorasExtras();
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    async estadoHorasExtras(id, estado) {
+        try {
+            await fetch('/api/asistencia/horas-extras/' + id + '/estado', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado })
+            });
             this.cargarHorasExtras();
         } catch(e) { console.error('Error:', e); }
     },
