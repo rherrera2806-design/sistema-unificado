@@ -30,7 +30,8 @@ const Asistencia = {
         const el = document.getElementById('page-asistencia');
         if (!el) return;
 
-        if (!this._initialized) {
+        if (!this._initialized || !document.getElementById('ast-content')) {
+            this._initialized = false;
             el.innerHTML = '<style>'
                 + '@keyframes astFadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}'
                 + '.ast-card{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}'
