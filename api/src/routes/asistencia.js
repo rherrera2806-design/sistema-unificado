@@ -438,8 +438,8 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                  AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,
                 (SELECT COALESCE(SUM(COALESCE(p.horas, 0)) / 8.0, 0) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
+                 AND p.fecha_inicio >= $1::date
                  AND p.fecha_inicio < $2::date
-                 AND (p.fecha_fin IS NULL OR p.fecha_fin >= $1::date)
                  AND p.estado = 'aprobado') as permisos_aprobados,
                 (SELECT COALESCE(SUM(
                     CASE 
@@ -496,8 +496,8 @@ router.get('/api/asistencia/ranking', async (req, res) => {
                      AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,
                     (SELECT COALESCE(SUM(COALESCE(p.horas, 0)) / 8.0, 0) FROM permisos p 
                      WHERE p.trabajador_id = t.id 
+                     AND p.fecha_inicio >= $1::date
                      AND p.fecha_inicio < $2::date
-                     AND (p.fecha_fin IS NULL OR p.fecha_fin >= $1::date)
                      AND p.estado = 'aprobado') as permisos_dias,
                     (SELECT COALESCE(SUM(
                         CASE 
