@@ -7,62 +7,80 @@ const Asistencia = {
     asistenciaHoy: [],
     currentTab: 'diaria',
     lastLoadedDate: null,
+    _initialized: false,
+    _filterTimer: null,
+
+    debouncedBuscarTrabajadores() {
+        clearTimeout(this._filterTimer);
+        this._filterTimer = setTimeout(() => this.buscarTrabajadores(), 200);
+    },
+
+    debouncedBuscarTrabajadoresAdmin() {
+        clearTimeout(this._filterTimer);
+        this._filterTimer = setTimeout(() => this.buscarTrabajadoresAdmin(), 200);
+    },
+
+    _calendarioTimer: null,
+    debouncedFiltrarCalendario() {
+        clearTimeout(this._calendarioTimer);
+        this._calendarioTimer = setTimeout(() => this.filtrarCalendario(), 200);
+    },
 
     async render() {
         const el = document.getElementById('page-asistencia');
         if (!el) return;
 
-        el.innerHTML = '<style>'
-            + '@keyframes astFadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}'
-            + '.ast-card{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}'
-            + '.ast-card:hover{transform:translateY(-2px)!important;box-shadow:0 8px 20px rgba(0,0,0,0.1)!important}'
-            + '.ast-row{transition:all 0.15s ease;border-left:3px solid transparent}'
-            + '.ast-row:hover{background:#f8fafc!important;border-left-color:#3b82f6}'
-            + '.ast-tab{padding:8px 18px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white;color:#64748b;cursor:pointer;transition:all 0.15s}'
-            + '.ast-tab:hover{border-color:#93c5fd;color:#3b82f6}'
-            + '.ast-tab.active{background:linear-gradient(135deg,#1e40af,#2563eb);color:white;border-color:#1e40af;box-shadow:0 2px 8px rgba(30,64,175,0.3)}'
-            + '.ast-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.3px}'
-            + '.ast-btn{padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s}'
-            + '.ast-btn:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.12)}'
-            + '.ast-input{padding:9px 14px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;outline:none;transition:all 0.15s;font-family:inherit}'
-            + '.ast-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}'
-            + '.ast-worker{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #f1f5f9;transition:all 0.15s}'
-            + '.ast-worker:last-child{border-bottom:none}'
-            + '.ast-worker:hover{background:#f8fafc}'
-            + '.ast-avatar{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:white;flex-shrink:0}'
-            + '.ast-podium{display:flex;justify-content:center;align-items:flex-end;gap:20px;margin:24px 0}'
-            + '.ast-rank{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-align:center;transition:all 0.2s;min-width:160px}'
-            + '.ast-rank:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}'
-            + '.ast-cal-header{display:grid;border-bottom:2px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:2}'
-            + '.ast-cal-row{display:grid;border-bottom:1px solid #f1f5f9}'
-            + '.ast-cal-cell{padding:4px;text-align:center;font-size:10px;display:flex;align-items:center;justify-content:center;min-height:24px}'
-            + '.ast-cal-cell.presente{background:#d1fae5}.ast-cal-cell.falta{background:#fee2e2;color:#dc2626;font-weight:700}'
-            + '.ast-cal-cell.vacaciones{background:#dbeafe;color:#2563eb}.ast-cal-cell.licencia{background:#fef3c7;color:#d97706}'
-            + '.ast-cal-cell.fin-semana{background:#f8fafc}.ast-cal-cell.hoy{outline:2px solid #3b82f6;outline-offset:-2px}'
-            + '#ast-hero-buscar::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
-            + '#ast-hero-fecha{color-scheme:dark}'
-            + '#ast-hero-mes option,#ast-hero-anio option{color:#1e293b;background:white}'
-            + '@media(max-width:768px){.ast-podium{flex-direction:column;align-items:center}}'
-            + '</style>'
+        if (!this._initialized) {
+            el.innerHTML = '<style>'
+                + '@keyframes astFadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}'
+                + '.ast-card{transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}'
+                + '.ast-card:hover{transform:translateY(-2px)!important;box-shadow:0 8px 20px rgba(0,0,0,0.1)!important}'
+                + '.ast-row{transition:all 0.15s ease;border-left:3px solid transparent}'
+                + '.ast-row:hover{background:#f8fafc!important;border-left-color:#3b82f6}'
+                + '.ast-tab{padding:8px 18px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white;color:#64748b;cursor:pointer;transition:all 0.15s}'
+                + '.ast-tab:hover{border-color:#93c5fd;color:#3b82f6}'
+                + '.ast-tab.active{background:linear-gradient(135deg,#1e40af,#2563eb);color:white;border-color:#1e40af;box-shadow:0 2px 8px rgba(30,64,175,0.3)}'
+                + '.ast-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.3px}'
+                + '.ast-btn{padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;border:none;cursor:pointer;transition:all 0.15s}'
+                + '.ast-btn:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.12)}'
+                + '.ast-input{padding:9px 14px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;outline:none;transition:all 0.15s;font-family:inherit}'
+                + '.ast-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}'
+                + '.ast-worker{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #f1f5f9;transition:all 0.15s}'
+                + '.ast-worker:last-child{border-bottom:none}'
+                + '.ast-worker:hover{background:#f8fafc}'
+                + '.ast-avatar{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:white;flex-shrink:0}'
+                + '.ast-podium{display:flex;justify-content:center;align-items:flex-end;gap:20px;margin:24px 0}'
+                + '.ast-rank{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-align:center;transition:all 0.2s;min-width:160px}'
+                + '.ast-rank:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}'
+                + '.ast-cal-header{display:grid;border-bottom:2px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:2}'
+                + '.ast-cal-row{display:grid;border-bottom:1px solid #f1f5f9}'
+                + '.ast-cal-cell{padding:4px;text-align:center;font-size:10px;display:flex;align-items:center;justify-content:center;min-height:24px}'
+                + '.ast-cal-cell.presente{background:#d1fae5}.ast-cal-cell.falta{background:#fee2e2;color:#dc2626;font-weight:700}'
+                + '.ast-cal-cell.vacaciones{background:#dbeafe;color:#2563eb}.ast-cal-cell.licencia{background:#fef3c7;color:#d97706}'
+                + '.ast-cal-cell.fin-semana{background:#f8fafc}.ast-cal-cell.hoy{outline:2px solid #3b82f6;outline-offset:-2px}'
+                + '#ast-hero-buscar::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
+                + '#ast-hero-fecha{color-scheme:dark}'
+                + '#ast-hero-mes option,#ast-hero-anio option{color:#1e293b;background:white}'
+                + '@media(max-width:768px){.ast-podium{flex-direction:column;align-items:center}}'
+                + '</style>'
 
-            // Hero
-            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
-            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:absolute;bottom:-50px;left:30%;width:250px;height:160px;background:radial-gradient(circle,rgba(245,158,11,0.12) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
-            + '<div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Control de Asistencia</h2>'
-            + '<p id="ast-hero-subtitle" style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestión diaria de asistencia, permisos y vacaciones</p></div>'
-            + '<div id="ast-hero-filters" style="display:flex;gap:8px;align-items:center"></div>'
-            + '</div></div>'
+                + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+                + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
+                + '<div style="position:absolute;bottom:-50px;left:30%;width:250px;height:160px;background:radial-gradient(circle,rgba(245,158,11,0.12) 0%,transparent 70%);border-radius:50%"></div>'
+                + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
+                + '<div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Control de Asistencia</h2>'
+                + '<p id="ast-hero-subtitle" style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestión diaria de asistencia, permisos y vacaciones</p></div>'
+                + '<div id="ast-hero-filters" style="display:flex;gap:8px;align-items:center"></div>'
+                + '</div></div>'
 
-            // Tabs
-            + '<div id="ast-tabs" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"></div>'
+                + '<div id="ast-tabs" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"></div>'
 
-            // Content
-            + '<div id="ast-content"></div>';
+                + '<div id="ast-content"></div>';
 
+            this._initialized = true;
+        }
         this.renderTabs();
-        this.showTab('diaria');
+        this.showTab(this.currentTab);
     },
 
     renderTabs() {
@@ -78,17 +96,16 @@ const Asistencia = {
         ];
 
         document.getElementById('ast-tabs').innerHTML = tabs.map(t =>
-            `<button class="ast-tab${t.id === this.currentTab ? ' active' : ''}" onclick="Asistencia.showTab('${t.id}', event)" style="display:inline-flex;align-items:center;gap:6px">${t.icon}${t.label}</button>`
+            `<button class="ast-tab${t.id === this.currentTab ? ' active' : ''}" data-tab="${t.id}" onclick="Asistencia.showTab('${t.id}', event)" style="display:inline-flex;align-items:center;gap:6px">${t.icon}${t.label}</button>`
         ).join('');
     },
 
     showTab(tab, evt) {
         this.currentTab = tab;
-        document.querySelectorAll('.ast-tab').forEach(el => el.classList.remove('active'));
-        evt?.target?.closest('.ast-tab')?.classList.add('active');
-        this.renderTabs();
+        document.querySelectorAll('.ast-tab').forEach(el => {
+            el.classList.toggle('active', el.dataset.tab === tab);
+        });
 
-        // Update subtitle and hero filters
         const subtitles = {
             trabajadores: 'Administrar personal activo e inactivo',
             diaria: 'Marca faltas del día',
@@ -129,7 +146,7 @@ const Asistencia = {
                 + '</div>'
                 + '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.buscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
+                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + (canAgT ? '<button onclick="Asistencia.showFormTrabajador()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">+ Nuevo</button>' : '')
                 + '<button onclick="Asistencia.exportExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">Excel</button>'
@@ -169,7 +186,7 @@ const Asistencia = {
         } else if (tab === 'diaria') {
             container.innerHTML = '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.buscarTrabajadores()" style="padding-left:32px;width:160px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
+                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadores()" style="padding-left:32px;width:160px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + '<input type="date" id="ast-hero-fecha" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>';
@@ -574,7 +591,7 @@ const Asistencia = {
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#fef3c7"></div><span style="font-size:11px;color:#64748b;font-weight:500">Licencia</span></div>
                     <div style="margin-left:auto;position:relative">
                         <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="ast-cal-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.filtrarCalendario()" style="padding-left:32px;width:180px;font-size:11px">
+                        <input type="text" id="ast-cal-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.debouncedFiltrarCalendario()" style="padding-left:32px;width:180px;font-size:11px">
                     </div>
                 </div>
                 <div style="flex:1;overflow:auto;min-height:0"><div id="ast-calendario"></div></div>
