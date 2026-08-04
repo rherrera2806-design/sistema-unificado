@@ -33,7 +33,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    height: 60px;
+    height: 68px;
     transition: box-shadow var(--transition-base), transform var(--transition-base);
 }
 .stat-card:hover {
