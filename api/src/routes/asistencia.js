@@ -436,10 +436,15 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
                  AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,
-                (SELECT COUNT(*) FROM permisos p 
+                (SELECT COALESCE(SUM(
+                    CASE 
+                        WHEN p.fecha_fin IS NULL OR p.fecha_fin < p.fecha_inicio THEN 1
+                        ELSE (LEAST(p.fecha_fin, ($2::date - 1)::date) - GREATEST(p.fecha_inicio, $1::date)) + 1
+                    END
+                ), 0) FROM permisos p 
                  WHERE p.trabajador_id = t.id 
                  AND p.fecha_inicio < $2::date
-                 AND p.fecha_fin >= $1::date
+                 AND (p.fecha_fin IS NULL OR p.fecha_fin >= $1::date)
                  AND p.estado = 'aprobado') as permisos_aprobados,
                 (SELECT COALESCE(SUM(
                     CASE 
