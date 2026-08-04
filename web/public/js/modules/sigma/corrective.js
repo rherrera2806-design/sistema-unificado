@@ -20,6 +20,28 @@ App.registerModule('corrective', {
             <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registro de fallas y acciones correctivas</p></div>
                 <button class="btn btn-danger" onclick="App.modules.corrective.showForm()">+ Registrar Falla</button>
             </div></div>
+            <div class="stats-grid">
+                <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
+                    <div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Total Fallas</p><p class="stat-sub">Registradas</p></div>
+                    <div class="stat-value">${registros.length}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
+                    <div class="stat-icon orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">En Mantencion</p><p class="stat-sub">Sin reparar</p></div>
+                    <div class="stat-value">${registros.filter(r => r.estado === 'En Mantención').length}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
+                    <div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Reparadas</p><p class="stat-sub">Resueltas</p></div>
+                    <div class="stat-value">${registros.filter(r => r.estado === 'Reparada').length}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #ef4444">
+                    <div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Detenidas</p><p class="stat-sub">Fuera de operacion</p></div>
+                    <div class="stat-value">${registros.filter(r => r.estado === 'Detenido').length}</div>
+                </div>
+            </div>
             <style>
 @keyframes corr_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .corr-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}

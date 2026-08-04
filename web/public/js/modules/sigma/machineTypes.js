@@ -2,6 +2,13 @@ App.registerModule('machineTypes', {
     async render() {
         const el = document.getElementById('page-machineTypes');
         const tipos = await db.getAll('machine_types');
+        const maquinas = await db.getAll('machines');
+        const links = await db.getAll('component_type_links');
+        const componentes = await db.getAll('components');
+        const tiposCount = tipos.length;
+        const maqsCount = maquinas.length;
+        const compsCount = componentes.length;
+        const vinculosCount = links.length;
         let rows = '';
         for (const t of tipos) {
             const raw = await db.getComponentsByType(t.id);
@@ -25,6 +32,28 @@ App.registerModule('machineTypes', {
             <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Catálogo de clasificación de equipos</p></div>
                 <button class="btn btn-primary" onclick="App.modules.machineTypes.showForm()">+ Nuevo Tipo</button>
             </div></div>
+            <div class="stats-grid">
+                <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
+                    <div class="stat-icon orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Tipos</p><p class="stat-sub">Registrados</p></div>
+                    <div class="stat-value">${tiposCount}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
+                    <div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Maquinas</p><p class="stat-sub">Registradas</p></div>
+                    <div class="stat-value">${maqsCount}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
+                    <div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Componentes</p><p class="stat-sub">Disponibles</p></div>
+                    <div class="stat-value">${compsCount}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
+                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Vinculos</p><p class="stat-sub">Asociaciones</p></div>
+                    <div class="stat-value">${vinculosCount}</div>
+                </div>
+            </div>
             <style>
 @keyframes mtype_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .mtype-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}

@@ -34,6 +34,28 @@ App.registerModule('machines', {
             <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registro y control de equipos industriales</p></div>
                 <button class="btn btn-primary" onclick="App.modules.machines.showForm()">+ Nueva Máquina</button>
             </div></div>
+            <div class="stats-grid">
+                <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
+                    <div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Total Maquinas</p><p class="stat-sub">Registradas en sistema</p></div>
+                    <div class="stat-value">${maquinas.length}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
+                    <div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Operativas</p><p class="stat-sub">En pleno funcionamiento</p></div>
+                    <div class="stat-value">${maquinas.filter(m => m.estado_operativo === 'Operativo').length}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
+                    <div class="stat-icon orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">En Mantencion</p><p class="stat-sub">En proceso de servicio</p></div>
+                    <div class="stat-value">${maquinas.filter(m => m.estado_operativo === 'En mantención').length}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #ef4444">
+                    <div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Detenidas</p><p class="stat-sub">Fuera de operacion</p></div>
+                    <div class="stat-value">${maquinas.filter(m => m.estado_operativo === 'Detenido').length}</div>
+                </div>
+            </div>
             <style>
 @keyframes mach_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .mach-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
