@@ -5,10 +5,10 @@ const InvInventario = {
         try {
             const [items, tiposCristal] = await Promise.all([api.inv().getInventario(), api.inv().getTiposCristal()]);
             page.innerHTML = `
-                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:14px 24px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Inventario</h2>
-<p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p></div></div>
+<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px">Inventario</h2>
+<p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p></div></div>
                 <style>
 @keyframes inv_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .inv-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}

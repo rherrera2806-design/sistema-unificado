@@ -46,10 +46,10 @@ const Asistencia = {
                 + '.ast-btn:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.12)}'
                 + '.ast-input{padding:9px 14px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;outline:none;transition:all 0.15s;font-family:inherit}'
                 + '.ast-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)}'
-                + '.ast-worker{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #f1f5f9;transition:all 0.15s}'
+                + '.ast-worker{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #f1f5f9;transition:all 0.15s}'
                 + '.ast-worker:last-child{border-bottom:none}'
                 + '.ast-worker:hover{background:#f8fafc}'
-                + '.ast-avatar{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:white;flex-shrink:0}'
+                + '.ast-avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0}'
                 + '.ast-podium{display:flex;justify-content:center;align-items:flex-end;gap:20px;margin:24px 0}'
                 + '.ast-rank{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-align:center;transition:all 0.2s;min-width:160px}'
                 + '.ast-rank:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}'
@@ -65,13 +65,11 @@ const Asistencia = {
                 + '@media(max-width:768px){.ast-podium{flex-direction:column;align-items:center}}'
                 + '</style>'
 
-                + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
-                + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-                + '<div style="position:absolute;bottom:-50px;left:30%;width:250px;height:160px;background:radial-gradient(circle,rgba(245,158,11,0.12) 0%,transparent 70%);border-radius:50%"></div>'
-                + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
-                + '<div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Control de Asistencia</h2>'
-                + '<p id="ast-hero-subtitle" style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Gestión diaria de asistencia, permisos y vacaciones</p></div>'
-                + '<div id="ast-hero-filters" style="display:flex;gap:8px;align-items:center"></div>'
+                + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:10px;padding:8px 16px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+                + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;height:44px">'
+                + '<div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Control de Asistencia</h2>'
+                + '<p id="ast-hero-subtitle" style="margin:1px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Marca faltas del día</p></div>'
+                + '<div id="ast-hero-filters" style="display:flex;gap:6px;align-items:center"></div>'
                 + '</div></div>'
 
                 + '<div id="ast-tabs" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"></div>'
@@ -370,18 +368,18 @@ const Asistencia = {
     // ═══════ ASISTENCIA DIARIA ═══════
     async renderDiaria(c) {
         c.innerHTML = `
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
-                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #22c55e;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 0ms both">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div><div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Presentes</div></div>
-                    <div id="ast-stat-presentes" style="font-size:28px;font-weight:800;color:#059669;line-height:1">0</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #22c55e;border-radius:8px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 0ms both;height:55px;display:flex;flex-direction:column;justify-content:center">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><div style="width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Presentes</div></div>
+                    <div id="ast-stat-presentes" style="font-size:20px;font-weight:800;color:#059669;line-height:1">0</div>
                 </div>
-                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div><div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Faltas</div></div>
-                    <div id="ast-stat-faltas" style="font-size:28px;font-weight:800;color:#dc2626;line-height:1">0</div>
+                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:8px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;height:55px;display:flex;flex-direction:column;justify-content:center">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><div style="width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Faltas</div></div>
+                    <div id="ast-stat-faltas" style="font-size:20px;font-weight:800;color:#dc2626;line-height:1">0</div>
                 </div>
-                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both">
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Total</div></div>
-                    <div id="ast-stat-total" style="font-size:28px;font-weight:800;color:#1e293b;line-height:1">0</div>
+                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:8px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;height:55px;display:flex;flex-direction:column;justify-content:center">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><div style="width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Total</div></div>
+                    <div id="ast-stat-total" style="font-size:20px;font-weight:800;color:#1e293b;line-height:1">0</div>
                 </div>
             </div>
 
@@ -390,10 +388,10 @@ const Asistencia = {
             </div>
 
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 240ms both">
-                <div style="padding:18px 22px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
-                    <div style="display:flex;align-items:center;gap:10px">
-                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
-                        <div><h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Faltas del Día</h3></div>
+                <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <div style="width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+                        <div><h3 style="margin:0;font-size:12px;font-weight:700;color:#1e293b">Faltas del Día</h3></div>
                     </div>
                     <span id="ast-badge-faltas" style="background:#fee2e2;color:#dc2626;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700">0 faltas</span>
                 </div>
@@ -443,8 +441,8 @@ const Asistencia = {
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
                     ${falta
-                        ? '<span class="ast-badge" style="background:#fee2e2;color:#dc2626">Falta</span><button onclick="Asistencia.marcar(' + t.id + ',false)" class="ast-btn" style="background:#22c55e;color:white;font-size:11px;padding:6px 12px">Corregir</button>'
-                        : '<span class="ast-badge" style="background:#d1fae5;color:#059669">Presente</span><button onclick="Asistencia.marcar(' + t.id + ',true)" class="ast-btn" style="background:#ef4444;color:white;font-size:11px;padding:6px 12px">Marcar Falta</button>'
+                        ? '<span class="ast-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px">Falta</span><button onclick="Asistencia.marcar(' + t.id + ',false)" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 10px">Corregir</button>'
+                        : '<span class="ast-badge" style="background:#d1fae5;color:#059669;font-size:10px;padding:2px 8px">Presente</span><button onclick="Asistencia.marcar(' + t.id + ',true)" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 10px">Marcar Falta</button>'
                     }
                 </div>
             </div>`;

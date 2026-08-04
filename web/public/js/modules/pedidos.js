@@ -220,19 +220,19 @@ App.registerModule('pedidos', {
             else if (e === 'rechazado') rech++;
         }
         document.getElementById('pedStats').innerHTML =
-            this.statCard(total, 'Total Pedidos', '#64748b', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', 0)
-            + this.statCard(pend, 'Pendientes', '#f59e0b', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', 100)
-            + this.statCard(apr, 'Aprobados', '#22c55e', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 200)
-            + this.statCard(rech, 'Rechazados', '#ef4444', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', 300);
+            this.statCard(total, 'Total Pedidos', '#64748b', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', 0)
+            + this.statCard(pend, 'Pendientes', '#f59e0b', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', 100)
+            + this.statCard(apr, 'Aprobados', '#22c55e', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 200)
+            + this.statCard(rech, 'Rechazados', '#ef4444', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', 300);
     },
 
     statCard(value, label, color, icon, delay) {
-        return '<div class="ped-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:12px;border-left:4px solid ' + color + ';box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease ' + delay + 'ms both;position:relative;overflow:hidden">'
+        return '<div class="ped-card" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:10px;border-left:4px solid ' + color + ';box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease ' + delay + 'ms both;position:relative;overflow:hidden">'
             + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:' + color + ';opacity:0.04;border-radius:50%"></div>'
-            + '<div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">'
-            + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
-            + '<div><div style="font-size:24px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1;animation:pedCount 0.6s ease ' + (delay + 200) + 'ms both">' + value + '</div>'
-            + '<div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">' + label + '</div></div></div></div>';
+            + '<div style="display:flex;align-items:center;gap:10px;position:relative;z-index:1">'
+            + '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
+            + '<div><div style="font-size:20px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1;animation:pedCount 0.6s ease ' + (delay + 200) + 'ms both">' + value + '</div>'
+            + '<div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">' + label + '</div></div></div></div>';
     },
 
     filter() {

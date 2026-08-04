@@ -150,21 +150,21 @@ App.registerModule('prod_reportes', {
             totalKgs += f.totales.kgs;
         }
         el.innerHTML = `
-            <div class="pr-card" style="background:white;border-radius:14px;padding:12px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:24px;font-weight:800;color:#0f172a">${fechas.length}</div>
-                <div style="color:#64748b;font-size:11px;font-weight:500;margin-top:2px">Fechas</div>
+            <div class="pr-card" style="background:white;border-radius:10px;padding:10px;border:1px solid #e2e8f0;text-align:center">
+                <div style="font-size:20px;font-weight:800;color:#0f172a">${fechas.length}</div>
+                <div style="color:#64748b;font-size:10px;font-weight:500;margin-top:2px">Fechas</div>
             </div>
-            <div class="pr-card" style="background:white;border-radius:14px;padding:12px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:24px;font-weight:800;color:#3b82f6">${totalItems}</div>
-                <div style="color:#64748b;font-size:11px;font-weight:500;margin-top:2px">Items</div>
+            <div class="pr-card" style="background:white;border-radius:10px;padding:10px;border:1px solid #e2e8f0;text-align:center">
+                <div style="font-size:20px;font-weight:800;color:#3b82f6">${totalItems}</div>
+                <div style="color:#64748b;font-size:10px;font-weight:500;margin-top:2px">Items</div>
             </div>
-            <div class="pr-card" style="background:white;border-radius:14px;padding:12px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:24px;font-weight:800;color:#8b5cf6">${totalM2.toFixed(1)}</div>
-                <div style="color:#64748b;font-size:11px;font-weight:500;margin-top:2px">M² Total</div>
+            <div class="pr-card" style="background:white;border-radius:10px;padding:10px;border:1px solid #e2e8f0;text-align:center">
+                <div style="font-size:20px;font-weight:800;color:#8b5cf6">${totalM2.toFixed(1)}</div>
+                <div style="color:#64748b;font-size:10px;font-weight:500;margin-top:2px">M² Total</div>
             </div>
-            <div class="pr-card" style="background:white;border-radius:14px;padding:12px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:24px;font-weight:800;color:#f59e0b">${Math.round(totalKgs).toLocaleString('es-CL')}</div>
-                <div style="color:#64748b;font-size:11px;font-weight:500;margin-top:2px">Kgs Total</div>
+            <div class="pr-card" style="background:white;border-radius:10px;padding:10px;border:1px solid #e2e8f0;text-align:center">
+                <div style="font-size:20px;font-weight:800;color:#f59e0b">${Math.round(totalKgs).toLocaleString('es-CL')}</div>
+                <div style="color:#64748b;font-size:10px;font-weight:500;margin-top:2px">Kgs Total</div>
             </div>
         `;
     },
