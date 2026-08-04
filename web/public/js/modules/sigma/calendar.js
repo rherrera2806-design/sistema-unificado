@@ -14,10 +14,10 @@ App.registerModule('calendar', {
         const events = await this.getEvents();
 
         el.innerHTML = `
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:14px 24px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-0.5px">Calendario de Mantenimiento</h2>
-            <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.7)">Visualización mensual de actividades</p></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px">Calendario de Mantenimiento</h2>
+            <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Visualización mensual de actividades</p></div>
                 <div style="display:flex;gap:8px">
                     <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.calendar.navigate(-1)">◀ Anterior</button>
                     <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.calendar.navigate(0, true)">Hoy</button>

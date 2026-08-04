@@ -34,12 +34,12 @@ App.registerModule('prod_reportes', {
                 .pr-totales span{color:#0f172a}
             </style>
 
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,.3)">
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:14px 24px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,.3)">
                 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,.2) 0%,transparent 70%);border-radius:50%"></div>
                 <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">
                     <div>
-                        <h2 style="margin:0;font-size:24px;font-weight:800;color:white;letter-spacing:-.5px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Informe de Fechas</h2>
-                        <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,.7)">Reporte de ordenes programadas agrupadas por fecha</p>
+                        <h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Informe de Fechas</h2>
+                        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,.7)">Reporte de ordenes programadas agrupadas por fecha</p>
                     </div>
                     <div style="display:flex;gap:8px">
                         <button onclick="App.modules.prod_reportes.exportarExcel()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar</button>
@@ -150,21 +150,21 @@ App.registerModule('prod_reportes', {
             totalKgs += f.totales.kgs;
         }
         el.innerHTML = `
-            <div class="pr-card" style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:28px;font-weight:800;color:#0f172a">${fechas.length}</div>
-                <div style="color:#64748b;font-size:12px;font-weight:500;margin-top:4px">Fechas</div>
+            <div class="pr-card" style="background:white;border-radius:14px;padding:12px;border:1px solid #e2e8f0;text-align:center">
+                <div style="font-size:24px;font-weight:800;color:#0f172a">${fechas.length}</div>
+                <div style="color:#64748b;font-size:11px;font-weight:500;margin-top:2px">Fechas</div>
             </div>
-            <div class="pr-card" style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:28px;font-weight:800;color:#3b82f6">${totalItems}</div>
-                <div style="color:#64748b;font-size:12px;font-weight:500;margin-top:4px">Items</div>
+            <div class="pr-card" style="background:white;border-radius:14px;padding:12px;border:1px solid #e2e8f0;text-align:center">
+                <div style="font-size:24px;font-weight:800;color:#3b82f6">${totalItems}</div>
+                <div style="color:#64748b;font-size:11px;font-weight:500;margin-top:2px">Items</div>
             </div>
-            <div class="pr-card" style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:28px;font-weight:800;color:#8b5cf6">${totalM2.toFixed(1)}</div>
-                <div style="color:#64748b;font-size:12px;font-weight:500;margin-top:4px">M² Total</div>
+            <div class="pr-card" style="background:white;border-radius:14px;padding:12px;border:1px solid #e2e8f0;text-align:center">
+                <div style="font-size:24px;font-weight:800;color:#8b5cf6">${totalM2.toFixed(1)}</div>
+                <div style="color:#64748b;font-size:11px;font-weight:500;margin-top:2px">M² Total</div>
             </div>
-            <div class="pr-card" style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;text-align:center">
-                <div style="font-size:28px;font-weight:800;color:#f59e0b">${Math.round(totalKgs).toLocaleString('es-CL')}</div>
-                <div style="color:#64748b;font-size:12px;font-weight:500;margin-top:4px">Kgs Total</div>
+            <div class="pr-card" style="background:white;border-radius:14px;padding:12px;border:1px solid #e2e8f0;text-align:center">
+                <div style="font-size:24px;font-weight:800;color:#f59e0b">${Math.round(totalKgs).toLocaleString('es-CL')}</div>
+                <div style="color:#64748b;font-size:11px;font-weight:500;margin-top:2px">Kgs Total</div>
             </div>
         `;
     },
