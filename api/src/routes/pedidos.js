@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const { query } = require('../config/database');
 const { validate, pedidosSchema } = require('../middleware/validate');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 router.get('/api/pedidos/dashboard', async (req, res, next) => {
     try {
@@ -37,15 +40,13 @@ router.get('/api/pedidos', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.post('/api/pedidos', validate(pedidosSchema), async (req, res, next) => {
+router.post('/api/pedidos', upload.single('archivo_pdf'), async (req, res, next) => {
     try {
-        const { numero_pedido, cliente, tipo_ov, vendedor, archivo_url, pdf_base64 } = req.body;
+        const { numero_pedido, cliente, tipo_ov, vendedor, archivo_url } = req.body;
+        if (!numero_pedido || !cliente) return res.status(400).json({ error: 'Numero y cliente son requeridos' });
         const exists = await query('SELECT id FROM pedidos WHERE numero_pedido = $1 LIMIT 1', [numero_pedido]);
         if (exists.rows.length > 0) return res.status(400).json({ error: 'Ya existe un pedido con este número' });
-        let pdfBuffer = null;
-        if (pdf_base64) {
-            pdfBuffer = Buffer.from(pdf_base64.replace(/^data:application\/pdf;base64,/, ''), 'base64');
-        }
+        const pdfBuffer = req.file ? req.file.buffer : null;
         const result = await query(
             'INSERT INTO pedidos (numero_pedido, cliente, tipo_ov, vendedor, archivo_url, archivo_pdf, estado) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
             [numero_pedido, cliente, tipo_ov || 'Normal', vendedor || '', archivo_url || '', pdfBuffer, 'pendiente']

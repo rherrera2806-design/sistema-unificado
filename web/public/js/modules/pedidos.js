@@ -328,16 +328,16 @@ App.registerModule('pedidos', {
         this.uploading = true;
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const pdfBase64 = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error('Error al leer archivo'));
-                reader.readAsDataURL(this.selectedFile);
-            });
+            const fd = new FormData();
+            fd.append('numero_pedido', numero);
+            fd.append('cliente', cliente);
+            fd.append('tipo_ov', tipo_ov);
+            fd.append('vendedor', user.email || '');
+            fd.append('archivo_pdf', this.selectedFile);
             const res = await fetch('/api/pedidos', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ numero_pedido: numero, cliente: cliente, tipo_ov: tipo_ov, vendedor: user.email || '', pdf_base64: pdfBase64 })
+                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                body: fd
             });
             if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }
             else { const data = await res.json(); alert(data.error || 'Error al guardar pedido'); }
