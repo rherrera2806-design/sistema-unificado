@@ -1161,7 +1161,7 @@ const Asistencia = {
             return '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:20px 18px 16px;text-align:center;transform:scale(' + s + ');transform-origin:bottom center">'
             + '<div style="font-size:' + medalSize + 'px;margin-bottom:6px">' + medals[i] + '</div>'
             + '<div style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:4px">' + r.nombre + '</div>'
-            + '<div style="font-size:' + Math.round(22 * s) + 'px;font-weight:800;color:' + colors[i] + '">' + total + '</div>'
+            + '<div style="font-size:' + Math.round(22 * s) + 'px;font-weight:800;color:' + colors[i] + '">' + total.toFixed(1) + '</div>'
             + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;font-weight:600;margin-top:2px">días fuera</div>'
             + '</div>';
         }).join('') + '</div>';
