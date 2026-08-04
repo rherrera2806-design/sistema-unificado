@@ -426,13 +426,15 @@ App.registerModule('pedidos', {
                 if (estado === 'aprobado') {
                     const link = document.createElement('a');
                     link.href = '/api/pedidos/' + this.currentPedido.id + '/download-pdf';
+                    link.download = '';
                     link.style.display = 'none';
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
+                    await fetch('/api/pedidos/' + this.currentPedido.id + '/pdf', { method: 'DELETE' });
                 }
                 this.hideReviewModal(); this.load();
-                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado.' : 'Pedido rechazado. PDF eliminado.');
+                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado y eliminado.' : 'Pedido rechazado. PDF eliminado.');
             }
             else { const data = await res.json(); alert(data.error || 'Error al revisar pedido'); }
         } catch(e) { alert('Error al revisar pedido: ' + e.message); }

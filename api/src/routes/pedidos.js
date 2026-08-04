@@ -88,6 +88,13 @@ router.get('/api/pedidos/:id/download-pdf', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.delete('/api/pedidos/:id/pdf', async (req, res, next) => {
+    try {
+        await query('UPDATE pedidos SET archivo_pdf = NULL WHERE id = $1', [Number(req.params.id)]);
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
+
 router.get('/api/pedidos/:id', async (req, res, next) => {
     try {
         const result = await query('SELECT * FROM pedidos WHERE id = $1', [Number(req.params.id)]);
@@ -121,10 +128,15 @@ router.put('/api/pedidos/:id', async (req, res, next) => {
         const beforeResult = await query('SELECT numero_pedido, cliente, tipo_ov, estado, motivo_rechazo, revisado_por FROM pedidos WHERE id = $1', [id]);
         const before = beforeResult.rows[0] || {};
         let result;
-        if (estado && ['aprobado', 'rechazado'].includes(estado)) {
+        if (estado === 'rechazado') {
             result = await query(
                 'UPDATE pedidos SET estado = $1, motivo_rechazo = $2, revisado_por = $3, fecha_revision = CURRENT_TIMESTAMP, archivo_pdf = NULL WHERE id = $4 RETURNING *',
                 [estado, motivo_rechazo || null, revisado_por || '', id]
+            );
+        } else if (estado === 'aprobado') {
+            result = await query(
+                'UPDATE pedidos SET estado = $1, motivo_rechazo = NULL, revisado_por = $2, fecha_revision = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
+                [estado, revisado_por || '', id]
             );
         } else if (estado === 'pendiente' || cliente || tipo_ov || numero_pedido) {
             const fields = [];
