@@ -1139,7 +1139,7 @@ const Asistencia = {
         const colors = ['#f59e0b','#94a3b8','#cd7f32','#6366f1','#10b981'];
         c.innerHTML = '<div style="display:flex;gap:16px;justify-content:center;align-items:flex-end;padding:16px 0">' + ranking.slice(0, 5).map((r, i) => {
             const total = (Number(r.faltas) || 0) + (Number(r.permisos_dias) || 0) + (Number(r.licencias_dias) || 0) + (Number(r.vacaciones_dias) || 0);
-            const s = i === 0 ? 1 : 0.78;
+            const s = i === 0 ? 1 : 0.88;
             const medalSize = i < 3 ? 28 + (2 - i) * 4 : 20;
             return '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);padding:20px 18px 16px;text-align:center;min-width:' + Math.round(120 * s) + 'px;transform:scale(' + s + ');transform-origin:bottom center">'
             + '<div style="font-size:' + medalSize + 'px;margin-bottom:6px">' + medals[i] + '</div>'
