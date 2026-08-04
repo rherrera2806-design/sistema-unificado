@@ -31,7 +31,7 @@
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 10px;
     height: 60px;
     transition: box-shadow var(--transition-base), transform var(--transition-base);
@@ -67,7 +67,7 @@
     font-weight: 800;
     line-height: 1;
     margin: 0;
-    text-align: right;
+    text-align: left;
 }
 .stat-info p {
     font-size: 10px;
@@ -76,7 +76,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 500;
-    text-align: right;
+    text-align: left;
 }
 
 .stats-grid {
