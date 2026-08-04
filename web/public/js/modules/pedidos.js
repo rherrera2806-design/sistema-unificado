@@ -107,6 +107,7 @@ App.registerModule('pedidos', {
             + '<option value="Express" style="background:#fef3c7;color:#0f172a;font-weight:700">Express</option>'
             + '<option value="Vta. Region" style="background:#9333ea;color:white">Vta. Region</option>'
             + '<option value="Reposicion" style="background:#dc2626;color:white">Reposición</option>'
+            + '<option value="Urgencia" style="background:#22c55e;color:white;font-weight:700">Urgencia</option>'
             + '</select></div>'
             + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">PDF del Pedido *</label>'
             + '<div id="pedUploadArea" onclick="document.getElementById(\'pedFileInput\').click()" style="border:2px dashed #cbd5e1;border-radius:12px;padding:36px;text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc">'
@@ -163,6 +164,7 @@ App.registerModule('pedidos', {
             + '<option value="Express">Express</option>'
             + '<option value="Vta. Region">Vta. Region</option>'
             + '<option value="Reposicion">Reposición</option>'
+            + '<option value="Urgencia">Urgencia</option>'
             + '</select></div></div>'
             + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
             + '<button onclick="App.modules.pedidos.hideEditModal()" class="ped-btn" style="padding:10px 20px;font-size:13px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer">Cancelar</button>'
@@ -268,6 +270,7 @@ App.registerModule('pedidos', {
         if (t === 'Express') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#fef3c7;color:#0f172a">Express</span>';
         if (t === 'Vta. Region') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#9333ea;color:white">Vta. Region</span>';
         if (t === 'Reposicion') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#dc2626;color:white">Reposición</span>';
+        if (t === 'Urgencia') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#22c55e;color:white">Urgencia</span>';
         return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#e0f2fe;color:#0f172a">Normal</span>';
     },
 
@@ -444,7 +447,7 @@ App.registerModule('pedidos', {
         const mes = now.getMonth();
         const anio = now.getFullYear();
         const diasEnMes = new Date(anio, mes + 1, 0).getDate();
-        const colores = { Normal: '#3b82f6', Express: '#f59e0b', 'Vta. Region': '#9333ea', Reposicion: '#dc2626' };
+        const colores = { Normal: '#3b82f6', Express: '#f59e0b', 'Vta. Region': '#9333ea', Reposicion: '#dc2626', Urgencia: '#22c55e' };
         const tipos = ['Normal', 'Express', 'Vta. Region', 'Reposicion'];
 
         const pedidosMes = this.allPedidos.filter(p => {
