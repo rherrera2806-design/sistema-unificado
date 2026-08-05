@@ -14,11 +14,11 @@ App.registerModule('spareparts', {
         const normales = repuestos.filter(r => r.stock_actual > r.stock_minimo);
 
         el.innerHTML = `
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Repuestos</h2>
-            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Control de inventario de repuestos industriales</p></div>
-                <button class="btn btn-primary" onclick="App.modules.spareparts.showForm()">+ Nuevo Repuesto</button>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Repuestos</h2>
+            <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Control de inventario de repuestos industriales</p></div>
+                <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.spareparts.showForm()">+ Nuevo Repuesto</button>
             </div></div>
             <style>
 @keyframes spare_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -28,9 +28,9 @@ App.registerModule('spareparts', {
 .spare-row:hover{transform:translateX(2px);background:#f8fafc!important}
 </style>
             <div class="stats-grid">
-                <div class="stat-card dash-card spare-card" style="border-left:4px solid #3b82f6"><div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="stat-info"><p class="stat-label">Total repuestos</p><p class="stat-sub">Inventario</p></div><div class="stat-value">${repuestos.length}</div></div>
-                <div class="stat-card dash-card spare-card" style="border-left:4px solid #f59e0b"><div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><p class="stat-label">Stock crítico</p><p class="stat-sub">Requieren acción</p></div><div class="stat-value">${criticos.length}</div></div>
-                <div class="stat-card dash-card spare-card" style="border-left:4px solid #22c55e"><div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div><div class="stat-info"><p class="stat-label">Stock normal</p><p class="stat-sub">Disponibles</p></div><div class="stat-value">${normales.length}</div></div>
+                <div class="stat-card dash-card spare-card" style="border-left:4px solid #3b82f6"><div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="stat-info"><p class="stat-label">Total repuestos</p><p class="stat-sub">Inventario</p></div><div class="stat-value">${repuestos.length}</div></div>
+                <div class="stat-card dash-card spare-card" style="border-left:4px solid #f59e0b"><div class="stat-icon red"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><p class="stat-label">Stock critico</p><p class="stat-sub">Requieren accion</p></div><div class="stat-value">${criticos.length}</div></div>
+                <div class="stat-card dash-card spare-card" style="border-left:4px solid #22c55e"><div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div><div class="stat-info"><p class="stat-label">Stock normal</p><p class="stat-sub">Disponibles</p></div><div class="stat-value">${normales.length}</div></div>
             </div>
             <div class="card spare-card">
                 <div class="card-header">

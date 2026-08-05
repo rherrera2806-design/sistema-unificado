@@ -26,33 +26,33 @@ App.registerModule('machineTypes', {
             </tr>`;
         }
         el.innerHTML = `
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Tipos de Area</h2>
-            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Catalogo de clasificacion de equipos</p></div>
-            <div style="display:flex;gap:8px;align-items:center">
-                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Tipos</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${tiposCount}</div></div>
-                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Maquinas</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${maqsCount}</div></div>
-                <button class="btn btn-primary" onclick="App.modules.machineTypes.showForm()">+ Nuevo Tipo</button>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Tipos de Area</h2>
+            <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Catalogo de clasificacion de equipos</p></div>
+            <div style="display:flex;gap:6px;align-items:center">
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Tipos</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${tiposCount}</div></div>
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Maquinas</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${maqsCount}</div></div>
+                <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.machineTypes.showForm()">+ Nuevo Tipo</button>
             </div></div>
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
-                    <div class="stat-icon orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                    <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Tipos</p><p class="stat-sub">Registrados</p></div>
                     <div class="stat-value">${tiposCount}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
-                    <div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg></div>
+                    <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Maquinas</p><p class="stat-sub">Registradas</p></div>
                     <div class="stat-value">${maqsCount}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
-                    <div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Componentes</p><p class="stat-sub">Disponibles</p></div>
                     <div class="stat-value">${compsCount}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
-                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Vinculos</p><p class="stat-sub">Asociaciones</p></div>
                     <div class="stat-value">${vinculosCount}</div>
                 </div>

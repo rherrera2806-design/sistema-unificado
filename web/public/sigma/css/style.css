@@ -492,14 +492,14 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .stat-card {
     background: var(--bg-card);
     border-radius: 10px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    height: 68px;
+    gap: 8px;
+    height: 56px;
     transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
 }
 .stat-card:hover {
@@ -508,13 +508,13 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 }
 
 .stat-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: 13px;
     flex-shrink: 0;
 }
 
@@ -523,11 +523,11 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 .stat-icon.orange { background: #fff3e0; color: var(--warning); }
 .stat-icon.red { background: #ffebee; color: var(--danger); }
 
-.stat-info h4 { font-size: 20px; font-weight: 800; line-height: 1; text-align: right; }
-.stat-info p { font-size: 10px; color: var(--text-light); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; text-align: right; }
+.stat-info h4 { font-size: 18px; font-weight: 800; line-height: 1; text-align: right; }
+.stat-info p { font-size: 9px; color: var(--text-light); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; text-align: right; }
 
 .stat-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     color: var(--text);
     text-transform: uppercase;
@@ -536,15 +536,15 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     line-height: 1.2;
 }
 .stat-sub {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--text-light);
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    margin: 2px 0 0;
+    margin: 1px 0 0;
     font-weight: 500;
 }
 .stat-value {
-    font-size: 24px;
+    font-size: 18px;
     font-weight: 800;
     line-height: 1;
     color: var(--text);
@@ -699,10 +699,10 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     .calendar-day { min-height: 60px; padding: 4px; }
     .calendar-event { font-size: 9px; padding: 1px 2px; }
     .calendar-header { font-size: 10px; padding: 6px 2px; }
-    .stat-card { padding: 8px 10px; height: 55px; }
-    .stat-info h4 { font-size: 18px; text-align: center; }
-    .stat-info p { font-size: 9px; text-align: center; }
-    .stat-icon { width: 30px; height: 30px; font-size: 13px; }
+    .stat-card { padding: 6px 8px; height: 48px; }
+    .stat-info h4 { font-size: 16px; text-align: center; }
+    .stat-info p { font-size: 8px; text-align: center; }
+    .stat-icon { width: 24px; height: 24px; font-size: 11px; }
     .header { padding: 0 12px; }
     .header-title { font-size: 14px; }
     .main-content { padding: 12px; }

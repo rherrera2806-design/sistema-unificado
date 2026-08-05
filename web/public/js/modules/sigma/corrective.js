@@ -14,33 +14,33 @@ App.registerModule('corrective', {
         filtered.sort((a, b) => (b.fecha_falla || '').localeCompare(a.fecha_falla || ''));
 
         el.innerHTML = `
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Mantenccion Correctiva</h2>
-            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registro de fallas y acciones correctivas</p></div>
-            <div style="display:flex;gap:8px;align-items:center">
-                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Reparadas</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${registros.filter(r => r.estado === 'Reparada').length}</div></div>
-                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Pendientes</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${registros.filter(r => r.estado !== 'Reparada').length}</div></div>
-                <button class="btn btn-danger" onclick="App.modules.corrective.showForm()">+ Registrar Falla</button>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Mantenccion Correctiva</h2>
+            <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Registro de fallas y acciones correctivas</p></div>
+            <div style="display:flex;gap:6px;align-items:center">
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Reparadas</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${registros.filter(r => r.estado === 'Reparada').length}</div></div>
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Pendientes</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${registros.filter(r => r.estado !== 'Reparada').length}</div></div>
+                <button class="btn btn-danger" style="padding:5px 12px;font-size:12px" onclick="App.modules.corrective.showForm()">+ Registrar Falla</button>
             </div></div>
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
-                    <div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
+                    <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Total Fallas</p><p class="stat-sub">Registradas</p></div>
                     <div class="stat-value">${registros.length}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
-                    <div class="stat-icon orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+                    <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
                     <div class="stat-info"><p class="stat-label">En Mantencion</p><p class="stat-sub">Sin reparar</p></div>
                     <div class="stat-value">${registros.filter(r => r.estado === 'En Mantención').length}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
-                    <div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Reparadas</p><p class="stat-sub">Resueltas</p></div>
                     <div class="stat-value">${registros.filter(r => r.estado === 'Reparada').length}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #ef4444">
-                    <div class="stat-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div>
+                    <div class="stat-icon red"><svg width="12" height="12" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Detenidas</p><p class="stat-sub">Fuera de operacion</p></div>
                     <div class="stat-value">${registros.filter(r => r.estado === 'Detenido').length}</div>
                 </div>

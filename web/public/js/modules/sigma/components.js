@@ -13,33 +13,33 @@ App.registerModule('components', {
             db.getAll('spare_parts')
         ]);
         el.innerHTML = `
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Componentes</h2>
-            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Biblioteca de componentes industriales</p></div>
-            <div style="display:flex;gap:8px;align-items:center">
-                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Total</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${this._allComponentes.length}</div></div>
-                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;text-align:center"><div style="font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Enlaces</div><div style="font-size:16px;font-weight:800;color:white;line-height:1.2">${this._allLinks.length}</div></div>
-                <button class="btn btn-primary" onclick="App.modules.components.showForm()">+ Nuevo Componente</button>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Componentes</h2>
+            <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Biblioteca de componentes industriales</p></div>
+            <div style="display:flex;gap:6px;align-items:center">
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Total</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${this._allComponentes.length}</div></div>
+                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Enlaces</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${this._allLinks.length}</div></div>
+                <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.components.showForm()">+ Nuevo Componente</button>
             </div></div>
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
-                    <div class="stat-icon blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+                    <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Componentes</p><p class="stat-sub">Registrados</p></div>
                     <div class="stat-value">${this._allComponentes.length}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
-                    <div class="stat-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Con Descripcion</p><p class="stat-sub">Documentados</p></div>
                     <div class="stat-value">${this._allComponentes.filter(c => c.descripcion).length}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
-                    <div class="stat-icon orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+                    <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Enlaces a Tipos</p><p class="stat-sub">Asociaciones</p></div>
                     <div class="stat-value">${this._allLinks.length}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
-                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Repuestos</p><p class="stat-sub">En inventario</p></div>
                     <div class="stat-value">${this._allRepuestos.length}</div>
                 </div>
