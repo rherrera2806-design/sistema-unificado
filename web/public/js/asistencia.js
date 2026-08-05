@@ -294,6 +294,7 @@ const Asistencia = {
                 + '<td style="padding:12px 16px;text-align:center"><div style="display:flex;gap:4px;justify-content:center">'
                 + '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
                 + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '" title="' + (t.activo ? 'Desactivar' : 'Activar') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
+                + '<button onclick="Asistencia.eliminarTrabajador(' + t.id + ',\'' + t.nombre.replace(/'/g, "\\'") + '\')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                 + '</div></td></tr>';
         }).join('');
     },
@@ -376,6 +377,23 @@ const Asistencia = {
         });
         await this.cargarTodosTrabajadores();
         this.llenarSelectores();
+    },
+
+    async eliminarTrabajador(id, nombre) {
+        if (!confirm('¿Eliminar definitivamente a "' + nombre + '"?\n\nEsta acción no se puede deshacer y borrará también sus faltas, permisos, licencias, vacaciones y horas extras.')) return;
+        try {
+            const r = await fetch('/api/asistencia/trabajadores/' + id, { method: 'DELETE' });
+            if (!r.ok) {
+                const err = await r.json().catch(() => ({}));
+                throw new Error(err.error || 'Error al eliminar');
+            }
+            await this.cargarTodosTrabajadores();
+            await this.cargarTrabajadores();
+            this.llenarSelectores();
+        } catch (e) {
+            console.error('Error eliminando trabajador:', e);
+            alert('Error al eliminar: ' + e.message);
+        }
     },
 
     // ═══════ ASISTENCIA DIARIA ═══════

@@ -60,12 +60,27 @@ router.put('/api/asistencia/trabajadores/:id', async (req, res) => {
 });
 
 router.delete('/api/asistencia/trabajadores/:id', async (req, res) => {
+    const client = await pool.connect();
     try {
         const { id } = req.params;
-        await pool.query('DELETE FROM trabajadores WHERE id = $1', [id]);
-        res.json({ ok: true });
+        await client.query('BEGIN');
+        await client.query('DELETE FROM asistencia WHERE trabajador_id = $1', [id]);
+        await client.query('DELETE FROM permisos WHERE trabajador_id = $1', [id]);
+        await client.query('DELETE FROM licencias WHERE trabajador_id = $1', [id]);
+        await client.query('DELETE FROM vacaciones WHERE trabajador_id = $1', [id]);
+        await client.query('DELETE FROM horas_extras WHERE trabajador_id = $1', [id]);
+        const r = await client.query('DELETE FROM trabajadores WHERE id = $1 RETURNING nombre', [id]);
+        if (r.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Trabajador no encontrado' });
+        }
+        await client.query('COMMIT');
+        res.json({ ok: true, nombre: r.rows[0].nombre });
     } catch (e) {
+        await client.query('ROLLBACK');
         res.status(500).json({ error: e.message });
+    } finally {
+        client.release();
     }
 });
 
