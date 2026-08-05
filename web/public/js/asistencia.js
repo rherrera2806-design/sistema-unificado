@@ -757,7 +757,7 @@ const Asistencia = {
         filtered.forEach(t => {
             const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
             html += '<div class="ast-cal-row" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
-            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:700">' + t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2) + '</div><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + (fi ? ' (Ingresó ' + this.fmtDate(fi) + ')' : '') + '">' + t.nombre + '</span></div>';
+            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + (fi ? ' (Ingresó ' + this.fmtDate(fi) + ')' : '') + '">' + t.nombre + '</span></div>';
 
             for (let d = 1; d <= diasEnMes; d++) {
                 const fechaStr = anio + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
