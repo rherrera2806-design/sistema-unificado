@@ -4,11 +4,12 @@ App.registerModule('dashboard', {
         let stats = { totalMachines: 0, completedMaintenance: 0, upcomingMaintenance: 0, overdueMaintenance: 0, totalFailures: 0, criticalSpareParts: 0, recentFailures: [] };
         try { stats = await db.getStatsSummary(); } catch(e) { console.error('Error loading stats:', e); }
 
-        const [overdue, upcoming, recentFailures, recentPreventive, maquinas, componentes] = await Promise.all([
+        const [overdue, upcoming, recentFailures, recentPreventive, topFallas, maquinas, componentes] = await Promise.all([
             db.getOverdueMaintenance().catch(() => []),
             db.getUpcomingMaintenance(15).catch(() => []),
             db.getRecentCompleted().catch(() => []),
             db.getRecentCompleted().catch(() => []),
+            db.getTopFailingMachines().catch(() => []),
             db.getAll('machines').catch(() => []),
             db.getAll('components').catch(() => [])
         ]);
@@ -66,6 +67,7 @@ App.registerModule('dashboard', {
                 ${this.renderOverdueLocal(overdue, maqMap, compMap)}
                 ${this.renderUpcomingLocal(upcoming, maqMap, compMap)}
             </div>
+            ${this.renderTopFallas(topFallas)}
             ${this.renderRecentFailuresLocal(stats.recentFailures, maqMap, compMap)}
             ${this.renderRecentPreventiveLocal(recentPreventive, maqMap, compMap)}
         `;
@@ -95,6 +97,25 @@ App.registerModule('dashboard', {
                 return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td></tr>`;
             }).join('')}</tbody></table>`}
             </div></div>`;
+    },
+
+    renderTopFallas(data) {
+        if (!data || data.length === 0) return '';
+        const maxFallas = data[0] ? data[0].total_fallas : 1;
+        const medals = ['#f59e0b','#94a3b8','#cd7f32','#6b7280','#6b7280'];
+        let bars = '';
+        data.forEach((item, i) => {
+            const pct = maxFallas > 0 ? (item.total_fallas / maxFallas * 100) : 0;
+            bars += `<div class="dash-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:#f8fafc;margin-bottom:6px">
+                <span style="width:24px;height:24px;border-radius:50%;background:${medals[i]};color:white;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i + 1}</span>
+                <span style="flex:1;font-size:13px;font-weight:600;color:#1e293b">${escapeHtml(item.nombre)}</span>
+                <div style="width:120px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;flex-shrink:0"><div style="width:${pct}%;height:100%;background:${i === 0 ? '#ef4444' : '#f97316'};border-radius:4px;transition:width 0.6s ease"></div></div>
+                <span style="font-size:13px;font-weight:700;color:#ef4444;min-width:20px;text-align:right">${item.total_fallas}</span>
+            </div>`;
+        });
+        return `<div class="card mt-16 dash-card">
+            <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Top 5 Máquinas con Más Fallas</h3></div>
+            <div class="card-body">${bars}</div></div>`;
     },
 
     renderRecentFailuresLocal(recentFailures, maqMap, compMap) {
