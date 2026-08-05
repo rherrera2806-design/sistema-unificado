@@ -26,14 +26,14 @@ const InvHistorial = {
                             </div>
                             <div class="form-row">
                                 <div class="form-group"><label>Tipo</label><select id="hTipo" class="form-control"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select></div>
-                                <div class="form-group" style="display:flex; align-items:flex-end; gap:8px;"><button type="submit" class="btn btn-primary">Buscar</button><button type="button" class="btn btn-outline" onclick="InvHistorial.limpiar()">Limpiar</button></div>
+                                <div class="form-group" style="display:flex; align-items:flex-end; gap:8px;"><button type="submit" class="btn btn-primary" title="Buscar">Buscar</button><button type="button" class="btn btn-outline" title="Limpiar filtros" onclick="InvHistorial.limpiar()">Limpiar</button></div>
                             </div>
                         </form>
                     </div>
                 </div>
                 <div style="display:flex; gap:8px; margin-bottom:14px; justify-content:flex-end;">
-                    <button onclick="InvHistorial.exportarExcel()" class="btn btn-success btn-sm">Exportar Excel</button>
-                    <button onclick="window.print()" class="btn btn-outline btn-sm">Imprimir</button>
+                    <button onclick="InvHistorial.exportarExcel()" title="Exportar Excel" class="btn btn-success btn-sm">Exportar Excel</button>
+                    <button onclick="window.print()" title="Imprimir" class="btn btn-outline btn-sm">Imprimir</button>
                 </div>
                 <div class="card invHist-card"">
                     <div class="card invHist-card"-header">Historial <span id="hCount" style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>

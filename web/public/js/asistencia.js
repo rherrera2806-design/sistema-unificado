@@ -283,7 +283,7 @@ const Asistencia = {
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + t.rut + '</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + (t.activo ? 'background:#d1fae5;color:#059669' : 'background:#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center"><div style="display:flex;gap:4px;justify-content:center">'
-                + '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="ast-btn" style="background:#eff6ff;color:#3b82f6;font-size:10px;padding:5px 10px;border:1px solid #bfdbfe">Editar</button>'
+                + '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
                 + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="ast-btn" style="background:' + (t.activo ? '#fef3c7;color:#d97706;border:1px solid #fde68a' : '#d1fae5;color:#059669;border:1px solid #a7f3d0') + ';font-size:10px;padding:5px 10px">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
                 + '</div></td></tr>';
         }).join('');

@@ -81,7 +81,7 @@ App.registerModule('prod_reportes', {
                         <input type="date" id="prFilterHasta" onchange="App.modules.prod_reportes.aplicarFiltros()" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
                     </div>
                     <div>
-                        <button onclick="App.modules.prod_reportes.limpiarFiltros()" style="padding:8px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#64748b;white-space:nowrap">Limpiar</button>
+                        <button class="btn btn-outline btn-sm" title="Limpiar filtros" onclick="App.modules.prod_reportes.limpiarFiltros()">Limpiar</button>
                     </div>
                 </div>
             </div>

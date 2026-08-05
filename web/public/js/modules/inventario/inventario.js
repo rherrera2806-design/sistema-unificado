@@ -22,8 +22,8 @@ const InvInventario = {
                     ${tiposCristal.map(t => `<a class="filter-chip" onclick="InvInventario.filtrar('${t}')" id="invF_${t}">${t}</a>`).join('')}
                 </div>
                 <div style="display:flex; gap:8px; margin-bottom:14px; justify-content:flex-end;">
-                    <button onclick="InvInventario.exportarExcel()" class="btn btn-success btn-sm">Exportar Excel</button>
-                    <button onclick="window.print()" class="btn btn-outline btn-sm">Imprimir</button>
+                    <button onclick="InvInventario.exportarExcel()" title="Exportar Excel" class="btn btn-success btn-sm">Exportar Excel</button>
+                    <button onclick="window.print()" title="Imprimir" class="btn btn-outline btn-sm">Imprimir</button>
                 </div>
                 <div class="card inv-card">
                     <div class="card-header">Inventario Actual <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${items.length} tipos)</span></div>

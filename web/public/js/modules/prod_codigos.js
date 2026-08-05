@@ -16,8 +16,8 @@ ${puedeEditar ? `
 <div style="display:flex;gap:8px">
                     <button style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer" onclick="App.modules.prod_codigos.importarExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar Excel</button>
                     <button style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer" onclick="App.modules.prod_codigos.exportarExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Exportar Excel</button>
-                    ${permisos.includes('usuarios') ? '<button style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer" onclick="App.modules.prod_codigos.deleteAll()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar Registros</button>' : ''}
-                    <button style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer" onclick="App.modules.prod_codigos.showCreateModal()">+ Nuevo Codigo</button>
+                    ${permisos.includes('usuarios') ? '<button class="btn btn-danger btn-sm" title="Eliminar todos los registros" onclick="App.modules.prod_codigos.deleteAll()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar Registros</button>' : ''}
+                    <button class="btn btn-primary btn-sm" onclick="App.modules.prod_codigos.showCreateModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> + Nuevo</button>
                 </div>` : ''}
 </div></div>
 
@@ -72,7 +72,7 @@ ${puedeEditar ? `
 
             <div class="modal-overlay" id="codCreateModal">
                 <div class="modal" style="max-width:500px">
-                    <div class="modal-header"><h3>Nuevo Codigo</h3><button class="modal-close" onclick="App.modules.prod_codigos.hideCreateModal()">&times;</button></div>
+                    <div class="modal-header"><h3>Nuevo Codigo</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_codigos.hideCreateModal()">&times;</button></div>
                     <div class="modal-body">
                         <div class="form-group"><label>Codigo SAP *</label><input class="form-control" id="codCodigo" placeholder="Ej: V659, 100, P123" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
@@ -94,7 +94,7 @@ ${puedeEditar ? `
 
             <div class="modal-overlay" id="codImportModal">
                 <div class="modal" style="max-width:500px">
-                    <div class="modal-header"><h3>Importar Codigos SAP</h3><button class="modal-close" onclick="App.modules.prod_codigos.hideImportModal()">&times;</button></div>
+                    <div class="modal-header"><h3>Importar Codigos SAP</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_codigos.hideImportModal()">&times;</button></div>
                     <div class="modal-body">
                         <div id="codImportArea" style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer"
                              onclick="document.getElementById('codImportFile').click()">
@@ -188,7 +188,7 @@ ${puedeEditar ? `
             <td style="${td}">${c.familia ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${c.familia}</span>` : '-'}</td>
             <td style="${td}">${c.bloqueo_tela ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#fee2e2;color:#991b1b">Si</span>' : '<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#f1f5f9;color:#64748b">No</span>'}</td>
             <td style="${td};font-size:12px;color:var(--text-light)">${fmtDate(c.created_at)}</td>
-            <td style="${td}">${puedeEditar ? `<button class="btn btn-sm btn-outline" style="color:#ef4444;border-color:#ef4444;padding:2px 8px;font-size:11px" onclick="App.modules.prod_codigos.delete(${c.id})">Eliminar</button>` : ''}</td>
+            <td style="${td}">${puedeEditar ? `<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_codigos.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
         </tr>`).join('');
     },
 

@@ -91,8 +91,8 @@ App.registerModule('turnos', {
             + '<div id="tRActualLarge" style="font-size:52px;font-weight:900;color:#1e293b;line-height:1">-</div>'
             + '<div id="tRActualNombre" style="color:#64748b;font-size:15px;margin-top:8px;font-weight:500">Sin turno</div></div>'
 
-            + '<button onclick="App.modules.turnos.rLlamar()" id="tRBtnLlamar" style="width:100%;margin-bottom:8px;padding:14px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(34,197,94,0.3)" onmouseover="this.style.background=\'linear-gradient(135deg,#16a34a,#15803d)\'" onmouseout="this.style.background=\'linear-gradient(135deg,#22c55e,#16a34a)\'">Llamar Siguiente</button>'
-            + '<button onclick="App.modules.turnos.abrirModalDerivar()" id="tRBtnDerivar" style="width:100%;margin-bottom:20px;padding:14px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.15s;text-transform:uppercase;letter-spacing:0.5px;display:none;box-shadow:0 2px 8px rgba(59,130,246,0.3)" onmouseover="this.style.background=\'linear-gradient(135deg,#2563eb,#1d4ed8)\'" onmouseout="this.style.background=\'linear-gradient(135deg,#3b82f6,#2563eb)\'">Derivar a Verificacion de Bodega</button>'
+            + '<button onclick="App.modules.turnos.rLlamar()" id="tRBtnLlamar" class="btn btn-primary" style="width:100%;margin-bottom:8px;padding:14px;font-size:14px;text-transform:uppercase;letter-spacing:0.5px">Llamar Siguiente</button>'
+            + '<button onclick="App.modules.turnos.abrirModalDerivar()" id="tRBtnDerivar" class="btn btn-primary" style="width:100%;margin-bottom:20px;padding:14px;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;display:none">Derivar a Verificacion</button>'
 
             + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
             + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
@@ -116,8 +116,8 @@ App.registerModule('turnos', {
             + '<div id="tMdFilesList" style="font-size:11px;color:#94a3b8;margin-top:4px"></div></div>'
             + '<p id="tMdError" style="color:#dc2626;font-size:12px;display:none;margin-top:8px"></p>'
             + '<div style="display:flex;gap:8px;margin-top:16px">'
-            + '<button onclick="App.modules.turnos.cerrarModalDerivar()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>'
-            + '<button onclick="App.modules.turnos.rDerivar()" id="tMdBtn" style="flex:2;background:#3b82f6;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Derivar</button></div></div></div>';
+            + '<button onclick="App.modules.turnos.cerrarModalDerivar()" class="btn btn-outline" style="flex:1">Cancelar</button>'
+            + '<button onclick="App.modules.turnos.rDerivar()" id="tMdBtn" class="btn btn-primary" style="flex:2">Derivar</button></div></div></div>';
         await this.rCargar();
         this.interval = setInterval(() => this.rCargar(), 15000);
     },
@@ -205,7 +205,7 @@ App.registerModule('turnos', {
         if (t.total_segundos) details += `<span style="color:#64748b">Total: <span style="color:#1e293b;font-weight:800">${this.fmtSec(t.total_segundos)}</span></span>`;
         details += `</div>`;
 
-        const deleteBtn = this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarTurno(${t.id})" style="position:absolute;right:12px;top:12px;background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'" title="Eliminar">&#10005;</button>` : '';
+        const deleteBtn = this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarTurno(${t.id})" class="btn btn-sm btn-danger" title="Eliminar" style="position:absolute;right:12px;top:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : '';
 
         return `<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;position:relative;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">${header}${details}<span style="font-size:11px;color:#94a3b8;margin-top:6px;display:block">${t.fecha_fmt||''}</span>${deleteBtn}</div>`;
     },
@@ -283,7 +283,7 @@ App.registerModule('turnos', {
             + '<input id="tBPedidos" type="text" placeholder="Numero de pedido(s)" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
             + '<div style="margin-top:12px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Descripcion (opcional)</label>'
             + '<input id="tBDesc" type="text" placeholder="Descripcion breve" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<button onclick="App.modules.turnos.bRegistrar()" style="width:100%;margin-top:16px;padding:12px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase" onmouseover="this.style.background=\'#15803d\'" onmouseout="this.style.background=\'linear-gradient(135deg,#22c55e,#16a34a)\'">Registrar</button>'
+            + '<button onclick="App.modules.turnos.bRegistrar()" class="btn btn-primary" style="width:100%;margin-top:16px;padding:12px;font-size:13px;text-transform:uppercase">Registrar</button>'
             + '<p id="tBError" style="color:#dc2626;font-size:12px;margin-top:8px;display:none"></p></div></div>'
 
             + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
@@ -307,8 +307,8 @@ App.registerModule('turnos', {
             + '<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Observaciones</label>'
             + '<textarea id="tVerObs" rows="2" placeholder="Observaciones opcionales" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box;resize:vertical" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></textarea></div>'
             + '<div style="display:flex;gap:8px">'
-            + '<button onclick="App.modules.turnos.cerrarModalVerificar()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>'
-            + '<button onclick="App.modules.turnos.confirmarVerificar()" id="tVerBtn" style="flex:2;background:#16a34a;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Verificar</button></div></div></div>';
+            + '<button onclick="App.modules.turnos.cerrarModalVerificar()" class="btn btn-outline" style="flex:1">Cancelar</button>'
+            + '<button onclick="App.modules.turnos.confirmarVerificar()" id="tVerBtn" class="btn btn-primary" style="flex:2">Verificar</button></div></div></div>';
         await this.bCargar();
         this.interval = setInterval(() => this.bCargar(), 15000);
     },
@@ -361,7 +361,7 @@ App.registerModule('turnos', {
             if (pl) pl.innerHTML = p.length === 0 ? '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">No hay entregas pendientes</div>' : p.map(e => {
                 const tipoBg = e.tipo === 'Despacho' ? '#fef3c7' : '#dcfce7';
                 const tipoColor = e.tipo === 'Despacho' ? '#92400e' : '#166534';
-                const deleteBtn = this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" style="background:white;color:#dc2626;border:1px solid #fecaca;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'" title="Eliminar">&#10005;</button>` : '';
+                const deleteBtn = this.canEliminar() ? `<button onclick="App.modules.turnos.eliminarEntrega(${e.id})" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : '';
                 return `<div style="padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:background 0.1s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
                     <div>
                         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -374,7 +374,7 @@ App.registerModule('turnos', {
                     </div>
                     <div style="display:flex;gap:6px;align-items:center">
                         ${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" style="padding:5px 10px;font-size:11px;font-weight:600;color:#7c3aed;background:#f3e8ff;border:1px solid #e9d5ff;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#ede9fe'" onmouseout="this.style.background='#f3e8ff'">PDF (${e.adjuntos_count})</button>` : ''}
-                        <button onclick="App.modules.turnos.abrirModalVerificar(${e.id})" style="padding:6px 14px;font-size:12px;font-weight:600;color:white;background:#16a34a;border:none;border-radius:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Verificar</button>
+                        <button class="btn btn-primary btn-sm" title="Verificar" onclick="App.modules.turnos.abrirModalVerificar(${e.id})">Verificar</button>
                         ${deleteBtn}
                     </div>
                 </div>`;
@@ -515,8 +515,8 @@ App.registerModule('turnos', {
             + '<div id="tTecAlmBody" style="display:none;padding:0 20px 20px;border-top:1px solid #f1f5f9">'
             + '<div style="display:flex;gap:8px;margin-top:16px">'
             + '<input id="tTecAlmNombre" type="text" placeholder="Nombre del encargado" style="flex:1;font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'">'
-            + '<button onclick="App.modules.turnos.addTecnicoAlm()" style="padding:10px 18px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'#1d4ed8\'" onmouseout="this.style.background=\'linear-gradient(135deg,#3b82f6,#2563eb)\'">Agregar</button></div>'
-            + '<div id="tTecAlmList" style="margin-top:12px">' + (tecnicos.length === 0 ? '<div style="color:#94a3b8;font-size:12px;padding:8px">Sin encargados registrados</div>' : tecnicos.map(function(t) { return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f1f5f9"><span style="font-size:13px;color:#1e293b">' + escapeHtml(t.nombre) + '</span><button onclick="App.modules.turnos.delTecnicoAlm(' + t.id + ')" style="background:white;color:#dc2626;border:1px solid #fecaca;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'">&#10005;</button></div>'; }).join('')) + '</div></div></div>'
+            + '<button onclick="App.modules.turnos.addTecnicoAlm()" title="Agregar encargado" style="padding:10px 18px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'#1d4ed8\'" onmouseout="this.style.background=\'linear-gradient(135deg,#3b82f6,#2563eb)\'">Agregar</button></div>'
+            + '<div id="tTecAlmList" style="margin-top:12px">' + (tecnicos.length === 0 ? '<div style="color:#94a3b8;font-size:12px;padding:8px">Sin encargados registrados</div>' : tecnicos.map(function(t) { return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f1f5f9"><span style="font-size:13px;color:#1e293b">' + escapeHtml(t.nombre) + '</span><button onclick="App.modules.turnos.delTecnicoAlm(' + t.id + ')" title="Eliminar" class="btn btn-sm btn-danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>'; }).join('')) + '</div></div></div>'
 
             + '<div class="t-card" style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
             + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">'
@@ -537,8 +537,8 @@ App.registerModule('turnos', {
             + '<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Observacion (opcional)</label>'
             + '<textarea id="tCargadoObs" rows="3" placeholder="Ej: Productos completos, falta item X, etc." style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box;resize:vertical" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></textarea></div>'
             + '<div style="display:flex;gap:8px">'
-            + '<button onclick="App.modules.turnos.cerrarModalCargado()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>'
-            + '<button onclick="App.modules.turnos.confirmarCargado()" id="tCargadoBtn" style="flex:2;background:#16a34a;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Confirmar Cargado</button></div></div></div>';
+            + '<button onclick="App.modules.turnos.cerrarModalCargado()" class="btn btn-outline" style="flex:1">Cancelar</button>'
+            + '<button onclick="App.modules.turnos.confirmarCargado()" id="tCargadoBtn" class="btn btn-primary" style="flex:2">Confirmar Cargado</button></div></div></div>';
         await this.almCargar();
         this.interval = setInterval(() => this.almCargar(), 15000);
     },
@@ -587,7 +587,7 @@ App.registerModule('turnos', {
                         </div>
                         <div style="display:flex;gap:6px;align-items:center">
                             ${Number(e.adjuntos_count) > 0 ? `<button onclick="App.modules.turnos.verAdjuntos(${e.turno_id})" style="padding:5px 10px;font-size:11px;font-weight:600;color:#7c3aed;background:#f3e8ff;border:1px solid #e9d5ff;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#ede9fe'" onmouseout="this.style.background='#f3e8ff'">PDF (${e.adjuntos_count})</button>` : ''}
-                            <button onclick="App.modules.turnos.abrirModalCargado(${e.id})" style="padding:7px 16px;font-size:12px;font-weight:600;color:white;background:#16a34a;border:none;border-radius:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Cargado</button>
+                            <button class="btn btn-primary btn-sm" title="Marcar como cargado" onclick="App.modules.turnos.abrirModalCargado(${e.id})">Cargado</button>
                         </div>
                     </div>
                 </div>
@@ -696,7 +696,7 @@ App.registerModule('turnos', {
                             <input id="facMonto_${e.id}" type="number" placeholder="0" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'">
                         </div>
                     </div>
-                    <button onclick="App.modules.turnos.facturar(${e.id})" style="width:100%;margin-top:12px;padding:10px;background:#16a34a;color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s;text-transform:uppercase" onmouseover="this.style.background='#15803d'" onmouseout="this.style.background='#16a34a'">Facturar</button>
+                    <button class="btn btn-primary" title="Facturar" onclick="App.modules.turnos.facturar(${e.id})" style="width:100%;margin-top:12px;text-transform:uppercase">Facturar</button>
                     ${e.pedidos ? `<div style="font-size:12px;color:#94a3b8;margin-top:8px">Pedido: <span style="color:#1e40af;font-weight:600">${escapeHtml(e.pedidos)}</span></div>` : ''}
                 </div>
             `).join('');

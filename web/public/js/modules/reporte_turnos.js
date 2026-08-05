@@ -31,7 +31,7 @@ App.registerModule('reporte_turnos', {
                         <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Hasta</label>
                         <input type="date" id="rtHasta" class="form-control" value="${hoy}" style="font-size:13px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;width:160px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     </div>
-                    <button onclick="App.modules.reporte_turnos.cargar()" style="font-size:13px;background:#1e40af;color:white;border:none;padding:9px 24px;border-radius:8px;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#1e3a8a'" onmouseout="this.style.background='#1e40af'">Buscar</button>
+                    <button class="btn btn-primary btn-sm" onclick="App.modules.reporte_turnos.cargar()">Buscar</button>
                     <div id="rtFilterInfo" style="font-size:12px;color:#64748b;margin-left:8px"></div>
                 </div>
             </div>
@@ -43,8 +43,8 @@ App.registerModule('reporte_turnos', {
                     <input id="rtPassInput" type="password" placeholder="Contrasena admin" style="font-size:13px;width:100%;background:#f8fafc;border:1px solid #e2e8f0;color:#1e293b;padding:10px 12px;border-radius:8px;box-sizing:border-box" onkeydown="if(event.key==='Enter')App.modules.reporte_turnos.confirmarEliminar()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     <p id="rtPassError" style="color:#dc2626;font-size:12px;display:none;margin:8px 0 0"></p>
                     <div style="display:flex;gap:8px;margin-top:16px">
-                        <button onclick="App.modules.reporte_turnos.cerrarModal()" style="flex:1;background:white;color:#64748b;border:1px solid #e2e8f0;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500">Cancelar</button>
-                        <button onclick="App.modules.reporte_turnos.confirmarEliminar()" id="rtPassBtn" style="flex:1;background:#dc2626;color:white;border:none;padding:10px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">Eliminar</button>
+                        <button class="btn btn-outline" onclick="App.modules.reporte_turnos.cerrarModal()">Cancelar</button>
+                        <button class="btn btn-danger" onclick="App.modules.reporte_turnos.confirmarEliminar()" id="rtPassBtn">Eliminar</button>
                     </div>
                 </div>
             </div>
@@ -306,7 +306,7 @@ App.registerModule('reporte_turnos', {
                 <td style="padding:8px 10px;font-size:11px;color:#1e40af;font-weight:600">${escapeHtml(r.factura || '-')}</td>
                 <td style="padding:8px 10px;font-size:11px;text-align:right;color:#1e293b;font-weight:600;font-family:'SF Mono','Consolas',monospace">${r.monto_factura > 0 ? '$' + Number(r.monto_factura).toLocaleString('es-CL') : '-'}</td>
                 <td style="padding:8px 10px;text-align:center;border-left:1px solid #f1f5f9"><span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;background:${estadoConfig.bg};color:${estadoConfig.color};border:1px solid ${estadoConfig.border}">${estado}</span>${tipoBadge}</td>
-                <td style="padding:8px 10px;text-align:center">${r._origen === 'turno' ? `<button style="background:white;color:#dc2626;border:1px solid #fecaca;padding:4px 10px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:600;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'" onclick="App.modules.reporte_turnos.solicitarPass('turno',${r.id})">Eliminar</button>` : `<button style="background:white;color:#dc2626;border:1px solid #fecaca;padding:4px 10px;border-radius:6px;font-size:10px;cursor:pointer;font-weight:600;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'" onclick="App.modules.reporte_turnos.solicitarPass('entrega',${r.entrega_id})">Eliminar</button>`}</td>
+                <td style="padding:8px 10px;text-align:center">${r._origen === 'turno' ? `<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.reporte_turnos.solicitarPass('turno',${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : `<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.reporte_turnos.solicitarPass('entrega',${r.entrega_id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`}</td>
             </tr>`;
         }).join('');
     },

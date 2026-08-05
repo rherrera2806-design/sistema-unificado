@@ -47,8 +47,8 @@ App.registerModule('inst_detalle', {
 
         let actionBtns = '';
         if (canEdit) {
-            actionBtns += '<button onclick="App.modules.inst_detalle.editarInstalacion(' + inst.id + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar</button>';
-            actionBtns += '<button onclick="App.modules.inst_detalle.eliminarInstalacion(' + inst.id + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:#dc2626;background:white;border:1px solid #fecaca;border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'#fef2f2\'" onmouseout="this.style.background=\'white\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Eliminar</button>';
+            actionBtns += '<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.inst_detalle.editarInstalacion(' + inst.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
+            actionBtns += '<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.inst_detalle.eliminarInstalacion(' + inst.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
         }
         if (inst.estado === 'PROGRAMADA') actionBtns += '<button onclick="App.modules.inst_detalle.cambiarEstado(' + inst.id + ',\'EN_CAMINO\')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.3)">En Camino</button>';
         if (inst.estado === 'EN_CAMINO') actionBtns += '<button onclick="App.modules.inst_detalle.cambiarEstado(' + inst.id + ',\'EN_CURSO\')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:linear-gradient(135deg,#f59e0b,#d97706);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,0.3)">En Curso</button>';
@@ -68,7 +68,7 @@ App.registerModule('inst_detalle', {
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">'
             + '<div style="display:flex;align-items:center;gap:16px">'
-            + '<button onclick="App.loadModule(\'instalaciones\')" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
+            + '<button onclick="App.loadModule(\'instalaciones\')" title="Volver a instalaciones" style="padding:8px 14px;font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><polyline points="15 18 9 12 15 6"/></svg>Volver</button>'
             + '<div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Instalacion #' + inst.id + '</h2>'
             + '<p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">' + escapeHtml(inst.cliente) + ' &middot; ' + escapeHtml(inst.direccion || '') + '</p></div>'
             + '</div>'
@@ -134,7 +134,7 @@ App.registerModule('inst_detalle', {
                 ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'
                 + this.fotos.map(f => '<div class="det-foto" style="position:relative;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">'
                     + '<img src="/api/instalaciones/' + inst.id + '/foto/' + f.id + '" style="width:100%;height:120px;object-fit:cover;display:block" onclick="App.modules.inst_detalle.verFoto(' + inst.id + ',' + f.id + ')" title="' + escapeHtml(f.descripcion || '') + '">'
-                    + (canEdit ? '<button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(' + inst.id + ',' + f.id + ')" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:rgba(239,68,68,0.9);color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.2)" title="Eliminar">&#10005;</button>' : '')
+                    + (canEdit ? '<button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(' + inst.id + ',' + f.id + ')" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:rgba(239,68,68,0.9);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.2)" title="Eliminar"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : '')
                     + '</div>').join('')
                 + '</div>'
                 : '<div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">Sin fotografias</div>'
@@ -165,7 +165,7 @@ App.registerModule('inst_detalle', {
                     <canvas id="firmaCanvas" width="460" height="180" style="display:block;width:100%;height:180px;touch-action:none;cursor:crosshair"></canvas>
                 </div>
                 <div style="display:flex;gap:8px;margin-top:6px">
-                    <button type="button" class="btn btn-outline btn-sm" onclick="App.modules.inst_detalle.limpiarFirma()" style="font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar</button>
+                    <button type="button" class="btn btn-outline btn-sm" title="Limpiar firma" onclick="App.modules.inst_detalle.limpiarFirma()" style="font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar</button>
                     <span style="font-size:11px;color:#64748b;align-self:center">Firme aqui con el dedo o mouse</span>
                 </div>
             </div>
@@ -273,7 +273,7 @@ App.registerModule('inst_detalle', {
         `, { title: 'Registrar Novedad #' + id });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
-            <button class="btn btn-danger" onclick="App.modules.inst_detalle.registrarNovedad(${id})">Registrar</button>
+            <button class="btn btn-primary" onclick="App.modules.inst_detalle.registrarNovedad(${id})">Registrar</button>
         `;
     },
 

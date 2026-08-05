@@ -199,7 +199,7 @@ App.modules.planificacion = {
                 <div style="display:grid;grid-template-columns:1fr 120px 60px;gap:8px;align-items:center;margin-bottom:8px">
                     <div style="font-weight:500"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c.color};margin-right:6px"></span>${c.grupo}</div>
                     <input type="number" class="form-control" value="${c.capacidad_kg_dia}" id="planCapG_${c.id}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.planificacion.guardarCapacidadGrupo(${c.id})">💾</button>
+                    <button class="btn btn-sm btn-primary" title="Guardar capacidad" onclick="App.modules.planificacion.guardarCapacidadGrupo(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
                 </div>
             `).join('')}
         `;
@@ -324,8 +324,8 @@ App.modules.planificacion = {
                         <input type="date" class="form-control" id="planGrupoFecha" value="${this.fechaGrupo}" onchange="App.modules.planificacion.cambiarFechaGrupo()" style="width:140px;padding:4px 8px;font-size:12px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(-1)">◀</button>
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(1)">▶</button>
-                        ${puedeEditar ? '<button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.showCapacidadGrupo()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Capacidad</button>' : ''}
-                        ${puedeEditar ? '<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="App.modules.planificacion.showAutoAsignarGrupo()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar</button>' : ''}
+                        ${puedeEditar ? '<button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.showCapacidadGrupo()" title="Configurar capacidad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Capacidad</button>' : ''}
+                        ${puedeEditar ? '<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="App.modules.planificacion.showAutoAsignarGrupo()" title="Auto-asignar"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar</button>' : ''}
                     </div>
                 </div>
                 <div class="card-body" style="padding:16px">
@@ -364,7 +364,7 @@ App.modules.planificacion = {
 
             <div class="modal-overlay" id="planAsignarModal">
                 <div class="modal" style="max-width:500px">
-                    <div class="modal-header"><h3>Asignar Fecha de Entrega</h3><button class="modal-close" onclick="App.modules.planificacion.cerrarModal()">&times;</button></div>
+                    <div class="modal-header"><h3>Asignar Fecha de Entrega</h3><button class="modal-close" title="Cerrar" onclick="App.modules.planificacion.cerrarModal()">&times;</button></div>
                     <div class="modal-body" id="planAsignarBody"></div>
                 </div>
             </div>

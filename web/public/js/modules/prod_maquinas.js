@@ -56,7 +56,7 @@ ${puedeEditar ? `
 
             <div class="modal-overlay" id="mqCreateModal">
                 <div class="modal" style="max-width:450px">
-                    <div class="modal-header"><h3 id="mqModalTitle">Nueva Maquina</h3><button class="modal-close" onclick="App.modules.prod_maquinas.hideCreateModal()">&times;</button></div>
+                    <div class="modal-header"><h3 id="mqModalTitle">Nueva Maquina</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_maquinas.hideCreateModal()">&times;</button></div>
                     <div class="modal-body">
                         <div class="form-group"><label>Nombre *</label><input class="form-control" id="mqNombre" placeholder="Ej: Cortadora CNC" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         <div class="form-group"><label>Codigo *</label><input class="form-control" id="mqCodigo" placeholder="Ej: COR-01" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
@@ -121,8 +121,8 @@ ${puedeEditar ? `
             <td style="${td}">${estadoBadge(m.estado)}</td>
             <td style="${td}"><strong>${Number(m.capacidad_max_m2_dia).toFixed(1)}</strong></td>
             <td style="${td}">
-                ${puedeEditar ? `<button class="btn btn-sm btn-outline" onclick="App.modules.prod_maquinas.edit(${m.id})">Editar</button>
-                <button class="btn btn-sm btn-outline" style="margin-left:4px;color:#ef4444;border-color:#ef4444" onclick="App.modules.prod_maquinas.delete(${m.id})">Eliminar</button>` : ''}
+                ${puedeEditar ? `<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_maquinas.edit(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="btn btn-sm btn-danger" title="Eliminar" style="margin-left:4px" onclick="App.modules.prod_maquinas.delete(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
             </td>
         </tr>`).join('');
     },
@@ -200,7 +200,7 @@ ${puedeEditar ? `
             overlay.className = 'modal-overlay';
             overlay.innerHTML = `
                 <div class="modal" style="max-width:550px">
-                    <div class="modal-header"><h3>Importar Maquinas desde Excel</h3><button class="modal-close" onclick="App.modules.prod_maquinas.hideImportModal()">&times;</button></div>
+                    <div class="modal-header"><h3>Importar Maquinas desde Excel</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_maquinas.hideImportModal()">&times;</button></div>
                     <div class="modal-body">
                         <p style="color:var(--text-light);font-size:13px;margin-bottom:12px">El archivo debe tener columnas: <strong>Codigo, Nombre, Tipo_proceso, n_operacion, capacidad_max_m2_dia, Estado</strong></p>
                         <p style="color:var(--text-light);font-size:12px;margin-bottom:16px">Los codigos duplicados seran omitidos. Estado puede ser: ACTIVA, INACTIVA, MANTENCION</p>
