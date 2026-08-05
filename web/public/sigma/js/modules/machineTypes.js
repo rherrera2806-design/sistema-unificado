@@ -9,11 +9,17 @@ App.registerModule('machineTypes', {
         const maqsCount = maquinas.length;
         const compsCount = componentes.length;
         const vinculosCount = links.length;
+        const maqByTipo = {};
+        maquinas.forEach(m => { if (!maqByTipo[m.tipo_id]) maqByTipo[m.tipo_id] = []; maqByTipo[m.tipo_id].push(m); });
+        const compByTipo = {};
+        links.forEach(l => { if (!compByTipo[l.tipo_id]) compByTipo[l.tipo_id] = new Set(); compByTipo[l.tipo_id].add(l.componente_id); });
+        const compMap = {};
+        componentes.forEach(c => { compMap[c.id] = c; });
         let rows = '';
         for (const t of tipos) {
-            const raw = await db.getComponentsByType(t.id);
-            const comps = raw.filter((c, i, a) => a.findIndex(x => x.id === c.id) === i);
-            const maqs = await db.query('machines', m => m.tipo_id === t.id);
+            const compIds = compByTipo[t.id] ? [...compByTipo[t.id]] : [];
+            const comps = compIds.map(id => compMap[id]).filter(Boolean);
+            const maqs = maqByTipo[t.id] || [];
             rows += `<tr>
                 <td>${t.id}</td>
                 <td><strong>${t.nombre}</strong></td>
