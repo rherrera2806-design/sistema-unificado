@@ -76,6 +76,8 @@ App.registerModule('bitacora', {
         const tecnico = document.getElementById('bitTecnico').value;
 
         let filtered = this._data.filter(r => {
+            const estadoFinal = r.tipo_mantencion === 'Preventiva' ? (r.estado || '') : (r.estado || 'Reparada');
+            if (estadoFinal !== 'Realizada' && estadoFinal !== 'Reparada') return false;
             const fecha = r.tipo_mantencion === 'Preventiva' ? (r.fecha_ejecutada || r.fecha_programada) : (r.fecha_falla || '');
             if (desde && fecha < desde) return false;
             if (hasta && fecha > hasta) return false;
