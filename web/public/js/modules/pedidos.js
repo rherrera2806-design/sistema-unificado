@@ -104,7 +104,7 @@ App.registerModule('pedidos', {
             + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Tipo de OV *</label>'
             + '<select id="pedTipoOV" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'">'
             + '<option value="Normal" selected style="background:#e0f2fe;color:#0f172a">Normal</option>'
-            + '<option value="Express" style="background:#eab308;color:white;font-weight:700">Express</option>'
+            + '<option value="Express" style="background:#facc15;color:#0f172a;font-weight:700">Express</option>'
             + '<option value="Vta. Region" style="background:#9333ea;color:white">Vta. Region</option>'
             + '<option value="Reposicion" style="background:#dc2626;color:white">Reposición</option>'
             + '<option value="Urgencia" style="background:#f97316;color:white;font-weight:700">Urgencia</option>'
@@ -292,7 +292,7 @@ App.registerModule('pedidos', {
     },
     tipoOvBadge(tipo) {
         const t = tipo || 'Normal';
-        if (t === 'Express') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#eab308;color:white">Express</span>';
+        if (t === 'Express') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#facc15;color:#0f172a">Express</span>';
         if (t === 'Vta. Region') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#9333ea;color:white">Vta. Region</span>';
         if (t === 'Reposicion') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#dc2626;color:white">Reposición</span>';
         if (t === 'Urgencia') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f97316;color:white">Urgencia</span>';
@@ -547,7 +547,7 @@ App.registerModule('pedidos', {
         const mes = now.getMonth();
         const anio = now.getFullYear();
         const diasEnMes = new Date(anio, mes + 1, 0).getDate();
-        const colores = { Normal: '#3b82f6', Express: '#eab308', 'Vta. Region': '#9333ea', Reposicion: '#dc2626', Urgencia: '#f97316' };
+        const colores = { Normal: '#3b82f6', Express: '#facc15', 'Vta. Region': '#9333ea', Reposicion: '#dc2626', Urgencia: '#f97316' };
         const tipos = ['Normal', 'Express', 'Vta. Region', 'Reposicion', 'Urgencia'];
 
         const pedidosMes = this.allPedidos.filter(p => {
