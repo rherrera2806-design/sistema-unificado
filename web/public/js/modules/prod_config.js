@@ -97,7 +97,7 @@ App.registerModule('prod_config', {
             <div class="card">
                 <div class="card-header" style="justify-content:space-between">
                     <h3 style="margin:0">Estaciones Maestras (Secuencia de Planta)</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showEstacionForm()">+ Nueva Estacion</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showEstacionForm()"> Nueva Estacion</button>
                 </div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Orden</th><th>Nombre</th><th>Cap. Max m²/día</th><th>Cuello Botella</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -168,7 +168,7 @@ App.registerModule('prod_config', {
             <div class="card">
                 <div class="card-header" style="justify-content:space-between">
                     <h3 style="margin:0">Familias de Producto</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showFamiliaForm()">+ Nueva Familia</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showFamiliaForm()"> Nueva Familia</button>
                 </div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Codigo</th><th>Nombre</th><th>Costo HH</th><th>Costo Energia</th><th>Estaciones Base</th><th>Acciones</th></tr></thead>
@@ -249,7 +249,7 @@ App.registerModule('prod_config', {
             <div class="card">
                 <div class="card-header" style="justify-content:space-between">
                     <h3 style="margin:0">Materias Primas (Vidrios)</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()">+ Nueva Materia Prima</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()"> Nueva Materia Prima</button>
                 </div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Codigo</th><th>Nombre</th><th>Espesor (mm)</th><th>Costo $/m2</th><th>Observacion</th><th>Acciones</th></tr></thead>
@@ -324,7 +324,7 @@ App.registerModule('prod_config', {
             <div class="card">
                 <div class="card-header" style="justify-content:space-between">
                     <h3 style="margin:0">Reglas de Procesos Extras (Banderas Excel)</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showReglaForm()">+ Nueva Regla</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showReglaForm()"> Nueva Regla</button>
                 </div>
                 <div class="card-body" style="padding:0">
                     <p style="padding:8px 16px;font-size:12px;color:var(--text-light);margin:0">Mapea las columnas del Excel de SAP con la estacion que se agrega cuando el valor es 1</p>

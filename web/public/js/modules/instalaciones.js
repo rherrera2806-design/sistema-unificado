@@ -26,7 +26,7 @@ App.registerModule('instalaciones', {
             + '<div style="display:flex;gap:8px">'
             + '<button onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores" style="padding:8px 16px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Vendedores</button>'
             + '<button onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos" style="padding:8px 16px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Tecnicos</button>'
-            + (puedeCrear ? '<button onclick="App.modules.instalaciones.showForm()" class="btn btn-primary" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> + Nuevo</button>' : '')
+            + (puedeCrear ? '<button onclick="App.modules.instalaciones.showForm()" class="btn btn-primary" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
             + '</div></div></div>'
 
             + '<div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px"></div>'
@@ -258,7 +258,7 @@ App.registerModule('instalaciones', {
             + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
         const html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
             + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Tecnicos (' + list.length + ')</h3>'
-            + '<button onclick="App.modules.instalaciones.formTecnico()" class="btn btn-primary btn-sm">+ Nuevo</button>'
+            + '<button onclick="App.modules.instalaciones.formTecnico()" class="btn btn-primary btn-sm"> Nuevo</button>'
             + '</div><div id="tecnicoFormInst"></div>' + tableHtml;
         App.showModal(html, { title: 'Configurar Tecnicos' });
     },
@@ -325,7 +325,7 @@ App.registerModule('instalaciones', {
             + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
         const html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
             + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Vendedores (' + list.length + ')</h3>'
-            + '<button onclick="App.modules.instalaciones.formVendedor()" class="btn btn-primary btn-sm">+ Nuevo</button>'
+            + '<button onclick="App.modules.instalaciones.formVendedor()" class="btn btn-primary btn-sm"> Nuevo</button>'
             + '</div><div id="vendedorFormInst"></div>' + tableHtml;
         App.showModal(html, { title: 'Configurar Vendedores' });
     },
