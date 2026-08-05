@@ -15,7 +15,7 @@ App.registerModule('dashboard', {
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
         if (!this._datos) {
-            const [preventivos, correctivos, maquinas, componentes, overdue, upcoming, recentFailures, recentPreventive, topFallas, statsSummary] = await Promise.all([
+            const [preventivos, correctivos, maquinas, componentes, overdue, upcoming, recentFailures, recentPreventive, statsSummary] = await Promise.all([
                 db.getAll('preventive_maintenance').catch(() => []),
                 db.getAll('corrective_maintenance').catch(() => []),
                 db.getAll('machines').catch(() => []),
@@ -24,12 +24,13 @@ App.registerModule('dashboard', {
                 db.getUpcomingMaintenance(15).catch(() => []),
                 db.getRecentCompleted().catch(() => []),
                 db.getRecentCompleted().catch(() => []),
-                db.getTopFailingMachines().catch(() => []),
                 db.getStatsSummary().catch(() => ({ completedMaintenance: 0, upcomingMaintenance: 0, overdueMaintenance: 0, totalFailures: 0 }))
             ]);
-            this._datos = { preventivos, correctivos, maquinas, componentes, overdue, upcoming, recentFailures, recentPreventive, topFallas, statsSummary };
+            this._datos = { preventivos, correctivos, maquinas, componentes, overdue, upcoming, recentFailures, recentPreventive, statsSummary };
         }
-        const { preventivos, correctivos, maquinas, componentes, overdue, upcoming, recentFailures, recentPreventive, topFallas, statsSummary } = this._datos;
+        const { preventivos, correctivos, maquinas, componentes, overdue, upcoming, recentFailures, recentPreventive, statsSummary } = this._datos;
+
+        const topFallas = this.computeTopFallasPeriodo(correctivos, maquinas, this._periodo, this._anio, this._mes);
 
         const maqMap = {};
         maquinas.forEach(m => { maqMap[m.id] = m; });
@@ -122,6 +123,27 @@ App.registerModule('dashboard', {
     setMes(mes) { this._mes = parseInt(mes); this.renderData(); },
     setAnio(anio) { this._anio = parseInt(anio); this.renderData(); },
 
+    computeTopFallasPeriodo(correctivos, maquinas, periodo, anio, mes) {
+        const inPeriod = (fecha) => {
+            if (!fecha) return false;
+            const f = fecha.split('T')[0];
+            const [y, m, d] = f.split('-').map(Number);
+            if (periodo === 'anio') return y === anio;
+            return y === anio && m === mes;
+        };
+        const fallasFiltradas = correctivos.filter(r => inPeriod(r.fecha_falla));
+        const counts = {};
+        for (const f of fallasFiltradas) {
+            const maq = maquinas.find(m => m.id === f.maquina_id);
+            const nombre = maq ? maq.nombre : 'Sin máquina';
+            counts[nombre] = (counts[nombre] || 0) + 1;
+        }
+        return Object.entries(counts)
+            .map(([nombre, total_fallas]) => ({ nombre, total_fallas }))
+            .sort((a, b) => b.total_fallas - a.total_fallas)
+            .slice(0, 5);
+    },
+
     renderOverdueLocal(data, maqMap, compMap) {
         return `<div class="card dash-card">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Mantenciones Vencidas</h3></div>
@@ -149,7 +171,14 @@ App.registerModule('dashboard', {
     },
 
     renderTopFallas(data) {
-        if (!data || data.length === 0) return '';
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const rangoTexto = this._periodo === 'anio' ? 'Año ' + this._anio : meses[this._mes - 1] + ' ' + this._anio;
+        if (!data || data.length === 0) {
+            return `<div class="card mt-16 dash-card">
+                <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Top 5 Máquinas con Más Fallas · ${rangoTexto}</h3></div>
+                <div class="card-body" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">No hay fallas registradas en este período</div>
+            </div>`;
+        }
         const maxFallas = data[0] ? data[0].total_fallas : 1;
         const medals = ['#f59e0b','#94a3b8','#cd7f32','#6b7280','#6b7280'];
         let bars = '';
@@ -163,7 +192,7 @@ App.registerModule('dashboard', {
             </div>`;
         });
         return `<div class="card mt-16 dash-card">
-            <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Top 5 Máquinas con Más Fallas</h3></div>
+            <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Top 5 Máquinas con Más Fallas · ${rangoTexto}</h3></div>
             <div class="card-body">${bars}</div></div>`;
     },
 
