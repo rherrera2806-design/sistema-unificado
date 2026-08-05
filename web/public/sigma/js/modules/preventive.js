@@ -2,15 +2,21 @@ App.registerModule('preventive', {
     async render() {
         const el = document.getElementById('page-preventive');
         const registros = await db.getAll('preventive_maintenance');
-        const maquinas = await db.getAll('machines');
+        const [maquinas, componentes] = await Promise.all([
+            db.getAll('machines'),
+            db.getAll('components')
+        ]);
+        const maqMap = {};
+        maquinas.forEach(m => { maqMap[m.id] = m; });
+        const compMap = {};
+        componentes.forEach(c => { compMap[c.id] = c; });
         const filterEstado = document.getElementById('filterPrevEstado')?.value || '';
         const filterMaquina = document.getElementById('filterPrevMaq')?.value || '';
-        let filtered = [];
-        for (const r of registros) {
-            const maq = await db.getById('machines', r.maquina_id).catch(() => null);
-            const comp = await db.getById('components', r.componente_id).catch(() => null);
-            filtered.push({ ...r, maquinaNombre: maq ? maq.nombre : '', componenteNombre: comp ? comp.nombre : '' });
-        }
+        let filtered = registros.map(r => ({
+            ...r,
+            maquinaNombre: maqMap[r.maquina_id] ? maqMap[r.maquina_id].nombre : '',
+            componenteNombre: compMap[r.componente_id] ? compMap[r.componente_id].nombre : ''
+        }));
         if (filterEstado) filtered = filtered.filter(r => r.estado === filterEstado);
         if (filterMaquina) filtered = filtered.filter(r => r.maquina_id === parseInt(filterMaquina));
         const today = new Date().toISOString().split('T')[0];
