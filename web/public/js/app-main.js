@@ -530,9 +530,9 @@ const App = {
             const unread = data.filter(n => !n.leido).length;
             const navItem = document.querySelector(`.nav-item[data-page="notas"]`);
             if (!navItem) return;
-            let badge = navItem.querySelector('.badge');
+            let badge = navItem.querySelector('.nav-badge');
             if (unread > 0) {
-                if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; navItem.appendChild(badge); }
+                if (!badge) { badge = document.createElement('span'); badge.className = 'nav-badge'; navItem.appendChild(badge); }
                 badge.textContent = unread;
             } else if (badge) { badge.remove(); }
         } catch(e) {}
@@ -543,9 +543,9 @@ const App = {
         try { count = (await db.getOverdueMaintenance()).length; } catch(e) {}
         const navItem = document.querySelector(`.nav-item[data-page="preventive"]`);
         if (!navItem) return;
-        let badge = navItem.querySelector('.badge');
+        let badge = navItem.querySelector('.nav-badge');
         if (count > 0) {
-            if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; navItem.appendChild(badge); }
+            if (!badge) { badge = document.createElement('span'); badge.className = 'nav-badge'; navItem.appendChild(badge); }
             badge.textContent = count;
         } else if (badge) { badge.remove(); }
         await this.updateNotasBadge();
@@ -599,12 +599,10 @@ const App = {
     setSidebarBadge(page, count) {
         const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
         if (!navItem) return;
-        let badge = navItem.querySelector('.badge');
+        let badge = navItem.querySelector('.nav-badge');
         if (count > 0) {
-            if (!badge) { badge = document.createElement('span'); badge.className = 'badge'; navItem.appendChild(badge); }
+            if (!badge) { badge = document.createElement('span'); badge.className = 'nav-badge'; navItem.appendChild(badge); }
             badge.textContent = count;
-            badge.style.background = 'rgba(239,68,68,0.9)';
-            badge.style.color = 'white';
         } else if (badge) { badge.remove(); }
     },
 
