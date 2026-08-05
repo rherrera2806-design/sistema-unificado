@@ -224,8 +224,8 @@ const Asistencia = {
                         <input type="text" id="ast-trab-nombre" class="ast-input" placeholder="Nombre del trabajador" style="width:100%">
                     </div>
                     <div style="display:flex;gap:6px">
-                        <button onclick="Asistencia.guardarTrabajador()" class="ast-btn" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:white;padding:10px 20px">Guardar</button>
-                        <button onclick="Asistencia.hideFormTrabajador()" class="ast-btn" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:10px 16px">Cancelar</button>
+                        <button onclick="Asistencia.guardarTrabajador()" class="btn btn-primary">Guardar</button>
+                        <button onclick="Asistencia.hideFormTrabajador()" class="btn btn-outline">Cancelar</button>
                     </div>
                 </div>
                 <input type="hidden" id="ast-trab-id">
@@ -284,7 +284,7 @@ const Asistencia = {
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + (t.activo ? 'background:#d1fae5;color:#059669' : 'background:#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center"><div style="display:flex;gap:4px;justify-content:center">'
                 + '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="ast-btn" style="background:' + (t.activo ? '#fef3c7;color:#d97706;border:1px solid #fde68a' : '#d1fae5;color:#059669;border:1px solid #a7f3d0') + ';font-size:10px;padding:5px 10px">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
+                + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '" title="' + (t.activo ? 'Desactivar' : 'Activar') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
                 + '</div></td></tr>';
         }).join('');
     },
@@ -441,8 +441,8 @@ const Asistencia = {
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
                     ${falta
-                        ? '<span class="ast-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px">Falta</span><button onclick="Asistencia.marcar(' + t.id + ',false)" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 10px">Corregir</button>'
-                        : '<span class="ast-badge" style="background:#d1fae5;color:#059669;font-size:10px;padding:2px 8px">Presente</span><button onclick="Asistencia.marcar(' + t.id + ',true)" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 10px">Marcar Falta</button>'
+                        ? '<span class="ast-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px">Falta</span><button onclick="Asistencia.marcar(' + t.id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button>'
+                        : '<span class="ast-badge" style="background:#d1fae5;color:#059669;font-size:10px;padding:2px 8px">Presente</span><button onclick="Asistencia.marcar(' + t.id + ',true)" class="btn btn-sm btn-danger" title="Marcar falta">Marcar Falta</button>'
                     }
                 </div>
             </div>`;
@@ -564,7 +564,7 @@ const Asistencia = {
             + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + a.nombre + '</strong></td>'
             + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + a.rut + '</td>'
             + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#fee2e2;color:#dc2626">Falta</span></td>'
-            + '<td style="padding:12px 16px;text-align:center"><button onclick="Asistencia.marcar(' + a.trabajador_id + ',false)" class="ast-btn" style="background:#22c55e;color:white;font-size:11px">Corregir</button></td>'
+            + '<td style="padding:12px 16px;text-align:center"><button onclick="Asistencia.marcar(' + a.trabajador_id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button></td>'
             + '</tr>').join('');
     },
 
@@ -664,8 +664,8 @@ const Asistencia = {
                     else if (d <= hoy.getDate() && mes <= (hoy.getMonth() + 1) && parseInt(anio) <= hoy.getFullYear()) { clase = 'presente'; title = 'Presente'; }
                 }
                 let symbol = '';
-                if (clase === 'presente') symbol = '<span style="color:#16a34a;font-weight:700;font-size:14px">&#10003;</span>';
-                else if (clase === 'falta') symbol = '<span style="color:#dc2626;font-weight:700;font-size:14px">&#10005;</span>';
+                if (clase === 'presente') symbol = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+                else if (clase === 'falta') symbol = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>';
                 else if (clase === 'vacaciones') symbol = '<span style="color:#2563eb;font-weight:700;font-size:12px">V</span>';
                 else if (clase === 'licencia') symbol = '<span style="color:#ca8a04;font-weight:700;font-size:12px">L</span>';
                 html += '<div class="ast-cal-cell ' + clase + '" title="' + title + '" style="border-right:1px solid #f1f5f9;cursor:default;display:flex;align-items:center;justify-content:center">' + symbol + '</div>';
@@ -716,10 +716,10 @@ const Asistencia = {
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + p.estado + '</span></td>'
                     + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
                     + (p.estado === 'pendiente' && ((JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('asistencia.editar') || (JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('usuarios'))
-                        ? '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10003;</button><button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10005;</button>'
+                        ? '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="btn btn-sm" title="Aprobar" style="background:#22c55e;color:white;margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button><button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="btn btn-sm btn-danger" title="Rechazar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>'
                         : '')
-                    + '<button onclick="Asistencia.editarPermiso(' + p.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998;</button>'
-                    + '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465;</button>'
+                    + '<button onclick="Asistencia.editarPermiso(' + p.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                    + '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                     + '</td></tr>';
             }).join('');
         } catch(e) { console.error('Error:', e); }
@@ -809,10 +809,10 @@ const Asistencia = {
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + l.estado + '</span></td>'
                     + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
                     + (l.estado === 'pendiente' && ((JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('asistencia.editar') || (JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('usuarios'))
-                        ? '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="ast-btn" style="background:#22c55e;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10003;</button><button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="ast-btn" style="background:#ef4444;color:white;font-size:10px;padding:4px 8px;margin-right:4px">&#10005;</button>'
+                        ? '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="btn btn-sm" title="Aprobar" style="background:#22c55e;color:white;margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button><button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="btn btn-sm btn-danger" title="Rechazar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>'
                         : '')
-                    + '<button onclick="Asistencia.editarLicencia(' + l.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998;</button>'
-                    + '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465;</button>'
+                    + '<button onclick="Asistencia.editarLicencia(' + l.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                    + '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                     + '</td></tr>';
             }).join('');
         } catch(e) { console.error('Error:', e); }
@@ -894,8 +894,8 @@ const Asistencia = {
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.dias + '</strong> días</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#dbeafe;color:#2563eb">' + (v.estado || 'Programado') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                + '<button onclick="Asistencia.editarVacacion(' + v.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998; Editar</button>'
-                + '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465; Eliminar</button>'
+                + '<button onclick="Asistencia.editarVacacion(' + v.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                + '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                 + '</td></tr>').join('');
         } catch(e) { console.error('Error:', e); }
     },
@@ -976,9 +976,9 @@ const Asistencia = {
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + (he.motivo || '-') + '</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + (he.estado || 'pendiente') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                + (puedeAprobar && (!he.estado || he.estado === 'pendiente') ? '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'aprobada\')" style="background:#22c55e;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px">&#10003;</button><button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'rechazada\')" style="background:#ef4444;color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px">&#10005;</button>' : '')
-                + '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;margin-right:4px" onmouseover="this.style.background=\'#dbeafe\'" onmouseout="this.style.background=\'#eff6ff\'">&#9998;</button>'
-                + '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer" onmouseover="this.style.background=\'#fee2e2\'" onmouseout="this.style.background=\'#fef2f2\'">&#128465;</button>'
+                + (puedeAprobar && (!he.estado || he.estado === 'pendiente') ? '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'aprobada\')" class="btn btn-sm" title="Aprobar" style="background:#22c55e;color:white;margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button><button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'rechazada\')" class="btn btn-sm btn-danger" title="Rechazar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>' : '')
+                + '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                + '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                 + '</td></tr>';
             }).join('');
         } catch(e) { console.error('Error:', e); }
