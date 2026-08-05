@@ -10,7 +10,7 @@ App.registerModule('preventive', {
         maquinas.forEach(m => { maqMap[m.id] = m; });
         const compMap = {};
         componentes.forEach(c => { compMap[c.id] = c; });
-        const filterEstado = document.getElementById('filterPrevEstado')?.value || '';
+        const filterEstado = document.getElementById('filterPrevEstado')?.value || 'Programada';
         const filterMaquina = document.getElementById('filterPrevMaq')?.value || '';
         let filtered = registros.map(r => ({
             ...r,
@@ -71,7 +71,7 @@ App.registerModule('preventive', {
                         </select>
                         <select class="form-control" id="filterPrevEstado" style="width:auto;min-width:130px" onchange="App.modules.preventive.render()">
                             <option value="">Todos</option>
-                            <option value="Programada" ${filterEstado === 'Programada' ? 'selected' : ''}>Programada</option>
+                            <option value="Programada" ${(!filterEstado || filterEstado === 'Programada') ? 'selected' : ''}>Programada</option>
                             <option value="Realizada" ${filterEstado === 'Realizada' ? 'selected' : ''}>Realizada</option>
                             <option value="Vencida" ${filterEstado === 'Vencida' ? 'selected' : ''}>Vencida</option>
                         </select>
