@@ -64,22 +64,28 @@ App.registerModule('notas', {
         }
         let html = '<div style="padding:0">';
         for (const n of data) {
-            html += `
-                <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;gap:16px;align-items:flex-start">
-                    <div style="flex:1">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                            <strong style="color:var(--primary)">${n.tecnico || 'Sin autor'}</strong>
-                            <span style="font-size:11px;color:var(--text-light)">${App.formatDate(n.fecha)} ${n.hora || ''}</span>
-                        </div>
-                        <p style="margin:0;color:var(--text);white-space:pre-wrap">${n.nota || ''}</p>
-                    </div>
-                    <div style="display:flex;gap:4px;flex-shrink:0">
-                        <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.notas.showForm(${n.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                        <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.notas.delete(${n.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                    </div>
-                </div>`;
+            const isLeida = n.leido === true || n.leido === 'true';
+            const rowBg = isLeida ? '' : 'background:linear-gradient(90deg,rgba(254,243,199,0.6) 0%,rgba(254,249,195,0.4) 50%,rgba(255,255,255,0) 100%);border-left:3px solid #f59e0b;';
+            const autorColor = isLeida ? 'var(--primary)' : '#92400e';
+            const nuevoBadge = isLeida ? '' : '<span style="display:inline-flex;align-items:center;gap:3px;background:#f59e0b;color:white;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:0.4px"><span style="width:5px;height:5px;border-radius:50%;background:white;animation:notasBlink 1.5s ease-in-out infinite"></span> Nueva</span>';
+            const markReadBtn = isLeida ? '' : '<button class="btn btn-sm" title="Marcar como leída" onclick="App.modules.notas.markRead(' + n.id + ')" style="background:#d1fae5;color:#059669"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button>';
+            html += '<div style="padding:16px;border-bottom:1px solid var(--border);display:flex;gap:16px;align-items:flex-start;' + rowBg + '">'
+                + '<div style="flex:1">'
+                + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">'
+                + '<strong style="color:' + autorColor + '">' + (n.tecnico || 'Sin autor') + '</strong>'
+                + '<span style="font-size:11px;color:var(--text-light)">' + App.formatDate(n.fecha) + ' ' + (n.hora || '') + '</span>'
+                + nuevoBadge
+                + '</div>'
+                + '<p style="margin:0;color:var(--text);white-space:pre-wrap;font-weight:' + (isLeida ? '400' : '500') + '">' + (n.nota || '') + '</p>'
+                + '</div>'
+                + '<div style="display:flex;gap:4px;flex-shrink:0">'
+                + markReadBtn
+                + '<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.notas.showForm(' + n.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
+                + '<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.notas.delete(' + n.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+                + '</div>'
+                + '</div>';
         }
-        html += '</div>';
+        html += '<style>@keyframes notasBlink{0%,100%{opacity:1}50%{opacity:0.4}}</style></div>';
         container.innerHTML = html;
     },
 
@@ -130,5 +136,14 @@ App.registerModule('notas', {
             App.showAlert('Nota eliminada');
             this.render();
         } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); }
+    },
+
+    async markRead(id) {
+        try {
+            await db.update('notas', id, { leido: true });
+            const idx = this._notasData.findIndex(n => n.id === id);
+            if (idx >= 0) this._notasData[idx].leido = true;
+            this.renderNotas(this._notasData);
+        } catch(e) { App.showAlert('Error al marcar como leída: ' + e.message, 'danger'); }
     }
 });
