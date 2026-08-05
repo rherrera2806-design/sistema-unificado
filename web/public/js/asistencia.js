@@ -225,7 +225,7 @@ const Asistencia = {
                         <input type="text" id="ast-trab-nombre" class="ast-input" placeholder="Nombre del trabajador" style="width:100%">
                     </div>
                     <div>
-                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Fecha Ingreso</label>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Fecha de incorporación</label>
                         <input type="date" id="ast-trab-fecha-ingreso" class="ast-input" style="width:100%">
                     </div>
                     <div style="display:flex;gap:6px">
@@ -243,7 +243,7 @@ const Asistencia = {
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">RUT</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
-                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px" title="Fecha de Ingreso">FI</th>
+                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px" title="Fecha de incorporación">Fecha de incorporación</th>
                         <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
                     </tr></thead>
                     <tbody id="ast-tabla-trabajadores"><tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
@@ -290,7 +290,7 @@ const Asistencia = {
                 + '<td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,' + bg + ',' + bg + 'dd);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700">' + ini + '</div><strong style="color:#1e293b">' + t.nombre + '</strong></div></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + t.rut + '</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + (t.activo ? 'background:#d1fae5;color:#059669' : 'background:#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span></td>'
-                + '<td style="padding:12px 16px;text-align:center;font-size:12px;color:#475569;font-family:\'JetBrains Mono\',monospace" title="Fecha de Ingreso">' + fiFmt + '</td>'
+                + '<td style="padding:12px 16px;text-align:center;font-size:12px;color:#475569;font-family:\'JetBrains Mono\',monospace" title="Fecha de incorporación">' + fiFmt + '</td>'
                 + '<td style="padding:12px 16px;text-align:center"><div style="display:flex;gap:4px;justify-content:center">'
                 + '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
                 + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '" title="' + (t.activo ? 'Desactivar' : 'Activar') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
@@ -451,7 +451,7 @@ const Asistencia = {
             const creadoDespues = fi && fechaVista < fi;
             let estadoHtml;
             if (creadoDespues) {
-                estadoHtml = '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8;font-size:10px;padding:2px 8px" title="Ingresó el ' + fi + '">N/A</span>';
+                estadoHtml = '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8;font-size:10px;padding:2px 8px" title="Fecha de incorporación: ' + this.fmtDate(fi) + '">N/A</span>';
             } else if (falta) {
                 estadoHtml = '<span class="ast-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px">Falta</span><button onclick="Asistencia.marcar(' + t.id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button>';
             } else {
@@ -501,7 +501,7 @@ const Asistencia = {
 
     exportExcelTrabajadores() {
         const trabajadores = this.trabajadoresAdmin || this.trabajadores || [];
-        let csv = 'Nombre,RUT,Estado,Fecha Ingreso\n';
+        let csv = 'Nombre,RUT,Estado,Fecha de incorporación\n';
         trabajadores.forEach(t => {
             const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
             csv += `"${t.nombre}","${t.rut || ''}","${t.activo ? 'Activo' : 'Inactivo'}","${fi || ''}"\n`;
@@ -521,7 +521,7 @@ const Asistencia = {
         let html = '<html><head><style>body{font-family:Arial,sans-serif;padding:20px}h1{font-size:18px;color:#0f172a}table{width:100%;border-collapse:collapse;margin-top:15px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;font-size:12px}th{background:#f8fafc;font-weight:700;color:#64748b}.activo{color:#22c55e;font-weight:700}.inactivo{color:#dc2626}.stats{margin:15px 0;display:flex;gap:20px}.stat{padding:10px 15px;border-radius:8px;background:#f8fafc}</style></head><body>';
         html += '<h1>Listado de Trabajadores</h1>';
         html += '<div class="stats"><div class="stat"><strong>Total:</strong> ' + total + '</div><div class="stat"><strong>Activos:</strong> ' + activos + '</div><div class="stat"><strong>Inactivos:</strong> ' + inactivos + '</div></div>';
-        html += '<table><thead><tr><th>Nombre</th><th>RUT</th><th>Estado</th><th>Fecha Ingreso</th></tr></thead><tbody>';
+        html += '<table><thead><tr><th>Nombre</th><th>RUT</th><th>Estado</th><th>Fecha de incorporación</th></tr></thead><tbody>';
         trabajadores.forEach(t => {
             const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
             html += '<tr><td>' + t.nombre + '</td><td>' + (t.rut || '') + '</td><td class="' + (t.activo ? 'activo' : 'inactivo') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</td><td>' + (fi ? this.fmtDate(fi) : '-') + '</td></tr>';
@@ -560,7 +560,7 @@ const Asistencia = {
                 const headers = this._parseCSVLine(lines[0], delimiter).map(h => h.toLowerCase().trim());
                 rutIdx = headers.findIndex(h => h.includes('rut'));
                 nombreIdx = headers.findIndex(h => h.includes('nombre'));
-                fechaIdx = headers.findIndex(h => h.includes('fecha') || h.includes('ingreso'));
+                fechaIdx = headers.findIndex(h => h.includes('fecha') || h.includes('ingreso') || h.includes('incorporaci'));
                 if (rutIdx < 0) rutIdx = 0;
                 if (nombreIdx < 0) nombreIdx = 1;
                 if (fechaIdx < 0) fechaIdx = 2;
@@ -674,7 +674,7 @@ const Asistencia = {
             const fi = (a.fecha_ingreso || (a.created_at ? a.created_at.split('T')[0] : '')).split('T')[0];
             const creadoDespues = fi && fechaVista < fi;
             const badge = creadoDespues
-                ? '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8" title="Ingresó el ' + fi + '">N/A</span>'
+                ? '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8" title="Fecha de incorporación: ' + this.fmtDate(fi) + '">N/A</span>'
                 : '<span class="ast-badge" style="background:#fee2e2;color:#dc2626">Falta</span>';
             const accion = creadoDespues ? '' : '<button onclick="Asistencia.marcar(' + a.trabajador_id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button>';
             return '<tr style="border-bottom:1px solid #f1f5f9' + (creadoDespues ? ';opacity:0.55' : '') + '">'
@@ -757,7 +757,7 @@ const Asistencia = {
         filtered.forEach(t => {
             const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
             html += '<div class="ast-cal-row" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
-            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + (fi ? ' (Ingresó ' + this.fmtDate(fi) + ')' : '') + '">' + t.nombre + '</span></div>';
+            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + (fi ? ' (Fecha de incorporación: ' + this.fmtDate(fi) + ')' : '') + '">' + t.nombre + '</span></div>';
 
             for (let d = 1; d <= diasEnMes; d++) {
                 const fechaStr = anio + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
@@ -768,7 +768,7 @@ const Asistencia = {
                 let title = '';
                 if (antesDeIngreso) {
                     clase = 'antes-ingreso';
-                    title = 'Ingresó el ' + this.fmtDate(fi);
+                    title = 'Fecha de incorporación: ' + this.fmtDate(fi);
                 } else if (!esFin) {
                     if (vacaciones.some(v => {
                         const iniParts = v.fecha_inicio.split('T')[0].split('-');
