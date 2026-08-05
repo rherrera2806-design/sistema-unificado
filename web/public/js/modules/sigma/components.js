@@ -21,7 +21,8 @@ App.registerModule('components', {
                 <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Total</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${this._allComponentes.length}</div></div>
                 <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Enlaces</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${this._allLinks.length}</div></div>
                 <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.components.showForm()">+ Nuevo Componente</button>
-            </div></div>
+                </div></div></div>
+            </div>
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
                     <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
