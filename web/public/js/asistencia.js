@@ -149,6 +149,7 @@ const Asistencia = {
                 + '</div>'
                 + (canAgT ? '<button onclick="Asistencia.showFormTrabajador()" class="btn btn-primary" title="Nuevo trabajador" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
                 + '<button onclick="Asistencia.exportExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">Excel</button>'
+                + '<button onclick="Asistencia.importarExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#0e7490;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(14,116,144,0.15)" title="Importar desde Excel/CSV">Importar</button>'
                 + '<button onclick="Asistencia.exportPDFTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#dc2626;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(220,38,38,0.15)">PDF</button>';
         } else         if (tab === 'permisos') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
@@ -214,7 +215,7 @@ const Asistencia = {
                     <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
                     <h4 id="ast-form-title" style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Nuevo Trabajador</h4>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end">
+                <div style="display:grid;grid-template-columns:1fr 1fr 160px auto;gap:12px;align-items:end">
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">RUT</label>
                         <input type="text" id="ast-trab-rut" class="ast-input" placeholder="12.345.678-9" style="width:100%">
@@ -222,6 +223,10 @@ const Asistencia = {
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Nombre Completo</label>
                         <input type="text" id="ast-trab-nombre" class="ast-input" placeholder="Nombre del trabajador" style="width:100%">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Fecha Ingreso</label>
+                        <input type="date" id="ast-trab-fecha-ingreso" class="ast-input" style="width:100%">
                     </div>
                     <div style="display:flex;gap:6px">
                         <button onclick="Asistencia.guardarTrabajador()" class="btn btn-primary">Guardar</button>
@@ -314,6 +319,7 @@ const Asistencia = {
         document.getElementById('ast-trab-id').value = '';
         document.getElementById('ast-trab-rut').value = '';
         document.getElementById('ast-trab-nombre').value = '';
+        document.getElementById('ast-trab-fecha-ingreso').value = new Date().toISOString().split('T')[0];
         document.getElementById('ast-form-title').textContent = 'Nuevo Trabajador';
     },
 
@@ -328,6 +334,8 @@ const Asistencia = {
         document.getElementById('ast-trab-id').value = t.id;
         document.getElementById('ast-trab-rut').value = t.rut;
         document.getElementById('ast-trab-nombre').value = t.nombre;
+        const fi = t.fecha_ingreso ? t.fecha_ingreso.split('T')[0] : (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0]);
+        document.getElementById('ast-trab-fecha-ingreso').value = fi;
         document.getElementById('ast-form-title').textContent = 'Editar Trabajador';
     },
 
@@ -335,19 +343,20 @@ const Asistencia = {
         const id = document.getElementById('ast-trab-id').value;
         const rut = document.getElementById('ast-trab-rut').value.trim();
         const nombre = document.getElementById('ast-trab-nombre').value.trim();
+        const fecha_ingreso = document.getElementById('ast-trab-fecha-ingreso').value || null;
         if (!rut || !nombre) return;
 
         if (id) {
             await fetch('/api/asistencia/trabajadores/' + id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rut, nombre })
+                body: JSON.stringify({ rut, nombre, fecha_ingreso })
             });
         } else {
             await fetch('/api/asistencia/trabajadores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rut, nombre })
+                body: JSON.stringify({ rut, nombre, fecha_ingreso })
             });
         }
         this.hideFormTrabajador();
@@ -434,10 +443,11 @@ const Asistencia = {
             const ini = t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2);
             const colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#6366f1'];
             const bg = colors[i % colors.length];
-            const creadoDespues = t.created_at && fechaVista < t.created_at.split('T')[0];
+            const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
+            const creadoDespues = fi && fechaVista < fi;
             let estadoHtml;
             if (creadoDespues) {
-                estadoHtml = '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8;font-size:10px;padding:2px 8px" title="Ingresó después de esta fecha">N/A</span>';
+                estadoHtml = '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8;font-size:10px;padding:2px 8px" title="Ingresó el ' + fi + '">N/A</span>';
             } else if (falta) {
                 estadoHtml = '<span class="ast-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px">Falta</span><button onclick="Asistencia.marcar(' + t.id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button>';
             } else {
@@ -447,7 +457,7 @@ const Asistencia = {
                 <div class="ast-avatar" style="background:linear-gradient(135deg,${bg},${bg}dd)">${ini}</div>
                 <div style="flex:1;min-width:0">
                     <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.nombre}</div>
-                    <div style="font-size:11px;color:#94a3b8;margin-top:1px">${t.rut}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:1px">${t.rut}${fi ? ' · Ingreso: ' + this.fmtDate(fi) : ''}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">${estadoHtml}</div>
             </div>`;
@@ -517,6 +527,94 @@ const Asistencia = {
         setTimeout(() => { win.print(); }, 500);
     },
 
+    importarExcelTrabajadores() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, text/csv';
+        input.onchange = (e) => this._procesarImportacionExcel(e.target.files[0]);
+        input.click();
+    },
+
+    async _procesarImportacionExcel(file) {
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            if (lines.length < 2) { alert('El archivo está vacío o no tiene datos.'); return; }
+
+            const firstLine = lines[0].toLowerCase();
+            const hasHeader = firstLine.includes('rut') || firstLine.includes('nombre') || firstLine.includes('fecha');
+            const dataLines = hasHeader ? lines.slice(1) : lines;
+
+            const delimiter = lines[0].includes(';') ? ';' : ',';
+            const rows = dataLines.map(l => this._parseCSVLine(l, delimiter));
+
+            let rutIdx = 0, nombreIdx = 1, fechaIdx = 2;
+            if (hasHeader) {
+                const headers = this._parseCSVLine(lines[0], delimiter).map(h => h.toLowerCase().trim());
+                rutIdx = headers.findIndex(h => h.includes('rut'));
+                nombreIdx = headers.findIndex(h => h.includes('nombre'));
+                fechaIdx = headers.findIndex(h => h.includes('fecha') || h.includes('ingreso'));
+                if (rutIdx < 0) rutIdx = 0;
+                if (nombreIdx < 0) nombreIdx = 1;
+                if (fechaIdx < 0) fechaIdx = 2;
+            }
+
+            const fechaPorDefecto = new Date().toISOString().split('T')[0];
+            const trabajadores = rows.map(cols => {
+                const rut = (cols[rutIdx] || '').trim().replace(/['"]/g, '');
+                const nombre = (cols[nombreIdx] || '').trim().replace(/['"]/g, '');
+                let fecha = (cols[fechaIdx] || '').trim();
+                if (!fecha) fecha = fechaPorDefecto;
+                else if (fecha.includes('/')) {
+                    const p = fecha.split('/');
+                    if (p.length === 3) fecha = p[2].length === 2 ? '20' + p[2] + '-' + p[1].padStart(2, '0') + '-' + p[0].padStart(2, '0') : p[2] + '-' + p[1].padStart(2, '0') + '-' + p[0].padStart(2, '0');
+                }
+                return { rut, nombre, fecha_ingreso: fecha };
+            }).filter(t => t.rut && t.nombre);
+
+            if (trabajadores.length === 0) { alert('No se encontraron filas válidas (RUT y Nombre requeridos).'); return; }
+
+            const confirmar = confirm('Se importarán ' + trabajadores.length + ' trabajadores.\n\n¿Continuar?');
+            if (!confirmar) return;
+
+            const r = await fetch('/api/asistencia/trabajadores/importar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trabajadores })
+            });
+            const result = await r.json();
+            if (!r.ok) throw new Error(result.error || 'Error en la importación');
+
+            await this.cargarTodosTrabajadores();
+            await this.cargarTrabajadores();
+            this.llenarSelectores();
+            alert('Importación completada:\n• ' + result.insertados + ' insertados\n• ' + result.actualizados + ' actualizados\n• ' + result.errores + ' errores');
+        } catch (e) {
+            console.error('Error importando:', e);
+            alert('Error al importar: ' + e.message);
+        }
+    },
+
+    _parseCSVLine(line, delimiter) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (c === '"' && (i === 0 || line[i-1] !== '\\')) {
+                inQuotes = !inQuotes;
+            } else if (c === delimiter && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += c;
+            }
+        }
+        result.push(current);
+        return result;
+    },
+
     exportExcel() {
         const fecha = document.getElementById('ast-hero-fecha')?.value || new Date().toISOString().split('T')[0];
         const faltas = this.asistenciaHoy || [];
@@ -567,9 +665,10 @@ const Asistencia = {
         }
         const fechaVista = document.getElementById('ast-hero-fecha')?.value || new Date().toISOString().split('T')[0];
         tbody.innerHTML = f.map(a => {
-            const creadoDespues = a.created_at && fechaVista < a.created_at.split('T')[0];
+            const fi = (a.fecha_ingreso || (a.created_at ? a.created_at.split('T')[0] : '')).split('T')[0];
+            const creadoDespues = fi && fechaVista < fi;
             const badge = creadoDespues
-                ? '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8" title="Ingresó después de esta fecha">N/A</span>'
+                ? '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8" title="Ingresó el ' + fi + '">N/A</span>'
                 : '<span class="ast-badge" style="background:#fee2e2;color:#dc2626">Falta</span>';
             const accion = creadoDespues ? '' : '<button onclick="Asistencia.marcar(' + a.trabajador_id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button>';
             return '<tr style="border-bottom:1px solid #f1f5f9' + (creadoDespues ? ';opacity:0.55' : '') + '">'
@@ -601,6 +700,7 @@ const Asistencia = {
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#fee2e2"></div><span style="font-size:11px;color:#64748b;font-weight:500">Falta</span></div>
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#dbeafe"></div><span style="font-size:11px;color:#64748b;font-weight:500">Vacaciones</span></div>
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#fef3c7"></div><span style="font-size:11px;color:#64748b;font-weight:500">Licencia</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#fafbfc;border:1px solid #e2e8f0"></div><span style="font-size:11px;color:#64748b;font-weight:500">Antes de ingreso</span></div>
                     <div style="margin-left:auto;position:relative">
                         <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <input type="text" id="ast-cal-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.debouncedFiltrarCalendario()" style="padding-left:32px;width:180px;font-size:11px">
@@ -649,16 +749,21 @@ const Asistencia = {
         html += '</div>';
 
         filtered.forEach(t => {
+            const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
             html += '<div class="ast-cal-row" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
-            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:700">' + t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2) + '</div><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + '">' + t.nombre + '</span></div>';
+            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center;color:white;font-size:8px;font-weight:700">' + t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2) + '</div><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + (fi ? ' (Ingresó ' + this.fmtDate(fi) + ')' : '') + '">' + t.nombre + '</span></div>';
 
             for (let d = 1; d <= diasEnMes; d++) {
                 const fechaStr = anio + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
                 const fecha = new Date(anio, mes - 1, d);
                 const esFin = fecha.getDay() === 0 || fecha.getDay() === 6;
+                const antesDeIngreso = fi && fechaStr < fi;
                 let clase = esFin ? 'fin-semana' : '';
                 let title = '';
-                if (!esFin) {
+                if (antesDeIngreso) {
+                    clase = 'antes-ingreso';
+                    title = 'Ingresó el ' + this.fmtDate(fi);
+                } else if (!esFin) {
                     if (vacaciones.some(v => {
                         const iniParts = v.fecha_inicio.split('T')[0].split('-');
                         const finParts = v.fecha_fin.split('T')[0].split('-');
@@ -681,7 +786,8 @@ const Asistencia = {
                 else if (clase === 'falta') symbol = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>';
                 else if (clase === 'vacaciones') symbol = '<span style="color:#2563eb;font-weight:700;font-size:12px">V</span>';
                 else if (clase === 'licencia') symbol = '<span style="color:#ca8a04;font-weight:700;font-size:12px">L</span>';
-                html += '<div class="ast-cal-cell ' + clase + '" title="' + title + '" style="border-right:1px solid #f1f5f9;cursor:default;display:flex;align-items:center;justify-content:center">' + symbol + '</div>';
+                else if (clase === 'antes-ingreso') symbol = '<span style="color:#cbd5e1;font-size:10px">·</span>';
+                html += '<div class="ast-cal-cell ' + clase + '" title="' + title + '" style="border-right:1px solid #f1f5f9;cursor:default;display:flex;align-items:center;justify-content:center' + (clase === 'antes-ingreso' ? ';background:#fafbfc' : '') + '">' + symbol + '</div>';
             }
             html += '</div>';
         });

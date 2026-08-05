@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS trabajadores (
     rut VARCHAR(20) UNIQUE NOT NULL,
     nombre VARCHAR(200) NOT NULL,
     activo BOOLEAN DEFAULT true,
+    fecha_ingreso DATE NOT NULL DEFAULT CURRENT_DATE,
     created_at TIMESTAMP DEFAULT NOW()
 );
 

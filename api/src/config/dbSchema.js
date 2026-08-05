@@ -521,12 +521,24 @@ async function initDB() {
 
     const mtCount = await query('SELECT COUNT(*) as c FROM machine_types');
     if (Number(mtCount.rows[0].c) === 0) await seedSigma();
+    await runMigrations();
     await resetSequences();
     await seedBusinessData();
 }
 
+async function runMigrations() {
+    try {
+        await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS fecha_ingreso DATE");
+        await query("UPDATE trabajadores SET fecha_ingreso = DATE(created_at) WHERE fecha_ingreso IS NULL");
+        await query("ALTER TABLE trabajadores ALTER COLUMN fecha_ingreso SET DEFAULT CURRENT_DATE");
+        await query("ALTER TABLE trabajadores ALTER COLUMN fecha_ingreso SET NOT NULL");
+    } catch (e) {
+        console.error('Migration warning:', e.message);
+    }
+}
+
 async function resetSequences() {
-    const tables = ['usuarios', 'machine_types', 'machines', 'components', 'component_type_links',
+    const tables = ['usuarios', 'trabajadores', 'machine_types', 'machines', 'components', 'component_type_links',
                     'spare_parts', 'preventive_maintenance', 'corrective_maintenance',
                     'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
                     'pedido_historial', 'catalogo_tipos_cristal', 'catalogo_espesores',

@@ -34,10 +34,10 @@ router.get('/api/asistencia/trabajadores/activos', async (req, res) => {
 
 router.post('/api/asistencia/trabajadores', async (req, res) => {
     try {
-        const { rut, nombre } = req.body;
+        const { rut, nombre, fecha_ingreso } = req.body;
         const result = await pool.query(
-            'INSERT INTO trabajadores (rut, nombre) VALUES ($1, $2) RETURNING *',
-            [rut, nombre]
+            'INSERT INTO trabajadores (rut, nombre, fecha_ingreso) VALUES ($1, $2, COALESCE($3, CURRENT_DATE)) RETURNING *',
+            [rut, nombre, fecha_ingreso || null]
         );
         res.json(result.rows[0]);
     } catch (e) {
@@ -48,10 +48,10 @@ router.post('/api/asistencia/trabajadores', async (req, res) => {
 router.put('/api/asistencia/trabajadores/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { nombre, rut, activo } = req.body;
+        const { nombre, rut, activo, fecha_ingreso } = req.body;
         const result = await pool.query(
-            'UPDATE trabajadores SET nombre = COALESCE($1, nombre), rut = COALESCE($2, rut), activo = COALESCE($3, activo) WHERE id = $4 RETURNING *',
-            [nombre, rut, activo, id]
+            'UPDATE trabajadores SET nombre = COALESCE($1, nombre), rut = COALESCE($2, rut), activo = COALESCE($3, activo), fecha_ingreso = COALESCE($4, fecha_ingreso) WHERE id = $5 RETURNING *',
+            [nombre, rut, activo, fecha_ingreso || null, id]
         );
         res.json(result.rows[0]);
     } catch (e) {
@@ -66,6 +66,44 @@ router.delete('/api/asistencia/trabajadores/:id', async (req, res) => {
         res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/api/asistencia/trabajadores/importar', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { trabajadores } = req.body;
+        if (!Array.isArray(trabajadores) || trabajadores.length === 0) {
+            return res.status(400).json({ error: 'Lista de trabajadores vacía' });
+        }
+        await client.query('BEGIN');
+        let insertados = 0, actualizados = 0, errores = 0;
+        for (const t of trabajadores) {
+            try {
+                if (!t.rut || !t.nombre) { errores++; continue; }
+                const r = await client.query(
+                    `INSERT INTO trabajadores (rut, nombre, fecha_ingreso)
+                     VALUES ($1, $2, COALESCE($3, CURRENT_DATE))
+                     ON CONFLICT (rut) DO UPDATE SET
+                       nombre = EXCLUDED.nombre,
+                       fecha_ingreso = COALESCE(EXCLUDED.fecha_ingreso, trabajadores.fecha_ingreso)
+                     RETURNING (xmax = 0) AS inserted`,
+                    [t.rut.trim(), t.nombre.trim(), t.fecha_ingreso || null]
+                );
+                if (r.rows[0] && r.rows[0].inserted) insertados++;
+                else actualizados++;
+            } catch (e) {
+                console.error('Error en fila:', t, e.message);
+                errores++;
+            }
+        }
+        await client.query('COMMIT');
+        res.json({ insertados, actualizados, errores, total: trabajadores.length });
+    } catch (e) {
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: e.message });
+    } finally {
+        client.release();
     }
 });
 
