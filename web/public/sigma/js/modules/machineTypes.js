@@ -41,7 +41,6 @@ App.registerModule('machineTypes', {
                 <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Maquinas</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${maqsCount}</div></div>
                 <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.machineTypes.showForm()">+ Nuevo Tipo</button>
                 </div></div></div>
-            </div>
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
                     <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>

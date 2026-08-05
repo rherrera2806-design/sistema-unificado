@@ -2,12 +2,14 @@ App.registerModule('spareparts', {
     async render() {
         const el = document.getElementById('page-spareparts');
         const repuestos = await db.getAll('spare_parts');
+        const componentes = await db.getAll('components');
+        const compMap = {};
+        componentes.forEach(c => { compMap[c.id] = c; });
         const filterCritico = document.getElementById('filterCritico')?.value || '';
-        let filtered = [];
-        for (const r of repuestos) {
-            const comp = await db.getById('components', r.componente_id).catch(() => null);
-            filtered.push({ ...r, componenteNombre: comp ? comp.nombre : '-' });
-        }
+        let filtered = repuestos.map(r => ({
+            ...r,
+            componenteNombre: compMap[r.componente_id] ? compMap[r.componente_id].nombre : '-'
+        }));
         if (filterCritico === 'critico') filtered = filtered.filter(r => r.stock_actual <= r.stock_minimo);
         else if (filterCritico === 'normal') filtered = filtered.filter(r => r.stock_actual > r.stock_minimo);
         const criticos = repuestos.filter(r => r.stock_actual <= r.stock_minimo);
