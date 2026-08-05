@@ -4,43 +4,28 @@ App.registerModule('reports', {
     async render() {
         const el = document.getElementById('page-reports');
         el.innerHTML = `
+            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Reportes</h2>
+            <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Analisis y estadisticas del sistema</p></div>
+                <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);padding:5px 12px;font-size:12px" onclick="window.print()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Imprimir</button>
+            </div></div>
             <style>
-                @keyframes repFadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-                #page-reports .rep-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:36px 40px;color:#fff;position:relative;overflow:hidden;margin-bottom:28px}
-                #page-reports .rep-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(96,165,250,.35),transparent 70%);border-radius:50%}
-                #page-reports .rep-hero::after{content:'';position:absolute;bottom:-40px;left:30%;width:180px;height:180px;background:radial-gradient(circle,rgba(147,197,253,.22),transparent 70%);border-radius:50%}
-                #page-reports .rep-hero h2{font-size:26px;font-weight:700;margin:0 0 4px;position:relative;z-index:1}
-                #page-reports .rep-hero .subtitle{font-size:14px;opacity:.82;position:relative;z-index:1}
-                #page-reports .rep-hero .rep-print-btn{position:relative;z-index:1;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);color:#fff;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;backdrop-filter:blur(4px);transition:background .2s,transform .15s}
-                #page-reports .rep-hero .rep-print-btn:hover{background:rgba(255,255,255,.28);transform:translateY(-1px)}
-                #page-reports .rep-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}
-                #page-reports .rep-tabs .rep-tab{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;background:#f1f5f9;border:1px solid transparent;color:#475569;transition:all .2s}
-                #page-reports .rep-tabs .rep-tab:hover{background:#e2e8f0;border-color:#cbd5e1}
-                #page-reports .rep-tabs .rep-tab.active{background:linear-gradient(135deg,#1e40af,#2563eb);color:#fff;border-color:#2563eb;box-shadow:0 2px 8px rgba(37,99,235,.3)}
-                #page-reports .rep-content-wrap{animation:repFadeUp .4s ease both}
-                #page-reports .rep-card{background:#fff;border-radius:14px;border:1px solid #e2e8f0;padding:24px 28px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:box-shadow .25s,transform .25s}
-                #page-reports .rep-card:hover{box-shadow:0 6px 20px rgba(30,64,175,.10);transform:translateY(-2px)}
-                #page-reports .rep-card .card-header{margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #f1f5f9}
-                #page-reports .rep-card .card-header h3{margin:0;font-size:16px;font-weight:600;color:#1e293b}
-            </style>
-            <div class="rep-hero">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;position:relative;z-index:1">
-                    <div>
-                        <h2>Reportes</h2>
-                        <div class="subtitle">Análisis y estadísticas del sistema</div>
-                    </div>
-                    <button class="rep-print-btn" onclick="window.print()">🖨 Imprimir</button>
-                </div>
+@keyframes rep_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.rep-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.rep-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.rep-row{transition:all 0.2s}
+.rep-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+            <div class="tabs">
+                <div class="tab ${this.activeTab === 'periodo' ? 'active' : ''}" onclick="App.modules.reports.switchTab('periodo')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Por Periodo</div>
+                <div class="tab ${this.activeTab === 'maquina' ? 'active' : ''}" onclick="App.modules.reports.switchTab('maquina')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg> Por Máquina</div>
+                <div class="tab ${this.activeTab === 'fallas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('fallas')"><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Más Fallas</div>
+                <div class="tab ${this.activeTab === 'componentes' ? 'active' : ''}" onclick="App.modules.reports.switchTab('componentes')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Componentes</div>
+                <div class="tab ${this.activeTab === 'vencidas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('vencidas')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Vencidas</div>
+                <div class="tab ${this.activeTab === 'mensual' ? 'active' : ''}" onclick="App.modules.reports.switchTab('mensual')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Mensual</div>
             </div>
-            <div class="rep-tabs">
-                <div class="rep-tab ${this.activeTab === 'periodo' ? 'active' : ''}" onclick="App.modules.reports.switchTab('periodo')">📅 Por Periodo</div>
-                <div class="rep-tab ${this.activeTab === 'maquina' ? 'active' : ''}" onclick="App.modules.reports.switchTab('maquina')">🏭 Por Máquina</div>
-                <div class="rep-tab ${this.activeTab === 'fallas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('fallas')">🔴 Más Fallas</div>
-                <div class="rep-tab ${this.activeTab === 'componentes' ? 'active' : ''}" onclick="App.modules.reports.switchTab('componentes')">🔧 Componentes</div>
-                <div class="rep-tab ${this.activeTab === 'vencidas' ? 'active' : ''}" onclick="App.modules.reports.switchTab('vencidas')">⚠️ Vencidas</div>
-                <div class="rep-tab ${this.activeTab === 'mensual' ? 'active' : ''}" onclick="App.modules.reports.switchTab('mensual')">📊 Mensual</div>
-            </div>
-            <div id="reportContent" class="rep-content-wrap">${await this.renderTabContent()}</div>
+            <div id="reportContent">${await this.renderTabContent()}</div>
         `;
     },
 
@@ -68,32 +53,32 @@ App.registerModule('reports', {
         if (startDate && endDate) {
             registros = await db.getMaintenanceByPeriod(startDate, endDate);
         } else if (startDate || endDate) {
-            content = '<div class="empty-state"><p>Ingrese ambas fechas para buscar</p></div>';
+            content = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Ingrese ambas fechas para buscar</h4><p style="margin:0;color:#94a3b8;font-size:13px">Selecciona fecha inicio y fin</p></div>';
         }
         if (registros.length > 0) {
             content = `
-            <div class="card">
+            <div class="card rep-card">
                 <div class="card-header"><h3>Mantenciones (${registros.length})</h3></div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Estado</th></tr></thead>
                     <tbody>${registros.map(r => `<tr><td>${r.maquina_nombre}</td><td>${r.componente_nombre}</td><td>${App.formatDate(r.fecha_programada)}</td><td>${App.formatDate(r.fecha_ejecutada)}</td><td>${r.tecnico || '-'}</td><td><span class="status-badge ${App.getEstadoClass(r.estado)}">${r.estado}</span></td></tr>`).join('')}</tbody></table>
                 </div>
             </div>
-            <div class="card">
+            <div class="card rep-card">
                 <div class="card-header"><h3>Resumen</h3></div>
                 <div class="card-body">
                     <div class="stats-grid" style="grid-template-columns:1fr 1fr 1fr">
-                        <div class="stat-card"><div class="stat-info"><h4>${registros.filter(r => r.estado === 'Realizada').length}</h4><p>Realizadas</p></div></div>
-                        <div class="stat-card"><div class="stat-info"><h4>${registros.filter(r => r.estado === 'Vencida').length}</h4><p>Vencidas</p></div></div>
-                        <div class="stat-card"><div class="stat-info"><h4>${registros.filter(r => r.estado === 'Programada').length}</h4><p>Programadas</p></div></div>
+                        <div class="stat-card dash-card rep-card" style="border-left:4px solid #22c55e"><div class="stat-info"><p class="stat-label">Realizadas</p><p class="stat-sub">Mantenciones</p></div><div class="stat-value">${registros.filter(r => r.estado === 'Realizada').length}</div></div>
+                        <div class="stat-card dash-card rep-card" style="border-left:4px solid #ef4444"><div class="stat-info"><p class="stat-label">Vencidas</p><p class="stat-sub">Requieren acción</p></div><div class="stat-value">${registros.filter(r => r.estado === 'Vencida').length}</div></div>
+                        <div class="stat-card dash-card rep-card" style="border-left:4px solid #3b82f6"><div class="stat-info"><p class="stat-label">Programadas</p><p class="stat-sub">Pendientes</p></div><div class="stat-value">${registros.filter(r => r.estado === 'Programada').length}</div></div>
                     </div>
                 </div>
             </div>`;
         } else if (startDate && endDate) {
-            content = '<div class="empty-state"><p>No se encontraron registros</p></div>';
+            content = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No se encontraron registros</h4><p style="margin:0;color:#94a3b8;font-size:13px">Intenta con otro rango de fechas</p></div>';
         }
         return `
-            <div class="card">
+            <div class="card rep-card">
                 <div class="card-header"><h3>Filtrar por Periodo</h3></div>
                 <div class="card-body">
                     <div class="flex items-center gap-16" style="flex-wrap:wrap">
@@ -124,13 +109,13 @@ App.registerModule('reports', {
             bars += `<div class="chart-bar"><div class="label" title="${d.maquina.nombre}">${d.maquina.codigo}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}">${total}</div></div></div>`;
         }
         return `
-            <div class="card">
+            <div class="card rep-card">
                 <div class="card-header"><h3>Intervenciones por Máquina</h3></div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Máquina</th><th>Código</th><th>Tipo</th><th>Prev.</th><th>Fallas</th><th>Horas Det.</th></tr></thead><tbody>${rows}</tbody></table>
                 </div>
             </div>
-            <div class="card">
+            <div class="card rep-card">
                 <div class="card-header"><h3>Gráfico</h3></div>
                 <div class="card-body">${bars}</div>
             </div>`;
@@ -158,9 +143,9 @@ App.registerModule('reports', {
             bars += `<div class="chart-bar"><div class="label">${d.maquina.codigo}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:#c62828">${d.count}</div></div></div>`;
         });
         return `
-            <div class="card">
+            <div class="card rep-card">
                 <div class="card-header"><h3>Máquinas con más Fallas</h3></div>
-                <div class="card-body">${data.length === 0 ? '<div class="empty-state"><p>Sin fallas</p></div>' : `<table><thead><tr><th>#</th><th>Máquina</th><th>Código</th><th>Fallas</th><th>Horas Det.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
+                <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin fallas</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay fallas registradas</p></div>' : `<table><thead><tr><th>#</th><th>Máquina</th><th>Código</th><th>Fallas</th><th>Horas Det.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
                 </div>
             </div>`;
     },
@@ -185,9 +170,9 @@ App.registerModule('reports', {
             bars += `<div class="chart-bar"><div class="label">${d.componente.nombre}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:#ff6f00">${d.count}</div></div></div>`;
         });
         return `
-            <div class="card">
+            <div class="card rep-card">
                 <div class="card-header"><h3>Componentes más Intervenidos</h3></div>
-                <div class="card-body">${data.length === 0 ? '<div class="empty-state"><p>Sin datos</p></div>' : `<table><thead><tr><th>#</th><th>Componente</th><th>Fallas</th><th>Prev.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
+                <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin datos</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay componentes intervenidos</p></div>' : `<table><thead><tr><th>#</th><th>Componente</th><th>Fallas</th><th>Prev.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
                 </div>
             </div>`;
     },
@@ -204,15 +189,15 @@ App.registerModule('reports', {
             bars += `<div class="chart-bar"><div class="label" title="${v.maquina_nombre}">${(v.maquina_nombre || '').substring(0, 20)}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}">${dias}d</div></div></div>`;
         });
         return `
-            <div class="card">
-                <div class="card-header"><h3>⚠️ Vencidas (${vencidas.length})</h3></div>
+            <div class="card rep-card">
+                <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Vencidas (${vencidas.length})</h3></div>
                 <div class="card-body" style="padding:0">
-                    ${vencidas.length === 0 ? '<div class="empty-state"><div class="icon">✅</div><h4>No hay vencidas</h4></div>' : `
+                    ${vencidas.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay vencidas</h4><p style="margin:0;color:#94a3b8;font-size:13px">¡Todo al día!</p></div>' : `
                     <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Días</th><th>Técnico</th></tr></thead><tbody>${rows}</tbody></table>
                     <div style="padding:16px;border-top:1px solid var(--border)"><p class="text-muted">Total: ${vencidas.length} vencidas. Reprogramar a la brevedad.</p></div>`}
                 </div>
             </div>
-            ${vencidas.length > 0 ? `<div class="card"><div class="card-header"><h3>Antigüedad</h3></div><div class="card-body">${bars}</div></div>` : ''}`;
+            ${vencidas.length > 0 ? `<div class="card rep-card"><div class="card-header"><h3>Antigüedad</h3></div><div class="card-body">${bars}</div></div>` : ''}`;
     },
 
     async renderMensual() {
@@ -260,18 +245,18 @@ App.registerModule('reports', {
         }
 
         return `
-            <div class="card">
-                <div class="card-header"><h3>📊 Mantenciones por Mes</h3></div>
+            <div class="card rep-card">
+                <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Mantenciones por Mes</h3></div>
                 <div class="card-body">
                     <div style="display:flex;gap:16px;margin-bottom:16px;font-size:12px">
                         <div><span style="display:inline-block;width:12px;height:12px;background:#28a745;border-radius:2px;margin-right:4px"></span> Preventivas</div>
                         <div><span style="display:inline-block;width:12px;height:12px;background:#dc3545;border-radius:2px;margin-right:4px"></span> Correctivas</div>
                     </div>
-                    ${sorted.length === 0 ? '<div class="empty-state"><p>Sin datos</p></div>' : bars}
+                    ${sorted.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin datos</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay mantenciones por mes</p></div>' : bars}
                 </div>
             </div>
             ${sorted.length > 0 ? `
-            <div class="card">
+            <div class="card rep-card">
                 <div class="card-header"><h3>Detalle</h3></div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Mes</th><th>Preventivas</th><th>Correctivas</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
