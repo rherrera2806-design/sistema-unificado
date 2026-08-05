@@ -243,9 +243,10 @@ const Asistencia = {
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">RUT</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px" title="Fecha de Ingreso">FI</th>
                         <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
                     </tr></thead>
-                    <tbody id="ast-tabla-trabajadores"><tr><td colspan="4" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                    <tbody id="ast-tabla-trabajadores"><tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
                 </table>
                 </div>
             </div>`;
@@ -275,7 +276,7 @@ const Asistencia = {
         else if (this.trabFilter === 'inactivos') data = data.filter(t => !t.activo);
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:#94a3b8">Sin trabajadores</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Sin trabajadores</td></tr>';
             return;
         }
 
@@ -283,10 +284,13 @@ const Asistencia = {
         tbody.innerHTML = data.map((t, i) => {
             const ini = t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2);
             const bg = colors[i % colors.length];
+            const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
+            const fiFmt = fi ? this.fmtDate(fi) : '-';
             return '<tr style="border-bottom:1px solid #f1f5f9' + (t.activo ? '' : ';opacity:0.55') + '">'
                 + '<td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,' + bg + ',' + bg + 'dd);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700">' + ini + '</div><strong style="color:#1e293b">' + t.nombre + '</strong></div></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + t.rut + '</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + (t.activo ? 'background:#d1fae5;color:#059669' : 'background:#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span></td>'
+                + '<td style="padding:12px 16px;text-align:center;font-size:12px;color:#475569;font-family:\'JetBrains Mono\',monospace" title="Fecha de Ingreso">' + fiFmt + '</td>'
                 + '<td style="padding:12px 16px;text-align:center"><div style="display:flex;gap:4px;justify-content:center">'
                 + '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
                 + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '" title="' + (t.activo ? 'Desactivar' : 'Activar') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
@@ -497,9 +501,10 @@ const Asistencia = {
 
     exportExcelTrabajadores() {
         const trabajadores = this.trabajadoresAdmin || this.trabajadores || [];
-        let csv = 'Nombre,RUT,Estado\n';
+        let csv = 'Nombre,RUT,Estado,Fecha Ingreso\n';
         trabajadores.forEach(t => {
-            csv += `"${t.nombre}","${t.rut || ''}","${t.activo ? 'Activo' : 'Inactivo'}"\n`;
+            const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
+            csv += `"${t.nombre}","${t.rut || ''}","${t.activo ? 'Activo' : 'Inactivo'}","${fi || ''}"\n`;
         });
         const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -516,9 +521,10 @@ const Asistencia = {
         let html = '<html><head><style>body{font-family:Arial,sans-serif;padding:20px}h1{font-size:18px;color:#0f172a}table{width:100%;border-collapse:collapse;margin-top:15px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;font-size:12px}th{background:#f8fafc;font-weight:700;color:#64748b}.activo{color:#22c55e;font-weight:700}.inactivo{color:#dc2626}.stats{margin:15px 0;display:flex;gap:20px}.stat{padding:10px 15px;border-radius:8px;background:#f8fafc}</style></head><body>';
         html += '<h1>Listado de Trabajadores</h1>';
         html += '<div class="stats"><div class="stat"><strong>Total:</strong> ' + total + '</div><div class="stat"><strong>Activos:</strong> ' + activos + '</div><div class="stat"><strong>Inactivos:</strong> ' + inactivos + '</div></div>';
-        html += '<table><thead><tr><th>Nombre</th><th>RUT</th><th>Estado</th></tr></thead><tbody>';
+        html += '<table><thead><tr><th>Nombre</th><th>RUT</th><th>Estado</th><th>Fecha Ingreso</th></tr></thead><tbody>';
         trabajadores.forEach(t => {
-            html += '<tr><td>' + t.nombre + '</td><td>' + (t.rut || '') + '</td><td class="' + (t.activo ? 'activo' : 'inactivo') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</td></tr>';
+            const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
+            html += '<tr><td>' + t.nombre + '</td><td>' + (t.rut || '') + '</td><td class="' + (t.activo ? 'activo' : 'inactivo') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</td><td>' + (fi ? this.fmtDate(fi) : '-') + '</td></tr>';
         });
         html += '</tbody></table></body></html>';
         const win = window.open('', '_blank');
