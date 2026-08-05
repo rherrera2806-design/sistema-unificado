@@ -114,7 +114,7 @@ router.get('/api/asistencia/diaria', async (req, res) => {
         const fechaConsulta = fecha || new Date().toISOString().split('T')[0];
         
         const result = await pool.query(
-            `SELECT a.fecha, a.trabajador_id, t.nombre, t.rut 
+            `SELECT a.fecha, a.trabajador_id, t.nombre, t.rut, t.created_at 
              FROM asistencia a 
              JOIN trabajadores t ON a.trabajador_id = t.id 
              WHERE a.fecha = $1 

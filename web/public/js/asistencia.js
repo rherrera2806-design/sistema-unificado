@@ -428,23 +428,28 @@ const Asistencia = {
         if (!c) return;
         const busqueda = (document.getElementById('ast-hero-buscar')?.value || '').toLowerCase();
         const filtrados = this.trabajadores.filter(t => !busqueda || t.nombre.toLowerCase().includes(busqueda) || t.rut.toLowerCase().includes(busqueda));
+        const fechaVista = document.getElementById('ast-hero-fecha')?.value || new Date().toISOString().split('T')[0];
         c.innerHTML = filtrados.map((t, i) => {
             const falta = this.asistenciaHoy.find(a => a.trabajador_id === t.id);
             const ini = t.nombre.split(' ').map(n => n[0]).join('').slice(0, 2);
             const colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4','#ef4444','#6366f1'];
             const bg = colors[i % colors.length];
+            const creadoDespues = t.created_at && fechaVista < t.created_at.split('T')[0];
+            let estadoHtml;
+            if (creadoDespues) {
+                estadoHtml = '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8;font-size:10px;padding:2px 8px" title="Ingresó después de esta fecha">N/A</span>';
+            } else if (falta) {
+                estadoHtml = '<span class="ast-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px">Falta</span><button onclick="Asistencia.marcar(' + t.id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button>';
+            } else {
+                estadoHtml = '<span class="ast-badge" style="background:#d1fae5;color:#059669;font-size:10px;padding:2px 8px">Presente</span><button onclick="Asistencia.marcar(' + t.id + ',true)" class="btn btn-sm btn-danger" title="Marcar falta">Marcar Falta</button>';
+            }
             return `<div class="ast-worker">
                 <div class="ast-avatar" style="background:linear-gradient(135deg,${bg},${bg}dd)">${ini}</div>
                 <div style="flex:1;min-width:0">
                     <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.nombre}</div>
                     <div style="font-size:11px;color:#94a3b8;margin-top:1px">${t.rut}</div>
                 </div>
-                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-                    ${falta
-                        ? '<span class="ast-badge" style="background:#fee2e2;color:#dc2626;font-size:10px;padding:2px 8px">Falta</span><button onclick="Asistencia.marcar(' + t.id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button>'
-                        : '<span class="ast-badge" style="background:#d1fae5;color:#059669;font-size:10px;padding:2px 8px">Presente</span><button onclick="Asistencia.marcar(' + t.id + ',true)" class="btn btn-sm btn-danger" title="Marcar falta">Marcar Falta</button>'
-                    }
-                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">${estadoHtml}</div>
             </div>`;
         }).join('');
     },
@@ -560,12 +565,20 @@ const Asistencia = {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:#22c55e;font-size:13px;font-weight:600">Todos presentes hoy</td></tr>';
             return;
         }
-        tbody.innerHTML = f.map(a => '<tr style="border-bottom:1px solid #f1f5f9">'
-            + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + a.nombre + '</strong></td>'
-            + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + a.rut + '</td>'
-            + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#fee2e2;color:#dc2626">Falta</span></td>'
-            + '<td style="padding:12px 16px;text-align:center"><button onclick="Asistencia.marcar(' + a.trabajador_id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button></td>'
-            + '</tr>').join('');
+        const fechaVista = document.getElementById('ast-hero-fecha')?.value || new Date().toISOString().split('T')[0];
+        tbody.innerHTML = f.map(a => {
+            const creadoDespues = a.created_at && fechaVista < a.created_at.split('T')[0];
+            const badge = creadoDespues
+                ? '<span class="ast-badge" style="background:#f1f5f9;color:#94a3b8" title="Ingresó después de esta fecha">N/A</span>'
+                : '<span class="ast-badge" style="background:#fee2e2;color:#dc2626">Falta</span>';
+            const accion = creadoDespues ? '' : '<button onclick="Asistencia.marcar(' + a.trabajador_id + ',false)" class="btn btn-sm" title="Corregir a presente" style="background:#22c55e;color:white">Corregir</button>';
+            return '<tr style="border-bottom:1px solid #f1f5f9' + (creadoDespues ? ';opacity:0.55' : '') + '">'
+                + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + a.nombre + '</strong></td>'
+                + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + a.rut + '</td>'
+                + '<td style="padding:12px 16px">' + badge + '</td>'
+                + '<td style="padding:12px 16px;text-align:center">' + accion + '</td>'
+                + '</tr>';
+        }).join('');
     },
 
     actualizarStats() {
