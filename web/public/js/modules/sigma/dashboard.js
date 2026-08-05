@@ -77,7 +77,7 @@ App.registerModule('dashboard', {
             <tbody>${data.slice(0,5).map(v => {
                 const maq = maqMap[v.maquina_id];
                 const comp = compMap[v.componente_id];
-                return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td><td><button class="btn btn-sm btn-outline" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${v.id}),300)">Ir</button></td></tr>`;
+                return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td><td><button class="btn btn-sm btn-outline" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${v.id}),300)">Ir</button></td></tr>`;
             }).join('')}</tbody></table>`}
             </div></div>`;
     },
@@ -129,7 +129,7 @@ App.registerModule('dashboard', {
                 <td>${escapeHtml(c.responsable || '-')}</td>
                 <td><span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${escapeHtml(c.estado || 'En Mantención')}</span></td>
                 <td>${c.horas_detencion}</td>
-                <td><button class="btn btn-sm btn-outline" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)">Ir</button></td>
+                <td><button class="btn btn-sm btn-outline" title="Ir a registro" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)">Ir</button></td>
             </tr>`;
         }
         return `<div class="card mt-16">
@@ -153,7 +153,7 @@ App.registerModule('dashboard', {
                 <td>${App.formatDate(p.fecha_ejecutada)}</td>
                 <td>${escapeHtml(p.tecnico || '-')}</td>
                 <td>${escapeHtml(p.turno || 'Dia')}</td>
-                <td><button class="btn btn-sm btn-outline" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${p.id}),300)">Ir</button></td>
+                <td><button class="btn btn-sm btn-outline" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${p.id}),300)">Ir</button></td>
             </tr>`;
         }
         return `<div class="card mt-16">
