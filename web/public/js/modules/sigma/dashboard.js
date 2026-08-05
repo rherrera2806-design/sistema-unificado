@@ -1,30 +1,79 @@
 App.registerModule('dashboard', {
+    _periodo: 'anio', // 'anio' | 'mes'
+    _mes: new Date().getMonth() + 1,
+    _anio: new Date().getFullYear(),
+
     async render() {
         const el = document.getElementById('page-dashboard');
-        let stats = { totalMachines: 0, completedMaintenance: 0, upcomingMaintenance: 0, overdueMaintenance: 0, totalFailures: 0, criticalSpareParts: 0, recentFailures: [] };
-        try { stats = await db.getStatsSummary(); } catch(e) { console.error('Error loading stats:', e); }
+        await this.renderData();
+    },
 
-        const [overdue, upcoming, recentFailures, recentPreventive, topFallas, maquinas, componentes] = await Promise.all([
-            db.getOverdueMaintenance().catch(() => []),
-            db.getUpcomingMaintenance(15).catch(() => []),
-            db.getRecentCompleted().catch(() => []),
-            db.getRecentCompleted().catch(() => []),
-            db.getTopFailingMachines().catch(() => []),
-            db.getAll('machines').catch(() => []),
-            db.getAll('components').catch(() => [])
-        ]);
+    _datos: null,
+
+    async renderData() {
+        const el = document.getElementById('page-dashboard');
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+        if (!this._datos) {
+            const [preventivos, correctivos, maquinas, componentes, overdue, upcoming, recentFailures, recentPreventive, topFallas, statsSummary] = await Promise.all([
+                db.getAll('preventive_maintenance').catch(() => []),
+                db.getAll('corrective_maintenance').catch(() => []),
+                db.getAll('machines').catch(() => []),
+                db.getAll('components').catch(() => []),
+                db.getOverdueMaintenance().catch(() => []),
+                db.getUpcomingMaintenance(15).catch(() => []),
+                db.getRecentCompleted().catch(() => []),
+                db.getRecentCompleted().catch(() => []),
+                db.getTopFailingMachines().catch(() => []),
+                db.getStatsSummary().catch(() => ({ completedMaintenance: 0, upcomingMaintenance: 0, overdueMaintenance: 0, totalFailures: 0 }))
+            ]);
+            this._datos = { preventivos, correctivos, maquinas, componentes, overdue, upcoming, recentFailures, recentPreventive, topFallas, statsSummary };
+        }
+        const { preventivos, correctivos, maquinas, componentes, overdue, upcoming, recentFailures, recentPreventive, topFallas, statsSummary } = this._datos;
 
         const maqMap = {};
         maquinas.forEach(m => { maqMap[m.id] = m; });
         const compMap = {};
         componentes.forEach(c => { compMap[c.id] = c; });
 
+        const inPeriod = (fecha) => {
+            if (!fecha) return false;
+            const f = fecha.split('T')[0];
+            const [y, m, d] = f.split('-').map(Number);
+            if (this._periodo === 'anio') return y === this._anio;
+            return y === this._anio && m === this._mes;
+        };
+
+        const prevRealizadas = preventivos.filter(r => r.estado === 'Realizada' && inPeriod(r.fecha_ejecutada || r.fecha_programada));
+        const fallas = correctivos.filter(r => inPeriod(r.fecha_falla));
+        const totalMant = prevRealizadas.length + fallas.length;
+
+        const years = [...new Set([
+            ...preventivos.map(r => (r.fecha_ejecutada || r.fecha_programada || '').split('T')[0].split('-')[0]).filter(y => y && y.length === 4),
+            ...correctivos.map(r => (r.fecha_falla || '').split('T')[0].split('-')[0]).filter(y => y && y.length === 4)
+        ])].map(Number).sort((a, b) => b - a);
+        if (years.length === 0) years.push(this._anio);
+        if (!years.includes(this._anio)) this._anio = years[0];
+
+        const rangoTexto = this._periodo === 'anio' ? 'Año ' + this._anio : meses[this._mes - 1] + ' ' + this._anio;
+
         el.innerHTML = `
             <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Dashboard</h2>
-            <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Panel principal de control de mantenimiento</p></div>
-            </div></div></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+                <div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Dashboard</h2>
+                <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Panel principal de control de mantenimiento · ${rangoTexto}</p></div>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <div style="display:flex;gap:2px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:2px">
+                        <button onclick="App.modules.dashboard.setPeriodo('anio')" style="padding:5px 10px;font-size:11px;font-weight:600;border:none;border-radius:6px;cursor:pointer;${this._periodo === 'anio' ? 'background:#3b82f6;color:white' : 'background:transparent;color:rgba(255,255,255,0.7)'}">Año</button>
+                        <button onclick="App.modules.dashboard.setPeriodo('mes')" style="padding:5px 10px;font-size:11px;font-weight:600;border:none;border-radius:6px;cursor:pointer;${this._periodo === 'mes' ? 'background:#3b82f6;color:white' : 'background:transparent;color:rgba(255,255,255,0.7)'}">Por mes</button>
+                    </div>
+                    <select onchange="App.modules.dashboard.setAnio(this.value)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:5px 8px;font-size:11px;color:white;font-weight:600;cursor:pointer;outline:none;backdrop-filter:blur(8px)">
+                        ${years.map(y => `<option value="${y}" style="color:#1e293b" ${y === this._anio ? 'selected' : ''}>${y}</option>`).join('')}
+                    </select>
+                    ${this._periodo === 'mes' ? `<select onchange="App.modules.dashboard.setMes(this.value)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:5px 8px;font-size:11px;color:white;font-weight:600;cursor:pointer;outline:none;backdrop-filter:blur(8px)">${meses.map((m, i) => `<option value="${i + 1}" style="color:#1e293b" ${(i + 1) === this._mes ? 'selected' : ''}>${m}</option>`).join('')}</select>` : ''}
+                </div>
+            </div></div>
             <style>
 @keyframes dash_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .dash-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
@@ -35,28 +84,28 @@ App.registerModule('dashboard', {
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
                     <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Total Mantenciones</p><p class="stat-sub">M+R completados</p></div>
-                    <div class="stat-value">${stats.totalMachines}</div>
+                    <div class="stat-info"><p class="stat-label">Total Mantenciones</p><p class="stat-sub">${rangoTexto}</p></div>
+                    <div class="stat-value">${totalMant}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
                     <div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Preventivas</p><p class="stat-sub">Realizadas</p></div>
-                    <div class="stat-value">${stats.completedMaintenance}</div>
+                    <div class="stat-info"><p class="stat-label">Preventivas</p><p class="stat-sub">Realizadas · ${rangoTexto}</p></div>
+                    <div class="stat-value">${prevRealizadas.length}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #ef4444">
+                    <div class="stat-icon red"><svg width="12" height="12" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Fallas</p><p class="stat-sub">Registradas · ${rangoTexto}</p></div>
+                    <div class="stat-value">${fallas.length}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
                     <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Proximas (15d)</p><p class="stat-sub">Programadas</p></div>
-                    <div class="stat-value">${stats.upcomingMaintenance}</div>
+                    <div class="stat-value">${statsSummary.upcomingMaintenance}</div>
                 </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #ef4444">
                     <div class="stat-icon red"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Vencidas</p><p class="stat-sub">Requieren accion</p></div>
-                    <div class="stat-value">${stats.overdueMaintenance}</div>
-                </div>
-                <div class="stat-card dash-card" style="border-left:4px solid #ef4444">
-                    <div class="stat-icon red"><svg width="12" height="12" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Fallas</p><p class="stat-sub">Registradas</p></div>
-                    <div class="stat-value">${stats.totalFailures}</div>
+                    <div class="stat-value">${statsSummary.overdueMaintenance}</div>
                 </div>
             </div>
             <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
@@ -64,10 +113,14 @@ App.registerModule('dashboard', {
                 ${this.renderUpcomingLocal(upcoming, maqMap, compMap)}
             </div>
             ${this.renderTopFallas(topFallas)}
-            ${this.renderRecentFailuresLocal(stats.recentFailures, maqMap, compMap)}
+            ${this.renderRecentFailuresLocal(recentFailures, maqMap, compMap)}
             ${this.renderRecentPreventiveLocal(recentPreventive, maqMap, compMap)}
         `;
     },
+
+    setPeriodo(periodo) { this._periodo = periodo; this.renderData(); },
+    setMes(mes) { this._mes = parseInt(mes); this.renderData(); },
+    setAnio(anio) { this._anio = parseInt(anio); this.renderData(); },
 
     renderOverdueLocal(data, maqMap, compMap) {
         return `<div class="card dash-card">
