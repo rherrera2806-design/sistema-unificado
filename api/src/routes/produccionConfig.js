@@ -3,6 +3,7 @@ const router = express.Router();
 const { query } = require('../config/database');
 const config = require('../services/produccionConfig');
 const catalogos = require('../services/produccionCatalogos');
+const procesosCarroceria = require('../services/procesosCarroceria');
 
 const checkAdmin = async (req) => {
     const userEmail = req.headers['x-user-email'];
@@ -117,6 +118,66 @@ router.put('/api/produccion/materias-primas/:id', async (req, res, next) => {
 router.delete('/api/produccion/materias-primas/:id', async (req, res, next) => {
     await catalogos.eliminarMateriaPrima(Number(req.params.id));
     res.json({ ok: true });
+});
+
+// ═══════════════════════════════════════════════════════
+// PROCESOS CARROCERIA (Mapeo codigo_sap -> estaciones)
+// ═══════════════════════════════════════════════════════
+
+router.get('/api/produccion/procesos-carroceria', async (req, res, next) => {
+    try { res.json(await procesosCarroceria.getAll()); } catch (e) { next(e); }
+});
+
+router.get('/api/produccion/procesos-carroceria/count', async (req, res, next) => {
+    try { res.json({ count: await procesosCarroceria.count() }); } catch (e) { next(e); }
+});
+
+router.get('/api/produccion/procesos-carroceria/sap/:codigo', async (req, res, next) => {
+    try {
+        const r = await procesosCarroceria.getByCodigoSap(req.params.codigo);
+        if (!r) return res.status(404).json({ error: 'No encontrado' });
+        res.json(r);
+    } catch (e) { next(e); }
+});
+
+router.post('/api/produccion/procesos-carroceria', async (req, res, next) => {
+    try {
+        const r = await procesosCarroceria.upsert(req.body);
+        res.status(201).json(r);
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.put('/api/produccion/procesos-carroceria/:id', async (req, res, next) => {
+    try {
+        const r = await procesosCarroceria.upsert(req.body);
+        res.json(r);
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.delete('/api/produccion/procesos-carroceria/:id', async (req, res, next) => {
+    try {
+        const ok = await procesosCarroceria.remove(Number(req.params.id));
+        if (!ok) return res.status(404).json({ error: 'No encontrado' });
+        res.json({ ok: true });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.delete('/api/produccion/procesos-carroceria/all/all', async (req, res, next) => {
+    try {
+        const eliminados = await procesosCarroceria.removeAll();
+        res.json({ ok: true, eliminados });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.post('/api/produccion/procesos-carroceria/importar', async (req, res, next) => {
+    try {
+        const { filas } = req.body;
+        if (!Array.isArray(filas) || filas.length === 0) {
+            return res.status(400).json({ error: 'Lista de filas vacía' });
+        }
+        const r = await procesosCarroceria.importarMasivo(filas);
+        res.json(r);
+    } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 module.exports = router;

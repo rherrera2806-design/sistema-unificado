@@ -42,7 +42,32 @@ const buscarFamilia = async (codigo) => {
     return famRes.rows.length > 0 ? famRes.rows[0] : null;
 };
 
-const getEstacionesBase = async (familia, perforaciones, pintado) => {
+const getEstacionesBase = async (familia, perforaciones, pintado, codigoSap) => {
+    if (codigoSap) {
+        const custRes = await query(
+            'SELECT estaciones_json FROM procesos_carroceria_sap WHERE codigo_sap = $1',
+            [String(codigoSap).trim()]
+        );
+        if (custRes.rows.length > 0) {
+            let ids = [];
+            try {
+                const raw = custRes.rows[0].estaciones_json;
+                if (Array.isArray(raw)) ids = raw.map(Number).filter(n => Number.isFinite(n) && n > 0);
+                else if (typeof raw === 'string') {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) ids = parsed.map(Number).filter(n => Number.isFinite(n) && n > 0);
+                }
+            } catch (e) { ids = []; }
+            if (ids.length > 0) {
+                const ordenRes = await query(
+                    'SELECT id FROM estaciones_maestras WHERE id = ANY($1) ORDER BY orden_secuencia_defecto',
+                    [ids]
+                );
+                return ordenRes.rows.map(r => r.id);
+            }
+        }
+    }
+
     let ids = [];
     if (familia) {
         const febRes = await query(`
@@ -109,7 +134,7 @@ const crearOrden = async (body) => {
     const codigo = String(codigo_producto).trim();
 
     const familia = await buscarFamilia(codigo);
-    const estacionesBaseIds = await getEstacionesBase(familia, perforaciones, pintado);
+    const estacionesBaseIds = await getEstacionesBase(familia, perforaciones, pintado, codigo);
     const recetas = await buscarRecetasBom(codigo);
 
     console.log('[PROD] Manual:', codigo, 'familia:', familia?.nombre_familia, 'BOM:', recetas.length, 'estaciones:', estacionesBaseIds.length);

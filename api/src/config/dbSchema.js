@@ -533,7 +533,20 @@ async function runMigrations() {
         await query("ALTER TABLE trabajadores ALTER COLUMN fecha_ingreso SET DEFAULT CURRENT_DATE");
         await query("ALTER TABLE trabajadores ALTER COLUMN fecha_ingreso SET NOT NULL");
     } catch (e) {
-        console.error('Migration warning:', e.message);
+        console.error('Migration warning (001):', e.message);
+    }
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS procesos_carroceria_sap (
+            id SERIAL PRIMARY KEY,
+            codigo_sap VARCHAR(50) UNIQUE NOT NULL,
+            estaciones_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+            descripcion TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_procesos_carroceria_sap_codigo ON procesos_carroceria_sap(codigo_sap)`);
+    } catch (e) {
+        console.error('Migration warning (002):', e.message);
     }
 }
 
