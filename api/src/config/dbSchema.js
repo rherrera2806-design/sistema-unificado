@@ -289,6 +289,8 @@ async function initDB() {
     )`);
     await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL`);
     await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS procesos_especificos_json JSONB DEFAULT NULL`);
+    await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL`);
+    await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL`);
     await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_padre ON recetas_bom(codigo_sap_padre)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)`);
     await query(`CREATE TABLE IF NOT EXISTS reglas_procesos_extras (
@@ -578,6 +580,12 @@ async function runMigrations() {
         `);
     } catch (e) {
         console.error('Migration warning (004):', e.message);
+    }
+    try {
+        await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL");
+        await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL");
+    } catch (e) {
+        console.error('Migration warning (ancho_alto):', e.message);
     }
 }
 

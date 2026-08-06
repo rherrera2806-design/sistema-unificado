@@ -44,20 +44,20 @@ const getRecetasBom = async () => {
     return result.rows;
 };
 
-const crearRecetaBom = async ({ codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json }) => {
+const crearRecetaBom = async ({ codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json, ancho, alto }) => {
     const procsJson = (procesos_especificos_json !== undefined && procesos_especificos_json !== null)
         ? JSON.stringify(Array.isArray(procesos_especificos_json) ? procesos_especificos_json : [])
         : null;
     const famId = (familia_id !== undefined && familia_id !== null && familia_id !== '') ? Number(familia_id) : null;
     const result = await query(
-        `INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json)
-         VALUES ($1, $2, $3, $4, $5::jsonb) RETURNING *`,
-        [codigo_sap_padre.trim(), materia_prima_id, famId, cantidad || 1, procsJson]
+        `INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json, ancho, alto)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7) RETURNING *`,
+        [codigo_sap_padre.trim(), materia_prima_id, famId, cantidad || 1, procsJson, ancho || null, alto || null]
     );
     return result.rows[0];
 };
 
-const actualizarRecetaBom = async (id, { codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json }) => {
+const actualizarRecetaBom = async (id, { codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json, ancho, alto }) => {
     const procsJson = (procesos_especificos_json !== undefined)
         ? (procesos_especificos_json === null || procesos_especificos_json === '' || (Array.isArray(procesos_especificos_json) && procesos_especificos_json.length === 0)
             ? null
@@ -72,9 +72,11 @@ const actualizarRecetaBom = async (id, { codigo_sap_padre, materia_prima_id, fam
             materia_prima_id = COALESCE($2, materia_prima_id),
             familia_id = $3,
             cantidad = COALESCE($4, cantidad),
-            procesos_especificos_json = $5::jsonb
+            procesos_especificos_json = $5::jsonb,
+            ancho = $7,
+            alto = $8
          WHERE id = $6 RETURNING *`,
-        [codigo_sap_padre?.trim() || null, materia_prima_id || null, famId, cantidad || null, procsJson, id]
+        [codigo_sap_padre?.trim() || null, materia_prima_id || null, famId, cantidad || null, procsJson, id, ancho !== undefined ? (ancho || null) : undefined, alto !== undefined ? (alto || null) : undefined]
     );
     return result.rows[0];
 };
@@ -147,6 +149,8 @@ const previewRecetasBom = async (rows) => {
     const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima']);
     const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad']);
     const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json']);
+    const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width']);
+    const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height']);
 
     const missing = [];
     if (!colCodigo) missing.push('Codigo SAP');
@@ -188,7 +192,9 @@ const previewRecetasBom = async (rows) => {
         codigo_sap: String(row[colCodigo] || '').trim(),
         codigo_mp: String(row[colMP] || '').trim(),
         cantidad: colCant ? Number(row[colCant]) || 1 : 1,
-        estaciones: colEst ? String(row[colEst] || '').trim() : ''
+        estaciones: colEst ? String(row[colEst] || '').trim() : '',
+        ancho: colAncho ? Number(row[colAncho]) || null : null,
+        alto: colAlto ? Number(row[colAlto]) || null : null
     }));
 
     return { total: rows.length, validas, errores, sample };
@@ -205,6 +211,8 @@ const importarRecetasBom = async (rows) => {
     const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima']);
     const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad']);
     const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json']);
+    const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width']);
+    const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height']);
 
     for (let i = 0; i < rows.length; i++) {
         try {
@@ -227,10 +235,12 @@ const importarRecetasBom = async (rows) => {
 
             const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
             const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
+            const ancho = colAncho ? Number(row[colAncho]) || null : null;
+            const alto = colAlto ? Number(row[colAlto]) || null : null;
 
             await query(
-                'INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json) VALUES ($1, $2, $3, $4::jsonb)',
-                [sap, mpId, cantidad, procsJson]
+                'INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto) VALUES ($1, $2, $3, $4::jsonb, $5, $6)',
+                [sap, mpId, cantidad, procsJson, ancho, alto]
             );
             resultados.importadas++;
         } catch (e) { resultados.errores.push({ fila: i + 1, error: e.message }); }

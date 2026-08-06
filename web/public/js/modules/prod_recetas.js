@@ -70,9 +70,11 @@ ${puedeEditar ? `
                         <th style="padding:6px 12px">Materia Prima</th>
                         <th style="padding:6px 12px">Ruta de Procesos</th>
                         <th style="padding:6px 12px">Cant.</th>
+                        <th style="padding:6px 12px">Ancho</th>
+                        <th style="padding:6px 12px">Alto</th>
                         <th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="recTable">
-                        <tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -92,6 +94,8 @@ ${puedeEditar ? `
                                 <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Codigo MP *</span>
                                 <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Cantidad</span>
                                 <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Estaciones (IDs separados por coma)</span>
+                                <span style="background:#8b5cf6;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Ancho</span>
+                                <span style="background:#8b5cf6;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Alto</span>
                             </div>
                             <button class="btn btn-outline" style="font-size:11px;padding:4px 12px" onclick="App.modules.prod_recetas.downloadTemplate()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar plantilla</button>
                         </div>
@@ -112,6 +116,8 @@ ${puedeEditar ? `
                                     <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Materia Prima</th>
                                     <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Cant.</th>
                                     <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Estaciones</th>
+                                    <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #e2e8f0">Ancho</th>
+                                    <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #e2e8f0">Alto</th>
                                 </tr></thead><tbody id="recImportTable"></tbody></table>
                             </div>
                         </div>
@@ -144,6 +150,14 @@ ${puedeEditar ? `
                             </div>
                             <div class="form-group"><label>Cantidad</label>
                                 <input class="form-control" id="recCantidad" type="number" min="0.01" step="0.01" value="1" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                            <div class="form-group"><label>Ancho <span style="color:#94a3b8;font-weight:400">(mm, opcional)</span></label>
+                                <input class="form-control" id="recAncho" type="number" min="0" step="0.01" placeholder="Ej: 1200" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                            </div>
+                            <div class="form-group"><label>Alto <span style="color:#94a3b8;font-weight:400">(mm, opcional)</span></label>
+                                <input class="form-control" id="recAlto" type="number" min="0" step="0.01" placeholder="Ej: 800" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                             </div>
                         </div>
 
@@ -247,7 +261,7 @@ ${puedeEditar ? `
 
     renderTable(recetas) {
         const tbody = document.getElementById('recTable');
-        if (!recetas.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">No hay recetas BOM registradas. Crea una con "Nueva Receta" o importa desde el modulo de Códigos Carroceros.</td></tr>'; return; }
+        if (!recetas.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">No hay recetas BOM registradas. Crea una con "Nueva Receta" o importa desde el modulo de Códigos Carroceros.</td></tr>'; return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
 
@@ -271,7 +285,7 @@ ${puedeEditar ? `
             if (familiaNombre) subtitleParts.push('Familia: ' + escapeHtml(familiaNombre));
             if (customRoutes.length > 0) subtitleParts.push('<span style="color:#7c3aed;font-weight:700">' + customRoutes.length + ' con ruta custom</span>');
             const subtitle = subtitleParts.length ? '<span style="font-size:12px;color:var(--text);font-weight:400"> - ' + subtitleParts.join(' · ') + '</span>' : '';
-            html += `<tr class="prec-row" style="background:#f8fafc;line-height:1.3"><td colspan="6" style="padding:6px 12px"><strong style="color:var(--primary)">${escapeHtml(padre)}</strong> ${subtitle} <span style="font-size:11px;color:var(--text-light)">(${items.length} ${items.length === 1 ? 'receta' : 'recetas'})</span></td></tr>`;
+            html += `<tr class="prec-row" style="background:#f8fafc;line-height:1.3"><td colspan="7" style="padding:6px 12px"><strong style="color:var(--primary)">${escapeHtml(padre)}</strong> ${subtitle} <span style="font-size:11px;color:var(--text-light)">(${items.length} ${items.length === 1 ? 'receta' : 'recetas'})</span></td></tr>`;
             items.forEach(r => {
                 const procs = Array.isArray(r.procesos_especificos_json) ? r.procesos_especificos_json : [];
                 const chips = procs.map((id, idx) => {
@@ -292,6 +306,8 @@ ${puedeEditar ? `
                     <td style="padding:6px 12px"><span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${escapeHtml(r.codigo_mp || '-')}</span> ${r.mp_nombre ? '<span style="color:#64748b;font-size:11px">· ' + escapeHtml(r.mp_nombre) + '</span>' : ''}</td>
                     <td style="padding:6px 12px;max-width:340px">' + rutaHtml + '</td>
                     <td style="padding:6px 12px;text-align:center"><strong>${r.cantidad || 1}</strong></td>
+                    <td style="padding:6px 12px;text-align:right">${r.ancho ? '<span style="background:#f3e8ff;color:#7c3aed;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + r.ancho + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
+                    <td style="padding:6px 12px;text-align:right">${r.alto ? '<span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + r.alto + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
                     <td style="padding:6px 12px;white-space:nowrap">${puedeEditar ? `<button onclick="App.modules.prod_recetas.edit(${r.id})" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button onclick="App.modules.prod_recetas.delete(${r.id})" class="btn btn-sm btn-danger" title="Eliminar" style="margin-left:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
                 </tr>`;
             });
@@ -308,6 +324,8 @@ ${puedeEditar ? `
         document.getElementById('recMateriaPrima').value = '';
         document.getElementById('recFamilia').value = '';
         document.getElementById('recCantidad').value = '1';
+        document.getElementById('recAncho').value = '';
+        document.getElementById('recAlto').value = '';
         document.getElementById('recUsarRutaCustom').checked = false;
         document.getElementById('recProcesosList').innerHTML = '';
         document.getElementById('recRutaContainer').style.display = 'none';
@@ -360,6 +378,8 @@ ${puedeEditar ? `
         document.getElementById('recMateriaPrima').value = r.materia_prima_id || '';
         document.getElementById('recFamilia').value = r.familia_id || '';
         document.getElementById('recCantidad').value = r.cantidad || 1;
+        document.getElementById('recAncho').value = r.ancho || '';
+        document.getElementById('recAlto').value = r.alto || '';
         const usarCustom = this._procesosTemporales.length > 0;
         document.getElementById('recUsarRutaCustom').checked = usarCustom;
         document.getElementById('recRutaContainer').style.display = usarCustom ? 'block' : 'none';
@@ -385,13 +405,15 @@ ${puedeEditar ? `
         }
         if (!codigo_sap_padre) { alert('Codigo SAP requerido'); return; }
         if (!materia_prima_id) { alert('Materia prima requerida'); return; }
+        const ancho = Number(document.getElementById('recAncho').value) || null;
+        const alto = Number(document.getElementById('recAlto').value) || null;
         try {
             const url = id ? `/api/produccion/recetas-bom/${id}` : '/api/produccion/recetas-bom';
             const method = id ? 'PUT' : 'POST';
             const r = await fetch(url, {
                 method,
                 headers: this._headers(),
-                body: JSON.stringify({ codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json })
+                body: JSON.stringify({ codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json, ancho, alto })
             });
             if (!r.ok) {
                 const err = await r.json().catch(() => ({}));
@@ -471,7 +493,7 @@ ${puedeEditar ? `
 
                 let tableHtml = '';
                 data.sample.forEach(s => {
-                    tableHtml += '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace">' + (s.codigo_sap || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.codigo_mp || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center">' + (s.cantidad || 1) + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.estaciones || '-') + '</td></tr>';
+                    tableHtml += '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace">' + (s.codigo_sap || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.codigo_mp || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center">' + (s.cantidad || 1) + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.estaciones || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + (s.ancho || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + (s.alto || '-') + '</td></tr>';
                 });
                 document.getElementById('recImportTable').innerHTML = tableHtml;
             } catch (err) { alert('Error al procesar archivo: ' + err.message); }
@@ -509,13 +531,13 @@ ${puedeEditar ? `
     },
 
     downloadTemplate() {
-        const headers = ['Codigo SAP', 'Codigo MP', 'Cantidad', 'Familia', 'Estaciones'];
+        const headers = ['Codigo SAP', 'Codigo MP', 'Cantidad', 'Familia', 'Estaciones', 'Ancho', 'Alto'];
         const example = [
-            ['500', 'MP-001', '1', 'TEMPLADO', ''],
-            ['500', 'MP-002', '2', 'TEMPLADO', ''],
-            ['501', 'MP-001', '1', 'TERMO', ''],
-            ['502', 'MP-003', '1', '', '1,3,5'],
-            ['503', 'MP-001', '1', 'CARROCERO', '1,2,4,7,8']
+            ['500', 'MP-001', '1', 'TEMPLADO', '', '', ''],
+            ['500', 'MP-002', '2', 'TEMPLADO', '', '', ''],
+            ['501', 'MP-001', '1', 'TERMO', '', '', ''],
+            ['502', 'MP-003', '1', '', '1,3,5', '1200', '800'],
+            ['503', 'MP-001', '1', 'CARROCERO', '1,2,4,7,8', '1500', '1000']
         ];
         const csvContent = [headers, ...example].map(row => row.join(',')).join('\n');
         const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
