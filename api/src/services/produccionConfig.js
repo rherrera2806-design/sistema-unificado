@@ -84,13 +84,25 @@ const eliminarTodosCodigos = async () => {
 
 const importarCodigos = async (rows) => {
     const resultados = { importados: 0, errores: [] };
+
+    const findCol = (row, candidates) => {
+        for (const c of candidates) { if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== '') return String(row[c]).trim(); }
+        const keys = Object.keys(row);
+        for (const c of candidates) {
+            const found = keys.find(k => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+            if (found && row[found]) return String(row[found]).trim();
+        }
+        return '';
+    };
+
     for (let i = 0; i < rows.length; i++) {
         try {
             const row = rows[i];
-            const codigo = String(row['Codigo'] || row['codigo'] || row['ItemCode'] || '').trim();
-            const descripcion = String(row['Descripcion'] || row['descripcion'] || row['ItemName'] || '').trim();
-            const grupo = String(row['Grupo'] || row['grupo'] || row['Group'] || '').trim();
-            const familia = String(row['Familia'] || row['familia'] || row['Family'] || '').trim();
+            if (i === 0) console.log('[CODIGOS] Columnas Excel:', Object.keys(row).join(', '));
+            const codigo = findCol(row, ['Codigo', 'ItemCode', 'Cod']);
+            const descripcion = findCol(row, ['Descripcion', 'ItemName', 'Nombre', 'Detalle', 'Desc', 'Description']);
+            const grupo = findCol(row, ['Grupo', 'Group', 'Categoria', 'Category']);
+            const familia = findCol(row, ['Familia', 'Family', 'Tipo', 'Type']);
 
             let bloqueoRaw = '';
             for (const key of Object.keys(row)) {
