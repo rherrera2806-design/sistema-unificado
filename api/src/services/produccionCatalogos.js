@@ -152,6 +152,28 @@ const findCol = (row, candidates) => {
     return null;
 };
 
+const findEstacionesCol = (rows) => {
+    if (!rows.length) return null;
+    const keys = Object.keys(rows[0]);
+    for (const key of keys) {
+        let commaCount = 0;
+        let numericCount = 0;
+        for (let i = 0; i < Math.min(rows.length, 20); i++) {
+            const val = String(rows[i][key] || '').trim();
+            if (val.includes(',')) {
+                commaCount++;
+                const parts = val.split(',').map(s => parseInt(s.trim(), 10));
+                if (parts.every(n => Number.isFinite(n) && n > 0)) numericCount++;
+            }
+        }
+        if (commaCount >= 3 && numericCount >= 3) {
+            console.log('[FIND] Estaciones column detected by content:', key, '(', commaCount, 'comma rows,', numericCount, 'numeric)');
+            return key;
+        }
+    }
+    return null;
+};
+
 const previewRecetasBom = async (rows) => {
     const headers = Object.keys(rows[0] || {});
     const normalized = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\u00a0\u200b\u200c\u200d\ufeff\r\n\t]/g, '').trim();
@@ -161,7 +183,8 @@ const previewRecetasBom = async (rows) => {
     const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP', 'codigo sap']);
     const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo', 'codigo MP']);
     const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
-    const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
+    let colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
+    if (!colEst) colEst = findEstacionesCol(rows);
     const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
     const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
     console.log('[PREVIEW] Columnas:', { colCodigo, colMP, colCant, colEst, colAncho, colAlto });
@@ -225,7 +248,8 @@ const importarRecetasBom = async (rows) => {
     const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP']);
     const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo']);
     const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
-    const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
+    let colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
+    if (!colEst) colEst = findEstacionesCol(rows);
     const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
     const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
     console.log('[IMPORT] Headers:', Object.keys(rows[0] || {}));
