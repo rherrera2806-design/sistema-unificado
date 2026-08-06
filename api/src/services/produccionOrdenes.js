@@ -131,14 +131,22 @@ const buscarRecetasBom = async (codigo) => {
 };
 
 const crearOrden = async (body) => {
-    const { pedido_sap_id, cliente, codigo_producto, ancho, alto, perforaciones, pintado, tipo_venta, item_numero, cantidad, fecha_creacion, tipo_entrega, orden_compra, posicion, nota } = body;
+    const { pedido_sap_id, cliente, codigo_producto, ancho, alto, perforaciones, perforado, destaje, sacado, pintado, tipo_venta, item_numero, cantidad, fecha_creacion, tipo_entrega, orden_compra, posicion, nota } = body;
 
     const cant = Number(cantidad) || 1;
     const m2 = ((Number(ancho) * Number(alto)) / 1000000) * cant;
     const codigo = String(codigo_producto).trim();
 
+    const ops = [];
+    if (perforado) ops.push('Perforado');
+    if (destaje) ops.push('Destaje');
+    if (sacado) ops.push('Sacado');
+    if (ops.length === 0 && perforaciones) ops.push('Mecanizado');
+    const mecanizadoOperaciones = ops.length > 0 ? 'Operaciones: ' + ops.join(', ') : null;
+    const tieneMecanizado = ops.length > 0 || perforaciones;
+
     const familia = await buscarFamilia(codigo);
-    const estacionesBaseIds = await getEstacionesBase(familia, perforaciones, pintado, codigo);
+    const estacionesBaseIds = await getEstacionesBase(familia, tieneMecanizado, pintado, codigo);
     const recetas = await buscarRecetasBom(codigo);
 
     console.log('[PROD] Manual:', codigo, 'familia:', familia?.nombre_familia, 'BOM:', recetas.length, 'estaciones:', estacionesBaseIds.length);
@@ -148,11 +156,11 @@ const crearOrden = async (body) => {
         for (const comp of recetas) {
             const result = await query(
                 `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
-                 es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre, nota, posicion, orden_compra, tipo_entrega, created_at)
+                 es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre, nota, posicion, orden_compra, tipo_entrega, created_at, mecanizado_operaciones)
                  VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
                 [pedido_sap_id, cliente || null, comp.codigo_mp || codigo, comp.mp_nombre || '', ancho, alto, m2,
                  tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, codigo,
-                 nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString()]
+                 nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString(), mecanizadoOperaciones]
             );
             ids.push(result.rows[0].id);
             await crearPasos(result.rows[0].id, estacionesBaseIds);
@@ -160,11 +168,11 @@ const crearOrden = async (body) => {
     } else {
         const result = await query(
             `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
-             tipo_venta, item_numero, cantidad, familia_id, nota, posicion, orden_compra, tipo_entrega, created_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+             tipo_venta, item_numero, cantidad, familia_id, nota, posicion, orden_compra, tipo_entrega, created_at, mecanizado_operaciones)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
             [pedido_sap_id, cliente || null, codigo, null, ancho, alto, m2,
              tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null,
-             nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString()]
+             nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString(), mecanizadoOperaciones]
         );
         ids.push(result.rows[0].id);
         await crearPasos(result.rows[0].id, estacionesBaseIds);

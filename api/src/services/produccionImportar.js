@@ -103,6 +103,9 @@ const mergearFilas = (rows) => {
                 precio_unitario: Number(row['precio'] || row['Precio'] || row['precio_unitario'] || row['Price'] || 0),
                 radio: Number(row['radio'] || row['Radio'] || row['RADIO'] || 0) === 1,
                 pulido: Number(row['pulido'] || row['Pulido'] || row['PULIDO'] || 0) === 1,
+                perforado: Number(row['perforado'] || row['Perforado'] || row['PERFORADO'] || row['perforaciones'] || row['Perforaciones'] || 0) > 0,
+                destaje: Number(row['destaje'] || row['Destaje'] || row['DESTAJE'] || 0) > 0,
+                sacado: Number(row['sacado'] || row['Sacado'] || row['SACADO'] || 0) > 0,
                 mecanizado: Number(row['mecanizado'] || row['Mecanizado'] || row['MECANIZADO'] || row['perforaciones'] || row['Perforaciones'] || 0) > 0,
                 ventana: Number(row['ventana'] || row['Ventana'] || row['VENTANA'] || 0) === 1,
                 pintado: Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1,
@@ -173,12 +176,24 @@ const calcularEstaciones = (r, familia, maestros) => {
         }
     }
 
-    const flagsMap = { radio: 'radio', pulido: 'pulido', mecanizado: 'mecanizado', ventana: 'ventana', pintado: 'pintado', pintado_car: 'pintado_car' };
+    const flagsMap = { radio: 'radio', pulido: 'pulido', ventana: 'ventana', pintado: 'pintado', pintado_car: 'pintado_car' };
     for (const [flag, nombre] of Object.entries(flagsMap)) {
         if (r[flag] && reglaMap[nombre]) {
             const estId = reglaMap[nombre].estacion_id;
             if (!estacionesFinales.includes(estId)) estacionesFinales.push(estId);
         }
+    }
+
+    const ops = [];
+    if (r.perforado) ops.push('Perforado');
+    if (r.destaje) ops.push('Destaje');
+    if (r.sacado) ops.push('Sacado');
+    if (ops.length === 0 && r.mecanizado) ops.push('Mecanizado');
+    const mecanizadoOperaciones = ops.length > 0 ? 'Operaciones: ' + ops.join(', ') : null;
+    const tieneMecanizado = ops.length > 0 || r.mecanizado;
+    if (tieneMecanizado && reglaMap['mecanizado']) {
+        const estId = reglaMap['mecanizado'].estacion_id;
+        if (!estacionesFinales.includes(estId)) estacionesFinales.push(estId);
     }
 
     estacionesFinales.sort((a, b) => {
@@ -187,7 +202,7 @@ const calcularEstaciones = (r, familia, maestros) => {
         return (ea?.orden_secuencia_defecto || 99) - (eb?.orden_secuencia_defecto || 99);
     });
 
-    return estacionesFinales;
+    return { estaciones: estacionesFinales, mecanizadoOperaciones };
 };
 
 const importarOrdenes = async (rows) => {
@@ -202,13 +217,13 @@ const importarOrdenes = async (rows) => {
             const r = merged[key];
             const m2 = ((r.ancho / 1000) * (r.alto / 1000)) * r.cantidad;
             const familia = await buscarFamiliaParaFila(r, maestros);
-            const estacionesFinales = calcularEstaciones(r, familia, maestros);
+            const { estaciones: estacionesFinales, mecanizadoOperaciones } = calcularEstaciones(r, familia, maestros);
             const es_compuesto = recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0;
 
             if (es_compuesto) {
-                await explosionBOM(r, recetaBomMap, materiaPrimaMap, materiasPrimas, familia, estacionesFinales, m2, resultados);
+                await explosionBOM(r, recetaBomMap, materiaPrimaMap, materiasPrimas, familia, estacionesFinales, m2, resultados, mecanizadoOperaciones);
             } else {
-                await crearOrdenSimple(r, familia, estacionesFinales, m2, resultados);
+                await crearOrdenSimple(r, familia, estacionesFinales, m2, resultados, mecanizadoOperaciones);
             }
         } catch (eRow) {
             console.error('[PROD] Error en fila', key, ':', eRow.message);

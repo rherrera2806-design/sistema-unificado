@@ -34,7 +34,7 @@ async function getColaPorEstacion(estacionId) {
         SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados, p.fecha_programada,
                o.id as orden_id, o.pedido_sap_id, o.cliente, o.codigo_producto, o.descripcion,
                o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
-               o.nota, o.grupo, o.es_reposicion, o.familia_id,
+               o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones,
                f.nombre_familia,
                nes.nombre_estacion as proxima_estacion
         FROM cola_produccion_pasos p
@@ -79,7 +79,7 @@ async function finalizarPaso(pasoId) {
 
 async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail }) {
     const pasoResult = await query(
-        `SELECT p.*, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, o.cantidad, o.familia_id, o.kilos, o.espesor_mm, o.pedido_sap_id, o.grupo, o.metros_cuadrados, o.costo_materia_prima, o.nota, o.pintado, o.perforaciones, o.tipo_venta, o.posicion, o.orden_compra, o.tipo_entrega, o.item_numero, o.codigo_padre
+        `SELECT p.*, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, o.cantidad, o.familia_id, o.kilos, o.espesor_mm, o.pedido_sap_id, o.grupo, o.metros_cuadrados, o.costo_materia_prima, o.nota, o.pintado, o.perforaciones, o.tipo_venta, o.posicion, o.orden_compra, o.tipo_entrega, o.item_numero, o.codigo_padre, o.mecanizado_operaciones
          FROM cola_produccion_pasos p
          JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
          WHERE p.id = $1`,
@@ -107,9 +107,9 @@ async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail
     const mermaId = mermaResult.rows[0].id;
 
     const nuevaOrdenResult = await query(
-        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, cantidad, familia_id, espesor_mm, kilos, estado_programacion, es_reposicion, merma_original_id, pintado, perforaciones, tipo_venta, nota, posicion, orden_compra, tipo_entrega, grupo, item_numero, codigo_padre)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id`,
-        [p.pedido_sap_id, p.cliente, p.codigo_producto, '[REPOSICION] ' + (p.descripcion || ''), p.ancho, p.alto, m2Mermados, cantidadMermada, p.familia_id, p.espesor_mm, kilosMermados, mermaId, p.pintado, p.perforaciones, p.tipo_venta, (p.nota || '') + ' | Merma: ' + causa + (observacion ? ' - ' + observacion : ''), p.posicion, p.orden_compra, p.tipo_entrega, p.grupo, p.item_numero, p.codigo_padre]
+        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, cantidad, familia_id, espesor_mm, kilos, estado_programacion, es_reposicion, merma_original_id, pintado, perforaciones, tipo_venta, nota, posicion, orden_compra, tipo_entrega, grupo, item_numero, codigo_padre, mecanizado_operaciones)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
+        [p.pedido_sap_id, p.cliente, p.codigo_producto, '[REPOSICION] ' + (p.descripcion || ''), p.ancho, p.alto, m2Mermados, cantidadMermada, p.familia_id, p.espesor_mm, kilosMermados, mermaId, p.pintado, p.perforaciones, p.tipo_venta, (p.nota || '') + ' | Merma: ' + causa + (observacion ? ' - ' + observacion : ''), p.posicion, p.orden_compra, p.tipo_entrega, p.grupo, p.item_numero, p.codigo_padre, p.mecanizado_operaciones]
     );
     const nuevaOrdenId = nuevaOrdenResult.rows[0].id;
 
