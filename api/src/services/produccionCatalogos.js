@@ -227,53 +227,69 @@ const importarRecetasBom = async (rows) => {
     const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
     console.log('[IMPORT] Headers:', Object.keys(rows[0] || {}));
     console.log('[IMPORT] Columnas:', { colCodigo, colMP, colCant, colEst, colAncho, colAlto });
-    if (rows[0]) {
-        console.log('[IMPORT] Primera fila sample:', {
-            sap: colCodigo ? rows[0][colCodigo] : null,
-            mp: colMP ? rows[0][colMP] : null,
-            est: colEst ? rows[0][colEst] : null,
-            estType: colEst ? typeof rows[0][colEst] : null,
-            ancho: colAncho ? rows[0][colAncho] : null,
-            alto: colAlto ? rows[0][colAlto] : null
-        });
-    }
 
+    const toInsert = [];
     for (let i = 0; i < rows.length; i++) {
-        try {
-            const row = rows[i];
-            const sap = String(row[colCodigo] || '').trim();
-            const mp = String(row[colMP] || '').trim();
-            if (!sap || !mp) { resultados.errores.push({ fila: i + 1, error: 'Codigo SAP o MP vacio' }); continue; }
+        const row = rows[i];
+        const sap = String(row[colCodigo] || '').trim();
+        const mp = String(row[colMP] || '').trim();
+        if (!sap || !mp) { resultados.errores.push({ fila: i + 1, error: 'Codigo SAP o MP vacio' }); continue; }
+        const mpId = mpMap[mp];
+        if (!mpId) { resultados.errores.push({ fila: i + 1, error: 'Materia prima "' + mp + '" no encontrada' }); continue; }
 
-            const mpId = mpMap[mp];
-            if (!mpId) { resultados.errores.push({ fila: i + 1, error: 'Materia prima "' + mp + '" no encontrada' }); continue; }
-
-            let estacionesArray = null;
-            if (colEst && row[colEst]) {
-                const raw = String(row[colEst]).split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n) && n > 0);
-                if (raw.length > 0) estacionesArray = raw;
-            }
-
-            const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
-            const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
-
-            let existe;
-            if (procsJson) {
-                existe = await query(`SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2 AND procesos_especificos_json::text = $3::text`, [sap, mpId, procsJson]);
-            } else {
-                existe = await query(`SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2 AND procesos_especificos_json IS NULL`, [sap, mpId]);
-            }
-            if (existe.rows.length > 0) { resultados.saltadas++; continue; }
-            const ancho = colAncho ? Number(row[colAncho]) || null : null;
-            const alto = colAlto ? Number(row[colAlto]) || null : null;
-
-            await query(
-                'INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto) VALUES ($1, $2, $3, $4::jsonb, $5, $6)',
-                [sap, mpId, cantidad, procsJson, ancho, alto]
-            );
-            resultados.importadas++;
-        } catch (e) { resultados.errores.push({ fila: i + 1, error: e.message }); }
+        let estacionesArray = null;
+        if (colEst && row[colEst]) {
+            const raw = String(row[colEst]).split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n) && n > 0);
+            if (raw.length > 0) estacionesArray = raw;
+        }
+        const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
+        const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
+        const ancho = colAncho ? Number(row[colAncho]) || null : null;
+        const alto = colAlto ? Number(row[colAlto]) || null : null;
+        toInsert.push({ sap, mpId, cantidad, procsJson, ancho, alto, fila: i + 1 });
     }
+
+    if (toInsert.length === 0) return resultados;
+
+    const existentes = await query(
+        `SELECT codigo_sap_padre, materia_prima_id, procesos_especificos_json::text as ruta_text FROM recetas_bom`
+    );
+    const existentesSet = new Set();
+    existentes.rows.forEach(r => {
+        existentesSet.add(r.codigo_sap_padre + '|' + r.materia_prima_id + '|' + (r.ruta_text || 'null'));
+    });
+
+    const batch = [];
+    for (const item of toInsert) {
+        const rutaKey = item.procsJson || 'null';
+        const dedupeKey = item.sap + '|' + item.mpId + '|' + rutaKey;
+        if (existentesSet.has(dedupeKey)) { resultados.saltadas++; continue; }
+        existentesSet.add(dedupeKey);
+        batch.push(item);
+    }
+
+    const CHUNK = 200;
+    for (let i = 0; i < batch.length; i += CHUNK) {
+        const chunk = batch.slice(i, i + CHUNK);
+        const values = [];
+        const params = [];
+        let idx = 1;
+        chunk.forEach(item => {
+            values.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}::jsonb, $${idx++}, $${idx++})`);
+            params.push(item.sap, item.mpId, item.cantidad, item.procsJson, item.ancho, item.alto);
+        });
+        try {
+            await query(
+                `INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto) VALUES ${values.join(', ')}`,
+                params
+            );
+            resultados.importadas += chunk.length;
+        } catch (e) {
+            console.error('[IMPORT] Batch error:', e.message);
+            resultados.errores.push({ fila: i + 1, error: 'Error batch: ' + e.message });
+        }
+    }
+
     return resultados;
 };
 
