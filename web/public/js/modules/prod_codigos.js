@@ -62,9 +62,9 @@ ${puedeEditar ? `
                 </div>
                 <div class="card-body" style="padding:0">
                     <table style="font-size:13px"><thead><tr>
-                        <th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Descripcion</th><th style="padding:6px 12px">Grupo</th><th style="padding:6px 12px">Familia</th><th style="padding:6px 12px">Creacion</th><th style="padding:6px 12px">Acciones</th>
+                        <th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Descripcion</th><th style="padding:6px 12px">Grupo</th><th style="padding:6px 12px">Familia</th><th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="codTable">
-                        <tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -167,18 +167,15 @@ ${puedeEditar ? `
 
     renderTable(codigos) {
         const tbody = document.getElementById('codTable');
-        if (!codigos.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">No hay codigos registrados</td></tr>'; return; }
+        if (!codigos.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">No hay codigos registrados</td></tr>'; return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
-        const fmtDate = (d) => { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
         const td = 'padding:6px 12px';
         tbody.innerHTML = codigos.map(c => `<tr class="pcod-row" style="line-height:1.3">
             <td style="${td}"><strong>${c.codigo}</strong></td>
             <td style="${td}">${c.descripcion || '-'}</td>
             <td style="${td}">${c.grupo ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af">${c.grupo}</span>` : '-'}</td>
             <td style="${td}">${c.familia ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${c.familia}</span>` : '-'}</td>
-                            <td style="${td}"><span style="color:#cbd5e1">-</span></td>
-            <td style="${td};font-size:12px;color:var(--text-light)">${fmtDate(c.created_at)}</td>
             <td style="${td}">${puedeEditar ? `<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_codigos.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
         </tr>`).join('');
     },
@@ -316,8 +313,7 @@ ${puedeEditar ? `
             'Codigo': c.codigo,
             'Descripcion': c.descripcion || '',
             'Grupo': c.grupo || '',
-            'Familia': c.familia || '',
-            'FechaCreacion': c.created_at ? new Date(c.created_at).toLocaleDateString('es-CL') : ''
+            'Familia': c.familia || ''
         }));
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
