@@ -66,8 +66,8 @@ App.registerModule('dashboard', {
                 <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Panel principal de control de mantenimiento · ${rangoTexto}</p></div>
                 <div style="display:flex;gap:6px;align-items:center">
                     <div style="display:flex;gap:2px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:2px">
-                        <button onclick="App.modules.dashboard.setPeriodo('anio')" style="padding:5px 10px;font-size:11px;font-weight:600;border:none;border-radius:6px;cursor:pointer;${this._periodo === 'anio' ? 'background:#3b82f6;color:white' : 'background:transparent;color:rgba(255,255,255,0.7)'}">Año</button>
-                        <button onclick="App.modules.dashboard.setPeriodo('mes')" style="padding:5px 10px;font-size:11px;font-weight:600;border:none;border-radius:6px;cursor:pointer;${this._periodo === 'mes' ? 'background:#3b82f6;color:white' : 'background:transparent;color:rgba(255,255,255,0.7)'}">Por mes</button>
+                        <button onclick="App.modules.dashboard.setPeriodo('anio')" class="btn btn-sm ${this._periodo === 'anio' ? 'btn-primary' : 'btn-ghost'}" style="color:${this._periodo === 'anio' ? 'white' : 'rgba(255,255,255,0.7)'}">Año</button>
+                        <button onclick="App.modules.dashboard.setPeriodo('mes')" class="btn btn-sm ${this._periodo === 'mes' ? 'btn-primary' : 'btn-ghost'}" style="color:${this._periodo === 'mes' ? 'white' : 'rgba(255,255,255,0.7)'}">Por mes</button>
                     </div>
                     <select onchange="App.modules.dashboard.setAnio(this.value)" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:5px 8px;font-size:11px;color:white;font-weight:600;cursor:pointer;outline:none;backdrop-filter:blur(8px)">
                         ${years.map(y => `<option value="${y}" style="color:#1e293b" ${y === this._anio ? 'selected' : ''}>${y}</option>`).join('')}

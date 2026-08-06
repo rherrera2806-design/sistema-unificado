@@ -123,7 +123,7 @@ App.registerModule('prod_carroceria', {
             + '<div style="background:white;border-radius:16px;width:520px;max-width:95vw;max-height:90vh;overflow:auto;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:pcFadeUp 0.25s ease">'
             + '<div style="padding:18px 22px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">'
             + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar Enrutamiento Carroceros</h3>'
-            + '<button onclick="App.modules.prod_carroceria.hideImportModal()" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer">&times;</button>'
+            + '<button class="modal-close" onclick="App.modules.prod_carroceria.hideImportModal()"></button>'
             + '</div>'
             + '<div style="padding:20px 22px">'
             + '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#1e40af">'

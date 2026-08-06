@@ -24,9 +24,9 @@ App.registerModule('instalaciones', {
             + '<div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Instalaciones</h2>'
             + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Calendario mensual de trabajos en terreno</p></div>'
             + '<div style="display:flex;gap:8px">'
-            + '<button onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores" style="padding:8px 16px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Vendedores</button>'
-            + '<button onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos" style="padding:8px 16px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Tecnicos</button>'
-            + (puedeCrear ? '<button onclick="App.modules.instalaciones.showForm()" class="btn btn-primary" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
+            + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Vendedores</button>'
+            + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Tecnicos</button>'
+            + (puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
             + '</div></div></div>'
 
             + '<div id="instStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px"></div>'
@@ -112,9 +112,9 @@ App.registerModule('instalaciones', {
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
                     <h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">${monthNames[month]} ${year}</h3>
                     <div style="display:flex;gap:6px;align-items:center">
-                        <button onclick="App.modules.instalaciones.cambiarMes(-1)" style="padding:6px 12px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&#9664;</button>
-                        <button onclick="App.modules.instalaciones.cambiarMes(0)" style="padding:6px 12px;font-size:12px;font-weight:600;color:#3b82f6;background:white;border:1px solid #bfdbfe;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='white'">Hoy</button>
-                        <button onclick="App.modules.instalaciones.cambiarMes(1)" style="padding:6px 12px;font-size:12px;font-weight:600;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">&#9654;</button>
+                        <button class="btn btn-outline" onclick="App.modules.instalaciones.cambiarMes(-1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="15 18 9 12 15 6"/></svg></button>
+                        <button class="btn btn-info" onclick="App.modules.instalaciones.cambiarMes(0)">Hoy</button>
+                        <button class="btn btn-outline" onclick="App.modules.instalaciones.cambiarMes(1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="9 18 15 12 9 6"/></svg></button>
                     </div>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(7,1fr)">
@@ -258,7 +258,7 @@ App.registerModule('instalaciones', {
             + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
         const html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
             + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Tecnicos (' + list.length + ')</h3>'
-            + '<button onclick="App.modules.instalaciones.formTecnico()" class="btn btn-primary btn-sm"> Nuevo</button>'
+            + '<button onclick="App.modules.instalaciones.formTecnico()" class="btn btn-primary btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
             + '</div><div id="tecnicoFormInst"></div>' + tableHtml;
         App.showModal(html, { title: 'Configurar Tecnicos' });
     },
@@ -274,8 +274,8 @@ App.registerModule('instalaciones', {
             + '<option value="true"' + (activo !== false ? ' selected' : '') + '>Si</option>'
             + '<option value="false"' + (activo === false ? ' selected' : '') + '>No</option>'
             + '</select></div>'
-            + '<button onclick="App.modules.instalaciones.guardarTecnico(' + (id || 0) + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">Guardar</button>'
-            + '<button onclick="document.getElementById(\'tecnicoFormInst\').innerHTML=\'\'" style="padding:8px 16px;font-size:12px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">Cancelar</button>'
+            + '<button onclick="App.modules.instalaciones.guardarTecnico(' + (id || 0) + ')" class="btn btn-primary"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar</button>'
+            + '<button onclick="document.getElementById(\'tecnicoFormInst\').innerHTML=\'\'" class="btn btn-outline">Cancelar</button>'
             + '</div>';
     },
 
@@ -325,7 +325,7 @@ App.registerModule('instalaciones', {
             + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
         const html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
             + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Vendedores (' + list.length + ')</h3>'
-            + '<button onclick="App.modules.instalaciones.formVendedor()" class="btn btn-primary btn-sm"> Nuevo</button>'
+            + '<button onclick="App.modules.instalaciones.formVendedor()" class="btn btn-primary btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
             + '</div><div id="vendedorFormInst"></div>' + tableHtml;
         App.showModal(html, { title: 'Configurar Vendedores' });
     },
@@ -341,8 +341,8 @@ App.registerModule('instalaciones', {
             + '<option value="true"' + (activo !== false ? ' selected' : '') + '>Si</option>'
             + '<option value="false"' + (activo === false ? ' selected' : '') + '>No</option>'
             + '</select></div>'
-            + '<button onclick="App.modules.instalaciones.guardarVendedor(' + (id || 0) + ')" style="padding:8px 16px;font-size:12px;font-weight:600;color:white;background:#3b82f6;border:none;border-radius:6px;cursor:pointer">Guardar</button>'
-            + '<button onclick="document.getElementById(\'vendedorFormInst\').innerHTML=\'\'" style="padding:8px 16px;font-size:12px;font-weight:500;color:#64748b;background:white;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">Cancelar</button>'
+            + '<button onclick="App.modules.instalaciones.guardarVendedor(' + (id || 0) + ')" class="btn btn-primary"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar</button>'
+            + '<button onclick="document.getElementById(\'vendedorFormInst\').innerHTML=\'\'" class="btn btn-outline">Cancelar</button>'
             + '</div>';
     },
 
