@@ -304,7 +304,7 @@ ${puedeEditar ? `
                 html += `<tr class="prec-row" style="line-height:1.3">
                     <td style="padding:6px 12px"><strong style="font-family:monospace;font-size:12px">${escapeHtml(padre)}</strong></td>
                     <td style="padding:6px 12px"><span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${escapeHtml(r.codigo_mp || '-')}</span> ${r.mp_nombre ? '<span style="color:#64748b;font-size:11px">· ' + escapeHtml(r.mp_nombre) + '</span>' : ''}</td>
-                    <td style="padding:6px 12px;max-width:340px">' + rutaHtml + '</td>
+                    <td style="padding:6px 12px;max-width:340px">${rutaHtml}</td>
                     <td style="padding:6px 12px;text-align:center"><strong>${r.cantidad || 1}</strong></td>
                     <td style="padding:6px 12px;text-align:right">${r.ancho ? '<span style="background:#f3e8ff;color:#7c3aed;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + r.ancho + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
                     <td style="padding:6px 12px;text-align:right">${r.alto ? '<span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + r.alto + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>

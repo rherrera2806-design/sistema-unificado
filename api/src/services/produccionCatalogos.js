@@ -198,7 +198,7 @@ const previewRecetasBom = async (rows) => {
         alto: colAlto ? Number(row[colAlto]) || null : null
     }));
 
-    return { total: rows.length, validas, errores, sample };
+    return { total: rows.length, validas, errores, sample, _debug: { colCodigo, colMP, colCant, colEst, colAncho, colAlto, headers: Object.keys(rows[0]) } };
 };
 
 const importarRecetasBom = async (rows) => {
@@ -234,7 +234,15 @@ const importarRecetasBom = async (rows) => {
             const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
             const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
 
-            const existe = await query('SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2 AND procesos_especificos_json IS NOT DISTINCT FROM $3::jsonb', [sap, mpId, procsJson]);
+            const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
+            const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
+
+            let existe;
+            if (procsJson) {
+                existe = await query(`SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2 AND procesos_especificos_json::text = $3::text`, [sap, mpId, procsJson]);
+            } else {
+                existe = await query(`SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2 AND procesos_especificos_json IS NULL`, [sap, mpId]);
+            }
             if (existe.rows.length > 0) { resultados.saltadas++; continue; }
             const ancho = colAncho ? Number(row[colAncho]) || null : null;
             const alto = colAlto ? Number(row[colAlto]) || null : null;
