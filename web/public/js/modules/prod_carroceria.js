@@ -43,24 +43,47 @@ App.registerModule('prod_carroceria', {
                 (it.descripcion || '').toLowerCase().includes(this._search.toLowerCase()))
             : this._items;
         const estMap = this._estacionById();
+        const conEstaciones = this._items.filter(it => Array.isArray(it.estaciones_json) && it.estaciones_json.length > 0).length;
+        const sinEstaciones = this._items.length - conEstaciones;
+        const totalEstacionesAsignadas = this._items.reduce((acc, it) => acc + (Array.isArray(it.estaciones_json) ? it.estaciones_json.length : 0), 0);
+        const estacionesPromedio = this._items.length > 0 ? (totalEstacionesAsignadas / this._items.length).toFixed(1) : 0;
 
         el.innerHTML =
-            '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pcFadeUp 0.4s ease 0ms both">'
-            + '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
-            + '<div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(139,92,246,0.3);flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>'
-            + '<div style="flex:1;min-width:200px">'
-            + '<h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Enrutamiento Carroceros · ' + this._items.length + ' codigos</h3>'
-            + '<p style="margin:2px 0 0;font-size:11px;color:#64748b">Para cada codigo SAP define las estaciones en orden. Sobreescribe familia + banderas del Excel de pedidos.</p>'
+            '<div class="stats-grid" style="margin-bottom:14px">'
+            + '<div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">'
+            + '<div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>'
+            + '<div class="stat-info"><p class="stat-label">Total Codigos</p><p class="stat-sub">Mapeados en sistema</p></div>'
+            + '<div class="stat-value">' + this._items.length + '</div>'
             + '</div>'
-            + '<input type="text" placeholder="Buscar codigo SAP..." value="' + escapeHtml(this._search) + '" oninput="App.modules.prod_carroceria.setSearch(this.value)" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;width:240px" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'">'
-            + '<button onclick="App.modules.prod_carroceria.showImportModal()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3)" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar Masivo</button>'
-            + '<button onclick="App.modules.prod_carroceria.showAddModal()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(34,197,94,0.3)" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
+            + '<div class="stat-card dash-card" style="border-left:4px solid #22c55e">'
+            + '<div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>'
+            + '<div class="stat-info"><p class="stat-label">Con Estaciones</p><p class="stat-sub">Enrutamiento custom</p></div>'
+            + '<div class="stat-value">' + conEstaciones + '</div>'
             + '</div>'
+            + '<div class="stat-card dash-card" style="border-left:4px solid #f59e0b">'
+            + '<div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>'
+            + '<div class="stat-info"><p class="stat-label">Sin Estaciones</p><p class="stat-sub">Sin mapeo (vacio)</p></div>'
+            + '<div class="stat-value">' + sinEstaciones + '</div>'
+            + '</div>'
+            + '<div class="stat-card dash-card" style="border-left:4px solid #3b82f6">'
+            + '<div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>'
+            + '<div class="stat-info"><p class="stat-label">Estaciones Asignadas</p><p class="stat-sub">Promedio ' + estacionesPromedio + ' por codigo</p></div>'
+            + '<div class="stat-value">' + totalEstacionesAsignadas + '</div>'
+            + '</div>'
+            + '</div>'
+
+            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;align-items:center;gap:12px;flex-wrap:wrap;animation:pcFadeUp 0.4s ease 60ms both">'
+            + '<div style="position:relative;flex:1;min-width:200px">'
+            + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+            + '<input type="text" placeholder="Buscar codigo SAP o descripcion..." value="' + escapeHtml(this._search) + '" oninput="App.modules.prod_carroceria.setSearch(this.value)" style="width:100%;padding:8px 12px 8px 32px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'">'
+            + '</div>'
+            + '<button onclick="App.modules.prod_carroceria.showImportModal()" class="btn btn-primary" style="padding:7px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar Masivo</button>'
+            + '<button onclick="App.modules.prod_carroceria.showAddModal()" class="btn btn-primary" style="padding:7px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
             + '</div>'
 
             + (this._items.length === 0
-                ? '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:48px 20px;text-align:center;color:#94a3b8"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:15px">Sin mapeos registrados</h4><p style="margin:0;font-size:12px">Importa un Excel/CSV con columnas <code>codigo_sap</code> y <code>estaciones</code> (IDs separados por coma)</p></div>'
-                : '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden;animation:pcFadeUp 0.4s ease 60ms both">'
+                ? '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:48px 20px;text-align:center;color:#94a3b8;animation:pcFadeUp 0.4s ease 120ms both"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:15px">Sin mapeos registrados</h4><p style="margin:0;font-size:12px">Importa un Excel/CSV con columnas <code>codigo_sap</code> y <code>estaciones</code> (IDs separados por coma)</p></div>'
+                : '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden;animation:pcFadeUp 0.4s ease 120ms both">'
                 + '<div style="overflow-x:auto;max-height:65vh">'
                 + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
                 + '<thead style="position:sticky;top:0;z-index:2;background:#f8fafc"><tr style="border-bottom:2px solid #e2e8f0">'
