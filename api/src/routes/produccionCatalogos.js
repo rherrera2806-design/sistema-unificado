@@ -23,17 +23,17 @@ router.put('/api/produccion/recetas-bom/:id', async (req, res, next) => {
     } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-router.delete('/api/produccion/recetas-bom/:id', async (req, res, next) => {
-    await catalogos.eliminarRecetaBom(Number(req.params.id));
-    res.json({ ok: true });
-});
-
 router.delete('/api/produccion/recetas-bom/all', async (req, res, next) => {
     if (!(await checkAdmin(req))) return res.status(403).json({ error: 'No autorizado' });
     try {
         const r = await query('DELETE FROM recetas_bom');
         res.json({ ok: true, eliminados: r.rowCount });
     } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.delete('/api/produccion/recetas-bom/:id', async (req, res, next) => {
+    await catalogos.eliminarRecetaBom(Number(req.params.id));
+    res.json({ ok: true });
 });
 
 router.delete('/api/produccion/recetas/all', async (req, res, next) => {
