@@ -287,12 +287,20 @@ const importarRecetasBom = async (rows) => {
     });
 
     const batch = [];
+    const dupesEnExcel = [];
     for (const item of toInsert) {
         const rutaKey = item.procsJson || 'null';
         const dedupeKey = item.sap + '|' + item.mpId + '|' + rutaKey;
-        if (existentesSet.has(dedupeKey)) { resultados.saltadas++; continue; }
+        if (existentesSet.has(dedupeKey)) {
+            resultados.saltadas++;
+            dupesEnExcel.push({ fila: item.fila, sap: item.sap, mp: item.mpId, ruta: item.procsJson || 'sin ruta' });
+            continue;
+        }
         existentesSet.add(dedupeKey);
         batch.push(item);
+    }
+    if (dupesEnExcel.length > 0) {
+        console.log('[IMPORT] Duplicados saltados:', JSON.stringify(dupesEnExcel.slice(0, 20)));
     }
 
     const CHUNK = 200;
@@ -315,6 +323,10 @@ const importarRecetasBom = async (rows) => {
             console.error('[IMPORT] Batch error:', e.message);
             resultados.errores.push({ fila: i + 1, error: 'Error batch: ' + e.message });
         }
+    }
+
+    if (dupesEnExcel.length > 0) {
+        resultados.errores.push({ fila: 0, error: dupesEnExcel.length + ' duplicados en Excel (misma SAP+MP+Ruta): ' + dupesEnExcel.slice(0, 10).map(d => 'Fila ' + d.fila + ': ' + d.sap + '+' + d.mp).join(', ') + (dupesEnExcel.length > 10 ? ' ...+' + (dupesEnExcel.length - 10) + ' mas' : '') });
     }
 
     return resultados;
