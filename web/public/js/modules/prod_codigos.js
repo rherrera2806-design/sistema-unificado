@@ -45,11 +45,6 @@ ${puedeEditar ? `
                     <div class="stat-info"><p class="stat-label">Familias</p><p class="stat-sub">Subclasificaciones</p></div>
                     <div class="stat-value" id="codFamilias">0</div>
                 </div>
-                <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
-                    <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Con Bloqueo Tela</p><p class="stat-sub">Validacion especial</p></div>
-                    <div class="stat-value" id="codBloques">0</div>
-                </div>
             </div>
 
             <div class="card pcod-card">
@@ -67,9 +62,9 @@ ${puedeEditar ? `
                 </div>
                 <div class="card-body" style="padding:0">
                     <table style="font-size:13px"><thead><tr>
-                        <th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Descripcion</th><th style="padding:6px 12px">Grupo</th><th style="padding:6px 12px">Familia</th><th style="padding:6px 12px">Bloqueo Tela</th><th style="padding:6px 12px">Creacion</th><th style="padding:6px 12px">Acciones</th>
+                        <th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Descripcion</th><th style="padding:6px 12px">Grupo</th><th style="padding:6px 12px">Familia</th><th style="padding:6px 12px">Creacion</th><th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="codTable">
-                        <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -82,12 +77,6 @@ ${puedeEditar ? `
                         <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         <div class="form-group"><label>Grupo</label><input class="form-control" id="codGrupo" placeholder="Ej: TEMPLADO" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         <div class="form-group"><label>Familia</label><input class="form-control" id="codFamilia" placeholder="Ej: PINTADO, LAMINADO" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                        <div class="form-group"><label>Bloqueo de Tela</label>
-                            <select class="form-control" id="codBloqueo" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-                                <option value="false">No</option>
-                                <option value="true">Si</option>
-                            </select>
-                        </div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.prod_codigos.hideCreateModal()">Cancelar</button>
@@ -109,7 +98,7 @@ ${puedeEditar ? `
                         <input type="file" id="codImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.prod_codigos.handleImportFile(event)">
                         <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-light)">
                             <strong>Columnas esperadas:</strong><br>
-                            Codigo, Descripcion, Grupo, Familia, BloqueoTela (si/no)<br>
+                            Codigo, Descripcion, Grupo, Familia<br>
                             <em>Si el codigo ya existe, actualiza los datos (upsert)</em>
                         </div>
                     </div>
@@ -170,17 +159,15 @@ ${puedeEditar ? `
         const total = this.codigos.length;
         const grupos = new Set(this.codigos.map(c => c.grupo).filter(Boolean)).size;
         const familias = new Set(this.codigos.map(c => c.familia).filter(Boolean)).size;
-        const bloques = this.codigos.filter(c => c.bloqueo_tela).length;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('codTotal', total);
         set('codGrupos', grupos);
         set('codFamilias', familias);
-        set('codBloques', bloques);
     },
 
     renderTable(codigos) {
         const tbody = document.getElementById('codTable');
-        if (!codigos.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">No hay codigos registrados</td></tr>'; return; }
+        if (!codigos.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">No hay codigos registrados</td></tr>'; return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
         const fmtDate = (d) => { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); };
@@ -190,7 +177,7 @@ ${puedeEditar ? `
             <td style="${td}">${c.descripcion || '-'}</td>
             <td style="${td}">${c.grupo ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af">${c.grupo}</span>` : '-'}</td>
             <td style="${td}">${c.familia ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${c.familia}</span>` : '-'}</td>
-            <td style="${td}">${c.bloqueo_tela ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#fee2e2;color:#991b1b">Si</span>' : '<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#f1f5f9;color:#64748b">No</span>'}</td>
+                            <td style="${td}"><span style="color:#cbd5e1">-</span></td>
             <td style="${td};font-size:12px;color:var(--text-light)">${fmtDate(c.created_at)}</td>
             <td style="${td}">${puedeEditar ? `<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_codigos.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
         </tr>`).join('');
@@ -222,7 +209,6 @@ ${puedeEditar ? `
         document.getElementById('codDescripcion').value = '';
         document.getElementById('codGrupo').value = '';
         document.getElementById('codFamilia').value = '';
-        document.getElementById('codBloqueo').value = 'false';
         document.getElementById('codCreateModal').classList.add('show');
     },
     hideCreateModal() { document.getElementById('codCreateModal').classList.remove('show'); },
@@ -232,13 +218,12 @@ ${puedeEditar ? `
         const descripcion = document.getElementById('codDescripcion').value.trim();
         const grupo = document.getElementById('codGrupo').value.trim();
         const familia = document.getElementById('codFamilia').value.trim();
-        const bloqueo_tela = document.getElementById('codBloqueo').value === 'true';
         if (!codigo) { alert('Codigo requerido'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch('/api/produccion/codigos', {
                 method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ codigo, descripcion, grupo, familia, bloqueo_tela })
+                body: JSON.stringify({ codigo, descripcion, grupo, familia })
             });
             const data = await res.json();
             if (res.ok) { this.hideCreateModal(); App.toast('Codigo creado'); await this.load(); }
@@ -332,7 +317,6 @@ ${puedeEditar ? `
             'Descripcion': c.descripcion || '',
             'Grupo': c.grupo || '',
             'Familia': c.familia || '',
-            'BloqueoTela': c.bloqueo_tela ? 'Si' : 'No',
             'FechaCreacion': c.created_at ? new Date(c.created_at).toLocaleDateString('es-CL') : ''
         }));
         const ws = XLSX.utils.json_to_sheet(rows);

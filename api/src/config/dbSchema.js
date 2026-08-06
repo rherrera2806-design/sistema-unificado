@@ -541,12 +541,16 @@ async function runMigrations() {
             codigo_sap VARCHAR(50) UNIQUE NOT NULL,
             estaciones_json JSONB NOT NULL DEFAULT '[]'::jsonb,
             descripcion TEXT,
+            ancho DECIMAL(10,2) DEFAULT NULL,
+            alto DECIMAL(10,2) DEFAULT NULL,
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
         )`);
+        await query("ALTER TABLE procesos_carroceria_sap ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL");
+        await query("ALTER TABLE procesos_carroceria_sap ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL");
         await query(`CREATE INDEX IF NOT EXISTS idx_procesos_carroceria_sap_codigo ON procesos_carroceria_sap(codigo_sap)`);
     } catch (e) {
-        console.error('Migration warning (002):', e.message);
+        console.error('Migration warning (002/003):', e.message);
     }
 }
 
