@@ -50,13 +50,15 @@ const eliminarMaquina = async (id) => {
 // ============ CÓDIGOS SAP ============
 
 const getCodigos = async (search, limit) => {
-    let sql = 'SELECT * FROM produccion_codigos';
+    let sql = `SELECT c.*, 
+        (SELECT COUNT(*) FROM recetas_bom rb WHERE rb.codigo_sap_padre = c.codigo) as recetas_count
+        FROM produccion_codigos c`;
     const params = [];
     if (search) {
-        sql += ' WHERE codigo ILIKE $1 OR descripcion ILIKE $1 OR grupo ILIKE $1 OR familia ILIKE $1';
+        sql += ' WHERE c.codigo ILIKE $1 OR c.descripcion ILIKE $1 OR c.grupo ILIKE $1 OR c.familia ILIKE $1';
         params.push('%' + search + '%');
     }
-    sql += ' ORDER BY codigo';
+    sql += ' ORDER BY c.codigo';
     if (limit > 0) {
         sql += ' LIMIT $' + (params.length + 1);
         params.push(limit);
