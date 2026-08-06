@@ -154,9 +154,12 @@ const findCol = (row, candidates) => {
 
 const previewRecetasBom = async (rows) => {
     const headers = Object.keys(rows[0] || {});
-    console.log('[PREVIEW] Headers detectados:', headers);
-    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP']);
-    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo']);
+    const normalized = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\u00a0\u200b\u200c\u200d\ufeff\r\n\t]/g, '').trim();
+    const normHeaders = headers.map(h => ({ raw: h, norm: normalized(h), charCodes: [...h].map(c => c.charCodeAt(0)) }));
+    console.log('[PREVIEW] Raw headers:', headers);
+    console.log('[PREVIEW] Normalized headers:', JSON.stringify(normHeaders));
+    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP', 'codigo sap']);
+    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo', 'codigo MP']);
     const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
     const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
     const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
@@ -209,7 +212,7 @@ const previewRecetasBom = async (rows) => {
         alto: colAlto ? Number(row[colAlto]) || null : null
     }));
 
-    return { total: rows.length, validas, errores, sample, _debug: { colCodigo, colMP, colCant, colEst, colAncho, colAlto, headers: Object.keys(rows[0]) } };
+    return { total: rows.length, validas, errores, sample, _debug: { colCodigo, colMP, colCant, colEst, colAncho, colAlto, headers: Object.keys(rows[0] || {}), normHeaders: Object.keys(rows[0] || {}).map(h => normalized(h)) } };
 };
 
 const importarRecetasBom = async (rows) => {
