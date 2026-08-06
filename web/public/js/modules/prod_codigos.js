@@ -30,7 +30,7 @@ ${puedeEditar ? `
 .pcod-row:hover{transform:translateX(2px);background:#f8fafc!important}
 </style>
 
-            <div class="stats-grid" style="margin-bottom:14px">
+            <div class="stats-grid" style="margin-bottom:8px">
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
                     <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Total Codigos</p><p class="stat-sub">Catalogo maestro SAP</p></div>
@@ -49,8 +49,8 @@ ${puedeEditar ? `
             </div>
 
             <div class="card pcod-card">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                    <h3 style="margin:0">Listado de Codigos</h3>
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding:10px 14px">
+                    <h3 style="margin:0;font-size:13px">Listado de Codigos</h3>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                         <select class="form-control" id="codFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.onGrupoChange()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                             <option value="">Todos los grupos</option>
@@ -61,14 +61,14 @@ ${puedeEditar ? `
                         <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo... (min 2 caracteres)" oninput="App.modules.prod_codigos.filter()" style="width:200px;font-size:12px;padding:4px 8px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     </div>
                 </div>
-                <div class="card-body" style="padding:0">
+                <div class="card-body" style="padding:0;max-height:400px;overflow-y:auto">
                     <div style="overflow-x:auto">
-                    <table style="font-size:13px;width:100%;border-collapse:collapse"><thead><tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0">
-                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Codigo</th>
-                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Descripcion</th>
-                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Grupo</th>
-                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Familia</th>
-                        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                    <table style="font-size:12px;width:100%;border-collapse:collapse"><thead><tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0">
+                        <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Codigo</th>
+                        <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Descripcion</th>
+                        <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Grupo</th>
+                        <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Familia</th>
+                        <th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
                     </tr></thead><tbody id="codTable">
                         <tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
@@ -182,10 +182,10 @@ ${puedeEditar ? `
 
     renderTable(codigos) {
         const tbody = document.getElementById('codTable');
-        if (!codigos.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">No hay codigos registrados</td></tr>'; return; }
+        if (!codigos.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;color:#64748b">No hay codigos registrados</td></tr>'; return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
-        const td = 'padding:6px 12px';
+        const td = 'padding:4px 10px';
         tbody.innerHTML = codigos.map(c => `<tr class="pcod-row" style="line-height:1.3">
             <td style="${td}"><strong>${c.codigo}</strong></td>
             <td style="${td}">${c.descripcion || '-'}</td>
