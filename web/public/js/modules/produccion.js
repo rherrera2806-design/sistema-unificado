@@ -23,8 +23,8 @@ App.registerModule('produccion', {
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Produccion</h2>'
             + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestion de ordenes de produccion y planificacion</p></div>'
             + (puedeImportar ? '<div style="display:flex;gap:8px">'
-            + '<button onclick="App.modules.produccion.showImportModal()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3);transition:all 0.2s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar SAP</button>'
-            + '<button onclick="App.modules.produccion.showNewOrderModal()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'rgba(255,255,255,0.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.15)\'"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Orden</button>'
+            + '<button class="btn btn-primary" onclick="App.modules.produccion.showImportModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar SAP</button>'
+            + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.produccion.showNewOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Orden</button>'
             + '</div>' : '')
             + '</div></div>'
 
@@ -68,7 +68,7 @@ App.registerModule('produccion', {
 
             + '<div class="modal-overlay" id="prodImportModal">'
             + '<div class="modal" style="max-width:500px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
-            + '<div class="modal-header" style="border-bottom:1px solid #e2e8f0;padding:20px 24px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar desde Excel</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hideImportModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+            + '<div class="modal-header"><h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar desde Excel</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hideImportModal()">&times;</button></div>
             + '<div class="modal-body" style="padding:24px">'
             + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Archivo Excel</label>'
             + '<div id="prodImportArea" style="border:2px dashed #cbd5e1;border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:#f8fafc"'
@@ -83,18 +83,18 @@ App.registerModule('produccion', {
             + 'codigo, pedido, item, cliente, descripcion, cantidad, anho, alto, perforaciones, pintado, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>'
             + '<em style="color:#94a3b8">Filas iguales (pedido+item+codigo) se fusionan sumando cantidad.</em></div>'
             + '<div id="prodImportPreview" style="max-height:200px;overflow-y:auto;margin-top:12px"></div></div>'
-            + '<div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:16px 24px">'
-            + '<button onclick="App.modules.produccion.hideImportModal()" style="padding:10px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b">Cancelar</button>'
-            + '<button id="prodImportBtn" onclick="App.modules.produccion.importar()" disabled style="padding:10px 20px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3)">Importar</button></div></div></div>'
+            + '<div class="modal-footer">'
+            + '<button class="btn btn-outline" onclick="App.modules.produccion.hideImportModal()">Cancelar</button>'
+            + '<button class="btn btn-primary" id="prodImportBtn" onclick="App.modules.produccion.importar()" disabled>Importar</button></div></div></div>'
 
             + '<div class="modal-overlay" id="prodPasosModal">'
             + '<div class="modal" style="max-width:600px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
-            + '<div class="modal-header" style="border-bottom:1px solid #e2e8f0;padding:20px 24px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Pasos de Produccion</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hidePasosModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+            + '<div class="modal-header"><h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Pasos de Produccion</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hidePasosModal()">&times;</button></div>
             + '<div class="modal-body" id="prodPasosBody" style="padding:24px"></div></div></div>'
 
             + '<div class="modal-overlay" id="prodNewOrderModal">'
             + '<div class="modal" style="max-width:500px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
-            + '<div class="modal-header" style="border-bottom:1px solid #e2e8f0;padding:20px 24px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nueva Orden Manual</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hideNewOrderModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+            + '<div class="modal-header"><h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nueva Orden Manual</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hideNewOrderModal()">&times;</button></div>
             + '<div class="modal-body" style="padding:24px">'
             + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
             + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Pedido *</label><input class="form-control" id="newOrdPedido" placeholder="Ej: 100500" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>'
@@ -118,19 +118,19 @@ App.registerModule('produccion', {
             + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Posicion</label><input class="form-control" id="newOrdPosicion" placeholder="Ej: 1, 2, A1" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>'
             + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Fecha Creacion</label><input class="form-control" id="newOrdFechaCreacion" type="date" style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div></div>'
             + '<div class="form-group"><label style="font-weight:600;color:#334155;font-size:13px">Nota</label><textarea class="form-control" id="newOrdNota" rows="2" placeholder="Observaciones..." style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical"></textarea></div></div>'
-            + '<div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:16px 24px">'
-            + '<button onclick="App.modules.produccion.hideNewOrderModal()" style="padding:10px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b">Cancelar</button>'
-            + '<button onclick="App.modules.produccion.saveNewOrder()" style="padding:10px 20px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3)">Crear Orden</button></div></div></div>'
+            + '<div class="modal-footer">'
+            + '<button class="btn btn-outline" onclick="App.modules.produccion.hideNewOrderModal()">Cancelar</button>'
+            + '<button class="btn btn-primary" onclick="App.modules.produccion.saveNewOrder()">Crear Orden</button></div></div></div>'
 
             + '<div class="modal-overlay" id="prodCerrarModal">'
             + '<div class="modal" style="max-width:400px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
-            + '<div class="modal-header" style="border-bottom:1px solid #e2e8f0;padding:20px 24px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Cerrar Orden</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hideCerrarModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8">&times;</button></div>'
+            + '<div class="modal-header"><h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Cerrar Orden</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hideCerrarModal()">&times;</button></div>
             + '<div class="modal-body" style="padding:24px">'
             + '<p style="font-size:13px;color:#64748b;margin-bottom:12px">Indica el motivo por el cual se cierra esta linea:</p>'
             + '<textarea class="form-control" id="cerrarNota" rows="3" placeholder="Ej: Cliente cancelo el pedido..." style="padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical"></textarea></div>'
-            + '<div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:16px 24px">'
-            + '<button onclick="App.modules.produccion.hideCerrarModal()" style="padding:10px 20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b">Cancelar</button>'
-            + '<button onclick="App.modules.produccion.confirmCerrar()" style="padding:10px 20px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(59,130,246,0.3)">Cerrar Orden</button></div></div></div>';
+            + '<div class="modal-footer">'
+            + '<button class="btn btn-outline" onclick="App.modules.produccion.hideCerrarModal()">Cancelar</button>'
+            + '<button class="btn btn-danger" onclick="App.modules.produccion.confirmCerrar()">Cerrar Orden</button></div></div></div>';
 
         await this.load();
         this.setupDragDrop();
@@ -379,7 +379,7 @@ App.registerModule('produccion', {
                         <td><span style="padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;${estadoEstilo[p.estado] || ''}">${p.estado}</span></td>
                         <td>${p.hora_inicio ? new Date(p.hora_inicio).toLocaleString('es-CL') : '-'}</td>
                         <td>${p.hora_fin ? new Date(p.hora_fin).toLocaleString('es-CL') : '-'}</td>
-                        <td>${p.estado === 'PENDIENTE' ? `<button class="btn btn-sm" style="color:#ef4444;border:none;padding:2px 6px;font-size:11px" onclick="App.modules.produccion.eliminarPaso(${p.id}, ${ordenId})" title="Quitar estacion">✕</button>` : ''}</td>
+                        <td>${p.estado === 'PENDIENTE' ? `<button class="btn btn-sm btn-danger" onclick="App.modules.produccion.eliminarPaso(${p.id}, ${ordenId})" title="Quitar estacion"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}</td>
                     </tr>`;
                 }).join('')}</tbody></table>`}
                 ${estDisponibles.length > 0 ? `
@@ -388,7 +388,7 @@ App.registerModule('produccion', {
                         <option value="">-- Agregar estacion --</option>
                         ${estDisponibles.map(e => `<option value="${e.id}">${e.orden_secuencia_defecto || '?'}° ${e.nombre_estacion}</option>`).join('')}
                     </select>
-                    <button class="btn btn-primary btn-sm" style="padding:6px 12px;font-size:12px" onclick="App.modules.produccion.agregarPaso(${ordenId})">+ Agregar</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.produccion.agregarPaso(${ordenId})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar</button>
                 </div>` : ''}
             `;
             document.getElementById('prodPasosModal').classList.add('show');
