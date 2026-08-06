@@ -282,9 +282,15 @@ async function initDB() {
     await query(`CREATE TABLE IF NOT EXISTS recetas_bom (
         id SERIAL PRIMARY KEY, codigo_sap_padre VARCHAR(30) NOT NULL,
         materia_prima_id INTEGER NOT NULL REFERENCES materias_primas(id) ON DELETE CASCADE,
-        cantidad DECIMAL(10,4) DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL,
+        cantidad DECIMAL(10,4) DEFAULT 1,
+        procesos_especificos_json JSONB DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL`);
+    await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS procesos_especificos_json JSONB DEFAULT NULL`);
     await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_padre ON recetas_bom(codigo_sap_padre)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)`);
     await query(`CREATE TABLE IF NOT EXISTS reglas_procesos_extras (
         id SERIAL PRIMARY KEY, nombre_flag VARCHAR(50) UNIQUE NOT NULL,
         estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id) ON DELETE CASCADE,
@@ -551,6 +557,22 @@ async function runMigrations() {
         await query(`CREATE INDEX IF NOT EXISTS idx_procesos_carroceria_sap_codigo ON procesos_carroceria_sap(codigo_sap)`);
     } catch (e) {
         console.error('Migration warning (002/003):', e.message);
+    }
+    try {
+        await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL");
+        await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS procesos_especificos_json JSONB DEFAULT NULL");
+        await query("CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)");
+        // Migrar datos desde procesos_carroceria_sap a recetas_bom.procesos_especificos_json
+        await query(`
+            UPDATE recetas_bom r
+            SET procesos_especificos_json = pcs.estaciones_json
+            FROM procesos_carroceria_sap pcs
+            WHERE r.codigo_sap_padre = pcs.codigo_sap
+              AND (r.procesos_especificos_json IS NULL OR r.procesos_especificos_json = '[]'::jsonb)
+              AND pcs.estaciones_json IS NOT NULL
+        `);
+    } catch (e) {
+        console.error('Migration warning (004):', e.message);
     }
 }
 

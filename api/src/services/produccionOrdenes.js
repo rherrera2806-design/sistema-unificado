@@ -45,13 +45,17 @@ const buscarFamilia = async (codigo) => {
 const getEstacionesBase = async (familia, perforaciones, pintado, codigoSap) => {
     if (codigoSap) {
         const custRes = await query(
-            'SELECT estaciones_json FROM procesos_carroceria_sap WHERE codigo_sap = $1',
+            `SELECT r.procesos_especificos_json, r.familia_id
+             FROM recetas_bom r
+             WHERE r.codigo_sap_padre = $1
+               AND r.procesos_especificos_json IS NOT NULL
+             LIMIT 1`,
             [String(codigoSap).trim()]
         );
         if (custRes.rows.length > 0) {
             let ids = [];
             try {
-                const raw = custRes.rows[0].estaciones_json;
+                const raw = custRes.rows[0].procesos_especificos_json;
                 if (Array.isArray(raw)) ids = raw.map(Number).filter(n => Number.isFinite(n) && n > 0);
                 else if (typeof raw === 'string') {
                     const parsed = JSON.parse(raw);

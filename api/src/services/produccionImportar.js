@@ -2,14 +2,13 @@ const { query } = require('../config/database');
 const { explosionBOM, crearOrdenSimple } = require('./produccionBomExplosion');
 
 const cargarDatosMaestros = async () => {
-    const [estacionesRes, familiasRes, reglasRes, recetasBomRes, materiasRes, oldRecetasRes, carroceriaRes] = await Promise.all([
+    const [estacionesRes, familiasRes, reglasRes, recetasBomRes, materiasRes, oldRecetasRes] = await Promise.all([
         query('SELECT * FROM estaciones_maestras WHERE activa = TRUE'),
         query('SELECT * FROM familias_producto WHERE activa = TRUE'),
         query('SELECT * FROM reglas_procesos_extras WHERE activa = TRUE'),
-        query('SELECT * FROM recetas_bom'),
+        query('SELECT id, codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json FROM recetas_bom'),
         query('SELECT * FROM materias_primas'),
-        query('SELECT * FROM produccion_recetas_bom'),
-        query('SELECT codigo_sap, estaciones_json FROM procesos_carroceria_sap')
+        query('SELECT * FROM produccion_recetas_bom')
     ]);
 
     const estacionMap = {};
@@ -55,18 +54,19 @@ const cargarDatosMaestros = async () => {
     const familiaEstacionesMap = {};
     famEstRes.rows.forEach(r => { familiaEstacionesMap[r.familia_id] = r.estacion_ids; });
 
-    const procesosCarroceriaMap = {};
-    carroceriaRes.rows.forEach(r => {
-        let ids = [];
+    const recetaProcesosMap = {};
+    recetasBomRes.rows.forEach(r => {
+        const key = String(r.codigo_sap_padre).trim();
+        let procs = [];
         try {
-            const raw = r.estaciones_json;
-            if (Array.isArray(raw)) ids = raw.map(Number).filter(n => Number.isFinite(n) && n > 0);
+            const raw = r.procesos_especificos_json;
+            if (Array.isArray(raw)) procs = raw.map(Number).filter(n => Number.isFinite(n) && n > 0);
             else if (typeof raw === 'string') {
                 const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed)) ids = parsed.map(Number).filter(n => Number.isFinite(n) && n > 0);
+                if (Array.isArray(parsed)) procs = parsed.map(Number).filter(n => Number.isFinite(n) && n > 0);
             }
-        } catch (e) { ids = []; }
-        procesosCarroceriaMap[String(r.codigo_sap).trim()] = ids;
+        } catch (e) { procs = []; }
+        if (procs.length > 0) recetaProcesosMap[key] = procs;
     });
 
     return {
@@ -74,7 +74,7 @@ const cargarDatosMaestros = async () => {
         familias: familiasRes.rows,
         materiasPrimas: materiasRes.rows,
         estacionMap, familiaMap, reglaMap, recetaBomMap, materiaPrimaMap, familiaEstacionesMap,
-        procesosCarroceriaMap
+        recetaProcesosMap
     };
 };
 
@@ -148,22 +148,29 @@ const buscarFamiliaParaFila = async (r, maestros) => {
 };
 
 const calcularEstaciones = (r, familia, maestros) => {
-    const { estacionesMaestras, estacionMap, reglaMap, familiaEstacionesMap, procesosCarroceriaMap } = maestros;
+    const { estacionesMaestras, estacionMap, reglaMap, familiaEstacionesMap, recetaBomMap, recetaProcesosMap } = maestros;
 
     const codigoKey = String(r.codigo || '').trim();
-    if (codigoKey && procesosCarroceriaMap && Array.isArray(procesosCarroceriaMap[codigoKey])) {
-        const customIds = procesosCarroceriaMap[codigoKey];
-        if (customIds.length > 0) {
-            const valid = customIds.filter(id => estacionesMaestras.some(e => e.id === id));
-            return valid.length > 0 ? valid : customIds;
-        }
-    }
-
     let estacionesFinales = [];
-    if (familia && familiaEstacionesMap[familia.id]) {
-        estacionesFinales = [...familiaEstacionesMap[familia.id]];
+
+    const tieneRutaCustom = codigoKey && Array.isArray(recetaProcesosMap[codigoKey]) && recetaProcesosMap[codigoKey].length > 0;
+    if (tieneRutaCustom) {
+        estacionesFinales = [...recetaProcesosMap[codigoKey]];
     } else {
-        estacionesFinales = [estacionMap['Corte']?.id, estacionMap['Pulido']?.id, estacionMap['Templado']?.id].filter(Boolean);
+        let familiaParaRuta = familia;
+        if (!familiaParaRuta && codigoKey && recetaBomMap[codigoKey] && recetaBomMap[codigoKey].length > 0) {
+            const famId = recetaBomMap[codigoKey][0].familia_id;
+            if (famId) {
+                familiaParaRuta = (familiaMap && Object.keys(familiaMap).length > 0)
+                    ? Object.values(familiaMap).find(f => f.id === famId)
+                    : maestros.familias.find(f => f.id === famId);
+            }
+        }
+        if (familiaParaRuta && familiaEstacionesMap[familiaParaRuta.id]) {
+            estacionesFinales = [...familiaEstacionesMap[familiaParaRuta.id]];
+        } else {
+            estacionesFinales = [estacionMap['Corte']?.id, estacionMap['Pulido']?.id, estacionMap['Templado']?.id].filter(Boolean);
+        }
     }
 
     const flagsMap = { radio: 'radio', pulido: 'pulido', mecanizado: 'mecanizado', ventana: 'ventana', pintado: 'pintado', pintado_car: 'pintado_car' };

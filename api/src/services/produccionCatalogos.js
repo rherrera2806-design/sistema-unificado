@@ -34,18 +34,47 @@ const eliminarMateriaPrima = async (id) => {
 
 const getRecetasBom = async () => {
     const result = await query(`
-        SELECT r.*, m.codigo_mp, m.nombre as mp_nombre, m.espesor_mm, m.costo_unitario_mp
+        SELECT r.*, m.codigo_mp, m.nombre as mp_nombre, m.espesor_mm, m.costo_unitario_mp,
+               f.nombre_familia
         FROM recetas_bom r
         LEFT JOIN materias_primas m ON r.materia_prima_id = m.id
+        LEFT JOIN familias_producto f ON r.familia_id = f.id
         ORDER BY r.codigo_sap_padre, m.codigo_mp
     `);
     return result.rows;
 };
 
-const crearRecetaBom = async ({ codigo_sap_padre, materia_prima_id, cantidad }) => {
+const crearRecetaBom = async ({ codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json }) => {
+    const procsJson = (procesos_especificos_json !== undefined && procesos_especificos_json !== null)
+        ? JSON.stringify(Array.isArray(procesos_especificos_json) ? procesos_especificos_json : [])
+        : null;
+    const famId = (familia_id !== undefined && familia_id !== null && familia_id !== '') ? Number(familia_id) : null;
     const result = await query(
-        'INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad) VALUES ($1, $2, $3) RETURNING *',
-        [codigo_sap_padre.trim(), materia_prima_id, cantidad || 1]
+        `INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json)
+         VALUES ($1, $2, $3, $4, $5::jsonb) RETURNING *`,
+        [codigo_sap_padre.trim(), materia_prima_id, famId, cantidad || 1, procsJson]
+    );
+    return result.rows[0];
+};
+
+const actualizarRecetaBom = async (id, { codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json }) => {
+    const procsJson = (procesos_especificos_json !== undefined)
+        ? (procesos_especificos_json === null || procesos_especificos_json === '' || (Array.isArray(procesos_especificos_json) && procesos_especificos_json.length === 0)
+            ? null
+            : JSON.stringify(procesos_especificos_json))
+        : undefined;
+    const famId = (familia_id !== undefined)
+        ? ((familia_id === null || familia_id === '') ? null : Number(familia_id))
+        : undefined;
+    const result = await query(
+        `UPDATE recetas_bom SET
+            codigo_sap_padre = COALESCE($1, codigo_sap_padre),
+            materia_prima_id = COALESCE($2, materia_prima_id),
+            familia_id = $3,
+            cantidad = COALESCE($4, cantidad),
+            procesos_especificos_json = $5::jsonb
+         WHERE id = $6 RETURNING *`,
+        [codigo_sap_padre?.trim() || null, materia_prima_id || null, famId, cantidad || null, procsJson, id]
     );
     return result.rows[0];
 };
@@ -174,7 +203,7 @@ const eliminarVendedor = async (id) => {
 
 module.exports = {
     getMateriasPrimas, crearMateriaPrima, editarMateriaPrima, eliminarMateriaPrima,
-    getRecetasBom, crearRecetaBom, eliminarRecetaBom,
+    getRecetasBom, crearRecetaBom, actualizarRecetaBom, eliminarRecetaBom,
     getRecetasAntiguas, crearRecetaAntigua, eliminarRecetaAntigua, eliminarTodasRecetasAntiguas, importarRecetasAntiguas,
     getReglasExtras, crearReglaExtra, editarReglaExtra, eliminarReglaExtra,
     getTecnicos, crearTecnico, editarTecnico, eliminarTecnico,
