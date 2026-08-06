@@ -81,7 +81,6 @@ const eliminarTodosCodigos = async () => {
     const result = await query('DELETE FROM produccion_codigos');
     return result.rowCount;
 };
-
 const importarCodigos = async (rows) => {
     const resultados = { importados: 0, errores: [] };
 
@@ -94,6 +93,9 @@ const importarCodigos = async (rows) => {
         }
         return '';
     };
+
+    const BATCH = 200;
+    const bulk = [];
 
     for (let i = 0; i < rows.length; i++) {
         try {
@@ -116,16 +118,33 @@ const importarCodigos = async (rows) => {
             const bloqueo_tela_val = ['si', 's', '1', 'true', 'x'].includes(bloqueo);
 
             if (!codigo) { resultados.errores.push({ fila: i + 1, error: 'Sin codigo' }); continue; }
-            await query(
-                `INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloqueo_tela)
-                 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (codigo) DO UPDATE SET
-                 descripcion = EXCLUDED.descripcion, grupo = EXCLUDED.grupo,
-                 familia = EXCLUDED.familia, bloqueo_tela = $5`,
-                [codigo, descripcion, grupo, familia, bloqueo_tela_val]
-            );
-            resultados.importados++;
+            bulk.push([codigo, descripcion, grupo, familia, bloqueo_tela_val]);
         } catch (e) { resultados.errores.push({ fila: i + 1, error: e.message }); }
     }
+
+    for (let b = 0; b < bulk.length; b += BATCH) {
+        const chunk = bulk.slice(b, b + BATCH);
+        const values = [];
+        const params = [];
+        let idx = 1;
+        for (const [codigo, desc, grupo, fam, bloqueo] of chunk) {
+            values.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+            params.push(codigo, desc, grupo, fam, bloqueo);
+        }
+        try {
+            await query(
+                `INSERT INTO produccion_codigos (codigo, descripcion, grupo, familia, bloqueo_tela)
+                 VALUES ${values.join(', ')} ON CONFLICT (codigo) DO UPDATE SET
+                 descripcion = EXCLUDED.descripcion, grupo = EXCLUDED.grupo,
+                 familia = EXCLUDED.familia, bloqueo_tela = EXCLUDED.bloqueo_tela`,
+                params
+            );
+            resultados.importados += chunk.length;
+        } catch (e) {
+            resultados.errores.push({ fila: b + 1, error: 'Error lote: ' + e.message });
+        }
+    }
+
     return resultados;
 };
 
