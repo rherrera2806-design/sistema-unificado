@@ -135,22 +135,33 @@ const importarRecetasAntiguas = async (parsedRows) => {
 // ============ RECETAS BOM - IMPORTAR ============
 
 const findCol = (row, candidates) => {
-    const normalized = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const normalized = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\u00a0\u200b\u200c\u200d\ufeff\r\n\t]/g, '').trim();
     for (const c of candidates) {
+        const nc = normalized(c);
         for (const key of Object.keys(row)) {
-            if (normalized(key) === normalized(c)) return key;
+            if (normalized(key) === nc) return key;
+        }
+    }
+    for (const c of candidates) {
+        const nc = normalized(c);
+        for (const key of Object.keys(row)) {
+            const nk = normalized(key);
+            if (nk.includes(nc) || nc.includes(nk)) return key;
         }
     }
     return null;
 };
 
 const previewRecetasBom = async (rows) => {
+    const headers = Object.keys(rows[0] || {});
+    console.log('[PREVIEW] Headers detectados:', headers);
     const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP']);
     const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo']);
     const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
     const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
     const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
     const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
+    console.log('[PREVIEW] Columnas:', { colCodigo, colMP, colCant, colEst, colAncho, colAlto });
 
     const missing = [];
     if (!colCodigo) missing.push('Codigo SAP');
@@ -214,6 +225,18 @@ const importarRecetasBom = async (rows) => {
     const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
     const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
     const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
+    console.log('[IMPORT] Headers:', Object.keys(rows[0] || {}));
+    console.log('[IMPORT] Columnas:', { colCodigo, colMP, colCant, colEst, colAncho, colAlto });
+    if (rows[0]) {
+        console.log('[IMPORT] Primera fila sample:', {
+            sap: colCodigo ? rows[0][colCodigo] : null,
+            mp: colMP ? rows[0][colMP] : null,
+            est: colEst ? rows[0][colEst] : null,
+            estType: colEst ? typeof rows[0][colEst] : null,
+            ancho: colAncho ? rows[0][colAncho] : null,
+            alto: colAlto ? rows[0][colAlto] : null
+        });
+    }
 
     for (let i = 0; i < rows.length; i++) {
         try {
