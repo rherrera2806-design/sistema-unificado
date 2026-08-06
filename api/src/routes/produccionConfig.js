@@ -77,6 +77,14 @@ router.post('/api/produccion/codigos', async (req, res, next) => {
     }
 });
 
+router.put('/api/produccion/codigos/:id', async (req, res, next) => {
+    try {
+        const result = await config.editarCodigo(Number(req.params.id), req.body);
+        if (!result) return res.status(404).json({ error: 'Codigo no encontrado' });
+        res.json(result);
+    } catch (e) { next(e); }
+});
+
 router.delete('/api/produccion/codigos/:id', async (req, res, next) => {
     await config.eliminarCodigo(Number(req.params.id));
     res.json({ ok: true });

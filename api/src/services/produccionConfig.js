@@ -77,6 +77,14 @@ const eliminarCodigo = async (id) => {
     await query('DELETE FROM produccion_codigos WHERE id = $1', [id]);
 };
 
+const editarCodigo = async (id, { descripcion, grupo, familia }) => {
+    const result = await query(
+        'UPDATE produccion_codigos SET descripcion = $1, grupo = $2, familia = $3 WHERE id = $4 RETURNING *',
+        [descripcion || '', grupo || '', familia || '', id]
+    );
+    return result.rows[0];
+};
+
 const eliminarTodosCodigos = async () => {
     const result = await query('DELETE FROM produccion_codigos');
     return result.rowCount;
@@ -264,7 +272,7 @@ const eliminarFamilia = async (id) => {
 
 module.exports = {
     getMaquinas, crearMaquina, importarMaquinas, editarMaquina, eliminarMaquina,
-    getCodigos, crearCodigo, eliminarCodigo, eliminarTodosCodigos, importarCodigos, previewCodigos,
+    getCodigos, crearCodigo, editarCodigo, eliminarCodigo, eliminarTodosCodigos, importarCodigos, previewCodigos,
     getEstaciones, crearEstacion, editarEstacion, eliminarEstacion,
     getFamilias, crearFamilia, editarFamilia, eliminarFamilia
 };

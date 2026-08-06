@@ -1,5 +1,6 @@
 App.registerModule('prod_codigos', {
     codigos: [],
+    editingId: null,
 
     async render() {
         const el = document.getElementById('page-prod_codigos');
@@ -77,7 +78,7 @@ ${puedeEditar ? `
 
             <div class="modal-overlay" id="codCreateModal">
                 <div class="modal" style="max-width:500px">
-                    <div class="modal-header"><h3>Nuevo Codigo</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_codigos.hideCreateModal()">&times;</button></div>
+                    <div class="modal-header"><h3 id="codModalTitle">Nuevo Codigo</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_codigos.hideCreateModal()"></button></div>
                     <div class="modal-body">
                         <div class="form-group"><label>Codigo SAP *</label><input class="form-control" id="codCodigo" placeholder="Ej: V659, 100, P123" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
@@ -190,7 +191,7 @@ ${puedeEditar ? `
             <td style="${td}">${c.descripcion || '-'}</td>
             <td style="${td}">${c.grupo ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af">${c.grupo}</span>` : '-'}</td>
             <td style="${td}">${c.familia ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${c.familia}</span>` : '-'}</td>
-            <td style="${td}">${puedeEditar ? `<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_codigos.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
+            <td style="${td}">${puedeEditar ? `<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_codigos.edit(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_codigos.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
         </tr>`).join('');
     },
 
@@ -218,12 +219,29 @@ ${puedeEditar ? `
     },
 
     showCreateModal() {
+        this.editingId = null;
+        document.getElementById('codModalTitle').textContent = 'Nuevo Codigo';
         document.getElementById('codCodigo').value = '';
+        document.getElementById('codCodigo').disabled = false;
         document.getElementById('codDescripcion').value = '';
         document.getElementById('codGrupo').value = '';
         document.getElementById('codFamilia').value = '';
         document.getElementById('codCreateModal').classList.add('show');
     },
+
+    async edit(id) {
+        const c = (this.codigos || []).find(x => x.id === id);
+        if (!c) return;
+        this.editingId = id;
+        document.getElementById('codModalTitle').textContent = 'Editar Codigo';
+        document.getElementById('codCodigo').value = c.codigo || '';
+        document.getElementById('codCodigo').disabled = true;
+        document.getElementById('codDescripcion').value = c.descripcion || '';
+        document.getElementById('codGrupo').value = c.grupo || '';
+        document.getElementById('codFamilia').value = c.familia || '';
+        document.getElementById('codCreateModal').classList.add('show');
+    },
+
     hideCreateModal() { document.getElementById('codCreateModal').classList.remove('show'); },
 
     async save() {
@@ -234,12 +252,21 @@ ${puedeEditar ? `
         if (!codigo) { alert('Codigo requerido'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const res = await fetch('/api/produccion/codigos', {
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ codigo, descripcion, grupo, familia })
-            });
+            const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
+            let res;
+            if (this.editingId) {
+                res = await fetch(`/api/produccion/codigos/${this.editingId}`, {
+                    method: 'PUT', headers,
+                    body: JSON.stringify({ descripcion, grupo, familia })
+                });
+            } else {
+                res = await fetch('/api/produccion/codigos', {
+                    method: 'POST', headers,
+                    body: JSON.stringify({ codigo, descripcion, grupo, familia })
+                });
+            }
             const data = await res.json();
-            if (res.ok) { this.hideCreateModal(); App.toast('Codigo creado'); await this.load(); }
+            if (res.ok) { this.hideCreateModal(); App.toast(this.editingId ? 'Codigo actualizado' : 'Codigo creado'); await this.load(); }
             else { alert(data.error || 'Error al guardar'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
