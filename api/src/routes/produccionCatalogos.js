@@ -34,16 +34,36 @@ router.delete('/api/produccion/recetas-bom/all', async (req, res, next) => {
 const parseExcel = (base64) => {
     const XLSX = require('xlsx');
     const buffer = Buffer.from(base64, 'base64');
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const workbook = XLSX.read(buffer, { type: 'buffer', cellStyles: true, cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
-    console.log('[PARSE] Sheet names:', workbook.SheetNames);
-    console.log('[PARSE] Total rows:', rows.length);
-    if (rows.length > 0) {
-        console.log('[PARSE] Keys:', Object.keys(rows[0]));
-        console.log('[PARSE] First row:', JSON.stringify(rows[0]));
-        console.log('[PARSE] Key count:', Object.keys(rows[0]).length);
+
+    const range = XLSX.utils.decode_range(sheet['!ref']);
+    console.log('[PARSE] Range:', sheet['!ref'], 'Cols:', range.e.c + 1, 'Rows:', range.e.r + 1);
+
+    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    console.log('[PARSE] Raw row 0:', JSON.stringify(raw[0]));
+    console.log('[PARSE] Raw row 1:', JSON.stringify(raw[1]));
+    console.log('[PARSE] Raw row 2:', JSON.stringify(raw[2]));
+    console.log('[PARSE] Total raw rows:', raw.length);
+
+    if (raw.length < 2) return [];
+
+    const headers = raw[0].map(h => String(h || '').trim());
+    console.log('[PARSE] Headers array:', headers);
+
+    const rows = [];
+    for (let i = 1; i < raw.length; i++) {
+        const row = {};
+        let hasData = false;
+        for (let j = 0; j < headers.length; j++) {
+            if (headers[j]) {
+                row[headers[j]] = raw[i][j] !== undefined ? raw[i][j] : '';
+                if (row[headers[j]] !== '' && row[headers[j]] !== null && row[headers[j]] !== undefined) hasData = true;
+            }
+        }
+        if (hasData) rows.push(row);
     }
+    console.log('[PARSE] Parsed rows:', rows.length, 'Keys:', Object.keys(rows[0] || {}));
     return rows;
 };
 
