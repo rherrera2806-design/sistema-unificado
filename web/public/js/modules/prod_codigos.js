@@ -61,11 +61,17 @@ ${puedeEditar ? `
                     </div>
                 </div>
                 <div class="card-body" style="padding:0">
-                    <table style="font-size:13px"><thead><tr>
-                        <th style="padding:6px 12px">Codigo</th><th style="padding:6px 12px">Descripcion</th><th style="padding:6px 12px">Grupo</th><th style="padding:6px 12px">Familia</th><th style="padding:6px 12px">Acciones</th>
+                    <div style="overflow-x:auto">
+                    <table style="font-size:13px;width:100%;border-collapse:collapse"><thead><tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0">
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Codigo</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Descripcion</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Grupo</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Familia</th>
+                        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
                     </tr></thead><tbody id="codTable">
                         <tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
+                    </div>
                 </div>
             </div>
 
