@@ -81,6 +81,40 @@ const eliminarTodosCodigos = async () => {
     const result = await query('DELETE FROM produccion_codigos');
     return result.rowCount;
 };
+const previewCodigos = (rows) => {
+    const findCol = (row, candidates) => {
+        for (const c of candidates) { if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== '') return String(row[c]).trim(); }
+        const keys = Object.keys(row);
+        for (const c of candidates) {
+            const found = keys.find(k => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+            if (found && row[found]) return String(row[found]).trim();
+        }
+        return '';
+    };
+
+    const columnasDetectadas = rows.length > 0 ? Object.keys(rows[0]) : [];
+    let conCodigo = 0, sinCodigo = 0, duplicados = 0;
+    const seen = new Set();
+    const muestra = [];
+    for (let i = 0; i < rows.length; i++) {
+        const codigo = findCol(rows[i], ['Codigo', 'ItemCode', 'Cod']);
+        if (codigo) {
+            if (seen.has(codigo)) { duplicados++; continue; }
+            seen.add(codigo);
+            conCodigo++;
+            if (muestra.length < 5) {
+                muestra.push({
+                    codigo,
+                    descripcion: findCol(rows[i], ['Descripcion', 'ItemName', 'Nombre', 'Detalle', 'Desc', 'Description']),
+                    grupo: findCol(rows[i], ['Grupo', 'Group', 'Categoria', 'Category']),
+                    familia: findCol(rows[i], ['Familia', 'Family', 'Tipo', 'Type'])
+                });
+            }
+        } else { sinCodigo++; }
+    }
+    return { total: rows.length, con_codigo: conCodigo, sin_codigo: sinCodigo, duplicados, columnas_detectadas: columnasDetectadas, muestra };
+};
+
 const importarCodigos = async (rows) => {
     const resultados = { importados: 0, errores: [] };
 
@@ -96,6 +130,7 @@ const importarCodigos = async (rows) => {
 
     const BATCH = 200;
     const bulk = [];
+    const seen = new Set();
 
     for (let i = 0; i < rows.length; i++) {
         try {
@@ -118,9 +153,13 @@ const importarCodigos = async (rows) => {
             const bloqueo_tela_val = ['si', 's', '1', 'true', 'x'].includes(bloqueo);
 
             if (!codigo) { resultados.errores.push({ fila: i + 1, error: 'Sin codigo' }); continue; }
+            if (seen.has(codigo)) continue;
+            seen.add(codigo);
             bulk.push([codigo, descripcion, grupo, familia, bloqueo_tela_val]);
         } catch (e) { resultados.errores.push({ fila: i + 1, error: e.message }); }
     }
+
+    console.log(`[CODIGOS] Total filas Excel: ${rows.length}, con codigo: ${bulk.length}, duplicados omitidos: ${rows.length - bulk.length - resultados.errores.length}`);
 
     for (let b = 0; b < bulk.length; b += BATCH) {
         const chunk = bulk.slice(b, b + BATCH);
@@ -140,7 +179,9 @@ const importarCodigos = async (rows) => {
                 params
             );
             resultados.importados += chunk.length;
+            console.log(`[CODIGOS] Lote ${Math.floor(b/BATCH)+1}: ${chunk.length} registros OK (${resultados.importados}/${bulk.length})`);
         } catch (e) {
+            console.error(`[CODIGOS] Error lote ${Math.floor(b/BATCH)+1}:`, e.message);
             resultados.errores.push({ fila: b + 1, error: 'Error lote: ' + e.message });
         }
     }

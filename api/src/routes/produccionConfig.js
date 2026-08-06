@@ -39,13 +39,26 @@ router.delete('/api/produccion/codigos/all', async (req, res, next) => {
     res.json({ ok: true, eliminados: await config.eliminarTodosCodigos() });
 });
 
+const parseExcel = (base64) => {
+    const XLSX = require('xlsx');
+    const buffer = Buffer.from(base64, 'base64');
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    return XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+};
+
+router.post('/api/produccion/codigos/preview', async (req, res, next) => {
+    if (!req.body.excel_data) return res.status(400).json({ error: 'Datos del archivo requeridos' });
+    try {
+        const rows = parseExcel(req.body.excel_data);
+        if (!rows.length) return res.status(400).json({ error: 'Archivo vacio' });
+        res.json(config.previewCodigos(rows));
+    } catch (e) { res.status(500).json({ error: 'Error al leer archivo: ' + e.message }); }
+});
+
 router.post('/api/produccion/codigos/importar', async (req, res, next) => {
     if (!req.body.excel_data) return res.status(400).json({ error: 'Datos del archivo requeridos' });
     try {
-        const XLSX = require('xlsx');
-        const buffer = Buffer.from(req.body.excel_data, 'base64');
-        const workbook = XLSX.read(buffer, { type: 'buffer' });
-        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        const rows = parseExcel(req.body.excel_data);
         if (!rows.length) return res.status(400).json({ error: 'Archivo vacio' });
         res.json(await config.importarCodigos(rows));
     } catch (e) { res.status(500).json({ error: 'Error al procesar: ' + e.message }); }

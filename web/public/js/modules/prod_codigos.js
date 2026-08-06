@@ -86,7 +86,7 @@ ${puedeEditar ? `
             </div>
 
             <div class="modal-overlay" id="codImportModal">
-                <div class="modal" style="max-width:500px">
+                <div class="modal" style="max-width:520px">
                     <div class="modal-header"><h3>Importar Codigos SAP</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_codigos.hideImportModal()">&times;</button></div>
                     <div class="modal-body">
                         <div id="codImportArea" style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer"
@@ -96,6 +96,13 @@ ${puedeEditar ? `
                             <div id="codImportName" style="color:var(--success);font-weight:500;margin-top:8px;display:none"></div>
                         </div>
                         <input type="file" id="codImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.prod_codigos.handleImportFile(event)">
+                        <div id="codImportPreview" style="display:none;margin-top:12px">
+                            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;margin-bottom:8px">
+                                <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:6px">Vista previa del archivo</div>
+                                <div id="codPreviewStats" style="font-size:12px;color:#15803d;line-height:1.8"></div>
+                            </div>
+                            <div id="codPreviewSample" style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px;color:var(--text-light);max-height:140px;overflow-y:auto"></div>
+                        </div>
                         <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-light)">
                             <strong>Columnas esperadas:</strong><br>
                             Codigo, Descripcion, Grupo, Familia<br>
@@ -272,19 +279,61 @@ ${puedeEditar ? `
         this.selectedImportFile = file;
         document.getElementById('codImportName').textContent = file.name;
         document.getElementById('codImportName').style.display = 'block';
-        document.getElementById('codImportBtn').disabled = false;
+        document.getElementById('codImportPreview').style.display = 'none';
+        document.getElementById('codImportBtn').disabled = true;
+        this.doPreview();
     },
 
     importarExcel() { document.getElementById('codImportModal').classList.add('show'); this.selectedImportFile = null; },
-    hideImportModal() { document.getElementById('codImportModal').classList.remove('show'); this.selectedImportFile = null; document.getElementById('codImportName').style.display = 'none'; document.getElementById('codImportBtn').disabled = true; },
+    hideImportModal() { document.getElementById('codImportModal').classList.remove('show'); this.selectedImportFile = null; document.getElementById('codImportName').style.display = 'none'; document.getElementById('codImportBtn').disabled = true; document.getElementById('codImportPreview').style.display = 'none'; },
+
+    async doPreview() {
+        if (!this.selectedImportFile) return;
+        try {
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = () => reject(new Error('Error al leer'));
+                reader.readAsDataURL(this.selectedImportFile);
+            });
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch('/api/produccion/codigos/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ excel_data: base64 })
+            });
+            const data = await res.json();
+            if (!res.ok) { alert(data.error || 'Error al leer archivo'); return; }
+
+            const stats = document.getElementById('codPreviewStats');
+            stats.innerHTML = `
+                <span style="font-size:18px;font-weight:800;color:#166534">${data.con_codigo}</span> registros a importar<br>
+                ${data.duplicados > 0 ? `<span style="color:#b45309">${data.duplicados}</span> duplicados (se omiten)<br>` : ''}
+                ${data.sin_codigo > 0 ? `<span style="color:#dc2626">${data.sin_codigo}</span> filas sin codigo (se omiten)<br>` : ''}
+                <span style="color:#64748b">Columnas: ${data.columnas_detectadas.slice(0, 6).join(', ')}${data.columnas_detectadas.length > 6 ? '...' : ''}</span>
+            `;
+
+            const sample = document.getElementById('codPreviewSample');
+            if (data.muestra && data.muestra.length > 0) {
+                sample.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:#334155">Primeros registros:</div>' +
+                    data.muestra.map(r => `<div style="padding:3px 0;border-bottom:1px solid #e2e8f0"><b>${this.esc(r.codigo)}</b> — ${this.esc(r.descripcion || '-')} | ${this.esc(r.grupo || '-')} | ${this.esc(r.familia || '-')}</div>`).join('');
+            }
+
+            document.getElementById('codImportPreview').style.display = 'block';
+            document.getElementById('codImportBtn').disabled = false;
+            this._previewBase64 = base64;
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    esc(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; },
 
     async doImport() {
         if (!this.selectedImportFile) return;
         const btn = document.getElementById('codImportBtn');
-        btn.textContent = 'Procesando...';
+        btn.textContent = 'Importando...';
         btn.disabled = true;
         try {
-            const base64 = await new Promise((resolve, reject) => {
+            const base64 = this._previewBase64 || await new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(reader.result.split(',')[1]);
                 reader.onerror = () => reject(new Error('Error al leer'));
