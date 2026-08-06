@@ -145,12 +145,12 @@ const findCol = (row, candidates) => {
 };
 
 const previewRecetasBom = async (rows) => {
-    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP']);
-    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima']);
-    const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad']);
-    const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json']);
-    const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width']);
-    const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height']);
+    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP']);
+    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo']);
+    const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
+    const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
+    const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
+    const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
 
     const missing = [];
     if (!colCodigo) missing.push('Codigo SAP');
@@ -182,8 +182,9 @@ const previewRecetasBom = async (rows) => {
             if (raw.length > 0) estacionesArray = raw;
         }
 
-        const key = sap + '|' + mp + '|' + JSON.stringify(estacionesArray || []);
-        if (seen.has(key)) { errores.push({ fila: i + 1, error: 'Duplicado exacto: ' + sap + ' + ' + mp + (estacionesArray ? ' con misma ruta' : '') }); continue; }
+        const routeKey = estacionesArray ? JSON.stringify(estacionesArray) : (colEst ? 'none' : 'unknown');
+        const key = sap + '|' + mp + '|' + routeKey;
+        if (routeKey !== 'unknown' && seen.has(key)) { errores.push({ fila: i + 1, error: 'Duplicado: ' + sap + ' + ' + mp + (estacionesArray ? ' con ruta ' + estacionesArray.join(',') : '') }); continue; }
         seen.add(key);
         validas++;
     }
@@ -207,12 +208,12 @@ const importarRecetasBom = async (rows) => {
     const mpMap = {};
     materias.rows.forEach(m => { mpMap[m.codigo_mp] = m.id; });
 
-    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP']);
-    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima']);
-    const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad']);
-    const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json']);
-    const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width']);
-    const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height']);
+    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP']);
+    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo']);
+    const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
+    const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
+    const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
+    const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
 
     for (let i = 0; i < rows.length; i++) {
         try {
@@ -230,11 +231,11 @@ const importarRecetasBom = async (rows) => {
                 if (raw.length > 0) estacionesArray = raw;
             }
 
-            const existe = await query('SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2 AND procesos_especificos_json IS NOT DISTINCT FROM $3::jsonb', [sap, mpId, procsJson]);
-            if (existe.rows.length > 0) { resultados.saltadas++; continue; }
-
             const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
             const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
+
+            const existe = await query('SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2 AND procesos_especificos_json IS NOT DISTINCT FROM $3::jsonb', [sap, mpId, procsJson]);
+            if (existe.rows.length > 0) { resultados.saltadas++; continue; }
             const ancho = colAncho ? Number(row[colAncho]) || null : null;
             const alto = colAlto ? Number(row[colAlto]) || null : null;
 
