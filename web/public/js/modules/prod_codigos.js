@@ -29,23 +29,27 @@ ${puedeEditar ? `
 .pcod-row:hover{transform:translateX(2px);background:#f8fafc!important}
 </style>
 
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
-                <div class="card pcod-card" style="border-left:4px solid #3b82f6;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
-                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-                    <div><div style="font-size:20px;font-weight:800;color:#3b82f6;line-height:1" id="codTotal">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Total Codigos</div></div>
-                </div></div>
-                <div class="card pcod-card" style="border-left:4px solid #8b5cf6;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
-                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#f5f3ff,#ddd6fe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
-                    <div><div style="font-size:20px;font-weight:800;color:#8b5cf6;line-height:1" id="codGrupos">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Grupos</div></div>
-                </div></div>
-                <div class="card pcod-card" style="border-left:4px solid #22c55e;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
-                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
-                    <div><div style="font-size:20px;font-weight:800;color:#22c55e;line-height:1" id="codFamilias">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Familias</div></div>
-                </div></div>
-                <div class="card pcod-card" style="border-left:4px solid #f59e0b;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
-                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div>
-                    <div><div style="font-size:20px;font-weight:800;color:#f59e0b;line-height:1" id="codBloques">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Con Bloqueo Tela</div></div>
-                </div></div>
+            <div class="stats-grid" style="margin-bottom:14px">
+                <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
+                    <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Total Codigos</p><p class="stat-sub">Catalogo maestro SAP</p></div>
+                    <div class="stat-value" id="codTotal">0</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
+                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Grupos</p><p class="stat-sub">Tipos diferentes</p></div>
+                    <div class="stat-value" id="codGrupos">0</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
+                    <div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Familias</p><p class="stat-sub">Subclasificaciones</p></div>
+                    <div class="stat-value" id="codFamilias">0</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
+                    <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Con Bloqueo Tela</p><p class="stat-sub">Validacion especial</p></div>
+                    <div class="stat-value" id="codBloques">0</div>
+                </div>
             </div>
 
             <div class="card pcod-card">

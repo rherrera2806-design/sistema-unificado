@@ -28,19 +28,27 @@ ${puedeEditar ? `
 .pmq-row:hover{transform:translateX(2px);background:#f8fafc!important}
 </style>
 
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-                <div class="card pmq-card" style="border-left:4px solid #3b82f6;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
-                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg></div>
-                    <div><div style="font-size:20px;font-weight:800;color:#3b82f6;line-height:1" id="mqTotal">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Total Maquinas</div></div>
-                </div></div>
-                <div class="card pmq-card" style="border-left:4px solid #22c55e;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
-                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-                    <div><div style="font-size:20px;font-weight:800;color:#22c55e;line-height:1" id="mqActivas">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Activas</div></div>
-                </div></div>
-                <div class="card pmq-card" style="border-left:4px solid #f59e0b;border-radius:10px;padding:10px 12px;height:55px;display:flex;align-items:center;gap:10px"><div class="card-body" style="padding:0">
-                    <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
-                    <div><div style="font-size:20px;font-weight:800;color:#f59e0b;line-height:1" id="mqCapacidad">0</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Total m²/día</div></div>
-                </div></div>
+            <div class="stats-grid" style="margin-bottom:14px">
+                <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
+                    <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Total Maquinas</p><p class="stat-sub">Registradas en sistema</p></div>
+                    <div class="stat-value" id="mqTotal">0</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
+                    <div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Activas</p><p class="stat-sub">En operacion</p></div>
+                    <div class="stat-value" id="mqActivas">0</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
+                    <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">En Mantencion</p><p class="stat-sub">Fuera de servicio</p></div>
+                    <div class="stat-value" id="mqMantencion">0</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
+                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Capacidad Total</p><p class="stat-sub">m²/dia (activas)</p></div>
+                    <div class="stat-value" id="mqCapacidad">0</div>
+                </div>
             </div>
 
             <div class="card pmq-card">
@@ -96,10 +104,12 @@ ${puedeEditar ? `
     renderStats() {
         const total = this.maquinas.length;
         const activas = this.maquinas.filter(m => m.estado === 'ACTIVA').length;
+        const mantencion = this.maquinas.filter(m => m.estado === 'MANTENCION').length;
         const capacidad = this.maquinas.filter(m => m.estado === 'ACTIVA').reduce((s, m) => s + Number(m.capacidad_max_m2_dia || 0), 0);
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('mqTotal', total);
         set('mqActivas', activas);
+        set('mqMantencion', mantencion);
         set('mqCapacidad', capacidad.toFixed(1));
     },
 
