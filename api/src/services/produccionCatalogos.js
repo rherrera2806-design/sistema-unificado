@@ -182,8 +182,8 @@ const previewRecetasBom = async (rows) => {
             if (raw.length > 0) estacionesArray = raw;
         }
 
-        const key = sap + '|' + mp;
-        if (seen.has(key)) { errores.push({ fila: i + 1, error: 'Duplicado: ' + sap + ' + ' + mp }); continue; }
+        const key = sap + '|' + mp + '|' + JSON.stringify(estacionesArray || []);
+        if (seen.has(key)) { errores.push({ fila: i + 1, error: 'Duplicado exacto: ' + sap + ' + ' + mp + (estacionesArray ? ' con misma ruta' : '') }); continue; }
         seen.add(key);
         validas++;
     }
@@ -230,7 +230,7 @@ const importarRecetasBom = async (rows) => {
                 if (raw.length > 0) estacionesArray = raw;
             }
 
-            const existe = await query('SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2', [sap, mpId]);
+            const existe = await query('SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2 AND procesos_especificos_json IS NOT DISTINCT FROM $3::jsonb', [sap, mpId, procsJson]);
             if (existe.rows.length > 0) { resultados.saltadas++; continue; }
 
             const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
