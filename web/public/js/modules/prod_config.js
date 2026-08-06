@@ -27,10 +27,10 @@ App.registerModule('prod_config', {
             + '.pc-tab{transition:all 0.15s}'
             + '</style>'
 
-            + '<div style="display:flex;gap:6px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;padding-bottom:0;flex-wrap:wrap">'
+            + '<div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border);padding-bottom:0;flex-wrap:wrap">'
             + tabs.map(t => {
                 const active = this._tab === t.id;
-                return '<button class="pc-tab" onclick="App.modules.prod_config.switchTab(\'' + t.id + '\')" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:12px;font-weight:600;border:none;border-bottom:2px solid ' + (active ? '#3b82f6' : 'transparent') + ';margin-bottom:-2px;cursor:pointer;transition:all 0.15s;background:' + (active ? '#eff6ff' : 'transparent') + ';color:' + (active ? '#2563eb' : '#64748b') + ';border-radius:8px 8px 0 0" onmouseover="this.style.background=\'' + (active ? '#eff6ff' : '#f8fafc') + '\'" onmouseout="this.style.background=\'' + (active ? '#eff6ff' : 'transparent') + '\'">' + t.svg + ' ' + t.label + '</button>';
+                return '<button class="btn ' + (active ? 'btn-primary' : 'btn-ghost') + '" style="border-bottom:2px solid ' + (active ? 'var(--glass)' : 'transparent') + ';margin-bottom:-2px;border-radius:var(--radius-md) var(--radius-md) 0 0;padding:6px 12px;font-size:12px" onclick="App.modules.prod_config.switchTab(\'' + t.id + '\')">' + t.svg + ' ' + t.label + '</button>';
             }).join('')
             + '</div>'
             + '<div id="prodConfigContent"></div>';
@@ -92,7 +92,7 @@ App.registerModule('prod_config', {
             <div class="card">
                 <div class="card-header" style="justify-content:space-between">
                     <h3 style="margin:0">Estaciones Maestras (Secuencia de Planta)</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showEstacionForm()"> Nueva Estacion</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showEstacionForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Estacion</button>
                 </div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Orden</th><th>Nombre</th><th>Cap. Max m²/día</th><th>Cuello Botella</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -163,7 +163,7 @@ App.registerModule('prod_config', {
             <div class="card">
                 <div class="card-header" style="justify-content:space-between">
                     <h3 style="margin:0">Familias de Producto</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showFamiliaForm()"> Nueva Familia</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showFamiliaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Familia</button>
                 </div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Codigo</th><th>Nombre</th><th>Costo HH</th><th>Costo Energia</th><th>Estaciones Base</th><th>Acciones</th></tr></thead>
@@ -244,7 +244,7 @@ App.registerModule('prod_config', {
             <div class="card">
                 <div class="card-header" style="justify-content:space-between">
                     <h3 style="margin:0">Materias Primas (Vidrios)</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()"> Nueva Materia Prima</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Materia Prima</button>
                 </div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Codigo</th><th>Nombre</th><th>Espesor (mm)</th><th>Costo $/m2</th><th>Observacion</th><th>Acciones</th></tr></thead>
@@ -319,7 +319,7 @@ App.registerModule('prod_config', {
             <div class="card">
                 <div class="card-header" style="justify-content:space-between">
                     <h3 style="margin:0">Reglas de Procesos Extras (Banderas Excel)</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showReglaForm()"> Nueva Regla</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showReglaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Regla</button>
                 </div>
                 <div class="card-body" style="padding:0">
                     <p style="padding:8px 16px;font-size:12px;color:var(--text-light);margin:0">Mapea las columnas del Excel de SAP con la estacion que se agrega cuando el valor es 1</p>
@@ -403,9 +403,9 @@ App.registerModule('prod_config', {
                 <div class="card-header" style="justify-content:space-between">
                     <h3 style="margin:0">Calendario de Produccion</h3>
                     <div style="display:flex;gap:8px;align-items:center">
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(-1)">◀</button>
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(-1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
                         <strong>${monthNames[month]} ${year}</strong>
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(1)">▶</button>
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
                     </div>
                 </div>
                 <div class="card-body">
