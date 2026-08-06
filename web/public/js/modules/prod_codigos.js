@@ -143,9 +143,11 @@ ${puedeEditar ? `
     populateFilters() {
         const grupos = [...new Set(this.codigos.map(c => c.grupo).filter(Boolean))].sort();
         const grupoSel = document.getElementById('codFilterGrupo');
-        if (grupoSel && !grupoSel._populated) {
+        if (grupoSel) {
+            const actual = grupoSel.value;
+            grupoSel.innerHTML = '<option value="">Todos los grupos</option>';
             grupos.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; grupoSel.appendChild(o); });
-            grupoSel._populated = true;
+            if (grupos.includes(actual)) grupoSel.value = actual;
         }
         this._updateFamiliasFilter();
     },
