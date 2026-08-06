@@ -234,9 +234,6 @@ const importarRecetasBom = async (rows) => {
             const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
             const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
 
-            const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
-            const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
-
             let existe;
             if (procsJson) {
                 existe = await query(`SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2 AND procesos_especificos_json::text = $3::text`, [sap, mpId, procsJson]);
