@@ -264,7 +264,7 @@ const eliminarFamilia = async (id) => {
 
 module.exports = {
     getMaquinas, crearMaquina, importarMaquinas, editarMaquina, eliminarMaquina,
-    getCodigos, crearCodigo, eliminarCodigo, eliminarTodosCodigos, importarCodigos,
+    getCodigos, crearCodigo, eliminarCodigo, eliminarTodosCodigos, importarCodigos, previewCodigos,
     getEstaciones, crearEstacion, editarEstacion, eliminarEstacion,
     getFamilias, crearFamilia, editarFamilia, eliminarFamilia
 };
