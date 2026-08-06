@@ -313,6 +313,7 @@ App.registerModule('prod_config', {
             fetch('/api/produccion/estaciones')
         ]);
         this._reglas = await regRes.json();
+        this._reglas.sort((a, b) => (a.orden_secuencia_defecto || 999) - (b.orden_secuencia_defecto || 999));
         this._estaciones = await estRes.json();
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
