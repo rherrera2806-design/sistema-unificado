@@ -46,11 +46,6 @@ ${puedeEditar ? `
                     <div class="stat-info"><p class="stat-label">Con Ruta Custom</p><p class="stat-sub">Procesos especificos</p></div>
                     <div class="stat-value" id="recCustomStat">0</div>
                 </div>
-                <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
-                    <div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Con Familia</p><p class="stat-sub">Fallback automatico</p></div>
-                    <div class="stat-value" id="recFamiliaStat">0</div>
-                </div>
                 <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
                     <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Codigos Unicos</p><p class="stat-sub">Distintos en sistema</p></div>
@@ -62,13 +57,9 @@ ${puedeEditar ? `
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
                     <h3 style="margin:0">Listado de Recetas</h3>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <select class="form-control" id="recFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_recetas.filter()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-                            <option value="">Todas las familias</option>
-                        </select>
                         <select class="form-control" id="recFilterRuta" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_recetas.filter()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                             <option value="">Todas las rutas</option>
                             <option value="custom">Con ruta custom</option>
-                            <option value="familia">Solo familia</option>
                         </select>
                         <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar codigo o material..." oninput="App.modules.prod_recetas.filter()" style="width:220px;font-size:12px;padding:4px 8px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     </div>
@@ -77,12 +68,11 @@ ${puedeEditar ? `
                     <table style="font-size:13px"><thead><tr>
                         <th style="padding:6px 12px">Codigo SAP</th>
                         <th style="padding:6px 12px">Materia Prima</th>
-                        <th style="padding:6px 12px">Familia</th>
                         <th style="padding:6px 12px">Ruta de Procesos</th>
                         <th style="padding:6px 12px">Cant.</th>
                         <th style="padding:6px 12px">Acciones</th>
                     </tr></thead><tbody id="recTable">
-                        <tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                        <tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
                 </div>
             </div>
@@ -211,7 +201,6 @@ ${puedeEditar ? `
             this.estaciones = estRes.ok ? await estRes.json() : [];
             this.familias = famRes.ok ? await famRes.json() : [];
             this.materias = matRes.ok ? await matRes.json() : [];
-            this.populateFilters();
             this.populateModalSelects();
             this.renderStats();
             this.renderTable(this.recetas);
@@ -221,22 +210,11 @@ ${puedeEditar ? `
     renderStats() {
         const total = this.recetas.length;
         const conCustom = new Set(this.recetas.filter(r => Array.isArray(r.procesos_especificos_json) && r.procesos_especificos_json.length > 0).map(r => r.codigo_sap_padre)).size;
-        const conFamilia = new Set(this.recetas.filter(r => r.familia_id).map(r => r.codigo_sap_padre)).size;
         const codigosUnicos = new Set(this.recetas.map(r => r.codigo_sap_padre)).size;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('recTotalStat', total);
         set('recCustomStat', conCustom);
-        set('recFamiliaStat', conFamilia);
         set('recCodigosStat', codigosUnicos);
-    },
-
-    populateFilters() {
-        const familias = [...new Set(this.recetas.map(r => r.nombre_familia).filter(Boolean))].sort();
-        const sel = document.getElementById('recFilterFamilia');
-        if (sel && !sel._populated) {
-            familias.forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; sel.appendChild(o); });
-            sel._populated = true;
-        }
     },
 
     populateModalSelects() {
@@ -256,12 +234,9 @@ ${puedeEditar ? `
 
     filter() {
         const search = (document.getElementById('recFilterSearch')?.value || '').toLowerCase();
-        const familia = document.getElementById('recFilterFamilia')?.value || '';
         const ruta = document.getElementById('recFilterRuta')?.value || '';
         let filtered = this.recetas;
-        if (familia) filtered = filtered.filter(r => r.nombre_familia === familia);
         if (ruta === 'custom') filtered = filtered.filter(r => Array.isArray(r.procesos_especificos_json) && r.procesos_especificos_json.length > 0);
-        else if (ruta === 'familia') filtered = filtered.filter(r => !Array.isArray(r.procesos_especificos_json) || r.procesos_especificos_json.length === 0);
         if (search) {
             filtered = filtered.filter(r =>
                 (r.codigo_sap_padre || '').toLowerCase().includes(search) ||
@@ -317,7 +292,6 @@ ${puedeEditar ? `
                 html += `<tr class="prec-row" style="line-height:1.3">
                     <td style="padding:6px 12px"><strong style="font-family:monospace;font-size:12px">${escapeHtml(padre)}</strong></td>
                     <td style="padding:6px 12px"><span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${escapeHtml(r.codigo_mp || '-')}</span> ${r.mp_nombre ? '<span style="color:#64748b;font-size:11px">· ' + escapeHtml(r.mp_nombre) + '</span>' : ''}</td>
-                    <td style="padding:6px 12px">${r.nombre_familia ? '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:11px">' + escapeHtml(r.nombre_familia) + '</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
                     <td style="padding:6px 12px;max-width:340px">' + rutaHtml + '</td>
                     <td style="padding:6px 12px;text-align:center"><strong>${r.cantidad || 1}</strong></td>
                     <td style="padding:6px 12px;white-space:nowrap">${puedeEditar ? `<button onclick="App.modules.prod_recetas.edit(${r.id})" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button onclick="App.modules.prod_recetas.delete(${r.id})" class="btn btn-sm btn-danger" title="Eliminar" style="margin-left:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
