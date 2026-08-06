@@ -132,7 +132,6 @@ ${puedeEditar ? `
             const headers = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const params = new URLSearchParams();
             if (search) params.set('search', search);
-            params.set('limit', '500');
             const res = await fetch('/api/produccion/codigos?' + params.toString(), { headers });
             this.codigos = await res.json();
             this.renderStats();
