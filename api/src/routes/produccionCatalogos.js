@@ -35,7 +35,16 @@ const parseExcel = (base64) => {
     const XLSX = require('xlsx');
     const buffer = Buffer.from(base64, 'base64');
     const workbook = XLSX.read(buffer, { type: 'buffer' });
-    return XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+    console.log('[PARSE] Sheet names:', workbook.SheetNames);
+    console.log('[PARSE] Total rows:', rows.length);
+    if (rows.length > 0) {
+        console.log('[PARSE] Keys:', Object.keys(rows[0]));
+        console.log('[PARSE] First row:', JSON.stringify(rows[0]));
+        console.log('[PARSE] Key count:', Object.keys(rows[0]).length);
+    }
+    return rows;
 };
 
 router.post('/api/produccion/recetas-bom/preview', async (req, res, next) => {
@@ -43,7 +52,10 @@ router.post('/api/produccion/recetas-bom/preview', async (req, res, next) => {
     try {
         const rows = parseExcel(req.body.excel_data);
         if (!rows.length) return res.status(400).json({ error: 'Archivo vacio' });
-        res.json(await catalogos.previewRecetasBom(rows));
+        const result = await catalogos.previewRecetasBom(rows);
+        result._rawKeys = Object.keys(rows[0] || {});
+        result._rawFirstRow = rows[0] || {};
+        res.json(result);
     } catch (e) { res.status(500).json({ error: 'Error al leer archivo: ' + e.message }); }
 });
 

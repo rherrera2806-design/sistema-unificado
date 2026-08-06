@@ -472,6 +472,11 @@ ${puedeEditar ? `
                 preview.style.display = 'block';
                 document.getElementById('recImportBtn').disabled = data.validas === 0;
 
+                if (data._rawKeys) {
+                    const debugHtml = '<div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:11px"><strong style="color:#92400e">Debug - Headers detectados:</strong> <code>' + data._rawKeys.join(' | ') + '</code><br><strong>Columnas encontradas:</strong> Estaciones=' + (data._debug?.colEst || 'NULL') + ', Ancho=' + (data._debug?.colAncho || 'NULL') + ', Alto=' + (data._debug?.colAlto || 'NULL') + '</div>';
+                    document.getElementById('recImportStats').insertAdjacentHTML('afterend', debugHtml);
+                }
+
                 let statsHtml = '<span style="background:#dbeafe;color:#1e40af;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Total: ' + data.total + '</span>';
                 statsHtml += '<span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Validas: ' + data.validas + '</span>';
                 if (data.errores.length > 0) statsHtml += '<span style="background:#fef2f2;color:#991b1b;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Errores: ' + data.errores.length + '</span>';
