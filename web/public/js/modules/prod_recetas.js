@@ -503,17 +503,23 @@ ${puedeEditar ? `
 
     async doImport() {
         const fileInput = document.getElementById('recImportFile');
-        if (!fileInput.files.length) return;
+        if (!fileInput.files.length) { alert('Selecciona un archivo primero'); return; }
         const file = fileInput.files[0];
+        const btn = document.getElementById('recImportBtn');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10"/></svg> Importando...'; }
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const base64 = e.target.result.split(',')[1];
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 120000);
                 const r = await fetch('/api/produccion/recetas-bom/importar', {
                     method: 'POST',
                     headers: { ...this._headers(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ excel_data: base64 })
+                    body: JSON.stringify({ excel_data: base64 }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
                 const data = await r.json();
                 if (r.ok) {
                     App.toast(data.importadas + ' recetas importadas, ' + data.saltadas + ' duplicadas saltadas');
@@ -524,8 +530,12 @@ ${puedeEditar ? `
                     }
                     this.hideImportModal();
                     await this.load();
-                } else { alert(data.error || 'Error al importar'); }
-            } catch (err) { alert('Error: ' + err.message); }
+                } else { alert(data.error || 'Error al importar: ' + r.status); }
+            } catch (err) {
+                if (err.name === 'AbortError') { alert('La importacion tardo demasiado (>2min). Intenta con menos filas.'); }
+                else { alert('Error: ' + err.message); }
+            }
+            if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar'; }
         };
         reader.readAsDataURL(file);
     },
