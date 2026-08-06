@@ -196,8 +196,14 @@ const previewRecetasBom = async (rows) => {
     const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
     let colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
     if (!colEst) colEst = findEstacionesCol(rows);
-    const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
-    const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
+    let colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
+    let colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
+    if (!colEst || !colAncho || !colAlto) {
+        const allKeys = Object.keys(rows[0] || {});
+        if (!colEst && allKeys[3]) { colEst = allKeys[3]; console.log('[PREVIEW] Estaciones detectado por posicion (col 4):', colEst); }
+        if (!colAncho && allKeys[4]) { colAncho = allKeys[4]; console.log('[PREVIEW] Ancho detectado por posicion (col 5):', colAncho); }
+        if (!colAlto && allKeys[5]) { colAlto = allKeys[5]; console.log('[PREVIEW] Alto detectado por posicion (col 6):', colAlto); }
+    }
     console.log('[PREVIEW] Columnas:', { colCodigo, colMP, colCant, colEst, colAncho, colAlto });
 
     const missing = [];
@@ -261,8 +267,14 @@ const importarRecetasBom = async (rows) => {
     const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
     let colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json', 'ESTACIONES', 'Procesos', 'procesos', 'RUTA']);
     if (!colEst) colEst = findEstacionesCol(rows);
-    const colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
-    const colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
+    let colAncho = findCol(rows[0], ['Ancho', 'ancho', 'Width', 'ANCHO']);
+    let colAlto = findCol(rows[0], ['Alto', 'alto', 'Height', 'ALTO']);
+    if (!colEst || !colAncho || !colAlto) {
+        const allKeys = Object.keys(rows[0] || {});
+        if (!colEst && allKeys[3]) { colEst = allKeys[3]; console.log('[IMPORT] Estaciones detectado por posicion (col 4):', colEst); }
+        if (!colAncho && allKeys[4]) { colAncho = allKeys[4]; console.log('[IMPORT] Ancho detectado por posicion (col 5):', colAncho); }
+        if (!colAlto && allKeys[5]) { colAlto = allKeys[5]; console.log('[IMPORT] Alto detectado por posicion (col 6):', colAlto); }
+    }
     console.log('[IMPORT] Headers:', Object.keys(rows[0] || {}));
     console.log('[IMPORT] Columnas:', { colCodigo, colMP, colCant, colEst, colAncho, colAlto });
 
