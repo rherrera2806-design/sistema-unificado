@@ -21,7 +21,8 @@ App.registerModule('prod_recetas', {
 <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Materia prima + ruta de procesos opcional para codigos estandarizados (Carroceros)</p></div>
 ${puedeEditar ? `
 <div style="display:flex;gap:8px">
-                    <button style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer" onclick="App.modules.prod_recetas.showCreateModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Receta</button>
+                    <button class="btn btn-info" onclick="App.modules.prod_recetas.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar Excel</button>
+                    <button class="btn btn-primary" onclick="App.modules.prod_recetas.showCreateModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Receta</button>
                     ${permisos.includes('usuarios') ? '<button class="btn btn-danger btn-sm" title="Eliminar todos los registros" onclick="App.modules.prod_recetas.deleteAll()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar Registros</button>' : ''}
                 </div>` : ''}
 </div></div>
@@ -83,6 +84,54 @@ ${puedeEditar ? `
                     </tr></thead><tbody id="recTable">
                         <tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                     </tbody></table>
+                </div>
+            </div>
+
+            <div class="modal-overlay" id="recImportModal">
+                <div class="modal" style="max-width:720px">
+                    <div class="modal-header"><h3>Importar Recetas BOM desde Excel</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_recetas.hideImportModal()">&times;</button></div>
+                    <div class="modal-body">
+                        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                <strong style="color:#0c4a6e;font-size:13px">Formato requerido</strong>
+                            </div>
+                            <p style="margin:0 0 8px;font-size:12px;color:#075985">El archivo Excel debe contener las siguientes columnas:</p>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+                                <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Codigo SAP *</span>
+                                <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Codigo MP *</span>
+                                <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Cantidad</span>
+                                <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Familia</span>
+                                <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Estaciones (IDs separados por coma)</span>
+                            </div>
+                            <button class="btn btn-outline" style="font-size:11px;padding:4px 12px" onclick="App.modules.prod_recetas.downloadTemplate()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar plantilla</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Archivo Excel (.xlsx)</label>
+                            <input type="file" class="form-control" id="recImportFile" accept=".xlsx,.xls" onchange="window.recetas_onFileSelect(event)" style="font-size:12px">
+                        </div>
+                        <div id="recImportPreview" style="display:none">
+                            <div style="display:flex;align-items:center;gap:8px;margin:12px 0 8px">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                <strong style="font-size:13px;color:#166534">Vista previa del archivo</strong>
+                            </div>
+                            <div id="recImportStats" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"></div>
+                            <div id="recImportErrors" style="display:none;margin-bottom:10px"></div>
+                            <div style="max-height:180px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px">
+                                <table style="font-size:11px;width:100%"><thead style="position:sticky;top:0;background:#f8fafc"><tr>
+                                    <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">SAP</th>
+                                    <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Materia Prima</th>
+                                    <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Cant.</th>
+                                    <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Familia</th>
+                                    <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Estaciones</th>
+                                </tr></thead><tbody id="recImportTable"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline" onclick="App.modules.prod_recetas.hideImportModal()">Cancelar</button>
+                        <button class="btn btn-primary" id="recImportBtn" disabled onclick="App.modules.prod_recetas.doImport()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar</button>
+                    </div>
                 </div>
             </div>
 
@@ -402,5 +451,112 @@ ${puedeEditar ? `
                 await this.load();
             } else { alert(data.error || 'Error al eliminar'); }
         } catch (e) { alert('Error: ' + e.message); }
+    },
+
+    showImportModal() {
+        document.getElementById('recImportFile').value = '';
+        document.getElementById('recImportPreview').style.display = 'none';
+        document.getElementById('recImportBtn').disabled = true;
+        document.getElementById('recImportModal').classList.add('show');
+    },
+
+    hideImportModal() { document.getElementById('recImportModal').classList.remove('show'); },
+
+    async doPreviewImport(file) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const base64 = e.target.result.split(',')[1];
+                const r = await fetch('/api/produccion/recetas-bom/preview', {
+                    method: 'POST',
+                    headers: { ...this._headers(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ excel_data: base64 })
+                });
+                const data = await r.json();
+                if (!r.ok) { alert(data.error || 'Error al leer archivo'); return; }
+                const preview = document.getElementById('recImportPreview');
+                preview.style.display = 'block';
+                document.getElementById('recImportBtn').disabled = data.validas === 0;
+
+                let statsHtml = '<span style="background:#dbeafe;color:#1e40af;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Total: ' + data.total + '</span>';
+                statsHtml += '<span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Validas: ' + data.validas + '</span>';
+                if (data.errores.length > 0) statsHtml += '<span style="background:#fef2f2;color:#991b1b;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Errores: ' + data.errores.length + '</span>';
+                document.getElementById('recImportStats').innerHTML = statsHtml;
+
+                if (data.errores.length > 0) {
+                    let errHtml = '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;margin-bottom:8px;max-height:100px;overflow-y:auto"><strong style="font-size:11px;color:#991b1b">Errores:</strong><br>';
+                    data.errores.slice(0, 10).forEach(err => {
+                        errHtml += '<span style="font-size:11px;color:#991b1b">Fila ' + err.fila + ': ' + err.error + '</span><br>';
+                    });
+                    if (data.errores.length > 10) errHtml += '<span style="font-size:11px;color:#991b1b">... +' + (data.errores.length - 10) + ' mas</span>';
+                    errHtml += '</div>';
+                    document.getElementById('recImportErrors').innerHTML = errHtml;
+                    document.getElementById('recImportErrors').style.display = 'block';
+                } else {
+                    document.getElementById('recImportErrors').innerHTML = '';
+                    document.getElementById('recImportErrors').style.display = 'none';
+                }
+
+                let tableHtml = '';
+                data.sample.forEach(s => {
+                    tableHtml += '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace">' + (s.codigo_sap || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.codigo_mp || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center">' + (s.cantidad || 1) + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.familia || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.estaciones || '-') + '</td></tr>';
+                });
+                document.getElementById('recImportTable').innerHTML = tableHtml;
+            } catch (err) { alert('Error al procesar archivo: ' + err.message); }
+        };
+        reader.readAsDataURL(file);
+    },
+
+    async doImport() {
+        const fileInput = document.getElementById('recImportFile');
+        if (!fileInput.files.length) return;
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const base64 = e.target.result.split(',')[1];
+                const r = await fetch('/api/produccion/recetas-bom/importar', {
+                    method: 'POST',
+                    headers: { ...this._headers(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ excel_data: base64 })
+                });
+                const data = await r.json();
+                if (r.ok) {
+                    App.toast(data.importadas + ' recetas importadas, ' + data.saltadas + ' duplicadas saltadas');
+                    if (data.errores.length > 0) {
+                        let errMsg = data.errores.slice(0, 5).map(e => 'Fila ' + e.fila + ': ' + e.error).join('\n');
+                        if (data.errores.length > 5) errMsg += '\n... +' + (data.errores.length - 5) + ' mas';
+                        alert('Algunas filas tuvieron errores:\n' + errMsg);
+                    }
+                    this.hideImportModal();
+                    await this.load();
+                } else { alert(data.error || 'Error al importar'); }
+            } catch (err) { alert('Error: ' + err.message); }
+        };
+        reader.readAsDataURL(file);
+    },
+
+    downloadTemplate() {
+        const headers = ['Codigo SAP', 'Codigo MP', 'Cantidad', 'Familia', 'Estaciones'];
+        const example = [
+            ['500', 'MP-001', '1', 'TEMPLADO', ''],
+            ['500', 'MP-002', '2', 'TEMPLADO', ''],
+            ['501', 'MP-001', '1', 'TERMO', ''],
+            ['502', 'MP-003', '1', '', '1,3,5'],
+            ['503', 'MP-001', '1', 'CARROCERO', '1,2,4,7,8']
+        ];
+        const csvContent = [headers, ...example].map(row => row.join(',')).join('\n');
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'plantilla_recetas_bom.csv';
+        a.click();
+        URL.revokeObjectURL(url);
     }
 });
+
+window.recetas_onFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) App.modules.prod_recetas.doPreviewImport(file);
+};

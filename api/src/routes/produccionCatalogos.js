@@ -31,6 +31,31 @@ router.delete('/api/produccion/recetas-bom/all', async (req, res, next) => {
     } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+const parseExcel = (base64) => {
+    const XLSX = require('xlsx');
+    const buffer = Buffer.from(base64, 'base64');
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    return XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+};
+
+router.post('/api/produccion/recetas-bom/preview', async (req, res, next) => {
+    if (!req.body.excel_data) return res.status(400).json({ error: 'Datos del archivo requeridos' });
+    try {
+        const rows = parseExcel(req.body.excel_data);
+        if (!rows.length) return res.status(400).json({ error: 'Archivo vacio' });
+        res.json(await catalogos.previewRecetasBom(rows));
+    } catch (e) { res.status(500).json({ error: 'Error al leer archivo: ' + e.message }); }
+});
+
+router.post('/api/produccion/recetas-bom/importar', async (req, res, next) => {
+    if (!req.body.excel_data) return res.status(400).json({ error: 'Datos del archivo requeridos' });
+    try {
+        const rows = parseExcel(req.body.excel_data);
+        if (!rows.length) return res.status(400).json({ error: 'Archivo vacio' });
+        res.json(await catalogos.importarRecetasBom(rows));
+    } catch (e) { res.status(500).json({ error: 'Error al procesar: ' + e.message }); }
+});
+
 router.delete('/api/produccion/recetas-bom/:id', async (req, res, next) => {
     await catalogos.eliminarRecetaBom(Number(req.params.id));
     res.json({ ok: true });

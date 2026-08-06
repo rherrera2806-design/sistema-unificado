@@ -130,6 +130,117 @@ const importarRecetasAntiguas = async (parsedRows) => {
     return resultados;
 };
 
+// ============ RECETAS BOM - IMPORTAR ============
+
+const findCol = (row, candidates) => {
+    const normalized = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    for (const c of candidates) {
+        for (const key of Object.keys(row)) {
+            if (normalized(key) === normalized(c)) return key;
+        }
+    }
+    return null;
+};
+
+const previewRecetasBom = async (rows) => {
+    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP']);
+    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima']);
+    const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad']);
+    const colFam = findCol(rows[0], ['Familia', 'familia', 'Codigo_Familia']);
+    const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json']);
+
+    const missing = [];
+    if (!colCodigo) missing.push('Codigo SAP');
+    if (!colMP) missing.push('Codigo MP');
+    if (missing.length) return { total: rows.length, validas: 0, errores: [{ fila: 1, error: 'Faltan columnas requeridas: ' + missing.join(', ') + '. Columnas detectadas: ' + Object.keys(rows[0]).join(', ') }], sample: [] };
+
+    const materias = await query('SELECT id, codigo_mp FROM materias_primas');
+    const mpMap = {};
+    materias.rows.forEach(m => { mpMap[m.codigo_mp] = m.id; });
+
+    const estaciones = await query('SELECT id, nombre_estacion FROM estaciones_maestras');
+    const estMap = {};
+    estaciones.rows.forEach(e => { estMap[e.nombre_estacion.toLowerCase()] = e.id; estMap[e.id] = e.id; });
+
+    const errores = [];
+    let validas = 0;
+    const seen = new Set();
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const sap = String(row[colCodigo] || '').trim();
+        const mp = String(row[colMP] || '').trim();
+        if (!sap || !mp) { errores.push({ fila: i + 1, error: 'Codigo SAP o MP vacio' }); continue; }
+        if (!mpMap[mp]) { errores.push({ fila: i + 1, error: 'Materia prima "' + mp + '" no existe' }); continue; }
+
+        let estacionesArray = null;
+        if (colEst && row[colEst]) {
+            const raw = String(row[colEst]).split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n) && n > 0);
+            if (raw.length > 0) estacionesArray = raw;
+        }
+
+        const key = sap + '|' + mp;
+        if (seen.has(key)) { errores.push({ fila: i + 1, error: 'Duplicado: ' + sap + ' + ' + mp }); continue; }
+        seen.add(key);
+        validas++;
+    }
+
+    const sample = rows.slice(0, 5).map(row => ({
+        codigo_sap: String(row[colCodigo] || '').trim(),
+        codigo_mp: String(row[colMP] || '').trim(),
+        cantidad: colCant ? Number(row[colCant]) || 1 : 1,
+        familia: colFam ? String(row[colFam] || '').trim() : '',
+        estaciones: colEst ? String(row[colEst] || '').trim() : ''
+    }));
+
+    return { total: rows.length, validas, errores, sample };
+};
+
+const importarRecetasBom = async (rows) => {
+    const resultados = { importadas: 0, saltadas: 0, errores: [] };
+
+    const materias = await query('SELECT id, codigo_mp FROM materias_primas');
+    const mpMap = {};
+    materias.rows.forEach(m => { mpMap[m.codigo_mp] = m.id; });
+
+    const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP']);
+    const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima']);
+    const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad']);
+    const colFam = findCol(rows[0], ['Familia', 'familia', 'Codigo_Familia']);
+    const colEst = findCol(rows[0], ['Estaciones', 'estaciones', 'Estaciones IDs', 'Ruta', 'procesos_especificos_json']);
+
+    for (let i = 0; i < rows.length; i++) {
+        try {
+            const row = rows[i];
+            const sap = String(row[colCodigo] || '').trim();
+            const mp = String(row[colMP] || '').trim();
+            if (!sap || !mp) { resultados.errores.push({ fila: i + 1, error: 'Codigo SAP o MP vacio' }); continue; }
+
+            const mpId = mpMap[mp];
+            if (!mpId) { resultados.errores.push({ fila: i + 1, error: 'Materia prima "' + mp + '" no encontrada' }); continue; }
+
+            let estacionesArray = null;
+            if (colEst && row[colEst]) {
+                const raw = String(row[colEst]).split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n) && n > 0);
+                if (raw.length > 0) estacionesArray = raw;
+            }
+
+            const existe = await query('SELECT id FROM recetas_bom WHERE codigo_sap_padre = $1 AND materia_prima_id = $2', [sap, mpId]);
+            if (existe.rows.length > 0) { resultados.saltadas++; continue; }
+
+            const cantidad = colCant ? (Number(row[colCant]) || 1) : 1;
+            const procsJson = estacionesArray ? JSON.stringify(estacionesArray) : null;
+
+            await query(
+                'INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json) VALUES ($1, $2, $3, $4::jsonb)',
+                [sap, mpId, cantidad, procsJson]
+            );
+            resultados.importadas++;
+        } catch (e) { resultados.errores.push({ fila: i + 1, error: e.message }); }
+    }
+    return resultados;
+};
+
 // ============ REGLAS PROCESOS EXTRAS ============
 
 const getReglasExtras = async () => {
