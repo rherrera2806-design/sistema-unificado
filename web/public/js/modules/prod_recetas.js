@@ -91,7 +91,6 @@ ${puedeEditar ? `
                                 <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Codigo SAP *</span>
                                 <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Codigo MP *</span>
                                 <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Cantidad</span>
-                                <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Familia</span>
                                 <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Estaciones (IDs separados por coma)</span>
                             </div>
                             <button class="btn btn-outline" style="font-size:11px;padding:4px 12px" onclick="App.modules.prod_recetas.downloadTemplate()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar plantilla</button>
@@ -112,7 +111,6 @@ ${puedeEditar ? `
                                     <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">SAP</th>
                                     <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Materia Prima</th>
                                     <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Cant.</th>
-                                    <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Familia</th>
                                     <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Estaciones</th>
                                 </tr></thead><tbody id="recImportTable"></tbody></table>
                             </div>
@@ -473,7 +471,7 @@ ${puedeEditar ? `
 
                 let tableHtml = '';
                 data.sample.forEach(s => {
-                    tableHtml += '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace">' + (s.codigo_sap || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.codigo_mp || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center">' + (s.cantidad || 1) + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.familia || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.estaciones || '-') + '</td></tr>';
+                    tableHtml += '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace">' + (s.codigo_sap || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.codigo_mp || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center">' + (s.cantidad || 1) + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.estaciones || '-') + '</td></tr>';
                 });
                 document.getElementById('recImportTable').innerHTML = tableHtml;
             } catch (err) { alert('Error al procesar archivo: ' + err.message); }
