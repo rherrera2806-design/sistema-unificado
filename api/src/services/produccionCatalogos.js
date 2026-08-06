@@ -322,6 +322,7 @@ const eliminarVendedor = async (id) => {
 module.exports = {
     getMateriasPrimas, crearMateriaPrima, editarMateriaPrima, eliminarMateriaPrima,
     getRecetasBom, crearRecetaBom, actualizarRecetaBom, eliminarRecetaBom,
+    previewRecetasBom, importarRecetasBom,
     getRecetasAntiguas, crearRecetaAntigua, eliminarRecetaAntigua, eliminarTodasRecetasAntiguas, importarRecetasAntiguas,
     getReglasExtras, crearReglaExtra, editarReglaExtra, eliminarReglaExtra,
     getTecnicos, crearTecnico, editarTecnico, eliminarTecnico,
