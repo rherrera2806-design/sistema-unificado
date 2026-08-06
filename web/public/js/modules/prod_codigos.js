@@ -61,7 +61,7 @@ ${puedeEditar ? `
                         <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo... (min 2 caracteres)" oninput="App.modules.prod_codigos.filter()" style="width:200px;font-size:12px;padding:4px 8px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     </div>
                 </div>
-                <div class="card-body" style="padding:0;max-height:400px;overflow-y:auto">
+                <div class="card-body" style="padding:0;max-height:600px;overflow-y:auto">
                     <div style="overflow-x:auto">
                     <table style="font-size:12px;width:100%;border-collapse:collapse"><thead><tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0">
                         <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Codigo</th>
