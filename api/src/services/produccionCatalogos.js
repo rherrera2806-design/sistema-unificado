@@ -171,6 +171,11 @@ const findEstacionesCol = (rows) => {
             return key;
         }
     }
+    console.log('[FIND] No Estaciones column found by content. Checking all columns...');
+    for (const key of keys) {
+        const samples = rows.slice(0, 5).map(r => String(r[key] || ''));
+        console.log('[FIND] Column "' + key + '":', samples.join(' | '));
+    }
     return null;
 };
 
@@ -180,6 +185,12 @@ const previewRecetasBom = async (rows) => {
     const normHeaders = headers.map(h => ({ raw: h, norm: normalized(h), charCodes: [...h].map(c => c.charCodeAt(0)) }));
     console.log('[PREVIEW] Raw headers:', headers);
     console.log('[PREVIEW] Normalized headers:', JSON.stringify(normHeaders));
+    for (let i = 0; i < Math.min(3, rows.length); i++) {
+        const row = rows[i];
+        const sample = {};
+        headers.forEach(h => { sample[h] = { val: row[h], type: typeof row[h], str: String(row[h]).substring(0, 50) }; });
+        console.log('[PREVIEW] Fila ' + (i+1) + ':', JSON.stringify(sample));
+    }
     const colCodigo = findCol(rows[0], ['Codigo SAP', 'CodigoSap', 'Codigo_Padre', 'Codigo Padre', 'codigo_sap_padre', 'SAP', 'CODIGO_SAP', 'codigo sap']);
     const colMP = findCol(rows[0], ['Codigo MP', 'CodigoMP', 'Codigo_Materia_Prima', 'Codigo Materia Prima', 'codigo_materia_prima', 'MateriaPrima', 'CODIGO_MP', 'Codigo', 'codigo MP']);
     const colCant = findCol(rows[0], ['Cantidad', 'cantidad', 'Cantdad', 'CANTIDAD']);
