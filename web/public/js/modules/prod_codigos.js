@@ -197,20 +197,22 @@ ${puedeEditar ? `
         clearTimeout(this._filterTimer);
         this._filterTimer = setTimeout(() => {
             const search = (document.getElementById('codFilterSearch')?.value || '').trim();
+            const grupo = document.getElementById('codFilterGrupo')?.value || '';
+            const familia = document.getElementById('codFilterFamilia')?.value || '';
+
             if (search.length >= 2) {
-                this.load(search);
-            } else if (search.length === 0) {
-                this.load();
+                this.load(search).then(() => this._applyFilters(grupo, familia));
             } else {
-                // Less than 2 chars, filter client-side from current data
-                const grupo = document.getElementById('codFilterGrupo')?.value || '';
-                const familia = document.getElementById('codFilterFamilia')?.value || '';
-                let filtered = this.codigos;
-                if (grupo) filtered = filtered.filter(c => c.grupo === grupo);
-                if (familia) filtered = filtered.filter(c => c.familia === familia);
-                this.renderTable(filtered);
+                this._applyFilters(grupo, familia);
             }
         }, 300);
+    },
+
+    _applyFilters(grupo, familia) {
+        let filtered = this.codigos;
+        if (grupo) filtered = filtered.filter(c => c.grupo === grupo);
+        if (familia) filtered = filtered.filter(c => c.familia === familia);
+        this.renderTable(filtered);
     },
 
     showCreateModal() {
