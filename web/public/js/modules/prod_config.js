@@ -302,11 +302,11 @@ App.registerModule('prod_config', {
             const diffM2 = (cn > 0 && ci > 0) ? ci - cn : 0;
             const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
             const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
-            let obs = '';
-            if (cn > 0 || ci > 0) {
+            let obs = '-';
+            if (cn > 0 && ci > 0) {
                 if (diffM2 > 0) obs = '<span style="color:#166534;font-weight:600">Nacional</span> ' + fmt(Math.abs(diffM2));
                 else if (diffM2 < 0) obs = '<span style="color:#166534;font-weight:600">Importado</span> ' + fmt(Math.abs(diffM2));
-                else obs = '<span style="color:#64748b">Igual</span>';
+            }
             } else {
                 obs = escapeHtml(m.observacion || '-');
             }
