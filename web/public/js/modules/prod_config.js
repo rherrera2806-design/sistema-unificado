@@ -262,7 +262,7 @@ App.registerModule('prod_config', {
                         <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Materia Prima</button>
                     </div>
                 </div>
-                <div class="card-body" style="padding:0;overflow:scroll;max-height:650px">
+                <div class="card-body" style="padding:0;overflow:scroll;max-height:750px">
                     <table style="font-size:12px"><thead style="position:sticky;top:0;z-index:1"><tr>
                         <th>Codigo</th><th>Nombre</th><th>Esp.</th>
                         <th style="background:#f0fdf4">Costo Nac</th><th style="background:#f0fdf4">Hojas</th><th style="background:#f0fdf4">Ancho</th><th style="background:#f0fdf4">Alto</th><th style="background:#f0fdf4">Pqt Camion</th>
