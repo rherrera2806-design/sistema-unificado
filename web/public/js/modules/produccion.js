@@ -208,7 +208,7 @@ App.registerModule('produccion', {
             return '<tr style="line-height:1.3;border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:10px 12px"><strong style="color:#0f172a">' + escapeHtml(o.pedido_sap_id || '-') + '</strong></td>'
                 + '<td style="padding:10px 12px;color:#475569">' + (o.item_numero || '-') + '</td>'
-                + '<td style="padding:10px 12px;color:#475569">' + escapeHtml(o.cliente || '-') + '</td>'
+                + '<td style="padding:10px 12px;color:#475569">' + escapeHtml((o.cliente || '-').toUpperCase()) + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (o.codigo_padre ? escapeHtml(o.codigo_padre) + (o.nombre_codigo_padre ? ' - ' + escapeHtml(o.nombre_codigo_padre) : '') : '-') + '</td>'
                 + '<td style="padding:10px 12px"><strong style="color:#0f172a">' + escapeHtml(o.codigo_producto) + '</strong>' + (o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed;font-weight:600">BOM</span>' : '') + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + escapeHtml(o.nombre_mp || o.descripcion || '-') + '</td>'

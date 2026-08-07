@@ -99,7 +99,7 @@ const mergearFilas = (rows) => {
         if (!merged[key]) {
             merged[key] = {
                 codigo, pedido, item,
-                cliente: String(row['cliente'] || row['Cliente'] || row['CLIENTE'] || row['CardName'] || '').trim(),
+                cliente: String(row['cliente'] || row['Cliente'] || row['CLIENTE'] || row['CardName'] || '').trim().toUpperCase(),
                 descripcion: String(row['descripcion'] || row['Descripcion'] || row['ItemName'] || '').trim(),
                 ancho, alto,
                 cantidad: Number(row['cantidad'] || row['Cantidad'] || row['CANTIDAD'] || row['cant'] || row['Cant'] || row['CANT'] || 1),
@@ -115,7 +115,7 @@ const mergearFilas = (rows) => {
                 pintado_car: Number(row['pintado car'] || row['pintado_car'] || row['PintadoCar'] || row['PINTADO CAR'] || row['pintado_carroceros'] || row['PINTADO_CARROCEROS'] || 0) === 1,
                 tipo_venta: String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || row['TIPO VENTA'] || row['TIPO_DE_VENTA'] || 'Normal').trim(),
                 familia_codigo: String(row['familia'] || row['Familia'] || row['FAMILIA'] || row['grupo'] || row['Grupo'] || '').trim(),
-                fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || null,
+                fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || new Date().toISOString(),
                 nota: String(row['nota'] || row['Nota'] || row['NOTA'] || row['observacion'] || row['Observacion'] || '').trim() || null,
                 posicion: String(row['posicion'] || row['Posicion'] || row['POSICION'] || row['position'] || '').trim() || null,
                 orden_compra: String(row['orden de compra'] || row['orden_compra'] || row['OrdenCompra'] || row['ORDEN DE COMPRA'] || row['OC'] || row['oc'] || '').trim() || null,
@@ -251,6 +251,18 @@ const importarOrdenes = async (rows) => {
             }
 
             const m2 = ((r.ancho / 1000) * (r.alto / 1000)) * r.cantidad;
+
+            if (!r.kilos || r.kilos === 0) {
+                const recetas = recetaBomMap[r.codigo] || [];
+                for (const rec of recetas) {
+                    const mp = rec.materia_prima_id ? materiaPrimaMap[rec.materia_prima_id] : null;
+                    if (mp && mp.espesor_mm) {
+                        r.kilos = Math.round(m2 * Number(mp.espesor_mm) * 2.5 * 100) / 100;
+                        break;
+                    }
+                }
+            }
+
             const familia = await buscarFamiliaParaFila(r, maestros);
             const { estaciones: estacionesFinales, mecanizadoOperaciones } = calcularEstaciones(r, familia, maestros);
 
