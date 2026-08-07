@@ -6,7 +6,7 @@ const cargarDatosMaestros = async () => {
         query('SELECT * FROM estaciones_maestras WHERE activa = TRUE'),
         query('SELECT * FROM familias_producto WHERE activa = TRUE'),
         query('SELECT * FROM reglas_procesos_extras WHERE activa = TRUE'),
-        query('SELECT id, codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json FROM recetas_bom'),
+        query('SELECT id, codigo_sap_padre, materia_prima_id, familia_id, cantidad, ancho, alto, procesos_especificos_json FROM recetas_bom'),
         query('SELECT * FROM materias_primas'),
         query('SELECT * FROM produccion_recetas_bom')
     ]);
