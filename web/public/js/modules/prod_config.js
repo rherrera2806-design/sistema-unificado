@@ -299,7 +299,7 @@ App.registerModule('prod_config', {
             const ali = Number(m.alto_imp) || 0;
             const pc = Number(m.paquetes_por_camion) || 0;
             const pco = Number(m.paquetes_por_contenedor) || 0;
-            const diffM2 = ci - cn;
+            const diffM2 = (cn > 0 && ci > 0) ? ci - cn : 0;
             const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
             const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
             let obs = '';
@@ -379,7 +379,7 @@ App.registerModule('prod_config', {
         const calcResumen = () => {
             const cn = parseFloat(document.getElementById('mpCostoNal').value) || 0;
             const ci = parseFloat(document.getElementById('mpCostoImp').value) || 0;
-            const diffM2 = ci - cn;
+            const diffM2 = (cn > 0 && ci > 0) ? ci - cn : 0;
 
             const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
             const color = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
