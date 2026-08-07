@@ -243,7 +243,10 @@ App.registerModule('pedidos', {
             const matchEstado = !estado || p.estado === estado;
             return matchSearch && matchEstado;
         });
+        this.filteredPedidos = filtered;
         this.renderTable(filtered);
+        const gc = document.getElementById('pedGraficoContainer');
+        if (gc && gc.style.display !== 'none') this.renderGrafico();
     },
 
     renderTable(pedidos) {
@@ -550,7 +553,8 @@ App.registerModule('pedidos', {
         const colores = { Normal: '#3b82f6', Express: '#fde047', 'Vta. Region': '#9333ea', Reposicion: '#dc2626', Urgencia: '#f97316' };
         const tipos = ['Normal', 'Express', 'Vta. Region', 'Reposicion', 'Urgencia'];
 
-        const pedidosMes = this.allPedidos.filter(p => {
+        const source = this.filteredPedidos || this.allPedidos;
+        const pedidosMes = source.filter(p => {
             const f = new Date(p.fecha_subida);
             return f.getMonth() === mes && f.getFullYear() === anio && p.estado !== 'rechazado';
         });
