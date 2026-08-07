@@ -265,7 +265,7 @@ App.registerModule('prod_config', {
                         <th>Codigo</th><th>Nombre</th><th>Esp.</th>
                         <th style="background:#f0fdf4">Costo Nal</th><th style="background:#f0fdf4">Hojas</th><th style="background:#f0fdf4">Ancho</th><th style="background:#f0fdf4">Alto</th><th style="background:#f0fdf4">Pqt Camion</th>
                         <th style="background:#eff6ff">Costo Imp</th><th style="background:#eff6ff">Hojas</th><th style="background:#eff6ff">Ancho</th><th style="background:#eff6ff">Alto</th><th style="background:#eff6ff">Pqt Cont.</th>
-                        <th style="background:#fefce8">Diff $/m2</th><th style="background:#fefce8">Diff Pqt</th><th style="background:#fefce8">Diff Camion</th>
+                        <th style="background:#fefce8">Diff $/m2</th>
                         <th>Observ.</th><th>Acc.</th>
                     </tr></thead>
                     <tbody id="mpTableBody"></tbody></table>
@@ -299,15 +299,7 @@ App.registerModule('prod_config', {
             const ali = Number(m.alto_imp) || 0;
             const pc = Number(m.paquetes_por_camion) || 0;
             const pco = Number(m.paquetes_por_contenedor) || 0;
-            const m2n = (an * aln) / 1000000;
-            const m2i = (ai * ali) / 1000000;
             const diffM2 = ci - cn;
-            const cpn = hn > 0 && m2n > 0 ? cn * m2n * hn : 0;
-            const cpi = hi > 0 && m2i > 0 ? ci * m2i * hi : 0;
-            const diffPaq = cpi - cpn;
-            const costCam = pc > 0 ? cpn * pc : 0;
-            const costCon = pco > 0 ? cpi * pco : 0;
-            const diffCam = costCon - costCam;
             const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
             const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
             let obs = '';
@@ -333,8 +325,6 @@ App.registerModule('prod_config', {
             <td style="background:#eff6ff;text-align:right">${ali}</td>
             <td style="background:#eff6ff;text-align:center">${pco}</td>
             <td style="background:#fefce8;font-weight:600;color:${col(diffM2)}">${fmt(diffM2)}</td>
-            <td style="background:#fefce8;font-weight:600;color:${col(diffPaq)}">${fmt(diffPaq)}</td>
-            <td style="background:#fefce8;font-weight:600;color:${col(diffCam)}">${fmt(diffCam)}</td>
             <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${obs}</td>
             <td class="table-actions" style="white-space:nowrap">
                 <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
