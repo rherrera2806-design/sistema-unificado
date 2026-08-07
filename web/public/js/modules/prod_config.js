@@ -378,11 +378,7 @@ App.registerModule('prod_config', {
             </div>
             <div style="padding:10px 12px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;margin-bottom:12px">
                 <strong style="color:#854d0e;font-size:12px">Resumen (calculado)</strong>
-                <div class="form-row" style="margin-top:6px">
-                    <div class="form-group"><label>Diferencia $/m2</label><input type="text" class="form-control" id="mpDiffM2" readonly style="background:#fff;font-weight:600"></div>
-                    <div class="form-group"><label>Diferencia paquete</label><input type="text" class="form-control" id="mpDiffPaq" readonly style="background:#fff;font-weight:600"></div>
-                    <div class="form-group"><label>Diferencia camion/contenedor</label><input type="text" class="form-control" id="mpDiffCamion" readonly style="background:#fff;font-weight:600"></div>
-                </div>
+                <div class="form-group" style="margin-top:6px;max-width:200px"><label>Diferencia $/m2</label><input type="text" class="form-control" id="mpDiffM2" readonly style="background:#fff;font-weight:600"></div>
             </div>
             <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2">${m ? m.observacion || '' : ''}</textarea></div>
             <div style="padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:8px">
@@ -393,36 +389,13 @@ App.registerModule('prod_config', {
         const calcResumen = () => {
             const cn = parseFloat(document.getElementById('mpCostoNal').value) || 0;
             const ci = parseFloat(document.getElementById('mpCostoImp').value) || 0;
-            const hn = parseInt(document.getElementById('mpHojasNal').value) || 0;
-            const hi = parseInt(document.getElementById('mpHojasImp').value) || 0;
-            const an = parseFloat(document.getElementById('mpAnchoNal').value) || 0;
-            const ai = parseFloat(document.getElementById('mpAnchoImp').value) || 0;
-            const aln = parseFloat(document.getElementById('mpAltoNal').value) || 0;
-            const ali = parseFloat(document.getElementById('mpAltoImp').value) || 0;
-            const pc = parseInt(document.getElementById('mpPaqCamion').value) || 0;
-            const pco = parseInt(document.getElementById('mpPaqContenedor').value) || 0;
-
-            const m2Nal = (an * aln) / 1000000;
-            const m2Imp = (ai * ali) / 1000000;
             const diffM2 = ci - cn;
-
-            const costoPaqNal = hn > 0 && m2Nal > 0 ? cn * m2Nal * hn : 0;
-            const costoPaqImp = hi > 0 && m2Imp > 0 ? ci * m2Imp * hi : 0;
-            const diffPaq = costoPaqImp - costoPaqNal;
-
-            const costoCamion = pc > 0 ? costoPaqNal * pc : 0;
-            const costoContenedor = pco > 0 ? costoPaqImp * pco : 0;
-            const diffCamion = costoContenedor - costoCamion;
 
             const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
             const color = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
 
             const d1 = document.getElementById('mpDiffM2');
             d1.value = fmt(diffM2); d1.style.color = color(diffM2);
-            const d2 = document.getElementById('mpDiffPaq');
-            d2.value = fmt(diffPaq); d2.style.color = color(diffPaq);
-            const d3 = document.getElementById('mpDiffCamion');
-            d3.value = fmt(diffCamion); d3.style.color = color(diffCamion);
 
             const el = document.getElementById('mpAnalisis');
             if (cn === 0 && ci === 0) {
