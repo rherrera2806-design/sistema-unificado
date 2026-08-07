@@ -271,11 +271,12 @@ App.registerModule('prod_config', {
 
     _filterMaterias() {
         const s = (document.getElementById('mpSearch')?.value || '').toLowerCase();
-        const items = s ? this._materias.filter(m =>
+        let items = s ? this._materias.filter(m =>
             (m.codigo_mp || '').toLowerCase().includes(s) ||
             (m.nombre || '').toLowerCase().includes(s) ||
             (m.observacion || '').toLowerCase().includes(s)
-        ) : [...this._materias].sort((a, b) => {
+        ) : [...this._materias];
+        items.sort((a, b) => {
             const cmp = (a.nombre || '').localeCompare(b.nombre || '');
             return cmp !== 0 ? cmp : (Number(a.espesor_mm) || 0) - (Number(b.espesor_mm) || 0);
         });
