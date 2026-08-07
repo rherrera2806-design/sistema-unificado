@@ -263,7 +263,7 @@ App.registerModule('prod_config', {
                 <div class="card-body" style="padding:0">
                     <table style="font-size:12px"><thead><tr>
                         <th>Codigo</th><th>Nombre</th><th>Esp.</th>
-                        <th style="background:#f0fdf4">Costo Nal</th><th style="background:#f0fdf4">Hojas</th><th style="background:#f0fdf4">Ancho</th><th style="background:#f0fdf4">Alto</th><th style="background:#f0fdf4">Pqt Camion</th>
+                        <th style="background:#f0fdf4">Costo Nac</th><th style="background:#f0fdf4">Hojas</th><th style="background:#f0fdf4">Ancho</th><th style="background:#f0fdf4">Alto</th><th style="background:#f0fdf4">Pqt Camion</th>
                         <th style="background:#eff6ff">Costo Imp</th><th style="background:#eff6ff">Hojas</th><th style="background:#eff6ff">Ancho</th><th style="background:#eff6ff">Alto</th><th style="background:#eff6ff">Pqt Cont.</th>
                         <th style="background:#fefce8">Diff $/m2</th>
                         <th>Observ.</th><th>Acc.</th>
