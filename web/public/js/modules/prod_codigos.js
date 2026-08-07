@@ -83,8 +83,8 @@ ${puedeEditar ? `
                     <div class="modal-body">
                         <div class="form-group"><label>Codigo SAP *</label><input class="form-control" id="codCodigo" placeholder="Ej: V659, 100, P123" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                         <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                        <div class="form-group"><label>Grupo</label><input class="form-control" id="codGrupo" placeholder="Ej: TEMPLADO" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                        <div class="form-group"><label>Familia</label><input class="form-control" id="codFamilia" placeholder="Ej: PINTADO, LAMINADO" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                        <div class="form-group"><label>Grupo</label><select class="form-control" id="codGrupo" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"><option value="">-- Seleccionar --</option></select></div>
+                        <div class="form-group"><label>Familia</label><select class="form-control" id="codFamilia" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"><option value="">-- Seleccionar --</option></select></div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.prod_codigos.hideCreateModal()">Cancelar</button>
@@ -226,14 +226,36 @@ ${puedeEditar ? `
         this.renderTable(filtered);
     },
 
+    _populateGrupoFamilia(selectedGrupo, selectedFamilia) {
+        const grupos = [...new Set(this.codigos.map(c => c.grupo).filter(Boolean))].sort();
+        const familias = [...new Set(this.codigos.map(c => c.familia).filter(Boolean))].sort();
+        const gSel = document.getElementById('codGrupo');
+        const fSel = document.getElementById('codFamilia');
+        if (gSel) {
+            const cur = selectedGrupo || '';
+            gSel.innerHTML = '<option value="">-- Seleccionar --</option>'
+                + grupos.map(g => `<option value="${escapeHtml(g)}" ${g === cur ? 'selected' : ''}>${escapeHtml(g)}</option>`).join('');
+            if (cur && !grupos.includes(cur)) {
+                gSel.innerHTML += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>`;
+            }
+        }
+        if (fSel) {
+            const cur = selectedFamilia || '';
+            fSel.innerHTML = '<option value="">-- Seleccionar --</option>'
+                + familias.map(f => `<option value="${escapeHtml(f)}" ${f === cur ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('');
+            if (cur && !familias.includes(cur)) {
+                fSel.innerHTML += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>`;
+            }
+        }
+    },
+
     showCreateModal() {
         this.editingId = null;
         document.getElementById('codModalTitle').textContent = 'Nuevo Codigo';
         document.getElementById('codCodigo').value = '';
         document.getElementById('codCodigo').disabled = false;
         document.getElementById('codDescripcion').value = '';
-        document.getElementById('codGrupo').value = '';
-        document.getElementById('codFamilia').value = '';
+        this._populateGrupoFamilia('', '');
         document.getElementById('codCreateModal').classList.add('show');
     },
 
@@ -245,8 +267,7 @@ ${puedeEditar ? `
         document.getElementById('codCodigo').value = c.codigo || '';
         document.getElementById('codCodigo').disabled = true;
         document.getElementById('codDescripcion').value = c.descripcion || '';
-        document.getElementById('codGrupo').value = c.grupo || '';
-        document.getElementById('codFamilia').value = c.familia || '';
+        this._populateGrupoFamilia(c.grupo || '', c.familia || '');
         document.getElementById('codCreateModal').classList.add('show');
     },
 
