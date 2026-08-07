@@ -215,25 +215,43 @@ const importarOrdenes = async (rows) => {
     for (const key of mergeOrder) {
         try {
             const r = merged[key];
+            const tieneBOM = recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0;
+
+            if (!tieneBOM) {
+                resultados.errores.push({
+                    fila: key,
+                    codigo: r.codigo,
+                    pedido: r.pedido,
+                    error: `Código "${r.codigo}" no tiene receta BOM configurada. Configure la receta antes de importar.`
+                });
+                continue;
+            }
+
             let ancho = r.ancho;
             let alto = r.alto;
-            if ((!ancho || !alto) && recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0) {
+            if (!ancho || !alto) {
                 const receta = recetaBomMap[r.codigo].find(rc => rc.ancho && rc.alto) || recetaBomMap[r.codigo][0];
                 if (!ancho && receta.ancho) ancho = Number(receta.ancho);
                 if (!alto && receta.alto) alto = Number(receta.alto);
             }
             r.ancho = ancho || 0;
             r.alto = alto || 0;
+
+            if (!r.ancho || !r.alto) {
+                resultados.errores.push({
+                    fila: key,
+                    codigo: r.codigo,
+                    pedido: r.pedido,
+                    error: `Código "${r.codigo}" tiene receta BOM pero sin dimensiones (ancho/alto). Defina dimensiones en la receta.`
+                });
+                continue;
+            }
+
             const m2 = ((r.ancho / 1000) * (r.alto / 1000)) * r.cantidad;
             const familia = await buscarFamiliaParaFila(r, maestros);
             const { estaciones: estacionesFinales, mecanizadoOperaciones } = calcularEstaciones(r, familia, maestros);
-            const es_compuesto = recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0;
 
-            if (es_compuesto) {
-                await explosionBOM(r, recetaBomMap, materiaPrimaMap, materiasPrimas, familia, estacionesFinales, m2, resultados, mecanizadoOperaciones);
-            } else {
-                await crearOrdenSimple(r, familia, estacionesFinales, m2, resultados, mecanizadoOperaciones);
-            }
+            await explosionBOM(r, recetaBomMap, materiaPrimaMap, materiasPrimas, familia, estacionesFinales, m2, resultados, mecanizadoOperaciones);
         } catch (eRow) {
             console.error('[PROD] Error en fila', key, ':', eRow.message);
             resultados.errores.push({ fila: key, error: eRow.message });

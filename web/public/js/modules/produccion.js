@@ -343,14 +343,16 @@ App.registerModule('produccion', {
             console.log('[IMPORT] Resultado:', JSON.stringify(result).substring(0, 500));
             if (res.ok) {
                 let msg = `Importadas: ${result.importadas} ordenes, ${result.pasos_creados} pasos.`;
-                if (result.fusiones > 0) msg += ` Fusiones: ${result.fusiones} filas combinadas.`;
-                if (result.costos_calculados > 0) msg += ` Costos calculados: ${result.costos_calculados}.`;
+                if (result.fusiones > 0) msg += `\nFusiones: ${result.fusiones} filas combinadas.`;
+                if (result.costos_calculados > 0) msg += `\nCostos calculados: ${result.costos_calculados}.`;
                 if (result.errores && result.errores.length) {
-                    msg += `\n\nErrores (${result.errores.length}):\n`;
-                    result.errores.slice(0, 5).forEach(e => msg += `• Fila ${e.fila}: ${e.error}\n`);
-                    if (result.errores.length > 5) msg += `... y ${result.errores.length - 5} mas`;
+                    msg += `\n\nERRORES (${result.errores.length}):`;
+                    result.errores.slice(0, 10).forEach(e => {
+                        msg += `\n• [${e.codigo || e.fila}] ${e.error}`;
+                    });
+                    if (result.errores.length > 10) msg += `\n... y ${result.errores.length - 10} mas`;
                 }
-                App.toast(msg);
+                App.toast(msg, result.errores?.length ? 'warn' : 'success');
                 this.hideImportModal();
                 await this.load();
             } else {
