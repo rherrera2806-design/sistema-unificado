@@ -345,7 +345,7 @@ App.registerModule('prod_config', {
 
     showMateriaForm(id) {
         const m = id ? this._materias.find(x => x.id === id) : null;
-        const v = (field) => m ? (m[field] || 0) : 0;
+        const v = (field, isInt) => { const val = m ? (m[field] || 0) : 0; return isInt ? Math.round(val) : val; };
         App.showModal(`
             <div style="margin-bottom:12px;padding:10px 12px;background:#f8fafc;border-radius:8px">
                 <div style="display:grid;grid-template-columns:1fr 1.5fr 0.8fr;gap:12px">
@@ -357,21 +357,21 @@ App.registerModule('prod_config', {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
                 <div style="padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
                     <strong style="color:#166534;font-size:12px">Datos Nacional</strong>
-                    <div class="form-group" style="margin-top:6px"><label>Costo ($/m2)</label><input type="number" class="form-control mp-nal" id="mpCostoNal" value="${v('costo_unitario_mp')}" min="0" data-field="costo"></div>
-                    <div class="form-group"><label>Hojas por paquete</label><input type="number" class="form-control mp-nal" id="mpHojasNal" value="${v('hojas_por_paquete_nal')}" min="0" data-field="hojas"></div>
+                    <div class="form-group" style="margin-top:6px"><label>Costo ($/m2)</label><input type="number" class="form-control mp-nal" id="mpCostoNal" value="${v('costo_unitario_mp', true)}" min="0" step="1" data-field="costo"></div>
+                    <div class="form-group"><label>Hojas por paquete</label><input type="number" class="form-control mp-nal" id="mpHojasNal" value="${v('hojas_por_paquete_nal', true)}" min="0" data-field="hojas"></div>
                     <div class="form-row">
-                        <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-nal" id="mpAnchoNal" value="${v('ancho_nal')}" min="0" data-field="ancho"></div>
-                        <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-nal" id="mpAltoNal" value="${v('alto_nal')}" min="0" data-field="alto"></div>
+                        <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-nal" id="mpAnchoNal" value="${v('ancho_nal', true)}" min="0" step="1" data-field="ancho"></div>
+                        <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-nal" id="mpAltoNal" value="${v('alto_nal', true)}" min="0" step="1" data-field="alto"></div>
                     </div>
                     <div class="form-group"><label>Paquetes por camion</label><input type="number" class="form-control mp-nal" id="mpPaqCamion" value="${v('paquetes_por_camion')}" min="0" data-field="paqCamion"></div>
                 </div>
                 <div style="padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px">
                     <strong style="color:#1e40af;font-size:12px">Datos Importado</strong>
-                    <div class="form-group" style="margin-top:6px"><label>Costo ($/m2)</label><input type="number" class="form-control mp-imp" id="mpCostoImp" value="${v('costo_unitario_importado')}" min="0" data-field="costo"></div>
-                    <div class="form-group"><label>Hojas por paquete</label><input type="number" class="form-control mp-imp" id="mpHojasImp" value="${v('hojas_por_paquete_imp')}" min="0" data-field="hojas"></div>
+                    <div class="form-group" style="margin-top:6px"><label>Costo ($/m2)</label><input type="number" class="form-control mp-imp" id="mpCostoImp" value="${v('costo_unitario_importado', true)}" min="0" step="1" data-field="costo"></div>
+                    <div class="form-group"><label>Hojas por paquete</label><input type="number" class="form-control mp-imp" id="mpHojasImp" value="${v('hojas_por_paquete_imp', true)}" min="0" data-field="hojas"></div>
                     <div class="form-row">
-                        <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-imp" id="mpAnchoImp" value="${v('ancho_imp')}" min="0" data-field="ancho"></div>
-                        <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-imp" id="mpAltoImp" value="${v('alto_imp')}" min="0" data-field="alto"></div>
+                        <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-imp" id="mpAnchoImp" value="${v('ancho_imp', true)}" min="0" step="1" data-field="ancho"></div>
+                        <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-imp" id="mpAltoImp" value="${v('alto_imp', true)}" min="0" step="1" data-field="alto"></div>
                     </div>
                     <div class="form-group"><label>Paquetes por contenedor</label><input type="number" class="form-control mp-imp" id="mpPaqContenedor" value="${v('paquetes_por_contenedor')}" min="0" data-field="paqContenedor"></div>
                 </div>
