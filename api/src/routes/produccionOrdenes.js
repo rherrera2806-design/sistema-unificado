@@ -57,6 +57,15 @@ router.put('/api/produccion/ordenes/:id', async (req, res, next) => {
     catch (e) { res.status(e.message.includes('Sin campos') ? 400 : 500).json({ error: e.message }); }
 });
 
+router.delete('/api/produccion/ordenes/all', async (req, res, next) => {
+    try {
+        await query('DELETE FROM cola_produccion_pasos WHERE orden_produccion_id IN (SELECT id FROM produccion_ordenes)');
+        await query('DELETE FROM produccion_pasos WHERE orden_produccion_id IN (SELECT id FROM produccion_ordenes)');
+        const r = await query('DELETE FROM produccion_ordenes');
+        res.json({ ok: true, eliminadas: r.rowCount });
+    } catch (e) { next(e); }
+});
+
 router.delete('/api/produccion/ordenes/:id', async (req, res, next) => {
     try { await ordenes.eliminarOrden(Number(req.params.id)); res.json({ ok: true }); }
     catch (e) { next(e); }

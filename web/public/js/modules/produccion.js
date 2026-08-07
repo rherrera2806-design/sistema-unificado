@@ -25,6 +25,7 @@ App.registerModule('produccion', {
             + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestion de ordenes de produccion y planificacion</p></div>'
             + (puedeImportar ? '<div style="display:flex;gap:8px">'
             + '<button class="btn btn-primary" onclick="App.modules.produccion.showImportModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar SAP</button>'
+            + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.produccion.eliminarTodas()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>'
             + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.produccion.showNewOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Orden</button>'
             + '</div>' : '')
             + '</div></div>'
@@ -569,6 +570,22 @@ App.registerModule('produccion', {
             });
             App.toast('Orden eliminada');
             await this.load();
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    async eliminarTodas() {
+        if (!confirm('ELIMINAR TODAS las ordenes de produccion? Esta accion no se puede deshacer.')) return;
+        if (!confirm('Se eliminaran todas las ordenes, pasos y datos de produccion. Continuar?')) return;
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch('/api/produccion/ordenes/all', {
+                method: 'DELETE', headers: { 'X-User-Email': user.email || '' }
+            });
+            const data = await res.json();
+            if (data.ok) {
+                App.toast(`${data.eliminadas} ordenes eliminadas`);
+                await this.load();
+            } else { alert(data.error || 'Error al eliminar'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
 
