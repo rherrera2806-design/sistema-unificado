@@ -14,6 +14,9 @@ const cargarDatosMaestros = async () => {
     const estacionMap = {};
     estacionesRes.rows.forEach(e => { estacionMap[e.nombre_estacion] = e; });
 
+    const ordenToEstacionId = {};
+    estacionesRes.rows.forEach(e => { ordenToEstacionId[e.orden_secuencia_defecto] = e.id; });
+
     const familiaMap = {};
     familiasRes.rows.forEach(f => { familiaMap[f.codigo_familia] = f; });
 
@@ -74,7 +77,7 @@ const cargarDatosMaestros = async () => {
         familias: familiasRes.rows,
         materiasPrimas: materiasRes.rows,
         estacionMap, familiaMap, reglaMap, recetaBomMap, materiaPrimaMap, familiaEstacionesMap,
-        recetaProcesosMap
+        recetaProcesosMap, ordenToEstacionId
     };
 };
 
@@ -251,7 +254,7 @@ const importarOrdenes = async (rows) => {
             const familia = await buscarFamiliaParaFila(r, maestros);
             const { estaciones: estacionesFinales, mecanizadoOperaciones } = calcularEstaciones(r, familia, maestros);
 
-            await explosionBOM(r, recetaBomMap, materiaPrimaMap, materiasPrimas, familia, estacionesFinales, m2, resultados, mecanizadoOperaciones);
+            await explosionBOM(r, recetaBomMap, materiaPrimaMap, materiasPrimas, familia, estacionesFinales, m2, resultados, mecanizadoOperaciones, maestros.ordenToEstacionId);
         } catch (eRow) {
             console.error('[PROD] Error en fila', key, ':', eRow.message);
             resultados.errores.push({ fila: key, error: eRow.message });
