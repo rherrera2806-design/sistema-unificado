@@ -310,6 +310,14 @@ App.registerModule('prod_config', {
             const diffCam = costCon - costCam;
             const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
             const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
+            let obs = '';
+            if (cn > 0 || ci > 0) {
+                if (diffM2 < 0) obs = '<span style="color:#166534;font-weight:600">Nacional</span> ' + fmt(Math.abs(diffM2));
+                else if (diffM2 > 0) obs = '<span style="color:#166534;font-weight:600">Importado</span> ' + fmt(Math.abs(diffM2));
+                else obs = '<span style="color:#64748b">Igual</span>';
+            } else {
+                obs = escapeHtml(m.observacion || '-');
+            }
             return `<tr>
             <td><strong>${escapeHtml(m.codigo_mp)}</strong></td>
             <td>${escapeHtml(m.nombre)}</td>
@@ -327,7 +335,7 @@ App.registerModule('prod_config', {
             <td style="background:#fefce8;font-weight:600;color:${col(diffM2)}">${fmt(diffM2)}</td>
             <td style="background:#fefce8;font-weight:600;color:${col(diffPaq)}">${fmt(diffPaq)}</td>
             <td style="background:#fefce8;font-weight:600;color:${col(diffCam)}">${fmt(diffCam)}</td>
-            <td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escapeHtml(m.observacion || '-')}</td>
+            <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${obs}</td>
             <td class="table-actions" style="white-space:nowrap">
                 <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                 <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
@@ -377,6 +385,9 @@ App.registerModule('prod_config', {
                 </div>
             </div>
             <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2">${m ? m.observacion || '' : ''}</textarea></div>
+            <div style="padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:8px">
+                <div style="display:flex;align-items:center;gap:6px" id="mpAnalisis"></div>
+            </div>
         `, { title: m ? 'Editar Materia Prima' : 'Nueva Materia Prima' });
 
         const calcResumen = () => {
@@ -412,6 +423,17 @@ App.registerModule('prod_config', {
             d2.value = fmt(diffPaq); d2.style.color = color(diffPaq);
             const d3 = document.getElementById('mpDiffCamion');
             d3.value = fmt(diffCamion); d3.style.color = color(diffCamion);
+
+            const el = document.getElementById('mpAnalisis');
+            if (cn === 0 && ci === 0) {
+                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span style="color:#64748b;font-size:12px">Ingrese costos para ver analisis</span>';
+            } else if (diffM2 < 0) {
+                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span style="color:#166534;font-size:12px;font-weight:600">Conviene Nacional</span><span style="color:#166534;font-size:11px"> — Ahorro de ' + fmt(Math.abs(diffM2)) + '/m2</span>';
+            } else if (diffM2 > 0) {
+                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span style="color:#166534;font-size:12px;font-weight:600">Conviene Importado</span><span style="color:#166534;font-size:11px"> — Ahorro de ' + fmt(Math.abs(diffM2)) + '/m2</span>';
+            } else {
+                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span style="color:#64748b;font-size:12px">Precios iguales</span>';
+            }
         };
 
         document.querySelectorAll('.mp-nal, .mp-imp').forEach(el => el.addEventListener('input', calcResumen));
