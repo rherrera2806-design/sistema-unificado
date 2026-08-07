@@ -10,18 +10,18 @@ const getMateriasPrimas = async () => {
     return result.rows;
 };
 
-const crearMateriaPrima = async ({ codigo_mp, nombre, espesor_mm, costo_unitario_mp, observacion }) => {
+const crearMateriaPrima = async ({ codigo_mp, nombre, espesor_mm, costo_unitario_mp, costo_unitario_importado, observacion }) => {
     const result = await query(
-        'INSERT INTO materias_primas (codigo_mp, nombre, espesor_mm, costo_unitario_mp, observacion) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [codigo_mp.trim(), nombre.trim(), espesor_mm || 0, costo_unitario_mp || 0, observacion || '']
+        'INSERT INTO materias_primas (codigo_mp, nombre, espesor_mm, costo_unitario_mp, costo_unitario_importado, observacion) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [codigo_mp.trim(), nombre.trim(), espesor_mm || 0, costo_unitario_mp || 0, costo_unitario_importado || 0, observacion || '']
     );
     return result.rows[0];
 };
 
-const editarMateriaPrima = async (id, { codigo_mp, nombre, espesor_mm, costo_unitario_mp, observacion }) => {
+const editarMateriaPrima = async (id, { codigo_mp, nombre, espesor_mm, costo_unitario_mp, costo_unitario_importado, observacion }) => {
     const result = await query(
-        'UPDATE materias_primas SET codigo_mp=$1, nombre=$2, espesor_mm=$3, costo_unitario_mp=$4, observacion=$5 WHERE id=$6 RETURNING *',
-        [codigo_mp, nombre, espesor_mm, costo_unitario_mp, observacion, id]
+        'UPDATE materias_primas SET codigo_mp=$1, nombre=$2, espesor_mm=$3, costo_unitario_mp=$4, costo_unitario_importado=$5, observacion=$6 WHERE id=$7 RETURNING *',
+        [codigo_mp, nombre, espesor_mm, costo_unitario_mp, costo_unitario_importado, observacion, id]
     );
     return result.rows[0];
 };

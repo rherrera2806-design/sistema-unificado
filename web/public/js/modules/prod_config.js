@@ -261,7 +261,7 @@ App.registerModule('prod_config', {
                     </div>
                 </div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr><th>Codigo</th><th>Nombre</th><th>Espesor (mm)</th><th>Costo $/m2</th><th>Observacion</th><th>Acciones</th></tr></thead>
+                    <table><thead><tr><th>Codigo</th><th>Nombre</th><th>Espesor (mm)</th><th>Costo Nacional $/m2</th><th>Costo Importado $/m2</th><th>Diferencia</th><th>Observacion</th><th>Acciones</th></tr></thead>
                     <tbody id="mpTableBody"></tbody></table>
                 </div>
             </div>`;
@@ -278,17 +278,24 @@ App.registerModule('prod_config', {
         ) : [...this._materias].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
         const tbody = document.getElementById('mpTableBody');
         if (!tbody) return;
-        tbody.innerHTML = items.length ? items.map(m => `<tr>
+        tbody.innerHTML = items.length ? items.map(m => {
+            const cn = Number(m.costo_unitario_mp) || 0;
+            const ci = Number(m.costo_unitario_importado) || 0;
+            const diff = ci - cn;
+            const diffColor = diff > 0 ? '#dc2626' : diff < 0 ? '#16a34a' : '#64748b';
+            return `<tr>
             <td><strong>${escapeHtml(m.codigo_mp)}</strong></td>
             <td>${escapeHtml(m.nombre)}</td>
             <td>${m.espesor_mm} mm</td>
-            <td>$${Number(m.costo_unitario_mp).toLocaleString('es-CL')}</td>
-            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(m.observacion || '-')}</td>
+            <td>$${cn.toLocaleString('es-CL')}</td>
+            <td>$${ci.toLocaleString('es-CL')}</td>
+            <td style="font-weight:600;color:${diffColor}">$${diff.toLocaleString('es-CL')}</td>
+            <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(m.observacion || '-')}</td>
             <td class="table-actions">
                 <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                 <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
             </td>
-        </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
+        </tr>`}).join('') : '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
     },
 
     showMateriaForm(id) {
@@ -300,10 +307,25 @@ App.registerModule('prod_config', {
             </div>
             <div class="form-row">
                 <div class="form-group"><label>Espesor (mm)</label><input type="number" class="form-control" id="mpEspesor" value="${m ? m.espesor_mm : 0}" min="0" step="0.5" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                <div class="form-group"><label>Costo Unitario ($/m2)</label><input type="number" class="form-control" id="mpCosto" value="${m ? m.costo_unitario_mp : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Costo Unitario Nacional ($/m2)</label><input type="number" class="form-control" id="mpCosto" value="${m ? m.costo_unitario_mp : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Costo Unitario Importado ($/m2)</label><input type="number" class="form-control" id="mpCostoImportado" value="${m ? m.costo_unitario_importado : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Diferencia ($/m2)</label><input type="text" class="form-control" id="mpDiferencia" readonly style="background:#f1f5f9;font-weight:600"></div>
             </div>
             <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">${m ? m.observacion || '' : ''}</textarea></div>
         `, { title: m ? 'Editar Materia Prima' : 'Nueva Materia Prima' });
+        const calcDiff = () => {
+            const n = parseFloat(document.getElementById('mpCosto').value) || 0;
+            const i = parseFloat(document.getElementById('mpCostoImportado').value) || 0;
+            const diff = i - n;
+            const el = document.getElementById('mpDiferencia');
+            el.value = '$' + diff.toLocaleString('es-CL');
+            el.style.color = diff > 0 ? '#dc2626' : diff < 0 ? '#16a34a' : '#64748b';
+        };
+        document.getElementById('mpCosto').addEventListener('input', calcDiff);
+        document.getElementById('mpCostoImportado').addEventListener('input', calcDiff);
+        calcDiff();
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.prod_config.saveMateria(${id || 0})">${m ? 'Actualizar' : 'Guardar'}</button>`;
@@ -315,6 +337,7 @@ App.registerModule('prod_config', {
             nombre: document.getElementById('mpNombre').value.trim(),
             espesor_mm: parseFloat(document.getElementById('mpEspesor').value) || 0,
             costo_unitario_mp: parseFloat(document.getElementById('mpCosto').value) || 0,
+            costo_unitario_importado: parseFloat(document.getElementById('mpCostoImportado').value) || 0,
             observacion: document.getElementById('mpObs').value.trim()
         };
         if (!data.codigo_mp || !data.nombre) { App.showAlert('Codigo y nombre requeridos', 'danger'); return; }

@@ -291,6 +291,7 @@ async function initDB() {
     await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS procesos_especificos_json JSONB DEFAULT NULL`);
     await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL`);
     await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL`);
+    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS costo_unitario_importado DECIMAL(12,2) DEFAULT 0`).catch(() => {});
     await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_padre ON recetas_bom(codigo_sap_padre)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)`);
     await query(`CREATE TABLE IF NOT EXISTS reglas_procesos_extras (
