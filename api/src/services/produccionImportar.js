@@ -215,6 +215,15 @@ const importarOrdenes = async (rows) => {
     for (const key of mergeOrder) {
         try {
             const r = merged[key];
+            let ancho = r.ancho;
+            let alto = r.alto;
+            if ((!ancho || !alto) && recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0) {
+                const receta = recetaBomMap[r.codigo].find(rc => rc.ancho && rc.alto) || recetaBomMap[r.codigo][0];
+                if (!ancho && receta.ancho) ancho = Number(receta.ancho);
+                if (!alto && receta.alto) alto = Number(receta.alto);
+            }
+            r.ancho = ancho || 0;
+            r.alto = alto || 0;
             const m2 = ((r.ancho / 1000) * (r.alto / 1000)) * r.cantidad;
             const familia = await buscarFamiliaParaFila(r, maestros);
             const { estaciones: estacionesFinales, mecanizadoOperaciones } = calcularEstaciones(r, familia, maestros);
