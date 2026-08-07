@@ -275,7 +275,10 @@ App.registerModule('prod_config', {
             (m.codigo_mp || '').toLowerCase().includes(s) ||
             (m.nombre || '').toLowerCase().includes(s) ||
             (m.observacion || '').toLowerCase().includes(s)
-        ) : [...this._materias].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+        ) : [...this._materias].sort((a, b) => {
+            const cmp = (a.nombre || '').localeCompare(b.nombre || '');
+            return cmp !== 0 ? cmp : (Number(a.espesor_mm) || 0) - (Number(b.espesor_mm) || 0);
+        });
         const tbody = document.getElementById('mpTableBody');
         if (!tbody) return;
         tbody.innerHTML = items.length ? items.map(m => {
