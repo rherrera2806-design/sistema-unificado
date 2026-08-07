@@ -348,7 +348,7 @@ App.registerModule('prod_config', {
         const v = (field) => m ? (m[field] || 0) : 0;
         App.showModal(`
             <div style="margin-bottom:12px;padding:10px 12px;background:#f8fafc;border-radius:8px">
-                <div class="form-row">
+                <div style="display:grid;grid-template-columns:1fr 1.5fr 0.8fr;gap:12px">
                     <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? m.codigo_mp : ''}" placeholder="SKU interno"></div>
                     <div class="form-group"><label>Nombre *</label><input class="form-control" id="mpNombre" value="${m ? m.nombre : ''}" placeholder="Ej: Vidrio 6mm"></div>
                     <div class="form-group"><label>Espesor (mm)</label><input type="number" class="form-control" id="mpEspesor" value="${v('espesor_mm')}" min="0" step="0.5"></div>
