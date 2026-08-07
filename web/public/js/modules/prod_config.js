@@ -257,7 +257,8 @@ App.registerModule('prod_config', {
                     <h3 style="margin:0">Materias Primas (Vidrios)</h3>
                     <div style="display:flex;gap:8px;align-items:center">
                         <div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-control" id="mpSearch" placeholder="Buscar codigo, nombre..." oninput="App.modules.prod_config._filterMaterias()" style="width:200px;padding:6px 8px 6px 32px;font-size:12px"></div>
-                        <button class="btn btn-sm btn-outline" onclick="window.open('/api/produccion/materias-primas/template')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar Plantilla</button>
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar Excel</button>
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.exportarExcel()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Exportar Excel</button>
                         <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Materia Prima</button>
                     </div>
                 </div>
@@ -329,6 +330,111 @@ App.registerModule('prod_config', {
                 <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
             </td>
         </tr>`}).join('') : '<tr><td colspan="18" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
+    },
+
+    showImportModal() {
+        App.showModal(`
+            <div style="margin-bottom:12px;padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <strong style="color:#0c4a6e;font-size:13px">Formato requerido</strong>
+                </div>
+                <p style="margin:0 0 8px;font-size:12px;color:#075985">El archivo Excel debe contener las siguientes columnas:</p>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+                    <span style="background:#0ea5e9;color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Codigo MP *</span>
+                    <span style="background:#0ea5e9;color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Nombre *</span>
+                    <span style="background:#64748b;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Espesor</span>
+                    <span style="background:#16a34a;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Costo Nac</span>
+                    <span style="background:#16a34a;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Hojas Pqt Nac</span>
+                    <span style="background:#16a34a;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Ancho Nac</span>
+                    <span style="background:#16a34a;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Alto Nac</span>
+                    <span style="background:#16a34a;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Pqt Camion</span>
+                    <span style="background:#2563eb;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Costo Imp</span>
+                    <span style="background:#2563eb;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Hojas Pqt Imp</span>
+                    <span style="background:#2563eb;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Ancho Imp</span>
+                    <span style="background:#2563eb;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Alto Imp</span>
+                    <span style="background:#2563eb;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Pqt Contenedor</span>
+                    <span style="background:#64748b;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Observacion</span>
+                </div>
+                <button class="btn btn-sm btn-outline" onclick="window.open('/api/produccion/materias-primas/template')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar Plantilla</button>
+            </div>
+            <div class="form-group">
+                <label>Archivo Excel (.xlsx)</label>
+                <input type="file" class="form-control" id="mpImportFile" accept=".xlsx,.xls" onchange="App.modules.prod_config._onMpFileSelect(event)">
+            </div>
+            <div id="mpImportPreview" style="display:none;margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+                <div style="display:flex;align-items:center;gap:6px">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    <span id="mpImportInfo" style="font-size:12px;color:#166534"></span>
+                </div>
+            </div>
+        `, { title: 'Importar Materias Primas desde Excel' });
+        document.querySelector('#modalOverlay .modal-footer').innerHTML = `
+            <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
+            <button class="btn btn-primary" id="mpImportBtn" onclick="App.modules.prod_config._doImportMaterias()" disabled>Importar</button>`;
+    },
+
+    _onMpFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        this._mpImportData = null;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const XLSXLib = window.XLSX;
+                if (!XLSXLib) { alert('Libreria XLSX no cargada'); return; }
+                const wb = XLSXLib.read(ev.target.result, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSXLib.utils.sheet_to_json(ws, { defval: '' });
+                if (!rows.length) { alert('Archivo vacio'); return; }
+                this._mpImportData = rows;
+                document.getElementById('mpImportPreview').style.display = 'block';
+                document.getElementById('mpImportInfo').textContent = rows.length + ' registros encontrados';
+                document.getElementById('mpImportBtn').disabled = false;
+            } catch (err) { alert('Error leyendo archivo: ' + err.message); }
+        };
+        reader.readAsArrayBuffer(file);
+    },
+
+    async _doImportMaterias() {
+        if (!this._mpImportData || !this._mpImportData.length) return;
+        const btn = document.getElementById('mpImportBtn');
+        btn.textContent = 'Importando...'; btn.disabled = true;
+        try {
+            const res = await fetch('/api/produccion/materias-primas/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rows: this._mpImportData })
+            });
+            const result = await res.json();
+            if (result.ok) {
+                App.showAlert('Importados: ' + (result.importados || 0) + (result.errores ? ', Errores: ' + result.errores.length : ''));
+                App.hideModal();
+                this.loadMaterias();
+            } else {
+                alert('Error: ' + (result.error || 'Desconocido'));
+                btn.textContent = 'Importar'; btn.disabled = false;
+            }
+        } catch (err) { alert('Error: ' + err.message); btn.textContent = 'Importar'; btn.disabled = false; }
+    },
+
+    exportarExcel() {
+        const items = this._materias || [];
+        if (!items.length) { App.showAlert('No hay datos para exportar', 'warning'); return; }
+        const rows = items.map(m => ({
+            'Codigo MP': m.codigo_mp, 'Nombre': m.nombre, 'Espesor (mm)': m.espesor_mm,
+            'Costo Nacional ($/m2)': m.costo_unitario_mp, 'Hojas por paquete Nac': m.hojas_por_paquete_nal,
+            'Ancho Nac': m.ancho_nal, 'Alto Nac': m.alto_nal, 'Paquetes por camion': m.paquetes_por_camion,
+            'Costo Importado ($/m2)': m.costo_unitario_importado, 'Hojas por paquete Imp': m.hojas_por_paquete_imp,
+            'Ancho Imp': m.ancho_imp, 'Alto Imp': m.alto_imp, 'Paquetes por contenedor': m.paquetes_por_contenedor,
+            'Observacion': m.observacion || ''
+        }));
+        const XLSXLib = window.XLSX;
+        if (!XLSXLib) { alert('Libreria XLSX no cargada'); return; }
+        const ws = XLSXLib.utils.json_to_sheet(rows);
+        const wb = XLSXLib.utils.book_new();
+        XLSXLib.utils.book_append_sheet(wb, ws, 'Materias Primas');
+        XLSXLib.writeFile(wb, 'materias_primas.xlsx');
     },
 
     showMateriaForm(id) {

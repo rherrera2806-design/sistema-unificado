@@ -145,6 +145,46 @@ router.get('/api/produccion/materias-primas/template', (req, res) => {
     res.send(buf);
 });
 
+router.post('/api/produccion/materias-primas/import', async (req, res) => {
+    const rows = req.body.rows || [];
+    if (!rows.length) return res.status(400).json({ error: 'Sin datos' });
+    const resultados = { importados: 0, errores: [] };
+    const findCol = (row, names) => {
+        for (const n of names) {
+            for (const k of Object.keys(row)) {
+                if (k.toLowerCase().trim() === n.toLowerCase().trim()) return row[k];
+            }
+        }
+        return '';
+    };
+    for (let i = 0; i < rows.length; i++) {
+        try {
+            const r = rows[i];
+            const codigo = String(findCol(r, ['Codigo MP', 'Codigo', 'CodigoMP', 'ItemCode']) || '').trim();
+            const nombre = String(findCol(r, ['Nombre', 'Name', 'Descripcion']) || '').trim();
+            if (!codigo || !nombre) { resultados.errores.push({ fila: i + 1, error: 'Sin codigo o nombre' }); continue; }
+            const data = {
+                codigo_mp: codigo, nombre,
+                espesor_mm: parseFloat(findCol(r, ['Espesor', 'Espesor (mm)', 'EspesorMM']) || 0) || 0,
+                costo_unitario_mp: parseFloat(findCol(r, ['Costo Nacional ($/m2)', 'Costo Nac', 'CostoNac', 'Costo Unitario']) || 0) || 0,
+                hojas_por_paquete_nal: parseInt(findCol(r, ['Hojas por paquete Nac', 'Hojas Pqt Nac', 'HojasNac']) || 0) || 0,
+                ancho_nal: parseFloat(findCol(r, ['Ancho Nac', 'AnchoNac', 'Ancho']) || 0) || 0,
+                alto_nal: parseFloat(findCol(r, ['Alto Nac', 'AltoNac', 'Alto']) || 0) || 0,
+                paquetes_por_camion: parseInt(findCol(r, ['Paquetes por camion', 'Pqt Camion', 'PaqCamion']) || 0) || 0,
+                costo_unitario_importado: parseFloat(findCol(r, ['Costo Importado ($/m2)', 'Costo Imp', 'CostoImp']) || 0) || 0,
+                hojas_por_paquete_imp: parseInt(findCol(r, ['Hojas por paquete Imp', 'Hojas Pqt Imp', 'HojasImp']) || 0) || 0,
+                ancho_imp: parseFloat(findCol(r, ['Ancho Imp', 'AnchoImp']) || 0) || 0,
+                alto_imp: parseFloat(findCol(r, ['Alto Imp', 'AltoImp']) || 0) || 0,
+                paquetes_por_contenedor: parseInt(findCol(r, ['Paquetes por contenedor', 'Pqt Contenedor', 'PaqContenedor']) || 0) || 0,
+                observacion: String(findCol(r, ['Observacion', 'Observacion', 'Nota']) || '').trim()
+            };
+            await catalogos.crearMateriaPrima(data);
+            resultados.importados++;
+        } catch (e) { resultados.errores.push({ fila: i + 1, error: e.message }); }
+    }
+    res.json({ ok: true, ...resultados });
+});
+
 router.post('/api/produccion/materias-primas', async (req, res, next) => {
     if (!req.body.codigo_mp || !req.body.nombre) return res.status(400).json({ error: 'Código y nombre requeridos' });
     res.json(await catalogos.crearMateriaPrima(req.body));
