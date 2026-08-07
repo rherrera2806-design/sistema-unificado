@@ -21,6 +21,20 @@ router.post('/api/produccion/importar', async (req, res, next) => {
     res.json(await importarOrdenes(rows));
 });
 
+router.get('/api/produccion/importar/template', (req, res) => {
+    const XLSX = require('xlsx');
+    const headers = ['codigo', 'pedido', 'item', 'cliente', 'descripcion', 'cantidad', 'ancho', 'alto', 'perforaciones', 'pintado', 'tipo de venta', 'fecha_creacion', 'nota', 'posicion', 'orden de compra', 'tipo de entrega'];
+    const example = ['VT-001', 'PED-2026-001', 1, 'Vidrieria Los Andes', 'Vidrio templado 8mm', 10, 1500, 1000, 0, 'No', 'Normal', '2026-08-07', '', '', '', 'Despacho'];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+    ws['!cols'] = headers.map(() => ({ wch: 20 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Ordenes Produccion');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', 'attachment; filename="plantilla_ordenes_produccion.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+});
+
 router.get('/api/produccion/calendario', async (req, res, next) => {
     try { res.json(await planificacion.getCalendario()); }
     catch (e) { next(e); }
