@@ -261,7 +261,13 @@ App.registerModule('prod_config', {
                     </div>
                 </div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr><th>Codigo</th><th>Nombre</th><th>Espesor (mm)</th><th>Costo Nacional $/m2</th><th>Costo Importado $/m2</th><th>Diferencia</th><th>Observacion</th><th>Acciones</th></tr></thead>
+                    <table style="font-size:12px"><thead><tr>
+                        <th>Codigo</th><th>Nombre</th><th>Esp.</th>
+                        <th style="background:#f0fdf4">Costo Nal</th><th style="background:#f0fdf4">Hojas</th><th style="background:#f0fdf4">Ancho</th><th style="background:#f0fdf4">Alto</th><th style="background:#f0fdf4">Pqt Camion</th>
+                        <th style="background:#eff6ff">Costo Imp</th><th style="background:#eff6ff">Hojas</th><th style="background:#eff6ff">Ancho</th><th style="background:#eff6ff">Alto</th><th style="background:#eff6ff">Pqt Cont.</th>
+                        <th style="background:#fefce8">Diff $/m2</th><th style="background:#fefce8">Diff Pqt</th><th style="background:#fefce8">Diff Camion</th>
+                        <th>Observ.</th><th>Acc.</th>
+                    </tr></thead>
                     <tbody id="mpTableBody"></tbody></table>
                 </div>
             </div>`;
@@ -285,51 +291,132 @@ App.registerModule('prod_config', {
         tbody.innerHTML = items.length ? items.map(m => {
             const cn = Number(m.costo_unitario_mp) || 0;
             const ci = Number(m.costo_unitario_importado) || 0;
-            const diff = ci - cn;
-            const diffColor = diff > 0 ? '#dc2626' : diff < 0 ? '#16a34a' : '#64748b';
+            const hn = Number(m.hojas_por_paquete_nal) || 0;
+            const hi = Number(m.hojas_por_paquete_imp) || 0;
+            const an = Number(m.ancho_nal) || 0;
+            const ai = Number(m.ancho_imp) || 0;
+            const aln = Number(m.alto_nal) || 0;
+            const ali = Number(m.alto_imp) || 0;
+            const pc = Number(m.paquetes_por_camion) || 0;
+            const pco = Number(m.paquetes_por_contenedor) || 0;
+            const m2n = (an * aln) / 1000000;
+            const m2i = (ai * ali) / 1000000;
+            const diffM2 = ci - cn;
+            const cpn = hn > 0 && m2n > 0 ? cn * m2n * hn : 0;
+            const cpi = hi > 0 && m2i > 0 ? ci * m2i * hi : 0;
+            const diffPaq = cpi - cpn;
+            const costCam = pc > 0 ? cpn * pc : 0;
+            const costCon = pco > 0 ? cpi * pco : 0;
+            const diffCam = costCon - costCam;
+            const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
+            const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
             return `<tr>
             <td><strong>${escapeHtml(m.codigo_mp)}</strong></td>
             <td>${escapeHtml(m.nombre)}</td>
-            <td>${m.espesor_mm} mm</td>
-            <td>$${cn.toLocaleString('es-CL')}</td>
-            <td>$${ci.toLocaleString('es-CL')}</td>
-            <td style="font-weight:600;color:${diffColor}">$${diff.toLocaleString('es-CL')}</td>
-            <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(m.observacion || '-')}</td>
-            <td class="table-actions">
+            <td>${m.espesor_mm}</td>
+            <td style="background:#f0fdf4">$${cn.toLocaleString('es-CL')}</td>
+            <td style="background:#f0fdf4;text-align:center">${hn}</td>
+            <td style="background:#f0fdf4;text-align:right">${an}</td>
+            <td style="background:#f0fdf4;text-align:right">${aln}</td>
+            <td style="background:#f0fdf4;text-align:center">${pc}</td>
+            <td style="background:#eff6ff">$${ci.toLocaleString('es-CL')}</td>
+            <td style="background:#eff6ff;text-align:center">${hi}</td>
+            <td style="background:#eff6ff;text-align:right">${ai}</td>
+            <td style="background:#eff6ff;text-align:right">${ali}</td>
+            <td style="background:#eff6ff;text-align:center">${pco}</td>
+            <td style="background:#fefce8;font-weight:600;color:${col(diffM2)}">${fmt(diffM2)}</td>
+            <td style="background:#fefce8;font-weight:600;color:${col(diffPaq)}">${fmt(diffPaq)}</td>
+            <td style="background:#fefce8;font-weight:600;color:${col(diffCam)}">${fmt(diffCam)}</td>
+            <td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escapeHtml(m.observacion || '-')}</td>
+            <td class="table-actions" style="white-space:nowrap">
                 <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                 <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
             </td>
-        </tr>`}).join('') : '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
+        </tr>`}).join('') : '<tr><td colspan="18" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
     },
 
     showMateriaForm(id) {
         const m = id ? this._materias.find(x => x.id === id) : null;
+        const v = (field) => m ? (m[field] || 0) : 0;
         App.showModal(`
-            <div class="form-row">
-                <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? m.codigo_mp : ''}" placeholder="SKU interno" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                <div class="form-group"><label>Nombre *</label><input class="form-control" id="mpNombre" value="${m ? m.nombre : ''}" placeholder="Ej: Vidrio 6mm" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+            <div style="margin-bottom:12px;padding:10px 12px;background:#f8fafc;border-radius:8px">
+                <div class="form-row">
+                    <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? m.codigo_mp : ''}" placeholder="SKU interno"></div>
+                    <div class="form-group"><label>Nombre *</label><input class="form-control" id="mpNombre" value="${m ? m.nombre : ''}" placeholder="Ej: Vidrio 6mm"></div>
+                    <div class="form-group"><label>Espesor (mm)</label><input type="number" class="form-control" id="mpEspesor" value="${v('espesor_mm')}" min="0" step="0.5"></div>
+                </div>
             </div>
-            <div class="form-row">
-                <div class="form-group"><label>Espesor (mm)</label><input type="number" class="form-control" id="mpEspesor" value="${m ? m.espesor_mm : 0}" min="0" step="0.5" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                <div class="form-group"><label>Costo Unitario Nacional ($/m2)</label><input type="number" class="form-control" id="mpCosto" value="${m ? m.costo_unitario_mp : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div style="padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+                    <strong style="color:#166534;font-size:12px">Datos Nacional</strong>
+                    <div class="form-group" style="margin-top:6px"><label>Costo ($/m2)</label><input type="number" class="form-control mp-nal" id="mpCostoNal" value="${v('costo_unitario_mp')}" min="0" data-field="costo"></div>
+                    <div class="form-group"><label>Hojas por paquete</label><input type="number" class="form-control mp-nal" id="mpHojasNal" value="${v('hojas_por_paquete_nal')}" min="0" data-field="hojas"></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-nal" id="mpAnchoNal" value="${v('ancho_nal')}" min="0" data-field="ancho"></div>
+                        <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-nal" id="mpAltoNal" value="${v('alto_nal')}" min="0" data-field="alto"></div>
+                    </div>
+                    <div class="form-group"><label>Paquetes por camion</label><input type="number" class="form-control mp-nal" id="mpPaqCamion" value="${v('paquetes_por_camion')}" min="0" data-field="paqCamion"></div>
+                </div>
+                <div style="padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px">
+                    <strong style="color:#1e40af;font-size:12px">Datos Importado</strong>
+                    <div class="form-group" style="margin-top:6px"><label>Costo ($/m2)</label><input type="number" class="form-control mp-imp" id="mpCostoImp" value="${v('costo_unitario_importado')}" min="0" data-field="costo"></div>
+                    <div class="form-group"><label>Hojas por paquete</label><input type="number" class="form-control mp-imp" id="mpHojasImp" value="${v('hojas_por_paquete_imp')}" min="0" data-field="hojas"></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-imp" id="mpAnchoImp" value="${v('ancho_imp')}" min="0" data-field="ancho"></div>
+                        <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-imp" id="mpAltoImp" value="${v('alto_imp')}" min="0" data-field="alto"></div>
+                    </div>
+                    <div class="form-group"><label>Paquetes por contenedor</label><input type="number" class="form-control mp-imp" id="mpPaqContenedor" value="${v('paquetes_por_contenedor')}" min="0" data-field="paqContenedor"></div>
+                </div>
             </div>
-            <div class="form-row">
-                <div class="form-group"><label>Costo Unitario Importado ($/m2)</label><input type="number" class="form-control" id="mpCostoImportado" value="${m ? m.costo_unitario_importado : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                <div class="form-group"><label>Diferencia ($/m2)</label><input type="text" class="form-control" id="mpDiferencia" readonly style="background:#f1f5f9;font-weight:600"></div>
+            <div style="padding:10px 12px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;margin-bottom:12px">
+                <strong style="color:#854d0e;font-size:12px">Resumen (calculado)</strong>
+                <div class="form-row" style="margin-top:6px">
+                    <div class="form-group"><label>Diferencia $/m2</label><input type="text" class="form-control" id="mpDiffM2" readonly style="background:#fff;font-weight:600"></div>
+                    <div class="form-group"><label>Diferencia paquete</label><input type="text" class="form-control" id="mpDiffPaq" readonly style="background:#fff;font-weight:600"></div>
+                    <div class="form-group"><label>Diferencia camion/contenedor</label><input type="text" class="form-control" id="mpDiffCamion" readonly style="background:#fff;font-weight:600"></div>
+                </div>
             </div>
-            <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">${m ? m.observacion || '' : ''}</textarea></div>
+            <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2">${m ? m.observacion || '' : ''}</textarea></div>
         `, { title: m ? 'Editar Materia Prima' : 'Nueva Materia Prima' });
-        const calcDiff = () => {
-            const n = parseFloat(document.getElementById('mpCosto').value) || 0;
-            const i = parseFloat(document.getElementById('mpCostoImportado').value) || 0;
-            const diff = i - n;
-            const el = document.getElementById('mpDiferencia');
-            el.value = '$' + diff.toLocaleString('es-CL');
-            el.style.color = diff > 0 ? '#dc2626' : diff < 0 ? '#16a34a' : '#64748b';
+
+        const calcResumen = () => {
+            const cn = parseFloat(document.getElementById('mpCostoNal').value) || 0;
+            const ci = parseFloat(document.getElementById('mpCostoImp').value) || 0;
+            const hn = parseInt(document.getElementById('mpHojasNal').value) || 0;
+            const hi = parseInt(document.getElementById('mpHojasImp').value) || 0;
+            const an = parseFloat(document.getElementById('mpAnchoNal').value) || 0;
+            const ai = parseFloat(document.getElementById('mpAnchoImp').value) || 0;
+            const aln = parseFloat(document.getElementById('mpAltoNal').value) || 0;
+            const ali = parseFloat(document.getElementById('mpAltoImp').value) || 0;
+            const pc = parseInt(document.getElementById('mpPaqCamion').value) || 0;
+            const pco = parseInt(document.getElementById('mpPaqContenedor').value) || 0;
+
+            const m2Nal = (an * aln) / 1000000;
+            const m2Imp = (ai * ali) / 1000000;
+            const diffM2 = ci - cn;
+
+            const costoPaqNal = hn > 0 && m2Nal > 0 ? cn * m2Nal * hn : 0;
+            const costoPaqImp = hi > 0 && m2Imp > 0 ? ci * m2Imp * hi : 0;
+            const diffPaq = costoPaqImp - costoPaqNal;
+
+            const costoCamion = pc > 0 ? costoPaqNal * pc : 0;
+            const costoContenedor = pco > 0 ? costoPaqImp * pco : 0;
+            const diffCamion = costoContenedor - costoCamion;
+
+            const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
+            const color = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
+
+            const d1 = document.getElementById('mpDiffM2');
+            d1.value = fmt(diffM2); d1.style.color = color(diffM2);
+            const d2 = document.getElementById('mpDiffPaq');
+            d2.value = fmt(diffPaq); d2.style.color = color(diffPaq);
+            const d3 = document.getElementById('mpDiffCamion');
+            d3.value = fmt(diffCamion); d3.style.color = color(diffCamion);
         };
-        document.getElementById('mpCosto').addEventListener('input', calcDiff);
-        document.getElementById('mpCostoImportado').addEventListener('input', calcDiff);
-        calcDiff();
+
+        document.querySelectorAll('.mp-nal, .mp-imp').forEach(el => el.addEventListener('input', calcResumen));
+        calcResumen();
+
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.prod_config.saveMateria(${id || 0})">${m ? 'Actualizar' : 'Guardar'}</button>`;
@@ -340,8 +427,16 @@ App.registerModule('prod_config', {
             codigo_mp: document.getElementById('mpCodigo').value.trim(),
             nombre: document.getElementById('mpNombre').value.trim(),
             espesor_mm: parseFloat(document.getElementById('mpEspesor').value) || 0,
-            costo_unitario_mp: parseFloat(document.getElementById('mpCosto').value) || 0,
-            costo_unitario_importado: parseFloat(document.getElementById('mpCostoImportado').value) || 0,
+            costo_unitario_mp: parseFloat(document.getElementById('mpCostoNal').value) || 0,
+            costo_unitario_importado: parseFloat(document.getElementById('mpCostoImp').value) || 0,
+            hojas_por_paquete_nal: parseInt(document.getElementById('mpHojasNal').value) || 0,
+            ancho_nal: parseFloat(document.getElementById('mpAnchoNal').value) || 0,
+            alto_nal: parseFloat(document.getElementById('mpAltoNal').value) || 0,
+            paquetes_por_camion: parseInt(document.getElementById('mpPaqCamion').value) || 0,
+            hojas_por_paquete_imp: parseInt(document.getElementById('mpHojasImp').value) || 0,
+            ancho_imp: parseFloat(document.getElementById('mpAnchoImp').value) || 0,
+            alto_imp: parseFloat(document.getElementById('mpAltoImp').value) || 0,
+            paquetes_por_contenedor: parseInt(document.getElementById('mpPaqContenedor').value) || 0,
             observacion: document.getElementById('mpObs').value.trim()
         };
         if (!data.codigo_mp || !data.nombre) { App.showAlert('Codigo y nombre requeridos', 'danger'); return; }
