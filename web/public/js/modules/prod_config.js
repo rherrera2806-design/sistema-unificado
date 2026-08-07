@@ -239,10 +239,17 @@ App.registerModule('prod_config', {
     async loadMaterias() {
         const res = await fetch('/api/produccion/materias-primas');
         this._materias = await res.json();
-        this._renderMaterias();
+        const search = document.getElementById('mpSearch')?.value || '';
+        if (document.getElementById('mpTableBody')) {
+            this._filterMaterias();
+        } else {
+            this._renderMaterias();
+            if (search) document.getElementById('mpSearch').value = search;
+        }
     },
 
     _renderMaterias() {
+        const prevSearch = document.getElementById('mpSearch')?.value || '';
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
             <div class="card">
@@ -258,6 +265,7 @@ App.registerModule('prod_config', {
                     <tbody id="mpTableBody"></tbody></table>
                 </div>
             </div>`;
+        if (prevSearch) document.getElementById('mpSearch').value = prevSearch;
         this._filterMaterias();
     },
 
