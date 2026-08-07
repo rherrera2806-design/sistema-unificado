@@ -307,9 +307,6 @@ App.registerModule('prod_config', {
                 if (diffM2 > 0) obs = '<span style="color:#166534;font-weight:600">Nacional</span> ' + fmt(Math.abs(diffM2));
                 else if (diffM2 < 0) obs = '<span style="color:#166534;font-weight:600">Importado</span> ' + fmt(Math.abs(diffM2));
             }
-            } else {
-                obs = escapeHtml(m.observacion || '-');
-            }
             return `<tr>
             <td><strong>${escapeHtml(m.codigo_mp)}</strong></td>
             <td>${escapeHtml(m.nombre)}</td>
