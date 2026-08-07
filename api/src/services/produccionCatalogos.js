@@ -44,11 +44,22 @@ const getRecetasBom = async () => {
     return result.rows;
 };
 
-const crearRecetaBom = async ({ codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json, ancho, alto }) => {
+const resolverFamilia = async (codigo) => {
+    const codInfo = await query('SELECT familia FROM produccion_codigos WHERE codigo = $1', [codigo]);
+    if (!codInfo.rows.length || !codInfo.rows[0].familia) return null;
+    const nombreFam = codInfo.rows[0].familia;
+    const famRes = await query(
+        'SELECT id FROM familias_producto WHERE UPPER(nombre_familia) = UPPER($1) OR UPPER(codigo_familia) = UPPER($1)',
+        [nombreFam]
+    );
+    return famRes.rows.length > 0 ? famRes.rows[0].id : null;
+};
+
+const crearRecetaBom = async ({ codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto }) => {
     const procsJson = (procesos_especificos_json !== undefined && procesos_especificos_json !== null)
         ? JSON.stringify(Array.isArray(procesos_especificos_json) ? procesos_especificos_json : [])
         : null;
-    const famId = (familia_id !== undefined && familia_id !== null && familia_id !== '') ? Number(familia_id) : null;
+    const famId = await resolverFamilia(codigo_sap_padre);
     const result = await query(
         `INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json, ancho, alto)
          VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7) RETURNING *`,
@@ -57,20 +68,18 @@ const crearRecetaBom = async ({ codigo_sap_padre, materia_prima_id, familia_id, 
     return result.rows[0];
 };
 
-const actualizarRecetaBom = async (id, { codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json, ancho, alto }) => {
+const actualizarRecetaBom = async (id, { codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto }) => {
     const procsJson = (procesos_especificos_json !== undefined)
         ? (procesos_especificos_json === null || procesos_especificos_json === '' || (Array.isArray(procesos_especificos_json) && procesos_especificos_json.length === 0)
             ? null
             : JSON.stringify(procesos_especificos_json))
         : undefined;
-    const famId = (familia_id !== undefined)
-        ? ((familia_id === null || familia_id === '') ? null : Number(familia_id))
-        : undefined;
+    const famId = codigo_sap_padre ? await resolverFamilia(codigo_sap_padre) : undefined;
     const result = await query(
         `UPDATE recetas_bom SET
             codigo_sap_padre = COALESCE($1, codigo_sap_padre),
             materia_prima_id = COALESCE($2, materia_prima_id),
-            familia_id = $3,
+            familia_id = COALESCE($3, familia_id),
             cantidad = COALESCE($4, cantidad),
             procesos_especificos_json = $5::jsonb,
             ancho = $7,

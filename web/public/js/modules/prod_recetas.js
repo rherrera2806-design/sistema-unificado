@@ -143,11 +143,6 @@ ${puedeEditar ? `
                             </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Familia <span style="color:#94a3b8;font-weight:400">(fallback)</span></label>
-                                <select class="form-control" id="recFamilia" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-                                    <option value="">Sin familia (usar codigos_producto)</option>
-                                </select>
-                            </div>
                             <div class="form-group"><label>Cantidad</label>
                                 <input class="form-control" id="recCantidad" type="number" min="0.01" step="0.01" value="1" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                             </div>
@@ -201,17 +196,15 @@ ${puedeEditar ? `
 
     async load() {
         try {
-            const [recRes, codRes, estRes, famRes, matRes] = await Promise.all([
+            const [recRes, codRes, estRes, matRes] = await Promise.all([
                 fetch('/api/produccion/recetas-bom', { headers: this._headers() }),
                 fetch('/api/produccion/codigos', { headers: this._headers() }),
                 fetch('/api/produccion/estaciones', { headers: this._headers() }),
-                fetch('/api/produccion/familias', { headers: this._headers() }),
                 fetch('/api/produccion/materias-primas', { headers: this._headers() })
             ]);
             this.recetas = recRes.ok ? await recRes.json() : [];
             this.codigos = codRes.ok ? await codRes.json() : [];
             this.estaciones = estRes.ok ? await estRes.json() : [];
-            this.familias = famRes.ok ? await famRes.json() : [];
             this.materias = matRes.ok ? await matRes.json() : [];
             this.populateModalSelects();
             this.renderStats();
@@ -238,10 +231,6 @@ ${puedeEditar ? `
         if (mpSel) {
             mpSel.innerHTML = '<option value="">Seleccionar materia prima...</option>' + (this.materias || []).map(m => `<option value="${m.id}">${escapeHtml(m.nombre || m.codigo_mp || ('MP-' + m.id))}${m.espesor_mm ? ' (' + m.espesor_mm + 'mm)' : ''}</option>`).join('');
         }
-        const famSel = document.getElementById('recFamilia');
-        if (famSel) {
-            famSel.innerHTML = '<option value="">Sin familia (usar codigos_producto)</option>' + (this.familias || []).filter(f => f.activa !== false).map(f => `<option value="${f.id}">${escapeHtml(f.nombre_familia || f.codigo_familia || ('Fam-' + f.id))}</option>`).join('');
-        }
     },
 
     filter() {
@@ -265,6 +254,11 @@ ${puedeEditar ? `
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
 
+        const descMap = {};
+        (this.codigos || []).forEach(c => { descMap[String(c.codigo)] = c.descripcion; });
+        const estMap = {};
+        this.estaciones.forEach(e => { estMap[e.id] = e; });
+
         const grupos = {};
         recetas.forEach(r => {
             const padre = r.codigo_sap_padre;
@@ -272,14 +266,11 @@ ${puedeEditar ? `
             grupos[padre].push(r);
         });
 
-        const estMap = {};
-        this.estaciones.forEach(e => { estMap[e.id] = e; });
-
         let html = '';
         for (const [padre, items] of Object.entries(grupos)) {
             const customRoutes = items.filter(r => Array.isArray(r.procesos_especificos_json) && r.procesos_especificos_json.length > 0);
             const familiaNombre = items.find(r => r.nombre_familia)?.nombre_familia;
-            const desc = (this.codigos || []).find(c => String(c.codigo) === String(padre))?.descripcion;
+            const desc = descMap[String(padre)];
             const subtitleParts = [];
             if (desc) subtitleParts.push(escapeHtml(desc));
             if (familiaNombre) subtitleParts.push('Familia: ' + escapeHtml(familiaNombre));
@@ -376,7 +367,6 @@ ${puedeEditar ? `
         document.getElementById('recCodigoPadre').value = r.codigo_sap_padre || '';
         document.getElementById('recCodigoPadre').disabled = true;
         document.getElementById('recMateriaPrima').value = r.materia_prima_id || '';
-        document.getElementById('recFamilia').value = r.familia_id || '';
         document.getElementById('recCantidad').value = r.cantidad || 1;
         document.getElementById('recAncho').value = r.ancho || '';
         document.getElementById('recAlto').value = r.alto || '';
@@ -393,7 +383,6 @@ ${puedeEditar ? `
     async save(id) {
         const codigo_sap_padre = document.getElementById('recCodigoPadre').value.trim();
         const materia_prima_id = document.getElementById('recMateriaPrima').value;
-        const familia_id = document.getElementById('recFamilia').value || null;
         const cantidad = Number(document.getElementById('recCantidad').value) || 1;
         const usarCustom = document.getElementById('recUsarRutaCustom').checked;
         let procesos_especificos_json = null;
@@ -413,7 +402,7 @@ ${puedeEditar ? `
             const r = await fetch(url, {
                 method,
                 headers: this._headers(),
-                body: JSON.stringify({ codigo_sap_padre, materia_prima_id, familia_id, cantidad, procesos_especificos_json, ancho, alto })
+                body: JSON.stringify({ codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto })
             });
             if (!r.ok) {
                 const err = await r.json().catch(() => ({}));
