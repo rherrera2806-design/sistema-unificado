@@ -211,6 +211,10 @@ tbody tr:last-child td { border-bottom: none; }
     box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
 }
 .form-control::placeholder { color: var(--gray-400); }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-search-cancel-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 
 select.form-control {

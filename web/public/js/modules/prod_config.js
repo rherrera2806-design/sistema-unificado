@@ -312,8 +312,8 @@ App.registerModule('prod_config', {
             const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
             let obs = '';
             if (cn > 0 || ci > 0) {
-                if (diffM2 < 0) obs = '<span style="color:#166534;font-weight:600">Nacional</span> ' + fmt(Math.abs(diffM2));
-                else if (diffM2 > 0) obs = '<span style="color:#166534;font-weight:600">Importado</span> ' + fmt(Math.abs(diffM2));
+                if (diffM2 > 0) obs = '<span style="color:#166534;font-weight:600">Nacional</span> ' + fmt(Math.abs(diffM2));
+                else if (diffM2 < 0) obs = '<span style="color:#166534;font-weight:600">Importado</span> ' + fmt(Math.abs(diffM2));
                 else obs = '<span style="color:#64748b">Igual</span>';
             } else {
                 obs = escapeHtml(m.observacion || '-');
@@ -427,9 +427,9 @@ App.registerModule('prod_config', {
             const el = document.getElementById('mpAnalisis');
             if (cn === 0 && ci === 0) {
                 el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span style="color:#64748b;font-size:12px">Ingrese costos para ver analisis</span>';
-            } else if (diffM2 < 0) {
-                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span style="color:#166534;font-size:12px;font-weight:600">Conviene Nacional</span><span style="color:#166534;font-size:11px"> — Ahorro de ' + fmt(Math.abs(diffM2)) + '/m2</span>';
             } else if (diffM2 > 0) {
+                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span style="color:#166534;font-size:12px;font-weight:600">Conviene Nacional</span><span style="color:#166534;font-size:11px"> — Ahorro de ' + fmt(Math.abs(diffM2)) + '/m2</span>';
+            } else if (diffM2 < 0) {
                 el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span style="color:#166534;font-size:12px;font-weight:600">Conviene Importado</span><span style="color:#166534;font-size:11px"> — Ahorro de ' + fmt(Math.abs(diffM2)) + '/m2</span>';
             } else {
                 el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span style="color:#64748b;font-size:12px">Precios iguales</span>';
