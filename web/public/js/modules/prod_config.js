@@ -249,7 +249,7 @@ App.registerModule('prod_config', {
             (m.codigo_mp || '').toLowerCase().includes(s) ||
             (m.nombre || '').toLowerCase().includes(s) ||
             (m.observacion || '').toLowerCase().includes(s)
-        ) : this._materias;
+        ) : [...this._materias].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
         container.innerHTML = `
             <div class="card">
                 <div class="card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
