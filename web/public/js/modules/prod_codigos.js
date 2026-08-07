@@ -227,25 +227,47 @@ ${puedeEditar ? `
     },
 
     _populateGrupoFamilia(selectedGrupo, selectedFamilia) {
-        const grupos = [...new Set(this.codigos.map(c => c.grupo).filter(Boolean))].sort();
-        const familias = [...new Set(this.codigos.map(c => c.familia).filter(Boolean))].sort();
+        const all = this.codigos || [];
+        const grupos = [...new Set(all.map(c => c.grupo).filter(Boolean))].sort();
+        const grupoFamilias = {};
+        all.forEach(c => {
+            if (c.grupo && c.familia) {
+                if (!grupoFamilias[c.grupo]) grupoFamilias[c.grupo] = new Set();
+                grupoFamilias[c.grupo].add(c.familia);
+            }
+        });
+        this._grupoFamilias = grupoFamilias;
         const gSel = document.getElementById('codGrupo');
         const fSel = document.getElementById('codFamilia');
         if (gSel) {
             const cur = selectedGrupo || '';
-            gSel.innerHTML = '<option value="">-- Seleccionar --</option>'
+            gSel.innerHTML = '<option value="">-- Seleccionar Grupo --</option>'
                 + grupos.map(g => `<option value="${escapeHtml(g)}" ${g === cur ? 'selected' : ''}>${escapeHtml(g)}</option>`).join('');
             if (cur && !grupos.includes(cur)) {
                 gSel.innerHTML += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>`;
             }
+            gSel.onchange = () => this._filterFamiliasByGrupo();
         }
-        if (fSel) {
-            const cur = selectedFamilia || '';
-            fSel.innerHTML = '<option value="">-- Seleccionar --</option>'
-                + familias.map(f => `<option value="${escapeHtml(f)}" ${f === cur ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('');
-            if (cur && !familias.includes(cur)) {
-                fSel.innerHTML += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>`;
-            }
+        this._filterFamiliasByGrupo(selectedFamilia);
+    },
+
+    _filterFamiliasByGrupo(selectedFamilia) {
+        const gSel = document.getElementById('codGrupo');
+        const fSel = document.getElementById('codFamilia');
+        if (!fSel) return;
+        const grupo = gSel ? gSel.value : '';
+        const all = this.codigos || [];
+        let familias;
+        if (grupo && this._grupoFamilias && this._grupoFamilias[grupo]) {
+            familias = [...this._grupoFamilias[grupo]].sort();
+        } else {
+            familias = [...new Set(all.map(c => c.familia).filter(Boolean))].sort();
+        }
+        const cur = selectedFamilia || fSel.value || '';
+        fSel.innerHTML = '<option value="">-- Seleccionar Familia --</option>'
+            + familias.map(f => `<option value="${escapeHtml(f)}" ${f === cur ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('');
+        if (cur && !familias.includes(cur)) {
+            fSel.innerHTML += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>`;
         }
     },
 
