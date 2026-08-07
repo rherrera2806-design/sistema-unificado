@@ -88,10 +88,10 @@ const mergearFilas = (rows) => {
         const pedido = String(row['pedido'] || row['Pedido'] || row['PEDIDO'] || row['DocEntry'] || '').trim();
         const item = Number(row['item'] || row['Item'] || row['ITEM'] || i + 1);
         const key = `${pedido}|${item}|${codigo}`;
-        const ancho = Number(row['anho'] || row['ancho'] || row['Ancho'] || row['ANHO'] || row['ANCHO'] || row['Width'] || 0);
-        const alto = Number(row['alto'] || row['Alto'] || row['ALTO'] || row['Height'] || 0);
+        const ancho = Number(row['anho'] || row['ancho'] || row['Ancho'] || row['ANHO'] || row['ANCHO'] || row['Width'] || row['width'] || row['Largo'] || row['largo'] || 0);
+        const alto = Number(row['alto'] || row['Alto'] || row['ALTO'] || row['Height'] || row['height'] || row['Profundidad'] || row['profundidad'] || 0);
 
-        if (!codigo || !ancho || !alto) continue;
+        if (!codigo) continue;
 
         if (!merged[key]) {
             merged[key] = {
