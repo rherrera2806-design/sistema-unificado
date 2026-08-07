@@ -5,6 +5,7 @@ App.registerModule('produccion', {
 
     async render() {
         const el = document.getElementById('page-produccion');
+        if (!el) { console.error('page-produccion element not found'); return; }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const permisos = user.permisos || [];
         const esAdmin = permisos.includes('usuarios');
@@ -151,7 +152,11 @@ App.registerModule('produccion', {
             this.renderStats();
             this.renderTable(this.ordenes);
             this.populateFilters();
-        } catch(e) { console.error('Error loading produccion:', e); }
+        } catch(e) {
+            console.error('Error loading produccion:', e);
+            const tbody = document.getElementById('prodTable');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:24px;color:#ef4444">Error: ' + (e.message || 'No se pudo cargar') + '</td></tr>';
+        }
     },
 
     populateFilters() {
