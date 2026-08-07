@@ -242,38 +242,45 @@ App.registerModule('prod_config', {
         this._renderMaterias();
     },
 
-    _renderMaterias(search) {
+    _renderMaterias() {
         const container = document.getElementById('prodConfigContent');
-        const s = (search || '').toLowerCase();
-        const items = s ? this._materias.filter(m =>
-            (m.codigo_mp || '').toLowerCase().includes(s) ||
-            (m.nombre || '').toLowerCase().includes(s) ||
-            (m.observacion || '').toLowerCase().includes(s)
-        ) : [...this._materias].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
         container.innerHTML = `
             <div class="card">
                 <div class="card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
                     <h3 style="margin:0">Materias Primas (Vidrios)</h3>
                     <div style="display:flex;gap:8px;align-items:center">
-                        <div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-control" id="mpSearch" placeholder="Buscar codigo, nombre..." value="${escapeHtml(search || '')}" oninput="App.modules.prod_config._renderMaterias(this.value)" style="width:200px;padding:6px 8px 6px 32px;font-size:12px"></div>
+                        <div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-control" id="mpSearch" placeholder="Buscar codigo, nombre..." oninput="App.modules.prod_config._filterMaterias()" style="width:200px;padding:6px 8px 6px 32px;font-size:12px"></div>
                         <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Materia Prima</button>
                     </div>
                 </div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Codigo</th><th>Nombre</th><th>Espesor (mm)</th><th>Costo $/m2</th><th>Observacion</th><th>Acciones</th></tr></thead>
-                    <tbody>${items.length ? items.map(m => `<tr>
-                        <td><strong>${escapeHtml(m.codigo_mp)}</strong></td>
-                        <td>${escapeHtml(m.nombre)}</td>
-                        <td>${m.espesor_mm} mm</td>
-                        <td>$${Number(m.costo_unitario_mp).toLocaleString('es-CL')}</td>
-                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(m.observacion || '-')}</td>
-                        <td class="table-actions">
-                            <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                            <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                        </td>
-                    </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>'}</tbody></table>
+                    <tbody id="mpTableBody"></tbody></table>
                 </div>
             </div>`;
+        this._filterMaterias();
+    },
+
+    _filterMaterias() {
+        const s = (document.getElementById('mpSearch')?.value || '').toLowerCase();
+        const items = s ? this._materias.filter(m =>
+            (m.codigo_mp || '').toLowerCase().includes(s) ||
+            (m.nombre || '').toLowerCase().includes(s) ||
+            (m.observacion || '').toLowerCase().includes(s)
+        ) : [...this._materias].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+        const tbody = document.getElementById('mpTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = items.length ? items.map(m => `<tr>
+            <td><strong>${escapeHtml(m.codigo_mp)}</strong></td>
+            <td>${escapeHtml(m.nombre)}</td>
+            <td>${m.espesor_mm} mm</td>
+            <td>$${Number(m.costo_unitario_mp).toLocaleString('es-CL')}</td>
+            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(m.observacion || '-')}</td>
+            <td class="table-actions">
+                <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            </td>
+        </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
     },
 
     showMateriaForm(id) {
