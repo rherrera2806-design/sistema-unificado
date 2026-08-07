@@ -126,6 +126,25 @@ router.delete('/api/produccion/familias/:id', async (req, res, next) => {
 
 router.get('/api/produccion/materias-primas', async (req, res, next) => { res.json(await catalogos.getMateriasPrimas()); });
 
+router.get('/api/produccion/materias-primas/template', (req, res) => {
+    const XLSX = require('xlsx');
+    const headers = [
+        'Codigo MP', 'Nombre', 'Espesor (mm)',
+        'Costo Nacional ($/m2)', 'Hojas por paquete', 'Ancho', 'Alto', 'Paquetes por camion',
+        'Costo Importado ($/m2)', 'Hojas por paquete', 'Ancho', 'Alto', 'Paquetes por contenedor',
+        'Observacion'
+    ];
+    const example = ['1017', 'Laminado', 6, 13369, 29, 3600, 2500, 12, 0, 0, 0, 0, 0, '3600 x 2500 - Lirquen'];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+    ws['!cols'] = headers.map(() => ({ wch: 20 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Materias Primas');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', 'attachment; filename="plantilla_materias_primas.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
+});
+
 router.post('/api/produccion/materias-primas', async (req, res, next) => {
     if (!req.body.codigo_mp || !req.body.nombre) return res.status(400).json({ error: 'Código y nombre requeridos' });
     res.json(await catalogos.crearMateriaPrima(req.body));

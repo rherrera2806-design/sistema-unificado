@@ -257,6 +257,7 @@ App.registerModule('prod_config', {
                     <h3 style="margin:0">Materias Primas (Vidrios)</h3>
                     <div style="display:flex;gap:8px;align-items:center">
                         <div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-control" id="mpSearch" placeholder="Buscar codigo, nombre..." oninput="App.modules.prod_config._filterMaterias()" style="width:200px;padding:6px 8px 6px 32px;font-size:12px"></div>
+                        <button class="btn btn-sm btn-outline" onclick="window.open('/api/produccion/materias-primas/template')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar Plantilla</button>
                         <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Materia Prima</button>
                     </div>
                 </div>
