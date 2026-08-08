@@ -211,7 +211,9 @@ App.registerModule('produccion', {
                 + '<td style="padding:10px 12px;color:#475569">' + (o.item_numero || '-') + '</td>'
                 + '<td style="padding:10px 12px;color:#475569">' + escapeHtml((o.cliente || '-').toUpperCase()) + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (o.codigo_padre ? escapeHtml(o.codigo_padre) + (o.nombre_codigo_padre ? ' - ' + escapeHtml(o.nombre_codigo_padre) : '') : '-') + '</td>'
-                + '<td style="padding:10px 12px"><strong style="color:#0f172a">' + escapeHtml(o.codigo_producto) + '</strong>' + (o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed;font-weight:600">BOM</span>' : '') + '</td>'
+                + '<td style="padding:10px 12px"><strong style="color:#0f172a">' + escapeHtml(o.codigo_producto) + '</strong>'
+                + (o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed;font-weight:600">BOM</span>' : ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin receta BOM">SIN BOM</span>')
+                + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + escapeHtml(o.nombre_mp || o.descripcion || '-') + '</td>'
                 + '<td style="padding:10px 12px;color:#475569">' + o.ancho + ' x ' + o.alto + ' mm</td>'
                 + '<td style="padding:10px 12px;color:#475569">' + (o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-') + '</td>'
@@ -219,7 +221,7 @@ App.registerModule('produccion', {
                 + '<td style="padding:10px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(' + o.id + ', ' + (o.cantidad || 1) + ')"><strong style="color:#3b82f6">' + (o.cantidad || 1) + '</strong></td>'
                 + '<td style="padding:10px 12px">' + tipoBadge(o.tipo_venta) + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
-                + '<td style="padding:10px 12px;color:#475569">' + progreso + '</td>'
+                + '<td style="padding:10px 12px;color:#475569">' + (o.total_pasos === 0 ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin estaciones asociadas">SIN RUTA</span>' : progreso) + '</td>'
                 + '<td style="padding:10px 12px">' + (() => {
                     let reglas = o.reglas_extras_json;
                     if (typeof reglas === 'string') { try { reglas = JSON.parse(reglas); } catch(e) { reglas = []; } }
