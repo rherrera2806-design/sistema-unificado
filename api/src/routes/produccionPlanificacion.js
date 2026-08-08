@@ -23,8 +23,8 @@ router.post('/api/produccion/importar', async (req, res, next) => {
 
 router.get('/api/produccion/importar/template', (req, res) => {
     const XLSX = require('xlsx');
-    const headers = ['codigo', 'pedido', 'item', 'cliente', 'descripcion', 'cantidad', 'ancho', 'alto', 'perforaciones', 'pintado', 'tipo de venta', 'fecha_creacion', 'nota', 'posicion', 'orden de compra', 'tipo de entrega'];
-    const example = ['VT-001', 'PED-2026-001', 1, 'Vidrieria Los Andes', 'Vidrio templado 8mm', 10, 1500, 1000, 0, 'No', 'Normal', '2026-08-07', '', '', '', 'Despacho'];
+    const headers = ['codigo', 'pedido', 'item', 'cliente', 'descripcion', 'cantidad', 'ancho', 'alto', 'perforaciones', 'destaje', 'sacado', 'radio', 'ventana', 'pintado', 'pintado car', 'tipo de venta', 'fecha_creacion', 'nota', 'posicion', 'orden de compra', 'tipo de entrega'];
+    const example = ['VT-001', 'PED-2026-001', 1, 'VIDRIERIA LOS ANDES', 'Vidrio templado 8mm', 10, 1500, 1000, 0, 0, 0, 0, 0, 0, 0, 'Normal', '2026-08-07', '', '', '', 'Despacho'];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     ws['!cols'] = headers.map(() => ({ wch: 20 }));
