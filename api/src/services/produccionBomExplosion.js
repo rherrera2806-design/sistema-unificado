@@ -40,11 +40,12 @@ const explosionBOM = async (r, recetaBomMap, materiaPrimaMap, materiasPrimas, fa
              r.fecha_creacion || new Date().toISOString(), JSON.stringify(reglasExtras)]
         );
         const ordenId = result.rows[0].id;
+        const fechaProg = r.fecha_creacion || new Date().toISOString();
         for (let s = 0; s < estacionesFinales.length; s++) {
             const estacionId = ordenToEstacionId ? (ordenToEstacionId[estacionesFinales[s]] || estacionesFinales[s]) : estacionesFinales[s];
             if (!estacionId) continue;
-            await query("INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, 'PENDIENTE')",
-                [ordenId, estacionId, s + 1]);
+            await query("INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1, $2, $3, 'PENDIENTE', $4, $5)",
+                [ordenId, estacionId, s + 1, fechaProg, m2]);
             resultados.pasos_creados++;
         }
         resultados.importadas++;
@@ -73,11 +74,12 @@ const crearOrdenSimple = async (r, familia, estacionesFinales, m2, resultados, m
          r.fecha_creacion || new Date().toISOString(), JSON.stringify(reglasExtras)]
     );
     const ordenId = result.rows[0].id;
+    const fechaProg = r.fecha_creacion || new Date().toISOString();
     for (let s = 0; s < estacionesFinales.length; s++) {
         const estacionId = ordenToEstacionId ? (ordenToEstacionId[estacionesFinales[s]] || estacionesFinales[s]) : estacionesFinales[s];
         if (!estacionId) continue;
-        await query("INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, 'PENDIENTE')",
-            [ordenId, estacionId, s + 1]);
+        await query("INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados) VALUES ($1, $2, $3, 'PENDIENTE', $4, $5)",
+            [ordenId, estacionId, s + 1, fechaProg, m2]);
         resultados.pasos_creados++;
     }
     resultados.importadas++;
