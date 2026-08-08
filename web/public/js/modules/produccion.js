@@ -63,10 +63,11 @@ App.registerModule('produccion', {
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Tipo Venta</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Programado</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Ruta</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Reglas</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">C. Botella</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Estado</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Acciones</th>'
-            + '</tr></thead><tbody id="prodTable"><tr><td colspan="16" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div>Cargando...</div></td></tr></tbody></table></div></div>'
+            + '</tr></thead><tbody id="prodTable"><tr><td colspan="17" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div>Cargando...</div></td></tr></tbody></table></div></div>'
 
             + '<div class="modal-overlay" id="prodImportModal">'
             + '<div class="modal" style="max-width:500px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
@@ -157,7 +158,7 @@ App.registerModule('produccion', {
         } catch(e) {
             console.error('Error loading produccion:', e);
             const tbody = document.getElementById('prodTable');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:24px;color:#ef4444">Error: ' + (e.message || 'No se pudo cargar') + '</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;padding:24px;color:#ef4444">Error: ' + (e.message || 'No se pudo cargar') + '</td></tr>';
         }
     },
 
@@ -187,7 +188,7 @@ App.registerModule('produccion', {
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
         this.renderTotales(ordenes);
-        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>'; return; }
+        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>'; return; }
 
         const estadoBadge = (e) => {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">TERMINADO</span>';
@@ -219,6 +220,13 @@ App.registerModule('produccion', {
                 + '<td style="padding:10px 12px">' + tipoBadge(o.tipo_venta) + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
                 + '<td style="padding:10px 12px;color:#475569">' + progreso + '</td>'
+                + '<td style="padding:10px 12px">' + (() => {
+                    let reglas = o.reglas_extras_json;
+                    if (typeof reglas === 'string') { try { reglas = JSON.parse(reglas); } catch(e) { reglas = []; } }
+                    if (!reglas || !reglas.length) return '<span style="color:#cbd5e1">-</span>';
+                    const colors = { 'Radio': '#8b5cf6', 'Pulido': '#6366f1', 'Perforado': '#f59e0b', 'Destaje': '#ef4444', 'Sacado': '#ec4899', 'Ventana': '#14b8a6', 'Pintado': '#3b82f6', 'Pintado Car': '#0ea5e9' };
+                    return reglas.map(r => '<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;background:' + (colors[r] || '#94a3b8') + ';color:white;margin:1px;font-weight:600">' + r + '</span>').join('');
+                })() + '</td>'
                 + '<td style="padding:10px 12px">' + (o.cuello_botella ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600">' + escapeHtml(o.cuello_botella) + '</span>' : '<span style="color:#cbd5e1">-</span>') + '</td>'
                 + '<td style="padding:10px 12px">' + estadoBadge(o.estado_programacion) + (o.cerrado_nota ? ' <span title="' + o.cerrado_nota.replace(/"/g, '&quot;') + '" style="cursor:pointer;font-size:10px;color:#94a3b8"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>' : '') + '</td>'
                 + '<td style="padding:10px 12px;white-space:nowrap">'
