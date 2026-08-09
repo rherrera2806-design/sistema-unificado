@@ -197,7 +197,6 @@ App.registerModule('prod_reportes', {
                         <thead><tr>
                             <th>OV</th><th>Item</th><th>Pend.</th><th>Estado</th><th>Cliente</th>
                             <th>Materia Prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>
-                            <th style="text-align:right">Unid</th>
                             <th style="text-align:right">M²</th>
                             <th style="text-align:right">Kgs</th><th>Ruta</th><th>Tipo</th><th>Grupo</th>
                         </tr></thead>
@@ -215,7 +214,6 @@ App.registerModule('prod_reportes', {
                     <td style="text-align:center">${o.espesor ? o.espesor + 'mm' : ''}</td>
                     <td style="text-align:right">${o.ancho || ''}</td>
                     <td style="text-align:right">${o.alto || ''}</td>
-                    <td style="text-align:right;font-weight:600">${o.unidades || o.pend || ''}</td>
                     <td style="text-align:right;font-weight:600">${o.m2.toFixed(1)}</td>
                     <td style="text-align:right;font-weight:600">${Math.round(o.kgs)}</td>
                     <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.ruta || ''}">${o.ruta || ''}</td>
