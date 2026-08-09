@@ -34,24 +34,25 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
   // ═══════════════════════════════════════════════════════════════
   // 2. CARGA ACTUAL POR ESTACIÓN POR DÍA (unidad nativa de cada estación)
-  //    Para estaciones de 'unidades' → suma cantidad
-  //    Para estaciones de 'kg'        → suma kilos
-  //    Para estaciones de 'm2'        → suma m2
+  //    Agrupado por estación+fecha+orden para no contar duplicados
   // ═══════════════════════════════════════════════════════════════
   const cargaEstRes = await query(
-    `SELECT cp.fecha_programada, cp.estacion_id,
-            cp.m2_asignados, cp.orden_produccion_id,
-            o.kilos, o.cantidad
+    `SELECT cp.fecha_programada, cp.estacion_id, cp.orden_produccion_id,
+            cp.m2_asignados, o.kilos, o.cantidad
      FROM cola_produccion_pasos cp
      JOIN produccion_ordenes o ON o.id = cp.orden_produccion_id
      WHERE cp.fecha_programada IS NOT NULL AND cp.estado != 'TERMINADO'`
   );
   const cargaEstMap = {};
+  const cargaEstOrdenes = {};
   for (const r of cargaEstRes.rows) {
     const fs = fmt(new Date(r.fecha_programada));
     const k = fs + '|' + r.estacion_id;
     const est = estMap[r.estacion_id];
     if (!est) continue;
+    const ordenKey = k + '|' + r.orden_produccion_id;
+    if (cargaEstOrdenes[ordenKey]) continue;
+    cargaEstOrdenes[ordenKey] = true;
     let consumo = 0;
     if (est.unidad === 'unidades') {
       consumo = Number(r.cantidad) || 0;
