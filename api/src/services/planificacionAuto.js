@@ -172,12 +172,27 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
   function calcUnitsForDay(grupo, kgPorUnidad, m2PorUnidad, estacionesIds) {
     const capGrupo = capMap[grupo] || 0;
-    let best = { units: 0, fecha: null, score: Infinity };
+    let best = { units: 0, fecha: null, score: -1 };
     for (let i = 0; i < dias; i++) {
       const d = new Date(inicioDate);
       d.setDate(d.getDate() + i);
       const fs = fmt(d);
       if (!esLaboral(fs)) continue;
+
+      let feasible = true;
+      for (const estId of (estacionesIds || [])) {
+        if (!cuelloIds.has(estId)) continue;
+        const capEst = cuellosMap[estId] || 0;
+        const usadosEst = cargaEstMap[fs + '|' + estId] || 0;
+        const estUnidad = estCapMap[estId]?.unidad || 'm2';
+        if (estUnidad === 'unidades') {
+          if (capEst - usadosEst < 1) { feasible = false; break; }
+        } else {
+          if (m2PorUnidad > 0 && capEst - usadosEst < m2PorUnidad) { feasible = false; break; }
+        }
+      }
+      if (!feasible) continue;
+
       let units = Infinity;
       if (kgPorUnidad > 0) {
         const usados = (cargaMap[fs] && cargaMap[fs][grupo]) || 0;
@@ -251,6 +266,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   // 11. Procesar pendientes
   const asignados = [];
   const noAsignados = [];
+  const splitLetters = {};
 
   for (let idx = 0; idx < pendRes.rows.length; idx++) {
     const o = pendRes.rows[idx];
@@ -305,12 +321,19 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
       const resto = cantidad - unitsAsignadas;
       const fechaEntrega = calcFechaEntrega(fit.fecha, estacionesIds, m2Asignados, unitsAsignadas);
 
+      const origPedido = o.pedido_sap_id || '';
+      if (!splitLetters[origPedido]) splitLetters[origPedido] = 0;
+      splitLetters[origPedido]++;
+      const letterA = String.fromCharCode(64 + splitLetters[origPedido]);
+      const letterB = String.fromCharCode(65 + splitLetters[origPedido]);
+
       await query(
         `UPDATE produccion_ordenes
          SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO',
-             cantidad = $3, kilos = $4, metros_cuadrados = $5
-         WHERE id = $6`,
-        [fit.fecha, fechaEntrega, unitsAsignadas, kgAsignados, m2Asignados, o.id]
+             cantidad = $3, kilos = $4, metros_cuadrados = $5,
+             pedido_sap_id = $6
+         WHERE id = $7`,
+        [fit.fecha, fechaEntrega, unitsAsignadas, kgAsignados, m2Asignados, origPedido + '-' + letterA, o.id]
       );
 
       const nuevaRes = await query(
@@ -323,7 +346,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'PENDIENTE',NULL,NOW())
         RETURNING id`,
         [
-          o.pedido_sap_id, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto,
+          origPedido + '-' + letterB, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto,
           o.familia_id, o.espesor_mm, o.tipo_venta, o.item_numero, o.nota, o.posicion,
           o.orden_compra, o.tipo_entrega, o.grupo, o.codigo_padre, o.bom_padre_id, o.es_compuesto,
           resto, kgPorUnidad * resto, m2PorUnidad * resto
