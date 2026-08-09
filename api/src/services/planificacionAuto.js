@@ -169,16 +169,6 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   }
 
   /**
-   * ¿Tiene capacidad la estación en un día?
-   */
-  function cabeEnEstacion(estId, fecha, consumoPedido) {
-    const est = estMap[estId];
-    if (!est || est.cap <= 0) return true;
-    const actual = cargaEstMap[fecha + '|' + estId] || 0;
-    return (actual + consumoPedido) <= est.cap + 0.001;
-  }
-
-  /**
    * Capacidad restante de una estación en un día
    */
   function capacidadRestante(estId, fecha) {
@@ -214,34 +204,10 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   }
 
   /**
-   * Saturación que alcanzaría el cuello de botella al asignar 'cantidad' unidades
-   * Returns { saturacion, estacionId, capacidad, unidad }
-   */
-  function saturacionCuello(route, fecha, cantidad, m2Total, kgTotal) {
-    let maxSat = 0;
-    let cuelloId = null;
-    let cuelloCap = 0;
-    let cuelloUnidad = '';
-    for (const estId of route) {
-      const est = estMap[estId];
-      if (!est || est.cap <= 0) continue;
-      const consumo = consumoEnEstacion(estId, cantidad, m2Total, kgTotal);
-      const actual = cargaEstMap[fecha + '|' + estId] || 0;
-      const sat = (actual + consumo) / est.cap;
-      if (sat > maxSat) {
-        maxSat = sat;
-        cuelloId = estId;
-        cuelloCap = est.cap;
-        cuelloUnidad = est.unidad;
-      }
-    }
-    return { saturacion: maxSat, estacionId: cuelloId, capacidad: cuelloCap, unidad: cuelloUnidad };
-  }
-
-  /**
    * Encontrar el mejor día para un pedido completo.
-   * Algoritmo TOC: prioriza el día donde el cuello de botella queda más lleno
-   * sin sobrepasar capacidad de NINGUNA estación.
+   * Algoritmo TOC: prioriza el día donde la estación MÁS VACÍA de la ruta
+   * queda más llena (llenado desde el cuello de botella más restrictivo).
+   * Si Ventana tiene 0% y Pulido tiene 80%, prioriza llenar Ventana primero.
    */
   function encontrarDiaOptimo(route, cantidad, m2, kg, grupo) {
     const capGrupo = capGrupoMap[grupo] || 0;
@@ -266,7 +232,6 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
       const maxUnits = maxUnidadesEnDia(route, fs, kgPorUnidad, m2PorUnidad);
       if (maxUnits < 1) continue;
 
-      // Units to assign (either full order or partial)
       const unitsToAssign = Math.min(cantidad, maxUnits);
       const kgAsignados = kgPorUnidad * unitsToAssign;
       const m2Asignados = m2PorUnidad * unitsToAssign;
@@ -277,15 +242,37 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         if (kgGrupoUsados + kgAsignados > capGrupo) continue;
       }
 
-      // Saturación del cuello de botella con estas unidades
-      const cuello = saturacionCuello(route, fs, unitsToAssign, m2Asignados, kgAsignados);
+      // BLOQUEO ESTRICTO: verificar que NINGUNA estación se pasa
+      let blocked = false;
+      for (const estId of route) {
+        const est = estMap[estId];
+        if (!est || est.cap <= 0) continue;
+        const actual = cargaEstMap[fs + '|' + estId] || 0;
+        const consumo = consumoEnEstacion(estId, unitsToAssign, m2Asignados, kgAsignados);
+        if ((actual + consumo) > est.cap + 0.001) { blocked = true; break; }
+      }
+      if (blocked) continue;
 
-      // BLOQUEO ESTRICTO: si alguna estación se pasa, NO es válido
-      if (cuello.saturacion > 1.0) continue;
+      // SCORING: priorizar la estación MÁS VACÍA (menor utilización)
+      // Esto确保 que Ventana (30 und) y Pintado Car (100 und) se llenen
+      // antes que Corte (400 m2) o Pulido (360 m2) que tienen capacidad de sobra
+      let minUtilizacion = Infinity;
+      let worstEstId = null;
+      for (const estId of route) {
+        const est = estMap[estId];
+        if (!est || est.cap <= 0) continue;
+        const actual = cargaEstMap[fs + '|' + estId] || 0;
+        const consumo = consumoEnEstacion(estId, unitsToAssign, m2Asignados, kgAsignados);
+        const utilization = (actual + consumo) / est.cap;
+        if (utilization < minUtilizacion) {
+          minUtilizacion = utilization;
+          worstEstId = estId;
+        }
+      }
 
-      // Priorizar el día donde el cuello queda más lleno (sin pasarse)
-      if (cuello.saturacion > best.score) {
-        best = { fecha: fs, score: cuello.saturacion, units: unitsToAssign };
+      // Priorizar el día donde la estación más vacía queda más llena
+      if (minUtilizacion > best.score) {
+        best = { fecha: fs, score: minUtilizacion, units: unitsToAssign };
       }
     }
     return best;
