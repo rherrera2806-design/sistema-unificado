@@ -27,6 +27,7 @@ App.registerModule('produccion', {
             + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestion de ordenes de produccion y planificacion</p></div>'
             + (puedeImportar ? '<div style="display:flex;gap:8px">'
             + '<button class="btn btn-primary" onclick="App.modules.produccion.showImportModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar SAP</button>'
+            + '<button class="btn btn-danger" style="background:#ef4444;border-color:#ef4444;color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" onclick="App.modules.produccion.reprogramarTodo()" title="Libera PROGRAMADO y re-asigna por prioridad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reprogramar Todo</button>'
             + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.produccion.eliminarTodas()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>'
             + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.produccion.showNewOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Orden</button>'
             + '</div>' : '')
@@ -143,6 +144,7 @@ App.registerModule('produccion', {
 
         await this.load();
         this.setupDragDrop();
+        document.addEventListener('click', () => { document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none'); });
     },
 
     async load() {
@@ -207,9 +209,16 @@ App.registerModule('produccion', {
             return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">PENDIENTE</span>';
         };
 
-        const tipoBadge = (t) => {
-            const styles = { 'Express': 'background:#fee2e2;color:#991b1b', 'Urgencia': 'background:#fecaca;color:#991b1b', 'Vta Region': 'background:#dbeafe;color:#1e40af' };
-            return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;${styles[t] || 'background:#f1f5f9;color:#64748b'}">${t || 'Normal'}</span>`;
+        const tipoBadge = (t, ordenId) => {
+            const styles = { 'Express': 'background:#fefce8;color:#854d0e;border:1px solid #eab308', 'Urgencia': 'background:#fff7ed;color:#9a3412;border:1px solid #f97316', 'Vta Region': 'background:#dbeafe;color:#1e40af;border:1px solid #3b82f6' };
+            const base = styles[t] || 'background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0';
+            return `<span class="tipo-venta-badge" data-orden-id="${ordenId}" style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;${base};cursor:pointer;position:relative;display:inline-block" onclick="event.stopPropagation();App.modules.produccion.togglePrioridadMenu(event, ${ordenId})" title="Click para cambiar prioridad">${t || 'Normal'} &#9662;</span>
+            <div class="prioridad-dropdown" id="prioDrop_${ordenId}" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:#1e293b;border:1px solid #475569;border-radius:8px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px">
+                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 1)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background=''"><span style="color:#64748b">&#9679;</span> 1 - Normal</div>
+                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 2)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background=''"><span style="color:#eab308">&#9889;</span> 2 - Express</div>
+                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 3)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background=''"><span style="color:#f97316">&#9889;</span> 3 - Urgencia</div>
+                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 4)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background=''"><span style="color:#ef4444">&#128293;</span> 4 - Reposicion</div>
+            </div>`;
         };
 
         const prioridadBadge = (nivel) => {
@@ -239,7 +248,7 @@ App.registerModule('produccion', {
                 + '<td style="padding:10px 12px;color:#475569">' + (o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-') + '</td>'
                 + '<td style="padding:10px 12px;font-weight:600;color:#0f172a">' + (o.kilos ? Number(o.kilos).toFixed(1) : '-') + '</td>'
                 + '<td style="padding:10px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(' + o.id + ', ' + (o.cantidad || 1) + ')"><strong style="color:#3b82f6">' + (o.cantidad || 1) + '</strong></td>'
-                + '<td style="padding:10px 12px">' + tipoBadge(o.tipo_venta) + '</td>'
+                + '<td style="padding:10px 12px">' + tipoBadge(o.tipo_venta, o.id) + '</td>'
                 + '<td style="padding:10px 12px">' + prioridadBadge(o.nivel_prioridad, o.id) + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_entrega_pactada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
@@ -564,27 +573,47 @@ App.registerModule('produccion', {
         } catch(e) { alert('Error: ' + e.message); }
     },
 
-    async cambiarPrioridad(id, nivelActual) {
-        const opciones = [
-            { v: 1, l: '1 - Normal', d: 'Produccion estandar' },
-            { v: 2, l: '2 - Express', d: 'Cobro adicional por rapidez' },
-            { v: 3, l: '3 - Urgencia', d: 'Atrasos internos, VIP, excepciones' },
-            { v: 4, l: '4 - Reposicion', d: 'Roturas/Mermas, prioridad maxima' }
-        ];
-        const choices = opciones.map(o => `${o.v}) ${o.l} — ${o.d}`).join('\n');
-        const sel = prompt(`Cambiar prioridad (actual: ${nivelActual || 1}):\n\n${choices}\n\nIngresa el numero (1-4):`, nivelActual || 1);
-        if (sel === null) return;
-        const nuevo = Number(sel);
-        if (![1, 2, 3, 4].includes(nuevo)) { alert('Valor no valido. Usa 1, 2, 3 o 4.'); return; }
+    async cambiarPrioridad(id, nuevoNivel) {
+        document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
+        if (![1, 2, 3, 4].includes(nuevoNivel)) return;
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch(`/api/produccion/ordenes/${id}/prioridad`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ nivel_prioridad: nuevo })
+                body: JSON.stringify({ nivel_prioridad: nuevoNivel })
             });
             if (res.ok) { App.toast('Prioridad actualizada'); await this.load(); }
             else { const d = await res.json(); alert(d.error || 'Error'); }
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    togglePrioridadMenu(e, id) {
+        e.stopPropagation();
+        const menu = document.getElementById('prioDrop_' + id);
+        if (!menu) return;
+        const wasVisible = menu.style.display === 'block';
+        document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
+        if (!wasVisible) menu.style.display = 'block';
+    },
+
+    async reprogramarTodo() {
+        if (!confirm('REPROGRAMAR TODO:\n\nSe liberaran TODAS las ordenes PROGRAMADO (se devuelven a PENDIENTE) y se re-asignaran automaticamente por prioridad (Reposicion > Urgencia > Express > Normal).\n\nLas ordenes EN PROCESO, MERMADAS y TERMINADAS NO seran tocadas.\n\nContinuar?')) return;
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            App.toast('Reprogramando... espere', 'info');
+            const res = await fetch('/api/produccion/reprogramar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ dias: 21, inicio: new Date().toISOString().split('T')[0] })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                const lib = data.ordenes_liberadas || 0;
+                const asig = Array.isArray(data.asignados) ? data.asignados.length : 0;
+                App.toast(`Reprogramado: ${lib} liberadas, ${asig} re-asignadas`);
+                await this.load();
+            } else { alert(data.error || 'Error al reprogramar'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
 

@@ -34,7 +34,7 @@ async function getColaPorEstacion(estacionId) {
         SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados, p.fecha_programada,
                o.id as orden_id, o.pedido_sap_id, o.cliente, o.codigo_producto, o.descripcion,
                o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
-               o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones,
+               o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
                f.nombre_familia,
                nes.nombre_estacion as proxima_estacion
         FROM cola_produccion_pasos p
@@ -46,6 +46,7 @@ async function getColaPorEstacion(estacionId) {
         WHERE p.estacion_id = $1 AND p.estado IN ('PENDIENTE', 'EN_PROCESO')
         ORDER BY
             CASE WHEN p.estado = 'EN_PROCESO' THEN 0 ELSE 1 END,
+            COALESCE(o.nivel_prioridad, 1) DESC,
             p.fecha_programada ASC NULLS LAST,
             p.orden_secuencia ASC, o.id ASC
     `, [estacionId]);
@@ -107,8 +108,8 @@ async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail
     const mermaId = mermaResult.rows[0].id;
 
     const nuevaOrdenResult = await query(
-        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, cantidad, familia_id, espesor_mm, kilos, estado_programacion, es_reposicion, merma_original_id, pintado, perforaciones, tipo_venta, nota, posicion, orden_compra, tipo_entrega, grupo, item_numero, codigo_padre, mecanizado_operaciones)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
+        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, cantidad, familia_id, espesor_mm, kilos, estado_programacion, es_reposicion, merma_original_id, pintado, perforaciones, tipo_venta, nota, posicion, orden_compra, tipo_entrega, grupo, item_numero, codigo_padre, mecanizado_operaciones, nivel_prioridad)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,4) RETURNING id`,
         [p.pedido_sap_id, p.cliente, p.codigo_producto, '[REPOSICION] ' + (p.descripcion || ''), p.ancho, p.alto, m2Mermados, cantidadMermada, p.familia_id, p.espesor_mm, kilosMermados, mermaId, p.pintado, p.perforaciones, p.tipo_venta, (p.nota || '') + ' | Merma: ' + causa + (observacion ? ' - ' + observacion : ''), p.posicion, p.orden_compra, p.tipo_entrega, p.grupo, p.item_numero, p.codigo_padre, p.mecanizado_operaciones]
     );
     const nuevaOrdenId = nuevaOrdenResult.rows[0].id;

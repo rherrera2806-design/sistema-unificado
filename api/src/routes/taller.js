@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const taller = require('../services/taller');
+const { autoAsignarPendientes } = require('../services/planificacionAuto');
 
 router.get('/api/taller/estaciones', async (req, res, next) => {
     try { res.json(await taller.getEstacionesConCarga()); }
@@ -37,7 +38,14 @@ router.post('/api/taller/merma', async (req, res, next) => {
         const msg = result.cantidadRestante > 0
             ? `Merma registrada. Reposicion #${result.nuevaOrdenId} por ${cantidadMermada} unidades.`
             : `Merma total. Reposicion #${result.nuevaOrdenId} creada.`;
-        res.json({ ok: true, ...result, mensaje: msg });
+
+        let autoAsignados = 0;
+        try {
+            const autoResult = await autoAsignarPendientes({ dias: 21, inicio: new Date().toISOString().split('T')[0] });
+            autoAsignados = Array.isArray(autoResult.asignados) ? autoResult.asignados.length : 0;
+        } catch (autoErr) { console.error('[TALLER] Auto-asignar post-merma error:', autoErr.message); }
+
+        res.json({ ok: true, ...result, mensaje: msg + (autoAsignados > 0 ? ` Auto-asignada: ${autoAsignados} orden(es).` : '') });
     } catch (e) { next(e); }
 });
 
