@@ -255,22 +255,27 @@ App.modules.planificacion = {
             });
             const data = await res.json();
             if (res.ok) {
-                let html = `<div style="background:#dcfce7;border-radius:8px;padding:12px;font-size:13px">
-                    <div><strong><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg> Asignadas: ${data.asignados}</strong></div>`;
-                if (data.detalle && data.detalle.noAsignados && data.detalle.noAsignados.length > 0) {
-                    html += `<div style="margin-top:8px;color:#991b1b;font-weight:600">Sin capacidad (${data.detalle.noAsignados.length}):</div>`;
-                    html += data.detalle.noAsignados.map(n => 
+                const numAsignados = Array.isArray(data.asignados) ? data.asignados.length : 0;
+                const numNoAsignados = Array.isArray(data.noAsignados) ? data.noAsignados.length : 0;
+                const esExito = numAsignados > 0;
+                let html = `<div style="background:${esExito ? '#dcfce7' : '#fef2f2'};border-radius:8px;padding:12px;font-size:13px">
+                    <div><strong>${esExito ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'} Asignadas: ${numAsignados}</strong></div>`;
+                if (numNoAsignados > 0) {
+                    html += `<div style="margin-top:8px;color:#991b1b;font-weight:600">Sin capacidad (${numNoAsignados}):</div>`;
+                    const muestra = data.noAsignados.slice(0, 20);
+                    html += muestra.map(n => 
                         `<div style="margin-top:4px;padding:6px 8px;background:#fef2f2;border-radius:6px;border-left:3px solid #ef4444">
-                            <div><strong>${escapeHtml(n.pedido || n.id)}</strong> — ${escapeHtml(n.motivo)}</div>
+                            <div><strong>${escapeHtml(n.pedido || n.id || n.orden_id)}</strong> — ${escapeHtml(n.motivo)}</div>
                             <div style="font-size:11px;color:#6b7280">Grupo: ${escapeHtml(n.grupo || '?')} | ${Number(n.m2_total || 0).toFixed(1)} m² | ${Number(n.kg_total || 0).toFixed(0)} kg</div>
                         </div>`
                     ).join('');
-                } else if (data.no_asignados > 0) {
-                    html += `<div style="margin-top:4px;color:#166534">Sin capacidad: ${data.no_asignados}</div>`;
+                    if (numNoAsignados > 20) html += `<div style="margin-top:4px;font-size:11px;color:#6b7280">... y ${numNoAsignados - 20} más</div>`;
                 }
                 html += '</div>';
                 resEl.innerHTML = html;
-                setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); await this.cargarEstaciones(); }, 1500);
+                if (esExito) {
+                    setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); await this.cargarEstaciones(); }, 1500);
+                }
             } else {
                 resEl.innerHTML = `<div style="color:#ef4444">${data.error || 'Error'}</div>`;
             }
