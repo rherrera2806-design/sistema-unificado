@@ -36,16 +36,34 @@ async function getColaPorEstacion(estacionId) {
                o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
                o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
                f.nombre_familia,
-               nes.nombre_estacion as proxima_estacion
+               nes.nombre_estacion as proxima_estacion,
+               CASE WHEN p.orden_secuencia = 1 THEN TRUE
+                    ELSE EXISTS(
+                        SELECT 1 FROM cola_produccion_pasos prev
+                        WHERE prev.orden_produccion_id = o.id
+                          AND prev.orden_secuencia = p.orden_secuencia - 1
+                          AND prev.estado = 'TERMINADO'
+                    )
+               END as paso_anterior_terminado,
+               prev_est.nombre_estacion as estacion_anterior_nombre
         FROM cola_produccion_pasos p
         JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
         LEFT JOIN familias_producto f ON o.familia_id = f.id
         LEFT JOIN cola_produccion_pasos nes_paso ON nes_paso.orden_produccion_id = o.id
             AND nes_paso.orden_secuencia = p.orden_secuencia + 1
         LEFT JOIN estaciones_maestras nes ON nes_paso.estacion_id = nes.id
+        LEFT JOIN cola_produccion_pasos prev_paso ON prev_paso.orden_produccion_id = o.id
+            AND prev_paso.orden_secuencia = p.orden_secuencia - 1
+        LEFT JOIN estaciones_maestras prev_est ON prev_paso.estacion_id = prev_est.id
         WHERE p.estacion_id = $1 AND p.estado IN ('PENDIENTE', 'EN_PROCESO')
         ORDER BY
             CASE WHEN p.estado = 'EN_PROCESO' THEN 0 ELSE 1 END,
+            CASE WHEN p.estado = 'PENDIENTE' AND NOT EXISTS(
+                SELECT 1 FROM cola_produccion_pasos prev
+                WHERE prev.orden_produccion_id = o.id
+                  AND prev.orden_secuencia = p.orden_secuencia - 1
+                  AND prev.estado = 'TERMINADO'
+            ) AND p.orden_secuencia > 1 THEN 1 ELSE 0 END,
             COALESCE(o.nivel_prioridad, 1) DESC,
             p.fecha_programada ASC NULLS LAST,
             p.orden_secuencia ASC, o.id ASC
@@ -70,12 +88,20 @@ async function finalizarPaso(pasoId) {
         [pasoId]
     );
 
-    const siguiente = await query(
-        `SELECT id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND orden_secuencia = $2 AND estado = 'PENDIENTE' LIMIT 1`,
-        [p.orden_produccion_id, p.orden_secuencia + 1]
-    );
+    const siguiente = await query(`
+        SELECT cp.id, cp.estacion_id, em.nombre_estacion
+        FROM cola_produccion_pasos cp
+        JOIN estaciones_maestras em ON cp.estacion_id = em.id
+        WHERE cp.orden_produccion_id = $1 AND cp.orden_secuencia = $2 AND cp.estado = 'PENDIENTE'
+        LIMIT 1
+    `, [p.orden_produccion_id, p.orden_secuencia + 1]);
 
-    return { siguienteHabilitado: siguiente.rows.length > 0, siguientePasoId: siguiente.rows[0]?.id || null };
+    return {
+        siguienteHabilitado: siguiente.rows.length > 0,
+        siguientePasoId: siguiente.rows[0]?.id || null,
+        siguienteEstacionId: siguiente.rows[0]?.estacion_id || null,
+        siguienteEstacionNombre: siguiente.rows[0]?.nombre_estacion || null
+    };
 }
 
 async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail }) {
