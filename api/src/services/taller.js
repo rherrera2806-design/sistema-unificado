@@ -2,7 +2,7 @@ const { query } = require('../config/database');
 
 async function getEstacionesConCarga() {
     const result = await query(`
-        SELECT e.id, e.nombre_estacion, e.orden_secuencia_defecto, e.capacidad_max_m2_dia,
+        SELECT e.id, e.nombre_estacion, e.orden_secuencia_defecto, e.cap_max,
                COALESCE(t.pendientes, 0) as pendientes,
                COALESCE(t.en_proceso, 0) as en_proceso,
                COALESCE(t.total_kilos, 0) as total_kilos,

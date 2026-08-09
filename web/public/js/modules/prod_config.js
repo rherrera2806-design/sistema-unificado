@@ -96,13 +96,12 @@ App.registerModule('prod_config', {
                 </div>
                 <div class="card-body" style="padding:0">
                     <table><thead><tr><th>Orden</th><th>Nombre</th><th>Cap. Max</th><th>Cuello Botella</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody>${this._estaciones.map(e => {
-                        const unit = e.unidad_capacidad === 'unidades' ? 'und' : 'm²';
+                    <tbody>                    ${this._estaciones.map(e => {
                         return `<tr>
                         <td><strong style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px">${e.orden_secuencia_defecto}</strong></td>
                         <td>${escapeHtml(e.nombre_estacion)}</td>
-                        <td><strong>${Number(e.capacidad_max_m2_dia || 100).toFixed(0)}</strong> ${unit}</td>
-                        <td>${e.es_cuello_botella ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#fee2e2;color:#991b1b">Cuello de Botella</span>' : '<span style="color:var(--text-light);font-size:11px">No</span>'}</td>
+                        <td><strong>${Number(e.cap_max || 100).toFixed(0)}</strong> m²</td>
+                        <td>${e.cuello_botella ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#fee2e2;color:#991b1b">Cuello de Botella</span>' : '<span style="color:var(--text-light);font-size:11px">No</span>'}</td>
                         <td>${e.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
                         <td class="table-actions">
                             <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showEstacionForm(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -119,8 +118,8 @@ App.registerModule('prod_config', {
         App.showModal(`
             <div class="form-group"><label>Nombre de Estacion *</label><input class="form-control" id="estNombre" value="${est ? est.nombre_estacion : ''}" placeholder="Ej: Corte, Pulido, Templado..." onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             <div class="form-group"><label>Orden de Secuencia *</label><input type="number" class="form-control" id="estOrden" value="${est ? est.orden_secuencia_defecto : (this._estaciones.length + 1)}" min="1" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-            <div class="form-group"><label>Capacidad Maxima *</label><div style="display:flex;gap:8px"><input type="number" class="form-control" id="estCapacidad" value="${est ? (est.capacidad_max_m2_dia || 100) : 100}" min="1" step="0.01" style="flex:1" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"><select class="form-control" id="estUnidad" style="width:120px"><option value="m2" ${est && est.unidad_capacidad === 'm2' ? 'selected' : ''}>m²/día</option><option value="unidades" ${est && est.unidad_capacidad === 'unidades' ? 'selected' : ''}>und/día</option></select></div></div>
-            <div class="form-group"><label><input type="checkbox" id="estCuelloBotella" ${est && est.es_cuello_botella ? 'checked' : ''}> Es Cuello de Botella (limita capacidad diaria)</label></div>
+            <div class="form-group"><label>Capacidad Maxima (m²/día) *</label><input type="number" class="form-control" id="estCapacidad" value="${est ? (est.cap_max || 100) : 100}" min="1" step="0.01" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+            <div class="form-group"><label><input type="checkbox" id="estCuelloBotella" ${est && est.cuello_botella ? 'checked' : ''}> Es Cuello de Botella (limita capacidad diaria)</label></div>
             <div class="form-group"><label><input type="checkbox" id="estActiva" ${!est || est.activa ? 'checked' : ''}> Activa</label></div>
         `, { title: est ? 'Editar Estacion' : 'Nueva Estacion' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
@@ -132,9 +131,8 @@ App.registerModule('prod_config', {
         const data = {
             nombre_estacion: document.getElementById('estNombre').value.trim(),
             orden_secuencia_defecto: parseInt(document.getElementById('estOrden').value),
-            capacidad_max_m2_dia: parseFloat(document.getElementById('estCapacidad').value) || 100,
-            unidad_capacidad: document.getElementById('estUnidad').value,
-            es_cuello_botella: document.getElementById('estCuelloBotella').checked,
+            cap_max: parseFloat(document.getElementById('estCapacidad').value) || 100,
+            cuello_botella: document.getElementById('estCuelloBotella').checked,
             activa: document.getElementById('estActiva').checked
         };
         if (!data.nombre_estacion || !data.orden_secuencia_defecto) { App.showAlert('Nombre y orden requeridos', 'danger'); return; }

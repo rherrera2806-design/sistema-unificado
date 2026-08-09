@@ -2,7 +2,7 @@ const { query } = require('../config/database');
 const { getCalendarioMap, esLaboral } = require('./planificacionCalendario');
 
 const getCargaSemanal = async (inicio, fin) => {
-    const estRes = await query('SELECT id, nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia FROM estaciones_maestras WHERE activa = TRUE ORDER BY orden_secuencia_defecto');
+    const estRes = await query('SELECT id, nombre_estacion, orden_secuencia_defecto, cap_max FROM estaciones_maestras WHERE activa = TRUE ORDER BY orden_secuencia_defecto');
     const estaciones = estRes.rows || [];
 
     const cargaMap = {};
@@ -25,7 +25,7 @@ const getCargaSemanal = async (inicio, fin) => {
         for (let i = 0; i < 14; i++) {
             const dt = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]) + i);
             const fs = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
-            const cap = Number(e.capacidad_max_m2_dia) || 100;
+            const cap = Number(e.cap_max) || 100;
             const datos = cargaMap[e.id + '|' + fs] || { m2: 0, ordenes: 0 };
             const laboral = esLaboral(calendarioMap, fs);
             const cal = calendarioMap[fs];
@@ -39,7 +39,7 @@ const getCargaSemanal = async (inicio, fin) => {
                 motivo: cal ? cal.motivo : ''
             });
         }
-        return { estacion_id: e.id, nombre: e.nombre_estacion, orden: e.orden_secuencia_defecto, capacidad_dia: Number(e.capacidad_max_m2_dia) || 100, dias };
+        return { estacion_id: e.id, nombre: e.nombre_estacion, orden: e.orden_secuencia_defecto, capacidad_dia: Number(e.cap_max) || 100, dias };
     });
 };
 
@@ -106,7 +106,7 @@ const getCargaPorGrupo = async (inicio, fin) => {
 
 const getCargaEstaciones = async (inicio, fin) => {
     const estRes = await query(`
-        SELECT id, nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia, es_cuello_botella
+        SELECT id, nombre_estacion, orden_secuencia_defecto, cap_max, cuello_botella
         FROM estaciones_maestras WHERE activa = TRUE
         ORDER BY orden_secuencia_defecto
     `);
@@ -126,8 +126,8 @@ const getCargaEstaciones = async (inicio, fin) => {
         id: e.id,
         nombre: e.nombre_estacion,
         orden: e.orden_secuencia_defecto,
-        capacidad_m2_dia: Number(e.capacidad_max_m2_dia) || 100,
-        es_cuello_botella: e.es_cuello_botella
+        capacidad_m2_dia: Number(e.cap_max) || 100,
+        cuello_botella: e.cuello_botella
     }));
 
     const carga = {};

@@ -847,7 +847,7 @@ App.modules.planificacion = {
 
         estaciones.forEach(est => {
             html += '<tr class="plan-row" style="border-bottom:1px solid var(--border)">';
-            html += `<td style="padding:8px;font-weight:600;white-space:nowrap">${est.nombre}${est.es_cuello_botella ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#fef2f2;color:#ef4444">CB</span>' : ''}</td>`;
+            html += `<td style="padding:8px;font-weight:600;white-space:nowrap">${est.nombre}${est.cuello_botella ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#fef2f2;color:#ef4444">CB</span>' : ''}</td>`;
             html += `<td style="padding:6px 2px 6px 0;text-align:left;font-size:11px;color:var(--text-light)">${est.capacidad_m2_dia}</td>`;
 
             dias.forEach(f => {

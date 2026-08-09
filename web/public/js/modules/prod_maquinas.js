@@ -105,7 +105,7 @@ ${puedeEditar ? `
         const total = this.maquinas.length;
         const activas = this.maquinas.filter(m => m.estado === 'ACTIVA').length;
         const mantencion = this.maquinas.filter(m => m.estado === 'MANTENCION').length;
-        const capacidad = this.maquinas.filter(m => m.estado === 'ACTIVA').reduce((s, m) => s + Number(m.capacidad_max_m2_dia || 0), 0);
+        const capacidad = this.maquinas.filter(m => m.estado === 'ACTIVA').reduce((s, m) => s + Number(m.cap_max || 0), 0);
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('mqTotal', total);
         set('mqActivas', activas);
@@ -129,7 +129,7 @@ ${puedeEditar ? `
             <td style="${td}">${m.tipo_proceso || '-'}</td>
             <td style="${td}">${m.num_operacion || '-'}</td>
             <td style="${td}">${estadoBadge(m.estado)}</td>
-            <td style="${td}"><strong>${Number(m.capacidad_max_m2_dia).toFixed(1)}</strong></td>
+            <td style="${td}"><strong>${Number(m.cap_max).toFixed(1)}</strong></td>
             <td style="${td}">
                 ${puedeEditar ? `<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_maquinas.edit(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                 <button class="btn btn-sm btn-danger" title="Eliminar" style="margin-left:4px" onclick="App.modules.prod_maquinas.delete(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
@@ -160,7 +160,7 @@ ${puedeEditar ? `
         document.getElementById('mqCodigo').value = m.codigo;
         document.getElementById('mqTipoProceso').value = m.tipo_proceso || '';
         document.getElementById('mqNumOp').value = m.num_operacion || '';
-        document.getElementById('mqCapacidadInput').value = m.capacidad_max_m2_dia;
+        document.getElementById('mqCapacidadInput').value = m.cap_max;
         document.getElementById('mqEstado').value = m.estado;
         document.getElementById('mqCreateModal').classList.add('show');
     },
@@ -178,7 +178,7 @@ ${puedeEditar ? `
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
-            const data = { nombre, codigo, capacidad_max_m2_dia: capacidad, estado, tipo_proceso, num_operacion };
+            const data = { nombre, codigo, cap_max: capacidad, estado, tipo_proceso, num_operacion };
             if (this.editingId) {
                 await fetch(`/api/produccion/maquinas/${this.editingId}`, { method: 'PUT', headers, body: JSON.stringify(data) });
             } else {
@@ -212,7 +212,7 @@ ${puedeEditar ? `
                 <div class="modal" style="max-width:550px">
                     <div class="modal-header"><h3>Importar Maquinas desde Excel</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_maquinas.hideImportModal()">&times;</button></div>
                     <div class="modal-body">
-                        <p style="color:var(--text-light);font-size:13px;margin-bottom:12px">El archivo debe tener columnas: <strong>Codigo, Nombre, Tipo_proceso, n_operacion, capacidad_max_m2_dia, Estado</strong></p>
+                        <p style="color:var(--text-light);font-size:13px;margin-bottom:12px">El archivo debe tener columnas: <strong>Codigo, Nombre, Tipo_proceso, n_operacion, cap_max, Estado</strong></p>
                         <p style="color:var(--text-light);font-size:12px;margin-bottom:16px">Los codigos duplicados seran omitidos. Estado puede ser: ACTIVA, INACTIVA, MANTENCION</p>
                         <input type="file" id="mqImportFile" accept=".xlsx,.xls,.csv" style="margin-bottom:12px" onchange="App.modules.prod_maquinas.previewImport(event)">
                         <div id="mqImportPreview" style="max-height:250px;overflow-y:auto"></div>
@@ -253,13 +253,13 @@ ${puedeEditar ? `
                     nombre: (r.Nombre || r.nombre || r.NOMBRE || '').toString().trim(),
                     tipo_proceso: (r.Tipo_proceso || r.tipo_proceso || r['Tipo proceso'] || '').toString().trim(),
                     num_operacion: Number(r.n_operacion || r.num_operacion || r['nº operación'] || r['n° operacion'] || 0) || null,
-                    capacidad_max_m2_dia: Number(r.capacidad_max_m2_dia || r.capacidad || r.Capacidad || 0),
+                    cap_max: Number(r.cap_max || r.capacidad_max_m2_dia || r.capacidad || r.Capacidad || 0),
                     estado: (r.Estado || r.estado || r.ESTADO || 'ACTIVA').toString().trim().toUpperCase()
                 })).filter(m => m.codigo && m.nombre);
                 const preview = document.getElementById('mqImportPreview');
                 preview.innerHTML = `<div style="margin-bottom:8px;font-size:13px"><strong>${this._importData.length}</strong> maquinas encontradas</div>
                     <table style="width:100%;font-size:12px"><thead><tr><th>Codigo</th><th>Nombre</th><th>Tipo Proceso</th><th>N° Op</th><th>Capacidad</th><th>Estado</th></tr></thead><tbody>
-                    ${this._importData.slice(0, 20).map(m => `<tr><td>${m.codigo}</td><td>${m.nombre}</td><td>${m.tipo_proceso}</td><td>${m.num_operacion || '-'}</td><td>${m.capacidad_max_m2_dia}</td><td>${m.estado}</td></tr>`).join('')}
+                    ${this._importData.slice(0, 20).map(m => `<tr><td>${m.codigo}</td><td>${m.nombre}</td><td>${m.tipo_proceso}</td><td>${m.num_operacion || '-'}</td><td>${m.cap_max}</td><td>${m.estado}</td></tr>`).join('')}
                     ${this._importData.length > 20 ? `<tr><td colspan="6" style="text-align:center;color:var(--text-light)">... y ${this._importData.length - 20} mas</td></tr>` : ''}
                     </tbody></table>`;
                 document.getElementById('mqImportBtn').disabled = this._importData.length === 0;

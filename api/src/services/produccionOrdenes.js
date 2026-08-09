@@ -19,7 +19,7 @@ const getOrdenes = async () => {
             (SELECT f.nombre_familia FROM familias_producto f WHERE f.id = o.familia_id) as familia_nombre,
             (SELECT em.nombre_estacion FROM cola_produccion_pasos cp
              JOIN estaciones_maestras em ON cp.estacion_id = em.id
-             WHERE cp.orden_produccion_id = o.id AND em.es_cuello_botella = TRUE
+             WHERE cp.orden_produccion_id = o.id AND em.cuello_botella = TRUE
              AND (
                  SELECT COUNT(*) FROM produccion_ordenes o2
                  WHERE o2.id != o.id
@@ -28,7 +28,7 @@ const getOrdenes = async () => {
                    AND o2.item_numero = o.item_numero
                    AND o2.fecha_programada IS NOT NULL
              ) > 0
-             ORDER BY em.capacidad_max_m2_dia ASC LIMIT 1) as cuello_botella,
+             ORDER BY em.cap_max ASC LIMIT 1) as cuello_botella,
             ARRAY(
                 SELECT em.nombre_estacion FROM cola_produccion_pasos cp
                 JOIN estaciones_maestras em ON cp.estacion_id = em.id

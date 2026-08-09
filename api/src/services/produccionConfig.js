@@ -206,18 +206,18 @@ const getEstaciones = async () => {
     return result.rows;
 };
 
-const crearEstacion = async ({ nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia, unidad_capacidad, es_cuello_botella }) => {
+const crearEstacion = async ({ nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella }) => {
     const result = await query(
-        'INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia, unidad_capacidad, es_cuello_botella) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [nombre_estacion.trim(), orden_secuencia_defecto, activa !== false, capacidad_max_m2_dia || 100, unidad_capacidad || 'm2', es_cuello_botella || false]
+        'INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [nombre_estacion.trim(), orden_secuencia_defecto, activa !== false, cap_max || 100, cuello_botella || false]
     );
     return result.rows[0];
 };
 
-const editarEstacion = async (id, { nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia, unidad_capacidad, es_cuello_botella }) => {
+const editarEstacion = async (id, { nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella }) => {
     const result = await query(
-        'UPDATE estaciones_maestras SET nombre_estacion=$1, orden_secuencia_defecto=$2, activa=$3, capacidad_max_m2_dia=$4, unidad_capacidad=$5, es_cuello_botella=$6 WHERE id=$7 RETURNING *',
-        [nombre_estacion, orden_secuencia_defecto, activa, capacidad_max_m2_dia || 100, unidad_capacidad || 'm2', es_cuello_botella || false, id]
+        'UPDATE estaciones_maestras SET nombre_estacion=$1, orden_secuencia_defecto=$2, activa=$3, cap_max=$4, cuello_botella=$5 WHERE id=$6 RETURNING *',
+        [nombre_estacion, orden_secuencia_defecto, activa, cap_max || 100, cuello_botella || false, id]
     );
     return result.rows[0];
 };

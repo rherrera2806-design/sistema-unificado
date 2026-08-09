@@ -56,8 +56,8 @@ const programarOrden = async (orden_id, fecha_entrega_propuesta) => {
     const capEstaciones = {};
     for (const paso of pasos) {
         if (paso.estacion_id && !capEstaciones[paso.estacion_id]) {
-            const capRes = await query('SELECT capacidad_max_m2_dia FROM estaciones_maestras WHERE id = $1', [paso.estacion_id]);
-            capEstaciones[paso.estacion_id] = Number(capRes.rows[0]?.capacidad_max_m2_dia) || 100;
+            const capRes = await query('SELECT cap_max FROM estaciones_maestras WHERE id = $1', [paso.estacion_id]);
+            capEstaciones[paso.estacion_id] = Number(capRes.rows[0]?.cap_max) || 100;
         }
     }
 

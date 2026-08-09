@@ -1,63 +1,51 @@
 const { query } = require('../config/database');
 
 /**
- * AUTO-ASIGNAR PENDIENTES — TOC + Cascada Secuencial
+ * AUTO-ASIGNAR PENDIENTES — Drum-Buffer-Rope (DBR)
  *
- * 1. NORMALIZACIÓN: cada pedido → kg, m2, unidades
- * 2. CUELLO DE BOTELLA: la estación más restrictiva de la ruta define el día ancla
- * 3. CASCADA: estaciones posteriores buscan capacidad DESPUÉS del cuello,
- *             estaciones previas buscan capacidad ANTES del cuello
- * 4. BLOQUEO ESTRICTO: NUNCA se sobrepasa capacidad de ninguna estación
- * 5. DÍAS HÁBILES: se saltan fines de semana
+ * REGLA 1: PISO DE FECHA — Ninguna estación antes de fecha_inicio
+ * REGLA 2: BLOQUEO DURO — cap_max es límite absoluto, cero tolerancia
+ * REGLA 3: DRUM — El cuello de botella marca el ritmo (agenda primero)
+ * REGLA 4: ROPE — Estaciones previas amarradas al día del cuello
  */
 async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
-  const inicioDate = inicio ? new Date(inicio + 'T00:00:00') : new Date();
-  inicioDate.setHours(0, 0, 0, 0);
+  const fechaMinima = inicio || new Date().toISOString().split('T')[0];
 
   // ═══════════════════════════════════════════════════════════════
-  // 1. TODAS LAS ESTACIONES
+  // 1. CARGAR ESTACIONES (cap_max en m2, cuello_botella flag)
   // ═══════════════════════════════════════════════════════════════
   const allEstRes = await query(`
-    SELECT id, nombre_estacion, capacidad_max_m2_dia, unidad_capacidad,
-           orden_secuencia_defecto, es_cuello_botella
+    SELECT id, nombre_estacion, cap_max, cuello_botella, orden_secuencia_defecto
     FROM estaciones_maestras WHERE activa = TRUE
     ORDER BY orden_secuencia_defecto
   `);
   const estMap = {};
   for (const e of allEstRes.rows) {
     estMap[e.id] = {
-      cap: Number(e.capacidad_max_m2_dia) || 0,
-      unidad: e.unidad_capacidad || 'm2',
+      cap: Number(e.cap_max) || 0,
       nombre: e.nombre_estacion,
       orden: e.orden_secuencia_defecto,
-      esCuello: !!e.es_cuello_botella
+      esCuello: !!e.cuello_botella
     };
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // 2. CARGA ACTUAL POR ESTACIÓN POR DÍA (con dedup por orden)
+  // 2. CARGA ACTUAL POR ESTACIÓN POR DÍA (dedup por orden)
   // ═══════════════════════════════════════════════════════════════
-  const cargaEstRes = await query(
-    `SELECT cp.fecha_programada, cp.estacion_id, cp.orden_produccion_id,
-            cp.m2_asignados, o.kilos, o.cantidad
+  const cargaRes = await query(
+    `SELECT cp.fecha_programada, cp.estacion_id, cp.orden_produccion_id, cp.m2_asignados
      FROM cola_produccion_pasos cp
-     JOIN produccion_ordenes o ON o.id = cp.orden_produccion_id
      WHERE cp.fecha_programada IS NOT NULL AND cp.estado != 'TERMINADO'`
   );
-  const cargaEstMap = {};
-  for (const r of cargaEstRes.rows) {
+  const cargaMap = {};
+  const cargaDedup = {};
+  for (const r of cargaRes.rows) {
     const fs = fmt(new Date(r.fecha_programada));
-    const k = fs + '|' + r.estacion_id + '|' + r.orden_produccion_id;
-    if (cargaEstMap[k]) continue;
-    const est = estMap[r.estacion_id];
-    if (!est) continue;
-    let consumo = 0;
-    if (est.unidad === 'unidades') consumo = Number(r.cantidad) || 0;
-    else if (est.unidad === 'kg') consumo = Number(r.kilos) || 0;
-    else consumo = Number(r.m2_asignados) || 0;
-    const stationKey = fs + '|' + r.estacion_id;
-    cargaEstMap[stationKey] = (cargaEstMap[stationKey] || 0) + consumo;
-    cargaEstMap[k] = true;
+    const dk = fs + '|' + r.estacion_id + '|' + r.orden_produccion_id;
+    if (cargaDedup[dk]) continue;
+    cargaDedup[dk] = true;
+    const sk = fs + '|' + r.estacion_id;
+    cargaMap[sk] = (cargaMap[sk] || 0) + (Number(r.m2_asignados) || 0);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -86,7 +74,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     WHERE (kilos IS NULL OR kilos = 0) AND metros_cuadrados > 0`);
 
   // ═══════════════════════════════════════════════════════════════
-  // 4. CAPACIDAD POR GRUPO Y CARGA ACTUAL
+  // 4. CAPACIDAD POR GRUPO
   // ═══════════════════════════════════════════════════════════════
   const capRes = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE');
   const capGrupoMap = {};
@@ -146,12 +134,6 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     return d.getDay() !== 0 && d.getDay() !== 6;
   }
 
-  function sumarDias(fStr, n) {
-    const d = new Date(fStr + 'T00:00:00');
-    d.setDate(d.getDate() + n);
-    return fmt(d);
-  }
-
   function siguienteDiaHabil(fechaStr) {
     let d = new Date(fechaStr + 'T00:00:00');
     do { d.setDate(d.getDate() + 1); } while (!esLaboral(fmt(d)));
@@ -164,105 +146,69 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     return fmt(d);
   }
 
-  function consumoEnEstacion(estId, cantidad, m2, kg) {
-    const est = estMap[estId];
-    if (!est) return 0;
-    switch (est.unidad) {
-      case 'unidades': return Number(cantidad) || 0;
-      case 'kg': return Number(kg) || 0;
-      default: return Number(m2) || 0;
-    }
-  }
-
-  function capacidadRestante(estId, fecha) {
-    const est = estMap[estId];
-    if (!est || est.cap <= 0) return Infinity;
-    const actual = cargaEstMap[fecha + '|' + estId] || 0;
-    return Math.max(0, est.cap - actual);
-  }
-
-  function cabeEnEstacion(estId, fecha, cantidad, m2, kg) {
+  /**
+   * REGLA 2: BLOQUEO DURO — ¿Cabe el consumo en la estación ese día?
+   * Cero tolerancia. Si carga_actual + consumo > cap_max → NO.
+   */
+  function cabeEnDia(estId, fecha, consumoM2) {
     const est = estMap[estId];
     if (!est || est.cap <= 0) return true;
-    const consumo = consumoEnEstacion(estId, cantidad, m2, kg);
-    const actual = cargaEstMap[fecha + '|' + estId] || 0;
-    return (actual + consumo) <= est.cap + 0.001;
-  }
-
-  function agregarConsumo(fecha, estId, ordenId, cantidad, m2, kg) {
-    const stationKey = fecha + '|' + estId;
-    const consumo = consumoEnEstacion(estId, cantidad, m2, kg);
-    cargaEstMap[stationKey] = (cargaEstMap[stationKey] || 0) + consumo;
+    const actual = cargaMap[fecha + '|' + estId] || 0;
+    return (actual + consumoM2) <= est.cap;
   }
 
   /**
-   * Encontrar el mejor día para la estación cuello de botella de la ruta.
-   * Solo verifica capacidad de la estación cuello (las demás se resuelven por cascada).
+   * Agregar consumo al mapa de carga (actualiza en memoria)
    */
-  function encontrarDiaOptimo(route, cantidad, m2, kg, grupo) {
-    const capGrupo = capGrupoMap[grupo] || 0;
-    const kgPorUnidad = cantidad > 0 ? kg / cantidad : 0;
-    const m2PorUnidad = cantidad > 0 ? m2 / cantidad : 0;
+  function agregarCarga(fecha, estId, consumoM2) {
+    const sk = fecha + '|' + estId;
+    cargaMap[sk] = (cargaMap[sk] || 0) + consumoM2;
+  }
 
+  /**
+   * REGLA 3: DRUM — Buscar primer día para el cuello de botella
+   * Donde la estación cuello tenga capacidad para el consumo del pedido.
+   */
+  function drumFindDate(route, consumoM2, fechaMin) {
     const cuelloId = route.find(id => estMap[id] && estMap[id].esCuello);
-    if (!cuelloId) return { fecha: null, score: -1, units: 0 };
-
-    let best = { fecha: null, score: -1, units: 0 };
+    if (!cuelloId) return { fecha: null, estId: route[0] || null };
 
     for (let i = 0; i < dias; i++) {
-      const d = new Date(inicioDate);
+      const d = new Date(fechaMin + 'T00:00:00');
       d.setDate(d.getDate() + i);
       const fs = fmt(d);
       if (!esLaboral(fs)) continue;
-
-      if (capGrupo > 0) {
-        const kgGrupoUsados = (cargaGrupoMap[fs] && cargaGrupoMap[fs][grupo]) || 0;
-        if (kgGrupoUsados + kg > capGrupo) continue;
-      }
-
-      const est = estMap[cuelloId];
-      if (!est || est.cap <= 0) continue;
-      const reste = capacidadRestante(cuelloId, fs);
-      let maxUnits;
-      switch (est.unidad) {
-        case 'unidades': maxUnits = Math.floor(reste); break;
-        case 'kg': maxUnits = kgPorUnidad > 0 ? Math.floor(reste / kgPorUnidad) : Infinity; break;
-        default: maxUnits = m2PorUnidad > 0 ? Math.floor(reste / m2PorUnidad) : Infinity;
-      }
-      if (maxUnits < 1) continue;
-
-      const unitsToAssign = Math.min(cantidad, maxUnits);
-      const kgAsignados = kgPorUnidad * unitsToAssign;
-
-      if (capGrupo > 0) {
-        const kgGrupoUsados = (cargaGrupoMap[fs] && cargaGrupoMap[fs][grupo]) || 0;
-        if (kgGrupoUsados + kgAsignados > capGrupo) continue;
-      }
-
-      const actual = cargaEstMap[fs + '|' + cuelloId] || 0;
-      const consumo = consumoEnEstacion(cuelloId, unitsToAssign, m2PorUnidad * unitsToAssign, kgAsignados);
-      const utilization = (actual + consumo) / est.cap;
-
-      if (utilization > best.score) {
-        best = { fecha: fs, score: utilization, units: unitsToAssign };
+      if (cabeEnDia(cuelloId, fs, consumoM2)) {
+        return { fecha: fs, estId: cuelloId };
       }
     }
-    return best;
+    return { fecha: null, estId: cuelloId };
   }
 
   /**
-   * Cascada hacia adelante: asigna estaciones DESPUÉS del cuello.
+   * REGLA 3: DRUM — Capacidad máxima del cuello en un día
+   */
+  function drumMaxDia(route, fecha) {
+    const cuelloId = route.find(id => estMap[id] && estMap[id].esCuello) || route[0];
+    const est = estMap[cuelloId];
+    if (!est || est.cap <= 0) return Infinity;
+    const actual = cargaMap[fecha + '|' + cuelloId] || 0;
+    return Math.max(0, est.cap - actual);
+  }
+
+  /**
+   * REGLA 4: ROPE — Cascada hacia adelante (después del cuello)
    * Cada estación busca el primer día hábil con capacidad, mínimo +1 día
    * hábil después de la estación anterior.
    */
-  function forwardCascade(route, cuelloIdx, fechaCuello, cantidad, m2, kg) {
-    const asignaciones = [];
-    let fechaMinima = fechaCuello;
+  function forwardRope(route, cuelloIdx, drumFecha, consumoM2) {
+    const resultado = [];
+    let fechaMinima = drumFecha;
 
     for (let i = cuelloIdx + 1; i < route.length; i++) {
       const estId = route[i];
       const est = estMap[estId];
-      if (!est || est.cap <= 0) { asignaciones.push({ estId, fecha: null }); continue; }
+      if (!est || est.cap <= 0) { resultado.push({ estId, fecha: null }); continue; }
 
       const diaInicio = siguienteDiaHabil(fechaMinima);
       let fechaAsignada = null;
@@ -272,34 +218,35 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         d.setDate(d.getDate() + offset);
         const fs = fmt(d);
         if (!esLaboral(fs)) continue;
-        if (cabeEnEstacion(estId, fs, cantidad, m2, kg)) {
+        if (cabeEnDia(estId, fs, consumoM2)) {
           fechaAsignada = fs;
           break;
         }
       }
 
       if (fechaAsignada) {
-        agregarConsumo(fechaAsignada, estId, null, cantidad, m2, kg);
+        agregarCarga(fechaAsignada, estId, consumoM2);
         fechaMinima = fechaAsignada;
       }
-      asignaciones.push({ estId, fecha: fechaAsignada });
+      resultado.push({ estId, fecha: fechaAsignada });
     }
-    return asignaciones;
+    return resultado;
   }
 
   /**
-   * Cascada hacia atrás: asigna estaciones ANTES del cuello.
+   * REGLA 4: ROPE — Cascada hacia atrás (antes del cuello)
    * Cada estación busca el último día hábil con capacidad, máximo -1 día
    * hábil antes de la estación siguiente.
+   * REGLA 1: Nunca antes de fechaMinima.
    */
-  function backwardCascade(route, cuelloIdx, fechaCuello, cantidad, m2, kg) {
-    const asignaciones = [];
-    let fechaMaxima = fechaCuello;
+  function backwardRope(route, cuelloIdx, drumFecha, consumoM2, fechaMinima) {
+    const resultado = [];
+    let fechaMaxima = drumFecha;
 
     for (let i = cuelloIdx - 1; i >= 0; i--) {
       const estId = route[i];
       const est = estMap[estId];
-      if (!est || est.cap <= 0) { asignaciones.unshift({ estId, fecha: null }); continue; }
+      if (!est || est.cap <= 0) { resultado.unshift({ estId, fecha: null }); continue; }
 
       const diaLimite = anteriorDiaHabil(fechaMaxima);
       let fechaAsignada = null;
@@ -308,20 +255,21 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         const d = new Date(diaLimite + 'T00:00:00');
         d.setDate(d.getDate() - offset);
         const fs = fmt(d);
+        if (fs < fechaMinima) break;
         if (!esLaboral(fs)) continue;
-        if (cabeEnEstacion(estId, fs, cantidad, m2, kg)) {
+        if (cabeEnDia(estId, fs, consumoM2)) {
           fechaAsignada = fs;
           break;
         }
       }
 
       if (fechaAsignada) {
-        agregarConsumo(fechaAsignada, estId, null, cantidad, m2, kg);
+        agregarCarga(fechaAsignada, estId, consumoM2);
         fechaMaxima = fechaAsignada;
       }
-      asignaciones.unshift({ estId, fecha: fechaAsignada });
+      resultado.unshift({ estId, fecha: fechaAsignada });
     }
-    return asignaciones;
+    return resultado;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -330,8 +278,6 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   const asignados = [];
   const noAsignados = [];
   const splitLetters = {};
-
-  pendRes.rows.sort((a, b) => (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0));
 
   for (let idx = 0; idx < pendRes.rows.length; idx++) {
     const o = pendRes.rows[idx];
@@ -362,47 +308,62 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
       continue;
     }
 
-    const kgPorUnidad = cantidad > 0 ? kg / cantidad : 0;
-    const m2PorUnidad = cantidad > 0 ? m2 / cantidad : 0;
+    const consumoM2 = m2;
+    const cuelloIdx = route.findIndex(id => estMap[id] && estMap[id].esCuello);
+    const drumEstId = cuelloIdx >= 0 ? route[cuelloIdx] : route[0];
 
-    // ─── PASO A: encontrar día del cuello de botella ───
-    const fit = encontrarDiaOptimo(route, cantidad, m2, kg, grupo);
+    // ─── REGLA 3: DRUM — buscar día del cuello ───
+    const drum = drumFindDate(route, consumoM2, fechaMinima);
 
-    if (!fit.fecha || fit.units < 1) {
+    if (!drum.fecha) {
       noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Sin capacidad en los próximos ' + dias + ' días', grupo, kg_total: kg, m2_total: m2 });
       continue;
     }
 
-    const unitsToAssign = fit.units;
-    const kgAsignados = kgPorUnidad * unitsToAssign;
-    const m2Asignados = m2PorUnidad * unitsToAssign;
-    let cuelloIdx = route.findIndex(id => estMap[id] && estMap[id].esCuello);
-    if (cuelloIdx < 0) cuelloIdx = 0;
+    // ─── ¿Cabe todo o hay que hacer split? ───
+    const maxEnCuello = drumMaxDia(route, drum.fecha);
 
-    // ─── PASO B: cascada hacia adelante (después del cuello) ───
-    const forward = forwardCascade(route, cuelloIdx, fit.fecha, unitsToAssign, m2Asignados, kgAsignados);
-
-    // ─── PASO C: cascada hacia atrás (antes del cuello) ───
-    const backward = backwardCascade(route, cuelloIdx, fit.fecha, unitsToAssign, m2Asignados, kgAsignados);
-
-    // ─── PASO D: consolidar fechas por estación ───
-    const estacionFechas = {};
-    estacionFechas[route[cuelloIdx]] = fit.fecha;
-    for (const a of forward) if (a.fecha) estacionFechas[a.estId] = a.fecha;
-    for (const a of backward) if (a.fecha) estacionFechas[a.estId] = a.fecha;
-
-    const todasTienenFecha = route.every(id => estacionFechas[id]);
-    if (!todasTienenFecha) {
-      noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Una o más estaciones sin capacidad en el rango de días', grupo, kg_total: kg, m2_total: m2 });
-      continue;
-    }
-
-    const fechasValues = Object.values(estacionFechas);
-    const fechaPrimera = fechasValues.sort()[0];
-    const fechaUltima = fechasValues.sort().pop();
-
-    if (fit.units >= cantidad) {
+    if (consumoM2 <= maxEnCuello) {
       // ═══ ASIGNACIÓN COMPLETA ═══
+
+      // REGLA 4: ROPE — cascada hacia atrás (antes del cuello)
+      const backward = cuelloIdx >= 0
+        ? backwardRope(route, cuelloIdx, drum.fecha, consumoM2, fechaMinima)
+        : [];
+
+      // Verificar que todas las estaciones previas encontraron fecha
+      const backwardOk = backward.every(a => a.fecha !== null);
+      if (!backwardOk) {
+        noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Estación previa sin capacidad antes del cuello', grupo, kg_total: kg, m2_total: m2 });
+        continue;
+      }
+
+      // REGLA 4: ROPE — cascada hacia adelante (después del cuello)
+      const forward = cuelloIdx >= 0
+        ? forwardRope(route, cuelloIdx, drum.fecha, consumoM2)
+        : [];
+
+      // Verificar que todas las estaciones posteriores encontraron fecha
+      const forwardOk = forward.every(a => a.fecha !== null);
+      if (!forwardOk) {
+        noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Estación posterior sin capacidad después del cuello', grupo, kg_total: kg, m2_total: m2 });
+        continue;
+      }
+
+      // Agregar carga del cuello
+      agregarCarga(drum.fecha, drumEstId, consumoM2);
+
+      // Consolidar fechas
+      const estFechas = {};
+      estFechas[drumEstId] = drum.fecha;
+      for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
+      for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
+
+      const fechas = Object.values(estFechas);
+      const fechaPrimera = fechas.sort()[0];
+      const fechaUltima = fechas.sort().pop();
+
+      // Actualizar BD
       await query(
         `UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO' WHERE id = $3`,
         [fechaPrimera, fechaUltima, o.id]
@@ -410,7 +371,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
       for (const estId of route) {
         await query(
           `UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3 AND estacion_id = $4`,
-          [estacionFechas[estId], m2Asignados, o.id, estId]
+          [estFechas[estId], consumoM2, o.id, estId]
         );
       }
 
@@ -419,10 +380,42 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
       asignados.push({ orden_id: o.id, fecha: fechaPrimera, fecha_entrega: fechaUltima, grupo, kg, unidades: cantidad });
 
-    } else if (fit.units >= 1) {
-      // ═══ SPLIT PARCIAL ═══
-      const unitsAsignadas = fit.units;
+    } else if (maxEnCuello > 0) {
+      // ═══ SPLIT PARCIAL — el cuello solo acepta una parte ═══
+      const unitsAsignadas = Math.floor(maxEnCuello / (consumoM2 / cantidad));
+      const m2Asignados = (consumoM2 / cantidad) * unitsAsignadas;
+      const kgAsignados = (kg / cantidad) * unitsAsignadas;
       const resto = cantidad - unitsAsignadas;
+
+      // Asignar la parte que cabe
+      const backward = cuelloIdx >= 0
+        ? backwardRope(route, cuelloIdx, drum.fecha, m2Asignados, fechaMinima)
+        : [];
+      const backwardOk = backward.every(a => a.fecha !== null);
+      if (!backwardOk) {
+        noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Split: estación previa sin capacidad', grupo, kg_total: kg, m2_total: m2 });
+        continue;
+      }
+
+      const forward = cuelloIdx >= 0
+        ? forwardRope(route, cuelloIdx, drum.fecha, m2Asignados)
+        : [];
+      const forwardOk = forward.every(a => a.fecha !== null);
+      if (!forwardOk) {
+        noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Split: estación posterior sin capacidad', grupo, kg_total: kg, m2_total: m2 });
+        continue;
+      }
+
+      agregarCarga(drum.fecha, drumEstId, m2Asignados);
+
+      const estFechas = {};
+      estFechas[drumEstId] = drum.fecha;
+      for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
+      for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
+
+      const fechas = Object.values(estFechas);
+      const fechaPrimera = fechas.sort()[0];
+      const fechaUltima = fechas.sort().pop();
 
       const origPedido = o.pedido_sap_id || '';
       if (!splitLetters[origPedido]) splitLetters[origPedido] = 0;
@@ -440,9 +433,12 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
       for (const estId of route) {
         await query(
           `UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3 AND estacion_id = $4`,
-          [estacionFechas[estId], m2Asignados, o.id, estId]
+          [estFechas[estId], m2Asignados, o.id, estId]
         );
       }
+
+      const kgPorUnidad = kg / cantidad;
+      const m2PorUnidad = m2 / cantidad;
 
       const nuevaRes = await query(
         `INSERT INTO produccion_ordenes (

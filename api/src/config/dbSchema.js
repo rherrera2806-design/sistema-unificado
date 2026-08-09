@@ -337,10 +337,10 @@ async function initDB() {
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS orden_compra VARCHAR(50)`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_entrega VARCHAR(20) DEFAULT 'Despacho'`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS kilos DECIMAL(10,2) DEFAULT 0`);
-    await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS capacidad_max_m2_dia DECIMAL(10,2) DEFAULT 100`);
-    await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS es_cuello_botella BOOLEAN DEFAULT FALSE`);
-    await query(`UPDATE estaciones_maestras SET es_cuello_botella = TRUE WHERE orden_secuencia_defecto BETWEEN 4 AND 8 AND es_cuello_botella = FALSE`);
-    await query(`UPDATE estaciones_maestras SET capacidad_max_m2_dia = 24 WHERE nombre_estacion = 'Armado' AND es_cuello_botella = TRUE AND capacidad_max_m2_dia > 50`);
+    await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS cap_max DECIMAL(10,2) DEFAULT 100`);
+    await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS cuello_botella BOOLEAN DEFAULT FALSE`);
+    await query(`UPDATE estaciones_maestras SET cuello_botella = TRUE WHERE orden_secuencia_defecto BETWEEN 4 AND 8 AND cuello_botella = FALSE`);
+    await query(`UPDATE estaciones_maestras SET cap_max = 24 WHERE nombre_estacion = 'Armado' AND cuello_botella = TRUE AND cap_max > 50`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS grupo VARCHAR(100)`);
@@ -375,7 +375,7 @@ async function initDB() {
             ['Templado', 7, 200, true], ['Armado', 8, 24, true]
         ];
         for (const [nombre, orden, cap, cuello] of estacionesDefault) {
-            await query('INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, capacidad_max_m2_dia, es_cuello_botella) VALUES ($1, $2, $3, $4)', [nombre, orden, cap, cuello]);
+            await query('INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, cap_max, cuello_botella) VALUES ($1, $2, $3, $4)', [nombre, orden, cap, cuello]);
         }
         console.log('[PROD] Estaciones maestras creadas por defecto');
     }
