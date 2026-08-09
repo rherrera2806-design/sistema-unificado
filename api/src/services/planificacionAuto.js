@@ -198,12 +198,13 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
   /**
    * REGLA 4: ROPE — Cascada hacia adelante (después del cuello)
-   * Cada estación busca el primer día hábil con capacidad, mínimo +1 día
-   * hábil después de la estación anterior.
+   * NO modifica cargaMap — solo computa asignaciones.
+   * Retorna array de { estId, fecha } para applyCascade().
    */
   function forwardRope(route, cuelloIdx, drumFecha, consumoM2) {
     const resultado = [];
     let fechaMinima = drumFecha;
+    const cargaLocal = {};
 
     for (let i = cuelloIdx + 1; i < route.length; i++) {
       const estId = route[i];
@@ -218,16 +219,15 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         d.setDate(d.getDate() + offset);
         const fs = fmt(d);
         if (!esLaboral(fs)) continue;
-        if (cabeEnDia(estId, fs, consumoM2)) {
+        const actualReal = (cargaMap[fs + '|' + estId] || 0) + (cargaLocal[fs + '|' + estId] || 0);
+        if (actualReal + consumoM2 <= est.cap) {
           fechaAsignada = fs;
+          cargaLocal[fs + '|' + estId] = (cargaLocal[fs + '|' + estId] || 0) + consumoM2;
           break;
         }
       }
 
-      if (fechaAsignada) {
-        agregarCarga(fechaAsignada, estId, consumoM2);
-        fechaMinima = fechaAsignada;
-      }
+      if (fechaAsignada) fechaMinima = fechaAsignada;
       resultado.push({ estId, fecha: fechaAsignada });
     }
     return resultado;
@@ -235,13 +235,13 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
   /**
    * REGLA 4: ROPE — Cascada hacia atrás (antes del cuello)
-   * Cada estación busca el último día hábil con capacidad, máximo -1 día
-   * hábil antes de la estación siguiente.
+   * NO modifica cargaMap — solo computa asignaciones.
    * REGLA 1: Nunca antes de fechaMinima.
    */
   function backwardRope(route, cuelloIdx, drumFecha, consumoM2, fechaMinima) {
     const resultado = [];
     let fechaMaxima = drumFecha;
+    const cargaLocal = {};
 
     for (let i = cuelloIdx - 1; i >= 0; i--) {
       const estId = route[i];
@@ -257,16 +257,15 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         const fs = fmt(d);
         if (fs < fechaMinima) break;
         if (!esLaboral(fs)) continue;
-        if (cabeEnDia(estId, fs, consumoM2)) {
+        const actualReal = (cargaMap[fs + '|' + estId] || 0) + (cargaLocal[fs + '|' + estId] || 0);
+        if (actualReal + consumoM2 <= est.cap) {
           fechaAsignada = fs;
+          cargaLocal[fs + '|' + estId] = (cargaLocal[fs + '|' + estId] || 0) + consumoM2;
           break;
         }
       }
 
-      if (fechaAsignada) {
-        agregarCarga(fechaAsignada, estId, consumoM2);
-        fechaMaxima = fechaAsignada;
-      }
+      if (fechaAsignada) fechaMaxima = fechaAsignada;
       resultado.unshift({ estId, fecha: fechaAsignada });
     }
     return resultado;
@@ -312,180 +311,117 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     const cuelloIdx = route.findIndex(id => estMap[id] && estMap[id].esCuello);
     const drumEstId = cuelloIdx >= 0 ? route[cuelloIdx] : route[0];
 
-    // ─── REGLA 3: DRUM — buscar día del cuello ───
-    const drum = drumFindDate(route, consumoM2, fechaMinima);
+    // ─── REINTENTAR: probar múltiples días del drum ───
+    let asignado = false;
+    for (let drumTry = 0; drumTry < dias && !asignado; drumTry++) {
+      const dTry = new Date(fechaMinima + 'T00:00:00');
+      dTry.setDate(dTry.getDate() + drumTry);
+      const drumFecha = fmt(dTry);
+      if (!esLaboral(drumFecha)) continue;
 
-    if (!drum.fecha) {
-      noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Sin capacidad en los próximos ' + dias + ' días', grupo, kg_total: kg, m2_total: m2 });
-      continue;
+      // ¿El cuello tiene capacidad este día?
+      if (!cabeEnDia(drumEstId, drumFecha, consumoM2)) continue;
+
+      const maxEnCuello = drumMaxDia(route, drumFecha);
+      if (consumoM2 > maxEnCuello && maxEnCuello > 0) {
+        // Split parcial en el cuello
+        const unitsAsignadas = Math.floor(maxEnCuello / (consumoM2 / cantidad));
+        if (unitsAsignadas < 1) continue;
+        const m2Parcial = (consumoM2 / cantidad) * unitsAsignadas;
+        const kgParcial = (kg / cantidad) * unitsAsignadas;
+        const resto = cantidad - unitsAsignadas;
+
+        const backward = cuelloIdx >= 0 ? backwardRope(route, cuelloIdx, drumFecha, m2Parcial, fechaMinima) : [];
+        if (!backward.every(a => a.fecha !== null)) continue;
+
+        const forward = cuelloIdx >= 0 ? forwardRope(route, cuelloIdx, drumFecha, m2Parcial) : [];
+        if (!forward.every(a => a.fecha !== null)) continue;
+
+        // ✅ Todo encaja — aplicar cargas
+        agregarCarga(drumFecha, drumEstId, m2Parcial);
+        for (const a of backward) if (a.fecha) agregarCarga(a.fecha, a.estId, m2Parcial);
+        for (const a of forward) if (a.fecha) agregarCarga(a.fecha, a.estId, m2Parcial);
+
+        const estFechas = {};
+        estFechas[drumEstId] = drumFecha;
+        for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
+        for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
+
+        const fechas = Object.values(estFechas);
+        const fechaPrimera = fechas.sort()[0];
+        const fechaUltima = fechas.sort().pop();
+
+        const origPedido = o.pedido_sap_id || '';
+        if (!splitLetters[origPedido]) splitLetters[origPedido] = 0;
+        splitLetters[origPedido]++;
+        const letterA = String.fromCharCode(64 + splitLetters[origPedido]);
+        const letterB = String.fromCharCode(65 + splitLetters[origPedido]);
+
+        await query(
+          `UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO', cantidad = $3, kilos = $4, metros_cuadrados = $5, pedido_sap_id = $6 WHERE id = $7`,
+          [fechaPrimera, fechaUltima, unitsAsignadas, kgParcial, m2Parcial, origPedido + letterA, o.id]
+        );
+        for (const estId of route) {
+          await query(`UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3 AND estacion_id = $4`, [estFechas[estId], m2Parcial, o.id, estId]);
+        }
+
+        const kgPorUnidad = kg / cantidad;
+        const m2PorUnidad = m2 / cantidad;
+        const nuevaRes = await query(
+          `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, familia_id, espesor_mm, tipo_venta, item_numero, nota, posicion, orden_compra, tipo_entrega, grupo, codigo_padre, bom_padre_id, es_compuesto, cantidad, kilos, metros_cuadrados, estado_programacion, fecha_programada, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'PENDIENTE',NULL,NOW()) RETURNING id`,
+          [origPedido + letterB, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, o.familia_id, o.espesor_mm, o.tipo_venta, o.item_numero, o.nota, o.posicion, o.orden_compra, o.tipo_entrega, o.grupo, o.codigo_padre, o.bom_padre_id, o.es_compuesto, resto, kgPorUnidad * resto, m2PorUnidad * resto]
+        );
+        const nuevaOrdenId = nuevaRes.rows[0].id;
+        const pasosRes = await query('SELECT estacion_id, orden_secuencia FROM cola_produccion_pasos WHERE orden_produccion_id = $1', [o.id]);
+        for (const p of pasosRes.rows) {
+          await query(`INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia) VALUES ($1, $2, $3)`, [nuevaOrdenId, p.estacion_id, p.orden_secuencia]);
+        }
+
+        if (!cargaGrupoMap[fechaPrimera]) cargaGrupoMap[fechaPrimera] = {};
+        cargaGrupoMap[fechaPrimera][grupo] = (cargaGrupoMap[fechaPrimera][grupo] || 0) + kgParcial;
+
+        pendRes.rows.push({ ...o, id: nuevaOrdenId, cantidad: resto, kilos: kgPorUnidad * resto, metros_cuadrados: m2PorUnidad * resto, estado_programacion: 'PENDIENTE', fecha_programada: null });
+
+        asignados.push({ orden_id: o.id, fecha: fechaPrimera, fecha_entrega: fechaUltima, grupo, kg: kgParcial, unidades: unitsAsignadas, nota: 'Split parcial' });
+        asignado = true;
+
+      } else if (consumoM2 <= maxEnCuello) {
+        // ═══ ASIGNACIÓN COMPLETA ═══
+        const backward = cuelloIdx >= 0 ? backwardRope(route, cuelloIdx, drumFecha, consumoM2, fechaMinima) : [];
+        if (!backward.every(a => a.fecha !== null)) continue;
+
+        const forward = cuelloIdx >= 0 ? forwardRope(route, cuelloIdx, drumFecha, consumoM2) : [];
+        if (!forward.every(a => a.fecha !== null)) continue;
+
+        // ✅ Todo encaja — aplicar cargas
+        agregarCarga(drumFecha, drumEstId, consumoM2);
+        for (const a of backward) if (a.fecha) agregarCarga(a.fecha, a.estId, consumoM2);
+        for (const a of forward) if (a.fecha) agregarCarga(a.fecha, a.estId, consumoM2);
+
+        const estFechas = {};
+        estFechas[drumEstId] = drumFecha;
+        for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
+        for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
+
+        const fechas = Object.values(estFechas);
+        const fechaPrimera = fechas.sort()[0];
+        const fechaUltima = fechas.sort().pop();
+
+        await query(`UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO' WHERE id = $3`, [fechaPrimera, fechaUltima, o.id]);
+        for (const estId of route) {
+          await query(`UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3 AND estacion_id = $4`, [estFechas[estId], consumoM2, o.id, estId]);
+        }
+
+        if (!cargaGrupoMap[fechaPrimera]) cargaGrupoMap[fechaPrimera] = {};
+        cargaGrupoMap[fechaPrimera][grupo] = (cargaGrupoMap[fechaPrimera][grupo] || 0) + kg;
+
+        asignados.push({ orden_id: o.id, fecha: fechaPrimera, fecha_entrega: fechaUltima, grupo, kg, unidades: cantidad });
+        asignado = true;
+      }
     }
 
-    // ─── ¿Cabe todo o hay que hacer split? ───
-    const maxEnCuello = drumMaxDia(route, drum.fecha);
-
-    if (consumoM2 <= maxEnCuello) {
-      // ═══ ASIGNACIÓN COMPLETA ═══
-
-      // REGLA 4: ROPE — cascada hacia atrás (antes del cuello)
-      const backward = cuelloIdx >= 0
-        ? backwardRope(route, cuelloIdx, drum.fecha, consumoM2, fechaMinima)
-        : [];
-
-      // Verificar que todas las estaciones previas encontraron fecha
-      const backwardOk = backward.every(a => a.fecha !== null);
-      if (!backwardOk) {
-        noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Estación previa sin capacidad antes del cuello', grupo, kg_total: kg, m2_total: m2 });
-        continue;
-      }
-
-      // REGLA 4: ROPE — cascada hacia adelante (después del cuello)
-      const forward = cuelloIdx >= 0
-        ? forwardRope(route, cuelloIdx, drum.fecha, consumoM2)
-        : [];
-
-      // Verificar que todas las estaciones posteriores encontraron fecha
-      const forwardOk = forward.every(a => a.fecha !== null);
-      if (!forwardOk) {
-        noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Estación posterior sin capacidad después del cuello', grupo, kg_total: kg, m2_total: m2 });
-        continue;
-      }
-
-      // Agregar carga del cuello
-      agregarCarga(drum.fecha, drumEstId, consumoM2);
-
-      // Consolidar fechas
-      const estFechas = {};
-      estFechas[drumEstId] = drum.fecha;
-      for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
-      for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
-
-      const fechas = Object.values(estFechas);
-      const fechaPrimera = fechas.sort()[0];
-      const fechaUltima = fechas.sort().pop();
-
-      // Actualizar BD
-      await query(
-        `UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO' WHERE id = $3`,
-        [fechaPrimera, fechaUltima, o.id]
-      );
-      for (const estId of route) {
-        await query(
-          `UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3 AND estacion_id = $4`,
-          [estFechas[estId], consumoM2, o.id, estId]
-        );
-      }
-
-      if (!cargaGrupoMap[fechaPrimera]) cargaGrupoMap[fechaPrimera] = {};
-      cargaGrupoMap[fechaPrimera][grupo] = (cargaGrupoMap[fechaPrimera][grupo] || 0) + kg;
-
-      asignados.push({ orden_id: o.id, fecha: fechaPrimera, fecha_entrega: fechaUltima, grupo, kg, unidades: cantidad });
-
-    } else if (maxEnCuello > 0) {
-      // ═══ SPLIT PARCIAL — el cuello solo acepta una parte ═══
-      const unitsAsignadas = Math.floor(maxEnCuello / (consumoM2 / cantidad));
-      const m2Asignados = (consumoM2 / cantidad) * unitsAsignadas;
-      const kgAsignados = (kg / cantidad) * unitsAsignadas;
-      const resto = cantidad - unitsAsignadas;
-
-      // Asignar la parte que cabe
-      const backward = cuelloIdx >= 0
-        ? backwardRope(route, cuelloIdx, drum.fecha, m2Asignados, fechaMinima)
-        : [];
-      const backwardOk = backward.every(a => a.fecha !== null);
-      if (!backwardOk) {
-        noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Split: estación previa sin capacidad', grupo, kg_total: kg, m2_total: m2 });
-        continue;
-      }
-
-      const forward = cuelloIdx >= 0
-        ? forwardRope(route, cuelloIdx, drum.fecha, m2Asignados)
-        : [];
-      const forwardOk = forward.every(a => a.fecha !== null);
-      if (!forwardOk) {
-        noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Split: estación posterior sin capacidad', grupo, kg_total: kg, m2_total: m2 });
-        continue;
-      }
-
-      agregarCarga(drum.fecha, drumEstId, m2Asignados);
-
-      const estFechas = {};
-      estFechas[drumEstId] = drum.fecha;
-      for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
-      for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
-
-      const fechas = Object.values(estFechas);
-      const fechaPrimera = fechas.sort()[0];
-      const fechaUltima = fechas.sort().pop();
-
-      const origPedido = o.pedido_sap_id || '';
-      if (!splitLetters[origPedido]) splitLetters[origPedido] = 0;
-      splitLetters[origPedido]++;
-      const letterA = String.fromCharCode(64 + splitLetters[origPedido]);
-      const letterB = String.fromCharCode(65 + splitLetters[origPedido]);
-
-      await query(
-        `UPDATE produccion_ordenes
-         SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO',
-             cantidad = $3, kilos = $4, metros_cuadrados = $5, pedido_sap_id = $6
-         WHERE id = $7`,
-        [fechaPrimera, fechaUltima, unitsAsignadas, kgAsignados, m2Asignados, origPedido + letterA, o.id]
-      );
-      for (const estId of route) {
-        await query(
-          `UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3 AND estacion_id = $4`,
-          [estFechas[estId], m2Asignados, o.id, estId]
-        );
-      }
-
-      const kgPorUnidad = kg / cantidad;
-      const m2PorUnidad = m2 / cantidad;
-
-      const nuevaRes = await query(
-        `INSERT INTO produccion_ordenes (
-          pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto,
-          familia_id, espesor_mm, tipo_venta, item_numero, nota, posicion,
-          orden_compra, tipo_entrega, grupo, codigo_padre, bom_padre_id, es_compuesto,
-          cantidad, kilos, metros_cuadrados,
-          estado_programacion, fecha_programada, created_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'PENDIENTE',NULL,NOW())
-        RETURNING id`,
-        [
-          origPedido + letterB, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto,
-          o.familia_id, o.espesor_mm, o.tipo_venta, o.item_numero, o.nota, o.posicion,
-          o.orden_compra, o.tipo_entrega, o.grupo, o.codigo_padre, o.bom_padre_id, o.es_compuesto,
-          resto, kgPorUnidad * resto, m2PorUnidad * resto
-        ]
-      );
-      const nuevaOrdenId = nuevaRes.rows[0].id;
-
-      const pasosRes = await query(
-        'SELECT estacion_id, orden_secuencia FROM cola_produccion_pasos WHERE orden_produccion_id = $1',
-        [o.id]
-      );
-      for (const p of pasosRes.rows) {
-        await query(
-          `INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia) VALUES ($1, $2, $3)`,
-          [nuevaOrdenId, p.estacion_id, p.orden_secuencia]
-        );
-      }
-
-      if (!cargaGrupoMap[fechaPrimera]) cargaGrupoMap[fechaPrimera] = {};
-      cargaGrupoMap[fechaPrimera][grupo] = (cargaGrupoMap[fechaPrimera][grupo] || 0) + kgAsignados;
-
-      pendRes.rows.push({
-        ...o,
-        id: nuevaOrdenId,
-        cantidad: resto,
-        kilos: kgPorUnidad * resto,
-        metros_cuadrados: m2PorUnidad * resto,
-        estado_programacion: 'PENDIENTE',
-        fecha_programada: null
-      });
-
-      asignados.push({ orden_id: o.id, fecha: fechaPrimera, fecha_entrega: fechaUltima, grupo, kg: kgAsignados, unidades: unitsAsignadas, nota: 'Split parcial' });
-
-    } else {
-      noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Sin capacidad en los próximos ' + dias + ' días', grupo, kg_total: kg, m2_total: m2 });
+    if (!asignado) {
+      noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Sin capacidad en los próximos ' + dias + ' días (cuello + previas)', grupo, kg_total: kg, m2_total: m2 });
     }
   }
 
