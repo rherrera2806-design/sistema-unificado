@@ -28,7 +28,13 @@ const getOrdenes = async () => {
                    AND o2.item_numero = o.item_numero
                    AND o2.fecha_programada IS NOT NULL
              ) > 0
-             ORDER BY em.capacidad_max_m2_dia ASC LIMIT 1) as cuello_botella
+             ORDER BY em.capacidad_max_m2_dia ASC LIMIT 1) as cuello_botella,
+            ARRAY(
+                SELECT em.nombre_estacion FROM cola_produccion_pasos cp
+                JOIN estaciones_maestras em ON cp.estacion_id = em.id
+                WHERE cp.orden_produccion_id = o.id
+                ORDER BY cp.orden_secuencia
+            ) as estaciones
         FROM produccion_ordenes o ORDER BY o.created_at DESC
     `);
     return result.rows;

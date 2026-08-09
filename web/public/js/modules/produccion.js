@@ -48,6 +48,7 @@ App.registerModule('produccion', {
             + '<input type="date" id="prodFilterFecha" onchange="App.modules.produccion.filter()" style="width:130px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none" title="Filtrar por fecha programada">'
             + '<select id="prodFilterGrupo" onchange="App.modules.produccion.filter()" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todos">Todos Grupos</option></select>'
             + '<select id="prodFilterFamilia" onchange="App.modules.produccion.filter()" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todas">Todas Familias</option></select>'
+            + '<select id="prodFilterEstacion" onchange="App.modules.produccion.filter()" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todas">Todas Estaciones</option></select>'
             + '<select id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todos">Todos</option><option value="PENDIENTE">Pendientes</option><option value="PROGRAMADO">Programadas</option><option value="EN_PROCESO">En Proceso</option><option value="TERMINADO">Terminados</option><option value="CERRADO">Cerrados</option></select>'
             + '</div></div>'
 
@@ -168,10 +169,13 @@ App.registerModule('produccion', {
     populateFilters() {
         const grupos = [...new Set(this.ordenes.map(o => o.grupo).filter(Boolean))].sort();
         const familias = [...new Set(this.ordenes.map(o => o.familia_nombre).filter(Boolean))].sort();
+        const estaciones = [...new Set(this.ordenes.flatMap(o => o.estaciones || []).filter(Boolean))].sort();
         const gSel = document.getElementById('prodFilterGrupo');
         const fSel = document.getElementById('prodFilterFamilia');
+        const eSel = document.getElementById('prodFilterEstacion');
         if (gSel) { const cur = gSel.value; gSel.innerHTML = '<option value="todos">Todos Grupos</option>' + grupos.map(g => `<option value="${g}" ${g===cur?'selected':''}>${g}</option>`).join(''); }
-        if (fSel) { const cur = fSel.value; fSel.innerHTML = '<option value="todos">Todas Familias</option>' + familias.map(f => `<option value="${f}" ${f===cur?'selected':''}>${f}</option>`).join(''); }
+        if (fSel) { const cur = fSel.value; fSel.innerHTML = '<option value="todas">Todas Familias</option>' + familias.map(f => `<option value="${f}" ${f===cur?'selected':''}>${f}</option>`).join(''); }
+        if (eSel) { const cur = eSel.value; eSel.innerHTML = '<option value="todas">Todas Estaciones</option>' + estaciones.map(e => `<option value="${e}" ${e===cur?'selected':''}>${e}</option>`).join(''); }
     },
 
     renderStats() {
@@ -248,13 +252,15 @@ App.registerModule('produccion', {
         const estado = document.getElementById('prodFilterEstado')?.value || 'todos';
         const fechaFilter = document.getElementById('prodFilterFecha')?.value || '';
         const grupo = document.getElementById('prodFilterGrupo')?.value || 'todos';
-        const familia = document.getElementById('prodFilterFamilia')?.value || 'todos';
+        const familia = document.getElementById('prodFilterFamilia')?.value || 'todas';
+        const estacion = document.getElementById('prodFilterEstacion')?.value || 'todas';
         let filtered = this.ordenes;
         if (search) filtered = filtered.filter(o => (o.codigo_producto || '').toLowerCase().includes(search) || (o.pedido_sap_id || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search) || (o.nombre_codigo_padre || '').toLowerCase().includes(search) || (o.nombre_mp || '').toLowerCase().includes(search));
         if (estado !== 'todos') filtered = filtered.filter(o => o.estado_programacion === estado);
         if (fechaFilter) filtered = filtered.filter(o => { const f = o.fecha_programada; if (!f) return false; const d = new Date(f); const fs = d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); return fs === fechaFilter; });
         if (grupo !== 'todos') filtered = filtered.filter(o => o.grupo === grupo);
-        if (familia !== 'todos') filtered = filtered.filter(o => o.familia_nombre === familia);
+        if (familia !== 'todas') filtered = filtered.filter(o => o.familia_nombre === familia);
+        if (estacion !== 'todas') filtered = filtered.filter(o => (o.estaciones || []).includes(estacion));
         this.renderTable(filtered);
     },
 
