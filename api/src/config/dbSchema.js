@@ -339,8 +339,19 @@ async function initDB() {
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS kilos DECIMAL(10,2) DEFAULT 0`);
     await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS cap_max DECIMAL(10,2) DEFAULT 100`);
     await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS cuello_botella BOOLEAN DEFAULT FALSE`);
-    await query(`UPDATE estaciones_maestras SET cuello_botella = TRUE WHERE orden_secuencia_defecto BETWEEN 4 AND 8 AND cuello_botella = FALSE`);
-    await query(`UPDATE estaciones_maestras SET cap_max = 24 WHERE nombre_estacion = 'Armado' AND cuello_botella = TRUE AND cap_max > 50`);
+    // Migrar datos de columnas antiguas si existen
+    await query(`UPDATE estaciones_maestras SET cap_max = capacidad_max_m2_dia WHERE cap_max IS NULL OR cap_max = 0`);
+    await query(`UPDATE estaciones_maestras SET cuello_botella = es_cuello_botella WHERE cuello_botella IS NULL OR cuello_botella = FALSE`);
+    // Si cap_max sigue en 0 o NULL, asignar valores por defecto según nombre
+    await query(`UPDATE estaciones_maestras SET cap_max = 500 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Corte'`);
+    await query(`UPDATE estaciones_maestras SET cap_max = 300 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Pulido'`);
+    await query(`UPDATE estaciones_maestras SET cap_max = 200 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Radio'`);
+    await query(`UPDATE estaciones_maestras SET cap_max = 130 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Mecanizado'`);
+    await query(`UPDATE estaciones_maestras SET cap_max = 100 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Ventana'`);
+    await query(`UPDATE estaciones_maestras SET cap_max = 24 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Pintado'`);
+    await query(`UPDATE estaciones_maestras SET cap_max = 200 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Templado'`);
+    await query(`UPDATE estaciones_maestras SET cap_max = 24 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Armado'`);
+    await query(`UPDATE estaciones_maestras SET cuello_botella = TRUE WHERE orden_secuencia_defecto BETWEEN 4 AND 8 AND (cuello_botella IS NULL OR cuello_botella = FALSE)`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS grupo VARCHAR(100)`);
