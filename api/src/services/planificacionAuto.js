@@ -333,7 +333,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
              cantidad = $3, kilos = $4, metros_cuadrados = $5,
              pedido_sap_id = $6
          WHERE id = $7`,
-        [fit.fecha, fechaEntrega, unitsAsignadas, kgAsignados, m2Asignados, origPedido + '-' + letterA, o.id]
+        [fit.fecha, fechaEntrega, unitsAsignadas, kgAsignados, m2Asignados, origPedido + letterA, o.id]
       );
 
       const nuevaRes = await query(
@@ -346,7 +346,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,'PENDIENTE',NULL,NOW())
         RETURNING id`,
         [
-          origPedido + '-' + letterB, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto,
+          origPedido + letterB, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto,
           o.familia_id, o.espesor_mm, o.tipo_venta, o.item_numero, o.nota, o.posicion,
           o.orden_compra, o.tipo_entrega, o.grupo, o.codigo_padre, o.bom_padre_id, o.es_compuesto,
           resto, kgPorUnidad * resto, m2PorUnidad * resto
