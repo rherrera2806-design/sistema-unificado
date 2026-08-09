@@ -143,11 +143,12 @@ App.registerModule('prod_reportes', {
         const el = document.getElementById('prResumen');
         if (!el || !this.datos) return;
         const fechas = this.datos.fechas || [];
-        let totalItems = 0, totalM2 = 0, totalKgs = 0;
+        let totalItems = 0, totalM2 = 0, totalKgs = 0, totalUnd = 0;
         for (const f of fechas) {
             totalItems += f.totales.items;
             totalM2 += f.totales.m2;
             totalKgs += f.totales.kgs;
+            totalUnd += f.totales.unidades || 0;
         }
         el.innerHTML = `
             <div class="pr-card" style="background:white;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;height:55px;display:flex;align-items:center;gap:10px">
@@ -158,13 +159,13 @@ App.registerModule('prod_reportes', {
                 <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#f5f3ff,#ddd6fe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
                 <div><div style="font-size:20px;font-weight:800;color:#8b5cf6;line-height:1">${totalItems}</div><div style="color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Items</div></div>
             </div>
+            <div class="pr-card" style="background:white;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0;border-left:4px solid #10b981;height:55px;display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#ecfdf5,#a7f3d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+                <div><div style="font-size:20px;font-weight:800;color:#10b981;line-height:1">${Math.round(totalUnd).toLocaleString('es-CL')}</div><div style="color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Unidades</div></div>
+            </div>
             <div class="pr-card" style="background:white;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0;border-left:4px solid #6366f1;height:55px;display:flex;align-items:center;gap:10px">
                 <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#eef2ff,#c7d2fe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
                 <div><div style="font-size:20px;font-weight:800;color:#6366f1;line-height:1">${totalM2.toFixed(1)}</div><div style="color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">M² Total</div></div>
-            </div>
-            <div class="pr-card" style="background:white;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;height:55px;display:flex;align-items:center;gap:10px">
-                <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/></svg></div>
-                <div><div style="font-size:20px;font-weight:800;color:#f59e0b;line-height:1">${Math.round(totalKgs).toLocaleString('es-CL')}</div><div style="color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Kgs Total</div></div>
             </div>
         `;
     },
@@ -195,10 +196,9 @@ App.registerModule('prod_reportes', {
                     <table class="pr-table">
                         <thead><tr>
                             <th>OV</th><th>Item</th><th>Pend.</th><th>Estado</th><th>Cliente</th>
-                            <th>Detalle SAP</th><th>Ancho</th><th>Alto</th><th>Proceso</th>
-                            <th style="text-align:center">C</th><th style="text-align:center">P</th>
-                            <th style="text-align:center">F</th><th style="text-align:center">S</th>
-                            <th style="text-align:center">T</th><th style="text-align:right">M²</th>
+                            <th>Detalle SAP</th><th>Ancho</th><th>Alto</th>
+                            <th style="text-align:right">Unid</th>
+                            <th style="text-align:right">M²</th>
                             <th style="text-align:right">Kgs</th><th>Ruta</th><th>Tipo</th><th>Grupo</th>
                         </tr></thead>
                         <tbody>`;
@@ -214,12 +214,7 @@ App.registerModule('prod_reportes', {
                     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.detalle_sap || ''}">${o.detalle_sap || ''}</td>
                     <td style="text-align:right">${o.ancho || ''}</td>
                     <td style="text-align:right">${o.alto || ''}</td>
-                    <td class="pr-proceso">${o.proceso || ''}</td>
-                    <td style="text-align:center;color:${o.tiene?.C ? '#22c55e' : '#cbd5e1'};font-weight:700">${o.tiene?.C ? '1' : '0'}</td>
-                    <td style="text-align:center;color:${o.tiene?.P ? '#22c55e' : '#cbd5e1'};font-weight:700">${o.tiene?.P ? '1' : '0'}</td>
-                    <td style="text-align:center;color:${o.tiene?.F ? '#22c55e' : '#cbd5e1'};font-weight:700">${o.tiene?.F ? '1' : '0'}</td>
-                    <td style="text-align:center;color:${o.tiene?.S ? '#22c55e' : '#cbd5e1'};font-weight:700">${o.tiene?.S ? '1' : '0'}</td>
-                    <td style="text-align:center;color:${o.tiene?.T ? '#22c55e' : '#cbd5e1'};font-weight:700">${o.tiene?.T ? '1' : '0'}</td>
+                    <td style="text-align:right;font-weight:600">${o.unidades || o.pend || ''}</td>
                     <td style="text-align:right;font-weight:600">${o.m2.toFixed(1)}</td>
                     <td style="text-align:right;font-weight:600">${Math.round(o.kgs)}</td>
                     <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.ruta || ''}">${o.ruta || ''}</td>
@@ -230,6 +225,7 @@ App.registerModule('prod_reportes', {
             html += `</tbody></table></div>
                 <div class="pr-totales">
                     <div>Items: <span>${fecha.totales.items}</span></div>
+                    <div>Unid: <span>${Math.round(fecha.totales.unidades || 0).toLocaleString('es-CL')}</span></div>
                     <div>M²: <span>${fecha.totales.m2.toFixed(1)}</span></div>
                     <div>Kgs: <span>${Math.round(fecha.totales.kgs).toLocaleString('es-CL')}</span></div>
                 </div>`;
@@ -262,16 +258,14 @@ App.registerModule('prod_reportes', {
 
     exportarExcel() {
         if (!this.datos || !this.datos.fechas.length) return App.showAlert('No hay datos para exportar', 'warning');
-        let csv = 'FECHA;OV;Item;Pend;Estado;Cliente;Detalle SAP;Ancho;Alto;Proceso;C;P;F;S;T;M2;Kgs;Ruta;Tipo;Grupo\n';
+        let csv = 'FECHA;OV;Item;Pend;Estado;Cliente;Detalle SAP;Ancho;Alto;Unidades;M2;Kgs;Ruta;Tipo;Grupo\n';
         for (const f of this.datos.fechas) {
             for (const o of f.ordenes) {
                 csv += [
                     f.fecha, o.ov, o.item, o.pend, o.estado,
                     `"${(o.cliente || '').replace(/"/g, '""')}"`,
                     `"${(o.detalle_sap || '').replace(/"/g, '""')}"`,
-                    o.ancho, o.alto, o.proceso,
-                    o.tiene?.C ? 1 : 0, o.tiene?.P ? 1 : 0, o.tiene?.F ? 1 : 0,
-                    o.tiene?.S ? 1 : 0, o.tiene?.T ? 1 : 0,
+                    o.ancho, o.alto, o.unidades || o.pend,
                     o.m2.toFixed(1), Math.round(o.kgs),
                     `"${(o.ruta || '').replace(/"/g, '""')}"`,
                     o.tipo, o.grupo
