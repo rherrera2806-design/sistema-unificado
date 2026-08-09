@@ -208,10 +208,16 @@ App.registerModule('produccion', {
             return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">PENDIENTE</span>';
         };
 
-        const tipoBadge = (t, ordenId) => {
-            const styles = { 'Express': 'background:#fefce8;color:#854d0e;border:1px solid #eab308', 'Urgencia': 'background:#fff7ed;color:#9a3412;border:1px solid #f97316', 'Vta Region': 'background:#dbeafe;color:#1e40af;border:1px solid #3b82f6' };
-            const base = styles[t] || 'background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0';
-            return `<span class="tipo-venta-badge" data-orden-id="${ordenId}" style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;${base};cursor:pointer;position:relative;display:inline-block" onclick="event.stopPropagation();App.modules.produccion.togglePrioridadMenu(event, ${ordenId})" title="Click para cambiar prioridad">${t || 'Normal'} &#9662;</span>
+        const prioridadBadge = (nivel, ordenId) => {
+            const n = Number(nivel) || 1;
+            const map = {
+                4: { label: 'Reposicion', bg: '#fef2f2', color: '#991b1b', border: '#ef4444', icon: '&#128293;' },
+                3: { label: 'Urgencia', bg: '#fff7ed', color: '#9a3412', border: '#f97316', icon: '&#9889;' },
+                2: { label: 'Express', bg: '#fefce8', color: '#854d0e', border: '#eab308', icon: '&#9889;' },
+                1: { label: 'Normal', bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', icon: '' }
+            };
+            const m = map[n] || map[1];
+            return `<span class="tipo-venta-badge" data-orden-id="${ordenId}" style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;border:1px solid ${m.border};background:${m.bg};color:${m.color};cursor:pointer;position:relative;display:inline-block" onclick="event.stopPropagation();App.modules.produccion.togglePrioridadMenu(event, ${ordenId})" title="Click para cambiar prioridad">${m.icon ? '<span style="font-size:10px">' + m.icon + '</span> ' : ''}${m.label} &#9662;</span>
             <div class="prioridad-dropdown" id="prioDrop_${ordenId}" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:white;border:1px solid #e2e8f0;border-radius:8px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.15);margin-top:4px">
                 <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 1)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#94a3b8">&#9679;</span> 1 - Normal</div>
                 <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 2)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#eab308">&#9889;</span> 2 - Express</div>
@@ -235,7 +241,7 @@ App.registerModule('produccion', {
                 + '<td style="padding:10px 12px;color:#475569">' + (o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-') + '</td>'
                 + '<td style="padding:10px 12px;font-weight:600;color:#0f172a">' + (o.kilos ? Number(o.kilos).toFixed(1) : '-') + '</td>'
                 + '<td style="padding:10px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(' + o.id + ', ' + (o.cantidad || 1) + ')"><strong style="color:#3b82f6">' + (o.cantidad || 1) + '</strong></td>'
-                + '<td style="padding:10px 12px">' + tipoBadge(o.tipo_venta, o.id) + '</td>'
+                + '<td style="padding:10px 12px">' + prioridadBadge(o.nivel_prioridad, o.id) + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_entrega_pactada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
                 + '<td style="padding:10px 12px;color:#475569">' + (o.total_pasos === 0 ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin estaciones asociadas">SIN RUTA</span>' : progreso) + '</td>'
