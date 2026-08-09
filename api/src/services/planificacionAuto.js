@@ -1,12 +1,19 @@
 const { query } = require('../config/database');
 
 /**
- * AUTO-ASIGNAR PENDIENTES — Drum-Buffer-Rope (DBR)
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  AUTO-ASIGNAR PENDIENTES — Drum-Buffer-Rope (DBR)              ║
+ * ║  ARCHIVO CRÍTICO — Ver docs/PLANIFICACION_DBR.md antes de      ║
+ * ║  modificar. Las 4 reglas son inviolables.                      ║
+ * ╚══════════════════════════════════════════════════════════════════╝
  *
  * REGLA 1: PISO DE FECHA — Ninguna estación antes de fecha_inicio
  * REGLA 2: BLOQUEO DURO — cap_max es límite absoluto, cero tolerancia
  * REGLA 3: DRUM — El cuello de botella marca el ritmo (agenda primero)
  * REGLA 4: ROPE — Estaciones previas amarradas al día del cuello
+ *
+ * Columnas BD: estaciones_maestras.cap_max (m2/día), cuello_botella (bool)
+ * NO CONFUNDIR con produccion_maquinas.capacidad_max_m2_dia (otra tabla)
  */
 async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   const fechaMinima = inicio || new Date().toISOString().split('T')[0];
