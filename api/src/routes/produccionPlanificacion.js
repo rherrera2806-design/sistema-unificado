@@ -3,6 +3,7 @@ const router = express.Router();
 const planificacion = require('../services/planificacion');
 const planificacionGrupo = require('../services/planificacionGrupo');
 const { autoAsignarPendientes } = require('../services/planificacionAuto');
+const { reprogramarPendientes } = require('../services/reprogramarService');
 const { importarOrdenes } = require('../services/produccionImportar');
 const { query } = require('../config/database');
 
@@ -154,6 +155,32 @@ router.delete('/api/produccion/notas/:id', async (req, res, next) => {
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     try { await query('DELETE FROM prod_notas WHERE id = $1 AND usuario_email = $2', [Number(req.params.id), userEmail]); res.json({ ok: true }); }
     catch (e) { next(e); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// CAMBIO DE PRIORIDAD — PATCH /api/produccion/ordenes/:id/prioridad
+// ═══════════════════════════════════════════════════════════════
+router.patch('/api/produccion/ordenes/:id/prioridad', async (req, res, next) => {
+    const { nivel_prioridad } = req.body;
+    const nivel = Number(nivel_prioridad);
+    if (![1, 2, 3, 4].includes(nivel)) return res.status(400).json({ error: 'nivel_prioridad debe ser 1 (Normal), 2 (Express), 3 (Urgencia) o 4 (Reposición)' });
+    try {
+        await query('UPDATE produccion_ordenes SET nivel_prioridad = $1 WHERE id = $2', [nivel, Number(req.params.id)]);
+        res.json({ ok: true, nivel_prioridad: nivel });
+    } catch (e) { next(e); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// REPROGRAMAR PENDIENTES — POST /api/produccion/reprogramar
+// Paso A: Liberar PROGRAMADO → PENDIENTE (sin tocar EN PROCESO/MERMADO/TERMINADO)
+// Paso B: Re-ejecutar auto-asignar con Priority Queue 4→1
+// ═══════════════════════════════════════════════════════════════
+router.post('/api/produccion/reprogramar', async (req, res, next) => {
+    try {
+        const dias = Number(req.body.dias) || 21;
+        const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
+        res.json(await reprogramarPendientes({ dias, inicio }));
+    } catch (e) { next(e); }
 });
 
 module.exports = router;

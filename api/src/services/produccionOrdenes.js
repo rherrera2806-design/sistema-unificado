@@ -200,6 +200,7 @@ const editarOrden = async (id, body) => {
     let idx = 1;
     if (body.cantidad !== undefined) { fields.push(`cantidad = $${idx++}`); values.push(Number(body.cantidad) || 1); }
     if (body.metros_cuadrados !== undefined) { fields.push(`metros_cuadrados = $${idx++}`); values.push(Number(body.metros_cuadrados)); }
+    if (body.nivel_prioridad !== undefined) { fields.push(`nivel_prioridad = $${idx++}`); values.push(Math.min(4, Math.max(1, Number(body.nivel_prioridad) || 1))); }
     if (fields.length === 0) throw new Error('Sin campos para actualizar');
 
     values.push(id);

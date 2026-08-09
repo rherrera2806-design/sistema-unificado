@@ -64,6 +64,7 @@ App.registerModule('produccion', {
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Kilos</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cant.</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Tipo Venta</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Prioridad</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Programado</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Termino</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Ruta</th>'
@@ -162,7 +163,7 @@ App.registerModule('produccion', {
         } catch(e) {
             console.error('Error loading produccion:', e);
             const tbody = document.getElementById('prodTable');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;padding:24px;color:#ef4444">Error: ' + (e.message || 'No se pudo cargar') + '</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;padding:24px;color:#ef4444">Error: ' + (e.message || 'No se pudo cargar') + '</td></tr>';
         }
     },
 
@@ -195,7 +196,7 @@ App.registerModule('produccion', {
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
         this.renderTotales(ordenes);
-        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>'; return; }
+        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>'; return; }
 
         const estadoBadge = (e) => {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">TERMINADO</span>';
@@ -209,6 +210,18 @@ App.registerModule('produccion', {
         const tipoBadge = (t) => {
             const styles = { 'Express': 'background:#fee2e2;color:#991b1b', 'Urgencia': 'background:#fecaca;color:#991b1b', 'Vta Region': 'background:#dbeafe;color:#1e40af' };
             return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;${styles[t] || 'background:#f1f5f9;color:#64748b'}">${t || 'Normal'}</span>`;
+        };
+
+        const prioridadBadge = (nivel) => {
+            const n = Number(nivel) || 1;
+            const map = {
+                4: { label: 'REPOSICION', bg: '#fef2f2', color: '#991b1b', border: '#ef4444', icon: '&#x1f525;' },
+                3: { label: 'URGENCIA', bg: '#fff7ed', color: '#9a3412', border: '#f97316', icon: '&#x26a1;' },
+                2: { label: 'EXPRESS', bg: '#eff6ff', color: '#1e40af', border: '#3b82f6', icon: '&#x26a1;' },
+                1: { label: 'NORMAL', bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', icon: '' }
+            };
+            const m = map[n] || map[1];
+            return `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;border:1px solid ${m.border};background:${m.bg};color:${m.color};cursor:pointer" title="Nivel ${n}: ${m.label}" onclick="App.modules.produccion.cambiarPrioridad(${arguments[1]}, ${n})">${m.icon ? '<span style="font-size:10px">' + m.icon + '</span>' : ''}${m.label}</span>`;
         };
 
         tbody.innerHTML = ordenes.map(o => {
@@ -227,6 +240,7 @@ App.registerModule('produccion', {
                 + '<td style="padding:10px 12px;font-weight:600;color:#0f172a">' + (o.kilos ? Number(o.kilos).toFixed(1) : '-') + '</td>'
                 + '<td style="padding:10px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(' + o.id + ', ' + (o.cantidad || 1) + ')"><strong style="color:#3b82f6">' + (o.cantidad || 1) + '</strong></td>'
                 + '<td style="padding:10px 12px">' + tipoBadge(o.tipo_venta) + '</td>'
+                + '<td style="padding:10px 12px">' + prioridadBadge(o.nivel_prioridad, o.id) + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_entrega_pactada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
                 + '<td style="padding:10px 12px;color:#475569">' + (o.total_pasos === 0 ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin estaciones asociadas">SIN RUTA</span>' : progreso) + '</td>'
@@ -546,6 +560,30 @@ App.registerModule('produccion', {
                 body: JSON.stringify({ cantidad: cant, metros_cuadrados: m2 })
             });
             if (res.ok) { App.toast('Cantidad actualizada'); await this.load(); }
+            else { const d = await res.json(); alert(d.error || 'Error'); }
+        } catch(e) { alert('Error: ' + e.message); }
+    },
+
+    async cambiarPrioridad(id, nivelActual) {
+        const opciones = [
+            { v: 1, l: '1 - Normal', d: 'Produccion estandar' },
+            { v: 2, l: '2 - Express', d: 'Cobro adicional por rapidez' },
+            { v: 3, l: '3 - Urgencia', d: 'Atrasos internos, VIP, excepciones' },
+            { v: 4, l: '4 - Reposicion', d: 'Roturas/Mermas, prioridad maxima' }
+        ];
+        const choices = opciones.map(o => `${o.v}) ${o.l} — ${o.d}`).join('\n');
+        const sel = prompt(`Cambiar prioridad (actual: ${nivelActual || 1}):\n\n${choices}\n\nIngresa el numero (1-4):`, nivelActual || 1);
+        if (sel === null) return;
+        const nuevo = Number(sel);
+        if (![1, 2, 3, 4].includes(nuevo)) { alert('Valor no valido. Usa 1, 2, 3 o 4.'); return; }
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch(`/api/produccion/ordenes/${id}/prioridad`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ nivel_prioridad: nuevo })
+            });
+            if (res.ok) { App.toast('Prioridad actualizada'); await this.load(); }
             else { const d = await res.json(); alert(d.error || 'Error'); }
         } catch(e) { alert('Error: ' + e.message); }
     },

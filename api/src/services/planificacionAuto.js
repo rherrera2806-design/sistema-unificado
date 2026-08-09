@@ -4,13 +4,15 @@ const { query } = require('../config/database');
  * ╔══════════════════════════════════════════════════════════════════╗
  * ║  AUTO-ASIGNAR PENDIENTES — Drum-Buffer-Rope (DBR)              ║
  * ║  ARCHIVO CRÍTICO — Ver docs/PLANIFICACION_DBR.md antes de      ║
- * ║  modificar. Las 4 reglas son inviolables.                      ║
+ * ║  modificar. Las 5 reglas son inviolables.                      ║
  * ╚══════════════════════════════════════════════════════════════════╝
  *
  * REGLA 1: PISO DE FECHA — Ninguna estación antes de fecha_inicio
  * REGLA 2: BLOQUEO DURO — cap_max es límite absoluto, cero tolerancia
  * REGLA 3: DRUM — El cuello de botella marca el ritmo (agenda primero)
  * REGLA 4: ROPE — Estaciones previas amarradas al día del cuello
+ * REGLA 5: PRIORITY QUEUE — Se procesa de mayor a menor prioridad:
+ *          4=Reposición > 3=Urgencia > 2=Express > 1=Normal
  *
  * Columnas BD: estaciones_maestras.cap_max (m2/día), cuello_botella (bool)
  * NO CONFUNDIR con produccion_maquinas.capacidad_max_m2_dia (otra tabla)
@@ -106,7 +108,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   const pendRes = await query(
     `SELECT o.* FROM produccion_ordenes o
      WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL
-     ORDER BY o.created_at`
+     ORDER BY COALESCE(o.nivel_prioridad, 1) DESC, o.created_at ASC`
   );
 
   const padreRes = await query(

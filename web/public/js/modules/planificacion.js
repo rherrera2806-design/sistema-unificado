@@ -269,13 +269,86 @@ App.modules.planificacion = {
                             <div style="font-size:11px;color:#6b7280">Grupo: ${escapeHtml(n.grupo || '?')} | ${Number(n.m2_total || 0).toFixed(1)} m² | ${Number(n.kg_total || 0).toFixed(0)} kg</div>
                         </div>`
                     ).join('');
-                    if (numNoAsignados > 20) html += `<div style="margin-top:4px;font-size:11px;color:#6b7280">... y ${numNoAsignados - 20} más</div>`;
+                    if (numNoAsignados > 20) html += `<div style="margin-top:4px;font-size:11px;color:#6b7280">... y ${numNoAsignados - 20} mas</div>`;
                 }
                 html += '</div>';
                 resEl.innerHTML = html;
                 if (esExito) {
                     setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); await this.cargarEstaciones(); }, 1500);
                 }
+            } else {
+                resEl.innerHTML = `<div style="color:#ef4444">${data.error || 'Error'}</div>`;
+            }
+        } catch(e) {
+            resEl.innerHTML = `<div style="color:#ef4444">Error: ${e.message}</div>`;
+        }
+    },
+
+    showReprogramar() {
+        const html = `
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#991b1b">
+                <strong>Atencion:</strong> Esta accion liberara TODAS las ordenes en estado PROGRAMADO (las devolvera a PENDIENTE) y luego re-asignaran automaticamente respetando la prioridad:
+                <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fef2f2;color:#991b1b;border:1px solid #ef4444">4. Reposicion</span>
+                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fff7ed;color:#9a3412;border:1px solid #f97316">3. Urgencia</span>
+                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#eff6ff;color:#1e40af;border:1px solid #3b82f6">2. Express</span>
+                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0">1. Normal</span>
+                </div>
+                <div style="margin-top:8px;font-size:12px;color:#6b7280">
+                    <strong>Protegidos:</strong> Ordenes EN PROCESO, MERMADAS y TERMINADAS NO seran tocadas.
+                </div>
+            </div>
+            <div class="form-group">
+                <label style="font-weight:500">Desde (fecha inicio busqueda)</label>
+                <input type="date" class="form-control" id="reprogInicio" value="${this.fechaGrupo}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+            </div>
+            <div class="form-group">
+                <label style="font-weight:500">Dias habiles a buscar capacidad</label>
+                <input type="number" class="form-control" id="reprogDias" value="21" min="1" max="60" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+            </div>
+            <div id="reprogResultado" style="margin-top:12px"></div>
+        `;
+        const footer = `
+            <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
+            <button class="btn btn-danger" style="background:#ef4444;border-color:#ef4444;color:white" onclick="App.modules.planificacion.ejecutarReprogramar()">Reprogramar Todo</button>
+        `;
+        App.showModalInv('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reprogramar Pendientes', html, footer);
+    },
+
+    async ejecutarReprogramar() {
+        const inicio = document.getElementById('reprogInicio').value;
+        const dias = Number(document.getElementById('reprogDias').value) || 21;
+        const resEl = document.getElementById('reprogResultado');
+        resEl.innerHTML = '<div style="text-align:center;padding:12px;color:#64748b">Reprogramando... liberando y re-asignando por prioridad...</div>';
+        try {
+            const res = await fetch('/api/produccion/reprogramar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ inicio, dias })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                const numLiberadas = data.ordenes_liberadas || 0;
+                const numAsignados = Array.isArray(data.asignados) ? data.asignados.length : 0;
+                const numNoAsignados = Array.isArray(data.noAsignados) ? data.noAsignados.length : 0;
+                let html = `<div style="background:#dcfce7;border-radius:8px;padding:12px;font-size:13px">
+                    <div style="font-weight:700;color:#166534;margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg> Reprogramacion completada</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+                        <div style="background:white;border-radius:6px;padding:8px"><div style="font-size:18px;font-weight:800;color:#f59e0b">${numLiberadas}</div><div style="font-size:10px;color:#64748b">Liberadas</div></div>
+                        <div style="background:white;border-radius:6px;padding:8px"><div style="font-size:18px;font-weight:800;color:#22c55e">${numAsignados}</div><div style="font-size:10px;color:#64748b">Re-asignadas</div></div>
+                        <div style="background:white;border-radius:6px;padding:8px"><div style="font-size:18px;font-weight:800;color:#ef4444">${numNoAsignados}</div><div style="font-size:10px;color:#64748b">Sin cupo</div></div>
+                    </div>`;
+                if (numNoAsignados > 0) {
+                    html += `<div style="margin-top:10px;color:#991b1b;font-weight:600">Sin capacidad (${numNoAsignados}):</div>`;
+                    data.noAsignados.slice(0, 15).forEach(n => {
+                        html += `<div style="margin-top:3px;padding:4px 8px;background:#fef2f2;border-radius:4px;border-left:3px solid #ef4444;font-size:12px">
+                            <strong>${escapeHtml(n.pedido || n.orden_id)}</strong> — ${escapeHtml(n.motivo)} (${escapeHtml(n.grupo || '?')})
+                        </div>`;
+                    });
+                }
+                html += '</div>';
+                resEl.innerHTML = html;
+                setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); await this.cargarEstaciones(); }, 2000);
             } else {
                 resEl.innerHTML = `<div style="color:#ef4444">${data.error || 'Error'}</div>`;
             }
@@ -331,6 +404,7 @@ App.modules.planificacion = {
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(1)">▶</button>
                         ${puedeEditar ? '<button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.showCapacidadGrupo()" title="Configurar capacidad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Capacidad</button>' : ''}
                         ${puedeEditar ? '<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="App.modules.planificacion.showAutoAsignarGrupo()" title="Auto-asignar"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar</button>' : ''}
+                        ${puedeEditar ? '<button class="btn btn-danger" style="padding:4px 12px;font-size:12px;background:#ef4444;border-color:#ef4444;color:white" onclick="App.modules.planificacion.showReprogramar()" title="Reprogramar: libera PROGRAMADO y re-asigna por prioridad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reprogramar</button>' : ''}
                     </div>
                 </div>
                 <div class="card-body" style="padding:16px">

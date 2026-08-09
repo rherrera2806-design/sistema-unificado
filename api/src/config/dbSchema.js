@@ -586,6 +586,12 @@ async function runMigrations() {
         console.error('Migration warning (mecanizado_operaciones):', e.message);
     }
     try {
+        await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS nivel_prioridad INTEGER DEFAULT 1");
+        await query("UPDATE produccion_ordenes SET nivel_prioridad = 1 WHERE nivel_prioridad IS NULL");
+    } catch (e) {
+        console.error('Migration warning (nivel_prioridad):', e.message);
+    }
+    try {
         await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL");
         await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS procesos_especificos_json JSONB DEFAULT NULL");
         await query("CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)");
