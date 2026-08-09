@@ -218,14 +218,15 @@ App.registerModule('produccion', {
             };
             const m = map[n] || map[1];
             const iconHtml = m.icon ? '<span style="font-size:10px">' + m.icon + '</span> ' : '';
-            return '<span class="tipo-venta-badge prio-toggle" data-orden="' + ordenId + '" '
+            return '<div style="position:relative;display:inline-block">'
+                + '<span class="prio-toggle" data-orden="' + ordenId + '" '
                 + 'style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;'
                 + 'border:1px solid ' + m.border + ';background:' + m.bg + ';color:' + m.color
-                + ';cursor:pointer;position:relative;display:inline-block" '
+                + ';cursor:pointer;display:inline-block;white-space:nowrap" '
                 + 'title="Click para cambiar prioridad">'
                 + iconHtml + m.label + ' &#9662;</span>'
                 + '<div class="prioridad-dropdown" id="prioDrop_' + ordenId + '" '
-                + 'style="display:none;position:absolute;top:100%;left:0;z-index:50;'
+                + 'style="display:none;position:absolute;top:100%;left:0;z-index:999;'
                 + 'background:white;border:1px solid #e2e8f0;border-radius:8px;padding:4px;'
                 + 'min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.15);margin-top:4px">'
                 + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="1" '
@@ -240,7 +241,7 @@ App.registerModule('produccion', {
                 + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="4" '
                 + 'style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px">'
                 + '<span style="color:#ef4444">&#128293;</span> 4 - Reposicion</div>'
-                + '</div>';
+                + '</div></div>';
         };
 
         tbody.innerHTML = ordenes.map(o => {
