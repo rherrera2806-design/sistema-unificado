@@ -45,6 +45,9 @@ async function reprogramarPendientes({ dias = 21, inicio } = {}) {
     // ═══════════════════════════════════════════════════════════════
     const resultado = await autoAsignarPendientes({ dias, inicio: fechaMinima });
 
+    // Limpiar flag de necesidad de reprogramación
+    await query('UPDATE produccion_ordenes SET needs_reprogramming = FALSE WHERE needs_reprogramming = TRUE');
+
     return {
         ordenes_liberadas: ordenesLiberadas,
         asignados: resultado.asignados,

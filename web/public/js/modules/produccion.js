@@ -27,7 +27,7 @@ App.registerModule('produccion', {
             + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestion de ordenes de produccion y planificacion</p></div>'
             + (puedeImportar ? '<div style="display:flex;gap:8px">'
             + '<button class="btn btn-primary" onclick="App.modules.produccion.showImportModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar SAP</button>'
-            + '<button class="btn btn-danger" style="background:#ef4444;border-color:#ef4444;color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" onclick="App.modules.produccion.reprogramarTodo()" title="Libera PROGRAMADO y re-asigna por prioridad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reprogramar Todo</button>'
+            + '<button id="reprogBtn" class="btn btn-danger" style="background:#ef4444;border-color:#ef4444;color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" onclick="App.modules.produccion.reprogramarTodo()" title="Libera PROGRAMADO y re-asigna por prioridad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reprogramar Todo<span id="reprogBadge" style="display:none;background:white;color:#ef4444;border-radius:50%;width:18px;height:18px;font-size:11px;font-weight:800;align-items:center;justify-content:center;margin-left:4px">!</span></button>'
             + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.produccion.eliminarTodas()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>'
             + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.produccion.showNewOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Orden</button>'
             + '</div>' : '')
@@ -144,6 +144,7 @@ App.registerModule('produccion', {
         await this.load();
         this.setupDragDrop();
         this._setupPrioridadEvents();
+        this.checkReprogramacionPendiente();
     },
 
     async load() {
@@ -593,7 +594,7 @@ App.registerModule('produccion', {
                 headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
                 body: JSON.stringify({ nivel_prioridad: nuevoNivel })
             });
-            if (res.ok) { App.toast('Prioridad actualizada'); await this.load(); }
+            if (res.ok) { App.toast('Prioridad actualizada'); await this.load(); this.checkReprogramacionPendiente(); }
             else { const d = await res.json(); alert(d.error || 'Error'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
@@ -624,6 +625,26 @@ App.registerModule('produccion', {
         });
     },
 
+    async checkReprogramacionPendiente() {
+        try {
+            const res = await fetch('/api/produccion/reprogramar/pendientes');
+            const data = await res.json();
+            const badge = document.getElementById('reprogBadge');
+            const btn = document.getElementById('reprogBtn');
+            if (badge && btn) {
+                if (data.pendientes) {
+                    badge.style.display = 'inline-flex';
+                    btn.style.background = '#dc2626';
+                    btn.title = data.count + ' cambio(s) de prioridad pendientes de reprogramar';
+                } else {
+                    badge.style.display = 'none';
+                    btn.style.background = '#ef4444';
+                    btn.title = 'Libera PROGRAMADO y re-asigna por prioridad';
+                }
+            }
+        } catch(e) {}
+    },
+
     async reprogramarTodo() {
         if (!confirm('REPROGRAMAR TODO:\n\nSe liberaran TODAS las ordenes PROGRAMADO (se devuelven a PENDIENTE) y se re-asignaran automaticamente por prioridad (Reposicion > Urgencia > Express > Normal).\n\nLas ordenes EN PROCESO, MERMADAS y TERMINADAS NO seran tocadas.\n\nContinuar?')) return;
         try {
@@ -640,6 +661,7 @@ App.registerModule('produccion', {
                 const asig = Array.isArray(data.asignados) ? data.asignados.length : 0;
                 App.toast(`Reprogramado: ${lib} liberadas, ${asig} re-asignadas`);
                 await this.load();
+                this.checkReprogramacionPendiente();
             } else { alert(data.error || 'Error al reprogramar'); }
         } catch(e) { alert('Error: ' + e.message); }
     },

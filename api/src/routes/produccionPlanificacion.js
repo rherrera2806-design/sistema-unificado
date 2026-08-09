@@ -165,7 +165,7 @@ router.patch('/api/produccion/ordenes/:id/prioridad', async (req, res, next) => 
     const nivel = Number(nivel_prioridad);
     if (![1, 2, 3, 4].includes(nivel)) return res.status(400).json({ error: 'nivel_prioridad debe ser 1 (Normal), 2 (Express), 3 (Urgencia) o 4 (Reposición)' });
     try {
-        await query('UPDATE produccion_ordenes SET nivel_prioridad = $1 WHERE id = $2', [nivel, Number(req.params.id)]);
+        await query('UPDATE produccion_ordenes SET nivel_prioridad = $1, needs_reprogramming = TRUE WHERE id = $2', [nivel, Number(req.params.id)]);
         res.json({ ok: true, nivel_prioridad: nivel });
     } catch (e) { next(e); }
 });
@@ -180,6 +180,16 @@ router.post('/api/produccion/reprogramar', async (req, res, next) => {
         const dias = Number(req.body.dias) || 21;
         const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
         res.json(await reprogramarPendientes({ dias, inicio }));
+    } catch (e) { next(e); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// VERIFICAR SI HAY CAMBIOS PENDIENTES DE REPROGRAMACIÓN
+// ═══════════════════════════════════════════════════════════════
+router.get('/api/produccion/reprogramar/pendientes', async (req, res, next) => {
+    try {
+        const result = await query('SELECT COUNT(*) as count FROM produccion_ordenes WHERE needs_reprogramming = TRUE');
+        res.json({ pendientes: Number(result.rows[0].count) > 0, count: Number(result.rows[0].count) });
     } catch (e) { next(e); }
 });
 

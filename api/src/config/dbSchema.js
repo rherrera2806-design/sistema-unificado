@@ -588,6 +588,7 @@ async function runMigrations() {
     try {
         await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS nivel_prioridad INTEGER DEFAULT 1");
         await query("UPDATE produccion_ordenes SET nivel_prioridad = 1 WHERE nivel_prioridad IS NULL");
+        await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS needs_reprogramming BOOLEAN DEFAULT FALSE");
     } catch (e) {
         console.error('Migration warning (nivel_prioridad):', e.message);
     }
