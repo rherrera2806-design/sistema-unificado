@@ -187,8 +187,13 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         if (!cuelloIds.has(estId)) continue;
         const capEst = cuellosMap[estId] || 0;
         const usadosEst = cargaEstMap[fs + '|' + estId] || 0;
-        if (m2PorUnidad > 0) {
-          units = Math.min(units, Math.floor((capEst - usadosEst) / m2PorUnidad));
+        const estUnidad = estCapMap[estId]?.unidad || 'm2';
+        if (estUnidad === 'unidades') {
+          units = Math.min(units, Math.floor(capEst - usadosEst));
+        } else {
+          if (m2PorUnidad > 0) {
+            units = Math.min(units, Math.floor((capEst - usadosEst) / m2PorUnidad));
+          }
         }
       }
       if (units === Infinity) units = 0;
@@ -205,9 +210,14 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     cargaMap[fecha][grupo] = (cargaMap[fecha][grupo] || 0) + kg;
   }
 
-  function addToCargaEst(fecha, estacionId, m2) {
+  function addToCargaEst(fecha, estacionId, m2, cantidad) {
     const k = fecha + '|' + estacionId;
-    cargaEstMap[k] = (cargaEstMap[k] || 0) + m2;
+    const estUnidad = estCapMap[estacionId]?.unidad || 'm2';
+    if (estUnidad === 'unidades') {
+      cargaEstMap[k] = (cargaEstMap[k] || 0) + (cantidad || 0);
+    } else {
+      cargaEstMap[k] = (cargaEstMap[k] || 0) + m2;
+    }
   }
 
   function calcFechaEntrega(fechaInicio, estacionesIds, m2, cantidad) {
@@ -280,7 +290,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
       );
       addToCarga(fit.fecha, grupo, kg);
       for (const estId of estacionesIds) {
-        addToCargaEst(fit.fecha, estId, m2);
+        addToCargaEst(fit.fecha, estId, m2, cantidad);
       }
       asignados.push({ orden_id: o.id, fecha: fit.fecha, grupo, kg, unidades: cantidad });
     } else if (fit.fecha && fit.units >= 1) {
@@ -330,7 +340,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
       addToCarga(fit.fecha, grupo, kgAsignados);
       for (const estId of estacionesIds) {
-        addToCargaEst(fit.fecha, estId, m2Asignados);
+        addToCargaEst(fit.fecha, estId, m2Asignados, unitsAsignadas);
       }
 
       pendRes.rows.push({
