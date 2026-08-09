@@ -143,7 +143,7 @@ App.registerModule('produccion', {
 
         await this.load();
         this.setupDragDrop();
-        document.addEventListener('click', () => { document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none'); });
+        this._setupPrioridadEvents();
     },
 
     async load() {
@@ -217,13 +217,30 @@ App.registerModule('produccion', {
                 1: { label: 'Normal', bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', icon: '' }
             };
             const m = map[n] || map[1];
-            return `<span class="tipo-venta-badge" data-orden-id="${ordenId}" style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;border:1px solid ${m.border};background:${m.bg};color:${m.color};cursor:pointer;position:relative;display:inline-block" onclick="event.stopPropagation();App.modules.produccion.togglePrioridadMenu(event, ${ordenId})" title="Click para cambiar prioridad">${m.icon ? '<span style="font-size:10px">' + m.icon + '</span> ' : ''}${m.label} &#9662;</span>
-            <div class="prioridad-dropdown" id="prioDrop_${ordenId}" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:white;border:1px solid #e2e8f0;border-radius:8px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.15);margin-top:4px">
-                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 1)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#94a3b8">&#9679;</span> 1 - Normal</div>
-                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 2)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#eab308">&#9889;</span> 2 - Express</div>
-                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 3)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#f97316">&#9889;</span> 3 - Urgencia</div>
-                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 4)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#ef4444">&#128293;</span> 4 - Reposicion</div>
-            </div>`;
+            const iconHtml = m.icon ? '<span style="font-size:10px">' + m.icon + '</span> ' : '';
+            return '<span class="tipo-venta-badge prio-toggle" data-orden="' + ordenId + '" '
+                + 'style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;'
+                + 'border:1px solid ' + m.border + ';background:' + m.bg + ';color:' + m.color
+                + ';cursor:pointer;position:relative;display:inline-block" '
+                + 'title="Click para cambiar prioridad">'
+                + iconHtml + m.label + ' &#9662;</span>'
+                + '<div class="prioridad-dropdown" id="prioDrop_' + ordenId + '" '
+                + 'style="display:none;position:absolute;top:100%;left:0;z-index:50;'
+                + 'background:white;border:1px solid #e2e8f0;border-radius:8px;padding:4px;'
+                + 'min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.15);margin-top:4px">'
+                + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="1" '
+                + 'style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px">'
+                + '<span style="color:#94a3b8">&#9679;</span> 1 - Normal</div>'
+                + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="2" '
+                + 'style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px">'
+                + '<span style="color:#eab308">&#9889;</span> 2 - Express</div>'
+                + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="3" '
+                + 'style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px">'
+                + '<span style="color:#f97316">&#9889;</span> 3 - Urgencia</div>'
+                + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="4" '
+                + 'style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px">'
+                + '<span style="color:#ef4444">&#128293;</span> 4 - Reposicion</div>'
+                + '</div>';
         };
 
         tbody.innerHTML = ordenes.map(o => {
@@ -580,13 +597,30 @@ App.registerModule('produccion', {
         } catch(e) { alert('Error: ' + e.message); }
     },
 
-    togglePrioridadMenu(e, id) {
-        e.stopPropagation();
-        const menu = document.getElementById('prioDrop_' + id);
-        if (!menu) return;
-        const wasVisible = menu.style.display === 'block';
-        document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
-        if (!wasVisible) menu.style.display = 'block';
+    _setupPrioridadEvents() {
+        document.addEventListener('click', (e) => {
+            const toggle = e.target.closest('.prio-toggle');
+            if (toggle) {
+                e.stopPropagation();
+                const ordenId = toggle.dataset.orden;
+                const menu = document.getElementById('prioDrop_' + ordenId);
+                if (!menu) return;
+                const wasVisible = menu.style.display === 'block';
+                document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
+                if (!wasVisible) menu.style.display = 'block';
+                return;
+            }
+            const option = e.target.closest('.prio-option');
+            if (option) {
+                e.stopPropagation();
+                const ordenId = Number(option.dataset.orden);
+                const nivel = Number(option.dataset.nivel);
+                document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
+                if (ordenId && nivel) this.cambiarPrioridad(ordenId, nivel);
+                return;
+            }
+            document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
+        });
     },
 
     async reprogramarTodo() {
