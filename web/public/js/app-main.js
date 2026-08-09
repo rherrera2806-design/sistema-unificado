@@ -164,7 +164,7 @@ const App = {
         const overlay = document.getElementById('modalOverlay');
         const modal = overlay.querySelector('.modal');
         modal.className = 'modal';
-        overlay.querySelector('.modal-header h3').textContent = title || '';
+        overlay.querySelector('.modal-header h3').innerHTML = title || '';
         overlay.querySelector('.modal-body').innerHTML = bodyHtml || '';
         overlay.querySelector('.modal-footer').innerHTML = footerHtml || '<button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>';
         overlay.classList.add('show');
