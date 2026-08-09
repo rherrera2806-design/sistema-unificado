@@ -12,11 +12,10 @@ const getOrdenes = async () => {
                     o.codigo_padre
                 )
             ELSE NULL END as nombre_codigo_padre,
-            (SELECT CASE WHEN mp.espesor_mm IS NOT NULL THEN cc.descripcion || ' ' || CAST(CAST(mp.espesor_mm AS INT) AS VARCHAR) || 'mm' ELSE cc.descripcion END
-             FROM produccion_codigos cc
-             LEFT JOIN recetas_bom rb ON rb.codigo_sap_padre = cc.codigo
-             LEFT JOIN materias_primas mp ON mp.id = rb.materia_prima_id
-             WHERE cc.codigo = o.codigo_producto LIMIT 1) as nombre_mp,
+            (SELECT CASE WHEN mp.espesor_mm IS NOT NULL THEN mp.nombre || ' ' || CAST(CAST(mp.espesor_mm AS INT) AS VARCHAR) || 'mm'
+             ELSE COALESCE(mp.nombre, o.descripcion, '') END
+             FROM materias_primas mp
+             WHERE mp.codigo_mp = o.codigo_producto LIMIT 1) as nombre_mp,
             (SELECT f.nombre_familia FROM familias_producto f WHERE f.id = o.familia_id) as familia_nombre,
             (SELECT em.nombre_estacion FROM cola_produccion_pasos cp
              JOIN estaciones_maestras em ON cp.estacion_id = em.id
