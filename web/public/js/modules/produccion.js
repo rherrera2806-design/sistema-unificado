@@ -17,6 +17,8 @@ App.registerModule('produccion', {
             + '.po-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-2px)}'
             + '.po-table tbody tr{transition:background 0.15s}'
             + '.po-table tbody tr:hover{background:#f8fafc!important}'
+            + '.po-table-wrapper{overflow:auto;max-height:calc(100vh - 280px);position:relative}'
+            + '.po-table thead th{position:sticky;top:0;z-index:10;background:#f8fafc;border-bottom:2px solid #e2e8f0}'
             + '</style>'
 
             + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
@@ -49,7 +51,7 @@ App.registerModule('produccion', {
             + '<select id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todos">Todos</option><option value="PENDIENTE">Pendientes</option><option value="PROGRAMADO">Programadas</option><option value="EN_PROCESO">En Proceso</option><option value="TERMINADO">Terminados</option><option value="CERRADO">Cerrados</option></select>'
             + '</div></div>'
 
-            + '<div style="overflow-x:auto"><table class="po-table" style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr>'
+            + '<div class="po-table-wrapper"><table class="po-table" style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Pedido</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Item</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cliente</th>'
@@ -62,12 +64,13 @@ App.registerModule('produccion', {
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cant.</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Tipo Venta</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Programado</th>'
+            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Termino</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Ruta</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Reglas</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">C. Botella</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Estado</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Acciones</th>'
-            + '</tr></thead><tbody id="prodTable"><tr><td colspan="17" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div>Cargando...</div></td></tr></tbody></table></div></div>'
+            + '</tr></thead><tbody id="prodTable"><tr><td colspan="18" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div>Cargando...</div></td></tr></tbody></table></div></div>'
 
             + '<div class="modal-overlay" id="prodImportModal">'
             + '<div class="modal" style="max-width:500px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
@@ -188,7 +191,7 @@ App.registerModule('produccion', {
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
         this.renderTotales(ordenes);
-        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>'; return; }
+        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>'; return; }
 
         const estadoBadge = (e) => {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">TERMINADO</span>';
@@ -221,6 +224,7 @@ App.registerModule('produccion', {
                 + '<td style="padding:10px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(' + o.id + ', ' + (o.cantidad || 1) + ')"><strong style="color:#3b82f6">' + (o.cantidad || 1) + '</strong></td>'
                 + '<td style="padding:10px 12px">' + tipoBadge(o.tipo_venta) + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
+                + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_entrega_pactada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
                 + '<td style="padding:10px 12px;color:#475569">' + (o.total_pasos === 0 ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin estaciones asociadas">SIN RUTA</span>' : progreso) + '</td>'
                 + '<td style="padding:10px 12px">' + (() => {
                     let reglas = o.reglas_extras_json;
