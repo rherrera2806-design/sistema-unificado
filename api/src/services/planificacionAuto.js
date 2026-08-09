@@ -172,7 +172,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
   function calcUnitsForDay(grupo, kgPorUnidad, m2PorUnidad, estacionesIds) {
     const capGrupo = capMap[grupo] || 0;
-    let best = { units: 0, fecha: null };
+    let best = { units: 0, fecha: null, score: Infinity };
     for (let i = 0; i < dias; i++) {
       const d = new Date(inicioDate);
       d.setDate(d.getDate() + i);
@@ -183,6 +183,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         const usados = (cargaMap[fs] && cargaMap[fs][grupo]) || 0;
         units = Math.min(units, Math.floor((capGrupo - usados) / kgPorUnidad));
       }
+      let worstRatio = 1;
       for (const estId of (estacionesIds || [])) {
         if (!cuelloIds.has(estId)) continue;
         const capEst = cuellosMap[estId] || 0;
@@ -195,14 +196,17 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
             units = Math.min(units, Math.floor((capEst - usadosEst) / m2PorUnidad));
           }
         }
+        if (capEst > 0) {
+          const ratio = usadosEst / capEst;
+          if (ratio < worstRatio) worstRatio = ratio;
+        }
       }
       if (units === Infinity) units = 0;
-      if (units > 0) {
-        best = { units, fecha: fs };
-        break;
+      if (units > 0 && worstRatio < best.score) {
+        best = { units, fecha: fs, score: worstRatio };
       }
     }
-    return best;
+    return { units: best.units, fecha: best.fecha };
   }
 
   function addToCarga(fecha, grupo, kg) {
