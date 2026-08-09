@@ -268,6 +268,19 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   const noAsignados = [];
   const splitLetters = {};
 
+  if (pendRes.rows.length > 0) {
+    const debugO = pendRes.rows[0];
+    const debugGrupo = debugO.es_compuesto && debugO.bom_padre_id ? (padreGrupoMap[debugO.bom_padre_id] || debugO.grupo) : debugO.grupo;
+    const debugRuta = await query('SELECT estacion_id FROM cola_produccion_pasos WHERE orden_produccion_id = $1', [debugO.id]);
+    const debugEstIds = debugRuta.rows.map(r => r.estacion_id);
+    console.log('[AUTO-DEBUG] Primera orden:', { id: debugO.id, grupo: debugGrupo, kg: debugO.kilos, m2: debugO.metros_cuadrados, cant: debugO.cantidad, es_compuesto: debugO.es_compuesto, bom_padre_id: debugO.bom_padre_id, estaciones: debugEstIds, cuelloIds: [...cuelloIds] });
+    const debugCapGrupo = capMap[debugGrupo] || 0;
+    console.log('[AUTO-DEBUG] CapGrupo:', debugCapGrupo, 'cuelloIds size:', cuelloIds.size);
+    for (const estId of debugEstIds) {
+      console.log('[AUTO-DEBUG] Est', estId, 'es_cuello:', cuelloIds.has(estId), 'cap:', cuellosMap[estId]);
+    }
+  }
+
   for (let idx = 0; idx < pendRes.rows.length; idx++) {
     const o = pendRes.rows[idx];
     const kg = Number(o.kilos) || 0;
