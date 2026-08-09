@@ -172,12 +172,17 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
   function calcUnitsForDay(grupo, kgPorUnidad, m2PorUnidad, estacionesIds) {
     const capGrupo = capMap[grupo] || 0;
-    let best = { units: 0, fecha: null, score: Infinity };
+    let best = { units: 0, fecha: null, score: -1 };
+
     for (let i = 0; i < dias; i++) {
       const d = new Date(inicioDate);
       d.setDate(d.getDate() + i);
       const fs = fmt(d);
       if (!esLaboral(fs)) continue;
+
+      const usadosGrupo = (cargaMap[fs] && cargaMap[fs][grupo]) || 0;
+      const resteGrupo = capGrupo - usadosGrupo;
+      if (resteGrupo <= 0) continue;
 
       let feasible = true;
       for (const estId of (estacionesIds || [])) {
@@ -193,32 +198,59 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
       }
       if (!feasible) continue;
 
-      let units = Infinity;
-      if (kgPorUnidad > 0) {
-        const usados = (cargaMap[fs] && cargaMap[fs][grupo]) || 0;
-        units = Math.min(units, Math.floor((capGrupo - usados) / kgPorUnidad));
-      }
-      let worstRatio = 1;
+      let unitsByGrupo = Infinity;
+      if (kgPorUnidad > 0) unitsByGrupo = Math.floor(resteGrupo / kgPorUnidad);
+      if (unitsByGrupo <= 0) continue;
+
+      let unitsByEstaciones = Infinity;
+      let worstUsedRatio = 1;
+      let worstEstId = null;
       for (const estId of (estacionesIds || [])) {
         if (!cuelloIds.has(estId)) continue;
         const capEst = cuellosMap[estId] || 0;
         const usadosEst = cargaEstMap[fs + '|' + estId] || 0;
         const estUnidad = estCapMap[estId]?.unidad || 'm2';
+        let estUnits;
         if (estUnidad === 'unidades') {
-          units = Math.min(units, Math.floor(capEst - usadosEst));
+          estUnits = Math.floor(capEst - usadosEst);
         } else {
-          if (m2PorUnidad > 0) {
-            units = Math.min(units, Math.floor((capEst - usadosEst) / m2PorUnidad));
+          estUnits = m2PorUnidad > 0 ? Math.floor((capEst - usadosEst) / m2PorUnidad) : Infinity;
+        }
+        unitsByEstaciones = Math.min(unitsByEstaciones, estUnits);
+        if (capEst > 0) {
+          const usedRatio = usadosEst / capEst;
+          if (usedRatio < worstUsedRatio) {
+            worstUsedRatio = usedRatio;
+            worstEstId = estId;
           }
         }
-        if (capEst > 0) {
-          const ratio = usadosEst / capEst;
-          if (ratio < worstRatio) worstRatio = ratio;
+      }
+      if (unitsByEstaciones <= 0) continue;
+
+      const units = Math.min(unitsByGrupo, unitsByEstaciones);
+
+      const estCapAfter = {};
+      for (const estId of (estacionesIds || [])) {
+        if (!cuelloIds.has(estId)) continue;
+        const capEst = cuellosMap[estId] || 0;
+        if (capEst <= 0) continue;
+        const usadosEst = cargaEstMap[fs + '|' + estId] || 0;
+        const estUnidad = estCapMap[estId]?.unidad || 'm2';
+        const amount = estUnidad === 'unidades' ? units : units * m2PorUnidad;
+        estCapAfter[estId] = (usadosEst + amount) / capEst;
+      }
+
+      let maxFill = 0;
+      let tightestId = null;
+      for (const [estId, fill] of Object.entries(estCapAfter)) {
+        if (fill > maxFill) {
+          maxFill = fill;
+          tightestId = Number(estId);
         }
       }
-      if (units === Infinity) units = 0;
-      if (units > 0 && worstRatio < best.score) {
-        best = { units, fecha: fs, score: worstRatio };
+
+      if (units > 0 && maxFill > best.score) {
+        best = { units, fecha: fs, score: maxFill, tightestId };
       }
     }
     return { units: best.units, fecha: best.fecha };
@@ -263,10 +295,12 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     return y + '-' + m + '-' + d;
   }
 
-  // 11. Procesar pendientes
+  // 11. Procesar pendientes (ordenados de mayor a menor para llenar máquinas primero)
   const asignados = [];
   const noAsignados = [];
   const splitLetters = {};
+
+  pendRes.rows.sort((a, b) => (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0));
 
   for (let idx = 0; idx < pendRes.rows.length; idx++) {
     const o = pendRes.rows[idx];
