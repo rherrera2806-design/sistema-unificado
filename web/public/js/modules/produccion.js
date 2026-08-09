@@ -217,7 +217,7 @@ App.registerModule('produccion', {
             const map = {
                 4: { label: 'REPOSICION', bg: '#fef2f2', color: '#991b1b', border: '#ef4444', icon: '&#x1f525;' },
                 3: { label: 'URGENCIA', bg: '#fff7ed', color: '#9a3412', border: '#f97316', icon: '&#x26a1;' },
-                2: { label: 'EXPRESS', bg: '#eff6ff', color: '#1e40af', border: '#3b82f6', icon: '&#x26a1;' },
+                2: { label: 'EXPRESS', bg: '#fefce8', color: '#854d0e', border: '#eab308', icon: '&#x26a1;' },
                 1: { label: 'NORMAL', bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', icon: '' }
             };
             const m = map[n] || map[1];

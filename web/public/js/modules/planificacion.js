@@ -291,7 +291,7 @@ App.modules.planificacion = {
                 <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
                     <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fef2f2;color:#991b1b;border:1px solid #ef4444">4. Reposicion</span>
                     <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fff7ed;color:#9a3412;border:1px solid #f97316">3. Urgencia</span>
-                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#eff6ff;color:#1e40af;border:1px solid #3b82f6">2. Express</span>
+                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fefce8;color:#854d0e;border:1px solid #eab308">2. Express</span>
                     <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0">1. Normal</span>
                 </div>
                 <div style="margin-top:8px;font-size:12px;color:#6b7280">
