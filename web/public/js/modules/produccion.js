@@ -65,7 +65,6 @@ App.registerModule('produccion', {
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Kilos</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cant.</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Tipo Venta</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Prioridad</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Programado</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Termino</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Ruta</th>'
@@ -165,7 +164,7 @@ App.registerModule('produccion', {
         } catch(e) {
             console.error('Error loading produccion:', e);
             const tbody = document.getElementById('prodTable');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;padding:24px;color:#ef4444">Error: ' + (e.message || 'No se pudo cargar') + '</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:24px;color:#ef4444">Error: ' + (e.message || 'No se pudo cargar') + '</td></tr>';
         }
     },
 
@@ -198,7 +197,7 @@ App.registerModule('produccion', {
     renderTable(ordenes) {
         const tbody = document.getElementById('prodTable');
         this.renderTotales(ordenes);
-        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>'; return; }
+        if (!ordenes.length) { tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>'; return; }
 
         const estadoBadge = (e) => {
             if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">TERMINADO</span>';
@@ -213,24 +212,12 @@ App.registerModule('produccion', {
             const styles = { 'Express': 'background:#fefce8;color:#854d0e;border:1px solid #eab308', 'Urgencia': 'background:#fff7ed;color:#9a3412;border:1px solid #f97316', 'Vta Region': 'background:#dbeafe;color:#1e40af;border:1px solid #3b82f6' };
             const base = styles[t] || 'background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0';
             return `<span class="tipo-venta-badge" data-orden-id="${ordenId}" style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;${base};cursor:pointer;position:relative;display:inline-block" onclick="event.stopPropagation();App.modules.produccion.togglePrioridadMenu(event, ${ordenId})" title="Click para cambiar prioridad">${t || 'Normal'} &#9662;</span>
-            <div class="prioridad-dropdown" id="prioDrop_${ordenId}" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:#1e293b;border:1px solid #475569;border-radius:8px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px">
-                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 1)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background=''"><span style="color:#64748b">&#9679;</span> 1 - Normal</div>
-                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 2)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background=''"><span style="color:#eab308">&#9889;</span> 2 - Express</div>
-                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 3)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background=''"><span style="color:#f97316">&#9889;</span> 3 - Urgencia</div>
-                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 4)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#334155'" onmouseout="this.style.background=''"><span style="color:#ef4444">&#128293;</span> 4 - Reposicion</div>
+            <div class="prioridad-dropdown" id="prioDrop_${ordenId}" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:white;border:1px solid #e2e8f0;border-radius:8px;padding:4px;min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.15);margin-top:4px">
+                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 1)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#94a3b8">&#9679;</span> 1 - Normal</div>
+                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 2)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#eab308">&#9889;</span> 2 - Express</div>
+                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 3)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#f97316">&#9889;</span> 3 - Urgencia</div>
+                <div onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(${ordenId}, 4)" style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px;transition:background 0.1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''"><span style="color:#ef4444">&#128293;</span> 4 - Reposicion</div>
             </div>`;
-        };
-
-        const prioridadBadge = (nivel) => {
-            const n = Number(nivel) || 1;
-            const map = {
-                4: { label: 'REPOSICION', bg: '#fef2f2', color: '#991b1b', border: '#ef4444', icon: '&#x1f525;' },
-                3: { label: 'URGENCIA', bg: '#fff7ed', color: '#9a3412', border: '#f97316', icon: '&#x26a1;' },
-                2: { label: 'EXPRESS', bg: '#fefce8', color: '#854d0e', border: '#eab308', icon: '&#x26a1;' },
-                1: { label: 'NORMAL', bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', icon: '' }
-            };
-            const m = map[n] || map[1];
-            return `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;border:1px solid ${m.border};background:${m.bg};color:${m.color};cursor:pointer" title="Nivel ${n}: ${m.label}" onclick="App.modules.produccion.cambiarPrioridad(${arguments[1]}, ${n})">${m.icon ? '<span style="font-size:10px">' + m.icon + '</span>' : ''}${m.label}</span>`;
         };
 
         tbody.innerHTML = ordenes.map(o => {
@@ -249,7 +236,6 @@ App.registerModule('produccion', {
                 + '<td style="padding:10px 12px;font-weight:600;color:#0f172a">' + (o.kilos ? Number(o.kilos).toFixed(1) : '-') + '</td>'
                 + '<td style="padding:10px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(' + o.id + ', ' + (o.cantidad || 1) + ')"><strong style="color:#3b82f6">' + (o.cantidad || 1) + '</strong></td>'
                 + '<td style="padding:10px 12px">' + tipoBadge(o.tipo_venta, o.id) + '</td>'
-                + '<td style="padding:10px 12px">' + prioridadBadge(o.nivel_prioridad, o.id) + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
                 + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_entrega_pactada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
                 + '<td style="padding:10px 12px;color:#475569">' + (o.total_pasos === 0 ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin estaciones asociadas">SIN RUTA</span>' : progreso) + '</td>'
