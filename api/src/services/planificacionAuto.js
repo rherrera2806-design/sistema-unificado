@@ -20,6 +20,13 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     cuelloIds.add(e.id);
   }
 
+  // 3b. Todas las estaciones (para calcular fecha de entrega)
+  const allEstRes = await query('SELECT id, capacidad_max_m2_dia, unidad_capacidad FROM estaciones_maestras WHERE activa = TRUE');
+  const estCapMap = {};
+  for (const e of allEstRes.rows) {
+    estCapMap[e.id] = { cap: Number(e.capacidad_max_m2_dia) || 100, unidad: e.unidad_capacidad || 'm2' };
+  }
+
   // 4. Carga actual de m2 por estación por día
   const cargaEstRes = await query(
     `SELECT cp.fecha_programada, cp.estacion_id, COALESCE(SUM(cp.m2_asignados),0) as m2_total
@@ -203,6 +210,30 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     cargaEstMap[k] = (cargaEstMap[k] || 0) + m2;
   }
 
+  function calcFechaEntrega(fechaInicio, estacionesIds, m2, cantidad) {
+    let fechaMax = new Date(fechaInicio + 'T00:00:00');
+    for (const estId of estacionesIds) {
+      const info = estCapMap[estId];
+      if (!info) continue;
+      const cap = info.cap;
+      if (cap <= 0) continue;
+      let diasEstacion;
+      if (info.unidad === 'unidades') {
+        diasEstacion = Math.ceil(cantidad / cap);
+      } else {
+        diasEstacion = Math.ceil(m2 / cap);
+      }
+      diasEstacion = Math.max(diasEstacion, 1);
+      const fechaFin = new Date(fechaInicio + 'T00:00:00');
+      fechaFin.setDate(fechaFin.getDate() + diasEstacion - 1);
+      if (fechaFin > fechaMax) fechaMax = fechaFin;
+    }
+    const y = fechaMax.getFullYear();
+    const m = String(fechaMax.getMonth() + 1).padStart(2, '0');
+    const d = String(fechaMax.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+  }
+
   // 11. Procesar pendientes
   const asignados = [];
   const noAsignados = [];
@@ -238,9 +269,10 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
     if (fit.fecha && fit.units >= cantidad) {
       // Asignación completa
+      const fechaEntrega = calcFechaEntrega(fit.fecha, estacionesIds, m2, cantidad);
       await query(
-        `UPDATE produccion_ordenes SET fecha_programada = $1, estado_programacion = 'PROGRAMADO' WHERE id = $2`,
-        [fit.fecha, o.id]
+        `UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO' WHERE id = $3`,
+        [fit.fecha, fechaEntrega, o.id]
       );
       await query(
         `UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3`,
@@ -257,13 +289,14 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
       const kgAsignados = kgPorUnidad * unitsAsignadas;
       const m2Asignados = m2PorUnidad * unitsAsignadas;
       const resto = cantidad - unitsAsignadas;
+      const fechaEntrega = calcFechaEntrega(fit.fecha, estacionesIds, m2Asignados, unitsAsignadas);
 
       await query(
         `UPDATE produccion_ordenes
-         SET fecha_programada = $1, estado_programacion = 'PROGRAMADO',
-             cantidad = $2, kilos = $3, metros_cuadrados = $4
-         WHERE id = $5`,
-        [fit.fecha, unitsAsignadas, kgAsignados, m2Asignados, o.id]
+         SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO',
+             cantidad = $3, kilos = $4, metros_cuadrados = $5
+         WHERE id = $6`,
+        [fit.fecha, fechaEntrega, unitsAsignadas, kgAsignados, m2Asignados, o.id]
       );
 
       const nuevaRes = await query(
