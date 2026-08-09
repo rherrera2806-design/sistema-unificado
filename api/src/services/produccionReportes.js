@@ -41,6 +41,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             o.alto,
             o.metros_cuadrados as m2,
             o.kilos,
+            o.espesor_mm as espesor,
             o.nota as obs,
             o.tipo_entrega as tipo,
             o.grupo,
@@ -104,13 +105,14 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             porFecha[fecha] = {
                 fecha,
                 ordenes: [],
-                totales: { m2: 0, kgs: 0, items: 0 }
+                totales: { m2: 0, kgs: 0, items: 0, unidades: 0 }
             };
         }
         porFecha[fecha].ordenes.push({
             ov: r.ov,
             item: r.item,
             pend: r.pend,
+            unidades: Number(r.pend) || 0,
             estado: r.estado,
             cliente: r.cliente,
             codigo: r.codigo_producto,
@@ -119,6 +121,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             alto: r.alto,
             m2: Number(r.m2) || 0,
             kgs: Number(r.kilos) || 0,
+            espesor: r.espesor || null,
             obs: r.obs || '',
             tipo: r.tipo || '',
             grupo: r.grupo || '',
@@ -135,6 +138,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         porFecha[fecha].totales.m2 += Number(r.m2) || 0;
         porFecha[fecha].totales.kgs += Number(r.kilos) || 0;
         porFecha[fecha].totales.items += 1;
+        porFecha[fecha].totales.unidades += Number(r.pend) || 0;
     }
 
     const fechas = Object.values(porFecha).sort((a, b) => a.fecha.localeCompare(b.fecha));

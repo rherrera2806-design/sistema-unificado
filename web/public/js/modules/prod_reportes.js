@@ -196,7 +196,7 @@ App.registerModule('prod_reportes', {
                     <table class="pr-table">
                         <thead><tr>
                             <th>OV</th><th>Item</th><th>Pend.</th><th>Estado</th><th>Cliente</th>
-                            <th>Detalle SAP</th><th>Ancho</th><th>Alto</th>
+                            <th>Materia Prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>
                             <th style="text-align:right">Unid</th>
                             <th style="text-align:right">M²</th>
                             <th style="text-align:right">Kgs</th><th>Ruta</th><th>Tipo</th><th>Grupo</th>
@@ -212,6 +212,7 @@ App.registerModule('prod_reportes', {
                     <td><span class="pr-badge ${estadoClass}">${o.estado || ''}</span></td>
                     <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.cliente || ''}">${o.cliente || ''}</td>
                     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.detalle_sap || ''}">${o.detalle_sap || ''}</td>
+                    <td style="text-align:center">${o.espesor ? o.espesor + 'mm' : ''}</td>
                     <td style="text-align:right">${o.ancho || ''}</td>
                     <td style="text-align:right">${o.alto || ''}</td>
                     <td style="text-align:right;font-weight:600">${o.unidades || o.pend || ''}</td>
