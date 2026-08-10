@@ -39,7 +39,7 @@ App.registerModule('prod_reportes', {
                 <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">
                     <div>
                         <h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Informe de Fechas</h2>
-                        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,.7)">Reporte de ordenes programadas agrupadas por fecha</p>
+                        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,.7)">Reporte de ordenes agrupadas por fecha de entrega</p>
                     </div>
                     <div style="display:flex;gap:8px">
                         <button onclick="App.modules.prod_reportes.exportarExcel()" class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar</button>

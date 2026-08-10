@@ -1,7 +1,7 @@
 const { query } = require('../config/database');
 
 const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estado }) => {
-    const conditions = ["o.fecha_programada IS NOT NULL"];
+    const conditions = ["o.fecha_entrega_pactada IS NOT NULL"];
     const params = [];
     let idx = 1;
 
@@ -18,11 +18,11 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         params.push(estado);
     }
     if (fecha_inicio) {
-        conditions.push(`o.fecha_programada >= $${idx++}`);
+        conditions.push(`o.fecha_entrega_pactada >= $${idx++}`);
         params.push(fecha_inicio);
     }
     if (fecha_fin) {
-        conditions.push(`o.fecha_programada <= $${idx++}`);
+        conditions.push(`o.fecha_entrega_pactada <= $${idx++}`);
         params.push(fecha_fin);
     }
 
@@ -45,7 +45,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             o.nota as obs,
             o.tipo_entrega as tipo,
             o.grupo,
-            o.fecha_programada::text as fecha,
+            o.fecha_entrega_pactada::text as fecha,
             f.nombre_familia as familia,
             COALESCE(o.descripcion, pc.descripcion) as descripcion_completa,
             (SELECT string_agg(
@@ -93,7 +93,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         LEFT JOIN familias_producto f ON o.familia_id = f.id
         LEFT JOIN produccion_codigos pc ON o.codigo_producto = pc.codigo
         ${where}
-        ORDER BY o.fecha_programada, o.grupo, o.pedido_sap_id, o.item_numero
+        ORDER BY o.fecha_entrega_pactada, o.grupo, o.pedido_sap_id, o.item_numero
     `, params);
 
     const rows = result.rows;
