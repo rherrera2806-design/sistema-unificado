@@ -13,6 +13,9 @@ App.modules.planificacion = {
     fechaGrupo: null,
     cargaPorGrupo: null,
     cargaPorGrupoFinales: null,
+    gruposSemanaFinales: [],
+    diasSemanaFinales: [],
+    gridModo: 'inicio',
     chartModo: 'inicio',
     _chartInstance: null,
     semanaEstaciones: null,
@@ -458,12 +461,13 @@ App.modules.planificacion = {
         const inicio = this.fmtDate(this.semanaInicio);
         const fin = this.fmtDate(this.semanaFin);
         try {
-            const [cargaGrupoRes, pendRes, cargaEstRes, grupoChartRes, grupoFinalesRes] = await Promise.all([
+            const [cargaGrupoRes, pendRes, cargaEstRes, grupoChartRes, grupoFinalesRes, semanaFinalesRes] = await Promise.all([
                 fetch(`/api/produccion/planificacion-grupo/semana?inicio=${inicio}&fin=${fin}`),
                 fetch('/api/produccion/planificacion/pendientes'),
                 fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`),
                 fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${fin}`),
-                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${fin}`)
+                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${fin}`),
+                fetch(`/api/produccion/planificacion-grupo/semana-finales?inicio=${inicio}&fin=${fin}`)
             ]);
             if (cargaGrupoRes.ok) {
                 const data = await cargaGrupoRes.json();
@@ -479,6 +483,11 @@ App.modules.planificacion = {
             else { console.error('carga-por-grupo error:', grupoChartRes.status); this.cargaPorGrupo = null; }
             if (grupoFinalesRes.ok) this.cargaPorGrupoFinales = await grupoFinalesRes.json();
             else { console.error('carga-por-grupo-finales error:', grupoFinalesRes.status); this.cargaPorGrupoFinales = null; }
+            if (semanaFinalesRes.ok) {
+                const sf = await semanaFinalesRes.json();
+                this.gruposSemanaFinales = sf.grupos || [];
+                this.diasSemanaFinales = sf.dias || [];
+            } else { console.error('semana-finales error:', semanaFinalesRes.status); this.gruposSemanaFinales = []; this.diasSemanaFinales = []; }
 
             // Primera carga: ajustar rango al primer dia con carga + 10 dias
             if (!this._dataLoaded) {
@@ -564,8 +573,11 @@ App.modules.planificacion = {
         const inicio = this.semanaInicio;
         const finD = new Date(this.semanaFin);
 
-        // Construir headers de dias desde this.diasSemana
-        let diasInfo = this.diasSemana.map(f => {
+        const gruposData = this.gridModo === 'finales' ? this.gruposSemanaFinales : this.gruposSemana;
+        const diasSource = this.gridModo === 'finales' ? this.diasSemanaFinales : this.diasSemana;
+
+        // Construir headers de dias desde diasSource
+        let diasInfo = diasSource.map(f => {
             const d = new Date(f + 'T00:00:00');
             const dow = d.getDay();
             const diaCorto = diasSemana[(dow + 6) % 7];
@@ -591,9 +603,15 @@ App.modules.planificacion = {
         div.innerHTML = `
             <div style="background:var(--card-bg);border-radius:12px;padding:16px;border:1px solid var(--border)">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-                    <div>
-                        <h3 style="margin:0;font-size:16px">Carga por Grupo (15 dias)</h3>
-                        <div style="font-size:12px;color:var(--text-light)">m2, metros lineales y kilos por dia y grupo</div>
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <div>
+                            <h3 style="margin:0;font-size:16px">Carga por Grupo (15 dias)</h3>
+                            <div style="font-size:12px;color:var(--text-light)">m2, metros lineales y kilos por dia y grupo</div>
+                        </div>
+                        <div style="display:flex;gap:4px">
+                            <button onclick="App.modules.planificacion.cambiarModoGrid('inicio')" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${this.gridModo === 'inicio' ? '#3b82f6' : '#e2e8f0'};background:${this.gridModo === 'inicio' ? '#3b82f6' : 'transparent'};color:${this.gridModo === 'inicio' ? 'white' : '#64748b'}">F. Inicio</button>
+                            <button onclick="App.modules.planificacion.cambiarModoGrid('finales')" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${this.gridModo === 'finales' ? '#8b5cf6' : '#e2e8f0'};background:${this.gridModo === 'finales' ? '#8b5cf6' : 'transparent'};color:${this.gridModo === 'finales' ? 'white' : '#64748b'}">F. Termino</button>
+                        </div>
                     </div>
                     <div style="display:flex;gap:8px;align-items:center">
                         <button class="btn btn-outline btn-sm" onclick="App.modules.planificacion.cambiarSemana(-1)">◀</button>
@@ -617,7 +635,7 @@ App.modules.planificacion = {
                                 </th>`;
                             }).join('')}
                         </tr></thead>
-                        <tbody>${this.gruposSemana.map(g => {
+                        <tbody>${gruposData.map(g => {
                             const colorBorde = g.color || '#3b82f6';
                             return `<tr class="plan-row" style="border-bottom:1px solid var(--border)">
                                 <td style="padding:8px;border-left:3px solid ${colorBorde}">
@@ -722,6 +740,11 @@ App.modules.planificacion = {
     cambiarModoChart(modo) {
         this.chartModo = modo;
         this.renderChart();
+    },
+
+    cambiarModoGrid(modo) {
+        this.gridModo = modo;
+        this.renderCalendario();
     },
 
     renderChart() {

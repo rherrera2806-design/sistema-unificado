@@ -158,8 +158,64 @@ const asignarOrdenFecha = async (orden_id, fecha) => {
     }
 };
 
+const getSemanaGrupoFinales = async (inicio, fin) => {
+    await backfillOrdenes();
+
+    const calMap = await getCalendarioMap(inicio, fin);
+    const esLaboral = (fStr) => {
+        if (calMap.hasOwnProperty(fStr)) return calMap[fStr].es_laboral;
+        const d = new Date(fStr + 'T12:00:00');
+        return d.getDay() !== 0 && d.getDay() !== 6;
+    };
+    const motivo = (fStr) => calMap[fStr]?.motivo || null;
+
+    const capacidadRes = await query('SELECT * FROM produccion_capacidad_grupo WHERE activo = TRUE ORDER BY grupo');
+    const grupos = capacidadRes.rows;
+
+    const cargaRes = await query(`
+        SELECT o.fecha_entrega_pactada::text as fecha,
+            COALESCE(o.grupo, '(sin grupo)') as grupo,
+            COALESCE(SUM(o.metros_cuadrados), 0) as m2,
+            COALESCE(SUM(2.0 * (COALESCE(o.ancho,0) + COALESCE(o.alto,0)) / 1000.0 * COALESCE(o.cantidad, 1)), 0) as m_lineales,
+            COALESCE(SUM(o.kilos), 0) as kilos,
+            COUNT(*) as ordenes
+        FROM produccion_ordenes o
+        WHERE o.fecha_entrega_pactada BETWEEN $1 AND $2
+          AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+        GROUP BY o.fecha_entrega_pactada, o.grupo
+        ORDER BY o.fecha_entrega_pactada
+    `, [inicio, fin]);
+
+    const dias = [];
+    for (let d = new Date(inicio + 'T00:00:00'); d <= new Date(fin + 'T00:00:00'); d.setDate(d.getDate() + 1)) {
+        dias.push(d.toISOString().split('T')[0]);
+    }
+
+    const data = grupos.map(g => {
+        const diasMap = dias.map(f => {
+            const fData = cargaRes.rows.find(r => r.fecha === f && r.grupo === g.grupo);
+            return {
+                fecha: f,
+                es_laboral: esLaboral(f),
+                motivo: motivo(f),
+                m2: Number(fData?.m2) || 0,
+                m_lineales: Number(fData?.m_lineales) || 0,
+                kilos: Number(fData?.kilos) || 0,
+                ordenes: Number(fData?.ordenes) || 0
+            };
+        });
+        const tot = diasMap.reduce((acc, d) => ({
+            m2: acc.m2 + d.m2, m_lineales: acc.m_lineales + d.m_lineales, kilos: acc.kilos + d.kilos, ordenes: acc.ordenes + d.ordenes
+        }), { m2: 0, m_lineales: 0, kilos: 0, ordenes: 0 });
+        return { grupo: g.grupo, color: g.color, capacidad_kg_dia: Number(g.capacidad_kg_dia) || 0, dias: diasMap, total: tot };
+    });
+
+    return { grupos: data, dias, calendario: calMap };
+};
+
 module.exports = {
     getSemanaGrupo,
+    getSemanaGrupoFinales,
     getDiaGrupo,
     asignarOrdenFecha
 };

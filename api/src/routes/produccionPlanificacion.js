@@ -108,6 +108,13 @@ router.get('/api/produccion/planificacion-grupo/semana', async (req, res, next) 
     catch (e) { next(e); }
 });
 
+router.get('/api/produccion/planificacion-grupo/semana-finales', async (req, res, next) => {
+    const { inicio, fin } = req.query;
+    if (!inicio || !fin) return res.status(400).json({ error: 'inicio y fin requeridos' });
+    try { res.json(await planificacionGrupo.getSemanaGrupoFinales(inicio, fin)); }
+    catch (e) { next(e); }
+});
+
 router.get('/api/produccion/planificacion-grupo', async (req, res, next) => {
     try { res.json(await planificacionGrupo.getDiaGrupo(req.query.fecha)); }
     catch (e) { next(e); }
