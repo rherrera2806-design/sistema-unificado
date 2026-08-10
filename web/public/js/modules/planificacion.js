@@ -629,10 +629,18 @@ App.modules.planificacion = {
             return;
         }
         const coloresMap = {};
-        for (const g of this.capacidadGrupo) { coloresMap[g.grupo] = g.color || '#3b82f6'; }
+        for (const g of this.capacidadGrupo) { coloresMap[g.grupo.toLowerCase()] = g.color || '#3b82f6'; }
         const fallbackColors = ['#22c55e','#06b6d4','#1e3a8a','#1e293b','#f97316','#fde047','#8b5cf6','#ef4444'];
+        const findColor = (fam) => {
+            const f = fam.toLowerCase();
+            if (coloresMap[f]) return coloresMap[f];
+            for (const key of Object.keys(coloresMap)) {
+                if (f.startsWith(key) || key.startsWith(f) || f.includes(key) || key.includes(f)) return coloresMap[key];
+            }
+            return null;
+        };
         const colores = data.familias.map((fam, i) => {
-            const hex = coloresMap[fam] || fallbackColors[i % fallbackColors.length];
+            const hex = findColor(fam) || fallbackColors[i % fallbackColors.length];
             const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
             return { bg: `rgba(${r},${g},${b},0.85)`, border: `rgba(${r},${g},${b},1)` };
         });
