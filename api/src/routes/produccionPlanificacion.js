@@ -96,9 +96,30 @@ router.get('/api/produccion/capacidad-grupo', async (req, res, next) => {
     catch (e) { next(e); }
 });
 
+router.post('/api/produccion/capacidad-grupo', async (req, res, next) => {
+    try {
+        const { query } = require('../config/database');
+        const { grupo, capacidad_kg_dia, color, activo } = req.body;
+        if (!grupo) return res.status(400).json({ error: 'Nombre requerido' });
+        const result = await query(
+            'INSERT INTO produccion_capacidad_grupo (grupo, capacidad_kg_dia, color, activo) VALUES ($1, $2, $3, $4) RETURNING *',
+            [grupo.trim(), Number(capacidad_kg_dia) || 0, color || '#3b82f6', activo !== false]
+        );
+        res.json(result.rows[0]);
+    } catch (e) { next(e); }
+});
+
 router.put('/api/produccion/capacidad-grupo/:id', async (req, res, next) => {
     try { res.json(await planificacion.actualizarCapacidadGrupo(Number(req.params.id), req.body)); }
     catch (e) { res.status(e.message === 'Sin campos' ? 400 : 500).json({ error: e.message }); }
+});
+
+router.delete('/api/produccion/capacidad-grupo/:id', async (req, res, next) => {
+    try {
+        const { query } = require('../config/database');
+        await query('DELETE FROM produccion_capacidad_grupo WHERE id = $1', [Number(req.params.id)]);
+        res.json({ ok: true });
+    } catch (e) { next(e); }
 });
 
 router.get('/api/produccion/planificacion-grupo/semana', async (req, res, next) => {

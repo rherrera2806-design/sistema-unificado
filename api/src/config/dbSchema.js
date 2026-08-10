@@ -370,10 +370,10 @@ async function initDB() {
         color VARCHAR(20) DEFAULT '#3b82f6', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     const capacidadesSeed = [
-        { grupo: 'Arquitectura', capacidad: 6500, color: '#3b82f6' },
-        { grupo: 'Laminado', capacidad: 1500, color: '#10b981' },
-        { grupo: 'Termopanel', capacidad: 1600, color: '#f59e0b' },
-        { grupo: 'Carroceros', capacidad: 1500, color: '#8b5cf6' }
+        { grupo: 'Arquitectura', capacidad: 6500, color: '#22c55e' },
+        { grupo: 'Laminado', capacidad: 1500, color: '#1e293b' },
+        { grupo: 'Termopanel', capacidad: 1600, color: '#1e3a8a' },
+        { grupo: 'Carroceros', capacidad: 1500, color: '#67e8f9' }
     ];
     for (const c of capacidadesSeed) {
         await query('INSERT INTO produccion_capacidad_grupo (grupo, capacidad_kg_dia, color) VALUES ($1, $2, $3) ON CONFLICT (grupo) DO NOTHING', [c.grupo, c.capacidad, c.color]);
@@ -591,6 +591,16 @@ async function runMigrations() {
         await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS needs_reprogramming BOOLEAN DEFAULT FALSE");
     } catch (e) {
         console.error('Migration warning (nivel_prioridad):', e.message);
+    }
+    try {
+        await query("UPDATE produccion_capacidad_grupo SET color = '#22c55e' WHERE grupo = 'Arquitectura'");
+        await query("UPDATE produccion_capacidad_grupo SET color = '#67e8f9' WHERE grupo = 'Carroceros'");
+        await query("UPDATE produccion_capacidad_grupo SET color = '#1e3a8a' WHERE grupo LIKE '%Termopanel%'");
+        await query("UPDATE produccion_capacidad_grupo SET color = '#1e293b' WHERE grupo LIKE '%Laminado%' AND grupo NOT LIKE '%VM%'");
+        await query("UPDATE produccion_capacidad_grupo SET color = '#f97316' WHERE grupo LIKE '%Laminado VM%'");
+        await query("UPDATE produccion_capacidad_grupo SET color = '#fde047' WHERE grupo LIKE '%Servicio%'");
+    } catch (e) {
+        console.error('Migration warning (grupo colors):', e.message);
     }
     try {
         await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL");

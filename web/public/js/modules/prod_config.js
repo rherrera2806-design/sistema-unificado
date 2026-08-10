@@ -2,6 +2,7 @@ App.registerModule('prod_config', {
     _tab: 'estaciones',
     _estaciones: [],
     _familias: [],
+    _grupos: [],
     _materias: [],
     _reglas: [],
     _calendario: [],
@@ -15,6 +16,7 @@ App.registerModule('prod_config', {
             { id: 'recetas', label: 'Recetas BOM', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>' },
             { id: 'estaciones', label: 'Estaciones', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' },
             { id: 'maquinas', label: 'Maquinas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a2.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
+            { id: 'grupos', label: 'Grupos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
             { id: 'familias', label: 'Familias', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' },
             { id: 'reglas', label: 'Reglas Extras', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
             { id: 'materias', label: 'Materias Primas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>' },
@@ -52,6 +54,7 @@ App.registerModule('prod_config', {
         }
         switch(this._tab) {
             case 'estaciones': await this.loadEstaciones(); break;
+            case 'grupos': await this.loadGrupos(); break;
             case 'familias': await this.loadFamilias(); break;
             case 'materias': await this.loadMaterias(); break;
             case 'reglas': await this.loadReglas(); break;
@@ -233,6 +236,86 @@ App.registerModule('prod_config', {
         await fetch(`/api/produccion/familias/${id}`, { method:'DELETE' });
         App.showAlert('Familia eliminada');
         this.loadFamilias();
+    },
+
+    // ═══════════════════════════════════════════
+    // GRUPOS DE PRODUCCION
+    // ═══════════════════════════════════════════
+    async loadGrupos() {
+        const res = await fetch('/api/produccion/capacidad-grupo');
+        this._grupos = await res.json();
+        const container = document.getElementById('prodConfigContent');
+        container.innerHTML = `
+            <div class="card">
+                <div class="card-header" style="justify-content:space-between">
+                    <h3 style="margin:0">Grupos de Produccion</h3>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showGrupoForm()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo Grupo
+                    </button>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <table>
+                        <thead><tr>
+                            <th style="width:50px">Color</th><th>Grupo</th><th>Capacidad (kg/dia)</th><th>Estado</th><th>Acciones</th>
+                        </tr></thead>
+                        <tbody>${this._grupos.map(g => `<tr>
+                            <td><span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:${g.color || '#3b82f6'};border:2px solid rgba(0,0,0,0.1)"></span></td>
+                            <td><strong>${escapeHtml(g.grupo)}</strong></td>
+                            <td>${Number(g.capacidad_kg_dia).toLocaleString('es-CL')} kg</td>
+                            <td>${g.activo ? '<span class="status-badge status-terminado">Activo</span>' : '<span class="status-badge status-mermado">Inactivo</span>'}</td>
+                            <td class="table-actions">
+                                <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showGrupoForm(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                                <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteGrupo(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                            </td>
+                        </tr>`).join('')}</tbody>
+                    </table>
+                </div>
+            </div>`;
+    },
+
+    showGrupoForm(id) {
+        const g = id ? this._grupos.find(x => x.id === id) : null;
+        const colores = ['#22c55e','#06b6d4','#1e3a8a','#1e293b','#f97316','#fde047','#8b5cf6','#ef4444','#ec4899','#14b8a6'];
+        App.showModal(`
+            <div class="form-group"><label>Nombre del Grupo *</label>
+                <input class="form-control" id="grupoNombre" value="${g ? escapeHtml(g.grupo) : ''}" placeholder="Ej: Arquitectura, Laminado, etc."></div>
+            <div class="form-group"><label>Capacidad (kg/dia)</label>
+                <input type="number" class="form-control" id="grupoCapacidad" value="${g ? g.capacidad_kg_dia : 1500}" min="0"></div>
+            <div class="form-group"><label>Color</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap" id="grupoColorPicker">
+                    ${colores.map(c => `<div onclick="document.getElementById('grupoColor').value='${c}';document.querySelectorAll('#grupoColorPicker div').forEach(d=>d.style.outline='none');this.style.outline='3px solid #3b82f6'" style="width:32px;height:32px;border-radius:8px;background:${c};cursor:pointer;border:2px solid rgba(0,0,0,0.1);${g && g.color === c ? 'outline:3px solid #3b82f6' : ''}"></div>`).join('')}
+                </div>
+                <input type="hidden" id="grupoColor" value="${g ? (g.color || '#3b82f6') : '#3b82f6'}"></div>
+            <div class="form-group"><label>
+                <input type="checkbox" id="grupoActivo" ${!g || g.activo ? 'checked' : ''}> Activo</label></div>
+        `, { title: g ? 'Editar Grupo' : 'Nuevo Grupo' });
+        document.querySelector('#modalOverlay .modal-footer').innerHTML = `
+            <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="App.modules.prod_config.saveGrupo(${id || 0})">${g ? 'Actualizar' : 'Guardar'}</button>`;
+    },
+
+    async saveGrupo(id) {
+        const data = {
+            grupo: document.getElementById('grupoNombre').value.trim(),
+            capacidad_kg_dia: parseFloat(document.getElementById('grupoCapacidad').value) || 0,
+            color: document.getElementById('grupoColor').value,
+            activo: document.getElementById('grupoActivo').checked
+        };
+        if (!data.grupo) { App.showAlert('Nombre requerido', 'danger'); return; }
+        if (id === 0)
+            await fetch('/api/produccion/capacidad-grupo', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        else
+            await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        App.hideModal();
+        App.showAlert(id === 0 ? 'Grupo creado' : 'Grupo actualizado');
+        this.loadGrupos();
+    },
+
+    async deleteGrupo(id) {
+        if (!await App.confirm('¿Eliminar este grupo?')) return;
+        await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'DELETE' });
+        App.showAlert('Grupo eliminado');
+        this.loadGrupos();
     },
 
     // ═══════════════════════════════════════════
