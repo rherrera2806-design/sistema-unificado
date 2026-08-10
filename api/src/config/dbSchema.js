@@ -372,10 +372,16 @@ async function initDB() {
     const capacidadesSeed = [
         { grupo: 'Arquitectura', capacidad: 6500, color: '#22c55e' },
         { grupo: 'Carroceros', capacidad: 1500, color: '#06b6d4' },
-        { grupo: 'Termopanel', capacidad: 1600, color: '#1e3a8a' },
-        { grupo: 'Laminado', capacidad: 1500, color: '#000000' },
+        { grupo: 'Laminado Importado', capacidad: 1500, color: '#000000' },
+        { grupo: 'Laminado Nacional', capacidad: 1500, color: '#000000' },
         { grupo: 'Laminado VM', capacidad: 1500, color: '#f97316' },
-        { grupo: 'Servicio', capacidad: 1500, color: '#fde047' }
+        { grupo: 'Servicios', capacidad: 1500, color: '#fde047' },
+        { grupo: 'Termopanel', capacidad: 1600, color: '#1e3a8a' },
+        { grupo: 'Termopanel Laminado Especial', capacidad: 0, color: '#1e3a8a' },
+        { grupo: 'Termopanel Pintado Blanco', capacidad: 0, color: '#1e3a8a' },
+        { grupo: 'Termopanel Pintado Fosco', capacidad: 0, color: '#1e3a8a' },
+        { grupo: 'Termopanel Pintado Negro', capacidad: 0, color: '#1e3a8a' },
+        { grupo: 'Termopanel triple', capacidad: 0, color: '#1e3a8a' }
     ];
     for (const c of capacidadesSeed) {
         await query('INSERT INTO produccion_capacidad_grupo (grupo, capacidad_kg_dia, color) VALUES ($1, $2, $3) ON CONFLICT (grupo) DO NOTHING', [c.grupo, c.capacidad, c.color]);
