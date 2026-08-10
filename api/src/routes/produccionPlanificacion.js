@@ -91,13 +91,13 @@ router.post('/api/produccion/planificacion/programar', async (req, res, next) =>
     } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-router.get('/api/produccion/capacidad-grupo', async (req, res, next) => {
-    try { res.json(await planificacion.getCapacidadGrupo()); }
+router.get('/api/produccion/capacidad-grupo/all', async (req, res, next) => {
+    try { res.json(await planificacion.getAllCapacidadGrupo()); }
     catch (e) { next(e); }
 });
 
-router.get('/api/produccion/capacidad-grupo/all', async (req, res, next) => {
-    try { res.json(await planificacion.getAllCapacidadGrupo()); }
+router.get('/api/produccion/capacidad-grupo', async (req, res, next) => {
+    try { res.json(await planificacion.getCapacidadGrupo()); }
     catch (e) { next(e); }
 });
 
