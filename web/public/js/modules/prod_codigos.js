@@ -360,7 +360,15 @@ ${puedeEditar ? `
                 });
             }
             const data = await res.json();
-            if (res.ok) { this.hideCreateModal(); App.toast(this.editingId ? 'Codigo actualizado' : 'Codigo creado'); await this.load(); }
+            if (res.ok) {
+                this.hideCreateModal();
+                App.toast(this.editingId ? 'Codigo actualizado' : 'Codigo creado');
+                const grupo = document.getElementById('codFilterGrupo')?.value || '';
+                const familia = document.getElementById('codFilterFamilia')?.value || '';
+                const search = document.getElementById('codFilterSearch')?.value || '';
+                await this.load(search);
+                this._applyFilters(grupo, familia);
+            }
             else { alert(data.error || 'Error al guardar'); }
         } catch(e) { alert('Error: ' + e.message); }
     },
@@ -373,7 +381,11 @@ ${puedeEditar ? `
                 method: 'DELETE', headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
             });
             App.toast('Codigo eliminado');
-            await this.load();
+            const grupo = document.getElementById('codFilterGrupo')?.value || '';
+            const familia = document.getElementById('codFilterFamilia')?.value || '';
+            const search = document.getElementById('codFilterSearch')?.value || '';
+            await this.load(search);
+            this._applyFilters(grupo, familia);
         } catch(e) { alert('Error: ' + e.message); }
     },
 
