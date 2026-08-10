@@ -12,6 +12,8 @@ App.modules.planificacion = {
     pendientesGrupo: [],
     fechaGrupo: null,
     cargaPorGrupo: null,
+    cargaPorGrupoFinales: null,
+    chartModo: 'inicio',
     _chartInstance: null,
     semanaEstaciones: null,
 
@@ -456,11 +458,12 @@ App.modules.planificacion = {
         const inicio = this.fmtDate(this.semanaInicio);
         const fin = this.fmtDate(this.semanaFin);
         try {
-            const [cargaGrupoRes, pendRes, cargaEstRes, grupoChartRes] = await Promise.all([
+            const [cargaGrupoRes, pendRes, cargaEstRes, grupoChartRes, grupoFinalesRes] = await Promise.all([
                 fetch(`/api/produccion/planificacion-grupo/semana?inicio=${inicio}&fin=${fin}`),
                 fetch('/api/produccion/planificacion/pendientes'),
                 fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`),
-                fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${fin}`)
+                fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${fin}`),
+                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${fin}`)
             ]);
             if (cargaGrupoRes.ok) {
                 const data = await cargaGrupoRes.json();
@@ -474,6 +477,8 @@ App.modules.planificacion = {
             else { console.error('carga-semanal error:', cargaEstRes.status); this.cargaSemanal = []; }
             if (grupoChartRes.ok) this.cargaPorGrupo = await grupoChartRes.json();
             else { console.error('carga-por-grupo error:', grupoChartRes.status); this.cargaPorGrupo = null; }
+            if (grupoFinalesRes.ok) this.cargaPorGrupoFinales = await grupoFinalesRes.json();
+            else { console.error('carga-por-grupo-finales error:', grupoFinalesRes.status); this.cargaPorGrupoFinales = null; }
 
             // Primera carga: ajustar rango al primer dia con carga + 10 dias
             if (!this._dataLoaded) {
@@ -714,14 +719,19 @@ App.modules.planificacion = {
         btn.disabled = false;
     },
 
+    cambiarModoChart(modo) {
+        this.chartModo = modo;
+        this.renderChart();
+    },
+
     renderChart() {
         const div = document.getElementById('planChart');
         if (!div) return;
-        if (!this.cargaPorGrupo || !this.cargaPorGrupo.familias || this.cargaPorGrupo.familias.length === 0) {
+        const data = this.chartModo === 'finales' ? this.cargaPorGrupoFinales : this.cargaPorGrupo;
+        if (!data || !data.familias || data.familias.length === 0) {
             div.innerHTML = '';
             return;
         }
-        const data = this.cargaPorGrupo;
         const colores = [
             { bg: 'rgba(34,197,94,0.85)', border: 'rgba(34,197,94,1)' },
             { bg: 'rgba(30,64,175,0.85)', border: 'rgba(30,64,175,1)' },
@@ -769,8 +779,10 @@ App.modules.planificacion = {
             <div style="background:var(--card-bg);border-radius:12px;padding:16px;border:1px solid var(--border)">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                     <h3 style="margin:0;font-size:16px">Carga por Grupo</h3>
-                    <div style="font-size:12px;color:var(--text-light)">
-                        Capacidad promedio: <strong>${Math.round(capacidadPromedio).toLocaleString('es-CL')} kg/día</strong>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <button onclick="App.modules.planificacion.cambiarModoChart('inicio')" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${this.chartModo === 'inicio' ? '#3b82f6' : '#e2e8f0'};background:${this.chartModo === 'inicio' ? '#3b82f6' : 'transparent'};color:${this.chartModo === 'inicio' ? 'white' : '#64748b'}">F. Inicio</button>
+                        <button onclick="App.modules.planificacion.cambiarModoChart('finales')" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${this.chartModo === 'finales' ? '#8b5cf6' : '#e2e8f0'};background:${this.chartModo === 'finales' ? '#8b5cf6' : 'transparent'};color:${this.chartModo === 'finales' ? 'white' : '#64748b'}">F. Termino</button>
+                        <span style="font-size:12px;color:var(--text-light);margin-left:8px">Capacidad promedio: <strong>${Math.round(capacidadPromedio).toLocaleString('es-CL')} kg/día</strong></span>
                     </div>
                 </div>
                 <div style="display:flex;gap:16px;align-items:center">

@@ -175,9 +175,71 @@ const actualizarCapacidadGrupo = async (id, { capacidad_kg_dia, color, activo })
     return result.rows[0];
 };
 
+const getCargaPorGrupoFinales = async (inicio, fin) => {
+    const calMap = await getCalendarioMap(inicio, fin);
+
+    const cargaRes = await query(`
+        SELECT COALESCE(o.grupo, '(sin grupo)') as nombre_familia,
+            o.fecha_entrega_pactada::text as fecha,
+            COALESCE(SUM(o.kilos), 0) as kilos
+        FROM produccion_ordenes o
+        WHERE o.fecha_entrega_pactada BETWEEN $1 AND $2
+          AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+          AND o.kilos > 0
+        GROUP BY o.grupo, o.fecha_entrega_pactada
+        ORDER BY o.fecha_entrega_pactada, o.grupo
+    `, [inicio, fin]);
+
+    const capRes = await query(`
+        SELECT o.fecha_entrega_pactada::text as fecha,
+            COALESCE(SUM(pg.capacidad_kg_dia), 0) as capacidad_total
+        FROM (
+            SELECT DISTINCT fecha_entrega_pactada FROM produccion_ordenes
+            WHERE fecha_entrega_pactada BETWEEN $1 AND $2
+              AND estado_programacion NOT IN ('CERRADO','TERMINADO')
+        ) o
+        CROSS JOIN produccion_capacidad_grupo pg
+        WHERE pg.activo = TRUE
+        GROUP BY o.fecha_entrega_pactada
+    `, [inicio, fin]);
+
+    const capMap = {};
+    for (const r of capRes.rows) capMap[r.fecha] = Number(r.capacidad_total);
+
+    const familiasMap = {};
+    const fechasSet = new Set();
+    for (const r of cargaRes.rows) {
+        if (!esLaboral(calMap, r.fecha)) continue;
+        if (!familiasMap[r.nombre_familia]) familiasMap[r.nombre_familia] = {};
+        familiasMap[r.nombre_familia][r.fecha] = Number(r.kilos);
+        fechasSet.add(r.fecha);
+    }
+
+    const inicioD = new Date(inicio + 'T00:00:00');
+    const finD = new Date(fin + 'T00:00:00');
+    for (let d = new Date(inicioD); d <= finD; d.setDate(d.getDate() + 1)) {
+        const fs = d.toISOString().split('T')[0];
+        if (esLaboral(calMap, fs)) fechasSet.add(fs);
+    }
+
+    for (const fam of Object.keys(familiasMap)) {
+        for (const fs of fechasSet) {
+            if (familiasMap[fam][fs] === undefined) familiasMap[fam][fs] = 0;
+        }
+    }
+
+    return {
+        familias: Object.keys(familiasMap),
+        fechas: Array.from(fechasSet).sort(),
+        datos: familiasMap,
+        capacidad_por_dia: capMap
+    };
+};
+
 module.exports = {
     getCargaSemanal,
     getCargaPorGrupo,
+    getCargaPorGrupoFinales,
     getCargaEstaciones,
     getCapacidadGrupo,
     actualizarCapacidadGrupo

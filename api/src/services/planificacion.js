@@ -120,7 +120,7 @@ const programarOrden = async (orden_id, fecha_entrega_propuesta) => {
 };
 
 const { getCalendario, marcarDia, eliminarDia } = require('./planificacionCalendario');
-const { getCargaSemanal, getCargaPorGrupo, getCargaEstaciones, getCapacidadGrupo, actualizarCapacidadGrupo } = require('./planificacionCapacidad');
+const { getCargaSemanal, getCargaPorGrupo, getCargaPorGrupoFinales, getCargaEstaciones, getCapacidadGrupo, actualizarCapacidadGrupo } = require('./planificacionCapacidad');
 
 module.exports = {
     getCalendario,
@@ -130,6 +130,7 @@ module.exports = {
     esLaboral,
     getCargaSemanal,
     getCargaPorGrupo,
+    getCargaPorGrupoFinales,
     getCargaEstaciones,
     getPendientes,
     programarOrden,

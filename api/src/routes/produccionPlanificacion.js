@@ -64,6 +64,12 @@ router.get('/api/produccion/planificacion/carga-por-grupo', async (req, res, nex
     catch (e) { next(e); }
 });
 
+router.get('/api/produccion/planificacion/carga-por-grupo-finales', async (req, res, next) => {
+    if (!req.query.inicio || !req.query.fin) return res.status(400).json({ error: 'Fechas inicio y fin requeridas' });
+    try { res.json(await planificacion.getCargaPorGrupoFinales(req.query.inicio, req.query.fin)); }
+    catch (e) { next(e); }
+});
+
 router.get('/api/produccion/planificacion/carga-estaciones', async (req, res, next) => {
     try {
         const inicio = req.query.inicio || new Date().toISOString().split('T')[0];
