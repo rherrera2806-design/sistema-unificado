@@ -2,8 +2,6 @@ App.modules.planificacion = {
     nombre: 'Planificacion',
     cargaSemanal: [],
     cargaGrupoSemana: [],
-    gruposSemana: [],
-    diasSemana: [],
     pendientes: [],
     semanaInicio: null,
     semanaFin: null,
@@ -13,9 +11,6 @@ App.modules.planificacion = {
     fechaGrupo: null,
     cargaPorGrupo: null,
     cargaPorGrupoFinales: null,
-    gruposSemanaFinales: [],
-    diasSemanaFinales: [],
-    gridModo: 'inicio',
     chartModo: 'inicio',
     _chartInstance: null,
     semanaEstaciones: null,
@@ -422,9 +417,6 @@ App.modules.planificacion = {
                 </div>
             </div>
 
-            <!-- VISTA SEMANAL POR GRUPO (la nueva util) -->
-            <div id="planCalendario"><div style="text-align:center;padding:20px;color:#64748b">Cargando calendario...</div></div>
-
             <!-- CHART: Carga por Grupo -->
             <div id="planChart" style="margin-top:24px"></div>
 
@@ -461,20 +453,13 @@ App.modules.planificacion = {
         const inicio = this.fmtDate(this.semanaInicio);
         const fin = this.fmtDate(this.semanaFin);
         try {
-            const [cargaGrupoRes, pendRes, cargaEstRes, grupoChartRes, grupoFinalesRes, semanaFinalesRes] = await Promise.all([
+            const [cargaGrupoRes, pendRes, cargaEstRes, grupoChartRes, grupoFinalesRes] = await Promise.all([
                 fetch(`/api/produccion/planificacion-grupo/semana?inicio=${inicio}&fin=${fin}`),
                 fetch('/api/produccion/planificacion/pendientes'),
                 fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`),
                 fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${fin}`),
-                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${fin}`),
-                fetch(`/api/produccion/planificacion-grupo/semana-finales?inicio=${inicio}&fin=${fin}`)
+                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${fin}`)
             ]);
-            if (cargaGrupoRes.ok) {
-                const data = await cargaGrupoRes.json();
-                this.gruposSemana = data.grupos || [];
-                this.diasSemana = data.dias || [];
-                this.calendario = data.calendario || {};
-            } else { console.error('carga-grupo-semana error:', cargaGrupoRes.status); this.gruposSemana = []; this.diasSemana = []; this.calendario = {}; }
             if (pendRes.ok) this.pendientes = await pendRes.json();
             else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
             if (cargaEstRes.ok) this.cargaSemanal = await cargaEstRes.json();
@@ -483,11 +468,6 @@ App.modules.planificacion = {
             else { console.error('carga-por-grupo error:', grupoChartRes.status); this.cargaPorGrupo = null; }
             if (grupoFinalesRes.ok) this.cargaPorGrupoFinales = await grupoFinalesRes.json();
             else { console.error('carga-por-grupo-finales error:', grupoFinalesRes.status); this.cargaPorGrupoFinales = null; }
-            if (semanaFinalesRes.ok) {
-                const sf = await semanaFinalesRes.json();
-                this.gruposSemanaFinales = sf.grupos || [];
-                this.diasSemanaFinales = sf.dias || [];
-            } else { console.error('semana-finales error:', semanaFinalesRes.status); this.gruposSemanaFinales = []; this.diasSemanaFinales = []; }
 
             // Primera carga: ajustar rango al primer dia con carga + 10 dias
             if (!this._dataLoaded) {
@@ -508,8 +488,6 @@ App.modules.planificacion = {
         } catch(e) {
             console.error('Error cargando planificacion:', e);
         }
-        this.renderCalendario();
-        this.renderChart();
         this.cargarEstaciones();
     },
 
@@ -561,109 +539,6 @@ App.modules.planificacion = {
                             </tr>`;
                         }).join('')}</tbody>
                     </table>
-                </div>
-            </div>
-        `;
-    },
-
-    renderCalendario() {
-        const div = document.getElementById('planCalendario');
-        if (!div) { console.warn('planCalendario div no existe'); return; }
-        const diasSemana = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
-        const inicio = this.semanaInicio;
-        const finD = new Date(this.semanaFin);
-
-        const gruposData = this.gridModo === 'finales' ? this.gruposSemanaFinales : this.gruposSemana;
-        const diasSource = this.gridModo === 'finales' ? this.diasSemanaFinales : this.diasSemana;
-
-        // Construir headers de dias desde diasSource
-        let diasInfo = diasSource.map(f => {
-            const d = new Date(f + 'T00:00:00');
-            const dow = d.getDay();
-            const diaCorto = diasSemana[(dow + 6) % 7];
-            const fechaCorta = diaCorto + ', ' + d.getDate() + '/' + (d.getMonth()+1);
-            return { fecha: f, dia: diaCorto, fechaCorta };
-        }).filter(d => {
-            // Ocultar dias desactivados (sab/dom) del calendario
-            const cal = this.calendario ? this.calendario[d.fecha] : null;
-            const es_laboral = cal ? cal.es_laboral : (new Date(d.fecha + 'T12:00:00').getDay() !== 0 && new Date(d.fecha + 'T12:00:00').getDay() !== 6);
-            return es_laboral;
-        });
-
-        // Color de fondo segun capacidad kg/dia usada
-        const colorCelda = (kg, capacidad, esLaboral) => {
-            if (!esLaboral) return { bg: '#f1f5f9', border: '#cbd5e1', text: '#94a3b8' };
-            const pct = capacidad > 0 ? (kg / capacidad) * 100 : 0;
-            if (pct > 100) return { bg: '#fee2e2', border: '#ef4444', text: '#991b1b' };
-            if (pct >= 85) return { bg: '#fef3c7', border: '#f59e0b', text: '#854d0e' };
-            if (pct > 0) return { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' };
-            return { bg: '#f8fafc', border: '#e2e8f0', text: '#94a3b8' };
-        };
-
-        div.innerHTML = `
-            <div style="background:var(--card-bg);border-radius:12px;padding:16px;border:1px solid var(--border)">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-                    <div style="display:flex;align-items:center;gap:12px">
-                        <div>
-                            <h3 style="margin:0;font-size:16px">Carga por Grupo (15 dias)</h3>
-                            <div style="font-size:12px;color:var(--text-light)">m2, metros lineales y kilos por dia y grupo</div>
-                        </div>
-                        <div style="display:flex;gap:4px">
-                            <button onclick="App.modules.planificacion.cambiarModoGrid('inicio')" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${this.gridModo === 'inicio' ? '#3b82f6' : '#e2e8f0'};background:${this.gridModo === 'inicio' ? '#3b82f6' : 'transparent'};color:${this.gridModo === 'inicio' ? 'white' : '#64748b'}">F. Inicio</button>
-                            <button onclick="App.modules.planificacion.cambiarModoGrid('finales')" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${this.gridModo === 'finales' ? '#8b5cf6' : '#e2e8f0'};background:${this.gridModo === 'finales' ? '#8b5cf6' : 'transparent'};color:${this.gridModo === 'finales' ? 'white' : '#64748b'}">F. Termino</button>
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <button class="btn btn-outline btn-sm" onclick="App.modules.planificacion.cambiarSemana(-1)">◀</button>
-                        <span style="font-size:13px;font-weight:600">${this.fmtDate(inicio)} al ${this.fmtDate(finD)}</span>
-                        <button class="btn btn-outline btn-sm" onclick="App.modules.planificacion.cambiarSemana(1)">▶</button>
-                    </div>
-                </div>
-                <div style="overflow-x:auto">
-                    <table style="width:100%;font-size:10px;border-collapse:collapse;table-layout:fixed">
-                        <colgroup>
-                            <col style="width:180px">
-                            <col style="width:70px">
-                            ${diasInfo.map(() => '<col>').join('')}
-                        </colgroup>
-                        <thead><tr style="border-bottom:2px solid var(--border)">
-                            <th style="padding:6px;text-align:left">Grupo</th>
-                            <th style="padding:6px;text-align:center">Cap kg/dia</th>
-                            ${diasInfo.map(d => {
-                                return `<th style="padding:4px;text-align:center">
-                                    <div style="font-weight:600;font-size:11px">${d.fechaCorta}</div>
-                                </th>`;
-                            }).join('')}
-                        </tr></thead>
-                        <tbody>${gruposData.map(g => {
-                            const colorBorde = g.color || '#3b82f6';
-                            return `<tr class="plan-row" style="border-bottom:1px solid var(--border)">
-                                <td style="padding:8px;border-left:3px solid ${colorBorde}">
-                                    <strong>${escapeHtml(g.grupo)}</strong>
-                                </td>
-                                <td style="padding:6px;text-align:center;font-size:10px;color:var(--text-light)">${g.capacidad_kg_dia.toLocaleString('es-CL')}</td>
-                                ${diasInfo.map(d => {
-                                    const cell = g.dias.find(x => x.fecha === d.fecha) || {};
-                                    const c = colorCelda(cell.kilos || 0, g.capacidad_kg_dia, true);
-                                    const hasData = (cell.m2 || cell.m_lineales || cell.kilos) > 0;
-                                    return `<td style="padding:2px;text-align:center">
-                                        <div style="background:${hasData ? c.bg : '#f8fafc'};border:1px solid ${hasData ? c.border : '#e2e8f0'};border-radius:4px;padding:4px 2px">
-                                            ${hasData ? `
-                                                <div style="font-size:10px;color:${c.text};font-weight:600;line-height:1.2">${Number(cell.m2 || 0).toFixed(0)}m²</div>
-                                                <div style="font-size:9px;color:${c.text};line-height:1.2">${Number(cell.m_lineales || 0).toFixed(0)}mL</div>
-                                                <div style="font-size:10px;color:${c.text};font-weight:700;line-height:1.2">${Number(cell.kilos || 0).toFixed(0)}kg</div>
-                                            ` : '<div style="font-size:9px;color:#cbd5e1">-</div>'}
-                                        </div>
-                                    </td>`;
-                                }).join('')}
-                            </tr>`;
-                        }).join('')}</tbody>
-                    </table>
-                </div>
-                <div style="margin-top:12px;display:flex;gap:14px;font-size:11px;color:var(--text-light);flex-wrap:wrap">
-                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#dbeafe;vertical-align:middle"></span> Con carga</span>
-                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fef3c7;vertical-align:middle"></span> 85-100% capacidad</span>
-                    <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fee2e2;vertical-align:middle"></span> Sobrecargado</span>
                 </div>
             </div>
         `;
@@ -742,11 +617,6 @@ App.modules.planificacion = {
         this.renderChart();
     },
 
-    cambiarModoGrid(modo) {
-        this.gridModo = modo;
-        this.renderCalendario();
-    },
-
     renderChart() {
         const div = document.getElementById('planChart');
         if (!div) return;
@@ -755,16 +625,14 @@ App.modules.planificacion = {
             div.innerHTML = '';
             return;
         }
-        const colores = [
-            { bg: 'rgba(34,197,94,0.85)', border: 'rgba(34,197,94,1)' },
-            { bg: 'rgba(30,64,175,0.85)', border: 'rgba(30,64,175,1)' },
-            { bg: 'rgba(124,58,237,0.85)', border: 'rgba(124,58,237,1)' },
-            { bg: 'rgba(234,179,8,0.85)', border: 'rgba(234,179,8,1)' },
-            { bg: 'rgba(239,68,68,0.85)', border: 'rgba(239,68,68,1)' },
-            { bg: 'rgba(6,182,212,0.85)', border: 'rgba(6,182,212,1)' },
-            { bg: 'rgba(249,115,22,0.85)', border: 'rgba(249,115,22,1)' },
-            { bg: 'rgba(168,85,247,0.85)', border: 'rgba(168,85,247,1)' }
-        ];
+        const coloresMap = {};
+        for (const g of this.capacidadGrupo) { coloresMap[g.grupo] = g.color || '#3b82f6'; }
+        const fallbackColors = ['#22c55e','#06b6d4','#1e3a8a','#1e293b','#f97316','#fde047','#8b5cf6','#ef4444'];
+        const colores = data.familias.map((fam, i) => {
+            const hex = coloresMap[fam] || fallbackColors[i % fallbackColors.length];
+            const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            return { bg: `rgba(${r},${g},${b},0.85)`, border: `rgba(${r},${g},${b},1)` };
+        });
 
         const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
         const labels = data.fechas.map(f => {
