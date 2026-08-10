@@ -448,6 +448,7 @@ App.modules.planificacion = {
         `;
         await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
         await this.cargarEstaciones().catch(e => console.error('cargarEstaciones:', e));
+        if (this.capacidadGrupo.length && (this.cargaPorGrupo || this.cargaPorGrupoFinales)) this.renderChart();
     },
 
     async cargarDatos() {
