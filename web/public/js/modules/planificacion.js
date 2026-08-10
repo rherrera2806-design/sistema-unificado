@@ -42,6 +42,7 @@ App.modules.planificacion = {
             this.renderGrupoResumen();
             this.renderGrupoCards();
             this.renderGrupoPendientes();
+            if (this.cargaPorGrupo || this.cargaPorGrupoFinales) this.renderChart();
         } catch(e) {
             console.error('Error cargarGrupo:', e);
             const elC = document.getElementById('planGrupoCards');
@@ -489,6 +490,7 @@ App.modules.planificacion = {
             console.error('Error cargando planificacion:', e);
         }
         this.cargarEstaciones();
+        if (this.capacidadGrupo.length) this.renderChart();
     },
 
     _findFirstDayWithData() {
