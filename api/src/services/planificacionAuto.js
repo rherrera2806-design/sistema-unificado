@@ -179,8 +179,9 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
    * Donde la estación cuello tenga capacidad para el consumo del pedido.
    */
   function drumFindDate(route, consumoM2, fechaMin) {
-    const cuelloId = route.find(id => estMap[id] && estMap[id].esCuello);
-    if (!cuelloId) return { fecha: null, estId: route[0] || null };
+    let cuelloId = route.find(id => estMap[id] && estMap[id].esCuello);
+    if (!cuelloId) cuelloId = route[0];
+    if (!cuelloId) return { fecha: null, estId: null };
 
     for (let i = 0; i < dias; i++) {
       const d = new Date(fechaMin + 'T00:00:00');
@@ -340,10 +341,10 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         const kgParcial = (kg / cantidad) * unitsAsignadas;
         const resto = cantidad - unitsAsignadas;
 
-        const backward = cuelloIdx >= 0 ? backwardRope(route, cuelloIdx, drumFecha, m2Parcial, fechaMinima) : [];
+        const backward = cuelloIdx > 0 ? backwardRope(route, cuelloIdx, drumFecha, m2Parcial, fechaMinima) : [];
         if (!backward.every(a => a.fecha !== null)) continue;
 
-        const forward = cuelloIdx >= 0 ? forwardRope(route, cuelloIdx, drumFecha, m2Parcial) : [];
+        const forward = cuelloIdx >= 0 ? forwardRope(route, cuelloIdx, drumFecha, m2Parcial) : (route.length > 1 ? forwardRope(route, 0, drumFecha, m2Parcial) : []);
         if (!forward.every(a => a.fecha !== null)) continue;
 
         // ✅ Todo encaja — aplicar cargas
@@ -396,10 +397,10 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
       } else if (consumoM2 <= maxEnCuello) {
         // ═══ ASIGNACIÓN COMPLETA ═══
-        const backward = cuelloIdx >= 0 ? backwardRope(route, cuelloIdx, drumFecha, consumoM2, fechaMinima) : [];
+        const backward = cuelloIdx > 0 ? backwardRope(route, cuelloIdx, drumFecha, consumoM2, fechaMinima) : [];
         if (!backward.every(a => a.fecha !== null)) continue;
 
-        const forward = cuelloIdx >= 0 ? forwardRope(route, cuelloIdx, drumFecha, consumoM2) : [];
+        const forward = cuelloIdx >= 0 ? forwardRope(route, cuelloIdx, drumFecha, consumoM2) : (route.length > 1 ? forwardRope(route, 0, drumFecha, consumoM2) : []);
         if (!forward.every(a => a.fecha !== null)) continue;
 
         // ✅ Todo encaja — aplicar cargas
