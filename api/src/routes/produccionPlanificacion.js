@@ -96,6 +96,11 @@ router.get('/api/produccion/capacidad-grupo', async (req, res, next) => {
     catch (e) { next(e); }
 });
 
+router.get('/api/produccion/capacidad-grupo/all', async (req, res, next) => {
+    try { res.json(await planificacion.getAllCapacidadGrupo()); }
+    catch (e) { next(e); }
+});
+
 router.post('/api/produccion/capacidad-grupo', async (req, res, next) => {
     try {
         const { query } = require('../config/database');

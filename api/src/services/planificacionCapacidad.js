@@ -161,6 +161,11 @@ const getCapacidadGrupo = async () => {
     return result.rows;
 };
 
+const getAllCapacidadGrupo = async () => {
+    const result = await query('SELECT * FROM produccion_capacidad_grupo ORDER BY activo DESC, grupo');
+    return result.rows;
+};
+
 const actualizarCapacidadGrupo = async (id, { capacidad_kg_dia, color, activo }) => {
     const fields = [];
     const values = [];
@@ -242,5 +247,6 @@ module.exports = {
     getCargaPorGrupoFinales,
     getCargaEstaciones,
     getCapacidadGrupo,
+    getAllCapacidadGrupo,
     actualizarCapacidadGrupo
 };

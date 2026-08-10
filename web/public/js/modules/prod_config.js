@@ -242,7 +242,7 @@ App.registerModule('prod_config', {
     // GRUPOS DE PRODUCCION
     // ═══════════════════════════════════════════
     async loadGrupos() {
-        const res = await fetch('/api/produccion/capacidad-grupo');
+        const res = await fetch('/api/produccion/capacidad-grupo/all');
         this._grupos = await res.json();
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
