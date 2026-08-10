@@ -1,6 +1,7 @@
 App.registerModule('prod_codigos', {
     codigos: [],
     editingId: null,
+    _grupoColores: {},
 
     async render() {
         const el = document.getElementById('page-prod_codigos');
@@ -134,8 +135,14 @@ ${puedeEditar ? `
             const headers = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const params = new URLSearchParams();
             if (search) params.set('search', search);
-            const res = await fetch('/api/produccion/codigos?' + params.toString(), { headers });
+            const [res, capRes] = await Promise.all([
+                fetch('/api/produccion/codigos?' + params.toString(), { headers }),
+                fetch('/api/produccion/capacidad-grupo')
+            ]);
             this.codigos = await res.json();
+            const capGrupos = await capRes.json();
+            this._grupoColores = {};
+            capGrupos.forEach(g => { this._grupoColores[g.grupo] = g.color || '#3b82f6'; });
             this.renderStats();
             this.populateFilters();
             this.renderTable(this.codigos);
@@ -148,8 +155,23 @@ ${puedeEditar ? `
         if (grupoSel) {
             const actual = grupoSel.value;
             grupoSel.innerHTML = '<option value="">Todos los grupos</option>';
-            grupos.forEach(g => { const o = document.createElement('option'); o.value = g; o.textContent = g; grupoSel.appendChild(o); });
+            grupos.forEach(g => {
+                const o = document.createElement('option');
+                o.value = g; o.textContent = g;
+                o.setAttribute('data-color', this._grupoColores[g] || '#3b82f6');
+                grupoSel.appendChild(o);
+            });
             if (grupos.includes(actual)) grupoSel.value = actual;
+            const applyFilterColor = () => {
+                const sel = grupoSel.options[grupoSel.selectedIndex];
+                if (sel && sel.value) {
+                    grupoSel.style.borderLeft = `4px solid ${sel.getAttribute('data-color') || '#3b82f6'}`;
+                } else {
+                    grupoSel.style.borderLeft = '';
+                }
+            };
+            grupoSel.onchange = () => { applyFilterColor(); this.filter(); };
+            applyFilterColor();
         }
         this._updateFamiliasFilter();
     },
@@ -195,7 +217,7 @@ ${puedeEditar ? `
             return `<tr class="pcod-row" style="line-height:1.3">
             <td style="${td}"><strong>${c.codigo}</strong></td>
             <td style="${td}">${c.descripcion || '-'}</td>
-            <td style="${td}">${c.grupo ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dbeafe;color:#1e40af">${c.grupo}</span>` : '-'}</td>
+            <td style="${td}">${c.grupo ? (() => { const hex = this._grupoColores[c.grupo] || '#3b82f6'; const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16); const light = (r*0.299+g*0.587+b*0.114) > 150; return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:rgba(${r},${g},${b},0.15);color:${hex}">${c.grupo}</span>`; })() : '-'}</td>
             <td style="${td}">${c.familia ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${c.familia}</span>` : '-'}</td>
             <td style="${td};text-align:center">${recetasBadge}</td>
             <td style="${td}">${puedeEditar ? `<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_codigos.edit(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_codigos.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
@@ -226,9 +248,17 @@ ${puedeEditar ? `
         this.renderTable(filtered);
     },
 
-    _populateGrupoFamilia(selectedGrupo, selectedFamilia) {
+    async _populateGrupoFamilia(selectedGrupo, selectedFamilia) {
+        let capGrupos = [];
+        try {
+            const res = await fetch('/api/produccion/capacidad-grupo');
+            capGrupos = await res.json();
+        } catch(e) {}
+        const grupos = capGrupos.map(g => g.grupo).sort();
+        const colorMap = {};
+        capGrupos.forEach(g => { colorMap[g.grupo] = g.color || '#3b82f6'; });
+        this._grupoColores = { ...this._grupoColores, ...colorMap };
         const all = this.codigos || [];
-        const grupos = [...new Set(all.map(c => c.grupo).filter(Boolean))].sort();
         const grupoFamilias = {};
         all.forEach(c => {
             if (c.grupo && c.familia) {
@@ -242,11 +272,24 @@ ${puedeEditar ? `
         if (gSel) {
             const cur = selectedGrupo || '';
             gSel.innerHTML = '<option value="">-- Seleccionar Grupo --</option>'
-                + grupos.map(g => `<option value="${escapeHtml(g)}" ${g === cur ? 'selected' : ''}>${escapeHtml(g)}</option>`).join('');
+                + grupos.map(g => {
+                    const hex = colorMap[g] || '#3b82f6';
+                    return `<option value="${escapeHtml(g)}" data-color="${hex}" ${g === cur ? 'selected' : ''}>${g}</option>`;
+                }).join('');
             if (cur && !grupos.includes(cur)) {
                 gSel.innerHTML += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>`;
             }
-            gSel.onchange = () => this._filterFamiliasByGrupo();
+            const applyGrupoColor = () => {
+                const sel = gSel.options[gSel.selectedIndex];
+                if (sel && sel.value) {
+                    const c = sel.getAttribute('data-color') || '#3b82f6';
+                    gSel.style.borderLeft = `4px solid ${c}`;
+                } else {
+                    gSel.style.borderLeft = '';
+                }
+            };
+            gSel.onchange = () => { this._filterFamiliasByGrupo(); applyGrupoColor(); };
+            applyGrupoColor();
         }
         this._filterFamiliasByGrupo(selectedFamilia);
     },
@@ -271,13 +314,13 @@ ${puedeEditar ? `
         }
     },
 
-    showCreateModal() {
+    async showCreateModal() {
         this.editingId = null;
         document.getElementById('codModalTitle').textContent = 'Nuevo Codigo';
         document.getElementById('codCodigo').value = '';
         document.getElementById('codCodigo').disabled = false;
         document.getElementById('codDescripcion').value = '';
-        this._populateGrupoFamilia('', '');
+        await this._populateGrupoFamilia('', '');
         document.getElementById('codCreateModal').classList.add('show');
     },
 
@@ -289,7 +332,7 @@ ${puedeEditar ? `
         document.getElementById('codCodigo').value = c.codigo || '';
         document.getElementById('codCodigo').disabled = true;
         document.getElementById('codDescripcion').value = c.descripcion || '';
-        this._populateGrupoFamilia(c.grupo || '', c.familia || '');
+        await this._populateGrupoFamilia(c.grupo || '', c.familia || '');
         document.getElementById('codCreateModal').classList.add('show');
     },
 
