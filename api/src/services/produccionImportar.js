@@ -154,7 +154,7 @@ const buscarFamiliaParaFila = async (r, maestros) => {
 };
 
 const calcularEstaciones = (r, familia, maestros) => {
-    const { estacionesMaestras, estacionMap, reglaMap, familiaEstacionesMap, recetaBomMap, recetaProcesosMap } = maestros;
+    const { estacionesMaestras, estacionMap, reglaMap, familiaEstacionesMap, recetaBomMap, recetaProcesosMap, ordenToEstacionId } = maestros;
 
     const codigoKey = String(r.codigo || '').trim();
     let estacionesFinales = [];
@@ -178,6 +178,12 @@ const calcularEstaciones = (r, familia, maestros) => {
             estacionesFinales = [estacionMap['Corte']?.id, estacionMap['Pulido']?.id, estacionMap['Templado']?.id].filter(Boolean);
         }
     }
+
+    estacionesFinales = estacionesFinales.map(v => {
+        if (estacionesMaestras.find(e => e.id === v)) return v;
+        if (ordenToEstacionId[v]) return ordenToEstacionId[v];
+        return v;
+    });
 
     const flagsMap = { radio: 'radio', pulido: 'pulido', ventana: 'ventana', pintado: 'pintado', pintado_car: 'pintado_car' };
     for (const [flag, nombre] of Object.entries(flagsMap)) {
