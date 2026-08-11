@@ -14,10 +14,14 @@ class CosteoService {
     }
 
     /**
-     * Actualizar un parámetro de costo
+     * Actualizar un parámetro de costo (upsert)
      */
     async updateConfig(clave, valor) {
-        await query('UPDATE costos_config SET valor = $1 WHERE clave = $2', [valor, clave]);
+        await query(
+            `INSERT INTO costos_config (clave, valor) VALUES ($1, $2)
+             ON CONFLICT (clave) DO UPDATE SET valor = $2`,
+            [clave, valor]
+        );
     }
 
     /**
@@ -56,6 +60,7 @@ class CosteoService {
         const costo_destaje_complejo = config.costo_destaje_complejo_kg?.valor || 0;
         const costo_pintura_ml = config.costo_pintura_ml?.valor || 0;
         const costo_insumos_pintura = config.costo_insumos_pintura?.valor || 0;
+        const costo_otros_m2 = config.costo_otros_m2?.valor || 0;
         const merma_proceso_pct = config.merma_proceso_pct?.valor || 0;
         const merma_aprovechamiento_pct = config.merma_aprovechamiento_pct?.valor || 0;
 
@@ -92,7 +97,7 @@ class CosteoService {
 
         const pintura = (parseFloat(area_pintado) || 0) * (pintado_color ? costo_pintura_ml : 0);
         const insumos_pintura = (parseFloat(area_pintado) || 0) * (pintado_color ? costo_insumos_pintura : 0);
-        const otros = 0;
+        const otros = area_m2 * costo_otros_m2;
 
         // 5. (A) COSTO SIN MERMAS
         const costo_sin_mermas = materia_prima + hh + energia + pulido + perforado + destaje + pintura + insumos_pintura + otros;

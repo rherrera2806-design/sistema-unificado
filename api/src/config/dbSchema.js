@@ -608,6 +608,7 @@ async function runMigrations() {
             ['costo_destaje_complejo_kg', 0, 'Costo destaje complejo por kg', '$/kg'],
             ['costo_pintura_ml', 0, 'Costo pintura por ml', '$/ml'],
             ['costo_insumos_pintura', 0, 'Costos insumos de pintura por m²', '$/m²'],
+            ['costo_otros_m2', 0, 'Costos otros por m²', '$/m²'],
             ['merma_proceso_pct', 0, 'Porcentaje merma de proceso', '%'],
             ['merma_aprovechamiento_pct', 0, 'Porcentaje merma de aprovechamiento', '%']
         ];

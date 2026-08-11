@@ -204,6 +204,7 @@ App.registerModule('costeo', {
                 <div class="costeo-row"><span>Pintura</span><span>${fmt(r.pintura)}</span></div>
                 <div class="costeo-row"><span>Insumos Pintura</span><span>${fmt(r.insumos_pintura)}</span></div>
                 <div class="costeo-row"><span>Otros</span><span>${fmt(r.otros)}</span></div>
+                <div class="costeo-row"><span>Otros</span><span>${fmt(r.otros)}</span></div>
                 <div class="costeo-row costeo-row-subtotal"><span>(A) Costo sin Mermas</span><span>${fmt(r.costo_sin_mermas)}</span></div>
                 <div class="costeo-row costeo-row-merma"><span>Merma proceso (${r._config.merma_proceso_pct}%)</span><span>${fmt(r.merma_proceso)}</span></div>
                 <div class="costeo-row costeo-row-merma"><span>Merma aprovech. (${r._config.merma_aprovechamiento_pct}%)</span><span>${fmt(r.merma_aprovechamiento)}</span></div>
@@ -259,6 +260,7 @@ App.registerModule('costeo', {
             { key: 'costo_destaje_complejo_kg', label: 'Costo Destaje Complejo', unit: '$/kg' },
             { key: 'costo_pintura_ml', label: 'Costo Pintura', unit: '$/ml' },
             { key: 'costo_insumos_pintura', label: 'Insumos de Pintura', unit: '$/m²' },
+            { key: 'costo_otros_m2', label: 'Otros Costos', unit: '$/m²' },
             { key: 'merma_proceso_pct', label: 'Merma de Proceso', unit: '%' },
             { key: 'merma_aprovechamiento_pct', label: 'Merma de Aprovechamiento', unit: '%' }
         ];
@@ -304,7 +306,7 @@ App.registerModule('costeo', {
         const params = [
             'costo_hh', 'costo_energia_m2', 'costo_pulido_ml', 'costo_perforacion',
             'costo_destaje_kg', 'costo_destaje_complejo_kg', 'costo_pintura_ml',
-            'costo_insumos_pintura', 'merma_proceso_pct', 'merma_aprovechamiento_pct'
+            'costo_insumos_pintura', 'costo_otros_m2', 'merma_proceso_pct', 'merma_aprovechamiento_pct'
         ];
 
         try {
