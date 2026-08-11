@@ -231,7 +231,7 @@ App.registerModule('dashboard', {
             bars += `<div class="dash-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:#f8fafc;margin-bottom:6px">
                 <span style="width:22px;height:22px;border-radius:50%;background:${medals[i]};color:white;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i + 1}</span>
                 <span style="flex:1;font-size:12px;font-weight:600;color:#1e293b;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(item.nombre)}">${escapeHtml(item.nombre)}</span>
-                <div style="flex:0 0 80px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${i === 0 ? '#ef4444' : '#f97316'};border-radius:4px;transition:width 0.6s ease"></div></div>
+                <div class="dash-bar-track" style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${i === 0 ? '#ef4444' : '#f97316'};border-radius:4px;transition:width 0.6s ease"></div></div>
                 <span style="font-size:12px;font-weight:700;color:#ef4444;min-width:20px;text-align:right;flex-shrink:0">${item.total_fallas}</span>
             </div>`;
         });
