@@ -631,3 +631,42 @@
     padding-top: 12px;
     border-top: 1px solid #e2e8f0;
 }
+
+/* ── Config Modal ── */
+.costeo-config-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.costeo-config-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.costeo-config-row label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+}
+.costeo-config-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.costeo-config-input-wrap .costeo-input {
+    flex: 1;
+}
+.costeo-config-unit {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 500;
+    min-width: 40px;
+}
+
+/* ── Header button ── */
+.costeo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
