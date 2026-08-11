@@ -109,7 +109,7 @@ App.registerModule('dashboard', {
                     <div class="stat-value">${statsSummary.overdueMaintenance}</div>
                 </div>
             </div>
-            <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="dash-grid-row">
                 ${this.renderOverdueLocal(overdue, maqMap, compMap)}
                 ${this.renderUpcomingLocal(upcoming, maqMap, compMap)}
             </div>
@@ -152,7 +152,7 @@ App.registerModule('dashboard', {
             <tbody>${data.slice(0,5).map(v => {
                 const maq = maqMap[v.maquina_id];
                 const comp = compMap[v.componente_id];
-                return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td><td><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${v.id}),300)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td></tr>`;
+                return `<tr><td data-label="Máquina">${maq ? maq.nombre : '-'}</td><td data-label="Componente">${comp ? comp.nombre : '-'}</td><td data-label="Fecha">${App.formatDate(v.fecha_programada)}</td><td data-label="Acción"><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${v.id}),300)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td></tr>`;
             }).join('')}</tbody></table>`}
             </div></div>`;
     },
@@ -165,7 +165,7 @@ App.registerModule('dashboard', {
             <tbody>${data.slice(0,5).map(v => {
                 const maq = maqMap[v.maquina_id];
                 const comp = compMap[v.componente_id];
-                return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td></tr>`;
+                return `<tr><td data-label="Máquina">${maq ? maq.nombre : '-'}</td><td data-label="Componente">${comp ? comp.nombre : '-'}</td><td data-label="Fecha">${App.formatDate(v.fecha_programada)}</td></tr>`;
             }).join('')}</tbody></table>`}
             </div></div>`;
     },
@@ -184,11 +184,11 @@ App.registerModule('dashboard', {
         let bars = '';
         data.forEach((item, i) => {
             const pct = maxFallas > 0 ? (item.total_fallas / maxFallas * 100) : 0;
-            bars += `<div class="dash-row" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:#f8fafc;margin-bottom:6px">
-                <span style="width:24px;height:24px;border-radius:50%;background:${medals[i]};color:white;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i + 1}</span>
-                <span style="flex:1;font-size:13px;font-weight:600;color:#1e293b">${escapeHtml(item.nombre)}</span>
-                <div style="width:120px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;flex-shrink:0"><div style="width:${pct}%;height:100%;background:${i === 0 ? '#ef4444' : '#f97316'};border-radius:4px;transition:width 0.6s ease"></div></div>
-                <span style="font-size:13px;font-weight:700;color:#ef4444;min-width:20px;text-align:right">${item.total_fallas}</span>
+            bars += `<div class="dash-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:#f8fafc;margin-bottom:6px">
+                <span style="width:22px;height:22px;border-radius:50%;background:${medals[i]};color:white;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i + 1}</span>
+                <span style="flex:1;font-size:12px;font-weight:600;color:#1e293b;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(item.nombre)}</span>
+                <div style="flex:0 0 100px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${i === 0 ? '#ef4444' : '#f97316'};border-radius:4px;transition:width 0.6s ease"></div></div>
+                <span style="font-size:12px;font-weight:700;color:#ef4444;min-width:20px;text-align:right">${item.total_fallas}</span>
             </div>`;
         });
         return `<div class="card mt-16 dash-card">
@@ -204,20 +204,20 @@ App.registerModule('dashboard', {
             const comp = compMap[c.componente_id];
             const color = c.estado === 'Reparada' ? '#28a745' : '#dc3545';
             rows += `<tr>
-                <td>${maq ? maq.nombre : '-'}</td>
-                <td>${comp ? comp.nombre : '-'}</td>
-                <td>${App.formatDate(c.fecha_falla)}</td>
-                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(c.descripcion_falla || '')}">${escapeHtml(c.descripcion_falla || '-')}</td>
-                <td>${escapeHtml(c.responsable || '-')}</td>
-                <td><span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${escapeHtml(c.estado || 'En Mantención')}</span></td>
-                <td>${c.horas_detencion}</td>
-                <td><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
+                <td data-label="Máquina">${maq ? maq.nombre : '-'}</td>
+                <td data-label="Componente">${comp ? comp.nombre : '-'}</td>
+                <td data-label="Fecha">${App.formatDate(c.fecha_falla)}</td>
+                <td data-label="Falla" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(c.descripcion_falla || '')}">${escapeHtml(c.descripcion_falla || '-')}</td>
+                <td data-label="Técnico">${escapeHtml(c.responsable || '-')}</td>
+                <td data-label="Estado"><span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${escapeHtml(c.estado || 'En Mantención')}</span></td>
+                <td data-label="Hs.Det.">${c.horas_detencion}</td>
+                <td data-label="Acción"><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
             </tr>`;
         }
         return `<div class="card mt-16">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Últimas Fallas Registradas</h3></div>
-            <div class="card-body" style="padding:0">
-                <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha</th><th>Falla</th><th>Técnico</th><th>Estado</th><th>Hs.Det.</th><th>Acción</th></tr></thead>
+            <div class="card-body">
+                <table class="mobile-card-table"><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha</th><th>Falla</th><th>Técnico</th><th>Estado</th><th>Hs.Det.</th><th>Acción</th></tr></thead>
                 <tbody>${rows}</tbody></table></div></div>`;
     },
 
@@ -228,20 +228,20 @@ App.registerModule('dashboard', {
             const maq = maqMap[p.maquina_id];
             const comp = compMap[p.componente_id];
             rows += `<tr>
-                <td>${maq ? maq.nombre : '-'}</td>
-                <td>${comp ? comp.nombre : '-'}</td>
-                <td>${escapeHtml(p.observaciones || '-')}</td>
-                <td>${App.formatDate(p.fecha_programada)}</td>
-                <td>${App.formatDate(p.fecha_ejecutada)}</td>
-                <td>${escapeHtml(p.tecnico || '-')}</td>
-                <td>${escapeHtml(p.turno || 'Dia')}</td>
-                <td><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${p.id}),300)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
+                <td data-label="Máquina">${maq ? maq.nombre : '-'}</td>
+                <td data-label="Componente">${comp ? comp.nombre : '-'}</td>
+                <td data-label="Observaciones">${escapeHtml(p.observaciones || '-')}</td>
+                <td data-label="Fecha Prog.">${App.formatDate(p.fecha_programada)}</td>
+                <td data-label="Fecha Ejec.">${App.formatDate(p.fecha_ejecutada)}</td>
+                <td data-label="Técnico">${escapeHtml(p.tecnico || '-')}</td>
+                <td data-label="Turno">${escapeHtml(p.turno || 'Dia')}</td>
+                <td data-label="Acción"><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${p.id}),300)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
             </tr>`;
         }
         return `<div class="card mt-16">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg> Últimas Mantenciones Preventivas Realizadas</h3></div>
-            <div class="card-body" style="padding:0">
-                <table><thead><tr><th>Máquina</th><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Acción</th></tr></thead>
+            <div class="card-body">
+                <table class="mobile-card-table"><thead><tr><th>Máquina</th><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Acción</th></tr></thead>
                 <tbody>${rows}</tbody></table></div></div>`;
     }
 });
