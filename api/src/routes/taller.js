@@ -56,6 +56,20 @@ router.get('/api/taller/mermas', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.post('/api/taller/debug-familias', async (req, res, next) => {
+    try {
+        const { query } = require('../config/database');
+        const famEst = await query(`
+            SELECT f.nombre_familia, array_agg(em.nombre_estacion ORDER BY em.orden_secuencia_defecto) as estaciones
+            FROM familias_producto f
+            JOIN familia_estaciones_base feb ON feb.familia_id = f.id
+            JOIN estaciones_maestras em ON em.id = feb.estacion_id
+            GROUP BY f.nombre_familia
+        `);
+        res.json(famEst.rows);
+    } catch (e) { next(e); }
+});
+
 router.post('/api/taller/backfill-espesor', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
@@ -66,15 +80,7 @@ router.post('/api/taller/backfill-espesor', async (req, res, next) => {
                 o.espesor_mm
             )
         `);
-        const famEst = await query(`
-            SELECT f.nombre_familia, array_agg(em.nombre_estacion ORDER BY em.orden_secuencia_defecto) as estaciones
-            FROM familias_producto f
-            JOIN familia_estaciones_base feb ON feb.familia_id = f.id
-            JOIN estaciones_maestras em ON em.id = feb.estacion_id
-            WHERE f.activo = true
-            GROUP BY f.nombre_familia
-        `);
-        res.json({ ok: true, actualizadas: result.rowCount, familias: famEst.rows });
+        res.json({ ok: true, actualizadas: result.rowCount });
     } catch (e) { next(e); }
 });
 
