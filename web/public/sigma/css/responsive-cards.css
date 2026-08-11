@@ -185,6 +185,49 @@
         background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%) !important;
         border: 1px solid rgba(0,0,0,0.04) !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 0 1px rgba(0,0,0,0.06) !important;
+        padding: 8px 10px !important;
+    }
+
+    .sigma-mobile-card .sc-header {
+        margin-bottom: 6px !important;
+        padding-bottom: 5px !important;
+    }
+
+    .sigma-mobile-card .sc-header .sc-title {
+        font-size: 12px !important;
+    }
+
+    .sigma-mobile-card .sc-header .sc-title small {
+        font-size: 10px !important;
+        margin-top: 1px !important;
+    }
+
+    .sigma-mobile-card .sc-fields {
+        gap: 3px !important;
+    }
+
+    .sigma-mobile-card .sc-field {
+        font-size: 11px !important;
+        padding: 1px 0 !important;
+    }
+
+    .sigma-mobile-card .sc-field .sc-label {
+        font-size: 10px !important;
+    }
+
+    .sigma-mobile-card .sc-field .sc-value {
+        font-size: 11px !important;
+    }
+
+    .sigma-mobile-card .sc-actions {
+        margin-top: 6px !important;
+        padding-top: 5px !important;
+        gap: 4px !important;
+    }
+
+    .sigma-mobile-card .sc-actions .btn {
+        font-size: 10px !important;
+        padding: 3px 8px !important;
     }
 
     /* ── Form Rows ── */
