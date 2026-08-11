@@ -1,0 +1,65 @@
+const express = require('express');
+const router = express.Router();
+const costeoService = require('../services/costeoService');
+
+// GET /api/costeo/config — Obtener parámetros de costos
+router.get('/api/costeo/config', async (req, res) => {
+    try {
+        const config = await costeoService.getConfig();
+        res.json(config);
+    } catch (e) {
+        console.error('Error getting costeo config:', e);
+        res.status(500).json({ error: 'Error al obtener configuración de costos' });
+    }
+});
+
+// PUT /api/costeo/config — Actualizar un parámetro de costo
+router.put('/api/costeo/config', async (req, res) => {
+    try {
+        const { clave, valor } = req.body;
+        if (!clave) return res.status(400).json({ error: 'Falta la clave del parámetro' });
+        await costeoService.updateConfig(clave, parseFloat(valor) || 0);
+        res.json({ ok: true, mensaje: `Parámetro ${clave} actualizado` });
+    } catch (e) {
+        console.error('Error updating costeo config:', e);
+        res.status(500).json({ error: 'Error al actualizar configuración' });
+    }
+});
+
+// GET /api/costeo/cristales — Lista de cristales para selector
+router.get('/api/costeo/cristales', async (req, res) => {
+    try {
+        const cristales = await costeoService.getCristales();
+        res.json(cristales);
+    } catch (e) {
+        console.error('Error getting cristales:', e);
+        res.status(500).json({ error: 'Error al obtener cristales' });
+    }
+});
+
+// POST /api/costeo/calcular — Calcular costos
+router.post('/api/costeo/calcular', async (req, res) => {
+    try {
+        const {
+            cristal_id, ancho, alto, tipo_pulido,
+            n_perforaciones, n_destajes, destaje_complejo,
+            pintado_color, area_pintado, margen_esperado
+        } = req.body;
+
+        if (!cristal_id) return res.status(400).json({ error: 'Seleccione un cristal' });
+        if (!ancho || !alto) return res.status(400).json({ error: 'Ingrese las medidas (ancho y alto)' });
+
+        const resultado = await costeoService.calcular({
+            cristal_id, ancho, alto, tipo_pulido,
+            n_perforaciones, n_destajes, destaje_complejo,
+            pintado_color, area_pintado, margen_esperado
+        });
+
+        res.json(resultado);
+    } catch (e) {
+        console.error('Error calculating costos:', e);
+        res.status(500).json({ error: 'Error al calcular costos' });
+    }
+});
+
+module.exports = router;

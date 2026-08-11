@@ -541,6 +541,7 @@ async function initDB() {
         'prod_notas','prod_notas.agregar','prod_notas.editar','prod_notas.eliminar',
         'prod_config','prod_config.agregar','prod_config.editar','prod_config.eliminar',
         'taller','taller.agregar','taller.editar','taller.eliminar',
+        'costeo','costeo.agregar','costeo.editar','costeo.eliminar',
         'usuarios'
     ];
     const adminCheck = await query("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
@@ -587,6 +588,34 @@ async function runMigrations() {
         await query(`CREATE INDEX IF NOT EXISTS idx_procesos_carroceria_sap_codigo ON procesos_carroceria_sap(codigo_sap)`);
     } catch (e) {
         console.error('Migration warning (002/003):', e.message);
+    }
+    // ── costos_config: parámetros de costeo para el módulo de Costos ──
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS costos_config (
+            id SERIAL PRIMARY KEY,
+            clave VARCHAR(50) UNIQUE NOT NULL,
+            valor DECIMAL(12,2) DEFAULT 0,
+            descripcion TEXT,
+            unidad VARCHAR(20),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+        const defaultParams = [
+            ['costo_hh', 0, 'Costo hora-hombre por m²', '$/m²'],
+            ['costo_energia_m2', 0, 'Costo energía por m²', '$/m²'],
+            ['costo_pulido_ml', 0, 'Costo pulido por metro lineal', '$/ml'],
+            ['costo_perforacion', 0, 'Costo por perforación', '$/ud'],
+            ['costo_destaje_kg', 0, 'Costo destaje normal por kg', '$/kg'],
+            ['costo_destaje_complejo_kg', 0, 'Costo destaje complejo por kg', '$/kg'],
+            ['costo_pintura_ml', 0, 'Costo pintura por ml', '$/ml'],
+            ['costo_insumos_pintura', 0, 'Costos insumos de pintura por m²', '$/m²'],
+            ['merma_proceso_pct', 0, 'Porcentaje merma de proceso', '%'],
+            ['merma_aprovechamiento_pct', 0, 'Porcentaje merma de aprovechamiento', '%']
+        ];
+        for (const [clave, valor, descripcion, unidad] of defaultParams) {
+            await query('INSERT INTO costos_config (clave, valor, descripcion, unidad) VALUES ($1, $2, $3, $4) ON CONFLICT (clave) DO NOTHING', [clave, valor, descripcion, unidad]);
+        }
+    } catch (e) {
+        console.error('Migration warning (costos_config):', e.message);
     }
     try {
         await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS mecanizado_operaciones TEXT");

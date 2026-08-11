@@ -638,7 +638,8 @@ const SIDEBAR_SECTIONS = {
     inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_catalogos'],
     mantencion: ['dashboard', 'machineTypes', 'machines', 'components', 'preventive', 'corrective', 'calendar', 'notas', 'reports', 'history', 'bitacora'],
     pedidos: ['pedidos'],
-    produccion: ['prod_ordenes', 'prod_planificacion', 'prod_reportes', 'prod_notas', 'prod_config', 'taller']
+    produccion: ['prod_ordenes', 'prod_planificacion', 'prod_reportes', 'prod_notas', 'prod_config', 'taller'],
+    costeo: ['costeo']
 };
 
 function getUserPerms() {
@@ -718,6 +719,9 @@ function renderSidebar() {
             { id: 'prod_notas', label: 'Mis Pendientes', icon: SVG.clipboard },
             { id: 'prod_config', label: 'Configuracion', icon: SVG.settings },
             { id: 'taller', label: 'Taller', icon: SVG.home, external: '/taller/' }
+        ]},
+        { key: 'costeo', label: 'COSTOS', items: [
+            { id: 'costeo', label: 'Costeo', icon: SVG.chart }
         ]}
     ];
 
@@ -785,6 +789,8 @@ function renderSidebar() {
                 App.loadModule('produccion');
             } else if (page === 'prod_planificacion') {
                 App.loadModule('planificacion');
+            } else if (page === 'costeo') {
+                App.loadModule('costeo');
             } else {
                 App.loadModule(page);
             }

@@ -403,4 +403,231 @@
     .cal-cv { background: #ffcdd2; color: #b71c1c; }
     .cal-cp { background: #bbdefb; color: #01579b; }
     .cal-cr { background: #c8e6c9; color: #1b5e20; }
+
+    /* ── Costeo Mobile ── */
+    .costeo-grid { grid-template-columns: 1fr !important; }
+    .costeo-form-card { padding: 14px !important; }
+    .costeo-results-card { padding: 14px !important; }
+    .costeo-form-grid { grid-template-columns: 1fr 1fr !important; }
+    .costeo-field-full { grid-column: 1 / -1 !important; }
+    .costeo-btn-calcular { width: 100% !important; }
+    .costeo-results-header { flex-direction: column !important; gap: 4px !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Costeo — Desktop + Mobile (siempre visible)
+   ═══════════════════════════════════════════════════════════════ */
+
+.costeo-wrap { max-width: 1100px; margin: 0 auto; }
+
+.costeo-header {
+    margin-bottom: 20px;
+}
+.costeo-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px;
+}
+.costeo-header p {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+}
+
+.costeo-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+/* ── Form Card ── */
+.costeo-form-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.costeo-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e40af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+.costeo-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 16px 0;
+}
+
+.costeo-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.costeo-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.costeo-field label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+}
+.costeo-field-full {
+    grid-column: 1 / -1;
+}
+
+.costeo-input {
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e293b;
+    background: white;
+    transition: border-color 0.15s;
+    width: 100%;
+    box-sizing: border-box;
+}
+.costeo-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+
+.costeo-input-yellow {
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
+}
+.costeo-input-yellow:focus {
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 0 2px rgba(245,158,11,0.15) !important;
+}
+
+.costeo-readonly {
+    padding: 8px 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.costeo-btn-calcular {
+    margin-top: 16px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: auto;
+}
+
+/* ── Results Card ── */
+.costeo-results-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.costeo-results-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 20px;
+    color: #94a3b8;
+    text-align: center;
+}
+.costeo-results-placeholder p { font-size: 13px; margin: 0; }
+
+.costeo-results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.costeo-results-table {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.costeo-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    font-size: 13px;
+}
+.costeo-row span:first-child { color: #64748b; }
+.costeo-row span:last-child { font-weight: 600; color: #1e293b; }
+
+.costeo-row-subtotal {
+    background: #f8fafc;
+    font-weight: 600;
+}
+.costeo-row-subtotal span { color: #334155 !important; font-weight: 700 !important; }
+
+.costeo-row-merma {
+    background: #fffbeb;
+}
+.costeo-row-merma span:first-child { color: #92400e; }
+.costeo-row-merma span:last-child { color: #b45309; font-weight: 600; }
+
+.costeo-row-total {
+    background: #0f172a;
+}
+.costeo-row-total span { color: white !important; font-weight: 700 !important; font-size: 14px !important; }
+
+.costeo-row-venta {
+    background: #059669;
+}
+.costeo-row-venta span { color: white !important; font-weight: 700 !important; font-size: 14px !important; }
+
+.costeo-row-ganancia {
+    background: #dbeafe;
+}
+.costeo-row-ganancia span:first-child { color: #1e40af; font-weight: 700; }
+.costeo-row-ganancia span:last-child { color: #1e40af; font-weight: 800; font-size: 14px; }
+
+.costeo-row-margen {
+    background: #eff6ff;
+}
+.costeo-row-margen span:first-child { color: #3b82f6; font-weight: 600; }
+.costeo-row-margen span:last-child { color: #3b82f6; font-weight: 700; }
+
+.costeo-results-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
 }
