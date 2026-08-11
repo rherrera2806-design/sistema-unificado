@@ -61,10 +61,10 @@ App.registerModule('dashboard', {
         el.innerHTML = `
             <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-                <div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Dashboard</h2>
-                <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Panel principal de control de mantenimiento · ${rangoTexto}</p></div>
-                <div style="display:flex;gap:6px;align-items:center">
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+                <div style="min-width:0"><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Dashboard</h2>
+                <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Panel de mantenimiento · ${rangoTexto}</p></div>
+                <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
                     <div style="display:flex;gap:2px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:2px">
                         <button onclick="App.modules.dashboard.setPeriodo('anio')" style="padding:5px 10px;font-size:11px;font-weight:600;border:none;border-radius:6px;cursor:pointer;${this._periodo === 'anio' ? 'background:#3b82f6;color:white' : 'background:transparent;color:rgba(255,255,255,0.7)'}">Año</button>
                         <button onclick="App.modules.dashboard.setPeriodo('mes')" style="padding:5px 10px;font-size:11px;font-weight:600;border:none;border-radius:6px;cursor:pointer;${this._periodo === 'mes' ? 'background:#3b82f6;color:white' : 'background:transparent;color:rgba(255,255,255,0.7)'}">Por mes</button>
@@ -81,6 +81,22 @@ App.registerModule('dashboard', {
 .dash-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
 .dash-row{transition:all 0.2s}
 .dash-row:hover{transform:translateX(2px);background:#f8fafc!important}
+.dash-grid-row{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:768px){
+    .dash-grid-row{grid-template-columns:1fr!important;gap:12px!important}
+    .dash-row{flex-direction:column;align-items:flex-start;gap:4px}
+    .stats-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}
+    .stat-card{padding:6px 8px!important;height:48px!important;border-radius:8px!important}
+    .stat-info h4{font-size:14px!important;text-align:center}
+    .stat-info p{font-size:8px!important;text-align:center}
+    .stat-icon{width:24px!important;height:24px!important;font-size:11px!important}
+    .card-header{flex-direction:column!important;align-items:flex-start!important;gap:8px!important;padding:12px!important}
+    .card-header h3{font-size:12px!important;word-wrap:break-word}
+    .card-body{padding:12px!important}
+    .card{margin-bottom:12px!important}
+    .page-header{flex-direction:column!important;align-items:flex-start!important;gap:12px!important}
+    .page-header h2{font-size:16px!important}
+}
 </style>
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
@@ -213,9 +229,9 @@ App.registerModule('dashboard', {
             const pct = maxFallas > 0 ? (item.total_fallas / maxFallas * 100) : 0;
             bars += `<div class="dash-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:#f8fafc;margin-bottom:6px">
                 <span style="width:22px;height:22px;border-radius:50%;background:${medals[i]};color:white;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i + 1}</span>
-                <span style="flex:1;font-size:12px;font-weight:600;color:#1e293b;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(item.nombre)}</span>
-                <div style="flex:0 0 100px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${i === 0 ? '#ef4444' : '#f97316'};border-radius:4px;transition:width 0.6s ease"></div></div>
-                <span style="font-size:12px;font-weight:700;color:#ef4444;min-width:20px;text-align:right">${item.total_fallas}</span>
+                <span style="flex:1;font-size:12px;font-weight:600;color:#1e293b;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(item.nombre)}">${escapeHtml(item.nombre)}</span>
+                <div style="flex:0 0 80px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${i === 0 ? '#ef4444' : '#f97316'};border-radius:4px;transition:width 0.6s ease"></div></div>
+                <span style="font-size:12px;font-weight:700;color:#ef4444;min-width:20px;text-align:right;flex-shrink:0">${item.total_fallas}</span>
             </div>`;
         });
         return `<div class="card mt-16 dash-card">
