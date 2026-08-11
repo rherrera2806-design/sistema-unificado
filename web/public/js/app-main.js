@@ -319,7 +319,7 @@ const App = {
                     <p style="margin:4px 0 0;font-size:12px;color:#64748b">Resumen del mes de ${mesActual}</p>
                 </div>
 
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+                <div class="home-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
                     
                     <!-- ASISTENCIA -->
                     <div style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);border:1px solid #bae6fd;border-radius:14px;padding:20px;transition:all 0.2s">

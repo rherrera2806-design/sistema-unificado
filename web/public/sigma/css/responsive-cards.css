@@ -169,6 +169,12 @@
         gap: 8px !important;
     }
 
+    /* ── Home Grid ── */
+    .home-grid { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
+    .home-grid > div { padding: 14px !important; border-radius: 12px !important; }
+    .home-grid h3 { font-size: 12px !important; }
+    .home-grid p { font-size: 10px !important; }
+
     /* ── Filtros / Search ── */
     .search-box { width: 100% !important; max-width: none !important; }
     .form-control { width: 100% !important; min-width: 0 !important; }
