@@ -136,12 +136,14 @@
             .station-card{padding:16px 12px}
             .station-card .icon svg{width:32px;height:32px}
             .station-card .name{font-size:13px}
-            .queue-header{padding:10px 12px;gap:6px}
-            .queue-header h1{font-size:14px}
-            .queue-header .back{padding:6px 10px;font-size:11px}
-            .queue-header .search-wrap{display:none}
-            .queue-header .search-wrap.mobile-open{display:block;position:absolute;top:100%;left:0;right:0;padding:8px 12px;background:#0f172a;border-bottom:1px solid #1e293b;z-index:11}
-            .queue-header .search-wrap.mobile-open input{max-width:100%}
+            .queue-header{padding:10px 12px;gap:6px;flex-wrap:wrap}
+            .queue-header h1{font-size:14px;order:1}
+            .queue-header .back{padding:6px 10px;font-size:11px;order:0}
+            .queue-header .search-toggle{order:2}
+            .queue-header .clock{order:3;font-size:11px}
+            .queue-header .search-wrap{display:none;width:100%;order:10;position:relative;top:auto;left:auto;right:auto;padding:0;background:none;border:none;z-index:auto}
+            .queue-header .search-wrap.mobile-open{display:block;width:100%;position:relative;padding:0;background:none;border:none}
+            .queue-header .search-wrap.mobile-open input{width:100%;padding:10px 12px 10px 34px;font-size:14px;border-radius:8px;box-sizing:border-box}
             .queue-stats{grid-template-columns:1fr 1fr;gap:6px;padding:10px 12px}
             .stat .num{font-size:20px}
             .stat .label{font-size:8px}
@@ -183,7 +185,7 @@
             <span class="search-icon">&#128269;</span>
             <input type="text" id="searchInput" placeholder="Buscar por cliente o pedido..." oninput="filtrarCola()">
         </div>
-        <button class="back" id="searchToggle" onclick="toggleSearch()" style="display:none">&#128269;</button>
+        <button class="back" id="searchToggle" onclick="toggleSearch()" style="display:none;background:rgba(59,130,246,.2);border-color:rgba(59,130,246,.4)">&#128269;</button>
         <div class="clock" id="clock">-</div>
     </div>
     <div class="queue-stats">
@@ -374,14 +376,14 @@ function renderCola() {
         <div class="${cardClass}">
             <div class="order-top">
                 <div>
-                    <div class="order-pedido">Pedido: ${escapeHtml(p.pedido_sap_id || '-')} | #${p.orden_id}</div>
+                    <div class="order-pedido">Pedido: ${escapeHtml(p.pedido_sap_id || '-')} | Item ${p.item_numero || '-'}</div>
                     <div class="order-cliente">${escapeHtml(p.cliente || '-')}</div>
                     <div class="order-codigo">${escapeHtml(p.codigo_producto || '')} ${escapeHtml(p.descripcion || '')}</div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
                     <div class="order-status ${p.estado}">${p.estado.replace('_', ' ')}</div>
                     ${esperando ? '<span class="prio-badge" style="background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">&#9203; EN ESPERA</span>' : ''}
-                    ${!esperando && disponible && p.estado === 'PENDIENTE' ? '<span class="prio-badge" style="background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)">&#9989; LISTO</span>' : ''}
+                    ${!esperando && disponible && p.estado === 'PENDIENTE' ? '' : ''}
                     ${p.nivel_prioridad && p.nivel_prioridad > 1 ? `<span class="prio-badge prio-${p.nivel_prioridad}">${p.nivel_prioridad === 4 ? '&#128293; REPOSICION' : p.nivel_prioridad === 3 ? '&#9889; URGENTE' : '&#9889; EXPRESS'}</span>` : ''}
                 </div>
             </div>
@@ -395,7 +397,7 @@ function renderCola() {
                 ${p.perforaciones > 0 ? `<span>&#128296; ${p.perforaciones} perf.</span>` : ''}
                 ${p.nota ? `<span>&#128221; ${escapeHtml(p.nota.substring(0, 40))}</span>` : ''}
             </div>
-            ${p.mecanizado_operaciones ? `<div class="mecanizado-banner"><span class="mec-icon">&#9888;&#65039;</span><div><div class="mec-text">Tareas Mecanizado</div><div class="mec-detail">${escapeHtml(p.mecanizado_operaciones.replace('Operaciones: ', ''))}</div></div></div>` : ''}
+            ${p.mecanizado_operaciones && estacionActual && estacionActual.nombre === 'Mecanizado' ? `<div class="mecanizado-banner"><span class="mec-icon">&#9888;&#65039;</span><div><div class="mec-text">Tareas Mecanizado</div><div class="mec-detail">${escapeHtml(p.mecanizado_operaciones.replace('Operaciones: ', ''))}</div></div></div>` : ''}
             ${esperandoBanner}
             ${p.proxima_estacion ? `<div class="order-next"><span class="arrow">&#10132;</span> Siguiente: <strong>${escapeHtml(p.proxima_estacion)}</strong></div>` : `<div class="order-next" style="color:#94a3b8;background:rgba(148,163,184,.08);border-color:rgba(148,163,184,.2)"><span class="arrow">&#9989;</span> <strong>Ultimo proceso</strong></div>`}
             ${timeInfo}
@@ -411,8 +413,15 @@ function filtrarCola() { renderCola(); }
 function toggleSearch() {
     const wrap = document.getElementById('searchWrap');
     const input = document.getElementById('searchInput');
-    wrap.classList.toggle('mobile-open');
-    if (wrap.classList.contains('mobile-open')) input.focus();
+    const isOpen = wrap.classList.contains('mobile-open');
+    if (isOpen) {
+        wrap.classList.remove('mobile-open');
+        input.value = '';
+        filtrarCola();
+    } else {
+        wrap.classList.add('mobile-open');
+        input.focus();
+    }
 }
 
 function updateSearchVisibility() {

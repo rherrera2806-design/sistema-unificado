@@ -32,7 +32,7 @@ async function getEstacionesConCarga() {
 async function getColaPorEstacion(estacionId) {
     const result = await query(`
         SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados, p.fecha_programada,
-               o.id as orden_id, o.pedido_sap_id, o.cliente, o.codigo_producto, o.descripcion,
+               o.id as orden_id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion,
                o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
                o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
                f.nombre_familia,
