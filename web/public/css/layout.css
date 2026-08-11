@@ -163,7 +163,7 @@
 .nav-section .toggle-icon { font-size: 0.5rem; transition: transform var(--transition-base); margin-left: var(--space-2); opacity: 0.5; transform: rotate(-90deg); }
 .nav-section.expanded .toggle-icon { transform: rotate(0deg); }
 .nav-section-group { overflow: hidden; transition: max-height var(--transition-slow); max-height: 0; }
-.nav-section-group.expanded { max-height: 800px; }
+.nav-section-group.expanded { max-height: 9999px; }
 
 /* ── Nav Items ── */
 .nav-item {
