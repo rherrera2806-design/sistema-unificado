@@ -129,12 +129,23 @@ App.registerModule('costeo', {
         try {
             const res = await fetch('/api/costeo/cristales');
             this._cristales = await res.json();
-            const sel = document.getElementById('cristal_select');
-            sel.innerHTML = '<option value="">Seleccione cristal...</option>' +
-                this._cristales.map(c => `<option value="${c.id}">${c.nombre} ${c.espesor_mm}mm - $${Number(c.costo_unitario_mp).toLocaleString()}/m²</option>`).join('');
+            this.updateCristalDropdown();
         } catch (e) {
             console.error('Error loading cristales:', e);
         }
+    },
+
+    updateCristalDropdown() {
+        const origen = document.getElementById('origen_input')?.value || 'nac';
+        const sel = document.getElementById('cristal_select');
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">Seleccione cristal...</option>' +
+            this._cristales.map(c => {
+                const precio = origen === 'imp' ? (c.costo_unitario_importado || 0) : (c.costo_unitario_mp || 0);
+                return `<option value="${c.id}">${c.nombre} ${c.espesor_mm}mm - $${Number(precio).toLocaleString()}/m²</option>`;
+            }).join('');
+        sel.value = currentVal;
+        this.onCristalChange();
     },
 
     onCristalChange() {
@@ -157,7 +168,7 @@ App.registerModule('costeo', {
         document.getElementById('origen_input').value = origen;
         document.getElementById('toggle_nac').classList.toggle('active', origen === 'nac');
         document.getElementById('toggle_imp').classList.toggle('active', origen === 'imp');
-        this.onCristalChange();
+        this.updateCristalDropdown();
     },
 
     bindInputs() {
