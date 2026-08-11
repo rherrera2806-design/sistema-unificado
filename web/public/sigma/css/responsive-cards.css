@@ -170,10 +170,21 @@
     }
 
     /* ── Home Grid ── */
-    .home-grid { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
-    .home-grid > div { padding: 14px !important; border-radius: 12px !important; }
-    .home-grid h3 { font-size: 12px !important; }
-    .home-grid p { font-size: 10px !important; }
+    .home-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; padding: 0 !important; }
+    .home-grid > div { padding: 12px !important; border-radius: 10px !important; overflow: hidden !important; }
+    .home-grid > div > div:first-child { gap: 6px !important; margin-bottom: 8px !important; }
+    .home-grid > div > div:first-child > div:first-child { width: 28px !important; height: 28px !important; }
+    .home-grid > div > div:first-child > div:first-child svg { width: 14px !important; height: 14px !important; }
+    .home-grid h3 { font-size: 11px !important; }
+    .home-grid p { font-size: 9px !important; }
+    .home-grid > div > div:last-child { gap: 6px !important; }
+    .home-grid > div > div:last-child > div { padding: 6px 4px !important; border-radius: 6px !important; }
+    .home-grid > div > div:last-child > div > div:first-child { font-size: 16px !important; }
+    .home-grid > div > div:last-child > div > div:last-child { font-size: 8px !important; }
+
+    /* ── Home Page ── */
+    .home-grid { margin-bottom: 12px !important; }
+    .home-logo { display: none !important; }
 
     /* ── Filtros / Search ── */
     .search-box { width: 100% !important; max-width: none !important; }

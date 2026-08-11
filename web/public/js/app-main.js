@@ -509,7 +509,7 @@ const App = {
 
                 </div>
 
-                <div style="position:fixed;bottom:20px;right:20px;opacity:0.6;pointer-events:none;z-index:0">
+                <div class="home-logo" style="position:fixed;bottom:20px;right:20px;opacity:0.6;pointer-events:none;z-index:0">
                     <img src="/img/vitroflow-logo-final.png" alt="VitroFlow" style="height:120px;width:auto">
                 </div>
             </div>
