@@ -149,6 +149,13 @@
     .card-header h3 { font-size: 12px !important; word-wrap: break-word; }
     .card-body { padding: 12px !important; }
 
+    /* ── Dash Rows (Top Fallas) ── */
+    .dash-row { padding: 6px 10px !important; gap: 6px !important; margin-bottom: 4px !important; }
+    .dash-row > span:first-child { width: 18px !important; height: 18px !important; font-size: 9px !important; }
+    .dash-row > span:nth-child(2) { font-size: 11px !important; }
+    .dash-row > div { flex: 0 0 50px !important; height: 6px !important; }
+    .dash-row > span:last-child { font-size: 11px !important; min-width: 16px !important; }
+
     /* ── Form Rows ── */
     .form-row {
         grid-template-columns: 1fr !important;
