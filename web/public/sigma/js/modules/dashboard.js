@@ -188,6 +188,7 @@ App.registerModule('dashboard', {
     },
 
     renderUpcomingLocal(data, maqMap, compMap) {
+        const top5 = data.slice(0, 5);
         const mobileCards = SigmaCards.generate({
             title: (v) => maqMap[v.maquina_id] ? maqMap[v.maquina_id].nombre : '-',
             subtitle: (v) => compMap[v.componente_id] ? compMap[v.componente_id].nombre : '',
@@ -196,14 +197,14 @@ App.registerModule('dashboard', {
                 { label: 'Componente', value: (v) => compMap[v.componente_id] ? compMap[v.componente_id].nombre : '-' },
                 { label: 'Fecha Prog.', value: (v) => App.formatDate(v.fecha_programada) }
             ]
-        }, data);
+        }, top5);
 
         return `<div class="card dash-card">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Próximas Mantenciones</h3></div>
             <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay mantenciones próximas</h4><p style="margin:0;color:#94a3b8;font-size:13px">Programa la próxima mantención</p></div>' : `
             <div class="sigma-table-wrap">
             <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th></tr></thead>
-            <tbody>${data.slice(0,5).map(v => {
+            <tbody>${top5.map(v => {
                 const maq = maqMap[v.maquina_id];
                 const comp = compMap[v.componente_id];
                 return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td></tr>`;
