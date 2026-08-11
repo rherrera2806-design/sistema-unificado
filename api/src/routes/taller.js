@@ -66,8 +66,8 @@ router.post('/api/taller/backfill-espesor', async (req, res, next) => {
                 o.espesor_mm
             )
         `);
-        const stats = await query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE grupo IS NULL) as sin_grupo, COUNT(*) FILTER (WHERE grupo IS NOT NULL) as con_grupo FROM produccion_ordenes`);
-        res.json({ ok: true, actualizadas: result.rowCount, stats: stats.rows[0] });
+        const familias = await query(`SELECT f.id, f.nombre_familia, f.codigo_familia, array_agg(e.nombre_estacion ORDER BY em.orden_secuencia_defecto) as estaciones FROM familias_producto f LEFT JOIN familia_estaciones_base feb ON feb.familia_id = f.id LEFT JOIN estaciones_maestras em ON em.id = feb.estacion_id LEFT JOIN estaciones_maestras e ON e.id = feb.estacion_id WHERE f.activo = true GROUP BY f.id, f.nombre_familia, f.codigo_familia`);
+        res.json({ ok: true, actualizadas: result.rowCount, familias: familias.rows });
     } catch (e) { next(e); }
 });
 
