@@ -130,7 +130,7 @@ App.registerModule('dashboard', {
                 ${this.renderUpcomingLocal(upcoming, maqMap, compMap)}
             </div>
             ${this.renderTopFallas(topFallas)}
-            ${this.renderRecentFailuresLocal(recentFailures, maqMap, compMap)}
+            ${this.renderRecentFailuresLocal(correctivos, maqMap, compMap)}
             ${this.renderRecentPreventiveLocal(recentPreventive, maqMap, compMap)}
         `;
     },
@@ -240,10 +240,14 @@ App.registerModule('dashboard', {
             <div class="card-body">${bars}</div></div>`;
     },
 
-    renderRecentFailuresLocal(recentFailures, maqMap, compMap) {
-        if (!recentFailures || recentFailures.length === 0) return '';
+    renderRecentFailuresLocal(correctivos, maqMap, compMap) {
+        const failures = (correctivos || [])
+            .filter(c => c.fecha_falla)
+            .sort((a, b) => (b.fecha_falla || '').localeCompare(a.fecha_falla || ''))
+            .slice(0, 5);
+        if (failures.length === 0) return '';
         let rows = '';
-        for (const c of recentFailures) {
+        for (const c of failures) {
             const maq = maqMap[c.maquina_id];
             const comp = compMap[c.componente_id];
             const color = c.estado === 'Reparada' ? '#28a745' : '#dc3545';
@@ -268,12 +272,12 @@ App.registerModule('dashboard', {
             },
             fields: [
                 { label: 'Fecha', value: (c) => App.formatDate(c.fecha_falla) },
-                { label: 'Falla', value: (c) => escapeHtml(c.descripcion_falla || '-') },
-                { label: 'Técnico', value: (c) => escapeHtml(c.responsable || '-') },
+                { label: 'Falla', value: (c) => escapeHtml((c.descripcion_falla || c.detalle || '-').substring(0, 60)) },
+                { label: 'Técnico', value: (c) => escapeHtml(c.responsable || c.tecnico || '-') },
                 { label: 'Hs.Det.', value: (c) => c.horas_detencion != null ? c.horas_detencion : '-' }
             ],
             actions: (c) => `<button class="btn btn-sm btn-info" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)">Ver detalle</button>`
-        }, recentFailures);
+        }, failures);
 
         return `<div class="card mt-16">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Últimas Fallas Registradas</h3></div>
