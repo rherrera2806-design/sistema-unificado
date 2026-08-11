@@ -70,7 +70,7 @@ router.post('/api/taller/backfill-espesor', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/taller/debug-grupo', async (req, res, next) => {
+router.post('/api/taller/debug-grupo', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
         const sample = await query(`SELECT DISTINCT ON (1) codigo_padre, grupo FROM produccion_ordenes WHERE grupo IS NOT NULL LIMIT 5`);
