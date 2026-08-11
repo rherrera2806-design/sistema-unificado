@@ -62,13 +62,9 @@ router.post('/api/taller/backfill-espesor', async (req, res, next) => {
         const result = await query(`
             UPDATE produccion_ordenes o
             SET espesor_mm = COALESCE(
-                (SELECT m.espesor_mm FROM materias_primas m
-                 JOIN produccion_recetas_bom rb ON rb.codigo_materia_prima = m.codigo_mp
-                 WHERE rb.id = o.bom_padre_id),
-                (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+                (SELECT m.espesor_mm FROM materias_primas m WHERE m.codigo_mp = o.codigo_producto),
                 o.espesor_mm
             )
-            WHERE o.bom_padre_id IS NOT NULL
         `);
         res.json({ ok: true, actualizadas: result.rowCount });
     } catch (e) { next(e); }
