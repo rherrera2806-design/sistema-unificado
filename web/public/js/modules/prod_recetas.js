@@ -313,7 +313,6 @@ ${puedeEditar ? `
         document.getElementById('recCodigoPadre').value = '';
         document.getElementById('recCodigoPadre').disabled = false;
         document.getElementById('recMateriaPrima').value = '';
-        document.getElementById('recFamilia').value = '';
         document.getElementById('recCantidad').value = '1';
         document.getElementById('recAncho').value = '';
         document.getElementById('recAlto').value = '';
