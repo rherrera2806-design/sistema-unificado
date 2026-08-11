@@ -282,10 +282,17 @@ App.registerModule('costeo', {
             this._config = {};
         }
 
-        const params = [
-            { key: 'costo_hh', label: 'Costo Hora-Hombre (HH)', unit: '$/m²' },
-            { key: 'costo_energia_m2', label: 'Costo Energía', unit: '$/m²' },
-            { key: 'costo_pulido_ml', label: 'Costo Pulido', unit: '$/ml' },
+        const cfg = (key) => this._config[key]?.valor || 0;
+
+        const procesos = [
+            { key: 'crudo_sin_pulir', label: 'Crudo o Laminado sin pulir' },
+            { key: 'crudo_pulido', label: 'Crudo o Laminado pulido' },
+            { key: 'templado_plano', label: 'Templado plano' },
+            { key: 'templado_curvo', label: 'Templado curvo' }
+        ];
+
+        const otrosParams = [
+            { key: 'costo_pulido_ml', label: 'Costo Pulido', unit: '$/m²' },
             { key: 'costo_perforacion', label: 'Costo Perforación', unit: '$/ud' },
             { key: 'costo_destaje_kg', label: 'Costo Destaje Normal', unit: '$/kg' },
             { key: 'costo_destaje_complejo_kg', label: 'Costo Destaje Complejo', unit: '$/kg' },
@@ -295,6 +302,15 @@ App.registerModule('costeo', {
             { key: 'merma_proceso_pct', label: 'Merma de Proceso', unit: '%' },
             { key: 'merma_aprovechamiento_pct', label: 'Merma de Aprovechamiento', unit: '%' }
         ];
+
+        const renderField = (key, label, unit) => `
+            <div class="costeo-config-row">
+                <label>${label}</label>
+                <div class="costeo-config-input-wrap">
+                    <input type="number" id="cfg_${key}" class="costeo-input costeo-input-yellow" value="${cfg(key)}" min="0" step="0.01">
+                    <span class="costeo-config-unit">${unit}</span>
+                </div>
+            </div>`;
 
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
@@ -307,16 +323,25 @@ App.registerModule('costeo', {
                 </div>
                 <div class="modal-body">
                     <p style="font-size:12px;color:#64748b;margin:0 0 16px">Configure los valores por unidad. Estos se usarán en cada cálculo de costeo.</p>
-                    <div class="costeo-config-grid">
-                        ${params.map(p => `
-                            <div class="costeo-config-row">
-                                <label>${p.label}</label>
-                                <div class="costeo-config-input-wrap">
-                                    <input type="number" id="cfg_${p.key}" class="costeo-input costeo-input-yellow" value="${this._config[p.key]?.valor || 0}" min="0" step="0.01">
-                                    <span class="costeo-config-unit">${p.unit}</span>
+
+                    <div class="costeo-config-section">
+                        <div class="costeo-config-section-title">HH y Energía por Proceso</div>
+                        <div class="costeo-config-grid">
+                            ${procesos.map(p => `
+                                <div class="costeo-config-group">
+                                    <div class="costeo-config-group-title">${p.label}</div>
+                                    ${renderField('hh_' + p.key, 'HH (Labor)', '$/m²')}
+                                    ${renderField('energia_' + p.key, 'Energía', '$/m²')}
                                 </div>
-                            </div>
-                        `).join('')}
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="costeo-config-section" style="margin-top:16px">
+                        <div class="costeo-config-section-title">Costos Generales</div>
+                        <div class="costeo-config-grid">
+                            ${otrosParams.map(p => renderField(p.key, p.label, p.unit)).join('')}
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -335,9 +360,14 @@ App.registerModule('costeo', {
 
     async saveConfig() {
         const params = [
-            'costo_hh', 'costo_energia_m2', 'costo_pulido_ml', 'costo_perforacion',
-            'costo_destaje_kg', 'costo_destaje_complejo_kg', 'costo_pintura_ml',
-            'costo_insumos_pintura', 'costo_otros_m2', 'merma_proceso_pct', 'merma_aprovechamiento_pct'
+            'hh_crudo_sin_pulir', 'energia_crudo_sin_pulir',
+            'hh_crudo_pulido', 'energia_crudo_pulido',
+            'hh_templado_plano', 'energia_templado_plano',
+            'hh_templado_curvo', 'energia_templado_curvo',
+            'costo_pulido_ml', 'costo_perforacion',
+            'costo_destaje_kg', 'costo_destaje_complejo_kg',
+            'costo_pintura_ml', 'costo_insumos_pintura', 'costo_otros_m2',
+            'merma_proceso_pct', 'merma_aprovechamiento_pct'
         ];
 
         try {
