@@ -78,8 +78,8 @@ router.get('/api/taller/debug-espesor', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
         const result = await query(`
-            SELECT o.id, o.codigo_producto, o.descripcion, o.espesor_mm, o.bom_padre_id,
-                   rb.codigo_materia_prima, rb.espesor as bom_espesor,
+            SELECT o.id, o.codigo_producto, o.descripcion, o.espesor_mm, o.codigo_padre, o.bom_padre_id,
+                   rb.*,
                    m.espesor_mm as mp_espesor
             FROM produccion_ordenes o
             LEFT JOIN produccion_recetas_bom rb ON rb.id = o.bom_padre_id
