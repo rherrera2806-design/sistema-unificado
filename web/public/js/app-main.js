@@ -798,15 +798,15 @@ function toggleSection(section) {
     const sectionEl = group?.previousElementSibling;
     if (!group || !sectionEl) return;
 
-    const isExpanded = group.classList.contains('expanded');
-    if (isExpanded) {
-        group.classList.remove('expanded');
-        sectionEl.classList.remove('expanded');
+    const isCollapsed = group.classList.contains('collapsed');
+    if (isCollapsed) {
+        group.classList.remove('collapsed');
+        sectionEl.classList.remove('collapsed');
     } else {
-        group.classList.add('expanded');
-        sectionEl.classList.add('expanded');
+        group.classList.add('collapsed');
+        sectionEl.classList.add('collapsed');
     }
-    try { localStorage.setItem('sidebar_collapsed', JSON.stringify({ [section]: !isExpanded })); } catch(e) {}
+    try { localStorage.setItem('sidebar_collapsed', JSON.stringify({ [section]: !isCollapsed })); } catch(e) {}
 }
 
 function navI(id, label, icon) {
