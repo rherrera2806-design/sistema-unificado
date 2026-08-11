@@ -114,8 +114,6 @@ body {
 
 .sidebar-nav { padding: 8px 0; flex: 1; overflow-y: auto; }
 
-.td-label { display: none; }
-
 .nav-item {
     display: flex;
     align-items: center;
@@ -712,64 +710,6 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
     table { font-size: 12px; border-collapse: collapse; }
     table th, table td { padding: 6px 8px !important; }
-    .card-body > table thead { display: none; }
-    .card-body > table,
-    .card-body > table tbody {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        width: 100%;
-        padding: 10px;
-    }
-    .card-body > table tbody tr {
-        display: block;
-        padding: 12px;
-        border-radius: 10px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-    }
-    .card-body > table tbody tr td {
-        display: block;
-        white-space: normal;
-        word-wrap: break-word;
-        font-size: 12px;
-        padding: 3px 0 !important;
-        border: none !important;
-        line-height: 1.4;
-    }
-    .card-body > table tbody tr td .td-label {
-        display: block;
-        font-size: 9px;
-        font-weight: 700;
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        margin-bottom: 1px;
-    }
-    .card-body > table tbody tr td:nth-child(1) {
-        font-weight: 700;
-        color: #0f172a;
-        font-size: 14px;
-        padding-bottom: 6px !important;
-        border-bottom: 1px solid #e2e8f0 !important;
-        margin-bottom: 4px;
-    }
-    .card-body > table tbody tr td:nth-child(1) .td-label { display: none; }
-    .card-body > table tbody tr td.td-action,
-    .card-body > table tbody tr td:last-child {
-        padding-top: 6px !important;
-        border-top: 1px solid #e2e8f0 !important;
-        margin-top: 4px;
-    }
-    .card-body > table tbody tr td:last-child .td-label { display: none; }
-    .card-body > table tbody tr td.td-action .btn,
-    .card-body > table tbody tr td:last-child .btn {
-        width: 100%;
-        text-align: center;
-        padding: 8px 12px;
-        font-size: 12px;
-    }
     .calendar-day { min-height: 60px; padding: 4px; }
     .calendar-event { font-size: 9px; padding: 1px 2px; }
     .calendar-header { font-size: 10px; padding: 6px 2px; }
