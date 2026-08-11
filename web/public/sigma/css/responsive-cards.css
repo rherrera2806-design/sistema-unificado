@@ -123,6 +123,30 @@
     [style*="linear-gradient"] h2 { font-size: 13px !important; }
     [style*="linear-gradient"] p { font-size: 8px !important; }
 
+    /* ── Hero Banner inner flex (stats + buttons) ── */
+    .card-header > div,
+    [style*="linear-gradient"] [style*="display:flex"][style*="justify-content:space-between"] {
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+    [style*="linear-gradient"] [style*="display:flex"][style*="gap:6px"] {
+        flex-wrap: wrap !important;
+    }
+    [style*="linear-gradient"] button {
+        padding: 4px 8px !important;
+        font-size: 10px !important;
+    }
+    [style*="linear-gradient"] [style*="background:rgba(255,255,255,0.15)"] {
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+    }
+    [style*="linear-gradient"] [style*="background:rgba(255,255,255,0.15)"] > div:first-child {
+        font-size: 7px !important;
+    }
+    [style*="linear-gradient"] [style*="background:rgba(255,255,255,0.15)"] > div:last-child {
+        font-size: 12px !important;
+    }
+
     /* ── Stats Grid ── */
     .stats-grid {
         grid-template-columns: 1fr 1fr !important;
@@ -189,6 +213,8 @@
     /* ── Filtros / Search ── */
     .search-box { width: 100% !important; max-width: none !important; }
     .form-control { width: 100% !important; min-width: 0 !important; }
+    .card-header .flex { flex-direction: column !important; align-items: stretch !important; gap: 8px !important; }
+    .card-header .flex > * { width: 100% !important; min-width: 0 !important; }
 
     /* ── Tabs ── */
     .tabs {
