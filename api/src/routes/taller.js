@@ -66,16 +66,10 @@ router.post('/api/taller/backfill-espesor', async (req, res, next) => {
                 o.espesor_mm
             )
         `);
-        res.json({ ok: true, actualizadas: result.rowCount });
-    } catch (e) { next(e); }
-});
-
-router.post('/api/taller/debug-grupo', async (req, res, next) => {
-    try {
-        const { query } = require('../config/database');
         const sample = await query(`SELECT DISTINCT ON (1) codigo_padre, grupo FROM produccion_ordenes WHERE grupo IS NOT NULL LIMIT 5`);
-        res.json(sample.rows);
-    } catch (e) { res.json({ error: e.message }); }
+        const sinGrupo = await query(`SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE grupo IS NULL) as sin_grupo FROM produccion_ordenes`);
+        res.json({ ok: true, actualizadas: result.rowCount, sample: sample.rows, stats: sinGrupo.rows[0] });
+    } catch (e) { next(e); }
 });
 
 module.exports = router;
