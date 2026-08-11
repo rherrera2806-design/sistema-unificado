@@ -113,6 +113,24 @@ App.registerModule('bitacora', {
                 <td><span class="status-badge ${App.getEstadoClass(estado)}">${escapeHtml(estado)}</span></td>
             </tr>`;
         }
-        container.innerHTML = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Técnico</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+        container.innerHTML = `<div class="sigma-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Técnico</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>
+        ${SigmaCards.generate({
+            title: (r) => {
+                const fecha = r.tipo_mantencion === 'Preventiva' ? (r.fecha_ejecutada || r.fecha_programada) : (r.fecha_falla || '');
+                return App.formatDate(fecha);
+            },
+            subtitle: (r) => r.tecnico || r.responsable || '-',
+            badge: (r) => {
+                const tipoColor = r.tipo_mantencion === 'Preventiva' ? '#28a745' : '#dc3545';
+                const estado = r.tipo_mantencion === 'Preventiva' ? (r.estado || '-') : (r.estado || 'Reparada');
+                return `<span style="background:${tipoColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;margin-right:4px">${escapeHtml(r.tipo_mantencion)}</span><span class="status-badge ${App.getEstadoClass(estado)}">${escapeHtml(estado)}</span>`;
+            },
+            fields: [
+                { label: 'Turno', value: (r) => r.turno || 'Dia' },
+                { label: 'Detalle', value: (r) => (r.detalle || '-').substring(0, 60) }
+            ],
+            actions: (r) => ''
+        }, data)}
+        </div>`;
     }
 });

@@ -76,13 +76,38 @@ App.registerModule('history', {
             <div class="card hist-card">
                 <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Preventivas</h3></div>
                 <div class="card-body" style="padding:0">
-                    ${preventivos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin registros preventivos</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay mantenciones preventivas</p></div>' : `<table><thead><tr><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Estado</th></tr></thead><tbody>${prevRows}</tbody></table>`}
+                    ${preventivos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin registros preventivos</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay mantenciones preventivas</p></div>' : `
+                        <div class="sigma-table-wrap">
+                        <table><thead><tr><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Estado</th></tr></thead><tbody>${prevRows}</tbody></table>
+                        ${SigmaCards.generate({
+                            title: (p) => { const comp = preventivos._compCache && preventivos._compCache[p.componente_id]; return comp ? comp.nombre : '-'; },
+                            badge: (p) => `<span class="status-badge ${App.getEstadoClass(p.estado)}">${p.estado}</span>`,
+                            fields: [
+                                { label: 'Fecha Prog.', value: (p) => App.formatDate(p.fecha_programada) },
+                                { label: 'Fecha Ejec.', value: (p) => App.formatDate(p.fecha_ejecutada) || '-' },
+                                { label: 'Técnico', value: (p) => p.tecnico || '-' },
+                                { label: 'Turno', value: (p) => p.turno || 'Dia' }
+                            ]
+                        }, preventivos)}
+                        </div>`}
                 </div>
             </div>
             <div class="card hist-card">
                 <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Fallas</h3></div>
                 <div class="card-body" style="padding:0">
-                    ${correctivos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin registros de fallas</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay fallas correctivas</p></div>' : `<table><thead><tr><th>Componente</th><th>Fecha</th><th>Falla</th><th>Diagnóstico</th><th>Turno</th><th>Horas Det.</th></tr></thead><tbody>${corrRows}</tbody></table>`}
+                    ${correctivos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin registros de fallas</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay fallas correctivas</p></div>' : `
+                        <div class="sigma-table-wrap">
+                        <table><thead><tr><th>Componente</th><th>Fecha</th><th>Falla</th><th>Diagnóstico</th><th>Turno</th><th>Horas Det.</th></tr></thead><tbody>${corrRows}</tbody></table>
+                        ${SigmaCards.generate({
+                            title: (c) => { const comp = correctivos._compCache && correctivos._compCache[c.componente_id]; return comp ? comp.nombre : '-'; },
+                            fields: [
+                                { label: 'Fecha', value: (c) => App.formatDate(c.fecha_falla) },
+                                { label: 'Falla', value: (c) => (c.descripcion_falla || '-').substring(0, 50) },
+                                { label: 'Turno', value: (c) => c.turno || 'Dia' },
+                                { label: 'Horas Det.', value: (c) => c.horas_detencion }
+                            ]
+                        }, correctivos)}
+                        </div>`}
                 </div>
             </div>
             ${repuestosUsados.length > 0 ? `

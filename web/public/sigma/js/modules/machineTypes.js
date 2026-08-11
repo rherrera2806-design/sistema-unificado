@@ -72,8 +72,19 @@ App.registerModule('machineTypes', {
 </style>
             <div class="card mtype-card">
                 <div class="card-body">${tipos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay tipos registrados</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer tipo de máquina</p></div>' : `
+                <div class="sigma-table-wrap">
                 <table><thead><tr><th>ID</th><th>Nombre</th><th>Componentes</th><th>Máquinas</th><th>Acciones</th></tr></thead>
-                <tbody>${rows}</tbody></table>`}
+                <tbody>${rows}</tbody></table>
+                ${SigmaCards.generate({
+                    title: (t) => t.nombre,
+                    subtitle: (t) => `${(compByTipo[t.id] ? [...compByTipo[t.id]].length : 0)} componentes · ${(maqByTipo[t.id] || []).length} máquinas`,
+                    fields: [
+                        { label: 'ID', value: (t) => t.id },
+                        { label: 'Componentes', value: (t) => { const ids = compByTipo[t.id] ? [...compByTipo[t.id]] : []; return ids.map(id => compMap[id]).filter(Boolean).map(c => c.nombre).join(', ') || 'Sin componentes'; } }
+                    ],
+                    actions: (t) => `<button class="btn btn-sm btn-outline" onclick="App.modules.machineTypes.showForm(${t.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="App.modules.machineTypes.delete(${t.id})">Eliminar</button>`
+                }, tipos)}
+                </div>`}
                 </div>
             </div>`;
     },

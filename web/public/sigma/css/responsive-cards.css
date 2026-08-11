@@ -1,14 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════
-   Responsive Table-to-Card Pattern — Sigma (Mantención)
-   Oculta tablas en móvil, muestra cards. En desktop, oculta cards.
+   Responsive Shared Styles — Sigma (Mantención)
+   Estilos compartidos para todos los sub-módulos en móvil.
    ═══════════════════════════════════════════════════════════════ */
 
 /* --- Desktop: tabla visible, cards ocultas --- */
 .sigma-table-wrap .sigma-mobile-cards { display: none; }
 
-/* --- Móvil: tabla oculta, cards visibles --- */
+/* --- Móvil --- */
 @media (max-width: 768px) {
 
+    /* ── Tabla → Cards ── */
     .sigma-table-wrap table { display: none !important; }
 
     .sigma-mobile-cards {
@@ -27,9 +28,7 @@
         transition: box-shadow 0.2s, transform 0.2s;
     }
 
-    .sigma-mobile-card:active {
-        transform: scale(0.98);
-    }
+    .sigma-mobile-card:active { transform: scale(0.98); }
 
     .sigma-mobile-card .sc-header {
         display: flex;
@@ -100,29 +99,12 @@
     }
 
     /* Variantes de color por estado */
-    .sigma-mobile-card.sc-vencida {
-        border-left: 4px solid #ef4444;
-        background: #fef2f2;
-    }
+    .sigma-mobile-card.sc-vencida { border-left: 4px solid #ef4444; background: #fef2f2; }
+    .sigma-mobile-card.sc-proxima { border-left: 4px solid #f59e0b; background: #fffbeb; }
+    .sigma-mobile-card.sc-operativa { border-left: 4px solid #22c55e; }
+    .sigma-mobile-card.sc-mantencion { border-left: 4px solid #f59e0b; }
+    .sigma-mobile-card.sc-detenida { border-left: 4px solid #ef4444; }
 
-    .sigma-mobile-card.sc-proxima {
-        border-left: 4px solid #f59e0b;
-        background: #fffbeb;
-    }
-
-    .sigma-mobile-card.sc-operativa {
-        border-left: 4px solid #22c55e;
-    }
-
-    .sigma-mobile-card.sc-mantencion {
-        border-left: 4px solid #f59e0b;
-    }
-
-    .sigma-mobile-card.sc-detenida {
-        border-left: 4px solid #ef4444;
-    }
-
-    /* Badge dentro de card */
     .sigma-mobile-card .sc-badge {
         display: inline-block;
         padding: 2px 8px;
@@ -133,31 +115,88 @@
         letter-spacing: 0.3px;
     }
 
-    /* Stats grid responsive */
+    /* ── Hero Banner ── */
+    [style*="linear-gradient"] > div:first-child {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    [style*="linear-gradient"] h2 { font-size: 13px !important; }
+    [style*="linear-gradient"] p { font-size: 8px !important; }
+
+    /* ── Stats Grid ── */
+    .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+    }
+    .stat-card {
+        padding: 6px 8px !important;
+        height: auto !important;
+        border-radius: 8px !important;
+    }
+    .stat-value { font-size: 16px !important; }
+    .stat-label { font-size: 9px !important; }
+    .stat-sub { font-size: 8px !important; }
+    .stat-icon { width: 24px !important; height: 24px !important; }
+
+    /* ── Cards ── */
+    .card { margin-bottom: 12px !important; }
+    .card-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+        padding: 12px !important;
+    }
+    .card-header h3 { font-size: 12px !important; word-wrap: break-word; }
+    .card-body { padding: 12px !important; }
+
+    /* ── Form Rows ── */
+    .form-row {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+    }
+
+    /* ── Filtros / Search ── */
+    .search-box { width: 100% !important; max-width: none !important; }
+    .form-control { width: 100% !important; min-width: 0 !important; }
+
+    /* ── Tabs ── */
+    .tabs {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        gap: 4px !important;
+        padding-bottom: 4px;
+    }
+    .tabs .tab {
+        font-size: 11px !important;
+        padding: 6px 10px !important;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* ── Page Header ── */
+    .page-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+    .page-header h2 { font-size: 16px !important; }
+
+    /* ── Tables inside sigma-table-wrap ── */
     .sigma-table-wrap .stats-grid {
         grid-template-columns: 1fr 1fr !important;
     }
-
-    /* Card header responsive */
     .sigma-table-wrap .card-header {
         flex-direction: column !important;
         align-items: flex-start !important;
         gap: 10px !important;
     }
-
-    /* Filtros responsive */
     .sigma-table-wrap .card-header > div:first-child {
         width: 100%;
         flex-wrap: wrap;
     }
 
-    .sigma-table-wrap .search-box {
-        width: 100% !important;
-        max-width: none !important;
-    }
-
-    .sigma-table-wrap .form-control {
-        width: 100% !important;
-        min-width: 0 !important;
-    }
+    /* ── Charts / Bars ── */
+    .chart-bar { margin-bottom: 8px; }
+    .chart-bar .label { font-size: 11px; min-width: 50px; }
+    .chart-bar .bar-track { height: 20px; }
 }

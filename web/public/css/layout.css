@@ -428,7 +428,13 @@
         width: var(--sidebar-width);
         transition: left var(--transition-slow);
         z-index: 300;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
+    .sidebar .sidebar-header { flex-shrink: 0; }
+    .sidebar .sidebar-nav { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
     .sidebar.open { left: 0; }
     .menu-toggle { display: flex; }
     .main-content { padding: var(--space-4); }

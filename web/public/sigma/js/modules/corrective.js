@@ -69,6 +69,7 @@ App.registerModule('corrective', {
                 </div>
                 <div class="card-body" style="padding:0">
                     ${filtered.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay fallas registradas</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra la primera falla</p></div>' : `
+                    <div class="sigma-table-wrap">
                     <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha</th><th>Descripción</th><th>Estado</th><th>Días</th><th>Hs.Det.</th><th>Responsable</th><th>Acciones</th></tr></thead>
                     <tbody>${filtered.map(r => {
                         const dias = r.estado === 'Reparada' && r.fecha_falla && r.fecha_reparacion ? Math.round((new Date(r.fecha_reparacion) - new Date(r.fecha_falla)) / 86400000) : '-';
@@ -85,7 +86,21 @@ App.registerModule('corrective', {
                             <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.corrective.showForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                             <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.corrective.delete(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                         </td>
-                    </tr>`}).join('')}</tbody></table>`}
+                    </tr>`}).join('')}</tbody></table>
+                    ${SigmaCards.generate({
+                        title: (r) => r.maquinaNombre,
+                        subtitle: (r) => r.componenteNombre,
+                        badge: (r) => `<span class="status-badge ${r.estado === 'Reparada' ? 'status-realizada' : 'status-mantenimiento'}">${r.estado || 'En Mantención'}</span>`,
+                        cardClass: (r) => r.estado === 'Reparada' ? 'sc-operativa' : 'sc-mantencion',
+                        fields: [
+                            { label: 'Fecha', value: (r) => App.formatDate(r.fecha_falla) },
+                            { label: 'Falla', value: (r) => (r.descripcion_falla || '-').substring(0, 50) },
+                            { label: 'Hs. Detención', value: (r) => r.horas_detencion || 0 },
+                            { label: 'Responsable', value: (r) => r.responsable || '-' }
+                        ],
+                        actions: (r) => `<button class="btn btn-sm btn-info" onclick="App.modules.corrective.showDetail(${r.id})">Detalle</button> <button class="btn btn-sm btn-outline" onclick="App.modules.corrective.showForm(${r.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="App.modules.corrective.delete(${r.id})">Eliminar</button>`
+                    }, filtered)}
+                    </div>`}
                 </div>
             </div>`;
     },

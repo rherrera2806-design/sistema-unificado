@@ -44,6 +44,7 @@ App.registerModule('spareparts', {
                 </div>
                 <div class="card-body" style="padding:0">
                     ${filtered.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay repuestos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer repuesto</p></div>' : `
+                    <div class="sigma-table-wrap">
                     <table><thead><tr><th>Código</th><th>Descripción</th><th>Componente</th><th>Stock Actual</th><th>Stock Mín.</th><th>Estado</th><th>Proveedor</th><th>Ubicación</th><th>Acciones</th></tr></thead>
                     <tbody>${filtered.map(r => {
                         const critico = r.stock_actual <= r.stock_minimo;
@@ -61,7 +62,21 @@ App.registerModule('spareparts', {
                                 <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.spareparts.delete(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                             </td>
                         </tr>`;
-                    }).join('')}</tbody></table>`}
+                    }).join('')}</tbody></table>
+                    ${SigmaCards.generate({
+                        title: (r) => `${r.codigo || '-'} — ${r.descripcion || '-'}`,
+                        subtitle: (r) => r.componenteNombre,
+                        badge: (r) => r.stock_actual <= r.stock_minimo ? '<span class="status-badge status-vencida">Crítico</span>' : '<span class="status-badge status-realizada">Normal</span>',
+                        cardClass: (r) => r.stock_actual <= r.stock_minimo ? 'sc-vencida' : 'sc-operativa',
+                        fields: [
+                            { label: 'Stock Actual', value: (r) => r.stock_actual },
+                            { label: 'Stock Mín.', value: (r) => r.stock_minimo },
+                            { label: 'Proveedor', value: (r) => r.proveedor || '-' },
+                            { label: 'Ubicación', value: (r) => r.ubicacion_bodega || '-' }
+                        ],
+                        actions: (r) => `<button class="btn btn-sm btn-outline" onclick="App.modules.spareparts.showForm(${r.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="App.modules.spareparts.delete(${r.id})">Eliminar</button>`
+                    }, filtered)}
+                    </div>`}
                 </div>
             </div>`;
     },
