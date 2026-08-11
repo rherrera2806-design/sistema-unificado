@@ -73,10 +73,9 @@ router.post('/api/taller/backfill-espesor', async (req, res, next) => {
 router.get('/api/taller/debug-grupo', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
-        const sample = await query(`SELECT DISTINCT codigo_padre, grupo FROM produccion_ordenes ORDER BY id DESC LIMIT 10`);
-        const codigos = await query(`SELECT codigo, grupo, familia FROM produccion_codigos LIMIT 10`);
-        res.json({ sample: sample.rows, codigos: codigos.rows });
-    } catch (e) { next(e); }
+        const sample = await query(`SELECT DISTINCT ON (1) codigo_padre, grupo FROM produccion_ordenes WHERE grupo IS NOT NULL LIMIT 5`);
+        res.json(sample.rows);
+    } catch (e) { res.json({ error: e.message }); }
 });
 
 module.exports = router;
