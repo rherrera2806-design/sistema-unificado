@@ -2,6 +2,10 @@ App.registerModule('calendar', {
     currentMonth: new Date().getMonth(),
     currentYear: new Date().getFullYear(),
 
+    isMobile() {
+        return window.innerWidth <= 768;
+    },
+
     async render() {
         const el = document.getElementById('page-calendar');
         const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -13,8 +17,21 @@ App.registerModule('calendar', {
         const daysInPrev = new Date(this.currentYear, this.currentMonth, 0).getDate();
         const events = await this.getEvents();
 
-        el.innerHTML = `
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+        const mobile = this.isMobile();
+
+        const heroBanner = mobile
+            ? `<div class="cal-hero-mobile">
+                <div class="cal-hero-text">
+                    <h2>Calendario de Mantenimiento</h2>
+                    <p>Visualizacion mensual de actividades</p>
+                </div>
+                <div class="cal-hero-nav">
+                    <button class="cal-nav-btn" onclick="App.modules.calendar.navigate(-1)">&#9664;</button>
+                    <button class="cal-nav-btn cal-nav-today" onclick="App.modules.calendar.navigate(0, true)">Hoy</button>
+                    <button class="cal-nav-btn" onclick="App.modules.calendar.navigate(1)">&#9654;</button>
+                </div>
+            </div>`
+            : `<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
             <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Calendario de Mantenimiento</h2>
             <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Visualizacion mensual de actividades</p></div>
@@ -23,7 +40,38 @@ App.registerModule('calendar', {
                     <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);padding:5px 10px;font-size:11px" onclick="App.modules.calendar.navigate(0, true)">Hoy</button>
                     <button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);padding:5px 10px;font-size:11px" onclick="App.modules.calendar.navigate(1)">Siguiente &#9654;</button>
                 </div>
-            </div></div>
+            </div></div>`;
+
+        const monthTitle = mobile
+            ? `<div class="cal-month-title-mobile">${monthNames[this.currentMonth]} ${this.currentYear}</div>`
+            : `<div style="text-align:center;margin-bottom:16px"><h3 style="font-size:22px">${monthNames[this.currentMonth]} ${this.currentYear}</h3></div>`;
+
+        const legend = mobile
+            ? `<div class="cal-legend-mobile">
+                <span class="cal-legend-item cal-legend-vencida">Vencida</span>
+                <span class="cal-legend-item cal-legend-programada">Programada</span>
+                <span class="cal-legend-item cal-legend-realizada">Realizada</span>
+            </div>`
+            : `<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+                <span class="status-badge" style="background:#ffebee;color:#c62828;padding:4px 12px">Vencida</span>
+                <span class="status-badge" style="background:#e3f2fd;color:#0277bd;padding:4px 12px">Programada</span>
+                <span class="status-badge" style="background:#e8f5e9;color:#2e7d32;padding:4px 12px">Realizada</span>
+            </div>`;
+
+        const calendarBody = mobile
+            ? `<div class="calendar-grid cal-grid-mobile">
+                <div class="cal-hdr">Dom</div><div class="cal-hdr">Lun</div><div class="cal-hdr">Mar</div>
+                <div class="cal-hdr">Mié</div><div class="cal-hdr">Jue</div><div class="cal-hdr">Vie</div><div class="cal-hdr">Sáb</div>
+                ${this.renderMobileDays(startDay, daysInMonth, daysInPrev, today, events)}
+            </div>`
+            : `<div class="calendar-grid">
+                <div class="calendar-header">Dom</div><div class="calendar-header">Lun</div><div class="calendar-header">Mar</div>
+                <div class="calendar-header">Mié</div><div class="calendar-header">Jue</div><div class="calendar-header">Vie</div><div class="calendar-header">Sáb</div>
+                ${this.renderDays(startDay, daysInMonth, daysInPrev, today, events)}
+            </div>`;
+
+        el.innerHTML = `
+            ${heroBanner}
             <style>
 @keyframes cal_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .cal-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
@@ -31,17 +79,9 @@ App.registerModule('calendar', {
 .cal-row{transition:all 0.2s}
 .cal-row:hover{transform:translateX(2px);background:#f8fafc!important}
 </style>
-            <div style="text-align:center;margin-bottom:16px"><h3 style="font-size:22px">${monthNames[this.currentMonth]} ${this.currentYear}</h3></div>
-            <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
-                <span class="status-badge" style="background:#ffebee;color:#c62828;padding:4px 12px">Vencida</span>
-                <span class="status-badge" style="background:#e3f2fd;color:#0277bd;padding:4px 12px">Programada</span>
-                <span class="status-badge" style="background:#e8f5e9;color:#2e7d32;padding:4px 12px">Realizada</span>
-            </div>
-            <div class="calendar-grid">
-                <div class="calendar-header">Dom</div><div class="calendar-header">Lun</div><div class="calendar-header">Mar</div>
-                <div class="calendar-header">Mié</div><div class="calendar-header">Jue</div><div class="calendar-header">Vie</div><div class="calendar-header">Sáb</div>
-                ${this.renderDays(startDay, daysInMonth, daysInPrev, today, events)}
-            </div>`;
+            ${monthTitle}
+            ${legend}
+            ${calendarBody}`;
     },
 
     async getEvents() {
@@ -99,6 +139,68 @@ App.registerModule('calendar', {
         }
         const remaining = 7 - ((startDay + daysInMonth) % 7 || 7);
         for (let day = 1; day <= remaining; day++) html += `<div class="calendar-day other-month"><div class="day-number">${day}</div></div>`;
+        return html;
+    },
+
+    renderMobileDays(startDay, daysInMonth, daysInPrev, today, allEvents) {
+        let html = '';
+        for (let d = startDay - 1; d >= 0; d--) html += `<div class="cal-cell cal-cell-empty"><span class="cal-dn">${daysInPrev - d}</span></div>`;
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isToday = today.getFullYear() === this.currentYear && today.getMonth() === this.currentMonth && today.getDate() === day;
+            const dayEvents = allEvents.filter(e => e.date === dateStr);
+            const vencidas = dayEvents.filter(e => e.status === 'Vencida').length;
+            const programadas = dayEvents.filter(e => e.status === 'Programada').length;
+            const realizadas = dayEvents.filter(e => e.status === 'Realizada').length;
+            const hasEvents = vencidas + programadas + realizadas > 0;
+            html += `<div class="cal-cell ${isToday ? 'cal-cell-today' : ''} ${!hasEvents ? 'cal-cell-empty' : ''}">
+                <span class="cal-dn">${day}</span>
+                ${hasEvents ? '<div class="cal-counts">' +
+                    (vencidas ? `<span class="cal-cv">${vencidas}</span>` : '') +
+                    (programadas ? `<span class="cal-cp">${programadas}</span>` : '') +
+                    (realizadas ? `<span class="cal-cr">${realizadas}</span>` : '') +
+                '</div>' : ''}
+            </div>`;
+        }
+        const remaining = 7 - ((startDay + daysInMonth) % 7 || 7);
+        for (let day = 1; day <= remaining; day++) html += `<div class="cal-cell cal-cell-empty"><span class="cal-dn">${day}</span></div>`;
+        return html;
+    },
+
+    renderMobileList(startDay, daysInMonth, daysInPrev, today, allEvents, monthNames) {
+        const dayNames = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+        let html = '<div class="cal-list">';
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isToday = today.getFullYear() === this.currentYear && today.getMonth() === this.currentMonth && today.getDate() === day;
+            const dayEvents = allEvents.filter(e => e.date === dateStr);
+            const dateObj = new Date(this.currentYear, this.currentMonth, day);
+            const dayName = dayNames[dateObj.getDay()];
+
+            html += `<div class="cal-list-day ${isToday ? 'cal-list-today' : ''} ${dayEvents.length === 0 ? 'cal-list-empty' : ''}">
+                <div class="cal-list-date">
+                    <span class="cal-list-dayname">${dayName}</span>
+                    <span class="cal-list-daynum">${day}</span>
+                    ${isToday ? '<span class="cal-list-today-badge">Hoy</span>' : ''}
+                </div>`;
+
+            if (dayEvents.length > 0) {
+                html += '<div class="cal-list-events">';
+                for (const e of dayEvents) {
+                    const colorClass = e.status === 'Realizada' ? 'cal-ev-realizada' : e.status === 'Vencida' ? 'cal-ev-vencida' : 'cal-ev-programada';
+                    html += `<div class="cal-list-event ${colorClass}">
+                        <span class="cal-ev-status">${e.status}</span>
+                        <span class="cal-ev-title">${e.title}</span>
+                    </div>`;
+                }
+                html += '</div>';
+            }
+
+            html += '</div>';
+        }
+
+        html += '</div>';
         return html;
     },
 
