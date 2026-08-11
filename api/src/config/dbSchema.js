@@ -609,6 +609,14 @@ async function runMigrations() {
             ['costo_pintura_ml', 0, 'Costo pintura por ml', '$/ml'],
             ['costo_insumos_pintura', 0, 'Costos insumos de pintura por m²', '$/m²'],
             ['costo_otros_m2', 0, 'Costos otros por m²', '$/m²'],
+            ['hh_crudo_sin_pulir', 0, 'HH Crudo/Laminado sin pulir', '$/m²'],
+            ['energia_crudo_sin_pulir', 0, 'Energía Crudo/Laminado sin pulir', '$/m²'],
+            ['hh_crudo_pulido', 0, 'HH Crudo/Laminado pulido', '$/m²'],
+            ['energia_crudo_pulido', 0, 'Energía Crudo/Laminado pulido', '$/m²'],
+            ['hh_templado_plano', 0, 'HH Templado plano', '$/m²'],
+            ['energia_templado_plano', 0, 'Energía Templado plano', '$/m²'],
+            ['hh_templado_curvo', 0, 'HH Templado curvo', '$/m²'],
+            ['energia_templado_curvo', 0, 'Energía Templado curvo', '$/m²'],
             ['merma_proceso_pct', 0, 'Porcentaje merma de proceso', '%'],
             ['merma_aprovechamiento_pct', 0, 'Porcentaje merma de aprovechamiento', '%']
         ];

@@ -29,7 +29,7 @@ class CosteoService {
      */
     async getCristales() {
         const result = await query(
-            'SELECT id, codigo_mp, nombre, espesor_mm, costo_unitario_mp, costo_unitario_importado FROM materias_primas WHERE costo_unitario_mp > 0 ORDER BY nombre'
+            'SELECT id, codigo_mp, nombre, espesor_mm, costo_unitario_mp, costo_unitario_importado FROM materias_primas ORDER BY nombre'
         );
         return result.rows;
     }
@@ -40,8 +40,10 @@ class CosteoService {
      */
     async calcular({
         cristal_id,
+        origen,
         ancho,
         alto,
+        proceso,
         tipo_pulido,
         n_perforaciones,
         n_destajes,
@@ -52,8 +54,12 @@ class CosteoService {
     }) {
         // 1. Obtener configuración
         const config = await this.getConfig();
-        const costo_hh = config.costo_hh?.valor || 0;
-        const costo_energia = config.costo_energia_m2?.valor || 0;
+
+        // HH y Energía según el proceso seleccionado
+        const procesoKey = proceso || 'crudo_sin_pulir';
+        const costo_hh = config['hh_' + procesoKey]?.valor || 0;
+        const costo_energia = config['energia_' + procesoKey]?.valor || 0;
+
         const costo_pulido_ml = config.costo_pulido_ml?.valor || 0;
         const costo_perforacion = config.costo_perforacion?.valor || 0;
         const costo_destaje_kg = config.costo_destaje_kg?.valor || 0;
@@ -64,17 +70,20 @@ class CosteoService {
         const merma_proceso_pct = config.merma_proceso_pct?.valor || 0;
         const merma_aprovechamiento_pct = config.merma_aprovechamiento_pct?.valor || 0;
 
-        // 2. Obtener precio del cristal
+        // 2. Obtener precio del cristal según origen
         let precio_cristal = 0;
         let nombre_cristal = '';
         if (cristal_id) {
             const cristalResult = await query(
-                'SELECT nombre, costo_unitario_mp FROM materias_primas WHERE id = $1',
+                'SELECT nombre, costo_unitario_mp, costo_unitario_importado FROM materias_primas WHERE id = $1',
                 [cristal_id]
             );
             if (cristalResult.rows.length > 0) {
-                precio_cristal = parseFloat(cristalResult.rows[0].costo_unitario_mp) || 0;
-                nombre_cristal = cristalResult.rows[0].nombre;
+                const row = cristalResult.rows[0];
+                precio_cristal = origen === 'imp'
+                    ? (parseFloat(row.costo_unitario_importado) || 0)
+                    : (parseFloat(row.costo_unitario_mp) || 0);
+                nombre_cristal = row.nombre;
             }
         }
 
@@ -87,7 +96,7 @@ class CosteoService {
         const materia_prima = area_m2 * precio_cristal;
         const hh = area_m2 * costo_hh;
         const energia = area_m2 * costo_energia;
-        const pulido = (parseFloat(tipo_pulido) || 0) * costo_pulido_ml;
+        const pulido = tipo_pulido ? (area_m2 * costo_pulido_ml) : 0;
         const perforado = (parseInt(n_perforaciones) || 0) * costo_perforacion;
 
         // Destaje: si es complejo usa costo_destaje_complejo, si no usa costo_destaje_kg
@@ -116,9 +125,18 @@ class CosteoService {
         const valor_venta = divisor > 0 ? total_costo / divisor : total_costo;
         const ganancia = valor_venta - total_costo;
 
+        const procesoNombres = {
+            'crudo_sin_pulir': 'Crudo/Laminado sin pulir',
+            'crudo_pulido': 'Crudo/Laminado pulido',
+            'templado_plano': 'Templado plano',
+            'templado_curvo': 'Templado curvo'
+        };
+
         return {
             // Datos de entrada
             cristal: nombre_cristal,
+            proceso: procesoKey,
+            nombre_proceso: procesoNombres[procesoKey] || procesoKey,
             ancho: anchoNum,
             alto: altoNum,
             area_m2: Math.round(area_m2 * 10000) / 10000,

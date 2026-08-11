@@ -27,6 +27,14 @@ App.registerModule('costeo', {
                                     <option value="">Seleccione cristal...</option>
                                 </select>
                             </div>
+                            <div class="costeo-field costeo-field-full">
+                                <label>Origen</label>
+                                <div class="costeo-toggle-group">
+                                    <button type="button" class="costeo-toggle active" id="toggle_nac" onclick="App.modules.costeo.setOrigen('nac')">NAC</button>
+                                    <button type="button" class="costeo-toggle" id="toggle_imp" onclick="App.modules.costeo.setOrigen('imp')">IMP</button>
+                                </div>
+                                <input type="hidden" id="origen_input" value="nac">
+                            </div>
                             <div class="costeo-field" id="precio_cristal_display" style="display:none">
                                 <label>Precio / m²</label>
                                 <div class="costeo-readonly" id="precio_cristal_val">$ 0</div>
@@ -55,9 +63,21 @@ App.registerModule('costeo', {
                         <div class="costeo-divider"></div>
                         <div class="costeo-section-title">Procesos</div>
                         <div class="costeo-form-grid">
+                            <div class="costeo-field costeo-field-full">
+                                <label>Tipo de Proceso</label>
+                                <select id="proceso_input" class="costeo-input costeo-input-yellow">
+                                    <option value="crudo_sin_pulir">Crudo o Laminado sin pulir</option>
+                                    <option value="crudo_pulido">Crudo o Laminado pulido</option>
+                                    <option value="templado_plano">Templado plano</option>
+                                    <option value="templado_curvo">Templado curvo</option>
+                                </select>
+                            </div>
                             <div class="costeo-field">
-                                <label>Tipo Pulido (ml)</label>
-                                <input type="number" id="pulido_input" class="costeo-input costeo-input-yellow" value="0" min="0">
+                                <label>Tipo Pulido</label>
+                                <select id="pulido_input" class="costeo-input costeo-input-yellow">
+                                    <option value="0">No</option>
+                                    <option value="1">Sí</option>
+                                </select>
                             </div>
                             <div class="costeo-field">
                                 <label>N° Perforaciones</label>
@@ -121,14 +141,23 @@ App.registerModule('costeo', {
         const sel = document.getElementById('cristal_select');
         const id = parseInt(sel.value);
         const cristal = this._cristales.find(c => c.id === id);
+        const origen = document.getElementById('origen_input')?.value || 'nac';
         const display = document.getElementById('precio_cristal_display');
         const val = document.getElementById('precio_cristal_val');
         if (cristal) {
             display.style.display = '';
-            val.textContent = '$ ' + Number(cristal.costo_unitario_mp).toLocaleString();
+            const precio = origen === 'imp' ? (cristal.costo_unitario_importado || 0) : (cristal.costo_unitario_mp || 0);
+            val.textContent = '$ ' + Number(precio).toLocaleString();
         } else {
             display.style.display = 'none';
         }
+    },
+
+    setOrigen(origen) {
+        document.getElementById('origen_input').value = origen;
+        document.getElementById('toggle_nac').classList.toggle('active', origen === 'nac');
+        document.getElementById('toggle_imp').classList.toggle('active', origen === 'imp');
+        this.onCristalChange();
     },
 
     bindInputs() {
@@ -148,9 +177,11 @@ App.registerModule('costeo', {
 
     async calcular() {
         const cristal_id = parseInt(document.getElementById('cristal_select')?.value);
+        const origen = document.getElementById('origen_input')?.value || 'nac';
         const ancho = parseFloat(document.getElementById('ancho_input')?.value);
         const alto = parseFloat(document.getElementById('alto_input')?.value);
         const margen = parseFloat(document.getElementById('margen_input')?.value);
+        const proceso = document.getElementById('proceso_input')?.value || 'crudo_sin_pulir';
         const tipo_pulido = parseFloat(document.getElementById('pulido_input')?.value) || 0;
         const n_perforaciones = parseInt(document.getElementById('perforaciones_input')?.value) || 0;
         const n_destajes = parseInt(document.getElementById('destajes_input')?.value) || 0;
@@ -169,7 +200,7 @@ App.registerModule('costeo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    cristal_id, ancho, alto, tipo_pulido,
+                    cristal_id, origen, ancho, alto, proceso, tipo_pulido,
                     n_perforaciones, n_destajes, destaje_complejo,
                     pintado_color, area_pintado, margen_esperado: margen
                 })
@@ -191,7 +222,7 @@ App.registerModule('costeo', {
         container.innerHTML = `
             <div class="costeo-section-title">Desglose de Costos</div>
             <div class="costeo-results-header">
-                <span>${r.cristal}</span>
+                <span>${r.cristal} — ${r.nombre_proceso}</span>
                 <span>${r.area_m2} m²</span>
             </div>
             <div class="costeo-results-table">

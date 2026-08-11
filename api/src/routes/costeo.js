@@ -41,7 +41,7 @@ router.get('/api/costeo/cristales', async (req, res) => {
 router.post('/api/costeo/calcular', async (req, res) => {
     try {
         const {
-            cristal_id, ancho, alto, tipo_pulido,
+            cristal_id, origen, ancho, alto, proceso, tipo_pulido,
             n_perforaciones, n_destajes, destaje_complejo,
             pintado_color, area_pintado, margen_esperado
         } = req.body;
@@ -50,7 +50,7 @@ router.post('/api/costeo/calcular', async (req, res) => {
         if (!ancho || !alto) return res.status(400).json({ error: 'Ingrese las medidas (ancho y alto)' });
 
         const resultado = await costeoService.calcular({
-            cristal_id, ancho, alto, tipo_pulido,
+            cristal_id, origen, ancho, alto, proceso, tipo_pulido,
             n_perforaciones, n_destajes, destaje_complejo,
             pintado_color, area_pintado, margen_esperado
         });
