@@ -73,16 +73,9 @@ router.post('/api/taller/backfill-espesor', async (req, res, next) => {
 router.get('/api/taller/debug-grupo', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
-        const orders = await query(`
-            SELECT o.id, o.codigo_producto, o.codigo_padre, o.grupo, o.bom_padre_id,
-                   cc.grupo as cod_grupo, cc.familia as cod_familia
-            FROM produccion_ordenes o
-            LEFT JOIN produccion_codigos cc ON cc.codigo = o.codigo_padre
-            ORDER BY o.id DESC LIMIT 5
-        `);
-        const sample = await query(`SELECT DISTINCT codigo_padre, grupo FROM produccion_ordenes ORDER BY id DESC LIMIT 5`);
+        const sample = await query(`SELECT DISTINCT codigo_padre, grupo FROM produccion_ordenes ORDER BY id DESC LIMIT 10`);
         const codigos = await query(`SELECT codigo, grupo, familia FROM produccion_codigos LIMIT 10`);
-        res.json({ orders: orders.rows, sample: sample.rows, codigos: codigos.rows });
+        res.json({ sample: sample.rows, codigos: codigos.rows });
     } catch (e) { next(e); }
 });
 
