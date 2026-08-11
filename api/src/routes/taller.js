@@ -61,17 +61,11 @@ router.post('/api/taller/backfill-familia', async (req, res, next) => {
         const { query } = require('../config/database');
         const result = await query(`
             UPDATE produccion_ordenes o
-            SET familia_id = (
-                SELECT f.id FROM familias_producto f
-                WHERE f.nombre_familia = COALESCE(
-                    (SELECT cc.familia FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
-                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre)
-                )
-            )
-            WHERE o.familia_id IS NULL
-            AND (
-                EXISTS (SELECT 1 FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre AND (cc.familia IS NOT NULL OR cc.grupo IS NOT NULL))
-            )
+            SET familia_id = f.id
+            FROM familias_producto f
+            WHERE f.nombre_familia = o.grupo
+            AND o.familia_id IS NULL
+            AND o.grupo IS NOT NULL
         `);
         res.json({ ok: true, actualizadas: result.rowCount });
     } catch (e) { next(e); }
