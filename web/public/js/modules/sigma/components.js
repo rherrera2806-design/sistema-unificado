@@ -70,8 +70,20 @@ App.registerModule('components', {
         if (componentes.length === 0) {
             body.innerHTML = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay componentes' + (filter ? ` que coincidan con "${filter}"` : ' registrados') + '</h4><p style="margin:0;color:#94a3b8;font-size:13px">' + (filter ? 'Intenta con otros términos' : 'Registra el primer componente') + '</p></div>';
         } else {
-            body.innerHTML = `<table><thead><tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Usado en Tipos</th><th>Repuestos</th><th>Acciones</th></tr></thead>
-                <tbody>${this._buildRows(componentes)}</tbody></table>`;
+            const cardsHtml = SigmaCards.generate({
+                title: c => `<strong>${c.nombre}</strong>`,
+                subtitle: c => `ID: ${c.id}`,
+                fields: [
+                    { label: 'Descripción', value: c => c.descripcion || '-' },
+                    { label: 'Tipos', value: c => { const links = this._allLinks.filter(l => l.componente_id === c.id); const tipos = links.map(l => this._allTipos.find(t => t.id === l.tipo_id)).filter(Boolean); return tipos.length ? tipos.map(t => t.nombre).join(', ') : '-'; } },
+                    { label: 'Repuestos', value: c => this._allRepuestos.filter(s => s.componente_id === c.id).length }
+                ],
+                actions: c => `
+                    <button class="btn btn-sm btn-outline" onclick="App.modules.components.showForm(${c.id})">Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="App.modules.components.delete(${c.id})">Eliminar</button>`
+            }, componentes);
+            body.innerHTML = `<div class="sigma-table-wrap"><table><thead><tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Usado en Tipos</th><th>Repuestos</th><th>Acciones</th></tr></thead>
+                <tbody>${this._buildRows(componentes)}</tbody></table>${cardsHtml}</div>`;
         }
     },
 

@@ -1,0 +1,163 @@
+/* ═══════════════════════════════════════════════════════════════
+   Responsive Table-to-Card Pattern — Sigma (Mantención)
+   Oculta tablas en móvil, muestra cards. En desktop, oculta cards.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- Desktop: tabla visible, cards ocultas --- */
+.sigma-table-wrap .sigma-mobile-cards { display: none; }
+
+/* --- Móvil: tabla oculta, cards visibles --- */
+@media (max-width: 768px) {
+
+    .sigma-table-wrap table { display: none !important; }
+
+    .sigma-mobile-cards {
+        display: flex !important;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 14px;
+    }
+
+    .sigma-mobile-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px 14px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .sigma-mobile-card:active {
+        transform: scale(0.98);
+    }
+
+    .sigma-mobile-card .sc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .sigma-mobile-card .sc-header .sc-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.3;
+    }
+
+    .sigma-mobile-card .sc-header .sc-title small {
+        display: block;
+        font-size: 11px;
+        font-weight: 400;
+        color: #94a3b8;
+        margin-top: 2px;
+    }
+
+    .sigma-mobile-card .sc-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .sigma-mobile-card .sc-field {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        padding: 3px 0;
+    }
+
+    .sigma-mobile-card .sc-field .sc-label {
+        color: #94a3b8;
+        font-weight: 500;
+        flex-shrink: 0;
+    }
+
+    .sigma-mobile-card .sc-field .sc-value {
+        color: #1e293b;
+        font-weight: 600;
+        text-align: right;
+        max-width: 60%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .sigma-mobile-card .sc-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #f1f5f9;
+        justify-content: flex-end;
+    }
+
+    .sigma-mobile-card .sc-actions .btn {
+        font-size: 11px !important;
+        padding: 4px 10px !important;
+    }
+
+    /* Variantes de color por estado */
+    .sigma-mobile-card.sc-vencida {
+        border-left: 4px solid #ef4444;
+        background: #fef2f2;
+    }
+
+    .sigma-mobile-card.sc-proxima {
+        border-left: 4px solid #f59e0b;
+        background: #fffbeb;
+    }
+
+    .sigma-mobile-card.sc-operativa {
+        border-left: 4px solid #22c55e;
+    }
+
+    .sigma-mobile-card.sc-mantencion {
+        border-left: 4px solid #f59e0b;
+    }
+
+    .sigma-mobile-card.sc-detenida {
+        border-left: 4px solid #ef4444;
+    }
+
+    /* Badge dentro de card */
+    .sigma-mobile-card .sc-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    /* Stats grid responsive */
+    .sigma-table-wrap .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    /* Card header responsive */
+    .sigma-table-wrap .card-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    /* Filtros responsive */
+    .sigma-table-wrap .card-header > div:first-child {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .sigma-table-wrap .search-box {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .sigma-table-wrap .form-control {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+}

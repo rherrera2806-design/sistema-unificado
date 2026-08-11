@@ -148,12 +148,20 @@ App.registerModule('dashboard', {
         return `<div class="card dash-card">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Mantenciones Vencidas</h3></div>
             <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay mantenciones vencidas</h4><p style="margin:0;color:#94a3b8;font-size:13px">¡Todo al día!</p></div>' : `
-            <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Acción</th></tr></thead>
+            <div class="sigma-table-wrap"><table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Acción</th></tr></thead>
             <tbody>${data.slice(0,5).map(v => {
                 const maq = maqMap[v.maquina_id];
                 const comp = compMap[v.componente_id];
                 return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td><td><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${v.id}),300)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td></tr>`;
-            }).join('')}</tbody></table>`}
+            }).join('')}</tbody></table>
+            ${SigmaCards.generate({
+                title: v => `<strong>${maqMap[v.maquina_id]?.nombre || '-'}</strong>`,
+                subtitle: v => compMap[v.componente_id]?.nombre || '-',
+                badge: () => '<span class="sc-badge" style="background:#fee2e2;color:#991b1b">Vencida</span>',
+                fields: [{ label: 'Fecha', value: v => App.formatDate(v.fecha_programada) }],
+                actions: v => `<button class="btn btn-sm btn-info" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${v.id}),300)">Ver</button>`,
+                cardClass: () => 'sc-vencida'
+            }, data.slice(0,5))}</div>`}
             </div></div>`;
     },
 
@@ -161,12 +169,18 @@ App.registerModule('dashboard', {
         return `<div class="card dash-card">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Próximas Mantenciones</h3></div>
             <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay mantenciones próximas</h4><p style="margin:0;color:#94a3b8;font-size:13px">Programa la próxima mantención</p></div>' : `
-            <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th></tr></thead>
+            <div class="sigma-table-wrap"><table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th></tr></thead>
             <tbody>${data.slice(0,5).map(v => {
                 const maq = maqMap[v.maquina_id];
                 const comp = compMap[v.componente_id];
                 return `<tr><td>${maq ? maq.nombre : '-'}</td><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(v.fecha_programada)}</td></tr>`;
-            }).join('')}</tbody></table>`}
+            }).join('')}</tbody></table>
+            ${SigmaCards.generate({
+                title: v => `<strong>${maqMap[v.maquina_id]?.nombre || '-'}</strong>`,
+                subtitle: v => compMap[v.componente_id]?.nombre || '-',
+                fields: [{ label: 'Fecha', value: v => App.formatDate(v.fecha_programada) }],
+                cardClass: () => 'sc-proxima'
+            }, data.slice(0,5))}</div>`}
             </div></div>`;
     },
 
@@ -214,11 +228,22 @@ App.registerModule('dashboard', {
                 <td><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
             </tr>`;
         }
+        const cardsHtml = SigmaCards.generate({
+            title: c => `<strong>${maqMap[c.maquina_id]?.nombre || '-'}</strong>`,
+            subtitle: c => compMap[c.componente_id]?.nombre || '-',
+            badge: c => `<span class="sc-badge" style="background:${c.estado === 'Reparada' ? '#dcfce7;color:#166534' : '#fee2e2;color:#991b1b'}">${c.estado || 'En Mantención'}</span>`,
+            fields: [
+                { label: 'Fecha', value: c => App.formatDate(c.fecha_falla) },
+                { label: 'Responsable', value: c => c.responsable || '-' },
+                { label: 'Hs.Det.', value: c => c.horas_detencion }
+            ],
+            actions: c => `<button class="btn btn-sm btn-info" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)">Ver</button>`
+        }, recentFailures);
         return `<div class="card mt-16">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Últimas Fallas Registradas</h3></div>
             <div class="card-body" style="padding:0">
-                <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha</th><th>Falla</th><th>Técnico</th><th>Estado</th><th>Hs.Det.</th><th>Acción</th></tr></thead>
-                <tbody>${rows}</tbody></table></div></div>`;
+                <div class="sigma-table-wrap"><table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha</th><th>Falla</th><th>Técnico</th><th>Estado</th><th>Hs.Det.</th><th>Acción</th></tr></thead>
+                <tbody>${rows}</tbody></table>${cardsHtml}</div></div></div>`;
     },
 
     renderRecentPreventiveLocal(data, maqMap, compMap) {
@@ -238,10 +263,20 @@ App.registerModule('dashboard', {
                 <td><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${p.id}),300)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
             </tr>`;
         }
+        const cardsHtml = SigmaCards.generate({
+            title: p => `<strong>${maqMap[p.maquina_id]?.nombre || '-'}</strong>`,
+            subtitle: p => compMap[p.componente_id]?.nombre || '-',
+            badge: () => '<span class="sc-badge" style="background:#dcfce7;color:#166534">Realizada</span>',
+            fields: [
+                { label: 'Fecha', value: p => App.formatDate(p.fecha_programada) },
+                { label: 'Técnico', value: p => p.tecnico || '-' }
+            ],
+            actions: p => `<button class="btn btn-sm btn-info" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${p.id}),300)">Ver</button>`
+        }, data);
         return `<div class="card mt-16">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg> Últimas Mantenciones Preventivas Realizadas</h3></div>
             <div class="card-body" style="padding:0">
-                <table><thead><tr><th>Máquina</th><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Acción</th></tr></thead>
-                <tbody>${rows}</tbody></table></div></div>`;
+                <div class="sigma-table-wrap"><table><thead><tr><th>Máquina</th><th>Componente</th><th>Observaciones</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Turno</th><th>Acción</th></tr></thead>
+                <tbody>${rows}</tbody></table>${cardsHtml}</div></div></div>`;
     }
 });

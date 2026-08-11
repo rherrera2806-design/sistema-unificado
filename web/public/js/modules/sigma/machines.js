@@ -11,6 +11,7 @@ App.registerModule('machines', {
         if (filterEstado) filtered = filtered.filter(m => m.estado_operativo === filterEstado);
         if (searchTerm) filtered = filtered.filter(m => m.nombre.toLowerCase().includes(searchTerm) || (m.codigo || '').toLowerCase().includes(searchTerm));
         let rows = '';
+        let cardsHtml = '';
         for (const m of filtered) {
             const tipo = tipos.find(t => t.id === m.tipo_id);
             rows += `<tr>
@@ -27,6 +28,20 @@ App.registerModule('machines', {
                 </td>
             </tr>`;
         }
+        cardsHtml = SigmaCards.generate({
+            title: m => `<strong>${m.codigo || '-'}</strong>`,
+            subtitle: m => m.nombre,
+            badge: m => `<span class="sc-badge" style="background:${m.estado_operativo === 'Operativo' ? '#dcfce7;color:#166534' : m.estado_operativo === 'En mantención' ? '#fef9c3;color:#854d0e' : '#fee2e2;color:#991b1b'}">${m.estado_operativo}</span>`,
+            fields: [
+                { label: 'Tipo', value: m => { const t = tipos.find(t => t.id === m.tipo_id); return t ? t.nombre : '-'; } },
+                { label: 'Marca', value: m => m.marca || '-' },
+                { label: 'Ubicación', value: m => m.ubicacion || '-' }
+            ],
+            actions: m => `
+                <button class="btn btn-sm btn-info" onclick="App.modules.machines.showDetail(${m.id})">Ver</button>
+                <button class="btn btn-sm btn-outline" onclick="App.modules.machines.showForm(${m.id})">Editar</button>
+                <button class="btn btn-sm btn-danger" onclick="App.modules.machines.delete(${m.id})">Eliminar</button>`
+        }, filtered);
         el.innerHTML = `
             <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
@@ -88,9 +103,12 @@ App.registerModule('machines', {
                     <span class="text-muted">${filtered.length} de ${maquinas.length}</span>
                 </div>
                 <div class="card-body" style="padding:0">
+                    <div class="sigma-table-wrap">
                     ${filtered.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No se encontraron máquinas</h4><p style="margin:0;color:#94a3b8;font-size:13px">Intenta con otros filtros</p></div>' : `
                     <table><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Marca</th><th>Ubicación</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody>${rows}</tbody></table>`}
+                    <tbody>${rows}</tbody></table>
+                    ${cardsHtml}`}
+                    </div>
                 </div>
             </div>`;
     },

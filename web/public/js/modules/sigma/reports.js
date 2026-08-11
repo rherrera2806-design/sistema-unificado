@@ -60,8 +60,17 @@ App.registerModule('reports', {
             <div class="card rep-card">
                 <div class="card-header"><h3>Mantenciones (${registros.length})</h3></div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Estado</th></tr></thead>
+                    <div class="sigma-table-wrap"><table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Fecha Ejec.</th><th>Técnico</th><th>Estado</th></tr></thead>
                     <tbody>${registros.map(r => `<tr><td>${r.maquina_nombre}</td><td>${r.componente_nombre}</td><td>${App.formatDate(r.fecha_programada)}</td><td>${App.formatDate(r.fecha_ejecutada)}</td><td>${r.tecnico || '-'}</td><td><span class="status-badge ${App.getEstadoClass(r.estado)}">${r.estado}</span></td></tr>`).join('')}</tbody></table>
+                    ${SigmaCards.generate({
+                        title: r => `<strong>${r.maquina_nombre}</strong>`,
+                        subtitle: r => r.componente_nombre,
+                        badge: r => `<span class="sc-badge" style="background:${r.estado === 'Realizada' ? '#dcfce7;color:#166534' : r.estado === 'Vencida' ? '#fee2e2;color:#991b1b' : '#dbeafe;color:#1e40af'}">${r.estado}</span>`,
+                        fields: [
+                            { label: 'Fecha', value: r => App.formatDate(r.fecha_programada) },
+                            { label: 'Técnico', value: r => r.tecnico || '-' }
+                        ]
+                    }, registros)}</div>
                 </div>
             </div>
             <div class="card rep-card">
@@ -112,7 +121,17 @@ App.registerModule('reports', {
             <div class="card rep-card">
                 <div class="card-header"><h3>Intervenciones por Máquina</h3></div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr><th>Máquina</th><th>Código</th><th>Tipo</th><th>Prev.</th><th>Fallas</th><th>Horas Det.</th></tr></thead><tbody>${rows}</tbody></table>
+                    <div class="sigma-table-wrap"><table><thead><tr><th>Máquina</th><th>Código</th><th>Tipo</th><th>Prev.</th><th>Fallas</th><th>Horas Det.</th></tr></thead><tbody>${rows}</tbody></table>
+                    ${SigmaCards.generate({
+                        title: d => `<strong>${d.maquina.nombre}</strong>`,
+                        subtitle: d => d.maquina.codigo,
+                        fields: [
+                            { label: 'Tipo', value: d => d.tipo ? d.tipo.nombre : '-' },
+                            { label: 'Prev.', value: d => d.totalPrev },
+                            { label: 'Fallas', value: d => d.totalCorr },
+                            { label: 'Hs.Det.', value: d => d.horasDet }
+                        ]
+                    }, data)}</div>
                 </div>
             </div>
             <div class="card rep-card">
@@ -145,7 +164,17 @@ App.registerModule('reports', {
         return `
             <div class="card rep-card">
                 <div class="card-header"><h3>Máquinas con más Fallas</h3></div>
-                <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin fallas</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay fallas registradas</p></div>' : `<table><thead><tr><th>#</th><th>Máquina</th><th>Código</th><th>Fallas</th><th>Horas Det.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
+                <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin fallas</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay fallas registradas</p></div>' : `
+                    <div class="sigma-table-wrap"><table><thead><tr><th>#</th><th>Máquina</th><th>Código</th><th>Fallas</th><th>Horas Det.</th></tr></thead><tbody>${rows}</tbody></table>
+                    ${SigmaCards.generate({
+                        title: d => `<strong>${d.maquina.nombre}</strong>`,
+                        subtitle: d => d.maquina.codigo,
+                        fields: [
+                            { label: 'Fallas', value: d => d.count },
+                            { label: 'Hs.Det.', value: d => d.horas }
+                        ]
+                    }, data)}</div>
+                    <div style="margin-top:20px">${bars}</div>`}
                 </div>
             </div>`;
     },
@@ -172,8 +201,18 @@ App.registerModule('reports', {
         return `
             <div class="card rep-card">
                 <div class="card-header"><h3>Componentes más Intervenidos</h3></div>
-                <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin datos</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay componentes intervenidos</p></div>' : `<table><thead><tr><th>#</th><th>Componente</th><th>Fallas</th><th>Prev.</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:20px">${bars}</div>`}
+                <div class="card-body">${data.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin datos</h4><p style="margin:0;color:#94a3b8;font-size:13px">No hay componentes intervenidos</p></div>' : `
+                    <div class="sigma-table-wrap"><table><thead><tr><th>#</th><th>Componente</th><th>Fallas</th><th>Prev.</th></tr></thead><tbody>${rows}</tbody></table>
+                    ${SigmaCards.generate({
+                        title: d => `<strong>${d.componente.nombre}</strong>`,
+                        fields: [
+                            { label: 'Fallas', value: d => d.count },
+                            { label: 'Prev.', value: d => compPrev[d.componente.id] || 0 }
+                        ]
+                    }, data)}</div>
+                    <div style="margin-top:20px">${bars}</div>`}
                 </div>
+            </div>
             </div>`;
     },
 
@@ -192,8 +231,19 @@ App.registerModule('reports', {
             <div class="card rep-card">
                 <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Vencidas (${vencidas.length})</h3></div>
                 <div class="card-body" style="padding:0">
+                    <div class="sigma-table-wrap">
                     ${vencidas.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay vencidas</h4><p style="margin:0;color:#94a3b8;font-size:13px">¡Todo al día!</p></div>' : `
                     <table><thead><tr><th>Máquina</th><th>Componente</th><th>Fecha Prog.</th><th>Días</th><th>Técnico</th></tr></thead><tbody>${rows}</tbody></table>
+                    ${SigmaCards.generate({
+                        title: v => `<strong>${v.maquina_nombre}</strong>`,
+                        subtitle: v => v.componente_nombre,
+                        badge: v => { const dias = Math.floor((new Date() - new Date(v.fecha_programada + 'T12:00:00')) / 86400000); return `<span class="sc-badge" style="background:#fee2e2;color:#991b1b">${dias} días</span>`; },
+                        fields: [
+                            { label: 'Fecha', value: v => App.formatDate(v.fecha_programada) },
+                            { label: 'Técnico', value: v => v.tecnico || 'Pendiente' }
+                        ],
+                        cardClass: () => 'sc-vencida'
+                    }, vencidas.slice(0,10))}
                     <div style="padding:16px;border-top:1px solid var(--border)"><p class="text-muted">Total: ${vencidas.length} vencidas. Reprogramar a la brevedad.</p></div>`}
                 </div>
             </div>
@@ -259,7 +309,15 @@ App.registerModule('reports', {
             <div class="card rep-card">
                 <div class="card-header"><h3>Detalle</h3></div>
                 <div class="card-body" style="padding:0">
-                    <table><thead><tr><th>Mes</th><th>Preventivas</th><th>Correctivas</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
+                    <div class="sigma-table-wrap"><table><thead><tr><th>Mes</th><th>Preventivas</th><th>Correctivas</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
+                    ${SigmaCards.generate({
+                        title: ([, val]) => `<strong>${val.label}</strong>`,
+                        fields: [
+                            { label: 'Prev.', value: ([, val]) => val.prev },
+                            { label: 'Corr.', value: ([, val]) => val.corr },
+                            { label: 'Total', value: ([, val]) => val.prev + val.corr }
+                        ]
+                    }, sorted)}</div>
                 </div>
             </div>` : ''}`;
     }

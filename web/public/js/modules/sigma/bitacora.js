@@ -113,6 +113,18 @@ App.registerModule('bitacora', {
                 <td><span class="status-badge ${App.getEstadoClass(estado)}">${escapeHtml(estado)}</span></td>
             </tr>`;
         }
-        container.innerHTML = `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Técnico</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+        const cardsHtml = SigmaCards.generate({
+            title: r => {
+                const tipoColor = r.tipo_mantencion === 'Preventiva' ? '#28a745' : '#dc3545';
+                return `<strong>${escapeHtml(r.tipo_mantencion)}</strong> <span class="sc-badge" style="background:${tipoColor};color:#fff">${escapeHtml(r.turno || 'Dia')}</span>`;
+            },
+            subtitle: r => App.formatDate(r.tipo_mantencion === 'Preventiva' ? (r.fecha_ejecutada || r.fecha_programada) : (r.fecha_falla || '')),
+            fields: [
+                { label: 'Técnico', value: r => r.tecnico || r.responsable || '-' },
+                { label: 'Detalle', value: r => (r.detalle || '-').substring(0, 60) + ((r.detalle || '').length > 60 ? '...' : '') },
+                { label: 'Estado', value: r => r.tipo_mantencion === 'Preventiva' ? (r.estado || '-') : (r.estado || 'Reparada') }
+            ]
+        }, data);
+        container.innerHTML = `<div class="sigma-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Técnico</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>${cardsHtml}</div>`;
     }
 });
