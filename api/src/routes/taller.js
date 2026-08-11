@@ -56,4 +56,19 @@ router.get('/api/taller/mermas', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.post('/api/taller/backfill-espesor', async (req, res, next) => {
+    try {
+        const { query } = require('../config/database');
+        const result = await query(`
+            UPDATE produccion_ordenes o
+            SET espesor_mm = COALESCE(
+                (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
+                o.espesor_mm
+            )
+            WHERE o.bom_padre_id IS NOT NULL
+        `);
+        res.json({ ok: true, actualizadas: result.rowCount });
+    } catch (e) { next(e); }
+});
+
 module.exports = router;
