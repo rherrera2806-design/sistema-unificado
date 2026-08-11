@@ -84,8 +84,7 @@ router.get('/api/taller/debug-espesor', async (req, res, next) => {
             FROM produccion_ordenes o
             LEFT JOIN produccion_recetas_bom rb ON rb.id = o.bom_padre_id
             LEFT JOIN materias_primas m ON m.codigo_mp = rb.codigo_materia_prima
-            WHERE o.estado_programacion = 'PENDIENTE'
-            ORDER BY o.id DESC LIMIT 10
+            ORDER BY o.id DESC LIMIT 5
         `);
         res.json(result.rows);
     } catch (e) { next(e); }
