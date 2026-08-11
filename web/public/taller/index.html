@@ -392,7 +392,6 @@ function renderCola() {
                 <span>&#128207; <span class="val">${p.espesor_mm || '-'}mm</span></span>
                 <span>&#128230; <span class="val">${p.cantidad || 1}</span></span>
                 ${p.m2_asignados ? `<span>&#128208; <span class="val">${Number(p.m2_asignados).toFixed(2)} m²</span></span>` : ''}
-                ${p.nombre_familia ? `<span>&#128196; <span class="val">${escapeHtml(p.nombre_familia)}</span></span>` : ''}
                 ${p.pintado ? '<span>&#127912; Pintado</span>' : ''}
                 ${p.perforaciones > 0 ? `<span>&#128296; ${p.perforaciones} perf.</span>` : ''}
                 ${p.nota ? `<span>&#128221; ${escapeHtml(p.nota.substring(0, 40))}</span>` : ''}
