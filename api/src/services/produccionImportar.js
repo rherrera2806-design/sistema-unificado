@@ -146,9 +146,18 @@ const buscarFamiliaParaFila = async (r, maestros) => {
         if (r.descripcion && r.descripcion.toLowerCase().includes(f.nombre_familia.toLowerCase())) return f;
     }
 
-    const codFam = await query('SELECT familia FROM produccion_codigos WHERE codigo = $1', [r.codigo]);
-    if (codFam.rows.length && codFam.rows[0].familia) {
-        return familias.find(f => f.nombre_familia.toLowerCase() === codFam.rows[0].familia.toLowerCase()) || null;
+    const codFam = await query('SELECT familia, grupo FROM produccion_codigos WHERE codigo = $1', [r.codigo]);
+    if (codFam.rows.length && (codFam.rows[0].familia || codFam.rows[0].grupo)) {
+        const famName = codFam.rows[0].familia || codFam.rows[0].grupo;
+        return familias.find(f => f.nombre_familia.toLowerCase() === famName.toLowerCase()) || null;
+    }
+
+    if (r.codigo_padre) {
+        const codPadreFam = await query('SELECT familia, grupo FROM produccion_codigos WHERE codigo = $1', [r.codigo_padre]);
+        if (codPadreFam.rows.length && (codPadreFam.rows[0].familia || codPadreFam.rows[0].grupo)) {
+            const famName = codPadreFam.rows[0].familia || codPadreFam.rows[0].grupo;
+            return familias.find(f => f.nombre_familia.toLowerCase() === famName.toLowerCase()) || null;
+        }
     }
     return null;
 };

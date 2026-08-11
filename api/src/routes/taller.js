@@ -56,17 +56,24 @@ router.get('/api/taller/mermas', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.post('/api/taller/debug-familias', async (req, res, next) => {
+router.post('/api/taller/backfill-familia', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
-        const famEst = await query(`
-            SELECT f.nombre_familia, array_agg(em.nombre_estacion ORDER BY em.orden_secuencia_defecto) as estaciones
-            FROM familias_producto f
-            JOIN familia_estaciones_base feb ON feb.familia_id = f.id
-            JOIN estaciones_maestras em ON em.id = feb.estacion_id
-            GROUP BY f.nombre_familia
+        const result = await query(`
+            UPDATE produccion_ordenes o
+            SET familia_id = (
+                SELECT f.id FROM familias_producto f
+                WHERE f.nombre_familia = COALESCE(
+                    (SELECT cc.familia FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre)
+                )
+            )
+            WHERE o.familia_id IS NULL
+            AND (
+                EXISTS (SELECT 1 FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre AND (cc.familia IS NOT NULL OR cc.grupo IS NOT NULL))
+            )
         `);
-        res.json(famEst.rows);
+        res.json({ ok: true, actualizadas: result.rowCount });
     } catch (e) { next(e); }
 });
 
