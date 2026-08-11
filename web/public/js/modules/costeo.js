@@ -292,6 +292,7 @@ App.registerModule('costeo', {
                 </div>
             </div>`;
         document.body.appendChild(modal);
+        requestAnimationFrame(() => modal.classList.add('show'));
     },
 
     closeConfig() {
