@@ -152,7 +152,7 @@ App.registerModule('dashboard', {
             <tbody>${data.slice(0,5).map(v => {
                 const maq = maqMap[v.maquina_id];
                 const comp = compMap[v.componente_id];
-                return `<tr><td>${maq ? maq.nombre : '-'}</td><td><span class="td-label">Componente</span>${comp ? comp.nombre : '-'}</td><td><span class="td-label">Fecha</span>${App.formatDate(v.fecha_programada)}</td><td><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${v.id}),300)">Ver detalle</button></td></tr>`;
+                return `<tr><td>${maq ? maq.nombre : '-'}</td><td><span class="td-label">Componente</span>${comp ? comp.nombre : '-'}</td><td><span class="td-label">Fecha</span>${App.formatDate(v.fecha_programada)}</td><td class="td-action"><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${v.id}),300)">Ver detalle</button></td></tr>`;
             }).join('')}</tbody></table>`}
             </div></div>`;
     },
@@ -210,8 +210,8 @@ App.registerModule('dashboard', {
                 <td><span class="td-label">Falla</span>${escapeHtml(c.descripcion_falla || '-')}</td>
                 <td><span class="td-label">Tecnico</span>${escapeHtml(c.responsable || '-')}</td>
                 <td><span class="td-label">Estado</span><span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${escapeHtml(c.estado || 'En Mantencion')}</span></td>
-                <td><span class="td-label">Hs.Det.</span>${c.horas_detencion}</td>
-                <td><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)">Ver detalle</button></td>
+                <td><span class="td-label">Hs.Det.</span>${c.horas_detencion != null ? c.horas_detencion : '-'}</td>
+                <td class="td-action"><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('corrective');setTimeout(()=>App.modules.corrective.showForm(${c.id}),300)">Ver detalle</button></td>
             </tr>`;
         }
         return `<div class="card mt-16">
@@ -235,7 +235,7 @@ App.registerModule('dashboard', {
                 <td><span class="td-label">Fecha Ejec.</span>${App.formatDate(p.fecha_ejecutada)}</td>
                 <td><span class="td-label">Tecnico</span>${escapeHtml(p.tecnico || '-')}</td>
                 <td><span class="td-label">Turno</span>${escapeHtml(p.turno || 'Dia')}</td>
-                <td><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${p.id}),300)">Ver detalle</button></td>
+                <td class="td-action"><button class="btn btn-sm btn-info" title="Ir a registro" onclick="App.loadModule('preventive');setTimeout(()=>App.modules.preventive.showForm(${p.id}),300)">Ver detalle</button></td>
             </tr>`;
         }
         return `<div class="card mt-16">

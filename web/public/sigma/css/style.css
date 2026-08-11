@@ -114,6 +114,8 @@ body {
 
 .sidebar-nav { padding: 8px 0; flex: 1; overflow-y: auto; }
 
+.td-label { display: none; }
+
 .nav-item {
     display: flex;
     align-items: center;
@@ -754,12 +756,14 @@ textarea.form-control { resize: vertical; min-height: 80px; }
         margin-bottom: 4px;
     }
     .card-body > table tbody tr td:nth-child(1) .td-label { display: none; }
+    .card-body > table tbody tr td.td-action,
     .card-body > table tbody tr td:last-child {
         padding-top: 6px !important;
         border-top: 1px solid #e2e8f0 !important;
         margin-top: 4px;
     }
     .card-body > table tbody tr td:last-child .td-label { display: none; }
+    .card-body > table tbody tr td.td-action .btn,
     .card-body > table tbody tr td:last-child .btn {
         width: 100%;
         text-align: center;
