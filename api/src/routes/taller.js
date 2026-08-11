@@ -91,4 +91,49 @@ router.post('/api/taller/backfill-espesor', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.post('/api/taller/backfill-pasos-termopanel', async (req, res, next) => {
+    try {
+        const { query } = require('../config/database');
+
+        const familiaRes = await query('SELECT id FROM familias_producto WHERE nombre_familia = $1', ['Termopanel']);
+        if (!familiaRes.rows.length) return res.json({ ok: false, error: 'Familia Termopanel no encontrada' });
+        const familiaId = familiaRes.rows[0].id;
+
+        const estacionesRes = await query(
+            `SELECT em.id as estacion_id, em.orden_secuencia_defecto
+             FROM familia_estaciones_base feb
+             JOIN estaciones_maestras em ON em.id = feb.estacion_id
+             WHERE feb.familia_id = $1
+             ORDER BY em.orden_secuencia_defecto`, [familiaId]
+        );
+        const estacionesIds = estacionesRes.rows.map(r => r.estacion_id);
+
+        if (!estacionesIds.length) return res.json({ ok: false, error: 'No hay estaciones configuradas para Termopanel' });
+
+        const ordenesRes = await query(
+            `SELECT o.id FROM produccion_ordenes o
+             WHERE o.familia_id = $1
+             AND EXISTS (SELECT 1 FROM cola_produccion_pasos cp WHERE cp.orden_produccion_id = o.id)`, [familiaId]
+        );
+
+        let eliminados = 0;
+        let creados = 0;
+
+        for (const orden of ordenesRes.rows) {
+            await query('DELETE FROM cola_produccion_pasos WHERE orden_produccion_id = $1', [orden.id]);
+            eliminados++;
+
+            for (let s = 0; s < estacionesIds.length; s++) {
+                await query(
+                    'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1, $2, $3, $4)',
+                    [orden.id, estacionesIds[s], s + 1, 'PENDIENTE']
+                );
+                creados++;
+            }
+        }
+
+        res.json({ ok: true, ordenes_afectadas: ordenesRes.rows.length, eliminados, creados });
+    } catch (e) { next(e); }
+});
+
 module.exports = router;
