@@ -77,15 +77,17 @@ router.post('/api/taller/backfill-espesor', async (req, res, next) => {
 router.get('/api/taller/debug-espesor', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
-        const orders = await query(`
+        const result = await query(`
             SELECT o.id, o.codigo_producto, o.descripcion, o.espesor_mm, o.bom_padre_id,
-                   rb.espesor as bom_espesor, rb.descripcion as bom_desc
+                   rb.codigo_materia_prima, rb.espesor as bom_espesor,
+                   m.espesor_mm as mp_espesor
             FROM produccion_ordenes o
             LEFT JOIN produccion_recetas_bom rb ON rb.id = o.bom_padre_id
+            LEFT JOIN materias_primas m ON m.codigo_mp = rb.codigo_materia_prima
             WHERE o.estado_programacion = 'PENDIENTE'
-            ORDER BY o.id DESC LIMIT 20
+            ORDER BY o.id DESC LIMIT 10
         `);
-        res.json(orders.rows);
+        res.json(result.rows);
     } catch (e) { next(e); }
 });
 
