@@ -128,7 +128,7 @@ router.post('/api/taller/backfill-pasos-termopanel', async (req, res, next) => {
             }
         }
 
-        res.json({ ok: true, familia_id: familiaId, estaciones: estacionesIds, ordenes_encontradas: ordenesRes.rows.length, ordenes_afectadas: ordenesRes.rows.length, eliminados, creados, detalle: ordenesRes.rows.map(o => ({ id: o.id, familia_id: o.familia_id, codigo_padre: o.codigo_padre, pasos_previos: o.pasos_count })) });
+        res.json({ ok: true, ordenes_afectadas: ordenesRes.rows.length, eliminados, creados });
     } catch (e) { next(e); }
 });
 
