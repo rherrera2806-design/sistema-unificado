@@ -429,14 +429,17 @@ function updateSearchVisibility() {
     const wrap = document.getElementById('searchWrap');
     if (window.innerWidth <= 480) {
         toggle.style.display = '';
-        wrap.classList.remove('mobile-open');
     } else {
         toggle.style.display = 'none';
         wrap.classList.remove('mobile-open');
         wrap.style.display = '';
     }
 }
-window.addEventListener('resize', updateSearchVisibility);
+window.addEventListener('resize', function() {
+    const input = document.getElementById('searchInput');
+    if (document.activeElement === input) return;
+    updateSearchVisibility();
+});
 updateSearchVisibility();
 
 async function iniciarPaso(pasoId) {
