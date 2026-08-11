@@ -111,9 +111,11 @@ router.post('/api/taller/backfill-pasos-termopanel', async (req, res, next) => {
         if (!estacionesIds.length) return res.json({ ok: false, error: 'No hay estaciones configuradas para Termopanel' });
 
         const ordenesRes = await query(
-            `SELECT o.id FROM produccion_ordenes o
-             WHERE o.familia_id = $1
-             AND EXISTS (SELECT 1 FROM cola_produccion_pasos cp WHERE cp.orden_produccion_id = o.id)`, [familiaId]
+            `SELECT o.id, o.familia_id, o.codigo_padre,
+                    (SELECT COUNT(*) FROM cola_produccion_pasos cp WHERE cp.orden_produccion_id = o.id) as pasos_count
+             FROM produccion_ordenes o
+             WHERE o.grupo = 'Termopanel'
+             OR o.familia_id = $1`, [familiaId]
         );
 
         let eliminados = 0;
@@ -132,7 +134,7 @@ router.post('/api/taller/backfill-pasos-termopanel', async (req, res, next) => {
             }
         }
 
-        res.json({ ok: true, ordenes_afectadas: ordenesRes.rows.length, eliminados, creados });
+        res.json({ ok: true, familia_id: familiaId, estaciones: estacionesIds, ordenes_encontradas: ordenesRes.rows.length, ordenes_afectadas: ordenesRes.rows.length, eliminados, creados, detalle: ordenesRes.rows.map(o => ({ id: o.id, familia_id: o.familia_id, codigo_padre: o.codigo_padre, pasos_previos: o.pasos_count })) });
     } catch (e) { next(e); }
 });
 
