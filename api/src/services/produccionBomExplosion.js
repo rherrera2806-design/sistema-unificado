@@ -26,7 +26,7 @@ const explosionBOM = async (r, recetaBomMap, materiaPrimaMap, materiasPrimas, fa
         const margen = r.precio_unitario * r.cantidad - costo_total;
         const reglasExtras = buildReglasExtras(r);
 
-        const espesorMM = Number(comp.espesor) || 6;
+        const espesorMM = Number(mp.espesor_mm) || Number(comp.espesor) || 6;
 
         const result = await query(
             `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
