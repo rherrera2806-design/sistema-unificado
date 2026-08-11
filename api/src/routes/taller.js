@@ -78,15 +78,12 @@ router.get('/api/taller/debug-espesor', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
         const result = await query(`
-            SELECT o.id, o.codigo_producto, o.espesor_mm, o.bom_padre_id,
-                   rb_old.codigo_materia_prima as old_mp, rb_old.espesor as old_espesor,
-                   rb_new.codigo_sap_padre, rb_new.materia_prima_id,
-                   m.codigo_mp, m.espesor_mm as mp_espesor
+            SELECT o.id, o.codigo_producto, o.descripcion, o.espesor_mm, o.codigo_padre,
+                   o.bom_padre_id, o.codigo_producto as prod_code,
+                   m.codigo_mp, m.nombre as mp_nombre, m.espesor_mm as mp_espesor
             FROM produccion_ordenes o
-            LEFT JOIN produccion_recetas_bom rb_old ON rb_old.id = o.bom_padre_id
-            LEFT JOIN recetas_bom rb_new ON rb_new.id = o.bom_padre_id
-            LEFT JOIN materias_primas m ON m.id = rb_new.materia_prima_id
-            ORDER BY o.id DESC LIMIT 5
+            LEFT JOIN materias_primas m ON m.codigo_mp = o.codigo_producto
+            ORDER BY o.id DESC LIMIT 10
         `);
         res.json(result.rows);
     } catch (e) { next(e); }
