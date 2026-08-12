@@ -3,6 +3,23 @@
    Estilos compartidos para todos los sub-módulos en móvil.
    ═══════════════════════════════════════════════════════════════ */
 
+/* --- Global Mobile Responsive --- */
+@media (max-width: 768px) {
+    /* Tables */
+    .sigma-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .sigma-table-wrap table { width: 100%; min-width: 600px; }
+
+    /* Forms */
+    .form-row { grid-template-columns: 1fr !important; gap: 8px !important; }
+    input, select, textarea { width: 100% !important; max-width: 100% !important; font-size: 16px !important; }
+
+    /* Cards */
+    .card { width: 100% !important; box-sizing: border-box !important; }
+
+    /* Page padding bottom for safe area */
+    .page.active { padding-bottom: 80px !important; }
+}
+
 /* --- Desktop: tabla visible, cards ocultas --- */
 .sigma-table-wrap .sigma-mobile-cards { display: none; }
 
