@@ -122,7 +122,8 @@ class CosteoService {
 
         // 8. VALOR DE VENTA Y GANANCIA
         const margen = parseFloat(margen_esperado) || 0;
-        const valor_venta = costo_sin_mermas * (1 + margen / 100) + costo_mermas;
+        const divisor = 1 - (margen / 100);
+        const valor_venta = divisor > 0 ? total_costo / divisor : total_costo;
         const ganancia = valor_venta - total_costo;
 
         const procesoNombres = {
