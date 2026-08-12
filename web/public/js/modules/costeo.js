@@ -188,7 +188,7 @@ App.registerModule('costeo', {
         const alto = parseFloat(document.getElementById('alto_input')?.value) || 0;
         const area = (ancho * alto) / 1000000;
         const display = document.getElementById('area_display');
-        if (display) display.textContent = area.toFixed(4) + ' m²';
+        if (display) display.textContent = area.toFixed(2) + ' m²';
     },
 
     async calcular() {
@@ -239,7 +239,7 @@ App.registerModule('costeo', {
             <div class="costeo-section-title">Desglose de Costos</div>
             <div class="costeo-results-header">
                 <span>${r.cristal} — ${r.nombre_proceso}</span>
-                <span>${r.area_m2} m²</span>
+                <span>${Number(r.area_m2).toFixed(2)} m²</span>
             </div>
             <div class="costeo-results-table">
                 <div class="costeo-row"><span>Materia Prima</span><span>${fmt(r.materia_prima)}</span></div>
