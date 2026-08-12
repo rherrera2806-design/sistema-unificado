@@ -251,7 +251,6 @@ App.registerModule('costeo', {
                 <div class="costeo-row"><span>Pintura</span><span>${fmt(r.pintura)}</span></div>
                 <div class="costeo-row"><span>Insumos Pintura</span><span>${fmt(r.insumos_pintura)}</span></div>
                 <div class="costeo-row"><span>Otros</span><span>${fmt(r.otros)}</span></div>
-                <div class="costeo-row"><span>Otros</span><span>${fmt(r.otros)}</span></div>
                 <div class="costeo-row costeo-row-subtotal"><span>(A) Costo sin Mermas</span><span>${fmt(r.costo_sin_mermas)}</span></div>
                 <div class="costeo-row costeo-row-merma"><span>Merma proceso (${r._config.merma_proceso_pct}%)</span><span>${fmt(r.merma_proceso)}</span></div>
                 <div class="costeo-row costeo-row-merma"><span>Merma aprovech. (${r._config.merma_aprovechamiento_pct}%)</span><span>${fmt(r.merma_aprovechamiento)}</span></div>
