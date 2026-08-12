@@ -4,6 +4,7 @@ App.registerModule('costeo', {
     _resultado: null,
 
     async render() {
+        document.body.classList.add('costeo-page');
         const el = document.getElementById('page-costeo');
         el.innerHTML = `
             <div class="costeo-wrap">

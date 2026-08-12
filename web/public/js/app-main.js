@@ -103,6 +103,7 @@ const App = {
     // ── Navigation (SIGMA) ──
     async loadModule(name) {
         if (this.currentPage === name) return;
+        document.body.classList.remove('costeo-page');
         document.querySelectorAll('#mainContent .page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
