@@ -407,12 +407,16 @@
     /* ── Costeo Mobile ── */
     .costeo-grid { grid-template-columns: 1fr !important; }
     .costeo-form-card { padding: 14px !important; }
-    .costeo-results-card { padding: 14px !important; max-height: 70vh; overflow-y: auto; padding-bottom: 60px !important; }
+    .costeo-results-card { padding: 0 !important; display: flex; flex-direction: column; max-height: 75vh; }
+    .costeo-results-card > .costeo-section-title { padding: 14px 14px 0; }
+    .costeo-results-card > .costeo-results-header { padding: 8px 14px; }
+    .costeo-results-card > .costeo-results-placeholder { padding: 40px 14px; }
+    .costeo-results-card > .costeo-results-table { overflow-y: auto; flex: 1; padding: 0 14px; }
+    .costeo-results-card > .costeo-results-footer { flex-shrink: 0; padding: 12px 14px; background: white; border-top: 1px solid #e2e8f0; margin: 0; }
     .costeo-form-grid { grid-template-columns: 1fr 1fr !important; }
     .costeo-field-full { grid-column: 1 / -1 !important; }
     .costeo-btn-calcular { width: 100% !important; }
     .costeo-results-header { flex-direction: column !important; gap: 4px !important; }
-    .costeo-results-footer { position: sticky; bottom: 0; background: white; margin: 0 -14px; padding: 12px 14px !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
