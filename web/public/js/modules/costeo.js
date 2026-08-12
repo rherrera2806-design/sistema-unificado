@@ -129,6 +129,11 @@ App.registerModule('costeo', {
         try {
             const res = await fetch('/api/costeo/cristales');
             this._cristales = await res.json();
+            this._cristales.sort((a, b) => {
+                const nameCmp = a.nombre.localeCompare(b.nombre, 'es');
+                if (nameCmp !== 0) return nameCmp;
+                return (a.espesor_mm || 0) - (b.espesor_mm || 0);
+            });
             this.updateCristalDropdown();
         } catch (e) {
             console.error('Error loading cristales:', e);
