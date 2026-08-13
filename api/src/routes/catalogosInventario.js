@@ -57,6 +57,13 @@ router.delete('/api/inv/movimientos/:id', async (req, res, next) => {
     res.json({ ok: true });
 });
 
+router.delete('/api/inv/movimientos', async (req, res, next) => {
+    try {
+        const result = await inventarioService.limpiarMovimientos();
+        res.json({ ok: true, eliminados: result });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.get('/api/inv/inventario', async (req, res, next) => {
     try { res.json(await inventarioService.getInventario(req.query)); }
     catch (e) { next(e); }

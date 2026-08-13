@@ -62,6 +62,11 @@ async function eliminarMovimiento(id) {
     return result.rowCount > 0;
 }
 
+async function limpiarMovimientos() {
+    const result = await query('DELETE FROM movimientos');
+    return result.rowCount;
+}
+
 async function getInventario(filtros = {}) {
     let sql = `SELECT 
         mp.codigo_mp,
@@ -125,4 +130,4 @@ async function getEstadisticasPorTipo() {
     }));
 }
 
-module.exports = { getMovimientos, crearMovimiento, eliminarMovimiento, getInventario, getEstadisticas, getEstadisticasPorTipo };
+module.exports = { getMovimientos, crearMovimiento, eliminarMovimiento, limpiarMovimientos, getInventario, getEstadisticas, getEstadisticasPorTipo };
