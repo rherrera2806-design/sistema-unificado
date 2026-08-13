@@ -64,9 +64,12 @@ const InvMovimientos = {
                                 <div><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
                                 <div><label>Fecha</label><input type="date" id="fecha"></div>
                             </div>
-                            <div class="inv-form-bottom">
-                                <div style="flex:1"><label style="font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b">Observaciones</label><input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>
-                                <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-size:13px;white-space:nowrap">Registrar</button>
+                            <div style="margin-top:10px">
+                                <label style="font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b">Observaciones</label>
+                                <input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box">
+                            </div>
+                            <div style="margin-top:10px;text-align:right">
+                                <button type="submit" class="btn btn-primary" style="padding:10px 28px;font-size:13px">Registrar</button>
                             </div>
                         </form>
                     </div>
