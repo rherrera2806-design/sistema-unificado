@@ -86,9 +86,9 @@ App.registerModule('pedidos', {
                 + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
                 + '</tr></thead><tbody id="pedidosTable">'
                 + '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8"><div style="font-size:14px">Cargando pedidos...</div></td></tr>'
-                + '</tbody></table></div>'
+                + '</tbody></table>'
                 + '<div id="pedidosCards"></div>'
-                + '</div></div></div>'
+                + '</div></div></div></div>'
 
                 + this.uploadModalHtml()
                 + this.reviewModalHtml()
