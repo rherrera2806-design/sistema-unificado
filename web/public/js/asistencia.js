@@ -864,7 +864,7 @@ const Asistencia = {
                         const fin = new Date(parseInt(finParts[0]), parseInt(finParts[1]) - 1, parseInt(finParts[2]));
                         return l.trabajador_id === t.id && ini <= fecha && fin >= fecha;
                     })) { clase = 'licencia'; title = 'Licencia'; }
-                    else if (faltas.some(f => f.trabajador_id === t.id && f.fecha === fechaStr)) { clase = 'falta'; title = 'Falta'; }
+                    else if (faltas.some(f => f.trabajador_id === t.id && String(f.fecha).split('T')[0] === fechaStr)) { clase = 'falta'; title = 'Falta'; }
                     else if (d <= hoy.getDate() && mes <= (hoy.getMonth() + 1) && parseInt(anio) <= hoy.getFullYear()) { clase = 'presente'; title = 'Presente'; }
                 }
                 let symbol = '';
