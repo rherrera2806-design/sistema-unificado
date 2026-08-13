@@ -89,4 +89,14 @@ router.get('/api/inv/alertas', async (req, res, next) => {
     catch (e) { next(e); }
 });
 
+router.get('/api/inv/run-migration', async (req, res) => {
+    try {
+        const { query } = require('../config/database');
+        await query("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS turno VARCHAR(10) DEFAULT NULL");
+        res.json({ ok: true, message: 'Columna turno agregada' });
+    } catch (e) {
+        res.json({ ok: true, message: 'Columna ya existe o error: ' + e.message });
+    }
+});
+
 module.exports = router;
