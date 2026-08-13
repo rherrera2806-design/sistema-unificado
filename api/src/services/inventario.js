@@ -64,26 +64,27 @@ async function eliminarMovimiento(id) {
 
 async function getInventario(filtros = {}) {
     let sql = `SELECT 
-        COALESCE(mp.codigo_mp, m.tipo_cristal) as codigo_mp,
-        COALESCE(mp.nombre, m.tipo_cristal) as tipo_cristal,
-        COALESCE(mp.espesor_mm, m.espesor) as espesor,
+        mp.codigo_mp,
+        mp.nombre as tipo_cristal,
+        mp.espesor_mm as espesor,
         mp.costo_unitario_mp,
         mp.costo_unitario_importado,
-        m.ancho, m.alto,
-        SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad_planchas ELSE 0 END) as entradas,
-        SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.cantidad_planchas ELSE 0 END) as salidas_plancha,
-        SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'trozo' THEN m.cantidad_planchas ELSE 0 END) as trozos,
-        SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.metros_cuadrados ELSE 0 END) as m2_entradas,
-        SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.metros_cuadrados ELSE 0 END) as m2_salidas
-        FROM movimientos m
-        LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id`;
+        mp.ancho_nal as ancho,
+        mp.alto_nal as alto,
+        COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad_planchas ELSE 0 END), 0) as entradas,
+        COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.cantidad_planchas ELSE 0 END), 0) as salidas_plancha,
+        COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'trozo' THEN m.cantidad_planchas ELSE 0 END), 0) as trozos,
+        COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.metros_cuadrados ELSE 0 END), 0) as m2_entradas,
+        COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.metros_cuadrados ELSE 0 END), 0) as m2_salidas
+        FROM materias_primas mp
+        LEFT JOIN movimientos m ON m.materia_prima_id = mp.id`;
     const conditions = [];
     const params = [];
     let idx = 1;
-    if (filtros.cristal) { conditions.push(`(mp.nombre ILIKE $${idx} OR m.tipo_cristal ILIKE $${idx})`); params.push('%' + filtros.cristal + '%'); idx++; }
-    if (filtros.espesor) { conditions.push(`(mp.espesor_mm = $${idx} OR m.espesor = $${idx})`); params.push(filtros.espesor); idx++; }
+    if (filtros.cristal) { conditions.push(`mp.nombre ILIKE $${idx}`); params.push('%' + filtros.cristal + '%'); idx++; }
+    if (filtros.espesor) { conditions.push(`mp.espesor_mm = $${idx}`); params.push(filtros.espesor); idx++; }
     if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
-    sql += ' GROUP BY mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, m.tipo_cristal, m.espesor, m.ancho, m.alto ORDER BY mp.nombre, mp.espesor_mm';
+    sql += ' GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, mp.ancho_nal, mp.alto_nal ORDER BY mp.nombre, mp.espesor_mm';
     const result = await query(sql, params);
     return result.rows.map(r => ({
         ...r, stock: Number(r.entradas) - Number(r.salidas_plancha),
@@ -111,12 +112,12 @@ async function getEstadisticas() {
 
 async function getEstadisticasPorTipo() {
     const result = await query(`SELECT 
-        COALESCE(mp.nombre, m.tipo_cristal) as tipo,
-        SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.metros_cuadrados ELSE 0 END) as entradas_m2,
-        SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.metros_cuadrados ELSE 0 END) as salidas_m2
-        FROM movimientos m
-        LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id
-        GROUP BY mp.nombre, m.tipo_cristal ORDER BY mp.nombre`);
+        mp.nombre as tipo,
+        COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.metros_cuadrados ELSE 0 END), 0) as entradas_m2,
+        COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.metros_cuadrados ELSE 0 END), 0) as salidas_m2
+        FROM materias_primas mp
+        LEFT JOIN movimientos m ON m.materia_prima_id = mp.id
+        GROUP BY mp.id, mp.nombre ORDER BY mp.nombre`);
     return result.rows.map(r => ({
         tipo: r.tipo, entradas: Number(r.entradas_m2),
         salidas: Number(r.salidas_m2), stock: Number(r.entradas_m2) - Number(r.salidas_m2)
