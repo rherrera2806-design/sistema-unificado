@@ -15,6 +15,17 @@ WHERE LOWER(TRIM(m.tipo_cristal)) = LOWER(TRIM(mp.nombre))
 -- 3. Agregar indice para mejorar performance de joins
 CREATE INDEX IF NOT EXISTS idx_movimientos_materia_prima ON movimientos(materia_prima_id);
 
--- 4. Agregar columnas de stock_critico y consumo a materias_primas si no existen
+-- 4. Agregar columnas necesarias a materias_primas
+ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT '';
 ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0;
 ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0;
+
+-- 5. Mapear codigo_sap desde catalogo_tipos_cristal si existe
+UPDATE materias_primas mp 
+SET codigo_sap = c.codigo_sap
+FROM catalogo_tipos_cristal c
+WHERE LOWER(TRIM(mp.nombre)) = LOWER(TRIM(c.nombre))
+  AND mp.espesor_mm = c.espesor
+  AND c.codigo_sap IS NOT NULL 
+  AND c.codigo_sap != ''
+  AND (mp.codigo_sap IS NULL OR mp.codigo_sap = '');

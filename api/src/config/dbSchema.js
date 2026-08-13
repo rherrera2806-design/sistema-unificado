@@ -581,6 +581,7 @@ async function runMigrations() {
     try {
         await query("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS materia_prima_id INTEGER REFERENCES materias_primas(id)");
         await query("CREATE INDEX IF NOT EXISTS idx_movimientos_materia_prima ON movimientos(materia_prima_id)");
+        await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''");
         await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0");
         await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0");
     } catch (e) {

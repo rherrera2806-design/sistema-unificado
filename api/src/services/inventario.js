@@ -65,6 +65,7 @@ async function eliminarMovimiento(id) {
 async function getInventario(filtros = {}) {
     let sql = `SELECT 
         mp.codigo_mp,
+        mp.codigo_sap,
         mp.nombre as tipo_cristal,
         mp.espesor_mm as espesor,
         mp.costo_unitario_mp,
@@ -84,7 +85,7 @@ async function getInventario(filtros = {}) {
     if (filtros.cristal) { conditions.push(`mp.nombre ILIKE $${idx}`); params.push('%' + filtros.cristal + '%'); idx++; }
     if (filtros.espesor) { conditions.push(`mp.espesor_mm = $${idx}`); params.push(filtros.espesor); idx++; }
     if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
-    sql += ' GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, mp.ancho_nal, mp.alto_nal ORDER BY mp.nombre, mp.espesor_mm';
+    sql += ' GROUP BY mp.id, mp.codigo_mp, mp.codigo_sap, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, mp.ancho_nal, mp.alto_nal ORDER BY mp.nombre, mp.espesor_mm';
     const result = await query(sql, params);
     return result.rows.map(r => ({
         ...r, stock: Number(r.entradas) - Number(r.salidas_plancha),
