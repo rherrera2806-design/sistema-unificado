@@ -2,271 +2,253 @@ const InvMovimientos = {
     tipoMovimiento: '',
     tipoSalida: '',
     allMovimientos: [],
-    tiposCristal: [],
+    materiasPrimas: [],
 
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
-        
         try {
-            const [movimientos, tiposCristal] = await Promise.all([
+            const [movimientos, mpData] = await Promise.all([
                 api.inv().getMovimientos(),
-                api.catalogos.getTiposCristal()
+                fetch('/api/produccion/materias-primas').then(r => r.json()).catch(() => [])
             ]);
-            
             this.allMovimientos = movimientos;
-            this.tiposCristal = tiposCristal;
-
+            this.materiasPrimas = mpData;
+            const mpOptions = mpData.map(mp => `<option value="${mp.id}" data-ancho="${mp.ancho_nal || 0}" data-alto="${mp.alto_nal || 0}" data-espesor="${mp.espesor_mm || 0}">${mp.codigo_mp} - ${mp.nombre} (${mp.espesor_mm}mm)</option>`).join('');
             page.innerHTML = `
-                <div class="page-header">
-                    <div>
-                        <h2>Movimientos</h2>
-                        <p class="subtitle">Control de entrada y salida de planchas</p>
+                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Movimientos</h2>
+<p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registrar entradas y salidas de inventario</p></div></div>
+                <style>
+@keyframes invMov_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.invMov-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.invMov-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.invMov-row{transition:all 0.2s}
+.invMov-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+                <div class="card invMov-card" style="margin-bottom:16px;">
+                    <div class="card-header" style="padding:10px 16px;font-size:13px;">Nuevo Movimiento</div>
+                    <div class="card-body" style="padding:12px 16px;">
+                        <form onsubmit="InvMovimientos.guardar(event)">
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 12px;align-items:end">
+                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Tipo Movimiento *</label>
+                                    <div style="display:flex;gap:8px">
+                                        <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')" style="flex:1;text-align:center;padding:6px 8px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Entrada</label>
+                                        <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')" style="flex:1;text-align:center;padding:6px 8px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</label>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Materia Prima *</label>
+                                    <select id="materiaPrimaId" class="form-control" required onchange="InvMovimientos.onMpChange()" style="padding:6px 8px;font-size:12px">
+                                        <option value="">Seleccionar...</option>
+                                        ${mpOptions}
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Tipo Salida</label>
+                                    <div id="tipoSalidaGroup" style="display:none;gap:6px">
+                                        <label class="tipo-btn" id="btnPlancha" onclick="InvMovimientos.setTipoSalida('plancha_completa')" style="font-size:11px;padding:4px 8px">Plancha</label>
+                                        <label class="tipo-btn" id="btnTrozo" onclick="InvMovimientos.setTipoSalida('trozo')" style="font-size:11px;padding:4px 8px">Trozo</label>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Ancho (mm) *</label><input type="number" id="ancho" class="form-control" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()" style="padding:6px 8px;font-size:12px"></div>
+                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Alto (mm) *</label><input type="number" id="alto" class="form-control" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()" style="padding:6px 8px;font-size:12px"></div>
+                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Cantidad *</label><input type="number" id="cantidadPlanchas" class="form-control" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()" style="padding:6px 8px;font-size:12px"></div>
+                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">m2</label><div id="m2Display" style="padding:6px 8px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;font-size:14px;font-weight:700;color:var(--primary)">0.00</div></div>
+                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Proveedor</label><input type="text" id="proveedor" class="form-control" placeholder="Opcional" style="padding:6px 8px;font-size:12px"></div>
+                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Fecha</label><input type="date" id="fecha" class="form-control" style="padding:6px 8px;font-size:12px"></div>
+                            </div>
+                            <div style="display:flex;gap:8px;margin-top:8px;align-items:end">
+                                <div class="form-group" style="margin:0;flex:1"><label style="font-size:11px;margin-bottom:4px">Observaciones</label><input type="text" id="observaciones" class="form-control" placeholder="Notas..." style="padding:6px 8px;font-size:12px"></div>
+                                <button type="submit" class="btn btn-primary" style="padding:8px 20px;font-size:12px;white-space:nowrap">Registrar</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <div class="card" style="margin-bottom:20px;">
+                <div style="display:flex;gap:8px;margin-bottom:12px;justify-content:space-between;align-items:center;flex-wrap:wrap">
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                        <span style="font-weight:500;color:var(--gray-700);font-size:12px">Filtrar:</span>
+                        <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll" style="font-size:11px;padding:4px 10px">Todos</a>
+                        <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt" style="font-size:11px;padding:4px 10px">Entradas</a>
+                        <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal" style="font-size:11px;padding:4px 10px">Salidas</a>
+                    </div>
+                    <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger btn-sm" style="font-size:11px;padding:5px 12px" title="Eliminar todos los movimientos"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>
+                </div>
+                <style>
+@keyframes invMov_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.invMov-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.invMov-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
+.invMov-row{transition:all 0.2s}
+.invMov-row:hover{transform:translateX(2px);background:#f8fafc!important}
+</style>
+                <div class="card invMov-card" style="margin-bottom:20px;">
                     <div class="card-header">Nuevo Movimiento</div>
                     <div class="card-body">
                         <form onsubmit="InvMovimientos.guardar(event)">
-                            <div class="form-group">
-                                <label>Tipo de Movimiento *</label>
+                            <div class="form-group"><label>Tipo de Movimiento *</label>
                                 <div style="display:flex; gap:12px;">
-                                    <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')">➕ Entrada</label>
-                                    <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')">➖ Salida</label>
+                                    <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Entrada</label>
+                                    <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</label>
                                 </div>
                             </div>
-                            <div class="form-group" id="tipoSalidaGroup" style="display:none;">
-                                <label>Tipo de Salida *</label>
+                            <div class="form-group" id="tipoSalidaGroup" style="display:none;"><label>Tipo de Salida *</label>
                                 <div style="display:flex; gap:12px;">
                                     <label class="tipo-btn" id="btnPlancha" onclick="InvMovimientos.setTipoSalida('plancha_completa')">Plancha Completa</label>
                                     <label class="tipo-btn" id="btnTrozo" onclick="InvMovimientos.setTipoSalida('trozo')">Trozo</label>
                                 </div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label for="tipoCristal">Tipo de Cristal *</label>
-                                    <select id="tipoCristal" class="form-control" required>
-                                        <option value="">Seleccionar...</option>
-                                        ${tiposCristal.map(t => `<option value="${t.nombre}|${t.espesor}">${this.escapeHtml(t.nombre)} ${t.espesor}mm</option>`).join('')}
+                                <div class="form-group"><label>Materia Prima *</label>
+                                    <select id="materiaPrimaId" class="form-control" required onchange="InvMovimientos.onMpChange()">
+                                        <option value="">Seleccionar materia prima...</option>
+                                        ${mpOptions}
                                     </select>
                                 </div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label for="ancho">Ancho (mm) *</label>
-                                    <input type="number" id="ancho" class="form-control" placeholder="ej: 2000" required min="1" step="1" oninput="InvMovimientos.calcM2()">
-                                </div>
-                                <div class="form-group">
-                                    <label for="alto">Alto (mm) *</label>
-                                    <input type="number" id="alto" class="form-control" placeholder="ej: 1500" required min="1" step="1" oninput="InvMovimientos.calcM2()">
-                                </div>
+                                <div class="form-group"><label>Ancho (mm) *</label><input type="number" id="ancho" class="form-control" placeholder="ej: 2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                <div class="form-group"><label>Alto (mm) *</label><input type="number" id="alto" class="form-control" placeholder="ej: 1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label for="cantidadPlanchas">Cantidad de Planchas *</label>
-                                    <input type="number" id="cantidadPlanchas" class="form-control" placeholder="ej: 5" required min="1" step="1" oninput="InvMovimientos.calcM2()">
-                                </div>
-                                <div class="form-group">
-                                    <label>Metros Cuadrados</label>
-                                    <div id="m2Display" style="padding:12px; background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; font-size:20px; font-weight:700; color:var(--primary);">0.00 m²</div>
-                                </div>
+                                <div class="form-group"><label>Cantidad de Planchas *</label><input type="number" id="cantidadPlanchas" class="form-control" placeholder="ej: 5" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                <div class="form-group"><label>Metros Cuadrados</label><div id="m2Display" style="padding:9px 12px; background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; font-size:20px; font-weight:700; color:var(--primary);">0.00 m2</div></div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group">
-                                    <label for="proveedor">Proveedor (opcional)</label>
-                                    <input type="text" id="proveedor" class="form-control" placeholder="Nombre del proveedor" oninput="InvMovimientos.capitalizeWords(this)">
-                                </div>
-                                <div class="form-group"></div>
+                                <div class="form-group"><label>Proveedor (opcional)</label><input type="text" id="proveedor" class="form-control" placeholder="Nombre del proveedor"></div>
+                                <div class="form-group"><label>Fecha (opcional)</label><input type="date" id="fecha" class="form-control"></div>
                             </div>
-                            <div class="form-group">
-                                <label for="observaciones">Observaciones (opcional)</label>
-                                <textarea id="observaciones" class="form-control" rows="2" placeholder="Notas..." oninput="InvMovimientos.capitalizeWords(this)"></textarea>
-                            </div>
+                            <div class="form-group"><label>Observaciones (opcional)</label><textarea id="observaciones" class="form-control" rows="2" placeholder="Notas..."></textarea></div>
                             <button type="submit" class="btn btn-primary" style="width:100%;">Registrar Movimiento</button>
                         </form>
                     </div>
                 </div>
-                <div class="filters-bar">
+                <div style="display:flex;gap:8px;margin-bottom:14px;justify-content:flex-start;align-items:center;flex-wrap:wrap">
                     <span style="font-weight:500; color:var(--gray-700); font-size:13px;">Filtrar:</span>
-                    <select onchange="InvMovimientos.filtrar(this.value)" class="form-control" style="width:auto; min-height:32px; padding:4px 32px 4px 12px; font-size:13px;">
-                        <option value="">Todos</option>
-                        <option value="entrada">Entradas</option>
-                        <option value="salida">Salidas</option>
-                    </select>
+                    <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll">Todos</a>
+                    <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</a>
+                    <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</a>
                 </div>
-                <div class="card">
+                <div class="card invMov-card">
                     <div class="card-header">Movimientos <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
                     <div class="card-body">
-                        ${movimientos.length === 0 ? '<div class="empty-state"><p>No hay movimientos</p></div>' : `
-                            <div class="table-responsive">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Fecha</th>
-                                            <th>Tipo</th>
-                                            <th>Cristal</th>
-                                            <th>Espesor</th>
-                                            <th>Dimensiones</th>
-                                            <th>Cantidad</th>
-                                            <th>m²</th>
-                                            <th>Proveedor</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="invMovBody">${this.renderRows(movimientos)}</tbody>
-                                </table>
-                            </div>
-                        `}
+                        ${movimientos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>' : `<div class="table-responsive"><div class="sigma-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Acciones</th></tr></thead><tbody id="invMovBody">${this.renderRows(movimientos)}</tbody></table></div><div id="invMovCards"></div>`}
                     </div>
                 </div>`;
-        } catch(err) { 
-            page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; 
-        }
-    },
-
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
     },
 
     renderRows(movs) {
-        return movs.map(m => {
-            const fecha = new Date(m.fecha_hora);
-            const fechaStr = fecha.toLocaleDateString('es-CL');
-            const horaStr = fecha.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-            return `
-            <tr>
-                <td>${fechaStr} <span style="color:#1e3a8a; font-weight:500;">${horaStr}</span></td>
-                <td>
-                    <span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${escapeHtml(m.tipo_movimiento)}</span>
-                    ${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}
-                </td>
-                <td>${escapeHtml(m.tipo_cristal)}</td>
-                <td>${m.espesor}mm</td>
-                <td>${parseInt(m.ancho)} x ${parseInt(m.alto)} mm</td>
-                <td>${m.cantidad_planchas}</td>
-                <td>${Number(m.metros_cuadrados).toFixed(2)}</td>
-                <td>${escapeHtml(m.proveedor || '-')}</td>
-                <td>
-                    <button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                </td>
-            </tr>`;
-        }).join('');
+        return movs.map(m => `<tr><td>${new Date(m.fecha_hora).toLocaleDateString('es-CL')}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}</td><td>${m.codigo_mp || '-'}</td><td>${m.mp_nombre || m.tipo_cristal}</td><td>${m.espesor_mm || m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td><button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>`).join('');
+        this.renderCards(movs);
+    },
+
+    renderCards(movs) {
+        const cardsEl = document.getElementById('invMovCards');
+        if (!cardsEl || typeof SigmaCards === 'undefined') return;
+        cardsEl.innerHTML = SigmaCards.generate({
+            title: m => '<strong>' + (m.codigo_mp || m.tipo_cristal) + '</strong>',
+            subtitle: m => (m.mp_nombre || m.tipo_cristal) + ' ' + (m.espesor_mm || m.espesor) + 'mm',
+            badge: m => '<span class="sc-badge" style="background:' + (m.tipo_movimiento === 'entrada' ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">' + m.tipo_movimiento + '</span>',
+            fields: [
+                { label: 'Fecha', value: m => new Date(m.fecha_hora).toLocaleDateString('es-CL') },
+                { label: 'Dimensiones', value: m => m.ancho + ' x ' + m.alto + ' mm' },
+                { label: 'Cantidad', value: m => m.cantidad_planchas + ' planchas' },
+                { label: 'm2', value: m => Number(m.metros_cuadrados).toFixed(2) + ' m2' },
+                { label: 'Proveedor', value: m => m.proveedor || '-' }
+            ],
+            actions: m => '<button class="btn btn-danger btn-sm" onclick="InvMovimientos.eliminar(' + m.id + ')">Eliminar</button>'
+        }, movs);
+    },
+
+    onMpChange() {
+        const sel = document.getElementById('materiaPrimaId');
+        if (!sel) return;
+        const opt = sel.options[sel.selectedIndex];
+        if (opt && opt.value) {
+            const ancho = opt.dataset.ancho;
+            const alto = opt.dataset.alto;
+            if (ancho && parseInt(ancho) > 0) document.getElementById('ancho').value = ancho;
+            if (alto && parseInt(alto) > 0) document.getElementById('alto').value = alto;
+            this.calcM2();
+        }
     },
 
     setTipo(t) {
         this.tipoMovimiento = t;
-        document.getElementById('btnEntrada').className = t === 'entrada' ? 'tipo-btn active-success' : 'tipo-btn';
-        document.getElementById('btnSalida').className = t === 'salida' ? 'tipo-btn active-danger' : 'tipo-btn';
+        document.getElementById('btnEntrada').classList.toggle('active', t === 'entrada');
+        document.getElementById('btnSalida').classList.toggle('active', t === 'salida');
         document.getElementById('tipoSalidaGroup').style.display = t === 'salida' ? 'block' : 'none';
     },
-
-    setTipoSalida(t) {
-        this.tipoSalida = t;
-        document.getElementById('btnPlancha').className = t === 'plancha_completa' ? 'tipo-btn active-primary' : 'tipo-btn';
-        document.getElementById('btnTrozo').className = t === 'trozo' ? 'tipo-btn active-warning' : 'tipo-btn';
+    setTipoSalida(ts) {
+        this.tipoSalida = ts;
+        document.getElementById('btnPlancha').classList.toggle('active', ts === 'plancha_completa');
+        document.getElementById('btnTrozo').classList.toggle('active', ts === 'trozo');
     },
-
     calcM2() {
-        const a = parseInt(document.getElementById('ancho').value) || 0;
-        const b = parseInt(document.getElementById('alto').value) || 0;
-        const c = parseInt(document.getElementById('cantidadPlanchas').value) || 0;
-        document.getElementById('m2Display').textContent = ((a * b * c) / 1000000).toFixed(2) + ' m²';
-    },
-
-    capitalizeWords(input) {
-        const cursorPos = input.selectionStart;
-        const words = input.value.split(' ');
-        const capitalized = words.map(word => {
-            if (word.length === 0) return word;
-            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-        });
-        input.value = capitalized.join(' ');
-        input.setSelectionRange(cursorPos, cursorPos);
+        const a = parseInt(document.getElementById('ancho')?.value) || 0;
+        const al = parseInt(document.getElementById('alto')?.value) || 0;
+        const c = parseInt(document.getElementById('cantidadPlanchas')?.value) || 0;
+        const m2 = (a * al * c) / 1000000;
+        const el = document.getElementById('m2Display');
+        if (el) el.textContent = m2.toFixed(2) + ' m2';
     },
 
     async guardar(e) {
         e.preventDefault();
-        
-        if (!this.tipoMovimiento) { 
-            App.toast('Selecciona tipo de movimiento', 'error'); 
-            return; 
-        }
-        
-        if (this.tipoMovimiento === 'salida' && !this.tipoSalida) { 
-            App.toast('Selecciona tipo de salida', 'error'); 
-            return; 
-        }
-
-        const tipoCristalVal = document.getElementById('tipoCristal').value;
-        if (!tipoCristalVal) {
-            App.toast('Selecciona tipo de cristal', 'error');
-            return;
-        }
-
-        const [tipoCristal, espesor] = tipoCristalVal.split('|');
-
-        const ancho = document.getElementById('ancho').value;
-        const alto = document.getElementById('alto').value;
-        const cantidad = document.getElementById('cantidadPlanchas').value;
-
-        if (!Number.isInteger(Number(ancho)) || Number(ancho) <= 0) {
-            App.toast('El ancho debe ser un número entero positivo', 'error');
-            return;
-        }
-        if (!Number.isInteger(Number(alto)) || Number(alto) <= 0) {
-            App.toast('El alto debe ser un número entero positivo', 'error');
-            return;
-        }
-        if (!Number.isInteger(Number(cantidad)) || Number(cantidad) <= 0) {
-            App.toast('La cantidad debe ser un número entero positivo', 'error');
-            return;
-        }
-
+        if (!this.tipoMovimiento) { App.toast('Selecciona tipo de movimiento', 'error'); return; }
+        const materiaPrimaId = document.getElementById('materiaPrimaId').value;
+        if (!materiaPrimaId) { App.toast('Selecciona una materia prima', 'error'); return; }
+        const data = {
+            tipo_movimiento: this.tipoMovimiento,
+            materia_prima_id: parseInt(materiaPrimaId),
+            ancho: document.getElementById('ancho').value,
+            alto: document.getElementById('alto').value,
+            cantidad_planchas: parseInt(document.getElementById('cantidadPlanchas').value),
+            proveedor: document.getElementById('proveedor').value || null,
+            tipo_salida: this.tipoMovimiento === 'salida' ? this.tipoSalida : null,
+            observaciones: document.getElementById('observaciones').value || null,
+            fecha_hora: document.getElementById('fecha').value || new Date().toISOString()
+        };
         try {
-            const now = new Date();
-            const fechaHora = now.toISOString();
-            
-            await api.inv().crearMovimiento({
-                tipo_movimiento: this.tipoMovimiento,
-                tipo_cristal: tipoCristal,
-                espesor: parseInt(espesor),
-                ancho: parseInt(ancho),
-                alto: parseInt(alto),
-                cantidad_planchas: parseInt(cantidad),
-                proveedor: document.getElementById('proveedor').value || null,
-                tipo_salida: this.tipoMovimiento === 'salida' ? this.tipoSalida : null,
-                observaciones: document.getElementById('observaciones').value || null,
-                fecha_hora: fechaHora
-            });
+            await api.inv().crearMovimiento(data);
             App.toast('Movimiento registrado');
-            this.tipoMovimiento = '';
-            this.tipoSalida = '';
             this.render();
-        } catch(err) { 
-            App.toast('Error: ' + err.message, 'error'); 
-        }
-    },
-
-    async eliminar(id) {
-        if (!confirm('¿Eliminar este movimiento?')) return;
-        try { 
-            await api.inv().eliminarMovimiento(id); 
-            App.toast('Eliminado'); 
-            this.render(); 
-        } catch(err) { 
-            App.toast('Error: ' + err.message, 'error'); 
-        }
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     },
 
     async filtrar(tipo) {
-        const tbody = document.getElementById('invMovBody');
-        if (!tbody) return;
-        
-        let filtered = this.allMovimientos;
-        if (tipo) filtered = filtered.filter(m => m.tipo_movimiento === tipo);
-        tbody.innerHTML = this.renderRows(filtered);
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        if (tipo === '') document.getElementById('fAll').classList.add('active');
+        else if (tipo === 'entrada') document.getElementById('fEnt').classList.add('active');
+        else document.getElementById('fSal').classList.add('active');
+        try {
+            const movs = tipo ? await api.inv().getMovimientos({ tipo }) : await api.inv().getMovimientos();
+            this.allMovimientos = movs;
+            const tbody = document.getElementById('invMovBody');
+            if (tbody) tbody.innerHTML = this.renderRows(movs);
+            this.renderCards(movs);
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
+    },
+
+    async eliminar(id) {
+        if (!confirm('Eliminar este movimiento?')) return;
+        try {
+            await api.inv().eliminarMovimiento(id);
+            App.toast('Movimiento eliminado');
+            this.render();
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
+    },
+
+    async limpiarTodos() {
+        if (!confirm('¿ELIMINAR TODOS LOS MOVIMIENTOS?\n\nEsta acción no se puede deshacer. Se borrarán todas las entradas y salidas registradas.')) return;
+        if (!confirm('¿Estás SEGURO? Se perderán TODOS los datos de movimientos.')) return;
+        try {
+            const result = await fetch('/api/inv/movimientos', { method: 'DELETE' }).then(r => r.json());
+            if (result.ok) {
+                App.toast('Se eliminaron ' + result.eliminados + ' movimientos');
+                this.render();
+            } else {
+                App.toast('Error al limpiar movimientos', 'error');
+            }
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     }
 };
