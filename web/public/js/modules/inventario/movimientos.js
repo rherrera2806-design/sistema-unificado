@@ -2,13 +2,19 @@ const InvMovimientos = {
     tipoMovimiento: '',
     tipoSalida: '',
     allMovimientos: [],
+    materiasPrimas: [],
 
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         try {
-            const movimientos = await api.inv().getMovimientos();
+            const [movimientos, mpData] = await Promise.all([
+                api.inv().getMovimientos(),
+                fetch('/api/produccion/materias-primas').then(r => r.json()).catch(() => [])
+            ]);
             this.allMovimientos = movimientos;
+            this.materiasPrimas = mpData;
+            const mpOptions = mpData.map(mp => `<option value="${mp.id}" data-ancho="${mp.ancho_nal || 0}" data-alto="${mp.alto_nal || 0}" data-espesor="${mp.espesor_mm || 0}">${mp.codigo_mp} - ${mp.nombre} (${mp.espesor_mm}mm)</option>`).join('');
             page.innerHTML = `
                 <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
@@ -21,9 +27,9 @@ const InvMovimientos = {
 .invMov-row{transition:all 0.2s}
 .invMov-row:hover{transform:translateX(2px);background:#f8fafc!important}
 </style>
-                <div class="card invMov-card"" style="margin-bottom:20px;">
-                    <div class="card invMov-card"-header">Nuevo Movimiento</div>
-                    <div class="card invMov-card"-body">
+                <div class="card invMov-card" style="margin-bottom:20px;">
+                    <div class="card-header">Nuevo Movimiento</div>
+                    <div class="card-body">
                         <form onsubmit="InvMovimientos.guardar(event)">
                             <div class="form-group"><label>Tipo de Movimiento *</label>
                                 <div style="display:flex; gap:12px;">
@@ -38,8 +44,12 @@ const InvMovimientos = {
                                 </div>
                             </div>
                             <div class="form-row">
-                                <div class="form-group"><label>Tipo de Cristal *</label><select id="tipoCristal" class="form-control" required><option value="">Seleccionar...</option><option>Clear</option><option>Bronce</option><option>Gris</option><option>Azul</option><option>Verde</option><option>Espejo</option><option>Templado</option><option>Laminado</option><option>Otros</option></select></div>
-                                <div class="form-group"><label>Espesor (mm) *</label><input type="number" id="espesor" class="form-control" placeholder="ej: 4, 6, 8, 10, 12" required min="1" max="50"></div>
+                                <div class="form-group"><label>Materia Prima *</label>
+                                    <select id="materiaPrimaId" class="form-control" required onchange="InvMovimientos.onMpChange()">
+                                        <option value="">Seleccionar materia prima...</option>
+                                        ${mpOptions}
+                                    </select>
+                                </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group"><label>Ancho (mm) *</label><input type="number" id="ancho" class="form-control" placeholder="ej: 2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
@@ -64,17 +74,17 @@ const InvMovimientos = {
                     <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</a>
                     <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</a>
                 </div>
-                <div class="card invMov-card"">
-                    <div class="card invMov-card"-header">Movimientos <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
-                    <div class="card invMov-card"-body">
-                        ${movimientos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>' : `<div class="table-responsive"><div class="sigma-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Acciones</th></tr></thead><tbody id="invMovBody">${this.renderRows(movimientos)}</tbody></table></div><div id="invMovCards"></div>`}
+                <div class="card invMov-card">
+                    <div class="card-header">Movimientos <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
+                    <div class="card-body">
+                        ${movimientos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>' : `<div class="table-responsive"><div class="sigma-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Acciones</th></tr></thead><tbody id="invMovBody">${this.renderRows(movimientos)}</tbody></table></div><div id="invMovCards"></div>`}
                     </div>
                 </div>`;
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
     },
 
     renderRows(movs) {
-        return movs.map(m => `<tr><td>${new Date(m.fecha_hora).toLocaleDateString('es-CL')}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}</td><td>${m.tipo_cristal}</td><td>${m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td><button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>`).join('');
+        return movs.map(m => `<tr><td>${new Date(m.fecha_hora).toLocaleDateString('es-CL')}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}</td><td>${m.codigo_mp || '-'}</td><td>${m.mp_nombre || m.tipo_cristal}</td><td>${m.espesor_mm || m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td><button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td></tr>`).join('');
         this.renderCards(movs);
     },
 
@@ -82,11 +92,12 @@ const InvMovimientos = {
         const cardsEl = document.getElementById('invMovCards');
         if (!cardsEl || typeof SigmaCards === 'undefined') return;
         cardsEl.innerHTML = SigmaCards.generate({
-            title: m => '<strong>' + m.tipo_cristal + ' ' + m.espesor + 'mm</strong>',
-            subtitle: m => m.ancho + ' x ' + m.alto + ' mm',
+            title: m => '<strong>' + (m.codigo_mp || m.tipo_cristal) + '</strong>',
+            subtitle: m => (m.mp_nombre || m.tipo_cristal) + ' ' + (m.espesor_mm || m.espesor) + 'mm',
             badge: m => '<span class="sc-badge" style="background:' + (m.tipo_movimiento === 'entrada' ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">' + m.tipo_movimiento + '</span>',
             fields: [
                 { label: 'Fecha', value: m => new Date(m.fecha_hora).toLocaleDateString('es-CL') },
+                { label: 'Dimensiones', value: m => m.ancho + ' x ' + m.alto + ' mm' },
                 { label: 'Cantidad', value: m => m.cantidad_planchas + ' planchas' },
                 { label: 'm2', value: m => Number(m.metros_cuadrados).toFixed(2) + ' m2' },
                 { label: 'Proveedor', value: m => m.proveedor || '-' }
@@ -95,53 +106,60 @@ const InvMovimientos = {
         }, movs);
     },
 
+    onMpChange() {
+        const sel = document.getElementById('materiaPrimaId');
+        if (!sel) return;
+        const opt = sel.options[sel.selectedIndex];
+        if (opt && opt.value) {
+            const ancho = opt.dataset.ancho;
+            const alto = opt.dataset.alto;
+            if (ancho && parseInt(ancho) > 0) document.getElementById('ancho').value = ancho;
+            if (alto && parseInt(alto) > 0) document.getElementById('alto').value = alto;
+            this.calcM2();
+        }
+    },
+
     setTipo(t) {
         this.tipoMovimiento = t;
-        document.getElementById('btnEntrada').className = t === 'entrada' ? 'tipo-btn active-success' : 'tipo-btn';
-        document.getElementById('btnSalida').className = t === 'salida' ? 'tipo-btn active-danger' : 'tipo-btn';
+        document.getElementById('btnEntrada').classList.toggle('active', t === 'entrada');
+        document.getElementById('btnSalida').classList.toggle('active', t === 'salida');
         document.getElementById('tipoSalidaGroup').style.display = t === 'salida' ? 'block' : 'none';
     },
-
-    setTipoSalida(t) {
-        this.tipoSalida = t;
-        document.getElementById('btnPlancha').className = t === 'plancha_completa' ? 'tipo-btn active-primary' : 'tipo-btn';
-        document.getElementById('btnTrozo').className = t === 'trozo' ? 'tipo-btn active-warning' : 'tipo-btn';
+    setTipoSalida(ts) {
+        this.tipoSalida = ts;
+        document.getElementById('btnPlancha').classList.toggle('active', ts === 'plancha_completa');
+        document.getElementById('btnTrozo').classList.toggle('active', ts === 'trozo');
     },
-
     calcM2() {
-        const a = parseFloat(document.getElementById('ancho').value) || 0;
-        const b = parseFloat(document.getElementById('alto').value) || 0;
-        const c = parseFloat(document.getElementById('cantidadPlanchas').value) || 0;
-        document.getElementById('m2Display').textContent = ((a * b * c) / 1000000).toFixed(2) + ' m2';
+        const a = parseInt(document.getElementById('ancho')?.value) || 0;
+        const al = parseInt(document.getElementById('alto')?.value) || 0;
+        const c = parseInt(document.getElementById('cantidadPlanchas')?.value) || 0;
+        const m2 = (a * al * c) / 1000000;
+        const el = document.getElementById('m2Display');
+        if (el) el.textContent = m2.toFixed(2) + ' m2';
     },
 
     async guardar(e) {
         e.preventDefault();
         if (!this.tipoMovimiento) { App.toast('Selecciona tipo de movimiento', 'error'); return; }
-        if (this.tipoMovimiento === 'salida' && !this.tipoSalida) { App.toast('Selecciona tipo de salida', 'error'); return; }
+        const materiaPrimaId = document.getElementById('materiaPrimaId').value;
+        if (!materiaPrimaId) { App.toast('Selecciona una materia prima', 'error'); return; }
+        const data = {
+            tipo_movimiento: this.tipoMovimiento,
+            materia_prima_id: parseInt(materiaPrimaId),
+            ancho: document.getElementById('ancho').value,
+            alto: document.getElementById('alto').value,
+            cantidad_planchas: parseInt(document.getElementById('cantidadPlanchas').value),
+            proveedor: document.getElementById('proveedor').value || null,
+            tipo_salida: this.tipoMovimiento === 'salida' ? this.tipoSalida : null,
+            observaciones: document.getElementById('observaciones').value || null,
+            fecha_hora: document.getElementById('fecha').value || new Date().toISOString()
+        };
         try {
-            await api.inv().crearMovimiento({
-                tipo_movimiento: this.tipoMovimiento,
-                tipo_cristal: document.getElementById('tipoCristal').value,
-                espesor: parseInt(document.getElementById('espesor').value),
-                ancho: parseFloat(document.getElementById('ancho').value),
-                alto: parseFloat(document.getElementById('alto').value),
-                cantidad_planchas: parseInt(document.getElementById('cantidadPlanchas').value),
-                proveedor: document.getElementById('proveedor').value || null,
-                tipo_salida: this.tipoMovimiento === 'salida' ? this.tipoSalida : null,
-                observaciones: document.getElementById('observaciones').value || null,
-                fecha_hora: document.getElementById('fecha').value ? document.getElementById('fecha').value + 'T12:00:00' : null
-            });
+            await api.inv().crearMovimiento(data);
             App.toast('Movimiento registrado');
-            this.tipoMovimiento = '';
-            this.tipoSalida = '';
             this.render();
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
-    },
-
-    async eliminar(id) {
-        if (!confirm('Eliminar este movimiento?')) return;
-        try { await api.inv().eliminarMovimiento(id); App.toast('Eliminado'); this.render(); } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     },
 
     async filtrar(tipo) {
@@ -149,10 +167,21 @@ const InvMovimientos = {
         if (tipo === '') document.getElementById('fAll').classList.add('active');
         else if (tipo === 'entrada') document.getElementById('fEnt').classList.add('active');
         else document.getElementById('fSal').classList.add('active');
-        const tbody = document.getElementById('invMovBody');
-        if (!tbody) return;
-        let filtered = this.allMovimientos;
-        if (tipo) filtered = filtered.filter(m => m.tipo_movimiento === tipo);
-        tbody.innerHTML = this.renderRows(filtered);
+        try {
+            const movs = tipo ? await api.inv().getMovimientos({ tipo }) : await api.inv().getMovimientos();
+            this.allMovimientos = movs;
+            const tbody = document.getElementById('invMovBody');
+            if (tbody) tbody.innerHTML = this.renderRows(movs);
+            this.renderCards(movs);
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
+    },
+
+    async eliminar(id) {
+        if (!confirm('Eliminar este movimiento?')) return;
+        try {
+            await api.inv().eliminarMovimiento(id);
+            App.toast('Movimiento eliminado');
+            this.render();
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     }
 };
