@@ -18,8 +18,11 @@ const InvMovimientos = {
             page.innerHTML = `
                 <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Movimientos</h2>
-<p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registrar entradas y salidas de inventario</p></div></div>
+<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">
+<div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Movimientos</h2>
+<p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registrar entradas y salidas de inventario</p></div>
+<button onclick="InvMovimientos.limpiarTodos()" style="background:rgba(239,68,68,0.9);color:white;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px" title="Eliminar todos los movimientos"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar</button>
+</div></div>
                 <style>
 @keyframes invMov_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .invMov-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
@@ -68,12 +71,11 @@ const InvMovimientos = {
                         </form>
                     </div>
                 </div>
-                <div style="display:flex;gap:8px;margin-bottom:14px;justify-content:flex-end;align-items:center;flex-wrap:wrap">
-                    <span style="font-weight:500; color:var(--gray-700); font-size:13px; margin-right:auto;">Filtrar:</span>
+                <div style="display:flex;gap:8px;margin-bottom:14px;justify-content:flex-start;align-items:center;flex-wrap:wrap">
+                    <span style="font-weight:500; color:var(--gray-700); font-size:13px;">Filtrar:</span>
                     <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll">Todos</a>
                     <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</a>
                     <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</a>
-                    <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger btn-sm" title="Eliminar todos los movimientos"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar</button>
                 </div>
                 <div class="card invMov-card">
                     <div class="card-header">Movimientos <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
