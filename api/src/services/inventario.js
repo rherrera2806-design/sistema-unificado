@@ -48,11 +48,12 @@ async function crearMovimiento(data) {
     if (isNaN(anchoInt) || anchoInt <= 0) throw new Error('Ancho debe ser un numero entero positivo');
     if (isNaN(altoInt) || altoInt <= 0) throw new Error('Alto debe ser un numero entero positivo');
     const metros_cuadrados = (anchoInt * altoInt * cantidad_planchas) / 1000000;
+    const espesorInt = parseInt(espesorFinal) || 0;
     
     const result = await query(
         `INSERT INTO movimientos (usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, turno, tipo_salida, observaciones, fecha_hora)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
-        [usuario_id || null, tipo_movimiento, materia_prima_id || null, tipoCristalFinal, espesorFinal, anchoInt, altoInt, cantidad_planchas, metros_cuadrados.toFixed(4), proveedor || null, turno || null, tipo_salida || null, observaciones || null, fecha_hora || new Date().toISOString()]
+        [usuario_id || null, tipo_movimiento, materia_prima_id || null, tipoCristalFinal, espesorInt, anchoInt, altoInt, cantidad_planchas, metros_cuadrados.toFixed(4), proveedor || null, turno || null, tipo_salida || null, observaciones || null, fecha_hora || new Date().toISOString()]
     );
     return result.rows[0];
 }
