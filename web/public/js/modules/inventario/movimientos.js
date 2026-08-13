@@ -68,12 +68,14 @@ const InvMovimientos = {
                         </form>
                     </div>
                 </div>
-                <div class="filters-bar">
-                    <span style="font-weight:500; color:var(--gray-700); font-size:13px;">Filtrar:</span>
-                    <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll">Todos</a>
-                    <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</a>
-                    <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</a>
-                    <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger btn-sm" style="margin-left:auto" title="Eliminar todos los movimientos"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar</button>
+                <div style="display:flex;gap:8px;margin-bottom:14px;justify-content:space-between;align-items:center;flex-wrap:wrap">
+                    <div class="filters-bar" style="margin-bottom:0">
+                        <span style="font-weight:500; color:var(--gray-700); font-size:13px;">Filtrar:</span>
+                        <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll">Todos</a>
+                        <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</a>
+                        <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</a>
+                    </div>
+                    <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger btn-sm" title="Eliminar todos los movimientos"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Movimientos</button>
                 </div>
                 <div class="card invMov-card">
                     <div class="card-header">Movimientos <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
