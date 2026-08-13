@@ -228,7 +228,7 @@ const Asistencia = {
                     <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
                     <h4 id="ast-form-title" style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Nuevo Trabajador</h4>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 160px auto;gap:12px;align-items:end">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;align-items:end">
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">RUT</label>
                         <input type="text" id="ast-trab-rut" class="ast-input" placeholder="12.345.678-9" style="width:100%">
@@ -236,6 +236,14 @@ const Asistencia = {
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Nombre Completo</label>
                         <input type="text" id="ast-trab-nombre" class="ast-input" placeholder="Nombre del trabajador" style="width:100%">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Telefono (+56 9...)</label>
+                        <input type="text" id="ast-trab-telefono" class="ast-input" placeholder="+56 9 1234 5678" style="width:100%" maxlength="15" oninput="Asistencia.formatPhone(this)">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Puesto</label>
+                        <input type="text" id="ast-trab-puesto" class="ast-input" placeholder="Ej: Instalador" style="width:100%">
                     </div>
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Fecha de incorporación</label>
@@ -256,11 +264,13 @@ const Asistencia = {
                     <thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">RUT</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Telefono</th>
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Puesto</th>
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
                         <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px" title="Fecha de incorporación">Fecha de incorporación</th>
                         <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
                     </tr></thead>
-                    <tbody id="ast-tabla-trabajadores"><tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                    <tbody id="ast-tabla-trabajadores"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
                 </table>
                 <div id="ast-cards-trabajadores"></div>
                 </div>
@@ -292,7 +302,7 @@ const Asistencia = {
         else if (this.trabFilter === 'inactivos') data = data.filter(t => !t.activo);
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Sin trabajadores</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin trabajadores</td></tr>';
             const cardsEl = document.getElementById('ast-cards-trabajadores');
             if (cardsEl) cardsEl.innerHTML = '';
             return;
@@ -307,6 +317,8 @@ const Asistencia = {
             return '<tr style="border-bottom:1px solid #f1f5f9' + (t.activo ? '' : ';opacity:0.55') + '">'
                 + '<td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,' + bg + ',' + bg + 'dd);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700">' + ini + '</div><strong style="color:#1e293b">' + t.nombre + '</strong></div></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + t.rut + '</td>'
+                + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + (t.telefono || '-') + '</td>'
+                + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + (t.puesto || '-') + '</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + (t.activo ? 'background:#d1fae5;color:#059669' : 'background:#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;font-size:12px;color:#475569;font-family:\'JetBrains Mono\',monospace" title="Fecha de incorporación">' + fiFmt + '</td>'
                 + '<td style="padding:12px 16px;text-align:center"><div style="display:flex;gap:4px;justify-content:center">'
@@ -323,6 +335,8 @@ const Asistencia = {
                 subtitle: t => t.rut,
                 badge: t => '<span class="sc-badge" style="background:' + (t.activo ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span>',
                 fields: [
+                    { label: 'Telefono', value: t => t.telefono || '-' },
+                    { label: 'Puesto', value: t => t.puesto || '-' },
                     { label: 'Ingreso', value: t => { const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0]; return fi ? this.fmtDate(fi) : '-'; } }
                 ],
                 actions: t => '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline">Editar</button> '
@@ -356,6 +370,8 @@ const Asistencia = {
         document.getElementById('ast-trab-id').value = '';
         document.getElementById('ast-trab-rut').value = '';
         document.getElementById('ast-trab-nombre').value = '';
+        document.getElementById('ast-trab-telefono').value = '';
+        document.getElementById('ast-trab-puesto').value = '';
         document.getElementById('ast-trab-fecha-ingreso').value = new Date().toISOString().split('T')[0];
         document.getElementById('ast-form-title').textContent = 'Nuevo Trabajador';
     },
@@ -371,6 +387,8 @@ const Asistencia = {
         document.getElementById('ast-trab-id').value = t.id;
         document.getElementById('ast-trab-rut').value = t.rut;
         document.getElementById('ast-trab-nombre').value = t.nombre;
+        document.getElementById('ast-trab-telefono').value = t.telefono || '';
+        document.getElementById('ast-trab-puesto').value = t.puesto || '';
         const fi = t.fecha_ingreso ? t.fecha_ingreso.split('T')[0] : (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0]);
         document.getElementById('ast-trab-fecha-ingreso').value = fi;
         document.getElementById('ast-form-title').textContent = 'Editar Trabajador';
@@ -380,6 +398,8 @@ const Asistencia = {
         const id = document.getElementById('ast-trab-id').value;
         const rut = document.getElementById('ast-trab-rut').value.trim();
         const nombre = document.getElementById('ast-trab-nombre').value.trim();
+        const telefono = document.getElementById('ast-trab-telefono').value.trim();
+        const puesto = document.getElementById('ast-trab-puesto').value.trim();
         const fecha_ingreso = document.getElementById('ast-trab-fecha-ingreso').value || null;
         if (!rut || !nombre) return;
 
@@ -387,13 +407,13 @@ const Asistencia = {
             await fetch('/api/asistencia/trabajadores/' + id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rut, nombre, fecha_ingreso })
+                body: JSON.stringify({ rut, nombre, fecha_ingreso, telefono, puesto })
             });
         } else {
             await fetch('/api/asistencia/trabajadores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rut, nombre, fecha_ingreso })
+                body: JSON.stringify({ rut, nombre, fecha_ingreso, telefono, puesto })
             });
         }
         this.hideFormTrabajador();
@@ -558,10 +578,10 @@ const Asistencia = {
 
     exportExcelTrabajadores() {
         const trabajadores = this.trabajadoresAdmin || this.trabajadores || [];
-        let csv = 'Nombre,RUT,Estado,Fecha de incorporación\n';
+        let csv = 'Nombre,RUT,Telefono,Puesto,Estado,Fecha de incorporación\n';
         trabajadores.forEach(t => {
             const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
-            csv += `"${t.nombre}","${t.rut || ''}","${t.activo ? 'Activo' : 'Inactivo'}","${fi || ''}"\n`;
+            csv += `"${t.nombre}","${t.rut || ''}","${t.telefono || ''}","${t.puesto || ''}","${t.activo ? 'Activo' : 'Inactivo'}","${fi || ''}"\n`;
         });
         const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -578,10 +598,10 @@ const Asistencia = {
         let html = '<html><head><style>body{font-family:Arial,sans-serif;padding:20px}h1{font-size:18px;color:#0f172a}table{width:100%;border-collapse:collapse;margin-top:15px}th,td{border:1px solid #e2e8f0;padding:8px;text-align:left;font-size:12px}th{background:#f8fafc;font-weight:700;color:#64748b}.activo{color:#22c55e;font-weight:700}.inactivo{color:#dc2626}.stats{margin:15px 0;display:flex;gap:20px}.stat{padding:10px 15px;border-radius:8px;background:#f8fafc}</style></head><body>';
         html += '<h1>Listado de Trabajadores</h1>';
         html += '<div class="stats"><div class="stat"><strong>Total:</strong> ' + total + '</div><div class="stat"><strong>Activos:</strong> ' + activos + '</div><div class="stat"><strong>Inactivos:</strong> ' + inactivos + '</div></div>';
-        html += '<table><thead><tr><th>Nombre</th><th>RUT</th><th>Estado</th><th>Fecha de incorporación</th></tr></thead><tbody>';
+        html += '<table><thead><tr><th>Nombre</th><th>RUT</th><th>Telefono</th><th>Puesto</th><th>Estado</th><th>Fecha de incorporación</th></tr></thead><tbody>';
         trabajadores.forEach(t => {
             const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
-            html += '<tr><td>' + t.nombre + '</td><td>' + (t.rut || '') + '</td><td class="' + (t.activo ? 'activo' : 'inactivo') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</td><td>' + (fi ? this.fmtDate(fi) : '-') + '</td></tr>';
+            html += '<tr><td>' + t.nombre + '</td><td>' + (t.rut || '') + '</td><td>' + (t.telefono || '-') + '</td><td>' + (t.puesto || '-') + '</td><td class="' + (t.activo ? 'activo' : 'inactivo') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</td><td>' + (fi ? this.fmtDate(fi) : '-') + '</td></tr>';
         });
         html += '</tbody></table></body></html>';
         const win = window.open('', '_blank');
@@ -1544,6 +1564,22 @@ const Asistencia = {
         if (!d) return '-';
         const parts = d.split('T')[0].split('-');
         return parts[2] + '/' + parts[1] + '/' + parts[0];
+    },
+
+    formatPhone(input) {
+        let v = input.value.replace(/\D/g, '');
+        if (v.length > 0) {
+            if (v.startsWith('56')) {
+                v = '+56 ' + v.slice(2);
+            } else if (v.startsWith('9')) {
+                v = '+56 9 ' + v.slice(1);
+            } else {
+                v = '+56 9 ' + v;
+            }
+            if (v.length > 7) v = v.slice(0, 7) + ' ' + v.slice(7);
+            if (v.length > 14) v = v.slice(0, 14);
+        }
+        input.value = v;
     }
 };
 
