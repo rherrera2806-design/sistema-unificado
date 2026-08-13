@@ -238,6 +238,7 @@ const Asistencia = {
 
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
                 <div style="overflow:auto;max-height:65vh">
+                <div class="sigma-table-wrap">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
@@ -248,6 +249,8 @@ const Asistencia = {
                     </tr></thead>
                     <tbody id="ast-tabla-trabajadores"><tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
                 </table>
+                <div id="ast-cards-trabajadores"></div>
+                </div>
                 </div>
             </div>`;
 
@@ -277,6 +280,8 @@ const Asistencia = {
 
         if (data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:#94a3b8">Sin trabajadores</td></tr>';
+            const cardsEl = document.getElementById('ast-cards-trabajadores');
+            if (cardsEl) cardsEl.innerHTML = '';
             return;
         }
 
@@ -297,6 +302,20 @@ const Asistencia = {
                 + '<button onclick="Asistencia.eliminarTrabajador(' + t.id + ',\'' + t.nombre.replace(/'/g, "\\'") + '\')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                 + '</div></td></tr>';
         }).join('');
+
+        const cardsEl = document.getElementById('ast-cards-trabajadores');
+        if (cardsEl) {
+            cardsEl.innerHTML = SigmaCards.generate({
+                title: t => '<strong>' + t.nombre + '</strong>',
+                subtitle: t => t.rut,
+                badge: t => '<span class="sc-badge" style="background:' + (t.activo ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span>',
+                fields: [
+                    { label: 'Ingreso', value: t => { const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0]; return fi ? this.fmtDate(fi) : '-'; } }
+                ],
+                actions: t => '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline">Editar</button> '
+                    + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
+            }, data);
+        }
     },
 
     filtrarTrabajadores(filtro) {
@@ -427,6 +446,7 @@ const Asistencia = {
                     <span id="ast-badge-faltas" style="background:#fee2e2;color:#dc2626;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700">0 faltas</span>
                 </div>
                 <div style="overflow-x:auto">
+                    <div class="sigma-table-wrap">
                     <table style="width:100%;border-collapse:collapse;font-size:13px">
                         <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                             <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
@@ -436,6 +456,8 @@ const Asistencia = {
                         </tr></thead>
                         <tbody id="ast-tabla-faltas"><tr><td colspan="4" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">Cargando datos...</td></tr></tbody>
                     </table>
+                    <div id="ast-cards-faltas"></div>
+                    </div>
                 </div>
             </div>`;
 
@@ -685,6 +707,8 @@ const Asistencia = {
         if (badge) badge.textContent = f.length + ' faltas';
         if (f.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:#22c55e;font-size:13px;font-weight:600">Todos presentes hoy</td></tr>';
+            const cardsEl = document.getElementById('ast-cards-faltas');
+            if (cardsEl) cardsEl.innerHTML = '';
             return;
         }
         const fechaVista = document.getElementById('ast-hero-fecha')?.value || new Date().toISOString().split('T')[0];
@@ -702,6 +726,27 @@ const Asistencia = {
                 + '<td style="padding:12px 16px;text-align:center">' + accion + '</td>'
                 + '</tr>';
         }).join('');
+
+        const cardsEl = document.getElementById('ast-cards-faltas');
+        if (cardsEl) {
+            cardsEl.innerHTML = SigmaCards.generate({
+                title: a => '<strong>' + a.nombre + '</strong>',
+                subtitle: a => a.rut,
+                badge: a => {
+                    const fi = (a.fecha_ingreso || (a.created_at ? a.created_at.split('T')[0] : '')).split('T')[0];
+                    const creadoDespues = fi && fechaVista < fi;
+                    return creadoDespues
+                        ? '<span class="sc-badge" style="background:#f1f5f9;color:#94a3b8">N/A</span>'
+                        : '<span class="sc-badge" style="background:#fee2e2;color:#dc2626">Falta</span>';
+                },
+                fields: [],
+                actions: a => {
+                    const fi = (a.fecha_ingreso || (a.created_at ? a.created_at.split('T')[0] : '')).split('T')[0];
+                    const creadoDespues = fi && fechaVista < fi;
+                    return creadoDespues ? '' : '<button onclick="Asistencia.marcar(' + a.trabajador_id + ',false)" class="btn btn-sm" style="background:#22c55e;color:white">Corregir</button>';
+                }
+            }, f);
+        }
     },
 
     actualizarStats() {
@@ -822,6 +867,7 @@ const Asistencia = {
     renderPermisosTab(c) {
         c.innerHTML = `
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
+                <div class="sigma-table-wrap">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
@@ -834,6 +880,8 @@ const Asistencia = {
                     </tr></thead>
                     <tbody id="ast-tabla-permisos"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
                 </table>
+                <div id="ast-cards-permisos"></div>
+                </div>
             </div>`;
         this.cargarPermisos();
     },
@@ -846,7 +894,7 @@ const Asistencia = {
             const permisos = await r.json();
             const tbody = document.getElementById('ast-tabla-permisos');
             if (!tbody) return;
-            if (permisos.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin permisos registrados</td></tr>'; return; }
+            if (permisos.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin permisos registrados</td></tr>'; const cardsEl = document.getElementById('ast-cards-permisos'); if (cardsEl) cardsEl.innerHTML = ''; return; }
             const tipoL = { medico: 'Médico', personal: 'Personal', familiar: 'Familiar', otro: 'Otro' };
             tbody.innerHTML = permisos.map(p => {
                 const ec = p.estado === 'aprobado' ? 'background:#d1fae5;color:#059669' : p.estado === 'rechazado' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
@@ -865,6 +913,36 @@ const Asistencia = {
                     + '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                     + '</td></tr>';
             }).join('');
+
+            const cardsEl = document.getElementById('ast-cards-permisos');
+            if (cardsEl) {
+                const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+                const permUser = user.permisos || [];
+                const puedeAprobar = permUser.includes('asistencia.editar') || permUser.includes('usuarios');
+                cardsEl.innerHTML = SigmaCards.generate({
+                    title: p => '<strong>' + p.nombre + '</strong>',
+                    subtitle: p => (tipoL[p.tipo] || p.tipo),
+                    badge: p => {
+                        const ec = p.estado === 'aprobado' ? '#d1fae5;color:#059669' : p.estado === 'rechazado' ? '#fee2e2;color:#dc2626' : '#fef3c7;color:#d97706';
+                        return '<span class="sc-badge" style="background:' + ec + '">' + p.estado + '</span>';
+                    },
+                    fields: [
+                        { label: 'Fecha', value: p => this.fmtDate(p.fecha_inicio) },
+                        { label: 'Horas', value: p => (Number(p.horas) || 0) + ' hrs' },
+                        { label: 'Motivo', value: p => p.motivo || '-' }
+                    ],
+                    actions: p => {
+                        let html = '';
+                        if (p.estado === 'pendiente' && puedeAprobar) {
+                            html += '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">Aprobar</button>';
+                            html += '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="btn btn-sm btn-danger" style="margin-right:4px">Rechazar</button>';
+                        }
+                        html += '<button onclick="Asistencia.editarPermiso(' + p.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
+                        html += '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+                        return html;
+                    }
+                }, permisos);
+            }
         } catch(e) { console.error('Error:', e); }
     },
 
@@ -915,6 +993,7 @@ const Asistencia = {
     renderLicenciasTab(c) {
         c.innerHTML = `
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
+                <div class="sigma-table-wrap">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
@@ -927,6 +1006,8 @@ const Asistencia = {
                     </tr></thead>
                     <tbody id="ast-tabla-licencias"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
                 </table>
+                <div id="ast-cards-licencias"></div>
+                </div>
             </div>`;
         this.cargarLicencias();
     },
@@ -939,7 +1020,7 @@ const Asistencia = {
             const licencias = await r.json();
             const tbody = document.getElementById('ast-tabla-licencias');
             if (!tbody) return;
-            if (licencias.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin licencias registradas</td></tr>'; return; }
+            if (licencias.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin licencias registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-licencias'); if (cardsEl) cardsEl.innerHTML = ''; return; }
             tbody.innerHTML = licencias.map(l => {
                 const ec = l.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : l.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
                 const dias = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / 86400000) + 1;
@@ -958,6 +1039,36 @@ const Asistencia = {
                     + '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                     + '</td></tr>';
             }).join('');
+
+            const cardsEl = document.getElementById('ast-cards-licencias');
+            if (cardsEl) {
+                const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+                const permUser = user.permisos || [];
+                const puedeAprobar = permUser.includes('asistencia.editar') || permUser.includes('usuarios');
+                cardsEl.innerHTML = SigmaCards.generate({
+                    title: l => '<strong>' + l.nombre + '</strong>',
+                    subtitle: l => l.diagnostico || '-',
+                    badge: l => {
+                        const ec = l.estado === 'aprobada' ? '#d1fae5;color:#059669' : l.estado === 'rechazada' ? '#fee2e2;color:#dc2626' : '#fef3c7;color:#d97706';
+                        return '<span class="sc-badge" style="background:' + ec + '">' + l.estado + '</span>';
+                    },
+                    fields: [
+                        { label: 'Inicio', value: l => this.fmtDate(l.fecha_inicio) },
+                        { label: 'Fin', value: l => this.fmtDate(l.fecha_fin) },
+                        { label: 'Días', value: l => { const d = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / 86400000) + 1; return d + ' días'; } }
+                    ],
+                    actions: l => {
+                        let html = '';
+                        if (l.estado === 'pendiente' && puedeAprobar) {
+                            html += '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">Aprobar</button>';
+                            html += '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="btn btn-sm btn-danger" style="margin-right:4px">Rechazar</button>';
+                        }
+                        html += '<button onclick="Asistencia.editarLicencia(' + l.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
+                        html += '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+                        return html;
+                    }
+                }, licencias);
+            }
         } catch(e) { console.error('Error:', e); }
     },
 
@@ -1006,6 +1117,7 @@ const Asistencia = {
     renderVacacionesTab(c) {
         c.innerHTML = `
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;overflow:hidden">
+                <div class="sigma-table-wrap">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
@@ -1017,6 +1129,8 @@ const Asistencia = {
                     </tr></thead>
                     <tbody id="ast-tabla-vacaciones"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
                 </table>
+                <div id="ast-cards-vacaciones"></div>
+                </div>
             </div>`;
         this.cargarVacaciones();
     },
@@ -1029,7 +1143,7 @@ const Asistencia = {
             const vacaciones = await r.json();
             const tbody = document.getElementById('ast-tabla-vacaciones');
             if (!tbody) return;
-            if (vacaciones.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin vacaciones registradas</td></tr>'; return; }
+            if (vacaciones.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin vacaciones registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-vacaciones'); if (cardsEl) cardsEl.innerHTML = ''; return; }
             tbody.innerHTML = vacaciones.map(v => '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(v.fecha_inicio) + '</td>'
@@ -1040,6 +1154,21 @@ const Asistencia = {
                 + '<button onclick="Asistencia.editarVacacion(' + v.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
                 + '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                 + '</td></tr>').join('');
+
+            const cardsEl = document.getElementById('ast-cards-vacaciones');
+            if (cardsEl) {
+                cardsEl.innerHTML = SigmaCards.generate({
+                    title: v => '<strong>' + v.nombre + '</strong>',
+                    badge: v => '<span class="sc-badge" style="background:#dbeafe;color:#2563eb">' + (v.estado || 'Programado') + '</span>',
+                    fields: [
+                        { label: 'Inicio', value: v => this.fmtDate(v.fecha_inicio) },
+                        { label: 'Fin', value: v => this.fmtDate(v.fecha_fin) },
+                        { label: 'Días', value: v => v.dias + ' días' }
+                    ],
+                    actions: v => '<button onclick="Asistencia.editarVacacion(' + v.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>'
+                        + '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" class="btn btn-sm btn-danger">Eliminar</button>'
+                }, vacaciones);
+            }
         } catch(e) { console.error('Error:', e); }
     },
 
@@ -1083,6 +1212,7 @@ const Asistencia = {
     renderHorasExtrasTab(c) {
         c.innerHTML = `
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;overflow:hidden">
+                <div class="sigma-table-wrap">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
@@ -1094,6 +1224,8 @@ const Asistencia = {
                     </tr></thead>
                     <tbody id="ast-tabla-horas-extras"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
                 </table>
+                <div id="ast-cards-horas-extras"></div>
+                </div>
             </div>`;
         this.cargarHorasExtras();
     },
@@ -1106,12 +1238,12 @@ const Asistencia = {
             const horasExtras = await r.json();
             const tbody = document.getElementById('ast-tabla-horas-extras');
             if (!tbody) return;
-            if (horasExtras.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin horas extras registradas</td></tr>'; return; }
+            if (horasExtras.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin horas extras registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-horas-extras'); if (cardsEl) cardsEl.innerHTML = ''; return; }
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const permUser = user.permisos || [];
+            const puedeAprobar = permUser.includes('asistencia.editar') || permUser.includes('usuarios');
             tbody.innerHTML = horasExtras.map(he => {
                 const ec = he.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : he.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#dbeafe;color:#2563eb';
-                const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-                const permUser = user.permisos || [];
-                const puedeAprobar = permUser.includes('asistencia.editar') || permUser.includes('usuarios');
                 return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + he.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(he.fecha) + '</td>'
@@ -1124,6 +1256,32 @@ const Asistencia = {
                 + '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
                 + '</td></tr>';
             }).join('');
+
+            const cardsEl = document.getElementById('ast-cards-horas-extras');
+            if (cardsEl) {
+                cardsEl.innerHTML = SigmaCards.generate({
+                    title: he => '<strong>' + he.nombre + '</strong>',
+                    subtitle: he => he.motivo || '-',
+                    badge: he => {
+                        const ec = he.estado === 'aprobada' ? '#d1fae5;color:#059669' : he.estado === 'rechazada' ? '#fee2e2;color:#dc2626' : '#dbeafe;color:#2563eb';
+                        return '<span class="sc-badge" style="background:' + ec + '">' + (he.estado || 'pendiente') + '</span>';
+                    },
+                    fields: [
+                        { label: 'Fecha', value: he => this.fmtDate(he.fecha) },
+                        { label: 'Horas', value: he => he.horas + ' hrs' }
+                    ],
+                    actions: he => {
+                        let html = '';
+                        if (puedeAprobar && (!he.estado || he.estado === 'pendiente')) {
+                            html += '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'aprobada\')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">Aprobar</button>';
+                            html += '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'rechazada\')" class="btn btn-sm btn-danger" style="margin-right:4px">Rechazar</button>';
+                        }
+                        html += '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
+                        html += '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+                        return html;
+                    }
+                }, horasExtras);
+            }
         } catch(e) { console.error('Error:', e); }
     },
 
@@ -1209,6 +1367,7 @@ const Asistencia = {
 
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
                 <div style="overflow:auto;max-height:65vh">
+                <div class="sigma-table-wrap">
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">#</th>
@@ -1223,6 +1382,8 @@ const Asistencia = {
                     </tr></thead>
                     <tbody id="ast-tabla-reporte"><tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8">Cargando reporte...</td></tr></tbody>
                 </table>
+                <div id="ast-cards-reporte"></div>
+                </div>
                 </div>
             </div>`;
 
@@ -1248,7 +1409,7 @@ const Asistencia = {
     renderReporte(reporte) {
         const tbody = document.getElementById('ast-tabla-reporte');
         if (!tbody) return;
-        if (reporte.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8">Sin datos</td></tr>'; return; }
+        if (reporte.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8">Sin datos</td></tr>'; const cardsEl = document.getElementById('ast-cards-reporte'); if (cardsEl) cardsEl.innerHTML = ''; return; }
         const mes = parseInt(document.getElementById('ast-hero-mes')?.value) || (new Date().getMonth() + 1);
         const anio = new Date().getFullYear();
         const hoy = new Date();
@@ -1288,6 +1449,39 @@ const Asistencia = {
                 + '<td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px"></div></div><span style="font-size:12px;font-weight:700;color:' + color + '">' + pct + '%</span></div></td>'
                 + '</tr>';
         }).join('');
+
+        const cardsEl = document.getElementById('ast-cards-reporte');
+        if (cardsEl) {
+            cardsEl.innerHTML = SigmaCards.generate({
+                title: (r, i) => '<strong>' + r.nombre + '</strong>',
+                badge: r => {
+                    const faltas = Number(r.faltas) || 0;
+                    const permisos = Number(r.permisos_aprobados) || 0;
+                    const licencias = Number(r.dias_licencia) || 0;
+                    const vacaciones = Number(r.dias_vacaciones) || 0;
+                    const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
+                    const pct = diasHabiles > 0 ? Math.round((asistidos / diasHabiles) * 100) : 0;
+                    const color = pct >= 80 ? '#d1fae5;color:#059669' : pct >= 60 ? '#fef3c7;color:#d97706' : '#fee2e2;color:#dc2626';
+                    return '<span class="sc-badge" style="background:' + color + '">' + pct + '%</span>';
+                },
+                fields: r => {
+                    const faltas = Number(r.faltas) || 0;
+                    const permisos = Number(r.permisos_aprobados) || 0;
+                    const licencias = Number(r.dias_licencia) || 0;
+                    const vacaciones = Number(r.dias_vacaciones) || 0;
+                    const he = Number(r.horas_extras) || 0;
+                    const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
+                    return [
+                        { label: 'Asistidos', value: () => asistidos.toFixed(1) },
+                        { label: 'Faltas', value: () => faltas },
+                        { label: 'Permisos', value: () => permisos.toFixed(1) + ' días' },
+                        { label: 'Licencias', value: () => licencias + ' días' },
+                        { label: 'Vacaciones', value: () => vacaciones + ' días' },
+                        { label: 'H. Extras', value: () => he.toFixed(1) + ' hrs' }
+                    ];
+                }
+            }, reporte);
+        }
     },
 
     renderRanking(ranking) {
