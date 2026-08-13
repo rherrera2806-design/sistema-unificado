@@ -76,6 +76,11 @@ const Asistencia = {
                 + '.ast-hero-filters>div{flex-wrap:wrap;justify-content:center}'
                 + '}'
                 + '@media(max-width:768px){.ast-podium{flex-direction:column;align-items:center}}'
+                + '.ast-form-grid{display:flex;flex-wrap:wrap;gap:12px;align-items:end}'
+                + '.ast-form-grid>div{flex:1 1 100%;min-width:0;box-sizing:border-box}'
+                + '.ast-form-actions{display:flex;gap:6px;flex:1 1 100%}'
+                + '@media(min-width:640px){.ast-form-grid>div{flex:1 1 calc(50% - 6px)}}'
+                + '@media(min-width:1024px){.ast-form-grid>div{flex:1 1 calc(20% - 10px)}.ast-form-actions{flex:0 0 auto}}'
                 + '</style>'
 
                 + '<div class="ast-hero-wrap">'
@@ -223,12 +228,12 @@ const Asistencia = {
         const canEditT = permPerms.includes('asistencia.editar') || permPerms.includes('asistencia') || permPerms.length === 0;
         const canDeleteT = permPerms.includes('asistencia.eliminar') || permPerms.length === 0;
         c.innerHTML = `
-            <div id="ast-form-trabajador" style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:20px 24px;margin-bottom:20px;animation:astFadeUp 0.3s ease both">
+            <div id="ast-form-trabajador" style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:20px 24px;margin-bottom:20px;animation:astFadeUp 0.3s ease both;overflow:hidden;width:100%;box-sizing:border-box">
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
                     <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
                     <h4 id="ast-form-title" style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Nuevo Trabajador</h4>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;align-items:end">
+                <div class="ast-form-grid">
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">RUT</label>
                         <input type="text" id="ast-trab-rut" class="ast-input" placeholder="12.345.678-9" style="width:100%">
@@ -249,7 +254,7 @@ const Asistencia = {
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Fecha de incorporación</label>
                         <input type="date" id="ast-trab-fecha-ingreso" class="ast-input" style="width:100%">
                     </div>
-                    <div style="display:flex;gap:6px">
+                    <div class="ast-form-actions">
                         <button onclick="Asistencia.guardarTrabajador()" class="btn btn-primary">Guardar</button>
                         <button onclick="Asistencia.hideFormTrabajador()" class="btn btn-outline">Cancelar</button>
                     </div>
