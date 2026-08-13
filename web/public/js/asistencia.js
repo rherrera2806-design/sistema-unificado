@@ -59,8 +59,9 @@ const Asistencia = {
                 + '.ast-cal-cell.presente{background:#d1fae5}.ast-cal-cell.falta{background:#fee2e2;color:#dc2626;font-weight:700}'
                 + '.ast-cal-cell.vacaciones{background:#dbeafe;color:#2563eb}.ast-cal-cell.licencia{background:#fef3c7;color:#d97706}'
                 + '.ast-cal-cell.fin-semana{background:#f8fafc}.ast-cal-cell.hoy{outline:2px solid #3b82f6;outline-offset:-2px}'
-                + '.ast-cal-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}'
+                + '.ast-cal-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;position:relative}'
                 + '.ast-cal-scroll::-webkit-scrollbar{height:6px}.ast-cal-scroll::-webkit-scrollbar-track{background:#f1f5f9;border-radius:3px}.ast-cal-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}'
+                + '.ast-cal-sticky-col{position:sticky;left:0;z-index:3;background:#fafbfc;border-right:2px solid #e2e8f0}'
                 + '@media(max-width:640px){'
                 + '.ast-cal-cell{min-height:40px;padding:4px 2px;font-size:11px;gap:2px}'
                 + '.ast-cal-cell svg{width:14px;height:14px}'
@@ -858,7 +859,7 @@ const Asistencia = {
         const filtered = busqueda ? trabajadores.filter(t => t.nombre.toLowerCase().includes(busqueda) || (t.rut && t.rut.toLowerCase().includes(busqueda))) : trabajadores;
 
         let html = '<div class="ast-cal-scroll"><div class="ast-cal-header" style="grid-template-columns:140px repeat(' + diasEnMes + ',minmax(36px,1fr))">';
-        html += '<div style="padding:8px 12px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #e2e8f0">Trabajador</div>';
+        html += '<div class="ast-cal-sticky-col" style="padding:8px 12px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;background:white">Trabajador</div>';
         for (let d = 1; d <= diasEnMes; d++) {
             const fecha = new Date(anio, mes - 1, d);
             const esFin = fecha.getDay() === 0 || fecha.getDay() === 6;
@@ -870,7 +871,7 @@ const Asistencia = {
         filtered.forEach(t => {
             const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
             html += '<div class="ast-cal-row" style="grid-template-columns:140px repeat(' + diasEnMes + ',minmax(36px,1fr))">';
-            html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + (fi ? ' (Fecha de incorporación: ' + this.fmtDate(fi) + ')' : '') + '">' + t.nombre + '</span></div>';
+            html += '<div class="ast-cal-sticky-col" style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;background:white"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + (fi ? ' (Fecha de incorporación: ' + this.fmtDate(fi) + ')' : '') + '">' + t.nombre + '</span></div>';
 
             for (let d = 1; d <= diasEnMes; d++) {
                 const fechaStr = anio + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
