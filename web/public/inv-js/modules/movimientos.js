@@ -26,56 +26,60 @@ const InvMovimientos = {
 .invMov-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
 .invMov-row{transition:all 0.2s}
 .invMov-row:hover{transform:translateX(2px);background:#f8fafc!important}
+.inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px;align-items:end}
+@media(max-width:640px){.inv-form-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+@media(max-width:400px){.inv-form-grid{grid-template-columns:1fr}}
+.inv-form-grid .form-group{margin:0}
+.inv-form-grid label{font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b}
+.inv-form-grid input,.inv-form-grid select{padding:8px 10px;font-size:13px;width:100%;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:6px}
+.inv-form-bottom{display:flex;gap:10px;margin-top:12px;align-items:end;padding-top:10px;border-top:1px solid #f1f5f9}
+@media(max-width:640px){.inv-form-bottom{flex-direction:column;gap:8px}.inv-form-bottom .btn{width:100%}}
 </style>
                 <div class="card invMov-card" style="margin-bottom:16px;">
-                    <div class="card-header" style="padding:10px 16px;font-size:13px;">Nuevo Movimiento</div>
-                    <div class="card-body" style="padding:12px 16px;">
+                    <div class="card-header" style="padding:10px 16px;font-size:13px;font-weight:600">Nuevo Movimiento</div>
+                    <div class="card-body" style="padding:14px 16px">
                         <form onsubmit="InvMovimientos.guardar(event)">
-                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 12px;align-items:end">
-                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Tipo Movimiento *</label>
-                                    <div style="display:flex;gap:8px">
-                                        <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')" style="flex:1;text-align:center;padding:6px 8px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Entrada</label>
-                                        <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')" style="flex:1;text-align:center;padding:6px 8px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</label>
+                            <div class="inv-form-grid">
+                                <div><label>Tipo Movimiento *</label>
+                                    <div style="display:flex;gap:6px">
+                                        <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')" style="flex:1;text-align:center;padding:8px;font-size:12px;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Entrada</label>
+                                        <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')" style="flex:1;text-align:center;padding:8px;font-size:12px;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</label>
                                     </div>
                                 </div>
-                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Materia Prima *</label>
-                                    <select id="materiaPrimaId" class="form-control" required onchange="InvMovimientos.onMpChange()" style="padding:6px 8px;font-size:12px">
-                                        <option value="">Seleccionar...</option>
-                                        ${mpOptions}
+                                <div><label>Materia Prima *</label>
+                                    <select id="materiaPrimaId" class="form-control" required onchange="InvMovimientos.onMpChange()">
+                                        <option value="">Seleccionar...</option>${mpOptions}
                                     </select>
                                 </div>
-                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Tipo Salida</label>
-                                    <div id="tipoSalidaGroup" style="display:none;gap:6px">
-                                        <label class="tipo-btn" id="btnPlancha" onclick="InvMovimientos.setTipoSalida('plancha_completa')" style="font-size:11px;padding:4px 8px">Plancha</label>
-                                        <label class="tipo-btn" id="btnTrozo" onclick="InvMovimientos.setTipoSalida('trozo')" style="font-size:11px;padding:4px 8px">Trozo</label>
+                                <div id="tipoSalidaGroup" style="display:none"><label>Tipo Salida</label>
+                                    <div style="display:flex;gap:6px">
+                                        <label class="tipo-btn" id="btnPlancha" onclick="InvMovimientos.setTipoSalida('plancha_completa')" style="flex:1;text-align:center;padding:6px;font-size:11px;cursor:pointer">Plancha</label>
+                                        <label class="tipo-btn" id="btnTrozo" onclick="InvMovimientos.setTipoSalida('trozo')" style="flex:1;text-align:center;padding:6px;font-size:11px;cursor:pointer">Trozo</label>
                                     </div>
                                 </div>
-                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Ancho (mm) *</label><input type="number" id="ancho" class="form-control" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()" style="padding:6px 8px;font-size:12px"></div>
-                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Alto (mm) *</label><input type="number" id="alto" class="form-control" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()" style="padding:6px 8px;font-size:12px"></div>
-                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Cantidad *</label><input type="number" id="cantidadPlanchas" class="form-control" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()" style="padding:6px 8px;font-size:12px"></div>
-                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">m2</label><div id="m2Display" style="padding:6px 8px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;font-size:14px;font-weight:700;color:var(--primary)">0.00</div></div>
-                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Proveedor</label><input type="text" id="proveedor" class="form-control" placeholder="Opcional" style="padding:6px 8px;font-size:12px"></div>
-                                <div class="form-group" style="margin:0"><label style="font-size:11px;margin-bottom:4px">Fecha</label><input type="date" id="fecha" class="form-control" style="padding:6px 8px;font-size:12px"></div>
+                                <div><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                <div><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                <div><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                <div><label>m²</label><div id="m2Display" style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:16px;font-weight:700;color:#2563eb">0.00</div></div>
+                                <div><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
+                                <div><label>Fecha</label><input type="date" id="fecha"></div>
                             </div>
-                            <div style="display:flex;gap:8px;margin-top:8px;align-items:end">
-                                <div class="form-group" style="margin:0;flex:1"><label style="font-size:11px;margin-bottom:4px">Observaciones</label><input type="text" id="observaciones" class="form-control" placeholder="Notas..." style="padding:6px 8px;font-size:12px"></div>
-                                <button type="submit" class="btn btn-primary" style="padding:8px 20px;font-size:12px;white-space:nowrap">Registrar</button>
+                            <div class="inv-form-bottom">
+                                <div style="flex:1"><label style="font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b">Observaciones</label><input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>
+                                <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-size:13px;white-space:nowrap">Registrar</button>
                             </div>
                         </form>
                     </div>
                 </div>
                 <div style="display:flex;gap:8px;margin-bottom:12px;justify-content:space-between;align-items:center;flex-wrap:wrap">
                     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                        <span style="font-weight:500;color:var(--gray-700);font-size:12px">Filtrar:</span>
+                        <span style="font-weight:500;color:#64748b;font-size:12px">Filtrar:</span>
                         <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll" style="font-size:11px;padding:4px 10px">Todos</a>
                         <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt" style="font-size:11px;padding:4px 10px">Entradas</a>
                         <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal" style="font-size:11px;padding:4px 10px">Salidas</a>
                     </div>
                     <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger btn-sm" style="font-size:11px;padding:5px 12px" title="Eliminar todos los movimientos"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>
                 </div>
-                <div class="card invMov-card">
-                    <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll">Todos</a>
-                    <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</a>
                     <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</a>
                 </div>
                 <div class="card invMov-card">
