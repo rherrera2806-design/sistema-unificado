@@ -59,6 +59,7 @@ const Asistencia = {
                 + '.ast-cal-cell.presente{background:#d1fae5}.ast-cal-cell.falta{background:#fee2e2;color:#dc2626;font-weight:700}'
                 + '.ast-cal-cell.vacaciones{background:#dbeafe;color:#2563eb}.ast-cal-cell.licencia{background:#fef3c7;color:#d97706}'
                 + '.ast-cal-cell.fin-semana{background:#f8fafc}.ast-cal-cell.hoy{outline:2px solid #3b82f6;outline-offset:-2px}'
+                + '@media(max-width:640px){.ast-cal-cell{min-height:36px;padding:6px 2px;font-size:11px}.ast-cal-cell svg{width:14px;height:14px}}'
                 + '#ast-hero-buscar::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
                 + '#ast-hero-fecha{color-scheme:dark}'
                 + '#ast-hero-mes option,#ast-hero-anio option{color:#1e293b;background:white}'

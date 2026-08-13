@@ -35,10 +35,23 @@ router.get('/api/asistencia/trabajadores/activos', async (req, res) => {
 router.post('/api/asistencia/trabajadores', async (req, res) => {
     try {
         const { rut, nombre, fecha_ingreso, telefono, puesto } = req.body;
-        const result = await pool.query(
-            'INSERT INTO trabajadores (rut, nombre, fecha_ingreso, telefono, puesto) VALUES ($1, $2, COALESCE($3, CURRENT_DATE), $4, $5) RETURNING *',
-            [rut, nombre, fecha_ingreso || null, telefono || null, puesto || null]
-        );
+        let result;
+        try {
+            result = await pool.query(
+                'INSERT INTO trabajadores (rut, nombre, fecha_ingreso, telefono, puesto) VALUES ($1, $2, COALESCE($3, CURRENT_DATE), $4, $5) RETURNING *',
+                [rut, nombre, fecha_ingreso || null, telefono || null, puesto || null]
+            );
+        } catch (e) {
+            // Si falla por columnas inexistentes, hacer sin telefono/puesto
+            if (e.message && e.message.includes('column') && (e.message.includes('telefono') || e.message.includes('puesto'))) {
+                result = await pool.query(
+                    'INSERT INTO trabajadores (rut, nombre, fecha_ingreso) VALUES ($1, $2, COALESCE($3, CURRENT_DATE)) RETURNING *',
+                    [rut, nombre, fecha_ingreso || null]
+                );
+            } else {
+                throw e;
+            }
+        }
         res.json(result.rows[0]);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -49,17 +62,32 @@ router.put('/api/asistencia/trabajadores/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { nombre, rut, activo, fecha_ingreso, telefono, puesto } = req.body;
-        const result = await pool.query(
-            `UPDATE trabajadores SET 
-                nombre = COALESCE($1, nombre), 
-                rut = COALESCE($2, rut), 
-                activo = COALESCE($3, activo), 
-                fecha_ingreso = COALESCE($4, fecha_ingreso),
-                telefono = CASE WHEN $5::text IS NOT NULL THEN $5::text ELSE telefono END,
-                puesto = CASE WHEN $6::text IS NOT NULL THEN $6::text ELSE puesto END
-            WHERE id = $7 RETURNING *`,
-            [nombre, rut, activo, fecha_ingreso || null, telefono, puesto, id]
-        );
+        
+        // Primero intentar con las columnas nuevas
+        let result;
+        try {
+            result = await pool.query(
+                `UPDATE trabajadores SET 
+                    nombre = COALESCE($1, nombre), 
+                    rut = COALESCE($2, rut), 
+                    activo = COALESCE($3, activo), 
+                    fecha_ingreso = COALESCE($4, fecha_ingreso),
+                    telefono = $5,
+                    puesto = $6
+                WHERE id = $7 RETURNING *`,
+                [nombre, rut, activo, fecha_ingreso || null, telefono || null, puesto || null, id]
+            );
+        } catch (e) {
+            // Si falla por columnas inexistentes, hacer sin telefono/puesto
+            if (e.message && e.message.includes('column') && (e.message.includes('telefono') || e.message.includes('puesto'))) {
+                result = await pool.query(
+                    'UPDATE trabajadores SET nombre = COALESCE($1, nombre), rut = COALESCE($2, rut), activo = COALESCE($3, activo), fecha_ingreso = COALESCE($4, fecha_ingreso) WHERE id = $5 RETURNING *',
+                    [nombre, rut, activo, fecha_ingreso || null, id]
+                );
+            } else {
+                throw e;
+            }
+        }
         res.json(result.rows[0]);
     } catch (e) {
         res.status(500).json({ error: e.message });
