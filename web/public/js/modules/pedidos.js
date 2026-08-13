@@ -63,7 +63,7 @@ App.registerModule('pedidos', {
                 + '<button onclick="App.modules.pedidos.toggleGrafico()" id="pedBtnGrafico" class="btn btn-info"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Ir a Grafico</button></div>'
                 + '<div id="pedGraficoContainer" style="display:none;padding:20px 24px;border-bottom:1px solid #e2e8f0"></div>'
                 + '<div id="pedTablaContainer" style="display:block">'
-                + '<div style="overflow:auto;max-height:65vh"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+                + '<div style="overflow:auto;max-height:65vh"><div class="sigma-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:13px">'
                 + '<thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
                 + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">N Pedido</th>'
                 + '<th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Cliente</th>'
@@ -77,7 +77,9 @@ App.registerModule('pedidos', {
                 + '<th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
                 + '</tr></thead><tbody id="pedidosTable">'
                 + '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8"><div style="font-size:14px">Cargando pedidos...</div></td></tr>'
-                + '</tbody></table></div></div></div>'
+                + '</tbody></table></div>'
+                + '<div id="pedidosCards"></div>'
+                + '</div></div></div>'
 
                 + this.uploadModalHtml()
                 + this.reviewModalHtml()
@@ -251,11 +253,13 @@ App.registerModule('pedidos', {
 
     renderTable(pedidos) {
         const tbody = document.getElementById('pedidosTable');
+        const cardsEl = document.getElementById('pedidosCards');
         if (!pedidos.length) {
             tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:56px 20px">'
                 + '<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
                 + '<div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:4px">Sin pedidos</div>'
                 + '<div style="color:#94a3b8;font-size:13px">No hay pedidos que mostrar</div></td></tr>';
+            if (cardsEl) cardsEl.innerHTML = '';
             return;
         }
         tbody.innerHTML = pedidos.map(p => {
@@ -281,6 +285,34 @@ App.registerModule('pedidos', {
                 + (this.canAuthorize ? '<button title="Editar pedido" onclick="event.stopPropagation();App.modules.pedidos.showEditModal(' + p.id + ')" class="btn btn-sm btn-outline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
                 + '</td></tr>';
         }).join('');
+
+        if (cardsEl) {
+            cardsEl.innerHTML = SigmaCards.generate({
+                title: p => '<strong>' + escapeHtml(p.numero_pedido) + '</strong>',
+                subtitle: p => escapeHtml(p.cliente),
+                badge: p => this.badgeHtml(p.estado, p.motivo_rechazo),
+                fields: [
+                    { label: 'Tipo', value: p => this.tipoOvHtml(p.tipo_ov) },
+                    { label: 'Vendedor', value: p => escapeHtml(p.vendedor_nombre || p.vendedor) },
+                    { label: 'Fecha', value: p => this.fmtDateTime(p.fecha_subida) },
+                    { label: 'Revisor', value: p => escapeHtml(p.revisor_nombre || '-') }
+                ],
+                actions: p => {
+                    let html = '';
+                    if (p.estado === 'pendiente') {
+                        html += '<button onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')" class="btn btn-sm btn-info" style="margin-right:4px">PDF</button>';
+                    }
+                    if (this.canAuthorize && p.estado === 'pendiente') {
+                        html += '<button onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')" class="btn btn-sm btn-info" style="margin-right:4px">Revisar</button>';
+                    }
+                    if (this.canAuthorize) {
+                        html += '<button onclick="event.stopPropagation();App.modules.pedidos.showEditModal(' + p.id + ')" class="btn btn-sm btn-outline">Editar</button>';
+                    }
+                    return html;
+                }
+            }, pedidos);
+        }
+
         this.updatePendingBadge(pedidos);
     },
 
@@ -300,6 +332,9 @@ App.registerModule('pedidos', {
         if (t === 'Reposicion') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#dc2626;color:white">Reposición</span>';
         if (t === 'Urgencia') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f97316;color:white">Urgencia</span>';
         return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#e0f2fe;color:#0f172a">Normal</span>';
+    },
+    tipoOvHtml(tipo) {
+        return tipo || 'Normal';
     },
 
     updatePendingBadge(pedidos) {
