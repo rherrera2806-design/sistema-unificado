@@ -134,8 +134,18 @@ const InvMovimientos = {
 
     setTipo(t) {
         this.tipoMovimiento = t;
-        document.getElementById('btnEntrada').classList.toggle('active', t === 'entrada');
-        document.getElementById('btnSalida').classList.toggle('active', t === 'salida');
+        const btnE = document.getElementById('btnEntrada');
+        const btnS = document.getElementById('btnSalida');
+        if (t === 'entrada') {
+            btnE.style.background = '#dcfce7'; btnE.style.color = '#166534'; btnE.style.border = '1px solid #22c55e';
+            btnS.style.background = ''; btnS.style.color = ''; btnS.style.border = '';
+        } else if (t === 'salida') {
+            btnS.style.background = '#fee2e2'; btnS.style.color = '#991b1b'; btnS.style.border = '1px solid #ef4444';
+            btnE.style.background = ''; btnE.style.color = ''; btnE.style.border = '';
+        } else {
+            btnE.style.background = ''; btnE.style.color = ''; btnE.style.border = '';
+            btnS.style.background = ''; btnS.style.color = ''; btnS.style.border = '';
+        }
         document.getElementById('tipoSalidaGroup').style.display = t === 'salida' ? 'block' : 'none';
     },
     setTipoSalida(ts) {
