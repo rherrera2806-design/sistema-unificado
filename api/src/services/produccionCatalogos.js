@@ -6,7 +6,7 @@ const { query } = require('../config/database');
 // ============ MATERIAS PRIMAS ============
 
 const getMateriasPrimas = async () => {
-    const result = await query('SELECT * FROM materias_primas ORDER BY codigo_mp');
+    const result = await query('SELECT * FROM materias_primas ORDER BY nombre, espesor_mm');
     return result.rows;
 };
 
