@@ -176,6 +176,9 @@ App.registerModule('usuarios', {
                 { id: 'prod_notas', label: 'Mis Pendientes' },
                 { id: 'prod_config', label: 'Configuracion' },
                 { id: 'taller', label: 'Taller' }
+            ]},
+            { key: 'costeo', label: 'COSTEO', subs: [
+                { id: 'costeo', label: 'Costeo' }
             ]}
         ];
 
