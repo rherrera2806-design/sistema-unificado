@@ -579,6 +579,14 @@ async function runMigrations() {
         console.error('Migration warning (telefono/puesto):', e.message);
     }
     try {
+        await query("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS materia_prima_id INTEGER REFERENCES materias_primas(id)");
+        await query("CREATE INDEX IF NOT EXISTS idx_movimientos_materia_prima ON movimientos(materia_prima_id)");
+        await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0");
+        await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0");
+    } catch (e) {
+        console.error('Migration warning (inventario-materias_primas):', e.message);
+    }
+    try {
         await query(`CREATE TABLE IF NOT EXISTS procesos_carroceria_sap (
             id SERIAL PRIMARY KEY,
             codigo_sap VARCHAR(50) UNIQUE NOT NULL,

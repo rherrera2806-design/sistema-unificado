@@ -2,12 +2,16 @@ const { query } = require('../config/database');
 const { sanitizeString } = require('../utils/helpers');
 
 async function getMovimientos(filtros = {}) {
-    let sql = 'SELECT m.*, u.nombre as usuario_nombre FROM movimientos m LEFT JOIN usuarios u ON m.usuario_id = u.id';
+    let sql = `SELECT m.*, u.nombre as usuario_nombre,
+        mp.codigo_mp, mp.nombre as mp_nombre, mp.espesor_mm, mp.costo_unitario_mp
+        FROM movimientos m 
+        LEFT JOIN usuarios u ON m.usuario_id = u.id
+        LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id`;
     const conditions = [];
     const params = [];
     let idx = 1;
     if (filtros.tipo) { conditions.push(`m.tipo_movimiento = $${idx++}`); params.push(filtros.tipo); }
-    if (filtros.cristal) { conditions.push(`m.tipo_cristal = $${idx++}`); params.push(filtros.cristal); }
+    if (filtros.cristal) { conditions.push(`(mp.nombre ILIKE $${idx} OR m.tipo_cristal ILIKE $${idx})`); params.push('%' + filtros.cristal + '%'); idx++; }
     if (filtros.fechaInicio) { conditions.push(`m.fecha_hora >= $${idx++}`); params.push(filtros.fechaInicio); }
     if (filtros.fechaFin) { conditions.push(`m.fecha_hora <= $${idx++}`); params.push(filtros.fechaFin + ' 23:59:59'); }
     if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
@@ -17,16 +21,38 @@ async function getMovimientos(filtros = {}) {
 }
 
 async function crearMovimiento(data) {
-    const { usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, proveedor, tipo_salida, observaciones, fecha_hora } = data;
-    const anchoInt = parseInt(ancho);
-    const altoInt = parseInt(alto);
+    const { usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, proveedor, tipo_salida, observaciones, fecha_hora } = data;
+    
+    let tipoCristalFinal = tipo_cristal;
+    let espesorFinal = espesor;
+    let anchoFinal = ancho;
+    let altoFinal = alto;
+    
+    // Si se proporciona materia_prima_id, obtener datos de la materia prima
+    if (materia_prima_id) {
+        const mpResult = await query('SELECT * FROM materias_primas WHERE id = $1', [materia_prima_id]);
+        if (mpResult.rows.length > 0) {
+            const mp = mpResult.rows[0];
+            tipoCristalFinal = mp.nombre;
+            espesorFinal = mp.espesor_mm;
+            // Usar dimensiones de la materia prima si no se proporcionan
+            if (!ancho || !alto) {
+                anchoFinal = mp.ancho_nal || mp.ancho || 0;
+                altoFinal = mp.alto_nal || mp.alto || 0;
+            }
+        }
+    }
+    
+    const anchoInt = parseInt(anchoFinal);
+    const altoInt = parseInt(altoFinal);
     if (isNaN(anchoInt) || anchoInt <= 0) throw new Error('Ancho debe ser un numero entero positivo');
     if (isNaN(altoInt) || altoInt <= 0) throw new Error('Alto debe ser un numero entero positivo');
     const metros_cuadrados = (anchoInt * altoInt * cantidad_planchas) / 1000000;
+    
     const result = await query(
-        `INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, tipo_salida, observaciones, fecha_hora)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-        [usuario_id || null, tipo_movimiento, tipo_cristal, espesor, anchoInt, altoInt, cantidad_planchas, metros_cuadrados.toFixed(4), proveedor || null, tipo_salida || null, observaciones || null, fecha_hora || new Date().toISOString()]
+        `INSERT INTO movimientos (usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, tipo_salida, observaciones, fecha_hora)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+        [usuario_id || null, tipo_movimiento, materia_prima_id || null, tipoCristalFinal, espesorFinal, anchoInt, altoInt, cantidad_planchas, metros_cuadrados.toFixed(4), proveedor || null, tipo_salida || null, observaciones || null, fecha_hora || new Date().toISOString()]
     );
     return result.rows[0];
 }
@@ -37,20 +63,27 @@ async function eliminarMovimiento(id) {
 }
 
 async function getInventario(filtros = {}) {
-    let sql = `SELECT tipo_cristal, espesor, ancho, alto,
-        SUM(CASE WHEN tipo_movimiento = 'entrada' THEN cantidad_planchas ELSE 0 END) as entradas,
-        SUM(CASE WHEN tipo_movimiento = 'salida' AND tipo_salida = 'plancha_completa' THEN cantidad_planchas ELSE 0 END) as salidas_plancha,
-        SUM(CASE WHEN tipo_movimiento = 'salida' AND tipo_salida = 'trozo' THEN cantidad_planchas ELSE 0 END) as trozos,
-        SUM(CASE WHEN tipo_movimiento = 'entrada' THEN metros_cuadrados ELSE 0 END) as m2_entradas,
-        SUM(CASE WHEN tipo_movimiento = 'salida' AND tipo_salida = 'plancha_completa' THEN metros_cuadrados ELSE 0 END) as m2_salidas
-        FROM movimientos`;
+    let sql = `SELECT 
+        COALESCE(mp.codigo_mp, m.tipo_cristal) as codigo_mp,
+        COALESCE(mp.nombre, m.tipo_cristal) as tipo_cristal,
+        COALESCE(mp.espesor_mm, m.espesor) as espesor,
+        mp.costo_unitario_mp,
+        mp.costo_unitario_importado,
+        m.ancho, m.alto,
+        SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad_planchas ELSE 0 END) as entradas,
+        SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.cantidad_planchas ELSE 0 END) as salidas_plancha,
+        SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'trozo' THEN m.cantidad_planchas ELSE 0 END) as trozos,
+        SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.metros_cuadrados ELSE 0 END) as m2_entradas,
+        SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.metros_cuadrados ELSE 0 END) as m2_salidas
+        FROM movimientos m
+        LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id`;
     const conditions = [];
     const params = [];
     let idx = 1;
-    if (filtros.cristal) { conditions.push(`tipo_cristal = $${idx++}`); params.push(filtros.cristal); }
-    if (filtros.espesor) { conditions.push(`espesor = $${idx++}`); params.push(filtros.espesor); }
+    if (filtros.cristal) { conditions.push(`(mp.nombre ILIKE $${idx} OR m.tipo_cristal ILIKE $${idx})`); params.push('%' + filtros.cristal + '%'); idx++; }
+    if (filtros.espesor) { conditions.push(`(mp.espesor_mm = $${idx} OR m.espesor = $${idx})`); params.push(filtros.espesor); idx++; }
     if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
-    sql += ' GROUP BY tipo_cristal, espesor, ancho, alto ORDER BY tipo_cristal, espesor';
+    sql += ' GROUP BY mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, m.tipo_cristal, m.espesor, m.ancho, m.alto ORDER BY mp.nombre, mp.espesor_mm';
     const result = await query(sql, params);
     return result.rows.map(r => ({
         ...r, stock: Number(r.entradas) - Number(r.salidas_plancha),
@@ -60,28 +93,32 @@ async function getInventario(filtros = {}) {
 }
 
 async function getEstadisticas() {
-    const [total, entradas, salidas, tipos, stock] = await Promise.all([
+    const [total, entradas, salidas, stock] = await Promise.all([
         query('SELECT COUNT(*) as c FROM movimientos'),
         query("SELECT COUNT(*) as c FROM movimientos WHERE tipo_movimiento = 'entrada'"),
         query("SELECT COUNT(*) as c FROM movimientos WHERE tipo_movimiento = 'salida'"),
-        query('SELECT DISTINCT tipo_cristal FROM movimientos ORDER BY tipo_cristal'),
         query(`SELECT COALESCE(SUM(CASE WHEN tipo_movimiento = 'entrada' THEN metros_cuadrados ELSE 0 END), 0) -
             COALESCE(SUM(CASE WHEN tipo_movimiento = 'salida' AND tipo_salida = 'plancha_completa' THEN metros_cuadrados ELSE 0 END), 0) as stock_m2 FROM movimientos`)
     ]);
+    // Obtener tipos de cristal desde materias_primas
+    const tiposResult = await query('SELECT DISTINCT nombre FROM materias_primas WHERE nombre IS NOT NULL ORDER BY nombre');
     return {
         totalMovimientos: Number(total.rows[0].c), totalEntradas: Number(entradas.rows[0].c),
-        totalSalidas: Number(salidas.rows[0].c), tiposCristal: tipos.rows.map(r => r.tipo_cristal),
+        totalSalidas: Number(salidas.rows[0].c), tiposCristal: tiposResult.rows.map(r => r.nombre),
         stockM2: Number(stock.rows[0].stock_m2)
     };
 }
 
 async function getEstadisticasPorTipo() {
-    const result = await query(`SELECT tipo_cristal,
-        SUM(CASE WHEN tipo_movimiento = 'entrada' THEN metros_cuadrados ELSE 0 END) as entradas_m2,
-        SUM(CASE WHEN tipo_movimiento = 'salida' AND tipo_salida = 'plancha_completa' THEN metros_cuadrados ELSE 0 END) as salidas_m2
-        FROM movimientos GROUP BY tipo_cristal ORDER BY tipo_cristal`);
+    const result = await query(`SELECT 
+        COALESCE(mp.nombre, m.tipo_cristal) as tipo,
+        SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.metros_cuadrados ELSE 0 END) as entradas_m2,
+        SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.metros_cuadrados ELSE 0 END) as salidas_m2
+        FROM movimientos m
+        LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id
+        GROUP BY mp.nombre, m.tipo_cristal ORDER BY mp.nombre`);
     return result.rows.map(r => ({
-        tipo: r.tipo_cristal, entradas: Number(r.entradas_m2),
+        tipo: r.tipo, entradas: Number(r.entradas_m2),
         salidas: Number(r.salidas_m2), stock: Number(r.entradas_m2) - Number(r.salidas_m2)
     }));
 }
