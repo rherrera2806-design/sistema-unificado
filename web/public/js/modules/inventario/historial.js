@@ -35,16 +35,34 @@ const InvHistorial = {
                     <button onclick="InvHistorial.exportarExcel()" title="Exportar Excel" class="btn btn-success btn-sm">Exportar Excel</button>
                     <button onclick="window.print()" title="Imprimir" class="btn btn-outline btn-sm">Imprimir</button>
                 </div>
-                <div class="card invHist-card"">
-                    <div class="card invHist-card"-header">Historial <span id="hCount" style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
-                    <div class="card invHist-card"-body">
-                        ${movimientos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>' : `<div class="table-responsive"><table id="hTable"><thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Obs</th></tr></thead><tbody id="hBody">${this.renderRows(movimientos)}</tbody></table></div>`}
+                <div class="card invHist-card">
+                    <div class="card-header">Historial <span id="hCount" style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
+                    <div class="card-body">
+                        ${movimientos.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>' : `<div class="table-responsive"><div class="sigma-table-wrap"><table id="hTable"><thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Obs</th></tr></thead><tbody id="hBody">${this.renderRows(movimientos)}</tbody></table></div><div id="hCards"></div>`}
                     </div>
                 </div>`;
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
     },
     renderRows(movs) {
         return movs.map(m => { const f = new Date(m.fecha_hora); return `<tr><td>${f.toLocaleDateString('es-CL')}</td><td>${f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span></td><td>${m.tipo_cristal}</td><td>${m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td>${m.observaciones || '-'}</td></tr>`; }).join('');
+        this.renderCards(movs);
+    },
+    renderCards(movs) {
+        const cardsEl = document.getElementById('hCards');
+        if (!cardsEl || typeof SigmaCards === 'undefined') return;
+        cardsEl.innerHTML = SigmaCards.generate({
+            title: m => '<strong>' + m.tipo_cristal + ' ' + m.espesor + 'mm</strong>',
+            subtitle: m => m.ancho + ' x ' + m.alto + ' mm',
+            badge: m => '<span class="sc-badge" style="background:' + (m.tipo_movimiento === 'entrada' ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">' + m.tipo_movimiento + '</span>',
+            fields: [
+                { label: 'Fecha', value: m => new Date(m.fecha_hora).toLocaleDateString('es-CL') },
+                { label: 'Hora', value: m => new Date(m.fecha_hora).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'}) },
+                { label: 'Cantidad', value: m => m.cantidad_planchas + ' planchas' },
+                { label: 'm2', value: m => Number(m.metros_cuadrados).toFixed(2) + ' m2' },
+                { label: 'Proveedor', value: m => m.proveedor || '-' },
+                { label: 'Obs', value: m => m.observaciones || '-' }
+            ]
+        }, movs);
     },
     async buscar(e) {
         e.preventDefault();
@@ -61,6 +79,7 @@ const InvHistorial = {
             const count = document.getElementById('hCount');
             if (tbody) tbody.innerHTML = this.renderRows(movs);
             if (count) count.textContent = `(${movs.length})`;
+            this.renderCards(movs);
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     },
     limpiar() {

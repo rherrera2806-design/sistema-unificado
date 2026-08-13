@@ -28,14 +28,31 @@ const InvInventario = {
                 <div class="card inv-card">
                     <div class="card-header">Inventario Actual <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${items.length} tipos)</span></div>
                     <div class="card-body">
-                        ${items.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay items en inventario</h4><p style="margin:0;color:#94a3b8;font-size:13px">Agrega el primer item</p></div>' : `<div class="table-responsive"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(items)}</tbody></table></div>`}
+                        ${items.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay items en inventario</h4><p style="margin:0;color:#94a3b8;font-size:13px">Agrega el primer item</p></div>' : `<div class="table-responsive"><div class="sigma-table-wrap"><table id="invTable"><thead><tr><th>Tipo Cristal</th><th>Espesor</th><th>Ancho</th><th>Alto</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(items)}</tbody></table></div><div id="invCards"></div>`}
                     </div>
                 </div>`;
             this.allItems = items;
+            this.renderCards(items);
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
     },
     renderRows(items) {
         return items.map(i => `<tr><td style="font-weight:600;">${i.tipo_cristal}</td><td><span style="background:var(--primary-light); color:var(--primary); padding:2px 10px; border-radius:12px; font-size:12px;">${i.espesor}mm</span></td><td>${i.ancho}</td><td>${i.alto}</td><td style="color:var(--success); font-weight:600;">${i.entradas}</td><td style="color:var(--danger);">${i.salidas_plancha}</td><td style="color:var(--warning);">${i.trozos}</td><td><span style="font-size:18px; font-weight:700; color:${i.stock > 0 ? 'var(--success)' : 'var(--danger)'};">${i.stock}</span></td><td>${(i.m2_entradas - i.m2_salidas).toFixed(2)} m2</td></tr>`).join('');
+    },
+    renderCards(items) {
+        const cardsEl = document.getElementById('invCards');
+        if (!cardsEl || typeof SigmaCards === 'undefined') return;
+        cardsEl.innerHTML = SigmaCards.generate({
+            title: i => '<strong>' + i.tipo_cristal + '</strong>',
+            subtitle: i => i.espesor + 'mm',
+            badge: i => '<span class="sc-badge" style="background:' + (i.stock > 0 ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">Stock: ' + i.stock + '</span>',
+            fields: [
+                { label: 'Dimensiones', value: i => i.ancho + ' x ' + i.alto + ' mm' },
+                { label: 'Entradas', value: i => i.entradas },
+                { label: 'Salidas', value: i => i.salidas_plancha },
+                { label: 'Trozos', value: i => i.trozos },
+                { label: 'm2 Stock', value: i => (i.m2_entradas - i.m2_salidas).toFixed(2) + ' m2' }
+            ]
+        }, items);
     },
     async filtrar(cristal) {
         document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
@@ -45,6 +62,7 @@ const InvInventario = {
             const items = cristal ? await api.inv().getInventario({ cristal }) : await api.inv().getInventario();
             const tbody = document.getElementById('invBody');
             if (tbody) tbody.innerHTML = this.renderRows(items);
+            this.renderCards(items);
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     },
     exportarExcel() {
