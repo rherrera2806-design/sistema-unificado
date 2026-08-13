@@ -35,6 +35,7 @@ router.get('/api/asistencia/trabajadores/activos', async (req, res) => {
 router.post('/api/asistencia/trabajadores', async (req, res) => {
     try {
         const { rut, nombre, fecha_ingreso, telefono, puesto } = req.body;
+        
         let result;
         try {
             result = await pool.query(
@@ -42,16 +43,27 @@ router.post('/api/asistencia/trabajadores', async (req, res) => {
                 [rut, nombre, fecha_ingreso || null, telefono || null, puesto || null]
             );
         } catch (e) {
-            // Si falla por columnas inexistentes, hacer sin telefono/puesto
-            if (e.message && e.message.includes('column') && (e.message.includes('telefono') || e.message.includes('puesto'))) {
-                result = await pool.query(
-                    'INSERT INTO trabajadores (rut, nombre, fecha_ingreso) VALUES ($1, $2, COALESCE($3, CURRENT_DATE)) RETURNING *',
-                    [rut, nombre, fecha_ingreso || null]
+            // Columnas telefono/puesto no existen aun
+            result = await pool.query(
+                'INSERT INTO trabajadores (rut, nombre, fecha_ingreso) VALUES ($1, $2, COALESCE($3, CURRENT_DATE)) RETURNING *',
+                [rut, nombre, fecha_ingreso || null]
+            );
+        }
+        
+        // Intentar guardar telefono y puesto si la insercion fue sin ellos
+        if (result.rows[0] && (telefono || puesto)) {
+            try {
+                await pool.query(
+                    'UPDATE trabajadores SET telefono = $1, puesto = $2 WHERE id = $3',
+                    [telefono || null, puesto || null, result.rows[0].id]
                 );
-            } else {
-                throw e;
+                const updated = await pool.query('SELECT * FROM trabajadores WHERE id = $1', [result.rows[0].id]);
+                return res.json(updated.rows[0]);
+            } catch (e) {
+                // Columnas no existen, devolver sin ellos
             }
         }
+        
         res.json(result.rows[0]);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -63,32 +75,29 @@ router.put('/api/asistencia/trabajadores/:id', async (req, res) => {
         const { id } = req.params;
         const { nombre, rut, activo, fecha_ingreso, telefono, puesto } = req.body;
         
-        // Primero intentar con las columnas nuevas
-        let result;
+        const result = await pool.query(
+            `UPDATE trabajadores SET 
+                nombre = COALESCE($1, nombre), 
+                rut = COALESCE($2, rut), 
+                activo = COALESCE($3, activo), 
+                fecha_ingreso = COALESCE($4, fecha_ingreso)
+            WHERE id = $5 RETURNING *`,
+            [nombre, rut, activo, fecha_ingreso || null, id]
+        );
+        
+        // Intentar guardar telefono y puesto si las columnas existen
         try {
-            result = await pool.query(
-                `UPDATE trabajadores SET 
-                    nombre = COALESCE($1, nombre), 
-                    rut = COALESCE($2, rut), 
-                    activo = COALESCE($3, activo), 
-                    fecha_ingreso = COALESCE($4, fecha_ingreso),
-                    telefono = $5,
-                    puesto = $6
-                WHERE id = $7 RETURNING *`,
-                [nombre, rut, activo, fecha_ingreso || null, telefono || null, puesto || null, id]
+            await pool.query(
+                'UPDATE trabajadores SET telefono = $1, puesto = $2 WHERE id = $3',
+                [telefono || null, puesto || null, id]
             );
         } catch (e) {
-            // Si falla por columnas inexistentes, hacer sin telefono/puesto
-            if (e.message && e.message.includes('column') && (e.message.includes('telefono') || e.message.includes('puesto'))) {
-                result = await pool.query(
-                    'UPDATE trabajadores SET nombre = COALESCE($1, nombre), rut = COALESCE($2, rut), activo = COALESCE($3, activo), fecha_ingreso = COALESCE($4, fecha_ingreso) WHERE id = $5 RETURNING *',
-                    [nombre, rut, activo, fecha_ingreso || null, id]
-                );
-            } else {
-                throw e;
-            }
+            // Columnas no existen aun, ignorar
         }
-        res.json(result.rows[0]);
+        
+        // Obtener el trabajador actualizado
+        const updated = await pool.query('SELECT * FROM trabajadores WHERE id = $1', [id]);
+        res.json(updated.rows[0]);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

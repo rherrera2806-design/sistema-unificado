@@ -573,6 +573,12 @@ async function runMigrations() {
         console.error('Migration warning (001):', e.message);
     }
     try {
+        await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS telefono VARCHAR(20)");
+        await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS puesto VARCHAR(100)");
+    } catch (e) {
+        console.error('Migration warning (telefono/puesto):', e.message);
+    }
+    try {
         await query(`CREATE TABLE IF NOT EXISTS procesos_carroceria_sap (
             id SERIAL PRIMARY KEY,
             codigo_sap VARCHAR(50) UNIQUE NOT NULL,
