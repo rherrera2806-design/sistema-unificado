@@ -55,11 +55,18 @@ const Asistencia = {
                 + '.ast-rank:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}'
                 + '.ast-cal-header{display:grid;border-bottom:2px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:2}'
                 + '.ast-cal-row{display:grid;border-bottom:1px solid #f1f5f9}'
-                + '.ast-cal-cell{padding:4px;text-align:center;font-size:10px;display:flex;align-items:center;justify-content:center;min-height:24px}'
+                + '.ast-cal-cell{padding:4px;text-align:center;font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:24px;gap:1px}'
                 + '.ast-cal-cell.presente{background:#d1fae5}.ast-cal-cell.falta{background:#fee2e2;color:#dc2626;font-weight:700}'
                 + '.ast-cal-cell.vacaciones{background:#dbeafe;color:#2563eb}.ast-cal-cell.licencia{background:#fef3c7;color:#d97706}'
                 + '.ast-cal-cell.fin-semana{background:#f8fafc}.ast-cal-cell.hoy{outline:2px solid #3b82f6;outline-offset:-2px}'
-                + '@media(max-width:640px){.ast-cal-cell{min-height:36px;padding:6px 2px;font-size:11px}.ast-cal-cell svg{width:14px;height:14px}}'
+                + '.ast-cal-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}'
+                + '.ast-cal-scroll::-webkit-scrollbar{height:6px}.ast-cal-scroll::-webkit-scrollbar-track{background:#f1f5f9;border-radius:3px}.ast-cal-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}'
+                + '@media(max-width:640px){'
+                + '.ast-cal-cell{min-height:40px;padding:4px 2px;font-size:11px;gap:2px}'
+                + '.ast-cal-cell svg{width:14px;height:14px}'
+                + '.ast-cal-day-num{font-size:12px;font-weight:700;line-height:1.1}'
+                + '.ast-cal-day-name{font-size:8px;font-weight:500;opacity:0.7;line-height:1}'
+                + '}'
                 + '#ast-hero-buscar::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
                 + '#ast-hero-fecha{color-scheme:dark}'
                 + '#ast-hero-mes option,#ast-hero-anio option{color:#1e293b;background:white}'
@@ -850,19 +857,19 @@ const Asistencia = {
         const busqueda = (document.getElementById('ast-cal-buscar')?.value || '').toLowerCase();
         const filtered = busqueda ? trabajadores.filter(t => t.nombre.toLowerCase().includes(busqueda) || (t.rut && t.rut.toLowerCase().includes(busqueda))) : trabajadores;
 
-        let html = '<div class="ast-cal-header" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
+        let html = '<div class="ast-cal-scroll"><div class="ast-cal-header" style="grid-template-columns:140px repeat(' + diasEnMes + ',minmax(36px,1fr))">';
         html += '<div style="padding:8px 12px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;border-right:1px solid #e2e8f0">Trabajador</div>';
         for (let d = 1; d <= diasEnMes; d++) {
             const fecha = new Date(anio, mes - 1, d);
             const esFin = fecha.getDay() === 0 || fecha.getDay() === 6;
             const esHoy = d === hoy.getDate() && mes === (hoy.getMonth() + 1) && parseInt(anio) === hoy.getFullYear();
-            html += '<div class="ast-cal-cell' + (esFin ? ' fin-semana' : '') + (esHoy ? ' hoy' : '') + '" style="flex-direction:column;padding:3px 1px;border-right:1px solid #f1f5f9"><div style="font-weight:600;font-size:9px">' + d + '</div><div style="font-size:7px;opacity:0.6">' + diasSemana[fecha.getDay()] + '</div></div>';
+            html += '<div class="ast-cal-cell' + (esFin ? ' fin-semana' : '') + (esHoy ? ' hoy' : '') + '"><div class="ast-cal-day-num">' + d + '</div><div class="ast-cal-day-name">' + diasSemana[fecha.getDay()] + '</div></div>';
         }
         html += '</div>';
 
         filtered.forEach(t => {
             const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0];
-            html += '<div class="ast-cal-row" style="grid-template-columns:160px repeat(' + diasEnMes + ',1fr)">';
+            html += '<div class="ast-cal-row" style="grid-template-columns:140px repeat(' + diasEnMes + ',minmax(36px,1fr))">';
             html += '<div style="padding:6px 10px;font-size:11px;font-weight:600;color:#1e293b;display:flex;align-items:center;border-right:1px solid #e2e8f0;background:#fafbfc;position:sticky;left:0;z-index:1"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + t.nombre + (fi ? ' (Fecha de incorporación: ' + this.fmtDate(fi) + ')' : '') + '">' + t.nombre + '</span></div>';
 
             for (let d = 1; d <= diasEnMes; d++) {
@@ -903,6 +910,7 @@ const Asistencia = {
             }
             html += '</div>';
         });
+        html += '</div>';
         c.innerHTML = html;
     },
 
