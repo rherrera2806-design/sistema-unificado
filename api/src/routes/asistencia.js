@@ -128,19 +128,19 @@ router.post('/api/asistencia/trabajadores/importar', async (req, res) => {
 
 router.post('/api/asistencia/marcar', async (req, res) => {
     try {
-        const { trabajador_id, falta } = req.body;
-        const hoy = new Date().toISOString().split('T')[0];
+        const { trabajador_id, falta, fecha } = req.body;
+        const targetDate = fecha || new Date().toISOString().split('T')[0];
         
         const existing = await pool.query(
             'SELECT * FROM asistencia WHERE trabajador_id = $1 AND fecha = $2',
-            [trabajador_id, hoy]
+            [trabajador_id, targetDate]
         );
         
         if (existing.rows.length > 0) {
             if (falta) {
                 await pool.query(
                     'DELETE FROM asistencia WHERE trabajador_id = $1 AND fecha = $2',
-                    [trabajador_id, hoy]
+                    [trabajador_id, targetDate]
                 );
                 return res.json({ eliminado: true });
             }
@@ -150,7 +150,7 @@ router.post('/api/asistencia/marcar', async (req, res) => {
         if (falta) {
             const result = await pool.query(
                 'INSERT INTO asistencia (trabajador_id, fecha) VALUES ($1, $2) RETURNING *',
-                [trabajador_id, hoy]
+                [trabajador_id, targetDate]
             );
             return res.json(result.rows[0]);
         }

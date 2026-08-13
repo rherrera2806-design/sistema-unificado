@@ -527,12 +527,16 @@ const Asistencia = {
 
     async marcar(trabajadorId, falta) {
         try {
+            const fecha = document.getElementById('ast-hero-fecha')?.value || new Date().toISOString().split('T')[0];
             const r = await fetch('/api/asistencia/marcar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trabajador_id: trabajadorId, falta })
+                body: JSON.stringify({ trabajador_id: trabajadorId, falta, fecha })
             });
-            if (r.ok) await this.cargarAsistencia();
+            if (r.ok) {
+                this.lastLoadedDate = null;
+                await this.cargarAsistencia();
+            }
         } catch(e) { console.error('Error:', e); }
     },
 
