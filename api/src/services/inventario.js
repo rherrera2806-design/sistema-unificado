@@ -21,7 +21,7 @@ async function getMovimientos(filtros = {}) {
 }
 
 async function crearMovimiento(data) {
-    const { usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, proveedor, tipo_salida, observaciones, fecha_hora } = data;
+    const { usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, proveedor, turno, tipo_salida, observaciones, fecha_hora } = data;
     
     let tipoCristalFinal = tipo_cristal;
     let espesorFinal = espesor;
@@ -50,9 +50,9 @@ async function crearMovimiento(data) {
     const metros_cuadrados = (anchoInt * altoInt * cantidad_planchas) / 1000000;
     
     const result = await query(
-        `INSERT INTO movimientos (usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, tipo_salida, observaciones, fecha_hora)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
-        [usuario_id || null, tipo_movimiento, materia_prima_id || null, tipoCristalFinal, espesorFinal, anchoInt, altoInt, cantidad_planchas, metros_cuadrados.toFixed(4), proveedor || null, tipo_salida || null, observaciones || null, fecha_hora || new Date().toISOString()]
+        `INSERT INTO movimientos (usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, turno, tipo_salida, observaciones, fecha_hora)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+        [usuario_id || null, tipo_movimiento, materia_prima_id || null, tipoCristalFinal, espesorFinal, anchoInt, altoInt, cantidad_planchas, metros_cuadrados.toFixed(4), proveedor || null, turno || null, tipo_salida || null, observaciones || null, fecha_hora || new Date().toISOString()]
     );
     return result.rows[0];
 }

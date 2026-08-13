@@ -29,3 +29,6 @@ WHERE LOWER(TRIM(mp.nombre)) = LOWER(TRIM(c.nombre))
   AND c.codigo_sap IS NOT NULL 
   AND c.codigo_sap != ''
   AND (mp.codigo_sap IS NULL OR mp.codigo_sap = '');
+
+-- 6. Agregar columna turno a movimientos
+ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS turno VARCHAR(10) DEFAULT NULL;
