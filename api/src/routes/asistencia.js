@@ -50,8 +50,15 @@ router.put('/api/asistencia/trabajadores/:id', async (req, res) => {
         const { id } = req.params;
         const { nombre, rut, activo, fecha_ingreso, telefono, puesto } = req.body;
         const result = await pool.query(
-            'UPDATE trabajadores SET nombre = COALESCE($1, nombre), rut = COALESCE($2, rut), activo = COALESCE($3, activo), fecha_ingreso = COALESCE($4, fecha_ingreso), telefono = COALESCE($5, telefono), puesto = COALESCE($6, puesto) WHERE id = $7 RETURNING *',
-            [nombre, rut, activo, fecha_ingreso || null, telefono || null, puesto || null, id]
+            `UPDATE trabajadores SET 
+                nombre = COALESCE($1, nombre), 
+                rut = COALESCE($2, rut), 
+                activo = COALESCE($3, activo), 
+                fecha_ingreso = COALESCE($4, fecha_ingreso),
+                telefono = CASE WHEN $5::text IS NOT NULL THEN $5::text ELSE telefono END,
+                puesto = CASE WHEN $6::text IS NOT NULL THEN $6::text ELSE puesto END
+            WHERE id = $7 RETURNING *`,
+            [nombre, rut, activo, fecha_ingreso || null, telefono, puesto, id]
         );
         res.json(result.rows[0]);
     } catch (e) {
