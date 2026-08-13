@@ -137,7 +137,7 @@ router.post('/api/asistencia/marcar', async (req, res) => {
         );
         
         if (existing.rows.length > 0) {
-            if (falta) {
+            if (!falta) {
                 await pool.query(
                     'DELETE FROM asistencia WHERE trabajador_id = $1 AND fecha = $2',
                     [trabajador_id, targetDate]
