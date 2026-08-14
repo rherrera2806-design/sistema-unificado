@@ -2,35 +2,24 @@
 // VitroFlow - Módulo de Asistencia
 // ═══════════════════════════════════════════════════════
 // Fallbacks por si se carga sin app-main.js (ej: /asistencia/)
-if (typeof canView !== 'function') {
-    function canView(m) { try { return getPermissionGuard().canView(m); } catch { return true; } }
-}
-if (typeof canCreate !== 'function') {
-    function canCreate(m) { try { return getPermissionGuard().canCreate(m); } catch { return true; } }
-}
-if (typeof canEdit !== 'function') {
-    function canEdit(m) { try { return getPermissionGuard().canEdit(m); } catch { return true; } }
-}
-if (typeof canDelete !== 'function') {
-    function canDelete(m) { try { return getPermissionGuard().canDelete(m); } catch { return true; } }
-}
-if (typeof isAdmin !== 'function') {
-    function isAdmin() { try { const u = JSON.parse(localStorage.getItem('unified_user')); return u && u.rol === 'admin'; } catch { return false; } }
-}
-if (typeof getAuthHeaders !== 'function') {
-    function getAuthHeaders() { const u = (() => { try { return JSON.parse(localStorage.getItem('unified_user')) || {}; } catch { return {}; } })(); return { 'Content-Type': 'application/json', 'X-User-Permisos': (u.permisos || []).join(','), 'X-User-Email': u.email || '' }; }
-}
-if (typeof authFetch !== 'function') {
-    async function authFetch(url, opts = {}) { const h = getAuthHeaders(); return fetch(url, { ...opts, headers: { ...h, ...(opts.headers || {}) } }); }
+var _astPermFallback = typeof canView !== 'function';
+if (_astPermFallback) {
+    window.canView = function(m) { try { return getPermissionGuard().canView(m); } catch(e) { return true; } };
+    window.canCreate = function(m) { try { return getPermissionGuard().canCreate(m); } catch(e) { return true; } };
+    window.canEdit = function(m) { try { return getPermissionGuard().canEdit(m); } catch(e) { return true; } };
+    window.canDelete = function(m) { try { return getPermissionGuard().canDelete(m); } catch(e) { return true; } };
+    window.isAdmin = function() { try { var u = JSON.parse(localStorage.getItem('unified_user')); return u && u.rol === 'admin'; } catch(e) { return false; } };
+    window.getAuthHeaders = function() { var u = {}; try { u = JSON.parse(localStorage.getItem('unified_user')) || {}; } catch(e) {} return { 'Content-Type': 'application/json', 'X-User-Permisos': (u.permisos || []).join(','), 'X-User-Email': u.email || '' }; };
+    window.authFetch = function(url, opts) { opts = opts || {}; var h = getAuthHeaders(); opts.headers = Object.assign({}, h, opts.headers || {}); return fetch(url, opts); };
 }
 if (typeof BTN === 'undefined') {
-    var BTN = { NUEVO: 'Nuevo', EDITAR: 'Editar', ELIMINAR: 'Eliminar', FILTRAR: 'Filtrar', CARGAR: 'Cargar', EXPORTAR_EXCEL: 'Excel', EXPORTAR_PDF: 'PDF', IMPORTAR: 'Importar', APROBAR: 'Aprobar', RECHAZAR: 'Rechazar', ACTIVAR: 'Activar', DESACTIVAR: 'Desactivar', ICON: { NUEVO: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>', EDITAR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>', ELIMINAR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', APROBAR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>', RECHAZAR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>' } };
+    window.BTN = { NUEVO: 'Nuevo', EDITAR: 'Editar', ELIMINAR: 'Eliminar', FILTRAR: 'Filtrar', CARGAR: 'Cargar', EXPORTAR_EXCEL: 'Excel', EXPORTAR_PDF: 'PDF', IMPORTAR: 'Importar', APROBAR: 'Aprobar', RECHAZAR: 'Rechazar', ACTIVAR: 'Activar', DESACTIVAR: 'Desactivar', ICON: { NUEVO: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>', EDITAR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>', ELIMINAR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>', APROBAR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>', RECHAZAR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>' } };
 }
 if (typeof MSG === 'undefined') {
-    var MSG = { SIN_DATOS: 'Sin datos para mostrar', CARGANDO: 'Cargando...', CONFIRMAR_ELIMINAR: '¿Está seguro de eliminar este registro?', CONFIRMAR_ELIMINAR_NOMBRE: function(n) { return '¿Está seguro de eliminar "' + n + '"?'; } };
+    window.MSG = { SIN_DATOS: 'Sin datos para mostrar', CARGANDO: 'Cargando...', CONFIRMAR_ELIMINAR: '¿Está seguro de eliminar este registro?', CONFIRMAR_ELIMINAR_NOMBRE: function(n) { return '¿Está seguro de eliminar "' + n + '"?'; } };
 }
 if (typeof SYSTEM_MODULES === 'undefined') {
-    var SYSTEM_MODULES = { ASISTENCIA: 'asistencia' };
+    window.SYSTEM_MODULES = { ASISTENCIA: 'asistencia' };
 }
 // ═══════════════════════════════════════════════════════
 
