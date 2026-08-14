@@ -11,13 +11,58 @@
  *   - modulo.eliminar   → eliminar registros (DELETE)
  */
 
+const { getSession } = require('./security');
+
 function getPermisosFromReq(req) {
+    // Primero intentar desde el header
     const raw = req.headers['x-user-permisos'] || '';
-    return raw.split(',').map(p => p.trim()).filter(Boolean);
+    if (raw) {
+        return raw.split(',').map(p => p.trim()).filter(Boolean);
+    }
+    
+    // Si no hay header, intentar desde la sesión
+    const cookieHeader = req.headers.cookie || '';
+    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+    const user = getSession(token);
+    
+    if (user && Array.isArray(user.permisos)) {
+        return user.permisos;
+    }
+    
+    return [];
 }
 
 function getEmailFromReq(req) {
-    return req.headers['x-user-email'] || '';
+    // Primero intentar desde el header
+    const raw = req.headers['x-user-email'] || '';
+    if (raw) return raw;
+    
+    // Si no hay header, intentar desde la sesión
+    const cookieHeader = req.headers.cookie || '';
+    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+    const user = getSession(token);
+    
+    return user ? user.email : '';
+}
+
+function getUserFromReq(req) {
+    // Primero intentar desde el header
+    const email = req.headers['x-user-email'] || '';
+    const permisos = (req.headers['x-user-permisos'] || '').split(',').filter(Boolean);
+    
+    if (email) {
+        return { email, permisos };
+    }
+    
+    // Si no hay header, intentar desde la sesión
+    const cookieHeader = req.headers.cookie || '';
+    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+    const user = getSession(token);
+    
+    return user || { email: '', permisos: [] };
 }
 
 /**
@@ -29,10 +74,11 @@ function getEmailFromReq(req) {
  */
 function requireAnyPerm(...permisosRequeridos) {
     return (req, res, next) => {
-        const userPerms = getPermisosFromReq(req);
+        const user = getUserFromReq(req);
+        const userPerms = user.permisos || [];
 
-        // Admin total
-        if (userPerms.includes('usuarios')) return next();
+        // Admin total (tiene permiso 'usuarios' o rol 'admin')
+        if (userPerms.includes('usuarios') || user.rol === 'admin') return next();
 
         const tieneAlguno = permisosRequeridos.some(p => userPerms.includes(p));
         if (!tieneAlguno) {
@@ -50,10 +96,11 @@ function requireAnyPerm(...permisosRequeridos) {
  */
 function requirePerm(permisoRequerido) {
     return (req, res, next) => {
-        const userPerms = getPermisosFromReq(req);
+        const user = getUserFromReq(req);
+        const userPerms = user.permisos || [];
 
-        // Admin total
-        if (userPerms.includes('usuarios')) return next();
+        // Admin total (tiene permiso 'usuarios' o rol 'admin')
+        if (userPerms.includes('usuarios') || user.rol === 'admin') return next();
 
         if (!userPerms.includes(permisoRequerido)) {
             return res.status(403).json({ error: 'Sin permisos para esta acción' });
@@ -80,6 +127,7 @@ function crudPerms(modulo) {
 module.exports = {
     getPermisosFromReq,
     getEmailFromReq,
+    getUserFromReq,
     requireAnyPerm,
     requirePerm,
     crudPerms,

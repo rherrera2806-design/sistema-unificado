@@ -1,6 +1,10 @@
 // ═══════════════════════════════════════════════════════
 // VitroFlow - Módulo de Asistencia
 // ═══════════════════════════════════════════════════════
+// Usa PermissionGuard para verificación de permisos
+// Usa system-constants para nombres de botones
+// Ver: js/PermissionGuard.js, js/auth-helpers.js, js/system-constants.js
+// ═══════════════════════════════════════════════════════
 
 const Asistencia = {
     trabajadores: [],
@@ -161,13 +165,11 @@ const Asistencia = {
         if (!container) return;
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const mesActual = new Date().getMonth();
-        const user = typeof getUser === 'function' ? getUser() : null;
-        const isAdm = user && user.rol === 'admin';
-        const perms = user && Array.isArray(user.permisos) ? user.permisos : [];
-        const canAgT = isAdm || perms.includes('asistencia.agregar');
-        const canEdT = isAdm || perms.includes('asistencia.editar');
-        const canDelT = isAdm || perms.includes('asistencia.eliminar');
-        const canView = isAdm || perms.includes('asistencia');
+        const MOD = SYSTEM_MODULES.ASISTENCIA;
+        const canAgT = canCreate(MOD);
+        const canEdT = canEdit(MOD);
+        const canDelT = canDelete(MOD);
+        const canViewMod = canView(MOD);
         if (tab === 'trabajadores') {
             container.innerHTML = '<div style="display:flex;gap:6px;align-items:center">'
                 + '<button onclick="Asistencia.filtrarTrabajadores(\'todos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.4);font-size:11px;padding:6px 12px" data-filter="todos">Todos</button>'
@@ -178,30 +180,30 @@ const Asistencia = {
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
-                + (canAgT ? '<button onclick="Asistencia.showFormTrabajador()" class="btn btn-primary" title="Nuevo trabajador" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
-                + '<button onclick="Asistencia.exportExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">Excel</button>'
-                + '<button onclick="Asistencia.importarExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#0e7490;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(14,116,144,0.15)" title="Importar desde Excel/CSV">Importar</button>'
-                + '<button onclick="Asistencia.exportPDFTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#dc2626;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(220,38,38,0.15)">PDF</button>';
+                + (canAgT ? `<button onclick="Asistencia.showFormTrabajador()" class="btn btn-primary" title="${BTN.NUEVO} trabajador" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '')
+                + `<button onclick="Asistencia.exportExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">${BTN.EXPORTAR_EXCEL}</button>`
+                + `<button onclick="Asistencia.importarExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#0e7490;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(14,116,144,0.15)" title="${BTN.IMPORTAR} desde Excel/CSV">${BTN.IMPORTAR}</button>`
+                + `<button onclick="Asistencia.exportPDFTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#dc2626;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(220,38,38,0.15)">${BTN.EXPORTAR_PDF}</button>`;
         } else         if (tab === 'permisos') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
-                + (canAgT ? '<button onclick="Asistencia.abrirModalPermiso()" class="btn btn-primary" title="Nuevo permiso" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '');
+                + `<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">${BTN.FILTRAR}</button>`
+                + (canAgT ? `<button onclick="Asistencia.abrirModalPermiso()" class="btn btn-primary" title="${BTN.NUEVO} permiso" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'licencias') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
-                + (canAgT ? '<button onclick="Asistencia.abrirModalLicencia()" class="btn btn-primary" title="Nueva licencia" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '');
+                + `<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">${BTN.FILTRAR}</button>`
+                + (canAgT ? `<button onclick="Asistencia.abrirModalLicencia()" class="btn btn-primary" title="${BTN.NUEVO} licencia" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'vacaciones') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
-                + (canAgT ? '<button onclick="Asistencia.abrirModalVacacion()" class="btn btn-primary" title="Nueva vacación" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '');
+                + `<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">${BTN.FILTRAR}</button>`
+                + (canAgT ? `<button onclick="Asistencia.abrirModalVacacion()" class="btn btn-primary" title="${BTN.NUEVO} vacación" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'horas_extras') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarHorasExtras()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
-                + (canAgT ? '<button onclick="Asistencia.abrirModalHorasExtras()" class="btn btn-primary" title="Nuevas horas extras" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '');
+                + `<button onclick="Asistencia.cargarHorasExtras()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">${BTN.FILTRAR}</button>`
+                + (canAgT ? `<button onclick="Asistencia.abrirModalHorasExtras()" class="btn btn-primary" title="${BTN.NUEVO} horas extras" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'calendario') {
             let mesOpts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             let yearOpts = '';
@@ -209,18 +211,18 @@ const Asistencia = {
             for (let y = 2024; y <= 2027; y++) yearOpts += '<option value="' + y + '"' + (y === yearActual ? ' selected' : '') + '>' + y + '</option>';
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + mesOpts + '</select>'
                 + '<select id="ast-hero-anio" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + yearOpts + '</select>'
-                + '<button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>';
+                + `<button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">${BTN.CARGAR}</button>`;
         } else if (tab === 'reportes') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Generar</button>';
+                + `<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">${BTN.CARGAR}</button>`;
         } else if (tab === 'diaria') {
             container.innerHTML = '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadores()" style="padding-left:32px;width:160px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + '<input type="date" id="ast-hero-fecha" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
-                + '<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>';
+                + `<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">${BTN.CARGAR}</button>`;
         } else {
             container.innerHTML = '';
         }
@@ -235,12 +237,10 @@ const Asistencia = {
 
     // ═══════ TRABAJADORES ═══════
     async renderTrabajadoresTab(c) {
-        const user = typeof getUser === 'function' ? getUser() : null;
-        const isAdm = user && user.rol === 'admin';
-        const perms = user && Array.isArray(user.permisos) ? user.permisos : [];
-        const canAgT = isAdm || perms.includes('asistencia.agregar');
-        const canEditT = isAdm || perms.includes('asistencia.editar');
-        const canDeleteT = isAdm || perms.includes('asistencia.eliminar');
+        const MOD = 'asistencia';
+        const canAgT = canCreate(MOD);
+        const canEditT = canEdit(MOD);
+        const canDeleteT = canDelete(MOD);
         c.innerHTML = `
             <div id="ast-form-trabajador" style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:20px 24px;margin-bottom:20px;animation:astFadeUp 0.3s ease both;overflow:hidden;width:100%;box-sizing:border-box">
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
@@ -289,7 +289,7 @@ const Asistencia = {
                         <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px" title="Fecha de incorporación">Fecha de incorporación</th>
                         <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
                     </tr></thead>
-                    <tbody id="ast-tabla-trabajadores"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                    <tbody id="ast-tabla-trabajadores"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">${MSG.CARGANDO}</td></tr></tbody>
                 </table>
                 <div id="ast-cards-trabajadores"></div>
                 </div>
@@ -320,8 +320,8 @@ const Asistencia = {
         if (this.trabFilter === 'activos') data = data.filter(t => t.activo);
         else if (this.trabFilter === 'inactivos') data = data.filter(t => !t.activo);
 
-        if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin trabajadores</td></tr>';
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">${MSG.SIN_DATOS}</td></tr>`;
             const cardsEl = document.getElementById('ast-cards-trabajadores');
             if (cardsEl) cardsEl.innerHTML = '';
             return;
@@ -341,9 +341,9 @@ const Asistencia = {
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + (t.activo ? 'background:#d1fae5;color:#059669' : 'background:#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;font-size:12px;color:#475569;font-family:\'JetBrains Mono\',monospace" title="Fecha de incorporación">' + fiFmt + '</td>'
                 + '<td style="padding:12px 16px;text-align:center"><div style="display:flex;gap:4px;justify-content:center">'
-                + (canEditT ? '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
-                + (canEditT ? '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '" title="' + (t.activo ? 'Desactivar' : 'Activar') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>' : '')
-                + (canDeleteT ? '<button onclick="Asistencia.eliminarTrabajador(' + t.id + ',\'' + t.nombre.replace(/'/g, "\\'") + '\')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
+                + (canEditT ? `<button onclick="Asistencia.editarTrabajador(${t.id})" class="btn btn-sm btn-outline" title="${BTN.EDITAR}">${BTN.ICON.EDITAR}</button>` : '')
+                + (canEditT ? `<button onclick="Asistencia.toggleTrabajador(${t.id},${t.activo})" class="btn btn-sm ${t.activo ? 'btn-outline' : 'btn-primary'}" title="${t.activo ? BTN.DESACTIVAR : BTN.ACTIVAR}">${t.activo ? BTN.DESACTIVAR : BTN.ACTIVAR}</button>` : '')
+                + (canDeleteT ? `<button onclick="Asistencia.eliminarTrabajador(${t.id},'${t.nombre.replace(/'/g, "\\'")}')" class="btn btn-sm btn-danger" title="${BTN.ELIMINAR}">${BTN.ICON.ELIMINAR}</button>` : '')
                 + '</div></td></tr>';
         }).join('');
 
@@ -358,8 +358,8 @@ const Asistencia = {
                     { label: 'Puesto', value: t => t.puesto || '-' },
                     { label: 'Ingreso', value: t => { const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0]; return fi ? this.fmtDate(fi) : '-'; } }
                 ],
-                actions: t => (canEditT ? '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline">Editar</button> ' : '')
-                    + (canEditT ? '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>' : '')
+                actions: t => (canEditT ? `<button onclick="Asistencia.editarTrabajador(${t.id})" class="btn btn-sm btn-outline">${BTN.EDITAR}</button> ` : '')
+                    + (canEditT ? `<button onclick="Asistencia.toggleTrabajador(${t.id},${t.activo})" class="btn btn-sm ${t.activo ? 'btn-outline' : 'btn-primary'}">${t.activo ? BTN.DESACTIVAR : BTN.ACTIVAR}</button>` : '')
             }, data);
         }
     },
@@ -451,7 +451,7 @@ const Asistencia = {
     },
 
     async eliminarTrabajador(id, nombre) {
-        if (!confirm('¿Eliminar definitivamente a "' + nombre + '"?\n\nEsta acción no se puede deshacer y borrará también sus faltas, permisos, licencias, vacaciones y horas extras.')) return;
+        if (!confirm(MSG.CONFIRMAR_ELIMINAR_NOMBRE(nombre))) return;
         try {
             const r = await fetch('/api/asistencia/trabajadores/' + id, { method: 'DELETE' });
             if (!r.ok) {
@@ -955,13 +955,11 @@ const Asistencia = {
             const permisos = await r.json();
             const tbody = document.getElementById('ast-tabla-permisos');
             if (!tbody) return;
-            if (permisos.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin permisos registrados</td></tr>'; const cardsEl = document.getElementById('ast-cards-permisos'); if (cardsEl) cardsEl.innerHTML = ''; return; }
+            if (permisos.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">${MSG.SIN_DATOS}</td></tr>`; const cardsEl = document.getElementById('ast-cards-permisos'); if (cardsEl) cardsEl.innerHTML = ''; return; }
             const tipoL = { medico: 'Médico', personal: 'Personal', familiar: 'Familiar', otro: 'Otro' };
-            const user = typeof getUser === 'function' ? getUser() : null;
-            const isAdm = user && user.rol === 'admin';
-            const uperms = user && Array.isArray(user.permisos) ? user.permisos : [];
-            const canEditP = isAdm || uperms.includes('asistencia.editar');
-            const canDeleteP = isAdm || uperms.includes('asistencia.eliminar');
+            const MOD = 'asistencia';
+            const canEditP = canEdit(MOD);
+            const canDeleteP = canDelete(MOD);
             tbody.innerHTML = permisos.map(p => {
                 const ec = p.estado === 'aprobado' ? 'background:#d1fae5;color:#059669' : p.estado === 'rechazado' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
                 return '<tr style="border-bottom:1px solid #f1f5f9">'
@@ -973,10 +971,10 @@ const Asistencia = {
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + p.estado + '</span></td>'
                     + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
                     + (p.estado === 'pendiente' && canEditP
-                        ? '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="btn btn-sm" title="Aprobar" style="background:#22c55e;color:white;margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button><button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="btn btn-sm btn-danger" title="Rechazar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>'
+                        ? `<button onclick="Asistencia.estadoPermiso(${p.id},'aprobado')" class="btn btn-sm" title="${BTN.APROBAR}" style="background:#22c55e;color:white;margin-right:4px">${BTN.ICON.APROBAR}</button><button onclick="Asistencia.estadoPermiso(${p.id},'rechazado')" class="btn btn-sm btn-danger" title="${BTN.RECHAZAR}" style="margin-right:4px">${BTN.ICON.RECHAZAR}</button>`
                         : '')
-                    + (canEditP ? '<button onclick="Asistencia.editarPermiso(' + p.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
-                    + (canDeleteP ? '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
+                    + (canEditP ? `<button onclick="Asistencia.editarPermiso(${p.id})" class="btn btn-sm btn-outline" title="${BTN.EDITAR}" style="margin-right:4px">${BTN.ICON.EDITAR}</button>` : '')
+                    + (canDeleteP ? `<button onclick="Asistencia.eliminarPermiso(${p.id})" class="btn btn-sm btn-danger" title="${BTN.ELIMINAR}">${BTN.ICON.ELIMINAR}</button>` : '')
                     + '</td></tr>';
             }).join('');
 
@@ -1000,11 +998,11 @@ const Asistencia = {
                     actions: p => {
                         let html = '';
                         if (p.estado === 'pendiente' && puedeAprobar) {
-                            html += '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">Aprobar</button>';
-                            html += '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="btn btn-sm btn-danger" style="margin-right:4px">Rechazar</button>';
+                            html += `<button onclick="Asistencia.estadoPermiso(${p.id},'aprobado')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">${BTN.APROBAR}</button>`;
+                            html += `<button onclick="Asistencia.estadoPermiso(${p.id},'rechazado')" class="btn btn-sm btn-danger" style="margin-right:4px">${BTN.RECHAZAR}</button>`;
                         }
-                        if (canEditP) html += '<button onclick="Asistencia.editarPermiso(' + p.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
-                        if (canDeleteP) html += '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+                        if (canEditP) html += `<button onclick="Asistencia.editarPermiso(${p.id})" class="btn btn-sm btn-outline" style="margin-right:4px">${BTN.EDITAR}</button>`;
+                        if (canDeleteP) html += `<button onclick="Asistencia.eliminarPermiso(${p.id})" class="btn btn-sm btn-danger">${BTN.ELIMINAR}</button>`;
                         return html;
                     }
                 }, permisos);
@@ -1032,7 +1030,7 @@ const Asistencia = {
     },
 
     async eliminarPermiso(id) {
-        if (!confirm('¿Eliminar este permiso?')) return;
+        if (!confirm(MSG.CONFIRMAR_ELIMINAR)) return;
         try {
             await fetch('/api/asistencia/permisos/' + id, { method: 'DELETE' });
             this.cargarPermisos();
@@ -1086,12 +1084,9 @@ const Asistencia = {
             const licencias = await r.json();
             const tbody = document.getElementById('ast-tabla-licencias');
             if (!tbody) return;
-            if (licencias.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin licencias registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-licencias'); if (cardsEl) cardsEl.innerHTML = ''; return; }
-            const user = typeof getUser === 'function' ? getUser() : null;
-            const isAdm = user && user.rol === 'admin';
-            const uperms = user && Array.isArray(user.permisos) ? user.permisos : [];
-            const canEditL = isAdm || uperms.includes('asistencia.editar');
-            const canDeleteL = isAdm || uperms.includes('asistencia.eliminar');
+            if (licencias.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">${MSG.SIN_DATOS}</td></tr>`; const cardsEl = document.getElementById('ast-cards-licencias'); if (cardsEl) cardsEl.innerHTML = ''; return; }
+            const canEditL = _astIsAdmin() || _astHasPerm('asistencia.editar');
+            const canDeleteL = _astIsAdmin() || _astHasPerm('asistencia.eliminar');
             tbody.innerHTML = licencias.map(l => {
                 const ec = l.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : l.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
                 const dias = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / 86400000) + 1;
@@ -1104,10 +1099,10 @@ const Asistencia = {
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + l.estado + '</span></td>'
                     + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
                     + (l.estado === 'pendiente' && canEditL
-                        ? '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="btn btn-sm" title="Aprobar" style="background:#22c55e;color:white;margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button><button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="btn btn-sm btn-danger" title="Rechazar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>'
+                        ? `<button onclick="Asistencia.estadoLicencia(${l.id},'aprobada')" class="btn btn-sm" title="${BTN.APROBAR}" style="background:#22c55e;color:white;margin-right:4px">${BTN.ICON.APROBAR}</button><button onclick="Asistencia.estadoLicencia(${l.id},'rechazada')" class="btn btn-sm btn-danger" title="${BTN.RECHAZAR}" style="margin-right:4px">${BTN.ICON.RECHAZAR}</button>`
                         : '')
-                    + (canEditL ? '<button onclick="Asistencia.editarLicencia(' + l.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
-                    + (canDeleteL ? '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
+                    + (canEditL ? `<button onclick="Asistencia.editarLicencia(${l.id})" class="btn btn-sm btn-outline" title="${BTN.EDITAR}" style="margin-right:4px">${BTN.ICON.EDITAR}</button>` : '')
+                    + (canDeleteL ? `<button onclick="Asistencia.eliminarLicencia(${l.id})" class="btn btn-sm btn-danger" title="${BTN.ELIMINAR}">${BTN.ICON.ELIMINAR}</button>` : '')
                     + '</td></tr>';
             }).join('');
 
@@ -1131,11 +1126,11 @@ const Asistencia = {
                     actions: l => {
                         let html = '';
                         if (l.estado === 'pendiente' && puedeAprobar) {
-                            html += '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">Aprobar</button>';
-                            html += '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="btn btn-sm btn-danger" style="margin-right:4px">Rechazar</button>';
+                            html += `<button onclick="Asistencia.estadoLicencia(${l.id},'aprobada')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">${BTN.APROBAR}</button>`;
+                            html += `<button onclick="Asistencia.estadoLicencia(${l.id},'rechazada')" class="btn btn-sm btn-danger" style="margin-right:4px">${BTN.RECHAZAR}</button>`;
                         }
-                        if (canEditL) html += '<button onclick="Asistencia.editarLicencia(' + l.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
-                        if (canDeleteL) html += '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+                        if (canEditL) html += `<button onclick="Asistencia.editarLicencia(${l.id})" class="btn btn-sm btn-outline" style="margin-right:4px">${BTN.EDITAR}</button>`;
+                        if (canDeleteL) html += `<button onclick="Asistencia.eliminarLicencia(${l.id})" class="btn btn-sm btn-danger">${BTN.ELIMINAR}</button>`;
                         return html;
                     }
                 }, licencias);
@@ -1162,7 +1157,7 @@ const Asistencia = {
     },
 
     async eliminarLicencia(id) {
-        if (!confirm('¿Eliminar esta licencia?')) return;
+        if (!confirm(MSG.CONFIRMAR_ELIMINAR)) return;
         try {
             await fetch('/api/asistencia/licencias/' + id, { method: 'DELETE' });
             this.cargarLicencias();
@@ -1214,12 +1209,9 @@ const Asistencia = {
             const vacaciones = await r.json();
             const tbody = document.getElementById('ast-tabla-vacaciones');
             if (!tbody) return;
-            if (vacaciones.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin vacaciones registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-vacaciones'); if (cardsEl) cardsEl.innerHTML = ''; return; }
-            const user = typeof getUser === 'function' ? getUser() : null;
-            const isAdm = user && user.rol === 'admin';
-            const uperms = user && Array.isArray(user.permisos) ? user.permisos : [];
-            const canEditV = isAdm || uperms.includes('asistencia.editar');
-            const canDeleteV = isAdm || uperms.includes('asistencia.eliminar');
+            if (vacaciones.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">${MSG.SIN_DATOS}</td></tr>`; const cardsEl = document.getElementById('ast-cards-vacaciones'); if (cardsEl) cardsEl.innerHTML = ''; return; }
+            const canEditV = _astIsAdmin() || _astHasPerm('asistencia.editar');
+            const canDeleteV = _astIsAdmin() || _astHasPerm('asistencia.eliminar');
             tbody.innerHTML = vacaciones.map(v => '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(v.fecha_inicio) + '</td>'
@@ -1227,8 +1219,8 @@ const Asistencia = {
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.dias + '</strong> días</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#dbeafe;color:#2563eb">' + (v.estado || 'Programado') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                + (canEditV ? '<button onclick="Asistencia.editarVacacion(' + v.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
-                + (canDeleteV ? '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
+                + (canEditV ? `<button onclick="Asistencia.editarVacacion(${v.id})" class="btn btn-sm btn-outline" title="${BTN.EDITAR}" style="margin-right:4px">${BTN.ICON.EDITAR}</button>` : '')
+                + (canDeleteV ? `<button onclick="Asistencia.eliminarVacacion(${v.id})" class="btn btn-sm btn-danger" title="${BTN.ELIMINAR}">${BTN.ICON.ELIMINAR}</button>` : '')
                 + '</td></tr>').join('');
 
             const cardsEl = document.getElementById('ast-cards-vacaciones');
@@ -1241,8 +1233,8 @@ const Asistencia = {
                         { label: 'Fin', value: v => this.fmtDate(v.fecha_fin) },
                         { label: 'Días', value: v => v.dias + ' días' }
                     ],
-                    actions: v => (canEditV ? '<button onclick="Asistencia.editarVacacion(' + v.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>' : '')
-                        + (canDeleteV ? '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" class="btn btn-sm btn-danger">Eliminar</button>' : '')
+                    actions: v => (canEditV ? `<button onclick="Asistencia.editarVacacion(${v.id})" class="btn btn-sm btn-outline" style="margin-right:4px">${BTN.EDITAR}</button>` : '')
+                        + (canDeleteV ? `<button onclick="Asistencia.eliminarVacacion(${v.id})" class="btn btn-sm btn-danger">${BTN.ELIMINAR}</button>` : '')
                 }, vacaciones);
             }
         } catch(e) { console.error('Error:', e); }
@@ -1262,7 +1254,7 @@ const Asistencia = {
     },
 
     async eliminarVacacion(id) {
-        if (!confirm('¿Eliminar este registro de vacaciones?')) return;
+        if (!confirm(MSG.CONFIRMAR_ELIMINAR)) return;
         try {
             await fetch('/api/asistencia/vacaciones/' + id, { method: 'DELETE' });
             this.cargarVacaciones();
@@ -1314,12 +1306,9 @@ const Asistencia = {
             const horasExtras = await r.json();
             const tbody = document.getElementById('ast-tabla-horas-extras');
             if (!tbody) return;
-            if (horasExtras.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin horas extras registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-horas-extras'); if (cardsEl) cardsEl.innerHTML = ''; return; }
-            const user = typeof getUser === 'function' ? getUser() : null;
-            const isAdm = user && user.rol === 'admin';
-            const uperms = user && Array.isArray(user.permisos) ? user.permisos : [];
-            const canEditHE = isAdm || uperms.includes('asistencia.editar');
-            const canDeleteHE = isAdm || uperms.includes('asistencia.eliminar');
+            if (horasExtras.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">${MSG.SIN_DATOS}</td></tr>`; const cardsEl = document.getElementById('ast-cards-horas-extras'); if (cardsEl) cardsEl.innerHTML = ''; return; }
+            const canEditHE = _astIsAdmin() || _astHasPerm('asistencia.editar');
+            const canDeleteHE = _astIsAdmin() || _astHasPerm('asistencia.eliminar');
             const puedeAprobar = canEditHE;
             tbody.innerHTML = horasExtras.map(he => {
                 const ec = he.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : he.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#dbeafe;color:#2563eb';
@@ -1330,9 +1319,9 @@ const Asistencia = {
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + (he.motivo || '-') + '</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + (he.estado || 'pendiente') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                + (puedeAprobar && (!he.estado || he.estado === 'pendiente') ? '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'aprobada\')" class="btn btn-sm" title="Aprobar" style="background:#22c55e;color:white;margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button><button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'rechazada\')" class="btn btn-sm btn-danger" title="Rechazar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>' : '')
-                + (canEditHE ? '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
-                + (canDeleteHE ? '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
+                + (puedeAprobar && (!he.estado || he.estado === 'pendiente') ? `<button onclick="Asistencia.estadoHorasExtras(${he.id},'aprobada')" class="btn btn-sm" title="${BTN.APROBAR}" style="background:#22c55e;color:white;margin-right:4px">${BTN.ICON.APROBAR}</button><button onclick="Asistencia.estadoHorasExtras(${he.id},'rechazada')" class="btn btn-sm btn-danger" title="${BTN.RECHAZAR}" style="margin-right:4px">${BTN.ICON.RECHAZAR}</button>` : '')
+                + (canEditHE ? `<button onclick="Asistencia.editarHorasExtras(${he.id})" class="btn btn-sm btn-outline" title="${BTN.EDITAR}" style="margin-right:4px">${BTN.ICON.EDITAR}</button>` : '')
+                + (canDeleteHE ? `<button onclick="Asistencia.eliminarHorasExtras(${he.id})" class="btn btn-sm btn-danger" title="${BTN.ELIMINAR}">${BTN.ICON.ELIMINAR}</button>` : '')
                 + '</td></tr>';
             }).join('');
 
@@ -1352,11 +1341,11 @@ const Asistencia = {
                     actions: he => {
                         let html = '';
                         if (puedeAprobar && (!he.estado || he.estado === 'pendiente')) {
-                            html += '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'aprobada\')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">Aprobar</button>';
-                            html += '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'rechazada\')" class="btn btn-sm btn-danger" style="margin-right:4px">Rechazar</button>';
+                            html += `<button onclick="Asistencia.estadoHorasExtras(${he.id},'aprobada')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">${BTN.APROBAR}</button>`;
+                            html += `<button onclick="Asistencia.estadoHorasExtras(${he.id},'rechazada')" class="btn btn-sm btn-danger" style="margin-right:4px">${BTN.RECHAZAR}</button>`;
                         }
-                        if (canEditHE) html += '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
-                        if (canDeleteHE) html += '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+                        if (canEditHE) html += `<button onclick="Asistencia.editarHorasExtras(${he.id})" class="btn btn-sm btn-outline" style="margin-right:4px">${BTN.EDITAR}</button>`;
+                        if (canDeleteHE) html += `<button onclick="Asistencia.eliminarHorasExtras(${he.id})" class="btn btn-sm btn-danger">${BTN.ELIMINAR}</button>`;
                         return html;
                     }
                 }, horasExtras);
@@ -1378,7 +1367,7 @@ const Asistencia = {
     },
 
     async eliminarHorasExtras(id) {
-        if (!confirm('¿Eliminar este registro de horas extras?')) return;
+        if (!confirm(MSG.CONFIRMAR_ELIMINAR)) return;
         try {
             await fetch('/api/asistencia/horas-extras/' + id, { method: 'DELETE' });
             this.cargarHorasExtras();
