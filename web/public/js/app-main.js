@@ -114,6 +114,33 @@ const App = {
     modules: {},
     currentPage: null,
 
+    // ── Permission helpers for sigma modules ──
+    _userPerms: null,
+    _getUserPerms() {
+        if (!this._userPerms) {
+            try {
+                const u = JSON.parse(localStorage.getItem('unified_user')) || {};
+                this._userPerms = {
+                    isAdmin: u.rol === 'admin' || (u.permisos || []).includes('usuarios'),
+                    perms: u.permisos || []
+                };
+            } catch(e) { this._userPerms = { isAdmin: false, perms: [] }; }
+        }
+        return this._userPerms;
+    },
+    canCreate(mod) {
+        const { isAdmin, perms } = this._getUserPerms();
+        return isAdmin || perms.includes(mod + '.agregar') || perms.includes(mod);
+    },
+    canEdit(mod) {
+        const { isAdmin, perms } = this._getUserPerms();
+        return isAdmin || perms.includes(mod + '.editar') || perms.includes(mod);
+    },
+    canDelete(mod) {
+        const { isAdmin, perms } = this._getUserPerms();
+        return isAdmin || perms.includes(mod + '.eliminar') || perms.includes(mod);
+    },
+
     // ── SIGMA module registration ──
     registerModule(name, handler) { this.modules[name] = handler; },
 
