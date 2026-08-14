@@ -170,9 +170,9 @@ const InvMovimientos = {
         const data = {
             tipo_movimiento: this.tipoMovimiento,
             materia_prima_id: parseInt(materiaPrimaId),
-            ancho: document.getElementById('ancho').value,
-            alto: document.getElementById('alto').value,
-            cantidad_planchas: parseInt(document.getElementById('cantidadPlanchas').value),
+            ancho: parseInt(document.getElementById('ancho').value) || 0,
+            alto: parseInt(document.getElementById('alto').value) || 0,
+            cantidad_planchas: parseInt(document.getElementById('cantidadPlanchas').value) || 0,
             proveedor: document.getElementById('proveedor').value || null,
             turno: document.getElementById('turno').value || null,
             tipo_salida: this.tipoMovimiento === 'salida' ? this.tipoSalida : null,
