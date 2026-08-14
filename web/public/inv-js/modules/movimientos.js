@@ -27,8 +27,9 @@ const InvMovimientos = {
 .invMov-row{transition:all 0.2s}
 .invMov-row:hover{transform:translateX(2px);background:#f8fafc!important}
 .inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px;align-items:end}
-@media(max-width:640px){.inv-form-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
-@media(max-width:400px){.inv-form-grid{grid-template-columns:1fr}}
+.inv-form-dims{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 14px;align-items:end}
+@media(max-width:640px){.inv-form-grid{grid-template-columns:repeat(2,1fr);gap:10px}.inv-form-dims{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:400px){.inv-form-grid{grid-template-columns:1fr}.inv-form-dims{grid-template-columns:1fr}}
 .inv-form-grid .form-group{margin:0}
 .inv-form-grid label{font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b}
 .inv-form-grid input,.inv-form-grid select{padding:8px 10px;font-size:13px;width:100%;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:6px}
@@ -57,10 +58,14 @@ const InvMovimientos = {
                                         <label class="tipo-btn" id="btnTrozo" onclick="InvMovimientos.setTipoSalida('trozo')" style="flex:1;text-align:center;padding:6px;font-size:11px;cursor:pointer">Trozo</label>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="inv-form-dims" style="margin-top:10px">
                                 <div><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                 <div><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                 <div><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                 <div><label>m²</label><div id="m2Display" style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:16px;font-weight:700;color:#2563eb">0.00</div></div>
+                            </div>
+                            <div class="inv-form-grid" style="margin-top:10px">
                                 <div><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
                                 <div><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
                                 <div><label>Fecha</label><input type="date" id="fecha"></div>
@@ -110,7 +115,7 @@ const InvMovimientos = {
             fields: [
                 { label: 'Fecha', value: m => new Date(m.fecha_hora).toLocaleDateString('es-CL') },
                 { label: 'Turno', value: m => m.turno || '-' },
-                { label: 'Dimensiones', value: m => m.ancho + ' x ' + m.alto + ' mm' },
+                { label: 'Dimensiones', value: m => Math.round(m.ancho) + ' x ' + Math.round(m.alto) + ' mm' },
                 { label: 'Cantidad', value: m => m.cantidad_planchas + ' planchas' },
                 { label: 'm2', value: m => Number(m.metros_cuadrados).toFixed(2) + ' m2' },
                 { label: 'Proveedor', value: m => m.proveedor || '-' }
