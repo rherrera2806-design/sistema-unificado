@@ -3,19 +3,14 @@ const App = {
     currentPage: null,
 
     // Helper de permisos para módulos sigma
-    _userPerms: null,
     _getUserPerms() {
-        if (!this._userPerms) {
-            try {
-                const u = JSON.parse(localStorage.getItem('unified_user')) || {};
-                this._userPerms = {
-                    user: u,
-                    isAdmin: u.rol === 'admin' || (u.permisos || []).includes('usuarios'),
-                    perms: u.permisos || []
-                };
-            } catch(e) { this._userPerms = { user: {}, isAdmin: false, perms: [] }; }
-        }
-        return this._userPerms;
+        try {
+            const u = JSON.parse(localStorage.getItem('unified_user')) || {};
+            return {
+                isAdmin: u.rol === 'admin' || (u.permisos || []).includes('usuarios'),
+                perms: u.permisos || []
+            };
+        } catch(e) { return { isAdmin: false, perms: [] }; }
     },
     canCreate(mod) {
         const { isAdmin, perms } = this._getUserPerms();

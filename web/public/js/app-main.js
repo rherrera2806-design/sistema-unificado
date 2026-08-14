@@ -115,18 +115,14 @@ const App = {
     currentPage: null,
 
     // ── Permission helpers for sigma modules ──
-    _userPerms: null,
     _getUserPerms() {
-        if (!this._userPerms) {
-            try {
-                const u = JSON.parse(localStorage.getItem('unified_user')) || {};
-                this._userPerms = {
-                    isAdmin: u.rol === 'admin' || (u.permisos || []).includes('usuarios'),
-                    perms: u.permisos || []
-                };
-            } catch(e) { this._userPerms = { isAdmin: false, perms: [] }; }
-        }
-        return this._userPerms;
+        try {
+            const u = JSON.parse(localStorage.getItem('unified_user')) || {};
+            return {
+                isAdmin: u.rol === 'admin' || (u.permisos || []).includes('usuarios'),
+                perms: u.permisos || []
+            };
+        } catch(e) { return { isAdmin: false, perms: [] }; }
     },
     canCreate(mod) {
         const { isAdmin, perms } = this._getUserPerms();
