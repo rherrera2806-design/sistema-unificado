@@ -43,18 +43,18 @@ const InvMovimientos = {
                     <div class="card-body" style="padding:14px 16px">
                         <form onsubmit="InvMovimientos.guardar(event)">
                             <div class="inv-form-grid">
-                                <div><label>Tipo Movimiento *</label>
+                                <div class="form-group"><label>Tipo Movimiento *</label>
                                     <div style="display:flex;gap:6px">
                                         <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')" style="flex:1;text-align:center;padding:8px;font-size:12px;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Entrada</label>
                                         <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')" style="flex:1;text-align:center;padding:8px;font-size:12px;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</label>
                                     </div>
                                 </div>
-                                <div><label>Materia Prima *</label>
+                                <div class="form-group"><label>Materia Prima *</label>
                                     <select id="materiaPrimaId" class="form-control" required onchange="InvMovimientos.onMpChange()">
                                         <option value="">Seleccionar...</option>${mpOptions}
                                     </select>
                                 </div>
-                                <div id="tipoSalidaGroup" style="display:none"><label>Tipo Salida</label>
+                                <div class="form-group" id="tipoSalidaGroup" style="display:none"><label>Tipo Salida</label>
                                     <div style="display:flex;gap:6px">
                                         <label class="tipo-btn" id="btnPlancha" onclick="InvMovimientos.setTipoSalida('plancha_completa')" style="flex:1;text-align:center;padding:6px;font-size:11px;cursor:pointer">Plancha</label>
                                         <label class="tipo-btn" id="btnTrozo" onclick="InvMovimientos.setTipoSalida('trozo')" style="flex:1;text-align:center;padding:6px;font-size:11px;cursor:pointer">Trozo</label>
@@ -62,15 +62,15 @@ const InvMovimientos = {
                                 </div>
                             </div>
                             <div class="inv-form-dims" style="margin-top:10px">
-                                <div><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                <div><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                <div><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                <div><label>m²</label><div id="m2Display" style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:16px;font-weight:700;color:#2563eb">0.00</div></div>
+                                <div class="form-group"><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                <div class="form-group"><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                <div class="form-group"><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                <div class="form-group"><label>m²</label><div id="m2Display" style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:16px;font-weight:700;color:#2563eb">0.00</div></div>
                             </div>
                             <div class="inv-form-grid" style="margin-top:10px">
-                                <div><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
-                                <div><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
-                                <div><label>Fecha</label><input type="date" id="fecha"></div>
+                                <div class="form-group"><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
+                                <div class="form-group"><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
+                                <div class="form-group"><label>Fecha</label><input type="date" id="fecha"></div>
                             </div>
                             <div style="margin-top:10px">
                                 <label style="font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b">Observaciones</label>
@@ -90,8 +90,6 @@ const InvMovimientos = {
                         <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal" style="font-size:11px;padding:4px 10px">Salidas</a>
                     </div>
                     <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger btn-sm" style="font-size:11px;padding:5px 12px" title="Eliminar todos los movimientos"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>
-                </div>
-                    <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</a>
                 </div>
                 <div class="card invMov-card">
                     <div class="card-header">Movimientos <span style="color:var(--gray-500); font-weight:400; font-size:13px;">(${movimientos.length})</span></div>
