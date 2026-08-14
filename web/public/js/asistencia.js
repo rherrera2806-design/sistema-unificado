@@ -322,10 +322,14 @@ const Asistencia = {
 
     async cargarTodosTrabajadores() {
         try {
+            console.log('[AST] Cargando todos los trabajadores...');
             const r = await authFetch('/api/asistencia/trabajadores');
+            console.log('[AST] Response status:', r.status);
+            if (!r.ok) { console.error('[AST] Error HTTP:', r.status); return; }
             this.todosTrabajadores = await r.json();
+            console.log('[AST] Todos trabajadores cargados:', this.todosTrabajadores.length);
             this.renderTablaTrabajadores();
-        } catch(e) { console.error('Error:', e); }
+        } catch(e) { console.error('[AST] Error cargando todos trabajadores:', e); }
     },
 
     renderTablaTrabajadores() {
@@ -538,11 +542,15 @@ const Asistencia = {
 
     async cargarTrabajadores() {
         try {
+            console.log('[AST] Cargando trabajadores...');
             const r = await authFetch('/api/asistencia/trabajadores/activos');
+            console.log('[AST] Response status:', r.status);
+            if (!r.ok) { console.error('[AST] Error HTTP:', r.status); return; }
             this.trabajadores = await r.json();
+            console.log('[AST] Trabajadores cargados:', this.trabajadores.length);
             this.renderTrabajadores();
             this.llenarSelectores();
-        } catch(e) { console.error('Error:', e); }
+        } catch(e) { console.error('[AST] Error cargando trabajadores:', e); }
     },
 
     renderTrabajadores() {
@@ -603,13 +611,17 @@ const Asistencia = {
             return;
         }
         try {
+            console.log('[AST] Cargando asistencia para:', fecha);
             const r = await authFetch('/api/asistencia/diaria?fecha=' + fecha);
+            console.log('[AST] Response status:', r.status);
+            if (!r.ok) { console.error('[AST] Error HTTP:', r.status); return; }
             this.asistenciaHoy = await r.json();
+            console.log('[AST] Asistencia cargada:', this.asistenciaHoy.length, 'registros');
             this.lastLoadedDate = fecha;
             this.renderTrabajadores();
             this.renderTablaFaltas();
             this.actualizarStats();
-        } catch(e) { console.error('Error:', e); }
+        } catch(e) { console.error('[AST] Error cargando asistencia:', e); }
     },
 
     exportExcelTrabajadores() {
