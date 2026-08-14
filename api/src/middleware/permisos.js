@@ -133,15 +133,7 @@ function requirePerm(permisoRequerido) {
  * Útil para recursos como PDFs que se abren en iframe/window.open.
  */
 function requireAuth(req, res, next) {
-    const user = getUserFromReq(req);
-
-    // Si tiene email (de headers o sesión), está autenticado
-    if (user.email) {
-        req.user = user;
-        return next();
-    }
-
-    // Verificar sesión directamente
+    // 1. Verificar sesión directamente (cookie)
     const cookieHeader = req.headers.cookie || '';
     const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
     const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
@@ -153,6 +145,14 @@ function requireAuth(req, res, next) {
             permisos: Array.isArray(sessionUser.permisos) ? sessionUser.permisos : [],
             rol: sessionUser.rol || 'usuario'
         };
+        return next();
+    }
+
+    // 2. Verificar headers como fallback
+    const email = req.headers['x-user-email'] || '';
+    if (email) {
+        const permisos = (req.headers['x-user-permisos'] || '').split(',').map(p => p.trim()).filter(Boolean);
+        req.user = { email, permisos, rol: permisos.includes('usuarios') ? 'admin' : 'usuario' };
         return next();
     }
 
