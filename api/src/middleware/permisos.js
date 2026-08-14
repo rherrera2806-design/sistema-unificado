@@ -12,131 +12,117 @@
  */
 
 const { getSession } = require('./security');
-const { query } = require('../config/database');
 
-/**
- * Obtiene el usuario de la request (headers o sesión)
- * @param {Object} req - Request de Express
- * @returns {Object} Usuario con { email, permisos, rol }
- */
-async function getUserFromReq(req) {
-    // 1. Intentar desde headers (frontend)
-    const headerEmail = req.headers['x-user-email'] || '';
-    const headerPermisos = (req.headers['x-user-permisos'] || '')
-        .split(',')
-        .map(p => p.trim())
-        .filter(Boolean);
-
-    if (headerEmail && headerPermisos.length > 0) {
-        return { email: headerEmail, permisos: headerPermisos };
+function getPermisosFromReq(req) {
+    // 1. Intentar desde el header X-User-Permisos
+    const raw = req.headers['x-user-permisos'] || '';
+    if (raw) {
+        return raw.split(',').map(p => p.trim()).filter(Boolean);
     }
 
-    // 2. Intentar desde sesión (cookie)
+    // 2. Intentar desde la sesión (cookie)
     const cookieHeader = req.headers.cookie || '';
-    const sessionCookie = cookieHeader
-        .split(';')
-        .find(c => c.trim().startsWith('session='));
+    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
     const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-    const sessionUser = getSession(token);
+    const user = getSession(token);
 
-    if (sessionUser) {
-        // Si hay usuario en sesión, obtener permisos de la BD
-        try {
-            const result = await query(
-                "SELECT id, nombre, email, rol, permisos FROM usuarios WHERE email = $1 AND activo = TRUE",
-                [sessionUser.email]
-            );
-            if (result.rows.length > 0) {
-                const dbUser = result.rows[0];
-                return {
-                    email: dbUser.email,
-                    permisos: Array.isArray(dbUser.permisos) ? dbUser.permisos : [],
-                    rol: dbUser.rol
-                };
-            }
-        } catch (e) {
-            console.error('Error obteniendo usuario:', e.message);
-        }
-        return { email: sessionUser.email, permisos: [], rol: sessionUser.rol };
+    if (user && Array.isArray(user.permisos)) {
+        return user.permisos;
     }
 
-    // 3. Sin usuario
-    return { email: '', permisos: [], rol: null };
+    return [];
 }
 
 function getEmailFromReq(req) {
-    return req.headers['x-user-email'] || '';
+    // 1. Intentar desde el header
+    const raw = req.headers['x-user-email'] || '';
+    if (raw) return raw;
+
+    // 2. Intentar desde la sesión
+    const cookieHeader = req.headers.cookie || '';
+    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+    const user = getSession(token);
+
+    return user ? user.email : '';
+}
+
+function getUserFromReq(req) {
+    // 1. Intentar desde headers
+    const email = req.headers['x-user-email'] || '';
+    const permisos = (req.headers['x-user-permisos'] || '').split(',').filter(Boolean);
+
+    if (email) {
+        return { email, permisos };
+    }
+
+    // 2. Intentar desde sesión
+    const cookieHeader = req.headers.cookie || '';
+    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+    const user = getSession(token);
+
+    if (user) {
+        return {
+            email: user.email || '',
+            permisos: Array.isArray(user.permisos) ? user.permisos : [],
+            rol: user.rol || 'usuario'
+        };
+    }
+
+    return { email: '', permisos: [], rol: null };
 }
 
 /**
  * Verifica que el usuario tenga al menos uno de los permisos indicados.
  * Si no tiene ninguno, retorna 403.
- *
- * @param  {...string} permisosRequeridos - Lista de permisos aceptados (OR)
- * @returns {Function} middleware de Express
  */
 function requireAnyPerm(...permisosRequeridos) {
-    return async (req, res, next) => {
-        try {
-            const user = await getUserFromReq(req);
-            const userPerms = user.permisos || [];
+    return (req, res, next) => {
+        const user = getUserFromReq(req);
+        const userPerms = user.permisos || [];
 
-            // Admin total (tiene permiso 'usuarios' o rol 'admin')
-            if (user.rol === 'admin' || userPerms.includes('usuarios')) {
-                req.user = user;
-                return next();
-            }
-
-            const tieneAlguno = permisosRequeridos.some(p => userPerms.includes(p));
-            if (!tieneAlguno) {
-                return res.status(403).json({ error: 'Sin permisos para esta acción' });
-            }
-
+        // Admin total: tiene permiso 'usuarios' o rol 'admin'
+        if (user.rol === 'admin' || userPerms.includes('usuarios')) {
             req.user = user;
-            next();
-        } catch (e) {
-            console.error('Error en requireAnyPerm:', e.message);
-            return res.status(500).json({ error: 'Error interno' });
+            return next();
         }
+
+        const tieneAlguno = permisosRequeridos.some(p => userPerms.includes(p));
+        if (!tieneAlguno) {
+            return res.status(403).json({ error: 'Sin permisos para esta acción' });
+        }
+
+        req.user = user;
+        next();
     };
 }
 
 /**
  * Verifica que el usuario tenga el permiso específico indicado.
- *
- * @param  {string} permisoRequerido - Permiso exacto requerido
- * @returns {Function} middleware de Express
  */
 function requirePerm(permisoRequerido) {
-    return async (req, res, next) => {
-        try {
-            const user = await getUserFromReq(req);
-            const userPerms = user.permisos || [];
+    return (req, res, next) => {
+        const user = getUserFromReq(req);
+        const userPerms = user.permisos || [];
 
-            // Admin total (tiene permiso 'usuarios' o rol 'admin')
-            if (user.rol === 'admin' || userPerms.includes('usuarios')) {
-                req.user = user;
-                return next();
-            }
-
-            if (!userPerms.includes(permisoRequerido)) {
-                return res.status(403).json({ error: 'Sin permisos para esta acción' });
-            }
-
+        // Admin total
+        if (user.rol === 'admin' || userPerms.includes('usuarios')) {
             req.user = user;
-            next();
-        } catch (e) {
-            console.error('Error en requirePerm:', e.message);
-            return res.status(500).json({ error: 'Error interno' });
+            return next();
         }
+
+        if (!userPerms.includes(permisoRequerido)) {
+            return res.status(403).json({ error: 'Sin permisos para esta acción' });
+        }
+
+        req.user = user;
+        next();
     };
 }
 
 /**
  * Helper para crear middlewares CRUD completos para un módulo.
- *
- * @param {string} modulo - Nombre del módulo (ej: "prod_ordenes")
- * @returns {Object} { view, create, update, delete }
  */
 function crudPerms(modulo) {
     return {
@@ -148,8 +134,9 @@ function crudPerms(modulo) {
 }
 
 module.exports = {
-    getUserFromReq,
+    getPermisosFromReq,
     getEmailFromReq,
+    getUserFromReq,
     requireAnyPerm,
     requirePerm,
     crudPerms,

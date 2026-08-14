@@ -39,9 +39,29 @@ router.get('/api/auth/me', async (req, res, next) => {
         const cookieHeader = req.headers.cookie || '';
         const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
         const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-        const user = getSession(token);
-        if (!user) return res.status(401).json({ error: 'No autenticado' });
-        res.json(user);
+        const sessionUser = getSession(token);
+        if (!sessionUser) return res.status(401).json({ error: 'No autenticado' });
+        
+        // Obtener permisos actualizados de la BD
+        const { query } = require('../config/database');
+        const result = await query(
+            "SELECT id, nombre, email, rol, permisos, area FROM usuarios WHERE email = $1 AND activo = TRUE",
+            [sessionUser.email]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(401).json({ error: 'Usuario no encontrado' });
+        }
+        
+        const dbUser = result.rows[0];
+        res.json({
+            id: dbUser.id,
+            nombre: dbUser.nombre,
+            email: dbUser.email,
+            rol: dbUser.rol,
+            area: dbUser.area || '',
+            permisos: Array.isArray(dbUser.permisos) ? dbUser.permisos : []
+        });
     } catch (e) { next(e); }
 });
 
@@ -83,6 +103,40 @@ router.get('/api/auth/check-perms', async (req, res, next) => {
             db: dbUser,
             hasUsuariosPerm: (user.permisos || []).includes('usuarios'),
             isAdmin: user.rol === 'admin'
+        });
+    } catch (e) { next(e); }
+});
+
+// Endpoint para sincronizar permisos del localStorage con la BD
+router.get('/api/auth/sync-perms', async (req, res, next) => {
+    try {
+        const cookieHeader = req.headers.cookie || '';
+        const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+        const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+        const { getSession } = require('../middleware/security');
+        const user = getSession(token);
+        
+        if (!user) return res.status(401).json({ error: 'No autenticado' });
+        
+        // Obtener usuario completo de la BD
+        const { query } = require('../config/database');
+        const result = await query(
+            "SELECT id, nombre, email, rol, permisos, area FROM usuarios WHERE email = $1 AND activo = TRUE",
+            [user.email]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        
+        const dbUser = result.rows[0];
+        res.json({
+            id: dbUser.id,
+            nombre: dbUser.nombre,
+            email: dbUser.email,
+            rol: dbUser.rol,
+            area: dbUser.area || '',
+            permisos: Array.isArray(dbUser.permisos) ? dbUser.permisos : []
         });
     } catch (e) { next(e); }
 });
