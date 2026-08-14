@@ -28,6 +28,8 @@ const InvMovimientos = {
 .invMov-row:hover{transform:translateX(2px);background:#f8fafc!important}
 .inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px;align-items:end}
 .inv-form-dims{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 14px;align-items:end}
+.inv-form-grid>div,.inv-form-dims>div{min-width:0}
+.inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select,.inv-form-dims>div>div{width:100%;box-sizing:border-box}
 @media(max-width:640px){.inv-form-grid{grid-template-columns:repeat(2,1fr);gap:10px}.inv-form-dims{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:400px){.inv-form-grid{grid-template-columns:1fr}.inv-form-dims{grid-template-columns:1fr}}
 .inv-form-grid .form-group{margin:0}
