@@ -6,6 +6,15 @@
 // Ver: js/PermissionGuard.js, js/auth-helpers.js, js/system-constants.js
 // ═══════════════════════════════════════════════════════
 
+// Helper para peticiones con permisos
+function _astFetch(url, options = {}) {
+    const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+    return fetch(url, {
+        ...options,
+        headers: { ...headers, ...(options.headers || {}) }
+    });
+}
+
 const Asistencia = {
     trabajadores: [],
     asistenciaHoy: [],
@@ -305,7 +314,7 @@ const Asistencia = {
 
     async cargarTodosTrabajadores() {
         try {
-            const r = await fetch('/api/asistencia/trabajadores');
+            const r = await _astFetch('/api/asistencia/trabajadores');
             this.todosTrabajadores = await r.json();
             this.renderTablaTrabajadores();
         } catch(e) { console.error('Error:', e); }
@@ -423,13 +432,13 @@ const Asistencia = {
         if (!rut || !nombre) return;
 
         if (id) {
-            await fetch('/api/asistencia/trabajadores/' + id, {
+            await _astFetch('/api/asistencia/trabajadores/' + id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ rut, nombre, fecha_ingreso, telefono, puesto })
             });
         } else {
-            await fetch('/api/asistencia/trabajadores', {
+            await _astFetch('/api/asistencia/trabajadores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ rut, nombre, fecha_ingreso, telefono, puesto })
@@ -441,7 +450,7 @@ const Asistencia = {
     },
 
     async toggleTrabajador(id, activo) {
-        await fetch('/api/asistencia/trabajadores/' + id, {
+        await _astFetch('/api/asistencia/trabajadores/' + id, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ activo: !activo })
@@ -453,7 +462,7 @@ const Asistencia = {
     async eliminarTrabajador(id, nombre) {
         if (!confirm(MSG.CONFIRMAR_ELIMINAR_NOMBRE(nombre))) return;
         try {
-            const r = await fetch('/api/asistencia/trabajadores/' + id, { method: 'DELETE' });
+            const r = await _astFetch('/api/asistencia/trabajadores/' + id, { method: 'DELETE' });
             if (!r.ok) {
                 const err = await r.json().catch(() => ({}));
                 throw new Error(err.error || 'Error al eliminar');
@@ -521,7 +530,7 @@ const Asistencia = {
 
     async cargarTrabajadores() {
         try {
-            const r = await fetch('/api/asistencia/trabajadores/activos');
+            const r = await _astFetch('/api/asistencia/trabajadores/activos');
             this.trabajadores = await r.json();
             this.renderTrabajadores();
             this.llenarSelectores();
@@ -567,7 +576,7 @@ const Asistencia = {
     async marcar(trabajadorId, falta) {
         try {
             const fecha = document.getElementById('ast-hero-fecha')?.value || new Date().toISOString().split('T')[0];
-            const r = await fetch('/api/asistencia/marcar', {
+            const r = await _astFetch('/api/asistencia/marcar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ trabajador_id: trabajadorId, falta, fecha })
@@ -586,7 +595,7 @@ const Asistencia = {
             return;
         }
         try {
-            const r = await fetch('/api/asistencia/diaria?fecha=' + fecha);
+            const r = await _astFetch('/api/asistencia/diaria?fecha=' + fecha);
             this.asistenciaHoy = await r.json();
             this.lastLoadedDate = fecha;
             this.renderTrabajadores();
@@ -680,7 +689,7 @@ const Asistencia = {
             const confirmar = confirm('Se importarán ' + trabajadores.length + ' trabajadores.\n\n¿Continuar?');
             if (!confirmar) return;
 
-            const r = await fetch('/api/asistencia/trabajadores/importar', {
+            const r = await _astFetch('/api/asistencia/trabajadores/importar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ trabajadores })
@@ -843,7 +852,7 @@ const Asistencia = {
         const anio = document.getElementById('ast-hero-anio')?.value;
         if (!mes || !anio) return;
         try {
-            const r = await fetch('/api/asistencia/calendario?mes=' + mes + '&anio=' + anio);
+            const r = await _astFetch('/api/asistencia/calendario?mes=' + mes + '&anio=' + anio);
             this.calendarioData = await r.json();
             if (this.calendarioData) this.renderCalendarioGrid(this.calendarioData);
         } catch(e) { console.error('Error:', e); }
@@ -951,7 +960,7 @@ const Asistencia = {
         const mes = document.getElementById('ast-hero-mes')?.value;
         if (!mes) return;
         try {
-            const r = await fetch('/api/asistencia/permisos?mes=' + mes + '&anio=' + new Date().getFullYear());
+            const r = await _astFetch('/api/asistencia/permisos?mes=' + mes + '&anio=' + new Date().getFullYear());
             const permisos = await r.json();
             const tbody = document.getElementById('ast-tabla-permisos');
             if (!tbody) return;
@@ -1011,12 +1020,12 @@ const Asistencia = {
     },
 
     async estadoPermiso(id, estado) {
-        await fetch('/api/asistencia/permisos/' + id + '/estado', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) });
+        await _astFetch('/api/asistencia/permisos/' + id + '/estado', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) });
         this.cargarPermisos();
     },
 
     editarPermiso(id) {
-        fetch('/api/asistencia/permisos').then(r => r.json()).then(permisos => {
+        _astFetch('/api/asistencia/permisos').then(r => r.json()).then(permisos => {
             const p = permisos.find(x => x.id === id);
             if (!p) return;
             document.getElementById('permiso-trabajador').value = p.trabajador_id;
@@ -1032,7 +1041,7 @@ const Asistencia = {
     async eliminarPermiso(id) {
         if (!confirm(MSG.CONFIRMAR_ELIMINAR)) return;
         try {
-            await fetch('/api/asistencia/permisos/' + id, { method: 'DELETE' });
+            await _astFetch('/api/asistencia/permisos/' + id, { method: 'DELETE' });
             this.cargarPermisos();
         } catch(e) { console.error('Error:', e); }
     },
@@ -1045,10 +1054,10 @@ const Asistencia = {
         const d = { trabajador_id: document.getElementById('permiso-trabajador').value, tipo: document.getElementById('permiso-tipo').value, fecha_inicio: fecha, fecha_fin: fecha, motivo: document.getElementById('permiso-motivo').value, horas: parseFloat(document.getElementById('permiso-horas')?.value) || 0 };
         if (!d.trabajador_id || !d.fecha_inicio) return;
         if (editId) {
-            await fetch('/api/asistencia/permisos/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            await _astFetch('/api/asistencia/permisos/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
             delete document.getElementById('modalPermiso').dataset.editId;
         } else {
-            await fetch('/api/asistencia/permisos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            await _astFetch('/api/asistencia/permisos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
         }
         this.cerrarModalPermiso(); this.cargarPermisos();
     },
@@ -1080,7 +1089,7 @@ const Asistencia = {
         const mes = document.getElementById('ast-hero-mes')?.value;
         if (!mes) return;
         try {
-            const r = await fetch('/api/asistencia/licencias?mes=' + mes + '&anio=' + new Date().getFullYear());
+            const r = await _astFetch('/api/asistencia/licencias?mes=' + mes + '&anio=' + new Date().getFullYear());
             const licencias = await r.json();
             const tbody = document.getElementById('ast-tabla-licencias');
             if (!tbody) return;
@@ -1139,12 +1148,12 @@ const Asistencia = {
     },
 
     async estadoLicencia(id, estado) {
-        await fetch('/api/asistencia/licencias/' + id + '/estado', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) });
+        await _astFetch('/api/asistencia/licencias/' + id + '/estado', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado }) });
         this.cargarLicencias();
     },
 
     editarLicencia(id) {
-        fetch('/api/asistencia/licencias').then(r => r.json()).then(licencias => {
+        _astFetch('/api/asistencia/licencias').then(r => r.json()).then(licencias => {
             const l = licencias.find(x => x.id === id);
             if (!l) return;
             document.getElementById('licencia-trabajador').value = l.trabajador_id;
@@ -1159,7 +1168,7 @@ const Asistencia = {
     async eliminarLicencia(id) {
         if (!confirm(MSG.CONFIRMAR_ELIMINAR)) return;
         try {
-            await fetch('/api/asistencia/licencias/' + id, { method: 'DELETE' });
+            await _astFetch('/api/asistencia/licencias/' + id, { method: 'DELETE' });
             this.cargarLicencias();
         } catch(e) { console.error('Error:', e); }
     },
@@ -1171,10 +1180,10 @@ const Asistencia = {
         const d = { trabajador_id: document.getElementById('licencia-trabajador').value, fecha_inicio: document.getElementById('licencia-inicio').value, fecha_fin: document.getElementById('licencia-fin').value, diagnostico: document.getElementById('licencia-diagnostico').value };
         if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin) return;
         if (editId) {
-            await fetch('/api/asistencia/licencias/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            await _astFetch('/api/asistencia/licencias/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
             delete document.getElementById('modalLicencia').dataset.editId;
         } else {
-            await fetch('/api/asistencia/licencias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            await _astFetch('/api/asistencia/licencias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
         }
         this.cerrarModalLicencia(); this.cargarLicencias();
     },
@@ -1241,7 +1250,7 @@ const Asistencia = {
     },
 
     editarVacacion(id) {
-        fetch('/api/asistencia/vacaciones').then(r => r.json()).then(vacaciones => {
+        _astFetch('/api/asistencia/vacaciones').then(r => r.json()).then(vacaciones => {
             const v = vacaciones.find(x => x.id === id);
             if (!v) return;
             document.getElementById('vacacion-trabajador').value = v.trabajador_id;
@@ -1256,7 +1265,7 @@ const Asistencia = {
     async eliminarVacacion(id) {
         if (!confirm(MSG.CONFIRMAR_ELIMINAR)) return;
         try {
-            await fetch('/api/asistencia/vacaciones/' + id, { method: 'DELETE' });
+            await _astFetch('/api/asistencia/vacaciones/' + id, { method: 'DELETE' });
             this.cargarVacaciones();
         } catch(e) { console.error('Error:', e); }
     },
@@ -1268,10 +1277,10 @@ const Asistencia = {
         const d = { trabajador_id: document.getElementById('vacacion-trabajador').value, fecha_inicio: document.getElementById('vacacion-inicio').value, fecha_fin: document.getElementById('vacacion-fin').value, dias: parseInt(document.getElementById('vacacion-dias').value) };
         if (!d.trabajador_id || !d.fecha_inicio || !d.fecha_fin || !d.dias) return;
         if (editId) {
-            await fetch('/api/asistencia/vacaciones/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            await _astFetch('/api/asistencia/vacaciones/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
             delete document.getElementById('modalVacacion').dataset.editId;
         } else {
-            await fetch('/api/asistencia/vacaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            await _astFetch('/api/asistencia/vacaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
         }
         this.cerrarModalVacacion(); this.cargarVacaciones();
     },
@@ -1354,7 +1363,7 @@ const Asistencia = {
     },
 
     editarHorasExtras(id) {
-        fetch('/api/asistencia/horas-extras').then(r => r.json()).then(horasExtras => {
+        _astFetch('/api/asistencia/horas-extras').then(r => r.json()).then(horasExtras => {
             const he = horasExtras.find(x => x.id === id);
             if (!he) return;
             document.getElementById('he-trabajador').value = he.trabajador_id;
@@ -1369,14 +1378,14 @@ const Asistencia = {
     async eliminarHorasExtras(id) {
         if (!confirm(MSG.CONFIRMAR_ELIMINAR)) return;
         try {
-            await fetch('/api/asistencia/horas-extras/' + id, { method: 'DELETE' });
+            await _astFetch('/api/asistencia/horas-extras/' + id, { method: 'DELETE' });
             this.cargarHorasExtras();
         } catch(e) { console.error('Error:', e); }
     },
 
     async estadoHorasExtras(id, estado) {
         try {
-            await fetch('/api/asistencia/horas-extras/' + id + '/estado', {
+            await _astFetch('/api/asistencia/horas-extras/' + id + '/estado', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado })
@@ -1409,7 +1418,7 @@ const Asistencia = {
         document.getElementById('he-horas').value = horas > 0 ? horas.toFixed(1) : '';
     },
     cargarTrabajadoresSelect(selectId) {
-        fetch('/api/asistencia/trabajadores').then(r => r.json()).then(trabajadores => {
+        _astFetch('/api/asistencia/trabajadores').then(r => r.json()).then(trabajadores => {
             const sel = document.getElementById(selectId);
             if (!sel) return;
             sel.innerHTML = '<option value="">Seleccionar...</option>' + trabajadores.filter(t => t.activo !== false).map(t => '<option value="' + t.id + '">' + t.nombre + '</option>').join('');
@@ -1420,10 +1429,10 @@ const Asistencia = {
         const d = { trabajador_id: document.getElementById('he-trabajador').value, fecha: document.getElementById('he-fecha').value, horas: parseFloat(document.getElementById('he-horas').value), motivo: document.getElementById('he-motivo').value };
         if (!d.trabajador_id || !d.fecha || !d.horas) return;
         if (editId) {
-            await fetch('/api/asistencia/horas-extras/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            await _astFetch('/api/asistencia/horas-extras/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
             delete document.getElementById('modalHorasExtras').dataset.editId;
         } else {
-            await fetch('/api/asistencia/horas-extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+            await _astFetch('/api/asistencia/horas-extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
         }
         this.cerrarModalHorasExtras(); this.cargarHorasExtras();
     },
@@ -1461,8 +1470,8 @@ const Asistencia = {
         const anio = new Date().getFullYear();
         try {
             const [reporteR, rankAR] = await Promise.all([
-                fetch('/api/asistencia/reporte-mensual?mes=' + mes + '&anio=' + anio),
-                fetch('/api/asistencia/ranking?mes=' + mes + '&anio=' + anio + '&tipo=asistencia')
+                _astFetch('/api/asistencia/reporte-mensual?mes=' + mes + '&anio=' + anio),
+                _astFetch('/api/asistencia/ranking?mes=' + mes + '&anio=' + anio + '&tipo=asistencia')
             ]);
             if (!reporteR.ok) { console.error('Reporte API error:', await reporteR.text()); return; }
             const reporte = await reporteR.json();

@@ -77,8 +77,8 @@ function requireAnyPerm(...permisosRequeridos) {
         const user = getUserFromReq(req);
         const userPerms = user.permisos || [];
 
-        // Admin total (tiene permiso 'usuarios' o rol 'admin')
-        if (userPerms.includes('usuarios') || user.rol === 'admin') return next();
+        // Admin total (tiene permiso 'usuarios')
+        if (userPerms.includes('usuarios')) return next();
 
         const tieneAlguno = permisosRequeridos.some(p => userPerms.includes(p));
         if (!tieneAlguno) {
@@ -99,8 +99,8 @@ function requirePerm(permisoRequerido) {
         const user = getUserFromReq(req);
         const userPerms = user.permisos || [];
 
-        // Admin total (tiene permiso 'usuarios' o rol 'admin')
-        if (userPerms.includes('usuarios') || user.rol === 'admin') return next();
+        // Admin total (tiene permiso 'usuarios')
+        if (userPerms.includes('usuarios')) return next();
 
         if (!userPerms.includes(permisoRequerido)) {
             return res.status(403).json({ error: 'Sin permisos para esta acción' });
