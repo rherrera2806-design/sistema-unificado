@@ -7,9 +7,9 @@
     function _isAdmin() { var u = _getUser(); return u.rol === 'admin' || (u.permisos || []).indexOf('usuarios') !== -1; }
     function _hasPerm(p) { if (_isAdmin()) return true; return (_getUser().permisos || []).indexOf(p) !== -1; }
 
-    if (typeof canCreate !== 'function') window.canCreate = function(m) { return _isAdmin() || _hasPerm(m + '.agregar') || _hasPerm(m); };
-    if (typeof canEdit !== 'function') window.canEdit = function(m) { return _isAdmin() || _hasPerm(m + '.editar') || _hasPerm(m); };
-    if (typeof canDelete !== 'function') window.canDelete = function(m) { return _isAdmin() || _hasPerm(m + '.eliminar') || _hasPerm(m); };
+    if (typeof canCreate !== 'function') window.canCreate = function(m) { return _isAdmin() || _hasPerm(m + '.agregar'); };
+    if (typeof canEdit !== 'function') window.canEdit = function(m) { return _isAdmin() || _hasPerm(m + '.editar'); };
+    if (typeof canDelete !== 'function') window.canDelete = function(m) { return _isAdmin() || _hasPerm(m + '.eliminar'); };
     if (typeof canView !== 'function') window.canView = function(m) { return _isAdmin() || _hasPerm(m) || _hasPerm(m + '.editar') || _hasPerm(m + '.eliminar') || _hasPerm(m + '.agregar'); };
     if (typeof isAdmin !== 'function') window.isAdmin = _isAdmin;
 

@@ -19,15 +19,15 @@ const App = {
     },
     canCreate(mod) {
         const { isAdmin, perms } = this._getUserPerms();
-        return isAdmin || perms.includes(mod + '.agregar') || perms.includes(mod);
+        return isAdmin || perms.includes(mod + '.agregar');
     },
     canEdit(mod) {
         const { isAdmin, perms } = this._getUserPerms();
-        return isAdmin || perms.includes(mod + '.editar') || perms.includes(mod);
+        return isAdmin || perms.includes(mod + '.editar');
     },
     canDelete(mod) {
         const { isAdmin, perms } = this._getUserPerms();
-        return isAdmin || perms.includes(mod + '.eliminar') || perms.includes(mod);
+        return isAdmin || perms.includes(mod + '.eliminar');
     },
 
     init() {
