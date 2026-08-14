@@ -161,10 +161,13 @@ const Asistencia = {
         if (!container) return;
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const mesActual = new Date().getMonth();
-        const canAgT = typeof canCreate === 'function' ? canCreate('asistencia', 'asistencia') : false;
-        const canEdT = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
-        const canDelT = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
-        const canView = typeof isAdmin === 'function' ? isAdmin() : (typeof hasSection === 'function' ? hasSection('asistencia') : false);
+        const user = typeof getUser === 'function' ? getUser() : null;
+        const isAdm = user && user.rol === 'admin';
+        const perms = user && Array.isArray(user.permisos) ? user.permisos : [];
+        const canAgT = isAdm || perms.includes('asistencia.agregar');
+        const canEdT = isAdm || perms.includes('asistencia.editar');
+        const canDelT = isAdm || perms.includes('asistencia.eliminar');
+        const canView = isAdm || perms.includes('asistencia');
         if (tab === 'trabajadores') {
             container.innerHTML = '<div style="display:flex;gap:6px;align-items:center">'
                 + '<button onclick="Asistencia.filtrarTrabajadores(\'todos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.4);font-size:11px;padding:6px 12px" data-filter="todos">Todos</button>'
@@ -232,9 +235,12 @@ const Asistencia = {
 
     // ═══════ TRABAJADORES ═══════
     async renderTrabajadoresTab(c) {
-        const canAgT = typeof canCreate === 'function' ? canCreate('asistencia', 'asistencia') : false;
-        const canEditT = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
-        const canDeleteT = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
+        const user = typeof getUser === 'function' ? getUser() : null;
+        const isAdm = user && user.rol === 'admin';
+        const perms = user && Array.isArray(user.permisos) ? user.permisos : [];
+        const canAgT = isAdm || perms.includes('asistencia.agregar');
+        const canEditT = isAdm || perms.includes('asistencia.editar');
+        const canDeleteT = isAdm || perms.includes('asistencia.eliminar');
         c.innerHTML = `
             <div id="ast-form-trabajador" style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:20px 24px;margin-bottom:20px;animation:astFadeUp 0.3s ease both;overflow:hidden;width:100%;box-sizing:border-box">
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
@@ -951,8 +957,11 @@ const Asistencia = {
             if (!tbody) return;
             if (permisos.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin permisos registrados</td></tr>'; const cardsEl = document.getElementById('ast-cards-permisos'); if (cardsEl) cardsEl.innerHTML = ''; return; }
             const tipoL = { medico: 'Médico', personal: 'Personal', familiar: 'Familiar', otro: 'Otro' };
-            const canEditP = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
-            const canDeleteP = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
+            const user = typeof getUser === 'function' ? getUser() : null;
+            const isAdm = user && user.rol === 'admin';
+            const uperms = user && Array.isArray(user.permisos) ? user.permisos : [];
+            const canEditP = isAdm || uperms.includes('asistencia.editar');
+            const canDeleteP = isAdm || uperms.includes('asistencia.eliminar');
             tbody.innerHTML = permisos.map(p => {
                 const ec = p.estado === 'aprobado' ? 'background:#d1fae5;color:#059669' : p.estado === 'rechazado' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
                 return '<tr style="border-bottom:1px solid #f1f5f9">'
@@ -1078,8 +1087,11 @@ const Asistencia = {
             const tbody = document.getElementById('ast-tabla-licencias');
             if (!tbody) return;
             if (licencias.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin licencias registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-licencias'); if (cardsEl) cardsEl.innerHTML = ''; return; }
-            const canEditL = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
-            const canDeleteL = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
+            const user = typeof getUser === 'function' ? getUser() : null;
+            const isAdm = user && user.rol === 'admin';
+            const uperms = user && Array.isArray(user.permisos) ? user.permisos : [];
+            const canEditL = isAdm || uperms.includes('asistencia.editar');
+            const canDeleteL = isAdm || uperms.includes('asistencia.eliminar');
             tbody.innerHTML = licencias.map(l => {
                 const ec = l.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : l.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
                 const dias = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / 86400000) + 1;
@@ -1203,8 +1215,11 @@ const Asistencia = {
             const tbody = document.getElementById('ast-tabla-vacaciones');
             if (!tbody) return;
             if (vacaciones.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin vacaciones registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-vacaciones'); if (cardsEl) cardsEl.innerHTML = ''; return; }
-            const canEditV = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
-            const canDeleteV = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
+            const user = typeof getUser === 'function' ? getUser() : null;
+            const isAdm = user && user.rol === 'admin';
+            const uperms = user && Array.isArray(user.permisos) ? user.permisos : [];
+            const canEditV = isAdm || uperms.includes('asistencia.editar');
+            const canDeleteV = isAdm || uperms.includes('asistencia.eliminar');
             tbody.innerHTML = vacaciones.map(v => '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(v.fecha_inicio) + '</td>'
@@ -1300,8 +1315,11 @@ const Asistencia = {
             const tbody = document.getElementById('ast-tabla-horas-extras');
             if (!tbody) return;
             if (horasExtras.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin horas extras registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-horas-extras'); if (cardsEl) cardsEl.innerHTML = ''; return; }
-            const canEditHE = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
-            const canDeleteHE = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
+            const user = typeof getUser === 'function' ? getUser() : null;
+            const isAdm = user && user.rol === 'admin';
+            const uperms = user && Array.isArray(user.permisos) ? user.permisos : [];
+            const canEditHE = isAdm || uperms.includes('asistencia.editar');
+            const canDeleteHE = isAdm || uperms.includes('asistencia.eliminar');
             const puedeAprobar = canEditHE;
             tbody.innerHTML = horasExtras.map(he => {
                 const ec = he.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : he.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#dbeafe;color:#2563eb';
