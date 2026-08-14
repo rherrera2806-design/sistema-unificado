@@ -150,12 +150,12 @@ router.delete('/api/turnos/eliminar-turno/:id', canDelete, async (req, res, next
     res.json({ ok: true });
 });
 
-router.delete('/api/turnos/eliminar-entrega/:id', async (req, res, next) => {
+router.delete('/api/turnos/eliminar-entrega/:id', canDelete, async (req, res, next) => {
     await entregas.eliminarEntrega(Number(req.params.id));
     res.json({ ok: true });
 });
 
-router.get('/api/turnos/:id', async (req, res, next) => {
+router.get('/api/turnos/:id', canView, async (req, res, next) => {
     const ticket = await turnosReportes.getTicketTurno(Number(req.params.id));
     if (!ticket) return res.status(404).json({ error: 'No encontrado' });
     res.json(ticket);
