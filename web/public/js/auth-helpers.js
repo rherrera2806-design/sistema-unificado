@@ -1,13 +1,8 @@
 /**
- * VitroFlow Permission System - Frontend Entry Point
- * 
- * Punto de entrada unificado para el sistema de permisos del frontend.
- * Proporciona funciones helper globales para verificar permisos.
- * 
- * Uso:
- *   const guard = getPermissionGuard();
- *   if (guard.canView('asistencia')) { ... }
- *   if (guard.canCreate('asistencia')) { ... }
+ * VitroFlow Permission System - Frontend Helpers
+ *
+ * Funciones helper para autenticación y headers.
+ * Las funciones canView/canCreate/canEdit/canDelete están en app-main.js
  */
 
 /**
@@ -32,56 +27,16 @@ function getPermissionGuard() {
 }
 
 /**
- * Verifica si el usuario actual es administrador
- * @returns {boolean}
- */
-function isAdmin() {
-    const user = getCurrentUser();
-    return user.rol === 'admin' || (user.permisos || []).includes('usuarios');
-}
-
-/**
- * Verifica si el usuario actual puede VER un módulo
- * @param {string} modulo - Nombre del módulo
- * @returns {boolean}
- */
-function canView(modulo) {
-    return getPermissionGuard().canView(modulo);
-}
-
-/**
- * Verifica si el usuario actual puede CREAR en un módulo
- * @param {string} modulo - Nombre del módulo
- * @returns {boolean}
- */
-function canCreate(modulo) {
-    return getPermissionGuard().canCreate(modulo);
-}
-
-/**
- * Verifica si el usuario actual puede EDITAR en un módulo
- * @param {string} modulo - Nombre del módulo
- * @returns {boolean}
- */
-function canEdit(modulo) {
-    return getPermissionGuard().canEdit(modulo);
-}
-
-/**
- * Verifica si el usuario actual puede ELIMINAR en un módulo
- * @param {string} modulo - Nombre del módulo
- * @returns {boolean}
- */
-function canDelete(modulo) {
-    return getPermissionGuard().canDelete(modulo);
-}
-
-/**
  * Obtiene los headers para peticiones fetch con permisos
  * @returns {Object} Headers
  */
 function getAuthHeaders() {
-    return getPermissionGuard().getFetchHeaders();
+    const u = getCurrentUser();
+    return {
+        'Content-Type': 'application/json',
+        'X-User-Permisos': (u.permisos || []).join(','),
+        'X-User-Email': u.email || ''
+    };
 }
 
 /**

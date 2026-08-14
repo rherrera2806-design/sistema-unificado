@@ -33,12 +33,14 @@ App.registerModule('inst_historial', {
 
     async loadData() {
         try {
-            const res = await fetch('/api/instalaciones');
-            this.instalaciones = await res.json();
+            const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            const res = await fetch('/api/instalaciones', { headers: hdrs });
+            const data = await res.json();
+            this.instalaciones = Array.isArray(data) ? data : [];
             this.renderStats();
             this.renderTabla();
             this._ready = true;
-        } catch(e) { console.error('Error cargando historial:', e); }
+        } catch(e) { console.error('Error cargando historial:', e); this.instalaciones = []; }
     },
 
     renderStats() {
@@ -155,12 +157,9 @@ App.registerModule('inst_historial', {
 
     async eliminar(id) {
         if (!confirm('Eliminar esta instalacion y todo su historial? Esta accion no se puede deshacer.')) return;
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         try {
-            await fetch('/api/instalaciones/' + id, {
-                method: 'DELETE',
-                headers: { 'X-User-Email': user.email || '' }
-            });
+            const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            await fetch('/api/instalaciones/' + id, { method: 'DELETE', headers: hdrs });
             App.showAlert('Instalacion eliminada');
             await this.render();
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }

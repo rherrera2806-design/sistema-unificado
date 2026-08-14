@@ -124,9 +124,10 @@ App.registerModule('usuarios', {
         let user = { nombre: '', email: '', password: '', rol: 'usuario', area: '', permisos: [] };
         if (id) {
             try {
-                const res = await fetch('/api/admin/usuarios');
+                const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+                const res = await fetch('/api/admin/usuarios', { headers });
                 const all = await res.json();
-                user = all.find(u => u.id === id) || user;
+                user = Array.isArray(all) ? (all.find(u => u.id === id) || user) : user;
             } catch(e) {}
         }
         const up = Array.isArray(user.permisos) ? user.permisos : [];
@@ -268,7 +269,8 @@ App.registerModule('usuarios', {
         try {
             const url = id ? `/api/admin/usuarios/${id}` : '/api/admin/usuarios';
             const method = id ? 'PUT' : 'POST';
-            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            const res = await fetch(url, { method, headers, body: JSON.stringify(data) });
             if (!res.ok) { const e = await res.json(); err.textContent = e.error || 'Error'; err.style.display = 'block'; btn.disabled = false; btn.textContent = id ? 'Actualizar' : 'Crear'; return; }
             this.closeModal();
             await this.loadUsers();
@@ -278,6 +280,10 @@ App.registerModule('usuarios', {
 
     async remove(id) {
         if (!confirm('Eliminar este usuario?')) return;
-        try { await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE' }); await this.loadUsers(); } catch(e) { alert('Error'); }
+        try {
+            const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE', headers });
+            await this.loadUsers();
+        } catch(e) { alert('Error'); }
     }
 });

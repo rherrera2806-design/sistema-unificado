@@ -3,6 +3,23 @@
    Compatible with SIGMA + Inventario modules
    ============================================= */
 
+// ─── Global Fetch Interceptor (adds auth headers to all /api/ calls) ────
+(function() {
+    const _origFetch = window.fetch;
+    window.fetch = function(url, opts) {
+        if (typeof url === 'string' && url.startsWith('/api/')) {
+            opts = opts || {};
+            const user = (() => { try { return JSON.parse(localStorage.getItem('unified_user')) || {}; } catch { return {}; } })();
+            opts.headers = opts.headers || {};
+            if (typeof opts.headers === 'object' && !(opts.headers instanceof Headers)) {
+                if (!opts.headers['X-User-Permisos']) opts.headers['X-User-Permisos'] = (user.permisos || []).join(',');
+                if (!opts.headers['X-User-Email']) opts.headers['X-User-Email'] = user.email || '';
+            }
+        }
+        return _origFetch.call(this, url, opts);
+    };
+})();
+
 // ─── SIGMA-compatible ApiClient (for `db`) ────
 class SigmaApiClient {
     constructor() { this.baseUrl = '/api/sigma'; }

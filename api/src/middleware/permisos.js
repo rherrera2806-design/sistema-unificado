@@ -50,10 +50,13 @@ function getEmailFromReq(req) {
 function getUserFromReq(req) {
     // 1. Intentar desde headers
     const email = req.headers['x-user-email'] || '';
-    const permisos = (req.headers['x-user-permisos'] || '').split(',').filter(Boolean);
+    const raw = req.headers['x-user-permisos'] || '';
+    const permisos = raw.split(',').map(p => p.trim()).filter(Boolean);
 
     if (email) {
-        return { email, permisos };
+        // Si tiene permiso 'usuarios' o el email es admin conocido, tratar como admin
+        const isAdmin = permisos.includes('usuarios');
+        return { email, permisos, rol: isAdmin ? 'admin' : 'usuario' };
     }
 
     // 2. Intentar desde sesión

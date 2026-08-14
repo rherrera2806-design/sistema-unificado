@@ -38,11 +38,13 @@ App.registerModule('instalaciones', {
         const firstDay = this.fmtDate(new Date(this.calYear, this.calMonth, 1));
         const lastDay = this.fmtDate(new Date(this.calYear, this.calMonth + 1, 0));
         try {
-            const res = await fetch(`/api/instalaciones/calendario?inicio=${firstDay}&fin=${lastDay}`);
-            this.instalaciones = await res.json();
+            const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            const res = await fetch(`/api/instalaciones/calendario?inicio=${firstDay}&fin=${lastDay}`, { headers });
+            const data = await res.json();
+            this.instalaciones = Array.isArray(data) ? data : [];
             this.renderStats();
             this.renderCalendario();
-        } catch(e) { console.error('Error:', e); }
+        } catch(e) { console.error('Error:', e); this.instalaciones = []; }
     },
 
     renderStats() {
@@ -157,12 +159,13 @@ App.registerModule('instalaciones', {
     },
 
     async showForm(id) {
-        const inst = id ? this.instalaciones.find(i => i.id === id) : null;
+        const inst = id ? (this.instalaciones || []).find(i => i.id === id) : null;
         const hoy = this.fmtDate(new Date());
         let tecnicos = [];
         let vendedores = [];
-        try { tecnicos = await fetch('/api/instalaciones/tecnicos').then(r => r.json()); } catch(e) {}
-        try { vendedores = await fetch('/api/instalaciones/vendedores').then(r => r.json()); } catch(e) {}
+        const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+        try { tecnicos = await fetch('/api/instalaciones/tecnicos', { headers: hdrs }).then(r => r.json()); } catch(e) {}
+        try { vendedores = await fetch('/api/instalaciones/vendedores', { headers: hdrs }).then(r => r.json()); } catch(e) {}
         const datalistHtml = `<datalist id="tecnicosList">${(tecnicos || []).map(t => `<option value="${escapeHtml(t)}">`).join('')}</datalist><datalist id="vendedoresList">${(vendedores || []).map(v => `<option value="${escapeHtml(v)}">`).join('')}</datalist>`;
         App.showModal(`
             ${datalistHtml}
@@ -216,8 +219,7 @@ App.registerModule('instalaciones', {
             tipo: document.getElementById('instTipo').value
         };
         if (!data.cliente || !data.direccion || !data.fecha_programada) { App.showAlert('Cliente, direccion y fecha requeridos', 'danger'); return; }
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const headers = { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' };
+        const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
         try {
             if (id === 0) {
                 await fetch('/api/instalaciones', { method: 'POST', headers, body: JSON.stringify(data) });
@@ -233,7 +235,8 @@ App.registerModule('instalaciones', {
 
     async showTecnicos() {
         let list = [];
-        try { list = await fetch('/api/produccion/tecnicos').then(r => r.json()); } catch(e) {}
+        const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+        try { list = await fetch('/api/produccion/tecnicos', { headers: hdrs }).then(r => r.json()); } catch(e) {}
         list = Array.isArray(list) ? list : [];
         const rows = list.map(t => {
             const badge = t.activo
@@ -283,24 +286,27 @@ App.registerModule('instalaciones', {
         const nombre = (document.getElementById('tecNombreInst').value || '').trim();
         const activo = document.getElementById('tecActivoInst').value === 'true';
         if (!nombre) { App.showAlert('Nombre requerido', 'danger'); return; }
+        const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
         try {
-            if (id === 0) await fetch('/api/produccion/tecnicos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, activo }) });
-            else await fetch(`/api/produccion/tecnicos/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, activo }) });
+            if (id === 0) await fetch('/api/produccion/tecnicos', { method: 'POST', headers: hdrs, body: JSON.stringify({ nombre, activo }) });
+            else await fetch(`/api/produccion/tecnicos/${id}`, { method: 'PUT', headers: hdrs, body: JSON.stringify({ nombre, activo }) });
             await this.showTecnicos();
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     async eliminarTecnico(id) {
         if (!confirm('Eliminar este tecnico?')) return;
+        const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
         try {
-            await fetch(`/api/produccion/tecnicos/${id}`, { method: 'DELETE' });
+            await fetch(`/api/produccion/tecnicos/${id}`, { method: 'DELETE', headers: hdrs });
             await this.showTecnicos();
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     async showVendedores() {
         let list = [];
-        try { list = await fetch('/api/produccion/vendedores').then(r => r.json()); } catch(e) {}
+        const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+        try { list = await fetch('/api/produccion/vendedores', { headers: hdrs }).then(r => r.json()); } catch(e) {}
         list = Array.isArray(list) ? list : [];
         const rows = list.map(v => {
             const badge = v.activo
@@ -350,17 +356,19 @@ App.registerModule('instalaciones', {
         const nombre = (document.getElementById('vedNombreInst').value || '').trim();
         const activo = document.getElementById('vedActivoInst').value === 'true';
         if (!nombre) { App.showAlert('Nombre requerido', 'danger'); return; }
+        const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
         try {
-            if (id === 0) await fetch('/api/produccion/vendedores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, activo }) });
-            else await fetch(`/api/produccion/vendedores/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, activo }) });
+            if (id === 0) await fetch('/api/produccion/vendedores', { method: 'POST', headers: hdrs, body: JSON.stringify({ nombre, activo }) });
+            else await fetch(`/api/produccion/vendedores/${id}`, { method: 'PUT', headers: hdrs, body: JSON.stringify({ nombre, activo }) });
             await this.showVendedores();
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     async eliminarVendedor(id) {
         if (!confirm('Eliminar este vendedor?')) return;
+        const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
         try {
-            await fetch(`/api/produccion/vendedores/${id}`, { method: 'DELETE' });
+            await fetch(`/api/produccion/vendedores/${id}`, { method: 'DELETE', headers: hdrs });
             await this.showVendedores();
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     }

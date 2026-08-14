@@ -14,10 +14,11 @@ App.registerModule('inst_detalle', {
 
     async cargarYRenderizar(id) {
         try {
+            const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const [instRes, histRes, fotosRes] = await Promise.all([
-                fetch(`/api/instalaciones/${id}`),
-                fetch(`/api/instalaciones/${id}/historial`),
-                fetch(`/api/instalaciones/${id}/fotos`)
+                fetch(`/api/instalaciones/${id}`, { headers: hdrs }),
+                fetch(`/api/instalaciones/${id}/historial`, { headers: hdrs }),
+                fetch(`/api/instalaciones/${id}/fotos`, { headers: hdrs })
             ]);
             this.inst = await instRes.json();
             this.historial = await histRes.json();
