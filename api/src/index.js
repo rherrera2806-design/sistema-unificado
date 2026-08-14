@@ -80,6 +80,25 @@ const server = app.listen(PORT, () => {
     query('CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado)').catch(() => {});
     query('CREATE INDEX IF NOT EXISTS idx_pedidos_fecha ON pedidos(fecha_subida DESC)').catch(() => {});
     query('CREATE INDEX IF NOT EXISTS idx_pedidos_vendedor ON pedidos(vendedor)').catch(() => {});
+
+    // Recordatorio de permisos para desarrolladores
+    console.log('\n' + '='.repeat(70));
+    console.log('⚠️  RECORDATORIO DE PERMISOS - VitroFlow');
+    console.log('='.repeat(70));
+    console.log('Si creaste un NUEVO módulo/submódulo/formulario:');
+    console.log('  1. Agregar permisos en dbSchema.js (ALL_PERMS)');
+    console.log('  2. Agregar middleware en routes/tu_archivo.js');
+    console.log('  3. Verificar botones en frontend (canCreate/canEdit/canDelete)');
+    console.log('  4. Agregar en sidebar (app-main.js SIDEBAR_SECTIONS)');
+    console.log('');
+    console.log('Tipos de permisos:');
+    console.log('  - modulo          → Ver (GET)');
+    console.log('  - modulo.agregar  → Crear (POST)');
+    console.log('  - modulo.editar   → Editar (PUT)');
+    console.log('  - modulo.eliminar → Eliminar (DELETE)');
+    console.log('');
+    console.log('Lee PERMISOS_CHECKLIST.md para más detalles');
+    console.log('='.repeat(70) + '\n');
 });
 
 module.exports = { app, server };
