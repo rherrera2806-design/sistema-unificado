@@ -36,8 +36,8 @@ App.registerModule('preventive', {
             <div style="display:flex;gap:6px;align-items:center">
                 <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Realizadas</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${registros.filter(r => r.estado === 'Realizada').length}</div></div>
                 <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Vencidas</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${registros.filter(r => r.estado === 'Vencida').length}</div></div>
-                <button class="btn btn-accent" style="padding:5px 12px;font-size:12px" onclick="App.modules.preventive.autoProgram()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Auto-programar</button>
-                <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.preventive.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                ${App.canCreate('preventive') ? '<button class="btn btn-accent" style="padding:5px 12px;font-size:12px" onclick="App.modules.preventive.autoProgram()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Auto-programar</button>' : ''}
+                ${App.canCreate('preventive') ? '<button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.preventive.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : ''}
                 </div></div>
             </div>
             <div class="stats-grid">
@@ -103,8 +103,8 @@ App.registerModule('preventive', {
                         <td>${r.tecnico || 'Pendiente'}</td>
                         <td><span class="status-badge ${App.getEstadoClass(isVencida ? 'Vencida' : r.estado)}">${isVencida ? 'Vencida' : r.estado}</span></td>
                         <td class="table-actions">
-                            <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.preventive.showForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                            <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.preventive.delete(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                            ${App.canEdit('preventive') ? `<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.preventive.showForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+                            ${App.canDelete('preventive') ? `<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.preventive.delete(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
                         </td>
                     </tr>`}).join('')}</tbody></table>
                     ${SigmaCards.generate({
@@ -118,7 +118,7 @@ App.registerModule('preventive', {
                             { label: 'Técnico', value: (r) => r.tecnico || 'Pendiente' },
                             { label: 'Hs. Ocupadas', value: (r) => r.horas_ocupadas || 0 }
                         ],
-                        actions: (r) => `<button class="btn btn-sm btn-outline" onclick="App.modules.preventive.showForm(${r.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="App.modules.preventive.delete(${r.id})">Eliminar</button>`
+                        actions: (r) => `${App.canEdit('preventive') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.preventive.showForm(${r.id})">Editar</button>` : ''} ${App.canDelete('preventive') ? `<button class="btn btn-sm btn-danger" onclick="App.modules.preventive.delete(${r.id})">Eliminar</button>` : ''}`
                     }, filtered)}
                     </div>`}
                 </div>

@@ -2,6 +2,34 @@ const App = {
     modules: {},
     currentPage: null,
 
+    // Helper de permisos para módulos sigma
+    _userPerms: null,
+    _getUserPerms() {
+        if (!this._userPerms) {
+            try {
+                const u = JSON.parse(localStorage.getItem('unified_user')) || {};
+                this._userPerms = {
+                    user: u,
+                    isAdmin: u.rol === 'admin' || (u.permisos || []).includes('usuarios'),
+                    perms: u.permisos || []
+                };
+            } catch(e) { this._userPerms = { user: {}, isAdmin: false, perms: [] }; }
+        }
+        return this._userPerms;
+    },
+    canCreate(mod) {
+        const { isAdmin, perms } = this._getUserPerms();
+        return isAdmin || perms.includes(mod + '.agregar') || perms.includes(mod);
+    },
+    canEdit(mod) {
+        const { isAdmin, perms } = this._getUserPerms();
+        return isAdmin || perms.includes(mod + '.editar') || perms.includes(mod);
+    },
+    canDelete(mod) {
+        const { isAdmin, perms } = this._getUserPerms();
+        return isAdmin || perms.includes(mod + '.eliminar') || perms.includes(mod);
+    },
+
     init() {
         this.updateDate();
         this.renderNav();

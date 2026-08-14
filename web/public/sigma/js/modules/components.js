@@ -20,7 +20,7 @@ App.registerModule('components', {
             <div style="display:flex;gap:6px;align-items:center">
                 <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Total</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${this._allComponentes.length}</div></div>
                 <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Enlaces</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${this._allLinks.length}</div></div>
-                <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.components.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                ${App.canCreate('components') ? '<button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.components.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : ''}
                 </div></div></div>
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
@@ -80,7 +80,7 @@ App.registerModule('components', {
                         { label: 'Descripción', value: (c) => c.descripcion || '-' },
                         { label: 'Repuestos', value: (c) => this._allRepuestos.filter(s => s.componente_id === c.id).length }
                     ],
-                    actions: (c) => `<button class="btn btn-sm btn-outline" onclick="App.modules.components.showForm(${c.id})">Editar</button> <button class="btn btn-sm btn-danger" onclick="App.modules.components.delete(${c.id})">Eliminar</button>`
+                    actions: (c) => `${App.canEdit('components') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.components.showForm(${c.id})">Editar</button>` : ''} ${App.canDelete('components') ? `<button class="btn btn-sm btn-danger" onclick="App.modules.components.delete(${c.id})">Eliminar</button>` : ''}`
                 }, componentes)}
                 </div>`;
         }
