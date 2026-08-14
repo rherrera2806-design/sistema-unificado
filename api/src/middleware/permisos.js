@@ -127,6 +127,38 @@ function requirePerm(permisoRequerido) {
 /**
  * Helper para crear middlewares CRUD completos para un módulo.
  */
+/**
+ * Verifica que el usuario esté autenticado (sesión o headers).
+ * NO verifica permisos específicos - solo que haya sesión válida.
+ * Útil para recursos como PDFs que se abren en iframe/window.open.
+ */
+function requireAuth(req, res, next) {
+    const user = getUserFromReq(req);
+
+    // Si tiene email (de headers o sesión), está autenticado
+    if (user.email) {
+        req.user = user;
+        return next();
+    }
+
+    // Verificar sesión directamente
+    const cookieHeader = req.headers.cookie || '';
+    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+    const sessionUser = getSession(token);
+
+    if (sessionUser) {
+        req.user = {
+            email: sessionUser.email || '',
+            permisos: Array.isArray(sessionUser.permisos) ? sessionUser.permisos : [],
+            rol: sessionUser.rol || 'usuario'
+        };
+        return next();
+    }
+
+    return res.status(401).json({ error: 'No autenticado' });
+}
+
 function crudPerms(modulo) {
     return {
         view:   requireAnyPerm(modulo, `${modulo}.editar`, `${modulo}.eliminar`, `${modulo}.agregar`),
@@ -142,5 +174,6 @@ module.exports = {
     getUserFromReq,
     requireAnyPerm,
     requirePerm,
+    requireAuth,
     crudPerms,
 };

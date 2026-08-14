@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const { query } = require('../config/database');
 const { validate, pedidosSchema } = require('../middleware/validate');
-const { requireAnyPerm } = require('../middleware/permisos');
+const { requireAnyPerm, requireAuth } = require('../middleware/permisos');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -62,7 +62,7 @@ router.post('/api/pedidos', canCreate, upload.single('archivo_pdf'), async (req,
     } catch (e) { next(e); }
 });
 
-router.get('/api/pedidos/:id/pdf', canView, async (req, res, next) => {
+router.get('/api/pedidos/:id/pdf', requireAuth, async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const result = await query('SELECT archivo_pdf, archivo_url, numero_pedido FROM pedidos WHERE id = $1', [id]);
@@ -79,7 +79,7 @@ router.get('/api/pedidos/:id/pdf', canView, async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/pedidos/:id/download-pdf', canView, async (req, res, next) => {
+router.get('/api/pedidos/:id/download-pdf', requireAuth, async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const result = await query('SELECT archivo_pdf, archivo_url, numero_pedido FROM pedidos WHERE id = $1', [id]);
