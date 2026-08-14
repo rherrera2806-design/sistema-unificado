@@ -51,7 +51,8 @@ App.registerModule('usuarios', {
 
     async loadUsers() {
         try {
-            const res = await fetch('/api/admin/usuarios');
+            const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            const res = await fetch('/api/admin/usuarios', { headers });
             this.allUsers = await res.json();
             this.renderUsers(this.allUsers);
         } catch(e) { console.error(e); }
