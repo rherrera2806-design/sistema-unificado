@@ -32,9 +32,9 @@ const InvMovimientos = {
 .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select,.inv-form-dims>div>div{width:100%;box-sizing:border-box}
 @media(max-width:640px){.inv-form-grid{grid-template-columns:repeat(2,1fr);gap:10px}.inv-form-dims{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:400px){.inv-form-grid{grid-template-columns:1fr}.inv-form-dims{grid-template-columns:1fr}}
-.inv-form-grid .form-group{margin:0}
-.inv-form-grid label{font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b}
-.inv-form-grid input,.inv-form-grid select{padding:8px 10px;font-size:13px;width:100%;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:6px}
+.inv-form-grid .form-group,.inv-form-dims .form-group{margin:0}
+.inv-form-grid label,.inv-form-dims label{font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b}
+.inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{padding:8px 10px;font-size:13px;width:100%;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:6px}
 .inv-form-bottom{display:flex;gap:10px;margin-top:12px;align-items:end;padding-top:10px;border-top:1px solid #f1f5f9}
 @media(max-width:640px){.inv-form-bottom{flex-direction:column;gap:8px}.inv-form-bottom .btn{width:100%}}
 </style>
