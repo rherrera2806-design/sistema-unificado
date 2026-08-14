@@ -659,7 +659,11 @@ function hasSection(section) {
 }
 function canSeeItem(item, section) {
     if (isAdmin()) return true;
-    return hasPerm(item) || hasPerm(section) || hasPerm(section + '.editar') || hasPerm(section + '.eliminar');
+    return hasPerm(item) || hasPerm(section) || hasPerm(section + '.editar') || hasPerm(section + '.eliminar') || hasPerm(section + '.agregar');
+}
+function canCreate(item, section) {
+    if (isAdmin()) return true;
+    return hasPerm(item + '.agregar') || hasPerm(section + '.agregar');
 }
 function canEdit(item, section) {
     if (isAdmin()) return true;

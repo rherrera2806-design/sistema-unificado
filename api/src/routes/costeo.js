@@ -1,9 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const costeoService = require('../services/costeoService');
+const { requireAnyPerm } = require('../middleware/permisos');
+
+const MOD = 'costeo';
+const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
+const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
+const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
+const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
 
 // GET /api/costeo/config — Obtener parámetros de costos
-router.get('/api/costeo/config', async (req, res) => {
+router.get('/api/costeo/config', canView, async (req, res) => {
     try {
         const config = await costeoService.getConfig();
         res.json(config);
@@ -14,7 +21,7 @@ router.get('/api/costeo/config', async (req, res) => {
 });
 
 // PUT /api/costeo/config — Actualizar un parámetro de costo
-router.put('/api/costeo/config', async (req, res) => {
+router.put('/api/costeo/config', canUpdate, async (req, res) => {
     try {
         const { clave, valor } = req.body;
         if (!clave) return res.status(400).json({ error: 'Falta la clave del parámetro' });
@@ -27,7 +34,7 @@ router.put('/api/costeo/config', async (req, res) => {
 });
 
 // GET /api/costeo/cristales — Lista de cristales para selector
-router.get('/api/costeo/cristales', async (req, res) => {
+router.get('/api/costeo/cristales', canView, async (req, res) => {
     try {
         const cristales = await costeoService.getCristales();
         res.json(cristales);
@@ -38,7 +45,7 @@ router.get('/api/costeo/cristales', async (req, res) => {
 });
 
 // POST /api/costeo/calcular — Calcular costos
-router.post('/api/costeo/calcular', async (req, res) => {
+router.post('/api/costeo/calcular', canView, async (req, res) => {
     try {
         const {
             cristal_id, origen, ancho, alto, proceso, tipo_pulido,

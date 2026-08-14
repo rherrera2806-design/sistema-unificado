@@ -1,8 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
+const { requireAnyPerm } = require('../middleware/permisos');
 
-router.get('/api/maintenance/dashboard', async (req, res, next) => {
+const MOD = 'dashboard';
+const canView = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
+
+router.get('/api/maintenance/dashboard', canView, async (req, res, next) => {
     try {
         const now = new Date();
         const year = now.getFullYear();

@@ -161,10 +161,11 @@ const Asistencia = {
         if (!container) return;
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const mesActual = new Date().getMonth();
+        const canAgT = typeof canCreate === 'function' ? canCreate('asistencia', 'asistencia') : false;
+        const canEdT = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
+        const canDelT = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
+        const hasWriteAccess = canAgT || canEdT || canDelT;
         if (tab === 'trabajadores') {
-            const permUser = typeof getUser === 'function' ? getUser() : null;
-            const permPerms = permUser && permUser.permisos ? permUser.permisos : [];
-            const canAgT = permPerms.includes('asistencia.agregar') || permPerms.includes('asistencia') || permPerms.length === 0;
             container.innerHTML = '<div style="display:flex;gap:6px;align-items:center">'
                 + '<button onclick="Asistencia.filtrarTrabajadores(\'todos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.4);font-size:11px;padding:6px 12px" data-filter="todos">Todos</button>'
                 + '<button onclick="Asistencia.filtrarTrabajadores(\'activos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.2);font-size:11px;padding:6px 12px" data-filter="activos">Activos</button>'
@@ -175,29 +176,29 @@ const Asistencia = {
                 + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + (canAgT ? '<button onclick="Asistencia.showFormTrabajador()" class="btn btn-primary" title="Nuevo trabajador" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
-                + '<button onclick="Asistencia.exportExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">Excel</button>'
+                + (hasWriteAccess ? '<button onclick="Asistencia.exportExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">Excel</button>'
                 + '<button onclick="Asistencia.importarExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#0e7490;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(14,116,144,0.15)" title="Importar desde Excel/CSV">Importar</button>'
-                + '<button onclick="Asistencia.exportPDFTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#dc2626;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(220,38,38,0.15)">PDF</button>';
+                + '<button onclick="Asistencia.exportPDFTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#dc2626;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(220,38,38,0.15)">PDF</button>' : '');
         } else         if (tab === 'permisos') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
-                + '<button onclick="Asistencia.abrirModalPermiso()" class="btn btn-primary" title="Nuevo permiso" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>';
+                + (hasWriteAccess ? '<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>' : '')
+                + (canAgT ? '<button onclick="Asistencia.abrirModalPermiso()" class="btn btn-primary" title="Nuevo permiso" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '');
         } else if (tab === 'licencias') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
-                + '<button onclick="Asistencia.abrirModalLicencia()" class="btn btn-primary" title="Nueva licencia" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>';
+                + (hasWriteAccess ? '<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>' : '')
+                + (canAgT ? '<button onclick="Asistencia.abrirModalLicencia()" class="btn btn-primary" title="Nueva licencia" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '');
         } else if (tab === 'vacaciones') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
-                + '<button onclick="Asistencia.abrirModalVacacion()" class="btn btn-primary" title="Nueva vacación" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>';
+                + (hasWriteAccess ? '<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>' : '')
+                + (canAgT ? '<button onclick="Asistencia.abrirModalVacacion()" class="btn btn-primary" title="Nueva vacación" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '');
         } else if (tab === 'horas_extras') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarHorasExtras()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>'
-                + '<button onclick="Asistencia.abrirModalHorasExtras()" class="btn btn-primary" title="Nuevas horas extras" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>';
+                + (hasWriteAccess ? '<button onclick="Asistencia.cargarHorasExtras()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">Filtrar</button>' : '')
+                + (canAgT ? '<button onclick="Asistencia.abrirModalHorasExtras()" class="btn btn-primary" title="Nuevas horas extras" style="padding:5px 12px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '');
         } else if (tab === 'calendario') {
             let mesOpts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             let yearOpts = '';
@@ -205,18 +206,18 @@ const Asistencia = {
             for (let y = 2024; y <= 2027; y++) yearOpts += '<option value="' + y + '"' + (y === yearActual ? ' selected' : '') + '>' + y + '</option>';
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + mesOpts + '</select>'
                 + '<select id="ast-hero-anio" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + yearOpts + '</select>'
-                + '<button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>';
+                + (hasWriteAccess ? '<button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>' : '');
         } else if (tab === 'reportes') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Generar</button>';
+                + (hasWriteAccess ? '<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Generar</button>' : '');
         } else if (tab === 'diaria') {
             container.innerHTML = '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadores()" style="padding-left:32px;width:160px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + '<input type="date" id="ast-hero-fecha" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
-                + '<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>';
+                + (hasWriteAccess ? '<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">Cargar</button>' : '');
         } else {
             container.innerHTML = '';
         }
@@ -231,11 +232,9 @@ const Asistencia = {
 
     // ═══════ TRABAJADORES ═══════
     async renderTrabajadoresTab(c) {
-        const permUser = typeof getUser === 'function' ? getUser() : null;
-        const permPerms = permUser && permUser.permisos ? permUser.permisos : [];
-        const canAgT = permPerms.includes('asistencia.agregar') || permPerms.includes('asistencia') || permPerms.length === 0;
-        const canEditT = permPerms.includes('asistencia.editar') || permPerms.includes('asistencia') || permPerms.length === 0;
-        const canDeleteT = permPerms.includes('asistencia.eliminar') || permPerms.length === 0;
+        const canAgT = typeof canCreate === 'function' ? canCreate('asistencia', 'asistencia') : false;
+        const canEditT = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
+        const canDeleteT = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
         c.innerHTML = `
             <div id="ast-form-trabajador" style="display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:20px 24px;margin-bottom:20px;animation:astFadeUp 0.3s ease both;overflow:hidden;width:100%;box-sizing:border-box">
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
@@ -336,9 +335,9 @@ const Asistencia = {
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + (t.activo ? 'background:#d1fae5;color:#059669' : 'background:#fee2e2;color:#dc2626') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;font-size:12px;color:#475569;font-family:\'JetBrains Mono\',monospace" title="Fecha de incorporación">' + fiFmt + '</td>'
                 + '<td style="padding:12px 16px;text-align:center"><div style="display:flex;gap:4px;justify-content:center">'
-                + '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '" title="' + (t.activo ? 'Desactivar' : 'Activar') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
-                + '<button onclick="Asistencia.eliminarTrabajador(' + t.id + ',\'' + t.nombre.replace(/'/g, "\\'") + '\')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+                + (canEditT ? '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
+                + (canEditT ? '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '" title="' + (t.activo ? 'Desactivar' : 'Activar') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>' : '')
+                + (canDeleteT ? '<button onclick="Asistencia.eliminarTrabajador(' + t.id + ',\'' + t.nombre.replace(/'/g, "\\'") + '\')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
                 + '</div></td></tr>';
         }).join('');
 
@@ -353,8 +352,8 @@ const Asistencia = {
                     { label: 'Puesto', value: t => t.puesto || '-' },
                     { label: 'Ingreso', value: t => { const fi = (t.fecha_ingreso || (t.created_at ? t.created_at.split('T')[0] : '')).split('T')[0]; return fi ? this.fmtDate(fi) : '-'; } }
                 ],
-                actions: t => '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline">Editar</button> '
-                    + '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>'
+                actions: t => (canEditT ? '<button onclick="Asistencia.editarTrabajador(' + t.id + ')" class="btn btn-sm btn-outline">Editar</button> ' : '')
+                    + (canEditT ? '<button onclick="Asistencia.toggleTrabajador(' + t.id + ',' + t.activo + ')" class="btn btn-sm ' + (t.activo ? 'btn-outline' : 'btn-primary') + '">' + (t.activo ? 'Desactivar' : 'Activar') + '</button>' : '')
             }, data);
         }
     },
@@ -952,6 +951,8 @@ const Asistencia = {
             if (!tbody) return;
             if (permisos.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin permisos registrados</td></tr>'; const cardsEl = document.getElementById('ast-cards-permisos'); if (cardsEl) cardsEl.innerHTML = ''; return; }
             const tipoL = { medico: 'Médico', personal: 'Personal', familiar: 'Familiar', otro: 'Otro' };
+            const canEditP = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
+            const canDeleteP = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
             tbody.innerHTML = permisos.map(p => {
                 const ec = p.estado === 'aprobado' ? 'background:#d1fae5;color:#059669' : p.estado === 'rechazado' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
                 return '<tr style="border-bottom:1px solid #f1f5f9">'
@@ -962,11 +963,11 @@ const Asistencia = {
                     + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + (p.motivo || '-') + '</td>'
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + p.estado + '</span></td>'
                     + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                    + (p.estado === 'pendiente' && ((JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('asistencia.editar') || (JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('usuarios'))
+                    + (p.estado === 'pendiente' && canEditP
                         ? '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="btn btn-sm" title="Aprobar" style="background:#22c55e;color:white;margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button><button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="btn btn-sm btn-danger" title="Rechazar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>'
                         : '')
-                    + '<button onclick="Asistencia.editarPermiso(' + p.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                    + '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+                    + (canEditP ? '<button onclick="Asistencia.editarPermiso(' + p.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
+                    + (canDeleteP ? '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
                     + '</td></tr>';
             }).join('');
 
@@ -974,7 +975,7 @@ const Asistencia = {
             if (cardsEl) {
                 const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
                 const permUser = user.permisos || [];
-                const puedeAprobar = permUser.includes('asistencia.editar') || permUser.includes('usuarios');
+                const puedeAprobar = canEditP;
                 cardsEl.innerHTML = SigmaCards.generate({
                     title: p => '<strong>' + p.nombre + '</strong>',
                     subtitle: p => (tipoL[p.tipo] || p.tipo),
@@ -993,8 +994,8 @@ const Asistencia = {
                             html += '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'aprobado\')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">Aprobar</button>';
                             html += '<button onclick="Asistencia.estadoPermiso(' + p.id + ',\'rechazado\')" class="btn btn-sm btn-danger" style="margin-right:4px">Rechazar</button>';
                         }
-                        html += '<button onclick="Asistencia.editarPermiso(' + p.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
-                        html += '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+                        if (canEditP) html += '<button onclick="Asistencia.editarPermiso(' + p.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
+                        if (canDeleteP) html += '<button onclick="Asistencia.eliminarPermiso(' + p.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
                         return html;
                     }
                 }, permisos);
@@ -1077,6 +1078,8 @@ const Asistencia = {
             const tbody = document.getElementById('ast-tabla-licencias');
             if (!tbody) return;
             if (licencias.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Sin licencias registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-licencias'); if (cardsEl) cardsEl.innerHTML = ''; return; }
+            const canEditL = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
+            const canDeleteL = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
             tbody.innerHTML = licencias.map(l => {
                 const ec = l.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : l.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706';
                 const dias = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / 86400000) + 1;
@@ -1088,11 +1091,11 @@ const Asistencia = {
                     + '<td style="padding:12px 16px;color:#64748b;font-size:12px">' + (l.diagnostico || '-') + '</td>'
                     + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + l.estado + '</span></td>'
                     + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                    + (l.estado === 'pendiente' && ((JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('asistencia.editar') || (JSON.parse(localStorage.getItem('unified_user') || '{}').permisos || []).includes('usuarios'))
+                    + (l.estado === 'pendiente' && canEditL
                         ? '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="btn btn-sm" title="Aprobar" style="background:#22c55e;color:white;margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button><button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="btn btn-sm btn-danger" title="Rechazar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>'
                         : '')
-                    + '<button onclick="Asistencia.editarLicencia(' + l.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                    + '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+                    + (canEditL ? '<button onclick="Asistencia.editarLicencia(' + l.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
+                    + (canDeleteL ? '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
                     + '</td></tr>';
             }).join('');
 
@@ -1100,7 +1103,7 @@ const Asistencia = {
             if (cardsEl) {
                 const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
                 const permUser = user.permisos || [];
-                const puedeAprobar = permUser.includes('asistencia.editar') || permUser.includes('usuarios');
+                const puedeAprobar = canEditL;
                 cardsEl.innerHTML = SigmaCards.generate({
                     title: l => '<strong>' + l.nombre + '</strong>',
                     subtitle: l => l.diagnostico || '-',
@@ -1119,8 +1122,8 @@ const Asistencia = {
                             html += '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'aprobada\')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">Aprobar</button>';
                             html += '<button onclick="Asistencia.estadoLicencia(' + l.id + ',\'rechazada\')" class="btn btn-sm btn-danger" style="margin-right:4px">Rechazar</button>';
                         }
-                        html += '<button onclick="Asistencia.editarLicencia(' + l.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
-                        html += '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+                        if (canEditL) html += '<button onclick="Asistencia.editarLicencia(' + l.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
+                        if (canDeleteL) html += '<button onclick="Asistencia.eliminarLicencia(' + l.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
                         return html;
                     }
                 }, licencias);
@@ -1200,6 +1203,8 @@ const Asistencia = {
             const tbody = document.getElementById('ast-tabla-vacaciones');
             if (!tbody) return;
             if (vacaciones.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin vacaciones registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-vacaciones'); if (cardsEl) cardsEl.innerHTML = ''; return; }
+            const canEditV = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
+            const canDeleteV = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
             tbody.innerHTML = vacaciones.map(v => '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px;color:#475569;font-size:12px">' + this.fmtDate(v.fecha_inicio) + '</td>'
@@ -1207,8 +1212,8 @@ const Asistencia = {
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + v.dias + '</strong> días</td>'
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="background:#dbeafe;color:#2563eb">' + (v.estado || 'Programado') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
-                + '<button onclick="Asistencia.editarVacacion(' + v.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                + '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+                + (canEditV ? '<button onclick="Asistencia.editarVacacion(' + v.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
+                + (canDeleteV ? '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
                 + '</td></tr>').join('');
 
             const cardsEl = document.getElementById('ast-cards-vacaciones');
@@ -1221,8 +1226,8 @@ const Asistencia = {
                         { label: 'Fin', value: v => this.fmtDate(v.fecha_fin) },
                         { label: 'Días', value: v => v.dias + ' días' }
                     ],
-                    actions: v => '<button onclick="Asistencia.editarVacacion(' + v.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>'
-                        + '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" class="btn btn-sm btn-danger">Eliminar</button>'
+                    actions: v => (canEditV ? '<button onclick="Asistencia.editarVacacion(' + v.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>' : '')
+                        + (canDeleteV ? '<button onclick="Asistencia.eliminarVacacion(' + v.id + ')" class="btn btn-sm btn-danger">Eliminar</button>' : '')
                 }, vacaciones);
             }
         } catch(e) { console.error('Error:', e); }
@@ -1295,9 +1300,9 @@ const Asistencia = {
             const tbody = document.getElementById('ast-tabla-horas-extras');
             if (!tbody) return;
             if (horasExtras.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Sin horas extras registradas</td></tr>'; const cardsEl = document.getElementById('ast-cards-horas-extras'); if (cardsEl) cardsEl.innerHTML = ''; return; }
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const permUser = user.permisos || [];
-            const puedeAprobar = permUser.includes('asistencia.editar') || permUser.includes('usuarios');
+            const canEditHE = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
+            const canDeleteHE = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
+            const puedeAprobar = canEditHE;
             tbody.innerHTML = horasExtras.map(he => {
                 const ec = he.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : he.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#dbeafe;color:#2563eb';
                 return '<tr style="border-bottom:1px solid #f1f5f9">'
@@ -1308,8 +1313,8 @@ const Asistencia = {
                 + '<td style="padding:12px 16px"><span class="ast-badge" style="' + ec + '">' + (he.estado || 'pendiente') + '</span></td>'
                 + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">'
                 + (puedeAprobar && (!he.estado || he.estado === 'pendiente') ? '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'aprobada\')" class="btn btn-sm" title="Aprobar" style="background:#22c55e;color:white;margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></button><button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'rechazada\')" class="btn btn-sm btn-danger" title="Rechazar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>' : '')
-                + '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                + '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+                + (canEditHE ? '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" class="btn btn-sm btn-outline" title="Editar" style="margin-right:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
+                + (canDeleteHE ? '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
                 + '</td></tr>';
             }).join('');
 
@@ -1332,8 +1337,8 @@ const Asistencia = {
                             html += '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'aprobada\')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">Aprobar</button>';
                             html += '<button onclick="Asistencia.estadoHorasExtras(' + he.id + ',\'rechazada\')" class="btn btn-sm btn-danger" style="margin-right:4px">Rechazar</button>';
                         }
-                        html += '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
-                        html += '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+                        if (canEditHE) html += '<button onclick="Asistencia.editarHorasExtras(' + he.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px">Editar</button>';
+                        if (canDeleteHE) html += '<button onclick="Asistencia.eliminarHorasExtras(' + he.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
                         return html;
                     }
                 }, horasExtras);

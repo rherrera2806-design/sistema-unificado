@@ -6,8 +6,15 @@ const { autoAsignarPendientes } = require('../services/planificacionAuto');
 const { reprogramarPendientes } = require('../services/reprogramarService');
 const { importarOrdenes } = require('../services/produccionImportar');
 const { query } = require('../config/database');
+const { requireAnyPerm } = require('../middleware/permisos');
 
-router.post('/api/produccion/importar', async (req, res, next) => {
+const MOD = 'prod_planificacion';
+const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
+const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
+const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
+const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
+
+router.post('/api/produccion/importar', canCreate, async (req, res, next) => {
     let rows = req.body.rows;
     if (!rows && req.body.excel_data) {
         try {
@@ -22,7 +29,7 @@ router.post('/api/produccion/importar', async (req, res, next) => {
     res.json(await importarOrdenes(rows));
 });
 
-router.get('/api/produccion/importar/template', (req, res) => {
+router.get('/api/produccion/importar/template', canView, (req, res) => {
     const XLSX = require('xlsx');
     const headers = ['codigo', 'pedido', 'item', 'cliente', 'descripcion', 'cantidad', 'ancho', 'alto', 'perforaciones', 'destaje', 'sacado', 'radio', 'ventana', 'pintado', 'pintado car', 'tipo de venta', 'fecha_creacion', 'nota', 'posicion', 'orden de compra', 'tipo de entrega'];
     const example = ['VT-001', 'PED-2026-001', 1, 'VIDRIERIA LOS ANDES', 'Vidrio templado 8mm', 10, 1500, 1000, 0, 0, 0, 0, 0, 0, 0, 'Normal', '2026-08-07', '', '', '', 'Despacho'];
@@ -36,41 +43,41 @@ router.get('/api/produccion/importar/template', (req, res) => {
     res.send(buf);
 });
 
-router.get('/api/produccion/calendario', async (req, res, next) => {
+router.get('/api/produccion/calendario', canView, async (req, res, next) => {
     try { res.json(await planificacion.getCalendario()); }
     catch (e) { next(e); }
 });
 
-router.post('/api/produccion/calendario', async (req, res, next) => {
+router.post('/api/produccion/calendario', canCreate, async (req, res, next) => {
     if (!req.body.fecha) return res.status(400).json({ error: 'fecha requerida' });
     try { await planificacion.marcarDia(req.body); res.json({ ok: true }); }
     catch (e) { next(e); }
 });
 
-router.delete('/api/produccion/calendario/:id', async (req, res, next) => {
+router.delete('/api/produccion/calendario/:id', canDelete, async (req, res, next) => {
     try { await planificacion.eliminarDia(Number(req.params.id)); res.json({ ok: true }); }
     catch (e) { next(e); }
 });
 
-router.get('/api/produccion/planificacion/carga-semanal', async (req, res, next) => {
+router.get('/api/produccion/planificacion/carga-semanal', canView, async (req, res, next) => {
     if (!req.query.inicio || !req.query.fin) return res.status(400).json({ error: 'Fechas inicio y fin requeridas' });
     try { res.json(await planificacion.getCargaSemanal(req.query.inicio, req.query.fin)); }
     catch (e) { res.status(500).json({ error: String(e.message || e) }); }
 });
 
-router.get('/api/produccion/planificacion/carga-por-grupo', async (req, res, next) => {
+router.get('/api/produccion/planificacion/carga-por-grupo', canView, async (req, res, next) => {
     if (!req.query.inicio || !req.query.fin) return res.status(400).json({ error: 'Fechas inicio y fin requeridas' });
     try { res.json(await planificacion.getCargaPorGrupo(req.query.inicio, req.query.fin)); }
     catch (e) { next(e); }
 });
 
-router.get('/api/produccion/planificacion/carga-por-grupo-finales', async (req, res, next) => {
+router.get('/api/produccion/planificacion/carga-por-grupo-finales', canView, async (req, res, next) => {
     if (!req.query.inicio || !req.query.fin) return res.status(400).json({ error: 'Fechas inicio y fin requeridas' });
     try { res.json(await planificacion.getCargaPorGrupoFinales(req.query.inicio, req.query.fin)); }
     catch (e) { next(e); }
 });
 
-router.get('/api/produccion/planificacion/carga-estaciones', async (req, res, next) => {
+router.get('/api/produccion/planificacion/carga-estaciones', canView, async (req, res, next) => {
     try {
         const inicio = req.query.inicio || new Date().toISOString().split('T')[0];
         const fin = req.query.fin || inicio;
@@ -78,12 +85,12 @@ router.get('/api/produccion/planificacion/carga-estaciones', async (req, res, ne
     } catch (e) { next(e); }
 });
 
-router.get('/api/produccion/planificacion/pendientes', async (req, res, next) => {
+router.get('/api/produccion/planificacion/pendientes', canView, async (req, res, next) => {
     try { res.json(await planificacion.getPendientes()); }
     catch (e) { next(e); }
 });
 
-router.post('/api/produccion/planificacion/programar', async (req, res, next) => {
+router.post('/api/produccion/planificacion/programar', canCreate, async (req, res, next) => {
     if (!req.body.orden_id) return res.status(400).json({ error: 'orden_id requerido' });
     try {
         const result = await planificacion.programarOrden(req.body.orden_id, req.body.fecha_entrega_propuesta);
@@ -91,17 +98,17 @@ router.post('/api/produccion/planificacion/programar', async (req, res, next) =>
     } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-router.get('/api/produccion/capacidad-grupo/all', async (req, res, next) => {
+router.get('/api/produccion/capacidad-grupo/all', canView, async (req, res, next) => {
     try { res.json(await planificacion.getAllCapacidadGrupo()); }
     catch (e) { next(e); }
 });
 
-router.get('/api/produccion/capacidad-grupo', async (req, res, next) => {
+router.get('/api/produccion/capacidad-grupo', canView, async (req, res, next) => {
     try { res.json(await planificacion.getCapacidadGrupo()); }
     catch (e) { next(e); }
 });
 
-router.post('/api/produccion/capacidad-grupo', async (req, res, next) => {
+router.post('/api/produccion/capacidad-grupo', canCreate, async (req, res, next) => {
     try {
         const { query } = require('../config/database');
         const { grupo, capacidad_kg_dia, color, activo } = req.body;
@@ -114,12 +121,12 @@ router.post('/api/produccion/capacidad-grupo', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.put('/api/produccion/capacidad-grupo/:id', async (req, res, next) => {
+router.put('/api/produccion/capacidad-grupo/:id', canUpdate, async (req, res, next) => {
     try { res.json(await planificacion.actualizarCapacidadGrupo(Number(req.params.id), req.body)); }
     catch (e) { res.status(e.message === 'Sin campos' ? 400 : 500).json({ error: e.message }); }
 });
 
-router.delete('/api/produccion/capacidad-grupo/:id', async (req, res, next) => {
+router.delete('/api/produccion/capacidad-grupo/:id', canDelete, async (req, res, next) => {
     try {
         const { query } = require('../config/database');
         await query('DELETE FROM produccion_capacidad_grupo WHERE id = $1', [Number(req.params.id)]);
@@ -127,32 +134,32 @@ router.delete('/api/produccion/capacidad-grupo/:id', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/produccion/planificacion-grupo/semana', async (req, res, next) => {
+router.get('/api/produccion/planificacion-grupo/semana', canView, async (req, res, next) => {
     const { inicio, fin } = req.query;
     if (!inicio || !fin) return res.status(400).json({ error: 'inicio y fin requeridos' });
     try { res.json(await planificacionGrupo.getSemanaGrupo(inicio, fin)); }
     catch (e) { next(e); }
 });
 
-router.get('/api/produccion/planificacion-grupo/semana-finales', async (req, res, next) => {
+router.get('/api/produccion/planificacion-grupo/semana-finales', canView, async (req, res, next) => {
     const { inicio, fin } = req.query;
     if (!inicio || !fin) return res.status(400).json({ error: 'inicio y fin requeridos' });
     try { res.json(await planificacionGrupo.getSemanaGrupoFinales(inicio, fin)); }
     catch (e) { next(e); }
 });
 
-router.get('/api/produccion/planificacion-grupo', async (req, res, next) => {
+router.get('/api/produccion/planificacion-grupo', canView, async (req, res, next) => {
     try { res.json(await planificacionGrupo.getDiaGrupo(req.query.fecha)); }
     catch (e) { next(e); }
 });
 
-router.post('/api/produccion/planificacion-grupo/asignar', async (req, res, next) => {
+router.post('/api/produccion/planificacion-grupo/asignar', canCreate, async (req, res, next) => {
     if (!req.body.orden_id) return res.status(400).json({ error: 'orden_id requerido' });
     try { await planificacionGrupo.asignarOrdenFecha(req.body.orden_id, req.body.fecha); res.json({ ok: true }); }
     catch (e) { next(e); }
 });
 
-router.post('/api/produccion/planificacion-grupo/auto-asignar', async (req, res, next) => {
+router.post('/api/produccion/planificacion-grupo/auto-asignar', canCreate, async (req, res, next) => {
     try {
         const dias = Number(req.body.dias) || 14;
         const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
@@ -160,14 +167,14 @@ router.post('/api/produccion/planificacion-grupo/auto-asignar', async (req, res,
     } catch (e) { next(e); }
 });
 
-router.get('/api/produccion/notas', async (req, res, next) => {
+router.get('/api/produccion/notas', canView, async (req, res, next) => {
     const userEmail = req.headers['x-user-email'];
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     try { res.json((await query('SELECT * FROM prod_notas WHERE usuario_email = $1 ORDER BY fecha_creacion DESC', [userEmail])).rows); }
     catch (e) { next(e); }
 });
 
-router.post('/api/produccion/notas', async (req, res, next) => {
+router.post('/api/produccion/notas', canCreate, async (req, res, next) => {
     const userEmail = req.headers['x-user-email'];
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     if (!req.body.nota || !req.body.nota.trim()) return res.status(400).json({ error: 'Nota requerida' });
@@ -177,7 +184,7 @@ router.post('/api/produccion/notas', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.put('/api/produccion/notas/:id', async (req, res, next) => {
+router.put('/api/produccion/notas/:id', canUpdate, async (req, res, next) => {
     const userEmail = req.headers['x-user-email'];
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     try {
@@ -189,7 +196,7 @@ router.put('/api/produccion/notas/:id', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.delete('/api/produccion/notas/:id', async (req, res, next) => {
+router.delete('/api/produccion/notas/:id', canDelete, async (req, res, next) => {
     const userEmail = req.headers['x-user-email'];
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     try { await query('DELETE FROM prod_notas WHERE id = $1 AND usuario_email = $2', [Number(req.params.id), userEmail]); res.json({ ok: true }); }
@@ -199,7 +206,7 @@ router.delete('/api/produccion/notas/:id', async (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════
 // CAMBIO DE PRIORIDAD — PATCH /api/produccion/ordenes/:id/prioridad
 // ═══════════════════════════════════════════════════════════════
-router.patch('/api/produccion/ordenes/:id/prioridad', async (req, res, next) => {
+router.patch('/api/produccion/ordenes/:id/prioridad', canUpdate, async (req, res, next) => {
     const { nivel_prioridad } = req.body;
     const nivel = Number(nivel_prioridad);
     if (![1, 2, 3, 4].includes(nivel)) return res.status(400).json({ error: 'nivel_prioridad debe ser 1 (Normal), 2 (Express), 3 (Urgencia) o 4 (Reposición)' });
@@ -214,7 +221,7 @@ router.patch('/api/produccion/ordenes/:id/prioridad', async (req, res, next) => 
 // Paso A: Liberar PROGRAMADO → PENDIENTE (sin tocar EN PROCESO/MERMADO/TERMINADO)
 // Paso B: Re-ejecutar auto-asignar con Priority Queue 4→1
 // ═══════════════════════════════════════════════════════════════
-router.post('/api/produccion/reprogramar', async (req, res, next) => {
+router.post('/api/produccion/reprogramar', canCreate, async (req, res, next) => {
     try {
         const dias = Number(req.body.dias) || 21;
         const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
@@ -225,7 +232,7 @@ router.post('/api/produccion/reprogramar', async (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════
 // VERIFICAR SI HAY CAMBIOS PENDIENTES DE REPROGRAMACIÓN
 // ═══════════════════════════════════════════════════════════════
-router.get('/api/produccion/reprogramar/pendientes', async (req, res, next) => {
+router.get('/api/produccion/reprogramar/pendientes', canView, async (req, res, next) => {
     try {
         const result = await query('SELECT COUNT(*) as count FROM produccion_ordenes WHERE needs_reprogramming = TRUE');
         res.json({ pendientes: Number(result.rows[0].count) > 0, count: Number(result.rows[0].count) });

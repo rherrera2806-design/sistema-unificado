@@ -6,12 +6,19 @@ const turnosFlujo = require('../services/turnosFlujo');
 const turnosReportes = require('../services/turnosReportes');
 const entregas = require('../services/entregas');
 const turnosService = require('../services/turnos');
+const { requireAnyPerm } = require('../middleware/permisos');
 
-router.get('/api/turnos/estado', async (req, res, next) => {
+const MOD = 'turnos_recepcion';
+const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
+const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
+const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
+const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
+
+router.get('/api/turnos/estado', canView, async (req, res, next) => {
     res.json(await turnosService.getTurnosStats());
 });
 
-router.post('/api/turnos/crear', async (req, res, next) => {
+router.post('/api/turnos/crear', canCreate, async (req, res, next) => {
     const { nombre, rut = '', patente = '', motivo = 'Retirar', rut_empresa = '' } = req.body;
     const clean = { nombre: sanitizeString(nombre), rut: sanitizeString(rut), patente: sanitizeString(patente).toUpperCase().replace(/[^A-Z0-9]/g, ''), motivo: sanitizeString(motivo), rut_empresa: sanitizeString(rut_empresa) };
     if (!clean.nombre) return res.status(400).json({ error: 'Nombre requerido' });
@@ -27,77 +34,77 @@ router.post('/api/turnos/crear', async (req, res, next) => {
     res.status(201).json(result.rows[0]);
 });
 
-router.post('/api/turnos/siguiente', async (req, res, next) => {
+router.post('/api/turnos/siguiente', canUpdate, async (req, res, next) => {
     const siguiente = await turnosFlujo.llamarSiguiente();
     if (!siguiente) return res.status(400).json({ error: 'No hay turnos en espera' });
     res.json({ llamado: siguiente, ...await turnosService.getTurnosStats() });
 });
 
-router.get('/api/turnos/historial', async (req, res, next) => {
+router.get('/api/turnos/historial', canView, async (req, res, next) => {
     res.json(await turnosReportes.getHistorialDelDia());
 });
 
-router.get('/api/turnos/reporte', async (req, res, next) => {
+router.get('/api/turnos/reporte', canView, async (req, res, next) => {
     res.json(await turnosReportes.getReporteCompleto(req.query.desde || '', req.query.hasta || ''));
 });
 
-router.get('/api/turnos/reporte-entregas', async (req, res, next) => {
+router.get('/api/turnos/reporte-entregas', canView, async (req, res, next) => {
     res.json(await turnosReportes.getReporteEntregasSinTurno(req.query.desde || '', req.query.hasta || ''));
 });
 
-router.post('/api/turnos/derivar-bodega', async (req, res, next) => {
+router.post('/api/turnos/derivar-bodega', canUpdate, async (req, res, next) => {
     if (!req.body.turno_id) return res.status(400).json({ error: 'turno_id requerido' });
     await turnosFlujo.derivarABodega(req.body);
     res.json({ ok: true });
 });
 
-router.post('/api/turnos/verificar', async (req, res, next) => {
+router.post('/api/turnos/verificar', canUpdate, async (req, res, next) => {
     if (!req.body.entrega_id) return res.status(400).json({ error: 'entrega_id requerido' });
     await turnosFlujo.verificarEntrega(req.body);
     res.json({ ok: true });
 });
 
-router.post('/api/turnos/cargado', async (req, res, next) => {
+router.post('/api/turnos/cargado', canUpdate, async (req, res, next) => {
     if (!req.body.entrega_id) return res.status(400).json({ error: 'entrega_id requerido' });
     await turnosFlujo.marcarCargado(req.body);
     res.json({ ok: true });
 });
 
-router.post('/api/turnos/facturar', async (req, res, next) => {
+router.post('/api/turnos/facturar', canUpdate, async (req, res, next) => {
     if (!req.body.entrega_id || !req.body.numero_factura) return res.status(400).json({ error: 'entrega_id y numero_factura requeridos' });
     await turnosFlujo.facturarEntrega(req.body);
     res.json({ ok: true });
 });
 
-router.get('/api/turnos/tecnicos-almacen', async (req, res, next) => {
+router.get('/api/turnos/tecnicos-almacen', canView, async (req, res, next) => {
     res.json(await entregas.getTecnicosAlmacen());
 });
 
-router.post('/api/turnos/tecnicos-almacen', async (req, res, next) => {
+router.post('/api/turnos/tecnicos-almacen', canCreate, async (req, res, next) => {
     const nombre = sanitizeString(req.body.nombre);
     if (!nombre) return res.status(400).json({ error: 'Nombre requerido' });
     res.status(201).json(await entregas.crearTecnicoAlmacen(nombre));
 });
 
-router.delete('/api/turnos/tecnicos-almacen/:id', async (req, res, next) => {
+router.delete('/api/turnos/tecnicos-almacen/:id', canDelete, async (req, res, next) => {
     await entregas.eliminarTecnicoAlmacen(Number(req.params.id));
     res.json({ ok: true });
 });
 
-router.get('/api/turnos/almacen/pendientes', async (req, res, next) => {
+router.get('/api/turnos/almacen/pendientes', canView, async (req, res, next) => {
     res.json(await entregas.getPendientesAlmacen());
 });
 
-router.get('/api/turnos/facturar/pendientes', async (req, res, next) => {
+router.get('/api/turnos/facturar/pendientes', canView, async (req, res, next) => {
     res.json(await entregas.getPendientesFacturar());
 });
 
-router.get('/api/turnos/:id/adjuntos', async (req, res, next) => {
+router.get('/api/turnos/:id/adjuntos', canView, async (req, res, next) => {
     try { res.json(await entregas.getAdjuntos(Number(req.params.id))); }
     catch (e) { next(e); }
 });
 
-router.get('/api/turnos/adjunto/:id', async (req, res, next) => {
+router.get('/api/turnos/adjunto/:id', canView, async (req, res, next) => {
     try {
         const adj = await entregas.getAdjuntoArchivo(Number(req.params.id));
         if (!adj) return res.status(404).json({ error: 'No encontrado' });
@@ -107,7 +114,7 @@ router.get('/api/turnos/adjunto/:id', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/turnos/qr', async (req, res, next) => {
+router.get('/api/turnos/qr', canView, async (req, res, next) => {
     const QRCode = require('qrcode');
     const url = req.headers.host
         ? `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/turnos/?view=registro`
@@ -118,25 +125,25 @@ router.get('/api/turnos/qr', async (req, res, next) => {
     } catch (e) { res.json({ qr: '', url, error: e.message }); }
 });
 
-router.get('/api/turnos/entregas', async (req, res, next) => {
+router.get('/api/turnos/entregas', canView, async (req, res, next) => {
     res.json(await entregas.getEntregasDelDia());
 });
 
-router.get('/api/turnos/entregas/pendientes', async (req, res, next) => {
+router.get('/api/turnos/entregas/pendientes', canView, async (req, res, next) => {
     res.json(await entregas.getEntregasPendientes());
 });
 
-router.post('/api/turnos/entregas/registrar', async (req, res, next) => {
+router.post('/api/turnos/entregas/registrar', canCreate, async (req, res, next) => {
     if (!req.body.cliente_nombre) return res.status(400).json({ error: 'Nombre requerido' });
     res.status(201).json(await entregas.registrarEntrega(req.body));
 });
 
-router.post('/api/turnos/entregas/:id/entregar', async (req, res, next) => {
+router.post('/api/turnos/entregas/:id/entregar', canUpdate, async (req, res, next) => {
     await entregas.marcarEntregado(Number(req.params.id));
     res.json({ ok: true });
 });
 
-router.delete('/api/turnos/eliminar-turno/:id', async (req, res, next) => {
+router.delete('/api/turnos/eliminar-turno/:id', canDelete, async (req, res, next) => {
     const id = Number(req.params.id);
     await query('DELETE FROM entregas WHERE turno_id = $1', [id]);
     await query('DELETE FROM turnos WHERE id = $1', [id]);

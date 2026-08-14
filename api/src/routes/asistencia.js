@@ -1,16 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const { requireAnyPerm } = require('../middleware/permisos');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/vitroflow'
 });
 
+const MOD = 'asistencia';
+const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
+const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
+const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
+const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
+
 // ═══════════════════════════════════════════════════════
 // TRABAJADORES
 // ═══════════════════════════════════════════════════════
 
-router.get('/api/asistencia/trabajadores', async (req, res) => {
+router.get('/api/asistencia/trabajadores', canView, async (req, res) => {
     try {
         const result = await pool.query(
             'SELECT * FROM trabajadores ORDER BY activo DESC, nombre'
@@ -21,7 +28,7 @@ router.get('/api/asistencia/trabajadores', async (req, res) => {
     }
 });
 
-router.get('/api/asistencia/trabajadores/activos', async (req, res) => {
+router.get('/api/asistencia/trabajadores/activos', canView, async (req, res) => {
     try {
         const result = await pool.query(
             'SELECT * FROM trabajadores WHERE activo = true ORDER BY nombre'
@@ -32,7 +39,7 @@ router.get('/api/asistencia/trabajadores/activos', async (req, res) => {
     }
 });
 
-router.post('/api/asistencia/trabajadores', async (req, res) => {
+router.post('/api/asistencia/trabajadores', canCreate, async (req, res) => {
     try {
         const { rut, nombre, fecha_ingreso, telefono, puesto } = req.body;
         
@@ -70,7 +77,7 @@ router.post('/api/asistencia/trabajadores', async (req, res) => {
     }
 });
 
-router.put('/api/asistencia/trabajadores/:id', async (req, res) => {
+router.put('/api/asistencia/trabajadores/:id', canUpdate, async (req, res) => {
     try {
         const { id } = req.params;
         const { nombre, rut, activo, fecha_ingreso, telefono, puesto } = req.body;
@@ -103,7 +110,7 @@ router.put('/api/asistencia/trabajadores/:id', async (req, res) => {
     }
 });
 
-router.delete('/api/asistencia/trabajadores/:id', async (req, res) => {
+router.delete('/api/asistencia/trabajadores/:id', canDelete, async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params;
@@ -128,7 +135,7 @@ router.delete('/api/asistencia/trabajadores/:id', async (req, res) => {
     }
 });
 
-router.post('/api/asistencia/trabajadores/importar', async (req, res) => {
+router.post('/api/asistencia/trabajadores/importar', canCreate, async (req, res) => {
     const client = await pool.connect();
     try {
         const { trabajadores } = req.body;
@@ -170,7 +177,7 @@ router.post('/api/asistencia/trabajadores/importar', async (req, res) => {
 // ASISTENCIA DIARIA
 // ═══════════════════════════════════════════════════════
 
-router.post('/api/asistencia/marcar', async (req, res) => {
+router.post('/api/asistencia/marcar', canCreate, async (req, res) => {
     try {
         const { trabajador_id, falta, fecha } = req.body;
         const targetDate = fecha || new Date().toISOString().split('T')[0];
@@ -205,7 +212,7 @@ router.post('/api/asistencia/marcar', async (req, res) => {
     }
 });
 
-router.get('/api/asistencia/diaria', async (req, res) => {
+router.get('/api/asistencia/diaria', canView, async (req, res) => {
     try {
         const { fecha } = req.query;
         const fechaConsulta = fecha || new Date().toISOString().split('T')[0];
@@ -228,7 +235,7 @@ router.get('/api/asistencia/diaria', async (req, res) => {
 // PERMISOS
 // ═══════════════════════════════════════════════════════
 
-router.post('/api/asistencia/permisos', async (req, res) => {
+router.post('/api/asistencia/permisos', canCreate, async (req, res) => {
     try {
         const { trabajador_id, fecha_inicio, fecha_fin, motivo, tipo, horas } = req.body;
         const result = await pool.query(
@@ -242,7 +249,7 @@ router.post('/api/asistencia/permisos', async (req, res) => {
     }
 });
 
-router.get('/api/asistencia/permisos', async (req, res) => {
+router.get('/api/asistencia/permisos', canView, async (req, res) => {
     try {
         const { trabajador_id, mes, anio } = req.query;
         let query = `SELECT p.*, t.nombre, t.rut 
@@ -269,7 +276,7 @@ router.get('/api/asistencia/permisos', async (req, res) => {
     }
 });
 
-router.put('/api/asistencia/permisos/:id/estado', async (req, res) => {
+router.put('/api/asistencia/permisos/:id/estado', canUpdate, async (req, res) => {
     try {
         const { id } = req.params;
         const { estado } = req.body;
@@ -284,7 +291,7 @@ router.put('/api/asistencia/permisos/:id/estado', async (req, res) => {
 });
 
 // PUT - Editar permiso
-router.put('/api/asistencia/permisos/:id', async (req, res) => {
+router.put('/api/asistencia/permisos/:id', canUpdate, async (req, res) => {
     try {
         const { id } = req.params;
         const { trabajador_id, tipo, fecha_inicio, fecha_fin, motivo, horas } = req.body;
@@ -299,7 +306,7 @@ router.put('/api/asistencia/permisos/:id', async (req, res) => {
 });
 
 // DELETE - Eliminar permiso
-router.delete('/api/asistencia/permisos/:id', async (req, res) => {
+router.delete('/api/asistencia/permisos/:id', canDelete, async (req, res) => {
     try {
         const { id } = req.params;
         await pool.query('DELETE FROM permisos WHERE id = $1', [id]);
@@ -313,7 +320,7 @@ router.delete('/api/asistencia/permisos/:id', async (req, res) => {
 // VACACIONES
 // ═══════════════════════════════════════════════════════
 
-router.post('/api/asistencia/vacaciones', async (req, res) => {
+router.post('/api/asistencia/vacaciones', canCreate, async (req, res) => {
     try {
         const { trabajador_id, fecha_inicio, fecha_fin, dias } = req.body;
         const result = await pool.query(
@@ -327,7 +334,7 @@ router.post('/api/asistencia/vacaciones', async (req, res) => {
     }
 });
 
-router.get('/api/asistencia/vacaciones', async (req, res) => {
+router.get('/api/asistencia/vacaciones', canView, async (req, res) => {
     try {
         const { trabajador_id } = req.query;
         let query = `SELECT v.*, t.nombre, t.rut 
@@ -350,7 +357,7 @@ router.get('/api/asistencia/vacaciones', async (req, res) => {
 });
 
 // PUT - Editar vacación
-router.put('/api/asistencia/vacaciones/:id', async (req, res) => {
+router.put('/api/asistencia/vacaciones/:id', canUpdate, async (req, res) => {
     try {
         const { id } = req.params;
         const { trabajador_id, fecha_inicio, fecha_fin, dias } = req.body;
@@ -365,7 +372,7 @@ router.put('/api/asistencia/vacaciones/:id', async (req, res) => {
 });
 
 // DELETE - Eliminar vacación
-router.delete('/api/asistencia/vacaciones/:id', async (req, res) => {
+router.delete('/api/asistencia/vacaciones/:id', canDelete, async (req, res) => {
     try {
         const { id } = req.params;
         await pool.query('DELETE FROM vacaciones WHERE id = $1', [id]);
@@ -379,7 +386,7 @@ router.delete('/api/asistencia/vacaciones/:id', async (req, res) => {
 // CALENDARIO MENSUAL
 // ═══════════════════════════════════════════════════════
 
-router.get('/api/asistencia/calendario', async (req, res) => {
+router.get('/api/asistencia/calendario', canView, async (req, res) => {
     try {
         const mesActual = parseInt(req.query.mes) || new Date().getMonth() + 1;
         const anioActual = parseInt(req.query.anio) || new Date().getFullYear();
@@ -428,7 +435,7 @@ router.get('/api/asistencia/calendario', async (req, res) => {
 // LICENCIAS MÉDICAS
 // ═══════════════════════════════════════════════════════
 
-router.post('/api/asistencia/licencias', async (req, res) => {
+router.post('/api/asistencia/licencias', canCreate, async (req, res) => {
     try {
         const { trabajador_id, fecha_inicio, fecha_fin, diagnostico, medico } = req.body;
         const result = await pool.query(
@@ -442,7 +449,7 @@ router.post('/api/asistencia/licencias', async (req, res) => {
     }
 });
 
-router.get('/api/asistencia/licencias', async (req, res) => {
+router.get('/api/asistencia/licencias', canView, async (req, res) => {
     try {
         const { trabajador_id, mes, anio } = req.query;
         let query = `SELECT l.*, t.nombre, t.rut 
@@ -470,7 +477,7 @@ router.get('/api/asistencia/licencias', async (req, res) => {
     }
 });
 
-router.put('/api/asistencia/licencias/:id/estado', async (req, res) => {
+router.put('/api/asistencia/licencias/:id/estado', canUpdate, async (req, res) => {
     try {
         const { id } = req.params;
         const { estado } = req.body;
@@ -485,7 +492,7 @@ router.put('/api/asistencia/licencias/:id/estado', async (req, res) => {
 });
 
 // PUT - Editar licencia
-router.put('/api/asistencia/licencias/:id', async (req, res) => {
+router.put('/api/asistencia/licencias/:id', canUpdate, async (req, res) => {
     try {
         const { id } = req.params;
         const { trabajador_id, fecha_inicio, fecha_fin, diagnostico, medico } = req.body;
@@ -500,7 +507,7 @@ router.put('/api/asistencia/licencias/:id', async (req, res) => {
 });
 
 // DELETE - Eliminar licencia
-router.delete('/api/asistencia/licencias/:id', async (req, res) => {
+router.delete('/api/asistencia/licencias/:id', canDelete, async (req, res) => {
     try {
         const { id } = req.params;
         await pool.query('DELETE FROM licencias_medicas WHERE id = $1', [id]);
@@ -514,7 +521,7 @@ router.delete('/api/asistencia/licencias/:id', async (req, res) => {
 // REPORTES Y RANKINGS
 // ═══════════════════════════════════════════════════════
 
-router.get('/api/asistencia/reporte-mensual', async (req, res) => {
+router.get('/api/asistencia/reporte-mensual', canView, async (req, res) => {
     try {
         const mesActual = parseInt(req.query.mes) || new Date().getMonth() + 1;
         const anioActual = parseInt(req.query.anio) || new Date().getFullYear();
@@ -572,7 +579,7 @@ router.get('/api/asistencia/reporte-mensual', async (req, res) => {
     }
 });
 
-router.get('/api/asistencia/ranking', async (req, res) => {
+router.get('/api/asistencia/ranking', canView, async (req, res) => {
     try {
         const mesActual = parseInt(req.query.mes) || new Date().getMonth() + 1;
         const anioActual = parseInt(req.query.anio) || new Date().getFullYear();
@@ -632,7 +639,7 @@ router.get('/api/asistencia/ranking', async (req, res) => {
 // DASHBOARD STATS
 // ═══════════════════════════════════════════════════════
 
-router.get('/api/asistencia/dashboard', async (req, res) => {
+router.get('/api/asistencia/dashboard', canView, async (req, res) => {
     try {
         const now = new Date();
         const mesActual = now.getMonth() + 1;
@@ -682,7 +689,7 @@ router.get('/api/asistencia/dashboard', async (req, res) => {
 // HORAS EXTRAS
 // ═══════════════════════════════════════════════════════
 
-router.get('/api/asistencia/horas-extras', async (req, res) => {
+router.get('/api/asistencia/horas-extras', canView, async (req, res) => {
     try {
         const { mes, anio } = req.query;
         const mesActual = mes || new Date().getMonth() + 1;
@@ -701,7 +708,7 @@ router.get('/api/asistencia/horas-extras', async (req, res) => {
     }
 });
 
-router.post('/api/asistencia/horas-extras', async (req, res) => {
+router.post('/api/asistencia/horas-extras', canCreate, async (req, res) => {
     try {
         const { trabajador_id, fecha, horas, motivo } = req.body;
         const result = await pool.query(
@@ -715,7 +722,7 @@ router.post('/api/asistencia/horas-extras', async (req, res) => {
     }
 });
 
-router.put('/api/asistencia/horas-extras/:id', async (req, res) => {
+router.put('/api/asistencia/horas-extras/:id', canUpdate, async (req, res) => {
     try {
         const { id } = req.params;
         const { trabajador_id, fecha, horas, motivo } = req.body;
@@ -729,7 +736,7 @@ router.put('/api/asistencia/horas-extras/:id', async (req, res) => {
     }
 });
 
-router.put('/api/asistencia/horas-extras/:id/estado', async (req, res) => {
+router.put('/api/asistencia/horas-extras/:id/estado', canUpdate, async (req, res) => {
     try {
         const { id } = req.params;
         const { estado } = req.body;
@@ -743,7 +750,7 @@ router.put('/api/asistencia/horas-extras/:id/estado', async (req, res) => {
     }
 });
 
-router.delete('/api/asistencia/horas-extras/:id', async (req, res) => {
+router.delete('/api/asistencia/horas-extras/:id', canDelete, async (req, res) => {
     try {
         const { id } = req.params;
         await pool.query('DELETE FROM horas_extras WHERE id = $1', [id]);

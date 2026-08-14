@@ -3,10 +3,17 @@ const router = express.Router();
 const multer = require('multer');
 const { query } = require('../config/database');
 const { validate, pedidosSchema } = require('../middleware/validate');
+const { requireAnyPerm } = require('../middleware/permisos');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
-router.get('/api/pedidos/dashboard', async (req, res, next) => {
+const MOD = 'pedidos';
+const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
+const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
+const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
+const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
+
+router.get('/api/pedidos/dashboard', canView, async (req, res, next) => {
     try {
         const [total, pendientes, aprobados, rechazados] = await Promise.all([
             query('SELECT COUNT(*) as c FROM pedidos'),
@@ -23,7 +30,7 @@ router.get('/api/pedidos/dashboard', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/pedidos', async (req, res, next) => {
+router.get('/api/pedidos', canView, async (req, res, next) => {
     try {
         const userEmail = req.headers['x-user-email'] || '';
         const userPerm = req.headers['x-user-permisos'] || '';
@@ -40,7 +47,7 @@ router.get('/api/pedidos', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.post('/api/pedidos', upload.single('archivo_pdf'), async (req, res, next) => {
+router.post('/api/pedidos', canCreate, upload.single('archivo_pdf'), async (req, res, next) => {
     try {
         const { numero_pedido, cliente, tipo_ov, vendedor, archivo_url } = req.body;
         if (!numero_pedido || !cliente) return res.status(400).json({ error: 'Numero y cliente son requeridos' });
@@ -55,7 +62,7 @@ router.post('/api/pedidos', upload.single('archivo_pdf'), async (req, res, next)
     } catch (e) { next(e); }
 });
 
-router.get('/api/pedidos/:id/pdf', async (req, res, next) => {
+router.get('/api/pedidos/:id/pdf', canView, async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const result = await query('SELECT archivo_pdf, archivo_url, numero_pedido FROM pedidos WHERE id = $1', [id]);
@@ -72,7 +79,7 @@ router.get('/api/pedidos/:id/pdf', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/pedidos/:id/download-pdf', async (req, res, next) => {
+router.get('/api/pedidos/:id/download-pdf', canView, async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const result = await query('SELECT archivo_pdf, archivo_url, numero_pedido FROM pedidos WHERE id = $1', [id]);
@@ -88,14 +95,14 @@ router.get('/api/pedidos/:id/download-pdf', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.delete('/api/pedidos/:id/pdf', async (req, res, next) => {
+router.delete('/api/pedidos/:id/pdf', canDelete, async (req, res, next) => {
     try {
         await query('UPDATE pedidos SET archivo_pdf = NULL WHERE id = $1', [Number(req.params.id)]);
         res.json({ ok: true });
     } catch (e) { next(e); }
 });
 
-router.get('/api/pedidos/:id', async (req, res, next) => {
+router.get('/api/pedidos/:id', canView, async (req, res, next) => {
     try {
         const result = await query('SELECT * FROM pedidos WHERE id = $1', [Number(req.params.id)]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Pedido no encontrado' });
@@ -103,7 +110,7 @@ router.get('/api/pedidos/:id', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/pedidos/:id/historial', async (req, res, next) => {
+router.get('/api/pedidos/:id/historial', canView, async (req, res, next) => {
     try {
         const result = await query(
             'SELECT id, accion, campos_antes, campos_despues, usuario, created_at FROM pedido_historial WHERE pedido_id = $1 ORDER BY created_at DESC',
@@ -113,14 +120,14 @@ router.get('/api/pedidos/:id/historial', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.post('/api/pedidos/cleanup-pdf', async (req, res, next) => {
+router.post('/api/pedidos/cleanup-pdf', canDelete, async (req, res, next) => {
     try {
         const result = await query("UPDATE pedidos SET archivo_pdf = NULL WHERE estado != 'pendiente' AND archivo_pdf IS NOT NULL");
         res.json({ ok: true, cleaned: result.rowCount });
     } catch (e) { next(e); }
 });
 
-router.put('/api/pedidos/:id', async (req, res, next) => {
+router.put('/api/pedidos/:id', canUpdate, async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const { estado, motivo_rechazo, revisado_por, cliente, tipo_ov, numero_pedido } = req.body;
@@ -180,10 +187,8 @@ router.put('/api/pedidos/:id', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.delete('/api/pedidos/:id', async (req, res, next) => {
+router.delete('/api/pedidos/:id', canDelete, async (req, res, next) => {
     try {
-        const userPerms = (req.headers['x-user-permisos'] || '').split(',').filter(Boolean);
-        if (!userPerms.includes('usuarios')) return res.status(403).json({ error: 'Sin permisos' });
         await query('DELETE FROM pedidos WHERE id = $1', [Number(req.params.id)]);
         res.json({ ok: true });
     } catch (e) { next(e); }
