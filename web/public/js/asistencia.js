@@ -164,7 +164,7 @@ const Asistencia = {
         const canAgT = typeof canCreate === 'function' ? canCreate('asistencia', 'asistencia') : false;
         const canEdT = typeof canEdit === 'function' ? canEdit('asistencia', 'asistencia') : false;
         const canDelT = typeof canDelete === 'function' ? canDelete('asistencia', 'asistencia') : false;
-        const canView = typeof hasPerm === 'function' ? hasPerm('asistencia') : false;
+        const canView = typeof isAdmin === 'function' ? isAdmin() : (typeof hasSection === 'function' ? hasSection('asistencia') : false);
         if (tab === 'trabajadores') {
             container.innerHTML = '<div style="display:flex;gap:6px;align-items:center">'
                 + '<button onclick="Asistencia.filtrarTrabajadores(\'todos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.4);font-size:11px;padding:6px 12px" data-filter="todos">Todos</button>'
