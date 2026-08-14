@@ -5,23 +5,16 @@ const InvInventario = {
         try {
             const items = await api.inv().getInventario();
             page.innerHTML = `
-                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:12px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Inventario</h2>
-<p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p></div></div>
-                <style>
-@keyframes inv_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.inv-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
-.inv-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
-.inv-row{transition:all 0.2s}
-.inv-row:hover{transform:translateX(2px);background:#f8fafc!important}
-</style>
-                <div class="filters-bar" style="align-items:center">
-                    <div style="position:relative;flex:1;max-width:360px">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="invSearch" placeholder="Buscar por codigo, SAP, tipo o espesor..." oninput="InvInventario.buscar(this.value)" style="width:100%;padding:7px 10px 7px 30px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box;outline:none;transition:border 0.2s" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#e2e8f0'">
-                    </div>
-                </div>
+<div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Inventario</h2>
+  <p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p></div>
+  <div style="position:relative;flex:0 1 280px;min-width:180px">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="invSearch" placeholder="Buscar por codigo, tipo o espesor..." oninput="InvInventario.buscar(this.value)" style="width:100%;padding:7px 10px 7px 30px;font-size:12px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;box-sizing:border-box;outline:none;background:rgba(255,255,255,0.1);color:white;transition:border 0.2s" onfocus="this.style.borderColor='rgba(255,255,255,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.2)'">
+  </div>
+</div></div>
                 <div style="display:flex; gap:8px; margin-bottom:14px; justify-content:flex-end;">
                     <button onclick="InvInventario.exportarExcel()" title="Exportar Excel" class="btn btn-success btn-sm">Exportar Excel</button>
                     <button onclick="window.print()" title="Imprimir" class="btn btn-outline btn-sm">Imprimir</button>
