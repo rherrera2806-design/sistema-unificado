@@ -110,8 +110,8 @@ App.registerModule('instalaciones', {
         };
 
         let html = `
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9">
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);max-width:100%;overflow:hidden;box-sizing:border-box">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;gap:8px">
                     <h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">${monthNames[month]} ${year}</h3>
                     <div style="display:flex;gap:6px;align-items:center">
                         <button class="btn btn-outline" onclick="App.modules.instalaciones.cambiarMes(-1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="15 18 9 12 15 6"/></svg></button>
@@ -119,10 +119,11 @@ App.registerModule('instalaciones', {
                         <button class="btn btn-outline" onclick="App.modules.instalaciones.cambiarMes(1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="9 18 15 12 9 6"/></svg></button>
                     </div>
                 </div>
-                <div style="display:grid;grid-template-columns:repeat(7,1fr)">
+                <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+                <div style="display:grid;grid-template-columns:repeat(7,minmax(100px,1fr));min-width:700px">
                     ${diasSemana.map(d => `<div style="padding:10px;text-align:center;font-weight:700;font-size:11px;border-bottom:1px solid #f1f5f9;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">${d}</div>`).join('')}
         `;
-        for (let i = 0; i < startOffset; i++) html += '<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:100px;background:#fafbfc"></div>';
+        for (let i = 0; i < startOffset; i++) html += '<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:80px;background:#fafbfc"></div>';
         for (let d = 1; d <= daysInMonth; d++) {
             const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
             const instDia = this.instalaciones.filter(inst => inst.fecha_programada && inst.fecha_programada.substring(0, 10) === fs);
@@ -130,13 +131,13 @@ App.registerModule('instalaciones', {
             const dt = new Date(year, month, d);
             const esFinde = dt.getDay() === 0 || dt.getDay() === 6;
             const bgBase = esHoy ? 'background:#eff6ff' : (esFinde ? 'background:#fafbfc' : '');
-            html += `<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:100px;padding:4px;${bgBase}">
+            html += `<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:80px;padding:4px;overflow:hidden;${bgBase}">
                 <div style="text-align:right;padding:2px 4px;font-size:12px;${esHoy ? 'background:#3b82f6;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700' : (esFinde ? 'color:#94a3b8' : 'color:#1e293b')}">${d}</div>
             `;
             for (const inst of instDia) {
                 const color = estadoColor(inst.estado);
                 const bg = estadoBg(inst.estado);
-                html += `<div onclick="App.modules.inst_detalle.abrir(${inst.id})" style="cursor:pointer;margin:2px 0;padding:4px 6px;border-radius:6px;border-left:3px solid ${color};background:${bg};font-size:10px;line-height:1.3;transition:all .15s" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
+                html += `<div onclick="App.modules.inst_detalle.abrir(${inst.id})" style="cursor:pointer;margin:2px 0;padding:4px 6px;border-radius:6px;border-left:3px solid ${color};background:${bg};font-size:10px;line-height:1.3;transition:all .15s;overflow:hidden" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
                     <div style="font-weight:700;color:${color};font-size:9px;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')}</div>
                     <div style="font-weight:600;color:${color}">${inst.hora_programada || '09:00'}${inst.numero_orden ? ' · ' + escapeHtml(inst.numero_orden) : ''}</div>
                     <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1e293b;font-weight:500">${escapeHtml(inst.cliente)}</div>
@@ -144,7 +145,7 @@ App.registerModule('instalaciones', {
             }
             html += '</div>';
         }
-        html += '</div></div>';
+        html += '</div></div></div>';
         div.innerHTML = html;
     },
 
