@@ -29,7 +29,7 @@ App.registerModule('instalaciones', {
             + (puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
             + '</div></div></div>'
 
-            + '<div id="instStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px;max-width:100%"></div>'
+            + '<div id="instStats" style="display:flex;gap:10px;margin-bottom:20px;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px"></div>'
             + '<div id="instCalendario"></div>';
         await this.loadData();
     },
@@ -54,25 +54,25 @@ App.registerModule('instalaciones', {
         const comp = this.instalaciones.filter(i => i.estado === 'COMPLETADA').length;
         const nov = this.instalaciones.filter(i => i.estado === 'CON_NOVEDADES' || i.estado === 'CANCELADA').length;
         document.getElementById('instStats').innerHTML = ''
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 0ms both;min-height:55px;display:flex;align-items:center;gap:10px;max-width:100%;box-sizing:border-box">'
-            + '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>'
-            + '<div style="min-width:0;overflow:hidden"><div style="font-size:20px;font-weight:800;color:#1e293b;line-height:1">' + total + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Total</div></div></div>'
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 0ms both;min-width:140px;flex:1 0 0;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
+            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>'
+            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#1e293b;line-height:1">' + total + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Total</div></div></div>'
 
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 60ms both;min-height:55px;display:flex;align-items:center;gap:10px;max-width:100%;box-sizing:border-box">'
-            + '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'
-            + '<div style="min-width:0;overflow:hidden"><div style="font-size:20px;font-weight:800;color:#3b82f6;line-height:1">' + prog + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Programadas</div></div></div>'
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 60ms both;min-width:140px;flex:1 0 0;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
+            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'
+            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">' + prog + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Programadas</div></div></div>'
 
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 120ms both;min-height:55px;display:flex;align-items:center;gap:10px;max-width:100%;box-sizing:border-box">'
-            + '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>'
-            + '<div style="min-width:0;overflow:hidden"><div style="font-size:20px;font-weight:800;color:#f59e0b;line-height:1">' + curso + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">En Curso</div></div></div>'
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 120ms both;min-width:140px;flex:1 0 0;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
+            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>'
+            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">' + curso + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">En Curso</div></div></div>'
 
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #22c55e;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 180ms both;min-height:55px;display:flex;align-items:center;gap:10px;max-width:100%;box-sizing:border-box">'
-            + '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>'
-            + '<div style="min-width:0;overflow:hidden"><div style="font-size:20px;font-weight:800;color:#22c55e;line-height:1">' + comp + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Completadas</div></div></div>'
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #22c55e;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 180ms both;min-width:140px;flex:1 0 0;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
+            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>'
+            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">' + comp + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Completadas</div></div></div>'
 
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 240ms both;min-height:55px;display:flex;align-items:center;gap:10px;max-width:100%;box-sizing:border-box">'
-            + '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>'
-            + '<div style="min-width:0;overflow:hidden"><div style="font-size:20px;font-weight:800;color:#ef4444;line-height:1">' + nov + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">Novedades</div></div></div>';
+            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 240ms both;min-width:140px;flex:1 0 0;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
+            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>'
+            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">' + nov + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Novedades</div></div></div>';
     },
 
     renderCalendario() {
@@ -120,10 +120,10 @@ App.registerModule('instalaciones', {
                     </div>
                 </div>
                 <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
-                <div style="display:grid;grid-template-columns:repeat(7,minmax(100px,1fr));min-width:700px">
-                    ${diasSemana.map(d => `<div style="padding:10px;text-align:center;font-weight:700;font-size:11px;border-bottom:1px solid #f1f5f9;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">${d}</div>`).join('')}
+                <div style="display:grid;grid-template-columns:repeat(7,minmax(90px,1fr));min-width:630px">
+                    ${diasSemana.map(d => `<div style="padding:6px 4px;text-align:center;font-weight:700;font-size:10px;border-bottom:1px solid #f1f5f9;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">${d}</div>`).join('')}
         `;
-        for (let i = 0; i < startOffset; i++) html += '<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:80px;background:#fafbfc"></div>';
+        for (let i = 0; i < startOffset; i++) html += '<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:70px;background:#fafbfc"></div>';
         for (let d = 1; d <= daysInMonth; d++) {
             const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
             const instDia = this.instalaciones.filter(inst => inst.fecha_programada && inst.fecha_programada.substring(0, 10) === fs);
@@ -131,16 +131,16 @@ App.registerModule('instalaciones', {
             const dt = new Date(year, month, d);
             const esFinde = dt.getDay() === 0 || dt.getDay() === 6;
             const bgBase = esHoy ? 'background:#eff6ff' : (esFinde ? 'background:#fafbfc' : '');
-            html += `<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:80px;padding:4px;overflow:hidden;${bgBase}">
-                <div style="text-align:right;padding:2px 4px;font-size:12px;${esHoy ? 'background:#3b82f6;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700' : (esFinde ? 'color:#94a3b8' : 'color:#1e293b')}">${d}</div>
+            html += `<div style="border-right:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;min-height:70px;padding:3px;overflow:hidden;${bgBase}">
+                <div style="text-align:right;padding:1px 3px;font-size:11px;${esHoy ? 'background:#3b82f6;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700' : (esFinde ? 'color:#94a3b8' : 'color:#1e293b')}">${d}</div>
             `;
             for (const inst of instDia) {
                 const color = estadoColor(inst.estado);
                 const bg = estadoBg(inst.estado);
-                html += `<div onclick="App.modules.inst_detalle.abrir(${inst.id})" style="cursor:pointer;margin:2px 0;padding:4px 6px;border-radius:6px;border-left:3px solid ${color};background:${bg};font-size:10px;line-height:1.3;transition:all .15s;overflow:hidden" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
-                    <div style="font-weight:700;color:${color};font-size:9px;text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')}</div>
-                    <div style="font-weight:600;color:${color}">${inst.hora_programada || '09:00'}${inst.numero_orden ? ' · ' + escapeHtml(inst.numero_orden) : ''}</div>
-                    <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1e293b;font-weight:500">${escapeHtml(inst.cliente)}</div>
+                html += `<div onclick="App.modules.inst_detalle.abrir(${inst.id})" style="cursor:pointer;margin:1px 0;padding:2px 4px;border-radius:4px;border-left:2px solid ${color};background:${bg};font-size:9px;line-height:1.2;transition:all .15s;overflow:hidden" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
+                    <div style="font-weight:700;color:${color};font-size:8px;text-transform:uppercase;letter-spacing:0.3px">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')}</div>
+                    <div style="font-weight:600;color:${color};font-size:9px">${inst.hora_programada || '09:00'}${inst.numero_orden ? ' · ' + escapeHtml(inst.numero_orden) : ''}</div>
+                    <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1e293b;font-weight:500;font-size:9px">${escapeHtml(inst.cliente)}</div>
                 </div>`;
             }
             html += '</div>';
