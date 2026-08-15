@@ -113,9 +113,9 @@ const Asistencia = {
                 + '#ast-hero-fecha{color-scheme:dark}'
                 + '#ast-hero-mes option,#ast-hero-anio option{color:#1e293b;background:white}'
                 + '.ast-hero-wrap{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:10px;padding:10px 16px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3);max-width:100%;box-sizing:border-box}'
-                + '.ast-hero-inner{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;max-width:100%}'
+                + '.ast-hero-inner{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;max-width:100%;overflow:hidden}'
                 + '.ast-hero-title{flex:1;min-width:140px}'
-                + '.ast-hero-filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end;min-width:0;max-width:100%}'
+                + '.ast-hero-filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end;min-width:0;max-width:100%;overflow:hidden}'
                 + '@media(max-width:640px){'
                 + '.ast-hero-inner{flex-direction:column;align-items:stretch;height:auto!important}'
                 + '.ast-hero-title{text-align:center}'
@@ -134,7 +134,7 @@ const Asistencia = {
                 + '</style>'
 
                 + '<div class="ast-hero-wrap">'
-                + '<div class="ast-hero-inner" style="height:44px">'
+                + '<div class="ast-hero-inner" style="min-height:44px">'
                 + '<div class="ast-hero-title"><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.2)">Control de Asistencia</h2>'
                 + '<p id="ast-hero-subtitle" style="margin:1px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Marca faltas del día</p></div>'
                 + '<div id="ast-hero-filters" class="ast-hero-filters"></div>'
@@ -215,7 +215,7 @@ const Asistencia = {
                 + '</div>'
                 + '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadoresAdmin()" style="padding-left:32px;width:180px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
+                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadoresAdmin()" style="padding-left:32px;width:100%;min-width:120px;max-width:200px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + (canAgT ? `<button onclick="Asistencia.showFormTrabajador()" class="btn btn-primary" title="${BTN.NUEVO} trabajador" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '')
                 + `<button onclick="Asistencia.exportExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">${BTN.EXPORTAR_EXCEL}</button>`
@@ -256,7 +256,7 @@ const Asistencia = {
         } else if (tab === 'diaria') {
             container.innerHTML = '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadores()" style="padding-left:32px;width:160px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
+                + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadores()" style="padding-left:32px;width:100%;min-width:100px;max-width:160px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
                 + '<input type="date" id="ast-hero-fecha" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + `<button onclick="Asistencia.cargarAsistencia()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">${BTN.CARGAR}</button>`;
@@ -878,7 +878,7 @@ const Asistencia = {
                     <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:3px;background:#fafbfc;border:1px solid #e2e8f0"></div><span style="font-size:11px;color:#64748b;font-weight:500">Antes de ingreso</span></div>
                     <div style="margin-left:auto;position:relative">
                         <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="ast-cal-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.debouncedFiltrarCalendario()" style="padding-left:32px;width:180px;font-size:11px">
+                        <input type="text" id="ast-cal-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.debouncedFiltrarCalendario()" style="padding-left:32px;width:100%;min-width:120px;max-width:180px;font-size:11px">
                     </div>
                 </div>
                 <div style="flex:1;overflow:auto;min-height:0"><div id="ast-calendario"></div></div>
