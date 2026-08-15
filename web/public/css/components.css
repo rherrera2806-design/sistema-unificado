@@ -11,6 +11,8 @@
     overflow: hidden;
     margin-bottom: var(--space-4);
     transition: box-shadow var(--transition-base), transform var(--transition-base);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .card:hover { box-shadow: var(--shadow-md); }
 .card-header {
@@ -19,8 +21,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
-.card-body { padding: var(--space-5); }
+.card-body { padding: var(--space-5); max-width: 100%; overflow: hidden; }
 
 /* ── Stat Cards ── */
 .stat-card {
@@ -163,7 +167,7 @@
 .btn-group { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 
 /* ── Tables ── */
-table { width: 100%; border-collapse: collapse; }
+table { width: 100%; border-collapse: collapse; max-width: 100%; }
 thead th {
     background: var(--gray-50);
     padding: var(--space-3) var(--space-4);
@@ -174,15 +178,35 @@ thead th {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid var(--border);
+    white-space: nowrap;
 }
 tbody td {
     padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--gray-100);
     font-size: 0.8125rem;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 tbody tr:hover { background: var(--gray-50); }
 tbody tr:last-child td { border-bottom: none; }
 .table-actions { white-space: nowrap; }
+
+/* ── Table Wrapper (horizontal scroll) ── */
+.sigma-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    width: 100%;
+}
+
+/* ── Stats Grid ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--space-4);
+    max-width: 100%;
+}
 .table-actions .btn { margin-right: var(--space-1); }
 
 /* ── Forms ── */
