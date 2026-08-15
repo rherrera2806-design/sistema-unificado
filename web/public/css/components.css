@@ -35,6 +35,8 @@
     gap: 8px;
     height: 56px;
     transition: box-shadow var(--transition-base), transform var(--transition-base);
+    max-width: 100%;
+    min-width: 0;
 }
 .stat-card:hover {
     box-shadow: var(--shadow-md);
