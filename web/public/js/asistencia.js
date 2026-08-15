@@ -112,10 +112,10 @@ const Asistencia = {
                 + '#ast-hero-buscar::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
                 + '#ast-hero-fecha{color-scheme:dark}'
                 + '#ast-hero-mes option,#ast-hero-anio option{color:#1e293b;background:white}'
-                + '.ast-hero-wrap{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:10px;padding:10px 16px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)}'
-                + '.ast-hero-inner{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}'
+                + '.ast-hero-wrap{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:10px;padding:10px 16px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3);max-width:100%;box-sizing:border-box}'
+                + '.ast-hero-inner{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;max-width:100%}'
                 + '.ast-hero-title{flex:1;min-width:140px}'
-                + '.ast-hero-filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end;min-width:0}'
+                + '.ast-hero-filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex:1;justify-content:flex-end;min-width:0;max-width:100%}'
                 + '@media(max-width:640px){'
                 + '.ast-hero-inner{flex-direction:column;align-items:stretch;height:auto!important}'
                 + '.ast-hero-title{text-align:center}'
@@ -140,7 +140,7 @@ const Asistencia = {
                 + '<div id="ast-hero-filters" class="ast-hero-filters"></div>'
                 + '</div></div>'
 
-                + '<div id="ast-tabs" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap"></div>'
+                + '<div id="ast-tabs" style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;overflow-x:auto;max-width:100%"></div>'
 
                 + '<div id="ast-content"></div>';
 
