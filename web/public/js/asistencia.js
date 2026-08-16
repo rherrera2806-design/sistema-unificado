@@ -1225,31 +1225,6 @@ const Asistencia = {
         } catch(e) { console.error('Error:', e); }
     },
 
-    renderRankingLicencias(ranking) {
-        const c = document.getElementById('ast-ranking-licencias-container');
-        if (!c) return;
-        if (ranking.length === 0) { c.innerHTML = ''; return; }
-
-        const configs = [
-            { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', icon: '🏆', textColor: '#166534', labelColor: '#15803d' },
-            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
-            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
-            { border: '#16a34a', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#16a34a', icon: '⭐', textColor: '#166534', labelColor: '#15803d' },
-            { border: '#16a34a', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#16a34a', icon: '⭐', textColor: '#166534', labelColor: '#15803d' }
-        ];
-
-        c.innerHTML = '<div class="ranking-container">' + ranking.map((r, i) => {
-            const cfg = configs[i] || configs[4];
-            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
-                <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
-                <div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${cfg.numBg};color:white;font-size:10px;font-weight:800;margin-bottom:2px">${i + 1}</div>
-                <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
-                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${r.dias}</div>
-                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">Días Licencia</div>
-            </div>`;
-        }).join('') + '</div>';
-    },
-
     renderTablaLicencias(licencias) {
             const tbody = document.getElementById('ast-tabla-licencias');
             if (!tbody) return;
@@ -1837,32 +1812,6 @@ const Asistencia = {
             });
             cardsEl.innerHTML = cardsHtml;
         }
-    },
-
-    renderRanking(ranking) {
-        const c = document.getElementById('ast-ranking-container');
-        if (!c) return;
-        if (ranking.length === 0) { c.innerHTML = ''; return; }
-
-        const configs = [
-            { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', numColor: 'white', textColor: '#92400e', icon: '🏆', labelColor: '#b45309' },
-            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
-            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
-            { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' },
-            { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' }
-        ];
-
-        c.innerHTML = '<div class="ranking-container">' + ranking.slice(0, 5).map((r, i) => {
-            const total = (Number(r.faltas) || 0) + (Number(r.permisos_dias) || 0) + (Number(r.licencias_dias) || 0) + (Number(r.vacaciones_dias) || 0);
-            const cfg = configs[i] || configs[4];
-            return '<div class="ranking-card" style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + '">'
-            + '<div style="font-size:20px;margin-bottom:2px">' + cfg.icon + '</div>'
-            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:10px;font-weight:800;margin-bottom:2px">' + (i + 1) + '</div>'
-            + '<div class="ranking-name" style="color:' + cfg.textColor + '">' + r.nombre + '</div>'
-            + '<div style="font-size:18px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + total.toFixed(1) + '</div>'
-            + '<div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:2px">Días fuera</div>'
-            + '</div>';
-        }).join('') + '</div>';
     },
 
     filtrarReporte() {
