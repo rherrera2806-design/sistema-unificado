@@ -1678,45 +1678,31 @@ const Asistencia = {
         const mes = parseInt(document.getElementById('ast-hero-mes')?.value) || (new Date().getMonth() + 1);
         const anio = new Date().getFullYear();
         const hoy = new Date();
+        const esMesActual = hoy.getFullYear() === anio && hoy.getMonth() + 1 === mes;
         const diasEnMes = new Date(anio, mes, 0).getDate();
+        const ultimoDia = esMesActual ? hoy.getDate() : diasEnMes;
         
-        // Calcular días hábiles del mes completo
-        let diasHabilesMes = 0;
-        for (let d = 1; d <= diasEnMes; d++) {
-            const fecha = new Date(anio, mes - 1, d);
-            const dow = fecha.getDay();
-            if (dow !== 0 && dow !== 6) diasHabilesMes++;
-        }
+        // Función para calcular días hábiles de un trabajador
+        const calcDiasHabiles = (fechaIngreso) => {
+            let inicio = 1;
+            if (fechaIngreso) {
+                const fi = new Date(fechaIngreso);
+                const inicioMes = new Date(anio, mes - 1, 1);
+                if (fi > inicioMes) {
+                    inicio = fi.getDate();
+                }
+            }
+            let dias = 0;
+            for (let d = inicio; d <= ultimoDia; d++) {
+                const fecha = new Date(anio, mes - 1, d);
+                const dow = fecha.getDay();
+                if (dow !== 0 && dow !== 6) dias++;
+            }
+            return dias;
+        };
 
         tbody.innerHTML = reporte.map((r, i) => {
-            // Calcular días hábiles considerando fecha de ingreso
-            let diasHabiles = diasHabilesMes;
-            if (r.fecha_ingreso) {
-                const fechaIngreso = new Date(r.fecha_ingreso);
-                const inicioMes = new Date(anio, mes - 1, 1);
-                if (fechaIngreso > inicioMes) {
-                    // El trabajador entró después del inicio del mes
-                    diasHabiles = 0;
-                    for (let d = fechaIngreso.getDate(); d <= diasEnMes; d++) {
-                        const fecha = new Date(anio, mes - 1, d);
-                        const dow = fecha.getDay();
-                        if (dow !== 0 && dow !== 6) diasHabiles++;
-                    }
-                }
-            }
-            
-            // Si el mes es el actual, solo contar hasta hoy
-            if (hoy.getFullYear() === anio && hoy.getMonth() + 1 === mes) {
-                const fechaIngreso = r.fecha_ingreso ? new Date(r.fecha_ingreso) : null;
-                const inicioEfectivo = fechaIngreso && fechaIngreso > new Date(anio, mes - 1, 1) ? fechaIngreso.getDate() : 1;
-                diasHabiles = 0;
-                for (let d = inicioEfectivo; d <= hoy.getDate(); d++) {
-                    const fecha = new Date(anio, mes - 1, d);
-                    const dow = fecha.getDay();
-                    if (dow !== 0 && dow !== 6) diasHabiles++;
-                }
-            }
-
+            const diasHabiles = calcDiasHabiles(r.fecha_ingreso);
             const faltas = Number(r.faltas) || 0;
             const permisos = Number(r.permisos_aprobados) || 0;
             const licencias = Number(r.dias_licencia) || 0;
@@ -1739,36 +1725,41 @@ const Asistencia = {
                 + '</tr>';
         }).join('');
 
+        this.renderCardsReporte(reporte, calcDiasHabiles);
+    },
+
+    renderCardsReporte(reporte, calcDiasHabiles) {
         const cardsEl = document.getElementById('ast-cards-reporte');
-        if (cardsEl) {
-            let cardsHtml = '';
-            reporte.forEach((r, i) => {
-                const faltas = Number(r.faltas) || 0;
-                const permisos = Number(r.permisos_aprobados) || 0;
-                const licencias = Number(r.dias_licencia) || 0;
-                const vacaciones = Number(r.dias_vacaciones) || 0;
-                const he = Number(r.horas_extras) || 0;
-                const diasHabiles = diasHabilesMes;
-                const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
-                const pct = diasHabiles > 0 ? Math.round((asistidos / diasHabiles) * 100) : 0;
-                const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
-                cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + color + '">'
-                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-                    + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + r.nombre + '</span>'
-                    + '<span style="background:' + (pct >= 80 ? '#d1fae5;color:#059669' : pct >= 60 ? '#fef3c7;color:#d97706' : '#fee2e2;color:#dc2626') + ';padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">' + pct + '%</span>'
-                    + '</div>'
-                    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#64748b">'
-                    + '<span>Días Hábiles: <strong style="color:#3b82f6">' + diasHabiles + '</strong></span>'
-                    + '<span>Asistidos: <strong>' + asistidos.toFixed(1) + '</strong></span>'
-                    + '<span>Faltas: <strong style="color:' + (faltas > 0 ? '#dc2626' : '#475569') + '">' + faltas + '</strong></span>'
-                    + '<span>Permisos: <strong>' + permisos.toFixed(1) + '</strong></span>'
-                    + '<span>Licencias: <strong>' + licencias + ' días</strong></span>'
-                    + '<span>Vacaciones: <strong>' + vacaciones + ' días</strong></span>'
-                    + '<span>H. Extras: <strong style="color:#8b5cf6">' + he.toFixed(1) + ' hrs</strong></span>'
-                    + '</div></div>';
-            });
-            cardsEl.innerHTML = cardsHtml;
-        }
+        if (!cardsEl) return;
+        
+        let cardsHtml = '';
+        reporte.forEach(r => {
+            const diasHabiles = calcDiasHabiles(r.fecha_ingreso);
+            const faltas = Number(r.faltas) || 0;
+            const permisos = Number(r.permisos_aprobados) || 0;
+            const licencias = Number(r.dias_licencia) || 0;
+            const vacaciones = Number(r.dias_vacaciones) || 0;
+            const he = Number(r.horas_extras) || 0;
+            const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
+            const pct = diasHabiles > 0 ? Math.round((asistidos / diasHabiles) * 100) : 0;
+            const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+            cardsHtml += `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ${color}">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <span style="font-weight:700;color:#0f172a;font-size:14px">${r.nombre}</span>
+                    <span style="background:${pct >= 80 ? '#d1fae5;color:#059669' : pct >= 60 ? '#fef3c7;color:#d97706' : '#fee2e2;color:#dc2626'};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">${pct}%</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#64748b">
+                    <span>Días Hábiles: <strong style="color:#3b82f6">${diasHabiles}</strong></span>
+                    <span>Asistidos: <strong>${asistidos.toFixed(1)}</strong></span>
+                    <span>Faltas: <strong style="color:${faltas > 0 ? '#dc2626' : '#475569'}">${faltas}</strong></span>
+                    <span>Permisos: <strong>${permisos.toFixed(1)}</strong></span>
+                    <span>Licencias: <strong>${licencias} días</strong></span>
+                    <span>Vacaciones: <strong>${vacaciones} días</strong></span>
+                    <span>H. Extras: <strong style="color:#8b5cf6">${he.toFixed(1)} hrs</strong></span>
+                </div>
+            </div>`;
+        });
+        cardsEl.innerHTML = cardsHtml;
     },
 
     filtrarReporte() {
