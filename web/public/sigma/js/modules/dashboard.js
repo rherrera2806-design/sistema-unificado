@@ -223,21 +223,31 @@ App.registerModule('dashboard', {
                 <div class="card-body" style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">No hay fallas registradas en este período</div>
             </div>`;
         }
-        const maxFallas = data[0] ? data[0].total_fallas : 1;
-        const medals = ['#f59e0b','#94a3b8','#cd7f32','#6b7280','#6b7280'];
-        let bars = '';
-        data.forEach((item, i) => {
-            const pct = maxFallas > 0 ? (item.total_fallas / maxFallas * 100) : 0;
-            bars += `<div class="dash-row" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:#f8fafc;margin-bottom:6px">
-                <span style="width:22px;height:22px;border-radius:50%;background:${medals[i]};color:white;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${i + 1}</span>
-                <span style="flex:1;font-size:12px;font-weight:600;color:#1e293b;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(item.nombre)}">${escapeHtml(item.nombre)}</span>
-                <div class="dash-bar-track" style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${i === 0 ? '#ef4444' : '#f97316'};border-radius:4px;transition:width 0.6s ease"></div></div>
-                <span style="font-size:12px;font-weight:700;color:#ef4444;min-width:20px;text-align:right;flex-shrink:0">${item.total_fallas}</span>
+
+        const rankingConfigs = [
+            { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', icon: '🏆', textColor: '#92400e', labelColor: '#b45309' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
+            { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '⭐', textColor: '#5b21b6', labelColor: '#7c3aed' },
+            { border: '#3b82f6', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#3b82f6', icon: '⭐', textColor: '#1e40af', labelColor: '#2563eb' }
+        ];
+
+        const cards = data.slice(0, 5).map((item, i) => {
+            const cfg = rankingConfigs[i] || rankingConfigs[4];
+            return `<div style="background:${cfg.bg};border:2px solid ${cfg.border};border-radius:10px;padding:8px 4px;text-align:center;flex:1 1 0;min-width:0;box-shadow:0 2px 8px rgba(0,0,0,0.06);box-sizing:border-box">
+                <div style="font-size:16px;margin-bottom:2px">${cfg.icon}</div>
+                <div style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${cfg.numBg};color:white;font-size:9px;font-weight:800;margin-bottom:2px">${i + 1}</div>
+                <div style="font-size:10px;font-weight:700;color:${cfg.textColor};line-height:1.2;min-height:22px;display:flex;align-items:center;justify-content:center;word-break:break-word;overflow-wrap:break-word;padding:0 2px">${escapeHtml(item.nombre)}</div>
+                <div style="font-size:16px;font-weight:800;color:${cfg.numBg};line-height:1">${item.total_fallas}</div>
+                <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.5px;color:${cfg.labelColor};font-weight:700;margin-top:2px">Fallas</div>
             </div>`;
-        });
+        }).join('');
+
         return `<div class="card mt-16 dash-card">
             <div class="card-header"><h3><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> Top 5 Máquinas con Más Fallas · ${rangoTexto}</h3></div>
-            <div class="card-body">${bars}</div></div>`;
+            <div class="card-body">
+                <div style="display:flex;gap:6px;justify-content:space-between;align-items:stretch;padding:10px 0;width:100%;box-sizing:border-box">${cards}</div>
+            </div></div>`;
     },
 
     renderRecentFailuresLocal(correctivos, maqMap, compMap) {
