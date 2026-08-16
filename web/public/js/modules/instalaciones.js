@@ -26,6 +26,7 @@ App.registerModule('instalaciones', {
             + '.inst-event-type{font-weight:700;font-size:8px;text-transform:uppercase;letter-spacing:0.3px}'
             + '.inst-event-time{font-weight:600;font-size:9px}'
             + '.inst-event-client{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1e293b;font-weight:500;font-size:9px}'
+            + '.inst-day-label{display:none}'
             + '@media(max-width:768px){'
             + '.inst-stats{flex-direction:column;gap:8px;overflow-x:visible;padding-bottom:0}'
             + '.inst-stats .inst-card{min-width:100%;flex:1 1 auto}'
@@ -34,6 +35,9 @@ App.registerModule('instalaciones', {
             + '.inst-cal-header{display:none}'
             + '.inst-cal-day{min-height:auto;padding:8px 10px;border-right:none}'
             + '.inst-cal-day-empty{display:none}'
+            + '.inst-day-label{display:block;font-size:12px;font-weight:700;color:#1e293b;margin-bottom:4px}'
+            + '.inst-day-label.es-hoy{color:#3b82f6}'
+            + '.inst-day-label.es-finde{color:#94a3b8}'
             + '.inst-event{padding:4px 6px;font-size:11px;margin:2px 0}'
             + '.inst-event-type{font-size:9px}'
             + '.inst-event-time{font-size:10px}'
@@ -146,6 +150,7 @@ App.registerModule('instalaciones', {
                 <div class="inst-cal-grid">
                     ${diasSemana.map(d => `<div class="inst-cal-header">${d}</div>`).join('')}
         `;
+        const diasSemanaCortos = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
         for (let i = 0; i < startOffset; i++) html += '<div class="inst-cal-day inst-cal-day-empty" style="background:#fafbfc"></div>';
         for (let d = 1; d <= daysInMonth; d++) {
             const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
@@ -153,8 +158,11 @@ App.registerModule('instalaciones', {
             const esHoy = fs === hoyStr;
             const dt = new Date(year, month, d);
             const esFinde = dt.getDay() === 0 || dt.getDay() === 6;
+            const nombreDia = diasSemanaCortos[dt.getDay()];
             const bgBase = esHoy ? 'background:#eff6ff' : (esFinde ? 'background:#fafbfc' : '');
+            const dayLabelClass = esHoy ? 'inst-day-label es-hoy' : (esFinde ? 'inst-day-label es-finde' : 'inst-day-label');
             html += `<div class="inst-cal-day" style="${bgBase}">
+                <div class="${dayLabelClass}">${nombreDia} ${d}</div>
                 <div style="text-align:right;padding:1px 3px;font-size:11px;${esHoy ? 'background:#3b82f6;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700' : (esFinde ? 'color:#94a3b8' : 'color:#1e293b')}">${d}</div>
             `;
             for (const inst of instDia) {
