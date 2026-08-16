@@ -34,8 +34,8 @@ const InvHistorial = {
                     </div>
 
                     <div class="m-actions">
-                        <button onclick="InvHistorial.exportarExcel()" class="btn btn-success btn-sm">Exportar Excel</button>
-                        <button onclick="window.print()" class="btn btn-outline btn-sm">Imprimir</button>
+                        <button onclick="InvHistorial.exportarExcel()" class="btn btn-success" style="padding:8px 16px;font-size:12px">Exportar Excel</button>
+                        <button onclick="window.print()" class="btn btn-outline" style="padding:8px 16px;font-size:12px">Imprimir</button>
                     </div>
 
                     <div class="m-card">

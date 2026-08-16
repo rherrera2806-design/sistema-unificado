@@ -100,7 +100,7 @@ const InvMovimientos = {
                             <button class="btn btn-sm inv-filter-btn" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</button>
                             <button class="btn btn-sm inv-filter-btn" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</button>
                         </div>
-                        <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger btn-sm" style="font-size:11px;padding:5px 12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>
+                        <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger" style="padding:8px 16px;font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>
                     </div>
 
                     <div class="m-card">
