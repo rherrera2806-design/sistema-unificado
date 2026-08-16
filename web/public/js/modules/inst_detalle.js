@@ -65,13 +65,18 @@ App.registerModule('inst_detalle', {
             + '.det-foto:hover{transform:scale(1.03);box-shadow:0 8px 20px rgba(0,0,0,0.15)!important}'
             + '.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;max-width:100%}'
             + '.det-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px}'
-            + '.det-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}'
+            + '.det-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'
+            + '.det-actions .btn{min-height:32px;min-width:32px;display:inline-flex;align-items:center;justify-content:center}'
+            + '.det-fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}'
+            + '.det-foto-img{width:100%;height:120px;object-fit:cover;display:block;border-radius:10px 10px 0 0}'
             + '@media(max-width:768px){'
             + '.det-grid{grid-template-columns:1fr;gap:16px}'
             + '.det-info-grid{grid-template-columns:1fr}'
-            + '.det-actions{gap:4px;width:100%;justify-content:flex-start}'
-            + '.det-actions .btn{font-size:10px;padding:4px 8px;white-space:nowrap}'
-            + '.det-actions .btn svg{display:none}'
+            + '.det-actions{gap:6px;width:100%;justify-content:flex-start}'
+            + '.det-actions .btn{font-size:11px;padding:6px 12px;min-height:36px}'
+            + '.det-actions .btn svg{width:14px;height:14px}'
+            + '.det-fotos-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}'
+            + '.det-foto-img{height:100px}'
             + '}'
             + '</style>'
 
@@ -142,10 +147,10 @@ App.registerModule('inst_detalle', {
                 : '')
             + '</div>'
             + (this.fotos.length > 0
-                ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">'
+                ? '<div class="det-fotos-grid">'
                 + this.fotos.map(f => '<div class="det-foto" style="position:relative;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">'
-                    + '<img src="/api/instalaciones/' + inst.id + '/foto/' + f.id + '" style="width:100%;height:120px;object-fit:cover;display:block" onclick="App.modules.inst_detalle.verFoto(' + inst.id + ',' + f.id + ')" title="' + escapeHtml(f.descripcion || '') + '">'
-                    + (canEdit ? '<button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(' + inst.id + ',' + f.id + ')" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:rgba(239,68,68,0.9);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.2)" title="Eliminar"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : '')
+                    + '<img class="det-foto-img" src="/api/instalaciones/' + inst.id + '/foto/' + f.id + '" alt="' + escapeHtml(f.descripcion || 'Foto') + '" onclick="App.modules.inst_detalle.verFoto(' + inst.id + ',' + f.id + ')" title="' + escapeHtml(f.descripcion || '') + '" loading="lazy">'
+                    + (canEdit ? '<button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(' + inst.id + ',' + f.id + ')" style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,0.9);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.2)" title="Eliminar"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : '')
                     + '</div>').join('')
                 + '</div>'
                 : '<div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px">Sin fotografias</div>'
