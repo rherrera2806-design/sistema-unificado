@@ -1662,7 +1662,9 @@ const Asistencia = {
     },
 
     filtrarReporte() {
-        const query = (document.getElementById('ast-rep-buscar')?.value || '').toLowerCase().trim();
+        const input = document.getElementById('ast-rep-buscar');
+        const query = (input ? input.value : '').toLowerCase().trim();
+        
         // Filtrar tabla desktop
         const tbody = document.getElementById('ast-tabla-reporte');
         if (tbody) {
@@ -1671,9 +1673,14 @@ const Asistencia = {
                 const nombreCell = row.querySelector('td:nth-child(2)');
                 if (!nombreCell) return;
                 const nombre = nombreCell.textContent.toLowerCase();
-                row.style.display = !query || nombre.includes(query) ? '' : 'none';
+                if (!query) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = nombre.includes(query) ? '' : 'none';
+                }
             });
         }
+        
         // Filtrar cards móvil
         const cardsEl = document.getElementById('ast-cards-reporte');
         if (cardsEl) {
@@ -1682,7 +1689,11 @@ const Asistencia = {
                 const nombreEl = card.querySelector('span:first-child');
                 if (!nombreEl) return;
                 const nombre = nombreEl.textContent.toLowerCase();
-                card.style.display = !query || nombre.includes(query) ? '' : 'none';
+                if (!query) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = nombre.includes(query) ? '' : 'none';
+                }
             });
         }
     },
