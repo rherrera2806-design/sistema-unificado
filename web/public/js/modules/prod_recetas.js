@@ -182,13 +182,8 @@ App.registerModule('prod_recetas', {
     },
 
     _headers() {
-        const user = (typeof getUser === 'function') ? getUser() : null;
-        const h = { 'Content-Type': 'application/json' };
-        if (user) {
-            if (user.email) h['X-User-Email'] = user.email;
-            if (user.permisos) h['X-User-Permisos'] = JSON.stringify(user.permisos);
-        }
-        return h;
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        return { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
     },
 
     async load() {
