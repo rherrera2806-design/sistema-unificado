@@ -97,12 +97,15 @@ const InvInventario = {
 
     buscar(q) {
         var query = q.toLowerCase().trim();
+        var queryNum = parseFloat(query);
+        var isNumeric = !isNaN(queryNum);
         var filtered = query ? this._originalItems.filter(function(i) {
+            if (isNumeric && i.espesor != null && Number(i.espesor) === queryNum) return true;
             return (i.codigo_mp || '').toLowerCase().includes(query)
                 || (i.codigo_sap || '').toLowerCase().includes(query)
                 || (i.tipo_cristal || '').toLowerCase().includes(query)
                 || String(i.espesor || '').includes(query);
-        }) : [...this._originalItems];
+        }) : [...this._allItems];
         this._allItems = filtered;
         this.renderContent();
         var counter = document.getElementById('invCount');
