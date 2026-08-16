@@ -37,7 +37,8 @@
     gap: 8px;
     flex-wrap: wrap;
     max-width: 100%;
-    flex: 1 1 300px;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 .m-filters input,
 .m-filters select {
