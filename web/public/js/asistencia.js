@@ -1663,7 +1663,8 @@ const Asistencia = {
 
     filtrarReporte() {
         const input = document.getElementById('ast-rep-buscar');
-        const query = (input ? input.value : '').toLowerCase().trim();
+        const query = input ? input.value.toLowerCase().trim() : '';
+        const mostrarTodos = query.length === 0;
         
         // Filtrar tabla desktop
         const tbody = document.getElementById('ast-tabla-reporte');
@@ -1673,11 +1674,7 @@ const Asistencia = {
                 const nombreCell = row.querySelector('td:nth-child(2)');
                 if (!nombreCell) return;
                 const nombre = nombreCell.textContent.toLowerCase();
-                if (!query) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = nombre.includes(query) ? '' : 'none';
-                }
+                row.style.display = mostrarTodos || nombre.includes(query) ? '' : 'none';
             });
         }
         
@@ -1689,11 +1686,7 @@ const Asistencia = {
                 const nombreEl = card.querySelector('span:first-child');
                 if (!nombreEl) return;
                 const nombre = nombreEl.textContent.toLowerCase();
-                if (!query) {
-                    card.style.display = '';
-                } else {
-                    card.style.display = nombre.includes(query) ? '' : 'none';
-                }
+                card.style.display = mostrarTodos || nombre.includes(query) ? '' : 'none';
             });
         }
     },
