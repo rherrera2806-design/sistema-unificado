@@ -337,26 +337,41 @@ App.registerModule('prod_config', {
         const prevSearch = document.getElementById('mpSearch')?.value || '';
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
-            <div class="card">
-                <div class="card-header" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
-                    <h3 style="margin:0">Materias Primas (Vidrios)</h3>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-control" id="mpSearch" placeholder="Buscar codigo, nombre..." oninput="App.modules.prod_config._filterMaterias()" style="width:200px;padding:6px 8px 6px 32px;font-size:12px"></div>
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar Excel</button>
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.exportarExcel()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Exportar Excel</button>
-                        <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Materia Prima</button>
+            <div class="m-page">
+                <div class="m-hero" style="padding:10px 14px">
+                    <div style="position:relative;z-index:1">
+                        <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Materias Primas (Vidrios)</h2>
+                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestion de costos y datos de vidrios</p>
                     </div>
                 </div>
-                <div class="card-body" style="padding:0;overflow:scroll;max-height:825px">
-                    <table style="font-size:12px"><thead style="position:sticky;top:0;z-index:1"><tr>
-                        <th>Codigo</th><th>Nombre</th><th>Esp.</th>
-                        <th style="background:#f0fdf4">Costo Nac</th>
-                        <th style="background:#eff6ff">Costo Imp</th>
-                        <th style="background:#fefce8">Diff $/m2</th>
-                        <th style="background:#fef3c7">CPM</th>
-                        <th>Observ.</th><th>Acc.</th>
-                    </tr></thead>
-                    <tbody id="mpTableBody"></tbody></table>
+
+                <div class="m-actions">
+                    <div class="m-filters">
+                        <div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-control" id="mpSearch" placeholder="Buscar codigo, nombre..." oninput="App.modules.prod_config._filterMaterias()" style="width:200px;padding:6px 8px 6px 32px;font-size:12px"></div>
+                    </div>
+                    <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar</button>
+                    <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.exportarExcel()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Exportar</button>
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showMateriaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva</button>
+                </div>
+
+                <div class="m-card">
+                    <div class="m-card-header">
+                        <h3 style="margin:0;font-size:13px">Lista <span style="color:#64748b;font-weight:400">(<span id="mpCount">0</span>)</span></h3>
+                    </div>
+                    <div class="m-card-body" style="padding:0;overflow:scroll;max-height:825px">
+                        <div class="m-table-wrap">
+                            <table style="font-size:12px"><thead style="position:sticky;top:0;z-index:1"><tr>
+                                <th>Codigo</th><th>Nombre</th><th>Esp.</th>
+                                <th style="background:#f0fdf4">Costo Nac</th>
+                                <th style="background:#eff6ff">Costo Imp</th>
+                                <th style="background:#fefce8">Diff $/m2</th>
+                                <th style="background:#fef3c7">CPM</th>
+                                <th>Observ.</th><th>Acc.</th>
+                            </tr></thead>
+                            <tbody id="mpTableBody"></tbody></table>
+                        </div>
+                        <div class="m-cards-mobile" id="mpCardsMobile" style="display:none;padding:12px"></div>
+                    </div>
                 </div>
             </div>`;
         if (prevSearch) document.getElementById('mpSearch').value = prevSearch;
@@ -374,42 +389,84 @@ App.registerModule('prod_config', {
             const cmp = (a.nombre || '').localeCompare(b.nombre || '');
             return cmp !== 0 ? cmp : (Number(a.espesor_mm) || 0) - (Number(b.espesor_mm) || 0);
         });
+        
+        const countEl = document.getElementById('mpCount');
+        if (countEl) countEl.textContent = items.length;
+        
         const tbody = document.getElementById('mpTableBody');
-        if (!tbody) return;
-        tbody.innerHTML = items.length ? items.map(m => {
-            const cn = Number(m.costo_unitario_mp) || 0;
-            const ci = Number(m.costo_unitario_importado) || 0;
-            const hn = Number(m.hojas_por_paquete_nal) || 0;
-            const hi = Number(m.hojas_por_paquete_imp) || 0;
-            const an = Number(m.ancho_nal) || 0;
-            const ai = Number(m.ancho_imp) || 0;
-            const aln = Number(m.alto_nal) || 0;
-            const ali = Number(m.alto_imp) || 0;
-            const pc = Number(m.paquetes_por_camion) || 0;
-            const pco = Number(m.paquetes_por_contenedor) || 0;
-            const cpm = Number(m.consumo_promedio_mensual) || 0;
-            const diffM2 = (cn > 0 && ci > 0) ? ci - cn : 0;
-            const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
-            const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
-            let obs = '-';
-            if (cn > 0 && ci > 0) {
-                if (diffM2 > 0) obs = '<span style="color:#166534;font-weight:600">Nacional</span> ' + fmt(Math.abs(diffM2));
-                else if (diffM2 < 0) obs = '<span style="color:#166534;font-weight:600">Importado</span> ' + fmt(Math.abs(diffM2));
-            }
-            return `<tr>
-            <td><strong>${escapeHtml(m.codigo_mp)}</strong></td>
-            <td>${escapeHtml(m.nombre)}</td>
-            <td>${m.espesor_mm}</td>
-            <td style="background:#f0fdf4">$${cn.toLocaleString('es-CL')}</td>
-            <td style="background:#eff6ff">$${ci.toLocaleString('es-CL')}</td>
-            <td style="background:#fefce8;font-weight:600;color:${col(diffM2)}">${fmt(diffM2)}</td>
-            <td style="background:#fef3c7;text-align:right">${cpm.toLocaleString('es-CL')}</td>
-            <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${obs}</td>
-            <td class="table-actions" style="white-space:nowrap">
-                <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-            </td>
-        </tr>`}).join('') : '<tr><td colspan="11" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
+        const cardsMobile = document.getElementById('mpCardsMobile');
+        
+        if (tbody) {
+            tbody.innerHTML = items.length ? items.map(m => {
+                const cn = Number(m.costo_unitario_mp) || 0;
+                const ci = Number(m.costo_unitario_importado) || 0;
+                const cpm = Number(m.consumo_promedio_mensual) || 0;
+                const diffM2 = (cn > 0 && ci > 0) ? ci - cn : 0;
+                const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
+                const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
+                let obs = '-';
+                if (cn > 0 && ci > 0) {
+                    if (diffM2 > 0) obs = '<span style="color:#166534;font-weight:600">Nac</span> ' + fmt(Math.abs(diffM2));
+                    else if (diffM2 < 0) obs = '<span style="color:#166534;font-weight:600">Imp</span> ' + fmt(Math.abs(diffM2));
+                }
+                return `<tr>
+                <td><strong>${escapeHtml(m.codigo_mp)}</strong></td>
+                <td>${escapeHtml(m.nombre)}</td>
+                <td>${m.espesor_mm}</td>
+                <td style="background:#f0fdf4">$${cn.toLocaleString('es-CL')}</td>
+                <td style="background:#eff6ff">$${ci.toLocaleString('es-CL')}</td>
+                <td style="background:#fefce8;font-weight:600;color:${col(diffM2)}">${fmt(diffM2)}</td>
+                <td style="background:#fef3c7;text-align:right">${cpm.toLocaleString('es-CL')}</td>
+                <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${obs}</td>
+                <td class="table-actions" style="white-space:nowrap">
+                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                </td>
+            </tr>`}).join('') : '<tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
+        }
+        
+        if (cardsMobile) {
+            cardsMobile.innerHTML = items.length ? items.map(m => {
+                const cn = Number(m.costo_unitario_mp) || 0;
+                const ci = Number(m.costo_unitario_importado) || 0;
+                const cpm = Number(m.consumo_promedio_mensual) || 0;
+                const diffM2 = (cn > 0 && ci > 0) ? ci - cn : 0;
+                const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
+                const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
+                let badge = '';
+                if (cn > 0 && ci > 0) {
+                    if (diffM2 > 0) badge = '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Nac ' + fmt(Math.abs(diffM2)) + '</span>';
+                    else if (diffM2 < 0) badge = '<span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Imp ' + fmt(Math.abs(diffM2)) + '</span>';
+                }
+                return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+                    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+                        <div>
+                            <div style="font-weight:700;font-size:13px">${escapeHtml(m.codigo_mp)}</div>
+                            <div style="font-size:11px;color:#64748b">${escapeHtml(m.nombre)} - ${m.espesor_mm}mm</div>
+                        </div>
+                        <div style="display:flex;gap:4px">
+                            <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                            <button class="btn btn-sm btn-danger" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:10px">
+                        <div style="background:#f0fdf4;padding:4px 6px;border-radius:4px">
+                            <div style="color:#64748b">Costo Nac</div>
+                            <div style="font-weight:600;color:#166534">$${cn.toLocaleString('es-CL')}</div>
+                        </div>
+                        <div style="background:#eff6ff;padding:4px 6px;border-radius:4px">
+                            <div style="color:#64748b">Costo Imp</div>
+                            <div style="font-weight:600;color:#1e40af">$${ci.toLocaleString('es-CL')}</div>
+                        </div>
+                        <div style="background:#fef3c7;padding:4px 6px;border-radius:4px">
+                            <div style="color:#64748b">CPM</div>
+                            <div style="font-weight:600;color:#92400e">${cpm.toLocaleString('es-CL')}</div>
+                        </div>
+                    </div>
+                    ${badge ? '<div style="margin-top:6px">' + badge + '</div>' : ''}
+                </div>`;
+            }).join('') : '<div style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</div>';
+        }
     },
 
     showImportModal() {
@@ -522,45 +579,81 @@ App.registerModule('prod_config', {
     showMateriaForm(id) {
         const m = id ? this._materias.find(x => x.id === id) : null;
         const v = (field, isInt) => { const val = m ? (m[field] || 0) : 0; return isInt ? Math.round(val) : val; };
+        
+        const style = document.createElement('style');
+        style.textContent = `
+            .mp-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;align-items:end}
+            .mp-form-dims{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 10px;align-items:end}
+            .mp-form-grid>div,.mp-form-dims>div{min-width:0;margin:0}
+            .mp-form-grid input,.mp-form-grid select,.mp-form-dims input,.mp-form-dims select{width:100%;box-sizing:border-box}
+            .mp-form-grid label,.mp-form-dims label{font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b}
+            .mp-form-grid input,.mp-form-grid select,.mp-form-dims input,.mp-form-dims select{padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px}
+            .mp-form-section{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+            @media(max-width:768px){
+                .mp-form-grid{grid-template-columns:1fr}
+                .mp-form-dims{grid-template-columns:1fr 1fr}
+                .mp-form-section{grid-template-columns:1fr}
+            }
+        `;
+        document.head.appendChild(style);
+        
         App.showModal(`
-            <div style="margin-bottom:12px;padding:10px 12px;background:#f8fafc;border-radius:8px">
-                <div style="display:grid;grid-template-columns:1fr 1.5fr 0.8fr;gap:12px">
-                    <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? m.codigo_mp : ''}" placeholder="SKU interno"></div>
-                    <div class="form-group"><label>Nombre *</label><input class="form-control" id="mpNombre" value="${m ? m.nombre : ''}" placeholder="Ej: Vidrio 6mm"></div>
-                    <div class="form-group"><label>Espesor (mm)</label><input type="number" class="form-control" id="mpEspesor" value="${v('espesor_mm')}" min="0" step="0.5"></div>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-                <div style="padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
-                    <strong style="color:#166534;font-size:12px">Datos Nacional</strong>
-                    <div class="form-group" style="margin-top:6px"><label>Costo ($/m2)</label><input type="number" class="form-control mp-nal" id="mpCostoNal" value="${v('costo_unitario_mp', true)}" min="0" step="1" data-field="costo"></div>
-                    <div class="form-group"><label>Hojas por paquete</label><input type="number" class="form-control mp-nal" id="mpHojasNal" value="${v('hojas_por_paquete_nal', true)}" min="0" data-field="hojas"></div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-nal" id="mpAnchoNal" value="${v('ancho_nal', true)}" min="0" step="1" data-field="ancho"></div>
-                        <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-nal" id="mpAltoNal" value="${v('alto_nal', true)}" min="0" step="1" data-field="alto"></div>
+            <div class="m-card" style="margin-bottom:10px">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos Basicos</div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div class="mp-form-grid">
+                        <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? m.codigo_mp : ''}" placeholder="SKU interno"></div>
+                        <div class="form-group"><label>Nombre *</label><input class="form-control" id="mpNombre" value="${m ? m.nombre : ''}" placeholder="Ej: Vidrio 6mm"></div>
+                        <div class="form-group"><label>Espesor (mm)</label><input type="number" class="form-control" id="mpEspesor" value="${v('espesor_mm')}" min="0" step="0.5"></div>
                     </div>
-                    <div class="form-group"><label>Paquetes por camion</label><input type="number" class="form-control mp-nal" id="mpPaqCamion" value="${v('paquetes_por_camion')}" min="0" data-field="paqCamion"></div>
                 </div>
-                <div style="padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px">
-                    <strong style="color:#1e40af;font-size:12px">Datos Importado</strong>
-                    <div class="form-group" style="margin-top:6px"><label>Costo ($/m2)</label><input type="number" class="form-control mp-imp" id="mpCostoImp" value="${v('costo_unitario_importado', true)}" min="0" step="1" data-field="costo"></div>
-                    <div class="form-group"><label>Hojas por paquete</label><input type="number" class="form-control mp-imp" id="mpHojasImp" value="${v('hojas_por_paquete_imp', true)}" min="0" data-field="hojas"></div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-imp" id="mpAnchoImp" value="${v('ancho_imp', true)}" min="0" step="1" data-field="ancho"></div>
-                        <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-imp" id="mpAltoImp" value="${v('alto_imp', true)}" min="0" step="1" data-field="alto"></div>
+            </div>
+            <div class="mp-form-section" style="margin-bottom:10px">
+                <div class="m-card">
+                    <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="color:#166534">Datos Nacional</span></div>
+                    <div class="m-card-body" style="padding:8px 12px">
+                        <div class="mp-form-grid" style="grid-template-columns:1fr 1fr">
+                            <div class="form-group"><label>Costo ($/m2)</label><input type="number" class="form-control mp-nal" id="mpCostoNal" value="${v('costo_unitario_mp', true)}" min="0" step="1"></div>
+                            <div class="form-group"><label>Hojas paquete</label><input type="number" class="form-control mp-nal" id="mpHojasNal" value="${v('hojas_por_paquete_nal', true)}" min="0"></div>
+                            <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-nal" id="mpAnchoNal" value="${v('ancho_nal', true)}" min="0" step="1"></div>
+                            <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-nal" id="mpAltoNal" value="${v('alto_nal', true)}" min="0" step="1"></div>
+                        </div>
+                        <div class="mp-form-grid" style="grid-template-columns:1fr;margin-top:6px">
+                            <div class="form-group"><label>Paquetes por camion</label><input type="number" class="form-control mp-nal" id="mpPaqCamion" value="${v('paquetes_por_camion')}" min="0"></div>
+                        </div>
                     </div>
-                    <div class="form-group"><label>Paquetes por contenedor</label><input type="number" class="form-control mp-imp" id="mpPaqContenedor" value="${v('paquetes_por_contenedor')}" min="0" data-field="paqContenedor"></div>
+                </div>
+                <div class="m-card">
+                    <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#eff6ff;border-bottom:1px solid #bfdbfe"><span style="color:#1e40af">Datos Importado</span></div>
+                    <div class="m-card-body" style="padding:8px 12px">
+                        <div class="mp-form-grid" style="grid-template-columns:1fr 1fr">
+                            <div class="form-group"><label>Costo ($/m2)</label><input type="number" class="form-control mp-imp" id="mpCostoImp" value="${v('costo_unitario_importado', true)}" min="0" step="1"></div>
+                            <div class="form-group"><label>Hojas paquete</label><input type="number" class="form-control mp-imp" id="mpHojasImp" value="${v('hojas_por_paquete_imp', true)}" min="0"></div>
+                            <div class="form-group"><label>Ancho</label><input type="number" class="form-control mp-imp" id="mpAnchoImp" value="${v('ancho_imp', true)}" min="0" step="1"></div>
+                            <div class="form-group"><label>Alto</label><input type="number" class="form-control mp-imp" id="mpAltoImp" value="${v('alto_imp', true)}" min="0" step="1"></div>
+                        </div>
+                        <div class="mp-form-grid" style="grid-template-columns:1fr;margin-top:6px">
+                            <div class="form-group"><label>Paquetes por contenedor</label><input type="number" class="form-control mp-imp" id="mpPaqContenedor" value="${v('paquetes_por_contenedor')}" min="0"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div style="padding:10px 12px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;margin-bottom:12px">
-                <strong style="color:#854d0e;font-size:12px">Resumen (calculado)</strong>
-                <div class="form-group" style="margin-top:6px;max-width:200px"><label>Diferencia $/m2</label><input type="text" class="form-control" id="mpDiffM2" readonly style="background:#fff;font-weight:600"></div>
+            <div class="m-card" style="margin-bottom:10px">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#fefce8;border-bottom:1px solid #fde68a"><span style="color:#854d0e">Resumen (calculado)</span></div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div class="mp-form-grid" style="grid-template-columns:1fr 2fr">
+                        <div class="form-group"><label>Diferencia $/m2</label><input type="text" class="form-control" id="mpDiffM2" readonly style="background:#fff;font-weight:600"></div>
+                        <div class="form-group"><label>Consumo Prom. Mensual (CPM)</label><input type="number" class="form-control" id="mpCPM" value="${v('consumo_promedio_mensual', true)}" min="0" step="1" placeholder="0"></div>
+                    </div>
+                </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:12px">
-                <div class="form-group"><label>Consumo Prom. Mensual (CPM)</label><input type="number" class="form-control" id="mpCPM" value="${v('consumo_promedio_mensual', true)}" min="0" step="1" placeholder="0"></div>
-                <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2">${m ? m.observacion || '' : ''}</textarea></div>
+            <div class="m-card" style="margin-bottom:10px">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Observaciones</div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div class="form-group"><textarea class="form-control" id="mpObs" rows="2" placeholder="Notas adicionales...">${m ? m.observacion || '' : ''}</textarea></div>
+                </div>
             </div>
-            <div style="padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:8px">
+            <div style="padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px">
                 <div style="display:flex;align-items:center;gap:6px" id="mpAnalisis"></div>
             </div>
         `, { title: m ? 'Editar Materia Prima' : 'Nueva Materia Prima' });
