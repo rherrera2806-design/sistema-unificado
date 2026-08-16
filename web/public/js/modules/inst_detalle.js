@@ -68,15 +68,19 @@ App.registerModule('inst_detalle', {
             + '.det-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'
             + '.det-actions .btn{min-height:32px;min-width:32px;display:inline-flex;align-items:center;justify-content:center}'
             + '.det-fotos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}'
-            + '.det-foto-img{width:100%;height:120px;object-fit:cover;display:block;border-radius:10px 10px 0 0}'
+            + '.det-foto{position:relative;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);aspect-ratio:1/1;background:#f1f5f9}'
+            + '.det-foto-img{width:100%;height:100%;object-fit:cover;display:block;border-radius:10px}'
             + '@media(max-width:768px){'
             + '.det-grid{grid-template-columns:1fr;gap:16px}'
             + '.det-info-grid{grid-template-columns:1fr}'
             + '.det-actions{gap:6px;width:100%;justify-content:flex-start}'
             + '.det-actions .btn{font-size:11px;padding:6px 12px;min-height:36px}'
             + '.det-actions .btn svg{width:14px;height:14px}'
-            + '.det-fotos-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}'
-            + '.det-foto-img{height:100px}'
+            + '.det-foto-header{flex-direction:column;align-items:stretch;gap:8px}'
+            + '.det-foto-upload{flex-direction:column;gap:8px}'
+            + '.det-foto-upload input[type=file]{max-width:100%}'
+            + '.det-foto-upload .btn{width:100%}'
+            + '.det-fotos-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}'
             + '}'
             + '</style>'
 
@@ -138,18 +142,18 @@ App.registerModule('inst_detalle', {
             + '</div>'
 
             + '<div class="det-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:detFadeUp 0.5s ease 200ms both;max-width:100%;box-sizing:border-box;overflow:hidden">'
-            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e2e8f0">'
+            + '<div class="det-foto-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;gap:10px">'
             + '<div style="display:flex;align-items:center;gap:10px">'
             + '<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>'
             + '<h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Fotografias (' + this.fotos.length + ')</h3></div>'
             + ((inst.estado === 'EN_CURSO' || inst.estado === 'COMPLETADA' || inst.estado === 'CON_NOVEDADES')
-                ? '<div style="display:flex;gap:8px;align-items:center"><input type="file" id="instDetFotoInput" accept="image/*" multiple style="font-size:12px"><button class="btn btn-primary" onclick="App.modules.inst_detalle.subirFotos(' + inst.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Subir</button></div>'
+                ? '<div class="det-foto-upload" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="file" id="instDetFotoInput" accept="image/*" multiple style="font-size:12px;max-width:200px"><button class="btn btn-primary" onclick="App.modules.inst_detalle.subirFotos(' + inst.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Subir</button></div>'
                 : '')
             + '</div>'
             + (this.fotos.length > 0
                 ? '<div class="det-fotos-grid">'
-                + this.fotos.map(f => '<div class="det-foto" style="position:relative;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">'
-                    + '<img class="det-foto-img" src="/api/instalaciones/' + inst.id + '/foto/' + f.id + '" alt="' + escapeHtml(f.descripcion || 'Foto') + '" onclick="App.modules.inst_detalle.verFoto(' + inst.id + ',' + f.id + ')" title="' + escapeHtml(f.descripcion || '') + '" loading="lazy">'
+                + this.fotos.map(f => '<div class="det-foto" style="position:relative;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);aspect-ratio:1/1;background:#f1f5f9">'
+                    + '<img class="det-foto-img" src="/api/instalaciones/' + inst.id + '/foto/' + f.id + '" alt="' + escapeHtml(f.descripcion || 'Foto') + '" onclick="App.modules.inst_detalle.verFoto(' + inst.id + ',' + f.id + ')" title="' + escapeHtml(f.descripcion || '') + '" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div style=\\\'display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:11px\\\'>Sin imagen</div>\'">'
                     + (canEdit ? '<button onclick="event.stopPropagation();App.modules.inst_detalle.eliminarFoto(' + inst.id + ',' + f.id + ')" style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,0.9);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.2)" title="Eliminar"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' : '')
                     + '</div>').join('')
                 + '</div>'
