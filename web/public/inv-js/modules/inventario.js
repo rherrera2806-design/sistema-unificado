@@ -1,5 +1,6 @@
 const InvInventario = {
     _allItems: [],
+    _originalItems: [],
 
     async render() {
         const page = document.querySelector('.page.active');
@@ -7,7 +8,8 @@ const InvInventario = {
         try {
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const items = await api.inv().getInventario();
-            this._allItems = Array.isArray(items) ? items : [];
+            this._originalItems = Array.isArray(items) ? items : [];
+            this._allItems = [...this._originalItems];
 
             page.innerHTML = `
                 <div class="m-page">
@@ -95,12 +97,12 @@ const InvInventario = {
 
     buscar(q) {
         var query = q.toLowerCase().trim();
-        var filtered = query ? this._allItems.filter(function(i) {
+        var filtered = query ? this._originalItems.filter(function(i) {
             return (i.codigo_mp || '').toLowerCase().includes(query)
                 || (i.codigo_sap || '').toLowerCase().includes(query)
                 || (i.tipo_cristal || '').toLowerCase().includes(query)
                 || String(i.espesor || '').includes(query);
-        }) : this._allItems;
+        }) : [...this._originalItems];
         this._allItems = filtered;
         this.renderContent();
         var counter = document.getElementById('invCount');
