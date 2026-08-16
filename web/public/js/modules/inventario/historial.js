@@ -6,31 +6,8 @@ const InvHistorial = {
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const movimientos = await api.inv().getMovimientos();
             page.innerHTML = `
-                <style>
-                    @keyframes invHist_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-                    .invHist-page{max-width:100%;overflow-x:hidden;box-sizing:border-box}
-                    .invHist-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3);max-width:100%;box-sizing:border-box}
-                    .invHist-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1);max-width:100%;box-sizing:border-box}
-                    .invHist-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}
-                    .invHist-filters{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-                    .invHist-actions{display:flex;gap:8px;margin-bottom:14px;justify-content:flex-end;flex-wrap:wrap}
-                    .invHist-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;width:100%}
-                    .invHist-table-wrap table{min-width:800px;width:100%;border-collapse:collapse;font-size:13px}
-                    @media(max-width:768px){
-                        .invHist-hero{padding:12px;border-radius:12px;margin-bottom:16px}
-                        .invHist-filters{grid-template-columns:1fr;gap:10px}
-                        .invHist-filters .form-group{width:100%}
-                        .invHist-filters .form-control{width:100%}
-                        .invHist-filters .btn-group{display:flex;gap:8px;width:100%}
-                        .invHist-filters .btn-group .btn{flex:1}
-                        .invHist-actions{justify-content:stretch}
-                        .invHist-actions .btn{flex:1}
-                        .invHist-table-wrap table{min-width:700px}
-                    }
-                </style>
-
-                <div class="invHist-page">
-                    <div class="invHist-hero">
+                <div class="m-page">
+                    <div class="m-hero">
                         <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
                         <div style="position:relative;z-index:1">
                             <h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Historial</h2>
@@ -38,31 +15,33 @@ const InvHistorial = {
                         </div>
                     </div>
 
-                    <div class="card invHist-card" style="margin-bottom:20px">
-                        <div class="card-header">Filtros de Busqueda</div>
-                        <div class="card-body">
+                    <div class="m-card" style="margin-bottom:20px">
+                        <div class="m-card-header">Filtros de Busqueda</div>
+                        <div class="m-card-body">
                             <form onsubmit="InvHistorial.buscar(event)">
-                                <div class="invHist-filters">
+                                <div class="m-form-grid">
                                     <div class="form-group"><label>Fecha Inicio</label><input type="date" id="hFechaInicio" class="form-control"></div>
                                     <div class="form-group"><label>Fecha Fin</label><input type="date" id="hFechaFin" class="form-control"></div>
                                     <div class="form-group"><label>Tipo</label><select id="hTipo" class="form-control"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select></div>
-                                    <div class="form-group btn-group"><button type="submit" class="btn btn-primary">Buscar</button><button type="button" class="btn btn-outline" onclick="InvHistorial.limpiar()">Limpiar</button></div>
+                                    <div class="form-group" style="display:flex;gap:8px;align-items:flex-end"><button type="submit" class="btn btn-primary">Buscar</button><button type="button" class="btn btn-outline" onclick="InvHistorial.limpiar()">Limpiar</button></div>
                                 </div>
                             </form>
                         </div>
                     </div>
 
-                    <div class="invHist-actions">
+                    <div class="m-actions">
                         <button onclick="InvHistorial.exportarExcel()" class="btn btn-success btn-sm">Exportar Excel</button>
                         <button onclick="window.print()" class="btn btn-outline btn-sm">Imprimir</button>
                     </div>
 
-                    <div class="card invHist-card">
-                        <div class="card-header">Historial <span id="hCount" style="color:var(--gray-500);font-weight:400;font-size:13px">(${movimientos.length})</span></div>
-                        <div class="card-body">
+                    <div class="m-card">
+                        <div class="m-card-header">
+                            <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">Historial <span id="hCount" style="color:var(--gray-500);font-weight:400;font-size:13px">(${movimientos.length})</span></h3>
+                        </div>
+                        <div class="m-card-body">
                             ${movimientos.length === 0 
                                 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>'
-                                : `<div class="invHist-table-wrap"><table id="hTable"><thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Obs</th></tr></thead><tbody id="hBody">${this.renderRows(movimientos)}</tbody></table></div><div id="hCards"></div>`
+                                : `<div class="m-table-wrap"><table id="hTable"><thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Obs</th></tr></thead><tbody id="hBody">${this.renderRows(movimientos)}</tbody></table></div><div id="hCards" class="m-cards-mobile" style="display:none"></div>`
                             }
                         </div>
                     </div>
