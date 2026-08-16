@@ -19,17 +19,17 @@ const InvMovimientos = {
 
             page.innerHTML = `
                 <style>
-                    .inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px;align-items:end}
-                    .inv-form-dims{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 14px;align-items:end}
+                    .inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 12px;align-items:end}
+                    .inv-form-dims{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 12px;align-items:end}
                     .inv-form-grid>div,.inv-form-dims>div{min-width:0}
                     .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{width:100%;box-sizing:border-box}
-                    .inv-form-grid label,.inv-form-dims label{font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b}
-                    .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px}
-                    .inv-form-bottom{display:flex;gap:10px;margin-top:12px;align-items:end;padding-top:10px;border-top:1px solid #f1f5f9}
-                    .tipo-btn{border:1px solid #e2e8f0;border-radius:6px;background:white;cursor:pointer;transition:all 0.15s}
+                    .inv-form-grid label,.inv-form-dims label{font-size:11px;margin-bottom:3px;display:block;font-weight:600;color:#64748b}
+                    .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px}
+                    .inv-form-bottom{display:flex;gap:8px;margin-top:8px;align-items:end;padding-top:8px;border-top:1px solid #f1f5f9}
+                    .tipo-btn{border:1px solid #e2e8f0;border-radius:6px;background:white;cursor:pointer;transition:all 0.15s;padding:6px;font-size:11px}
                     .tipo-btn:hover{background:#f8fafc}
                     .tipo-btn.active{background:#dcfce7;color:#166534;border-color:#22c55e}
-                    .inv-filter-btn{padding:6px 14px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white!important;color:#64748b!important;cursor:pointer;transition:all 0.15s}
+                    .inv-filter-btn{padding:5px 12px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white!important;color:#64748b!important;cursor:pointer;transition:all 0.15s}
                     .inv-filter-btn:hover{border-color:#93c5fd;color:#3b82f6!important;background:#eff6ff!important}
                     .inv-filter-btn.active{background:linear-gradient(135deg,#1e40af,#2563eb)!important;color:white!important;border-color:#1e40af!important;box-shadow:0 2px 8px rgba(30,64,175,0.3)}
                     @media(max-width:768px){
@@ -49,9 +49,9 @@ const InvMovimientos = {
                         </div>
                     </div>
 
-                    <div class="m-card" style="margin-bottom:16px">
-                        <div class="m-card-header" style="padding:10px 16px;font-size:13px;font-weight:600">Nuevo Movimiento</div>
-                        <div class="m-card-body" style="padding:14px 16px">
+                    <div class="m-card" style="margin-bottom:12px">
+                        <div class="m-card-header" style="padding:8px 14px;font-size:13px;font-weight:600">Nuevo Movimiento</div>
+                        <div class="m-card-body" style="padding:10px 14px">
                             <form onsubmit="InvMovimientos.guardar(event)">
                                 <div class="inv-form-grid">
                                     <div class="form-group"><label>Tipo Movimiento *</label>
@@ -76,17 +76,17 @@ const InvMovimientos = {
                                     <div class="form-group"><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                     <div class="form-group"><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                     <div class="form-group"><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                    <div class="form-group"><label>m²</label><div id="m2Display" style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:16px;font-weight:700;color:#2563eb">0.00</div></div>
-                                </div>
-                                <div class="inv-form-grid" style="margin-top:10px">
-                                    <div class="form-group"><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
-                                    <div class="form-group"><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
-                                    <div class="form-group"><label>Fecha</label><input type="date" id="fecha"></div>
-                                </div>
-                                <div style="margin-top:10px">
-                                    <label style="font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b">Observaciones</label>
-                                    <input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box">
-                                </div>
+                                <div class="form-group"><label>m²</label><div id="m2Display" style="padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:14px;font-weight:700;color:#2563eb">0.00</div></div>
+                            </div>
+                            <div class="inv-form-grid" style="margin-top:6px">
+                                <div class="form-group"><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
+                                <div class="form-group"><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
+                                <div class="form-group"><label>Fecha</label><input type="date" id="fecha"></div>
+                            </div>
+                            <div style="margin-top:6px">
+                                <label style="font-size:11px;margin-bottom:3px;display:block;font-weight:600;color:#64748b">Observaciones</label>
+                                <input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box">
+                            </div>
                                 <div class="inv-form-bottom">
                                     <button type="submit" class="btn btn-primary" style="padding:10px 28px;font-size:13px">Registrar</button>
                                 </div>
