@@ -1050,22 +1050,22 @@ const Asistencia = {
         if (ranking.length === 0) { c.innerHTML = ''; return; }
 
         const configs = [
-            { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', numColor: 'white', textColor: '#92400e', icon: '🏆', labelColor: '#b45309' },
-            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
-            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
-            { border: '#d97706', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#d97706', numColor: 'white', textColor: '#92400e', icon: '⭐', labelColor: '#b45309' },
-            { border: '#d97706', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#d97706', numColor: 'white', textColor: '#92400e', icon: '⭐', labelColor: '#b45309' }
+            { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', icon: '🏆', textColor: '#92400e', labelColor: '#b45309' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
+            { border: '#d97706', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#d97706', icon: '⭐', textColor: '#92400e', labelColor: '#b45309' },
+            { border: '#d97706', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#d97706', icon: '⭐', textColor: '#92400e', labelColor: '#b45309' }
         ];
 
-        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.map((r, i) => {
+        c.innerHTML = '<div class="ranking-container">' + ranking.map((r, i) => {
             const cfg = configs[i] || configs[4];
-            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
-            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
-            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
-            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
-            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + r.horas.toFixed(1) + '</div>'
-            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Horas Permiso</div>'
-            + '</div>';
+            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
+                <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
+                <div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${cfg.numBg};color:white;font-size:10px;font-weight:800;margin-bottom:2px">${i + 1}</div>
+                <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
+                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${r.horas.toFixed(1)}</div>
+                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">Horas Permiso</div>
+            </div>`;
         }).join('') + '</div>';
     },
 
@@ -1223,22 +1223,22 @@ const Asistencia = {
         if (ranking.length === 0) { c.innerHTML = ''; return; }
 
         const configs = [
-            { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', numColor: 'white', textColor: '#166534', icon: '🏆', labelColor: '#15803d' },
-            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
-            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
-            { border: '#16a34a', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#16a34a', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' },
-            { border: '#16a34a', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#16a34a', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' }
+            { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', icon: '🏆', textColor: '#166534', labelColor: '#15803d' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
+            { border: '#16a34a', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#16a34a', icon: '⭐', textColor: '#166534', labelColor: '#15803d' },
+            { border: '#16a34a', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#16a34a', icon: '⭐', textColor: '#166534', labelColor: '#15803d' }
         ];
 
-        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.map((r, i) => {
+        c.innerHTML = '<div class="ranking-container">' + ranking.map((r, i) => {
             const cfg = configs[i] || configs[4];
-            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
-            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
-            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
-            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
-            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + r.dias + '</div>'
-            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Días Licencia</div>'
-            + '</div>';
+            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
+                <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
+                <div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${cfg.numBg};color:white;font-size:10px;font-weight:800;margin-bottom:2px">${i + 1}</div>
+                <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
+                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${r.dias}</div>
+                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">Días Licencia</div>
+            </div>`;
         }).join('') + '</div>';
     },
 
@@ -1390,22 +1390,22 @@ const Asistencia = {
         if (ranking.length === 0) { c.innerHTML = ''; return; }
 
         const configs = [
-            { border: '#3b82f6', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#3b82f6', numColor: 'white', textColor: '#1e40af', icon: '🏆', labelColor: '#2563eb' },
-            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
-            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
-            { border: '#2563eb', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#2563eb', numColor: 'white', textColor: '#1e40af', icon: '⭐', labelColor: '#3b82f6' },
-            { border: '#2563eb', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#2563eb', numColor: 'white', textColor: '#1e40af', icon: '⭐', labelColor: '#3b82f6' }
+            { border: '#3b82f6', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#3b82f6', icon: '🏆', textColor: '#1e40af', labelColor: '#2563eb' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
+            { border: '#2563eb', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#2563eb', icon: '⭐', textColor: '#1e40af', labelColor: '#3b82f6' },
+            { border: '#2563eb', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#2563eb', icon: '⭐', textColor: '#1e40af', labelColor: '#3b82f6' }
         ];
 
-        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.map((r, i) => {
+        c.innerHTML = '<div class="ranking-container">' + ranking.map((r, i) => {
             const cfg = configs[i] || configs[4];
-            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
-            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
-            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
-            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
-            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + r.dias + '</div>'
-            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Días Vacaciones</div>'
-            + '</div>';
+            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
+                <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
+                <div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${cfg.numBg};color:white;font-size:10px;font-weight:800;margin-bottom:2px">${i + 1}</div>
+                <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
+                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${r.dias}</div>
+                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">Días Vacaciones</div>
+            </div>`;
         }).join('') + '</div>';
     },
 
@@ -1541,22 +1541,22 @@ const Asistencia = {
         if (ranking.length === 0) { c.innerHTML = ''; return; }
 
         const configs = [
-            { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', numColor: 'white', textColor: '#92400e', icon: '🏆', labelColor: '#b45309' },
-            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
-            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
-            { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', numColor: 'white', textColor: '#5b21b6', icon: '⭐', labelColor: '#7c3aed' },
-            { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', numColor: 'white', textColor: '#5b21b6', icon: '⭐', labelColor: '#7c3aed' }
+            { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '🏆', textColor: '#5b21b6', labelColor: '#7c3aed' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
+            { border: '#7c3aed', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#7c3aed', icon: '⭐', textColor: '#5b21b6', labelColor: '#8b5cf6' },
+            { border: '#7c3aed', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#7c3aed', icon: '⭐', textColor: '#5b21b6', labelColor: '#8b5cf6' }
         ];
 
-        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.map((r, i) => {
+        c.innerHTML = '<div class="ranking-container">' + ranking.map((r, i) => {
             const cfg = configs[i] || configs[4];
-            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
-            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
-            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
-            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
-            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + r.horas.toFixed(1) + '</div>'
-            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Horas Extras</div>'
-            + '</div>';
+            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
+                <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
+                <div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${cfg.numBg};color:white;font-size:10px;font-weight:800;margin-bottom:2px">${i + 1}</div>
+                <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
+                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${r.horas.toFixed(1)}</div>
+                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">Horas Extras</div>
+            </div>`;
         }).join('') + '</div>';
     },
 
