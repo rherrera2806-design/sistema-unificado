@@ -1684,7 +1684,8 @@ const Asistencia = {
         if (cardsEl) {
             const cards = cardsEl.querySelectorAll('div[style*="border-left"]');
             cards.forEach(card => {
-                const nombreEl = card.querySelector('span:first-child');
+                // Buscar el nombre en el primer span con font-weight:700
+                const nombreEl = card.querySelector('span[style*="font-weight:700"]');
                 if (!nombreEl) return;
                 const nombre = nombreEl.textContent.toLowerCase();
                 card.style.display = mostrarTodos || nombre.includes(query) ? '' : 'none';
