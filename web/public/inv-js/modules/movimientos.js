@@ -24,7 +24,7 @@ const InvMovimientos = {
                     .inv-form-grid>div,.inv-form-dims>div{min-width:0;margin:0}
                     .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{width:100%;box-sizing:border-box}
                     .inv-form-grid label,.inv-form-dims label{font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b}
-                    .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{padding:5px 8px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px}
+                    .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px}
                     .inv-form-bottom{display:flex;gap:8px;margin-top:6px;align-items:end;padding-top:6px;border-top:1px solid #f1f5f9}
                     .tipo-btn{border:1px solid #e2e8f0;border-radius:6px;background:white;cursor:pointer;transition:all 0.15s;padding:5px;font-size:11px}
                     .tipo-btn:hover{background:#f8fafc}
@@ -76,7 +76,7 @@ const InvMovimientos = {
                                     <div class="form-group"><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                     <div class="form-group"><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                     <div class="form-group"><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                <div class="form-group"><label>m²</label><div id="m2Display" style="padding:5px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-weight:700;color:#2563eb">0.00</div></div>
+                                <div class="form-group"><label>m²</label><div id="m2Display" style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:700;color:#2563eb">0.00</div></div>
                             </div>
                             <div class="inv-form-grid" style="margin-top:4px">
                                 <div class="form-group"><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
@@ -85,7 +85,7 @@ const InvMovimientos = {
                             </div>
                             <div style="margin-top:4px">
                                 <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Observaciones</label>
-                                <input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:5px 8px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box">
+                                <input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;box-sizing:border-box">
                             </div>
                                 <div class="inv-form-bottom">
                                     <button type="submit" class="btn btn-primary" style="padding:10px 28px;font-size:13px">Registrar</button>
