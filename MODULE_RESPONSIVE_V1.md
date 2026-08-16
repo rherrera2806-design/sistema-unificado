@@ -189,6 +189,93 @@ Cuando el usuario pida "revisar" un módulo, **NO asumas que está bien**. Revis
 
 ---
 
+## 🏆 Patrón: Ranking Cards (`RANKING_CARDS_V1`)
+
+Diseño de tarjetas de ranking para mostrar top 5 de cualquier métrica.
+
+### Uso:
+```javascript
+// En el render del módulo:
+c.innerHTML = `<div id="ranking-container"></div>`;
+
+// Función para renderizar:
+renderRanking(data) {
+    const c = document.getElementById('ranking-container');
+    if (!c || data.length === 0) { c.innerHTML = ''; return; }
+    
+    const configs = [
+        { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', icon: '🏆', labelColor: '#b45309' },
+        { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', labelColor: '#64748b' },
+        { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', labelColor: '#c2410c' },
+        { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '⭐', labelColor: '#7c3aed' },
+        { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '⭐', labelColor: '#7c3aed' }
+    ];
+
+    c.innerHTML = '<div class="ranking-container">' + data.slice(0, 5).map((r, i) => {
+        const cfg = configs[i] || configs[4];
+        return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
+            <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
+            <div style="...">${i + 1}</div>
+            <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
+            <div style="font-size:18px;font-weight:800;color:${cfg.numBg}">${r.valor}</div>
+            <div style="font-size:8px;...;color:${cfg.labelColor}">LABEL</div>
+        </div>`;
+    }).join('') + '</div>';
+}
+```
+
+### CSS (agregar al inicio del módulo):
+```css
+.ranking-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: stretch;
+    padding: 12px 0;
+    flex-wrap: wrap;
+}
+.ranking-card {
+    border-radius: 12px;
+    padding: 12px 14px 10px;
+    text-align: center;
+    flex: 1 1 0;
+    min-width: 80px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.ranking-name {
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.2;
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+@media (max-width: 768px) {
+    .ranking-container { gap: 6px; padding: 8px 0; }
+    .ranking-card { padding: 8px 4px 6px; border-radius: 10px; }
+    .ranking-name { font-size: 9px !important; min-height: 20px; }
+}
+```
+
+### Ejemplo de datos:
+```javascript
+const ranking = [
+    { nombre: 'Juan Pérez', valor: 12.0 },
+    { nombre: 'Pedro Gómez', valor: 8.5 },
+    { nombre: 'María López', valor: 6.0 }
+];
+```
+
+### Colores por defecto:
+- 🥇 1er lugar: Dorado (`#f59e0b`)
+- 🥈 2do lugar: Plata (`#94a3b8`)
+- 🥉 3er lugar: Bronce (`#f97316`)
+- ⭐ 4to-5to: Púrpura (`#8b5cf6`)
+
+---
+
 ## Checklist
 
 - [ ] Usar `m-page` como wrapper
