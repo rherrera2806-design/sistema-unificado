@@ -93,6 +93,18 @@ const Asistencia = {
                 + '.ast-avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0}'
                 + '.ast-podium{display:flex;justify-content:center;align-items:flex-end;gap:20px;margin:24px 0}'
                 + '.ast-rank{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-align:center;transition:all 0.2s;min-width:160px}'
+                + '.ranking-container{display:flex;gap:10px;justify-content:center;align-items:flex-end;padding:12px 0;flex-wrap:wrap}'
+                + '.ranking-card{border-radius:12px;padding:12px 14px 10px;text-align:center;min-width:100px;flex:1 1 100px;max-width:140px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}'
+                + '.ranking-name{font-size:11px;font-weight:700;margin-bottom:4px;line-height:1.2;min-height:28px;display:flex;align-items:center;justify-content:center}'
+                + '@media(max-width:768px){'
+                + '.ranking-container{gap:6px;padding:8px 0}'
+                + '.ranking-card{min-width:60px;flex:1 1 60px;max-width:none;padding:8px 6px 6px;border-radius:10px}'
+                + '.ranking-card div:first-child{font-size:16px!important}'
+                + '.ranking-card div:nth-child(2){width:18px!important;height:18px!important;font-size:9px!important}'
+                + '.ranking-name{font-size:9px!important;min-height:24px}'
+                + '.ranking-card div:nth-child(4){font-size:14px!important}'
+                + '.ranking-card div:nth-child(5){font-size:7px!important}'
+                + '}'
                 + '.ast-rank:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}'
                 + '.ast-cal-header{display:grid;border-bottom:2px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:2}'
                 + '.ast-cal-row{display:grid;border-bottom:1px solid #f1f5f9}'
@@ -1836,16 +1848,15 @@ const Asistencia = {
             { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' }
         ];
 
-        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.slice(0, 5).map((r, i) => {
+        c.innerHTML = '<div class="ranking-container">' + ranking.slice(0, 5).map((r, i) => {
             const total = (Number(r.faltas) || 0) + (Number(r.permisos_dias) || 0) + (Number(r.licencias_dias) || 0) + (Number(r.vacaciones_dias) || 0);
             const cfg = configs[i] || configs[4];
-            const s = i === 0 ? 1 : 0.88;
-            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
-            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
-            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
-            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
-            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + total.toFixed(1) + '</div>'
-            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Días fuera</div>'
+            return '<div class="ranking-card" style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + '">'
+            + '<div style="font-size:20px;margin-bottom:2px">' + cfg.icon + '</div>'
+            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:10px;font-weight:800;margin-bottom:2px">' + (i + 1) + '</div>'
+            + '<div class="ranking-name" style="color:' + cfg.textColor + '">' + r.nombre + '</div>'
+            + '<div style="font-size:18px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + total.toFixed(1) + '</div>'
+            + '<div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:2px">Días fuera</div>'
             + '</div>';
         }).join('') + '</div>';
     },
