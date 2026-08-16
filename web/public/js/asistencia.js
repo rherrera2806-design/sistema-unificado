@@ -1483,25 +1483,30 @@ const Asistencia = {
         c.innerHTML = `
             <div id="ast-ranking-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
 
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;width:100%;overflow:hidden">
-                <div style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch">
-                    <table style="width:100%;min-width:700px;border-collapse:collapse;font-size:13px">
-                        <thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">#</th>
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días Hábiles</th>
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Asistidos</th>
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Faltas</th>
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Permisos</th>
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Licencias</th>
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Vacaciones</th>
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">H. Extras</th>
-                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">% Asistencia</th>
-                        </tr></thead>
-                        <tbody id="ast-tabla-reporte"><tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8">Cargando reporte...</td></tr></tbody>
-                    </table>
+            <div class="m-card">
+                <div class="m-card-header" style="padding:6px 12px">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Reporte Mensual</h3>
                 </div>
-                <div id="ast-cards-reporte" style="padding:12px"></div>
+                <div class="m-card-body" style="padding:0">
+                    <div class="m-table-wrap">
+                        <table style="width:100%;min-width:900px;border-collapse:collapse;font-size:13px">
+                            <thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">#</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días Hábiles</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Asistidos</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Faltas</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Permisos</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Licencias</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Vacaciones</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">H. Extras</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">% Asistencia</th>
+                            </tr></thead>
+                            <tbody id="ast-tabla-reporte"><tr><td colspan="10" style="text-align:center;padding:32px;color:#94a3b8">Cargando reporte...</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div id="ast-cards-reporte" class="m-cards-mobile" style="display:none;padding:12px"></div>
+                </div>
             </div>`;
 
         setTimeout(() => this.cargarReportes(), 100);
