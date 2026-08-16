@@ -1667,19 +1667,15 @@ const Asistencia = {
         const query = input.value.toLowerCase().trim();
         const mostrarTodos = query.length === 0;
         
-        console.log('[FILTRAR] query:', query, 'mostrarTodos:', mostrarTodos);
-        
         // Filtrar tabla desktop
         const tbody = document.getElementById('ast-tabla-reporte');
         if (tbody) {
             const rows = tbody.querySelectorAll('tr');
-            console.log('[FILTRAR] rows encontrados:', rows.length);
             rows.forEach(row => {
                 const nombreCell = row.querySelector('td:nth-child(2)');
                 if (!nombreCell) return;
                 const nombre = nombreCell.textContent.toLowerCase();
-                const visible = mostrarTodos || nombre.includes(query);
-                row.style.display = visible ? '' : 'none';
+                row.style.display = mostrarTodos || nombre.includes(query) ? '' : 'none';
             });
         }
         
@@ -1691,8 +1687,7 @@ const Asistencia = {
                 const nombreEl = card.querySelector('span:first-child');
                 if (!nombreEl) return;
                 const nombre = nombreEl.textContent.toLowerCase();
-                const visible = mostrarTodos || nombre.includes(query);
-                card.style.display = visible ? '' : 'none';
+                card.style.display = mostrarTodos || nombre.includes(query) ? '' : 'none';
             });
         }
     },
