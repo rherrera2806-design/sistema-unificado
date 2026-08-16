@@ -976,13 +976,13 @@ App.registerModule('prod_config', {
                 </div>
 
                 <div class="m-stats">
-                    <div class="m-card m-card-header m-stat-card">
-                        <div style="font-size:11px;font-weight:600;color:#64748b">Total Reglas</div>
-                        <div style="font-size:20px;font-weight:700;color:#0f172a">${total}</div>
+                    <div class="m-card m-stat-card">
+                        <div class="m-stat-label">Total Reglas</div>
+                        <div class="m-stat-value" style="color:#0f172a">${total}</div>
                     </div>
-                    <div class="m-card m-card-header m-stat-card">
-                        <div style="font-size:11px;font-weight:600;color:#64748b">Activas</div>
-                        <div style="font-size:20px;font-weight:700;color:#16a34a">${activas}</div>
+                    <div class="m-card m-stat-card">
+                        <div class="m-stat-label">Activas</div>
+                        <div class="m-stat-value" style="color:#16a34a">${activas}</div>
                     </div>
                 </div>
 
@@ -1113,13 +1113,13 @@ App.registerModule('prod_config', {
                 </div>
 
                 <div class="m-stats">
-                    <div class="m-card m-card-header m-stat-card">
-                        <div style="font-size:11px;font-weight:600;color:#64748b">Mes Actual</div>
-                        <div style="font-size:16px;font-weight:700;color:#0f172a">${monthNames[month]} ${year}</div>
+                    <div class="m-card m-stat-card">
+                        <div class="m-stat-label">Mes Actual</div>
+                        <div class="m-stat-value" style="color:#0f172a;font-size:13px">${monthNames[month]} ${year}</div>
                     </div>
-                    <div class="m-card m-card-header m-stat-card">
-                        <div style="font-size:11px;font-weight:600;color:#64748b">Dias Bloqueados</div>
-                        <div style="font-size:20px;font-weight:700;color:#ef4444">${countNoLab}</div>
+                    <div class="m-card m-stat-card">
+                        <div class="m-stat-label">Dias Bloqueados</div>
+                        <div class="m-stat-value" style="color:#ef4444">${countNoLab}</div>
                     </div>
                 </div>
 

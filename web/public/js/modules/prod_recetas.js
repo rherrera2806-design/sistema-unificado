@@ -24,17 +24,17 @@ App.registerModule('prod_recetas', {
                 </div>
 
                 <div class="m-stats">
-                    <div class="m-card m-card-header m-stat-card">
-                        <div style="font-size:11px;font-weight:600;color:#64748b">Total Recetas</div>
-                        <div style="font-size:20px;font-weight:700;color:#0f172a" id="recTotalStat">0</div>
+                    <div class="m-card m-stat-card">
+                        <div class="m-stat-label">Total Recetas</div>
+                        <div class="m-stat-value" style="color:#0f172a" id="recTotalStat">0</div>
                     </div>
-                    <div class="m-card m-card-header m-stat-card">
-                        <div style="font-size:11px;font-weight:600;color:#64748b">Con Ruta Custom</div>
-                        <div style="font-size:20px;font-weight:700;color:#7c3aed" id="recCustomStat">0</div>
+                    <div class="m-card m-stat-card">
+                        <div class="m-stat-label">Ruta Custom</div>
+                        <div class="m-stat-value" style="color:#7c3aed" id="recCustomStat">0</div>
                     </div>
-                    <div class="m-card m-card-header m-stat-card">
-                        <div style="font-size:11px;font-weight:600;color:#64748b">Codigos Unicos</div>
-                        <div style="font-size:20px;font-weight:700;color:#f59e0b" id="recCodigosStat">0</div>
+                    <div class="m-card m-stat-card">
+                        <div class="m-stat-label">Codigos Unicos</div>
+                        <div class="m-stat-value" style="color:#f59e0b" id="recCodigosStat">0</div>
                     </div>
                 </div>
 

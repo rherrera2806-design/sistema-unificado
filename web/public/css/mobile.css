@@ -221,8 +221,19 @@
     .m-filters input,
     .m-filters select { width: 100%; min-width: 100%; font-size: 14px; padding: 12px; }
 
-    /* Stats */
-    .m-stats { grid-template-columns: 1fr; gap: 8px; margin-bottom: 16px; }
+    /* Stats - 3 columns equal */
+    .m-stats { grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 16px; }
+    .m-stat-card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 8px 4px;
+        gap: 2px;
+        min-width: 0;
+        overflow: hidden;
+    }
+    .m-stat-value { font-size: 15px; font-weight: 800; line-height: 1.1; word-break: break-all; }
+    .m-stat-label { font-size: 8px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
     /* Actions */
     .m-actions { justify-content: stretch; }

@@ -18,21 +18,21 @@ App.registerModule('prod_maquinas', {
                 </div>
 
                 <div class="m-stats">
-                    <div class="m-stat-card" style="border-left:4px solid #3b82f6">
-                        <div class="m-stat-icon" style="background:#dbeafe;color:#3b82f6"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg></div>
-                        <div><div class="m-stat-value" id="mqTotal">0</div><div class="m-stat-label">Total</div></div>
+                    <div class="m-card m-stat-card" style="border-left:4px solid #3b82f6">
+                        <div class="m-stat-value" id="mqTotal" style="color:#3b82f6">0</div>
+                        <div class="m-stat-label">Total</div>
                     </div>
-                    <div class="m-stat-card" style="border-left:4px solid #22c55e">
-                        <div class="m-stat-icon" style="background:#dcfce7;color:#22c55e"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-                        <div><div class="m-stat-value" id="mqActivas">0</div><div class="m-stat-label">Activas</div></div>
+                    <div class="m-card m-stat-card" style="border-left:4px solid #22c55e">
+                        <div class="m-stat-value" id="mqActivas" style="color:#22c55e">0</div>
+                        <div class="m-stat-label">Activas</div>
                     </div>
-                    <div class="m-stat-card" style="border-left:4px solid #f59e0b">
-                        <div class="m-stat-icon" style="background:#fef9c3;color:#f59e0b"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
-                        <div><div class="m-stat-value" id="mqMantencion">0</div><div class="m-stat-label">Mantencion</div></div>
+                    <div class="m-card m-stat-card" style="border-left:4px solid #f59e0b">
+                        <div class="m-stat-value" id="mqMantencion" style="color:#f59e0b">0</div>
+                        <div class="m-stat-label">Mantencion</div>
                     </div>
-                    <div class="m-stat-card" style="border-left:4px solid #8b5cf6">
-                        <div class="m-stat-icon" style="background:#f3e8ff;color:#8b5cf6"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/></svg></div>
-                        <div><div class="m-stat-value" id="mqCapacidad">0</div><div class="m-stat-label">Capacidad m²</div></div>
+                    <div class="m-card m-stat-card" style="border-left:4px solid #8b5cf6">
+                        <div class="m-stat-value" id="mqCapacidad" style="color:#8b5cf6">0</div>
+                        <div class="m-stat-label">Capacidad m²</div>
                     </div>
                 </div>
 
