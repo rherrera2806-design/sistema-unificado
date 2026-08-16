@@ -353,6 +353,7 @@ App.registerModule('prod_config', {
                         <th style="background:#f0fdf4">Costo Nac</th>
                         <th style="background:#eff6ff">Costo Imp</th>
                         <th style="background:#fefce8">Diff $/m2</th>
+                        <th style="background:#fef3c7">CPM</th>
                         <th>Observ.</th><th>Acc.</th>
                     </tr></thead>
                     <tbody id="mpTableBody"></tbody></table>
@@ -386,6 +387,7 @@ App.registerModule('prod_config', {
             const ali = Number(m.alto_imp) || 0;
             const pc = Number(m.paquetes_por_camion) || 0;
             const pco = Number(m.paquetes_por_contenedor) || 0;
+            const cpm = Number(m.consumo_promedio_mensual) || 0;
             const diffM2 = (cn > 0 && ci > 0) ? ci - cn : 0;
             const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
             const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
@@ -401,12 +403,13 @@ App.registerModule('prod_config', {
             <td style="background:#f0fdf4">$${cn.toLocaleString('es-CL')}</td>
             <td style="background:#eff6ff">$${ci.toLocaleString('es-CL')}</td>
             <td style="background:#fefce8;font-weight:600;color:${col(diffM2)}">${fmt(diffM2)}</td>
+            <td style="background:#fef3c7;text-align:right">${cpm.toLocaleString('es-CL')}</td>
             <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${obs}</td>
             <td class="table-actions" style="white-space:nowrap">
                 <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                 <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
             </td>
-        </tr>`}).join('') : '<tr><td colspan="10" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
+        </tr>`}).join('') : '<tr><td colspan="11" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
     },
 
     showImportModal() {
@@ -431,6 +434,7 @@ App.registerModule('prod_config', {
                     <span style="background:#2563eb;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Ancho Imp</span>
                     <span style="background:#2563eb;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Alto Imp</span>
                     <span style="background:#2563eb;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Pqt Contenedor</span>
+                    <span style="background:#f59e0b;color:white;padding:2px 8px;border-radius:10px;font-size:10px">CPM</span>
                     <span style="background:#64748b;color:white;padding:2px 8px;border-radius:10px;font-size:10px">Observacion</span>
                 </div>
                 <button class="btn btn-sm btn-outline" onclick="window.open('/api/produccion/materias-primas/template')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar Plantilla</button>
@@ -504,6 +508,7 @@ App.registerModule('prod_config', {
             'Ancho Nac': m.ancho_nal, 'Alto Nac': m.alto_nal, 'Paquetes por camion': m.paquetes_por_camion,
             'Costo Importado ($/m2)': m.costo_unitario_importado, 'Hojas por paquete Imp': m.hojas_por_paquete_imp,
             'Ancho Imp': m.ancho_imp, 'Alto Imp': m.alto_imp, 'Paquetes por contenedor': m.paquetes_por_contenedor,
+            'CPM': m.consumo_promedio_mensual || 0,
             'Observacion': m.observacion || ''
         }));
         const XLSXLib = window.XLSX;
@@ -551,7 +556,10 @@ App.registerModule('prod_config', {
                 <strong style="color:#854d0e;font-size:12px">Resumen (calculado)</strong>
                 <div class="form-group" style="margin-top:6px;max-width:200px"><label>Diferencia $/m2</label><input type="text" class="form-control" id="mpDiffM2" readonly style="background:#fff;font-weight:600"></div>
             </div>
-            <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2">${m ? m.observacion || '' : ''}</textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:12px">
+                <div class="form-group"><label>Consumo Prom. Mensual (CPM)</label><input type="number" class="form-control" id="mpCPM" value="${v('consumo_promedio_mensual', true)}" min="0" step="1" placeholder="0"></div>
+                <div class="form-group"><label>Observacion</label><textarea class="form-control" id="mpObs" rows="2">${m ? m.observacion || '' : ''}</textarea></div>
+            </div>
             <div style="padding:10px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:8px">
                 <div style="display:flex;align-items:center;gap:6px" id="mpAnalisis"></div>
             </div>
@@ -603,6 +611,7 @@ App.registerModule('prod_config', {
             ancho_imp: parseFloat(document.getElementById('mpAnchoImp').value) || 0,
             alto_imp: parseFloat(document.getElementById('mpAltoImp').value) || 0,
             paquetes_por_contenedor: parseInt(document.getElementById('mpPaqContenedor').value) || 0,
+            consumo_promedio_mensual: parseInt(document.getElementById('mpCPM').value) || 0,
             observacion: document.getElementById('mpObs').value.trim()
         };
         if (!data.codigo_mp || !data.nombre) { App.showAlert('Codigo y nombre requeridos', 'danger'); return; }

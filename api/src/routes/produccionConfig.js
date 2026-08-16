@@ -139,9 +139,9 @@ router.get('/api/produccion/materias-primas/template', canView, (req, res) => {
         'Codigo MP', 'Nombre', 'Espesor (mm)',
         'Costo Nacional ($/m2)', 'Hojas por paquete', 'Ancho', 'Alto', 'Paquetes por camion',
         'Costo Importado ($/m2)', 'Hojas por paquete', 'Ancho', 'Alto', 'Paquetes por contenedor',
-        'Observacion'
+        'CPM', 'Observacion'
     ];
-    const example = ['1017', 'Laminado', 6, 13369, 29, 3600, 2500, 12, 0, 0, 0, 0, 0, '3600 x 2500 - Lirquen'];
+    const example = ['1017', 'Laminado', 6, 13369, 29, 3600, 2500, 12, 0, 0, 0, 0, 0, 150, '3600 x 2500 - Lirquen'];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     ws['!cols'] = headers.map(() => ({ wch: 20 }));
@@ -183,6 +183,7 @@ router.post('/api/produccion/materias-primas/import', canCreate, async (req, res
                 ancho_imp: parseFloat(findCol(r, ['Ancho Imp', 'AnchoImp']) || 0) || 0,
                 alto_imp: parseFloat(findCol(r, ['Alto Imp', 'AltoImp']) || 0) || 0,
                 paquetes_por_contenedor: parseInt(findCol(r, ['Paquetes por contenedor', 'Pqt Contenedor', 'PaqContenedor']) || 0) || 0,
+                consumo_promedio_mensual: parseInt(findCol(r, ['CPM', 'Consumo Promedio Mensual', 'Consumo Mensual', 'ConsumoMensual']) || 0) || 0,
                 observacion: String(findCol(r, ['Observacion', 'Observacion', 'Nota']) || '').trim()
             };
             await catalogos.crearMateriaPrima(data);
