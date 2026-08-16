@@ -1071,7 +1071,14 @@ const Asistencia = {
         }).join('') + '</div>';
     },
 
-    renderRanking(ranking) { this._renderRanking('ast-ranking-container', ranking, 'valor', 'Días fuera'); },
+    renderRanking(ranking) {
+        // Calcular total de días fuera para cada trabajador
+        const data = ranking.map(r => ({
+            nombre: r.nombre,
+            valor: (Number(r.faltas) || 0) + (Number(r.permisos_dias) || 0) + (Number(r.licencias_dias) || 0) + (Number(r.vacaciones_dias) || 0)
+        }));
+        this._renderRanking('ast-ranking-container', data, 'valor', 'Días fuera');
+    },
     renderRankingPermisos(ranking) { this._renderRanking('ast-ranking-permisos-container', ranking, 'horas', 'Horas Permiso'); },
     renderRankingLicencias(ranking) { this._renderRanking('ast-ranking-licencias-container', ranking, 'dias', 'Días Licencia'); },
     renderRankingVacaciones(ranking) { this._renderRanking('ast-ranking-vacaciones-container', ranking, 'dias', 'Días Vacaciones'); },
