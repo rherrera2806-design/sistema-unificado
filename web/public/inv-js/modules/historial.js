@@ -11,11 +11,11 @@ const InvHistorial = {
 
             page.innerHTML = `
                 <div class="m-page">
-                    <div class="m-hero">
+                    <div class="m-hero" style="padding:10px 14px">
                         <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
                         <div style="position:relative;z-index:1">
-                            <h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Historial</h2>
-                            <p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Consultar movimientos de inventario</p>
+                            <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Historial</h2>
+                            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Consultar movimientos de inventario</p>
                         </div>
                     </div>
 

@@ -11,18 +11,16 @@ const InvInventario = {
 
             page.innerHTML = `
                 <div class="m-page">
-                    <div class="m-hero">
+                    <div class="m-hero" style="padding:10px 14px">
                         <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-                        <div class="m-hero-inner">
-                            <div class="m-hero-title">
-                                <h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Inventario</h2>
-                                <p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p>
+                        <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                            <div style="min-width:0">
+                                <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Inventario</h2>
+                                <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p>
                             </div>
-                            <div class="m-filters">
-                                <div style="position:relative;flex:1;min-width:0">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                    <input type="text" id="invSearch" placeholder="Buscar por codigo, tipo o espesor..." oninput="InvInventario.buscar(this.value)" style="width:100%;padding:7px 10px 7px 30px;font-size:12px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;box-sizing:border-box;outline:none;background:rgba(255,255,255,0.1);color:white" onfocus="this.style.borderColor='rgba(255,255,255,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.2)'">
-                                </div>
+                            <div style="position:relative;flex:1;min-width:140px;max-width:250px">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="invSearch" placeholder="Buscar..." oninput="InvInventario.buscar(this.value)" style="width:100%;padding:6px 8px 6px 28px;font-size:12px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;box-sizing:border-box;outline:none;background:rgba(255,255,255,0.1);color:white" onfocus="this.style.borderColor='rgba(255,255,255,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.2)'">
                             </div>
                         </div>
                     </div>

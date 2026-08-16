@@ -16,18 +16,33 @@ const InvMovimientos = {
             this.materiasPrimas = mpData;
             const mpOptions = mpData.map(mp => `<option value="${mp.id}" data-ancho="${mp.ancho_nal || 0}" data-alto="${mp.alto_nal || 0}" data-espesor="${mp.espesor_mm || 0}">${mp.codigo_mp} - ${mp.nombre} (${mp.espesor_mm}mm)</option>`).join('');
             page.innerHTML = `
-                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:24px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
-<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Movimientos</h2>
-<p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registrar entradas y salidas de inventario</p></div></div>
                 <style>
-@keyframes invMov_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.invMov-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
-.invMov-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
-.invMov-row{transition:all 0.2s}
-.invMov-row:hover{transform:translateX(2px);background:#f8fafc!important}
-.inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px;align-items:end}
-.inv-form-dims{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 14px;align-items:end}
+                    @keyframes invMov_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+                    .invMov-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+                    .invMov-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}
+                    .inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 14px;align-items:end}
+                    .inv-form-dims{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 14px;align-items:end}
+                    .inv-form-grid>div,.inv-form-dims>div{min-width:0}
+                    .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{width:100%;box-sizing:border-box}
+                    .inv-form-grid label,.inv-form-dims label{font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b}
+                    .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px}
+                    .inv-form-bottom{display:flex;gap:10px;margin-top:12px;align-items:end;padding-top:10px;border-top:1px solid #f1f5f9}
+                    @media(max-width:768px){
+                        .inv-form-grid{grid-template-columns:1fr}
+                        .inv-form-dims{grid-template-columns:1fr 1fr}
+                        .inv-form-bottom{flex-direction:column}
+                        .inv-form-bottom .btn{width:100%}
+                    }
+                </style>
+
+                <div class="m-page">
+                    <div class="m-hero" style="padding:10px 14px">
+                        <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
+                        <div style="position:relative;z-index:1">
+                            <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Movimientos</h2>
+                            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registrar entradas y salidas de inventario</p>
+                        </div>
+                    </div>
 .inv-form-grid>div,.inv-form-dims>div{min-width:0}
 .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select,.inv-form-dims>div>div{width:100%;box-sizing:border-box}
 @media(max-width:640px){.inv-form-grid{grid-template-columns:repeat(2,1fr);gap:10px}.inv-form-dims{grid-template-columns:repeat(2,1fr)}}
