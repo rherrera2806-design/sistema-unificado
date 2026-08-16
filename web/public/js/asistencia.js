@@ -1335,20 +1335,27 @@ const Asistencia = {
     // ═══════ HORAS EXTRAS ═══════
     renderHorasExtrasTab(c) {
         c.innerHTML = `
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;overflow:hidden">
-                <div class="sigma-table-wrap">
-                <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Horas</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Motivo</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
-                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
-                    </tr></thead>
-                    <tbody id="ast-tabla-horas-extras"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
-                </table>
-                <div id="ast-cards-horas-extras"></div>
+            <div id="ast-ranking-he-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
+
+            <div class="m-card">
+                <div class="m-card-header" style="padding:6px 12px">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Horas Extras</h3>
+                </div>
+                <div class="m-card-body" style="padding:0">
+                    <div class="m-table-wrap">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px">
+                            <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Horas</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Motivo</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                                <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                            </tr></thead>
+                            <tbody id="ast-tabla-horas-extras"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div id="ast-cards-horas-extras" class="m-cards-mobile" style="display:none;padding:12px"></div>
                 </div>
             </div>`;
         this.cargarHorasExtras();
@@ -1358,8 +1365,52 @@ const Asistencia = {
         const mes = document.getElementById('ast-hero-mes')?.value;
         try {
             const url = '/api/asistencia/horas-extras' + (mes ? '?mes=' + mes + '&anio=' + new Date().getFullYear() : '');
-            const r = await fetch(url);
+            const r = await authFetch(url);
             const horasExtras = await r.json();
+            
+            // Calcular ranking de horas extras por trabajador
+            const rankingMap = {};
+            horasExtras.forEach(he => {
+                const nombre = he.nombre || 'Desconocido';
+                if (!rankingMap[nombre]) rankingMap[nombre] = 0;
+                rankingMap[nombre] += Number(he.horas) || 0;
+            });
+            const ranking = Object.entries(rankingMap)
+                .map(([nombre, horas]) => ({ nombre, horas }))
+                .sort((a, b) => b.horas - a.horas)
+                .slice(0, 5);
+            
+            this.renderRankingHorasExtras(ranking);
+            this.renderTablaHorasExtras(horasExtras);
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    renderRankingHorasExtras(ranking) {
+        const c = document.getElementById('ast-ranking-he-container');
+        if (!c) return;
+        if (ranking.length === 0) { c.innerHTML = ''; return; }
+
+        const configs = [
+            { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', numColor: 'white', textColor: '#92400e', icon: '🏆', labelColor: '#b45309' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
+            { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', numColor: 'white', textColor: '#5b21b6', icon: '⭐', labelColor: '#7c3aed' },
+            { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', numColor: 'white', textColor: '#5b21b6', icon: '⭐', labelColor: '#7c3aed' }
+        ];
+
+        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.map((r, i) => {
+            const cfg = configs[i] || configs[4];
+            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
+            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
+            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
+            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + r.horas.toFixed(1) + '</div>'
+            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Horas Extras</div>'
+            + '</div>';
+        }).join('') + '</div>';
+    },
+
+    renderTablaHorasExtras(horasExtras) {
             const tbody = document.getElementById('ast-tabla-horas-extras');
             if (!tbody) return;
             if (horasExtras.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">${MSG.SIN_DATOS}</td></tr>`; const cardsEl = document.getElementById('ast-cards-horas-extras'); if (cardsEl) cardsEl.innerHTML = ''; return; }
@@ -1383,30 +1434,23 @@ const Asistencia = {
 
             const cardsEl = document.getElementById('ast-cards-horas-extras');
             if (cardsEl) {
-                cardsEl.innerHTML = SigmaCards.generate({
-                    title: he => '<strong>' + he.nombre + '</strong>',
-                    subtitle: he => he.motivo || '-',
-                    badge: he => {
-                        const ec = he.estado === 'aprobada' ? '#d1fae5;color:#059669' : he.estado === 'rechazada' ? '#fee2e2;color:#dc2626' : '#dbeafe;color:#2563eb';
-                        return '<span class="sc-badge" style="background:' + ec + '">' + (he.estado || 'pendiente') + '</span>';
-                    },
-                    fields: [
-                        { label: 'Fecha', value: he => this.fmtDate(he.fecha) },
-                        { label: 'Horas', value: he => he.horas + ' hrs' }
-                    ],
-                    actions: he => {
-                        let html = '';
-                        if (puedeAprobar && (!he.estado || he.estado === 'pendiente')) {
-                            html += `<button onclick="Asistencia.estadoHorasExtras(${he.id},'aprobada')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">${BTN.APROBAR}</button>`;
-                            html += `<button onclick="Asistencia.estadoHorasExtras(${he.id},'rechazada')" class="btn btn-sm btn-danger" style="margin-right:4px">${BTN.RECHAZAR}</button>`;
-                        }
-                        if (canEditHE) html += `<button onclick="Asistencia.editarHorasExtras(${he.id})" class="btn btn-sm btn-outline" style="margin-right:4px">${BTN.EDITAR}</button>`;
-                        if (canDeleteHE) html += `<button onclick="Asistencia.eliminarHorasExtras(${he.id})" class="btn btn-sm btn-danger">${BTN.ELIMINAR}</button>`;
-                        return html;
-                    }
-                }, horasExtras);
+                let cardsHtml = '';
+                horasExtras.forEach(he => {
+                    const ec = he.estado === 'aprobada' ? '#22c55e' : he.estado === 'rechazada' ? '#ef4444' : '#3b82f6';
+                    cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + ec + '">'
+                        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                        + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + he.nombre + '</span>'
+                        + '<span class="ast-badge" style="background:' + (he.estado === 'aprobada' ? '#d1fae5;color:#059669' : he.estado === 'rechazada' ? '#fee2e2;color:#dc2626' : '#dbeafe;color:#2563eb') + '">' + (he.estado || 'pendiente') + '</span>'
+                        + '</div>'
+                        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#64748b">'
+                        + '<span>Fecha: <strong>' + this.fmtDate(he.fecha) + '</strong></span>'
+                        + '<span>Horas: <strong style="color:#8b5cf6">' + he.horas + ' hrs</strong></span>'
+                        + '</div>'
+                        + (he.motivo ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Motivo: ' + he.motivo + '</div>' : '')
+                        + '</div>';
+                });
+                cardsEl.innerHTML = cardsHtml;
             }
-        } catch(e) { console.error('Error:', e); }
     },
 
     editarHorasExtras(id) {
