@@ -28,7 +28,8 @@ App.registerModule('inst_historial', {
                 .ih-filters>div,.ih-filters>select{width:100%;max-width:100%}
                 .ih-filters input,.ih-filters select{font-size:14px;padding:12px}
                 .ih-stats{grid-template-columns:1fr;gap:8px;margin-bottom:16px}
-                .ih-scroll table{min-width:700px}
+                .ih-scroll{display:none}
+                .ih-cards-mobile{display:block!important}
             }
         </style>
 
@@ -103,6 +104,60 @@ App.registerModule('inst_historial', {
 
     renderTabla() {
         const div = document.getElementById('instHistContent');
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const perm = user.permisos || [];
+        const puedeEliminar = perm.includes('instalaciones.eliminar') || perm.includes('usuarios');
+        
+        // Cards para móvil
+        let cardsHtml = '';
+        if (this.instalaciones.length === 0) {
+            cardsHtml = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px">No hay instalaciones que mostrar</div>';
+        } else {
+            cardsHtml = this.instalaciones.map(inst => {
+                const badge = this.badgeHtml(inst.estado);
+                const fecha = inst.fecha_programada ? inst.fecha_programada.substring(0, 10) : '-';
+                const hora = inst.hora_programada || '';
+                const colorEstado = this.estadoColor(inst.estado);
+                return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ${colorEstado};width:100%;box-sizing:border-box">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#1e293b">${fecha}${hora ? ' ' + hora : ''}</span>
+                        ${badge}
+                    </div>
+                    <div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">${escapeHtml(inst.cliente)}</div>
+                    <div style="font-size:12px;color:#475569;margin-bottom:4px">${escapeHtml((inst.tipo || 'INSTALACION').replace('_',' '))}</div>
+                    ${inst.direccion ? '<div style="font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:6px">' + escapeHtml(inst.direccion) + '</div>' : ''}
+                    ${inst.tecnico ? '<div style="font-size:11px;color:#64748b">Tecnico: ' + escapeHtml(inst.tecnico) + '</div>' : ''}
+                    <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end">
+                        <button onclick="App.modules.inst_detalle.abrir(${inst.id})" class="btn btn-sm btn-info">Ver</button>
+                        ${puedeEliminar ? '<button onclick="App.modules.inst_historial.eliminar(' + inst.id + ')" class="btn btn-sm btn-danger">Eliminar</button>' : ''}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // Tabla para desktop
+        let tablaHtml = '';
+        if (this.instalaciones.length === 0) {
+            tablaHtml = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;font-size:13px">No hay instalaciones que mostrar</td></tr>';
+        } else {
+            tablaHtml = this.instalaciones.map(inst => {
+                const badge = this.badgeHtml(inst.estado);
+                const fecha = inst.fecha_programada ? inst.fecha_programada.substring(0, 10) : '-';
+                const hora = inst.hora_programada || '';
+                return '<tr class="ih-row" style="border-bottom:1px solid #f1f5f9">'
+                    + '<td style="padding:10px 14px"><span style="font-weight:600;color:#1e293b;font-family:\'JetBrains Mono\',monospace;font-size:12px">' + fecha + '</span>' + (hora ? ' <span style="color:#94a3b8;font-size:12px">' + hora + '</span>' : '') + '</td>'
+                    + '<td style="padding:10px 14px"><span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#f1f5f9;color:#475569">' + escapeHtml((inst.tipo || 'INSTALACION').replace('_',' ')) + '</span></td>'
+                    + '<td style="padding:10px 14px;font-weight:600;color:#1e293b;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(inst.cliente) + '</td>'
+                    + '<td style="padding:10px 14px;font-size:12px;color:#64748b;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(inst.direccion) + '</td>'
+                    + '<td style="padding:10px 14px;font-size:13px;color:#1e293b">' + escapeHtml(inst.tecnico || '-') + '</td>'
+                    + '<td style="padding:10px 14px;text-align:center">' + badge + '</td>'
+                    + '<td style="padding:10px 14px;text-align:center;white-space:nowrap">'
+                    + '<button onclick="App.modules.inst_detalle.abrir(' + inst.id + ')" title="Ver detalle" class="btn btn-sm btn-info"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>'
+                    + (puedeEliminar ? ' <button onclick="App.modules.inst_historial.eliminar(' + inst.id + ')" title="Eliminar" class="btn btn-sm btn-danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
+                    + '</td></tr>';
+            }).join('');
+        }
+
         div.innerHTML = `<div class="ih-table-card">
             <div style="padding:16px 24px;border-bottom:1px solid #f1f5f9">
                 <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">
@@ -110,6 +165,7 @@ App.registerModule('inst_historial', {
                     Todas las Instalaciones (${this.instalaciones.length})
                 </h3>
             </div>
+            <div class="ih-cards-mobile" style="display:none;padding:12px">${cardsHtml}</div>
             <div class="ih-scroll">
                 <table>
                     <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
@@ -121,10 +177,15 @@ App.registerModule('inst_historial', {
                         <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
                         <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Accion</th>
                     </tr></thead>
-                    <tbody id="iHistBody">${this.filasHtml(this.instalaciones)}</tbody>
+                    <tbody id="iHistBody">${tablaHtml}</tbody>
                 </table>
             </div>
         </div>`;
+    },
+
+    estadoColor(estado) {
+        const map = { 'PROGRAMADA': '#3b82f6', 'EN_CAMINO': '#f59e0b', 'EN_CURSO': '#ea580c', 'COMPLETADA': '#22c55e', 'CON_NOVEDADES': '#dc2626', 'CANCELADA': '#94a3b8' };
+        return map[estado] || '#3b82f6';
     },
 
     filasHtml(lista) {
