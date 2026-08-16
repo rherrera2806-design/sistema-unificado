@@ -10,6 +10,16 @@ const InvHistorial = {
             this._currentData = Array.isArray(movimientos) ? movimientos : [];
 
             page.innerHTML = `
+                <style>
+                    .inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;align-items:end}
+                    .inv-form-grid>div{min-width:0;margin:0}
+                    .inv-form-grid input,.inv-form-grid select{width:100%;box-sizing:border-box;padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px}
+                    .inv-form-grid label{font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b}
+                    @media(max-width:768px){
+                        .inv-form-grid{grid-template-columns:1fr}
+                    }
+                </style>
+
                 <div class="m-page">
                     <div class="m-hero" style="padding:10px 14px">
                         <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
@@ -19,15 +29,18 @@ const InvHistorial = {
                         </div>
                     </div>
 
-                    <div class="m-card" style="margin-bottom:20px">
-                        <div class="m-card-header">Filtros de Busqueda</div>
-                        <div class="m-card-body">
+                    <div class="m-card" style="margin-bottom:10px">
+                        <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Filtros de Busqueda</div>
+                        <div class="m-card-body" style="padding:8px 12px">
                             <form onsubmit="InvHistorial.buscar(event)">
-                                <div class="m-form-grid">
-                                    <div class="form-group"><label>Fecha Inicio</label><input type="date" id="hFechaInicio" class="form-control"></div>
-                                    <div class="form-group"><label>Fecha Fin</label><input type="date" id="hFechaFin" class="form-control"></div>
-                                    <div class="form-group"><label>Tipo</label><select id="hTipo" class="form-control"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select></div>
-                                    <div class="form-group" style="display:flex;gap:8px;align-items:flex-end"><button type="submit" class="btn btn-primary">Buscar</button><button type="button" class="btn btn-outline" onclick="InvHistorial.limpiar()">Limpiar</button></div>
+                                <div class="inv-form-grid">
+                                    <div class="form-group"><label>Fecha Inicio</label><input type="date" id="hFechaInicio"></div>
+                                    <div class="form-group"><label>Fecha Fin</label><input type="date" id="hFechaFin"></div>
+                                    <div class="form-group"><label>Tipo</label><select id="hTipo"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select></div>
+                                </div>
+                                <div style="display:flex;gap:8px;margin-top:6px;justify-content:flex-end">
+                                    <button type="submit" class="btn btn-primary" style="padding:10px 28px;font-size:13px">Buscar</button>
+                                    <button type="button" class="btn btn-outline" style="padding:10px 28px;font-size:13px" onclick="InvHistorial.limpiar()">Limpiar</button>
                                 </div>
                             </form>
                         </div>
@@ -39,8 +52,8 @@ const InvHistorial = {
                     </div>
 
                     <div class="m-card">
-                        <div class="m-card-header">
-                            <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">Historial <span id="hCount" style="color:var(--gray-500);font-weight:400;font-size:13px">(${this._currentData.length})</span></h3>
+                        <div class="m-card-header" style="padding:6px 12px">
+                            <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Historial <span id="hCount" style="color:var(--gray-500);font-weight:400;font-size:12px">(${this._currentData.length})</span></h3>
                         </div>
                         <div class="m-card-body" id="hContent"></div>
                     </div>
