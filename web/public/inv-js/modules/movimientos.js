@@ -29,9 +29,9 @@ const InvMovimientos = {
                     .tipo-btn{border:1px solid #e2e8f0;border-radius:6px;background:white;cursor:pointer;transition:all 0.15s}
                     .tipo-btn:hover{background:#f8fafc}
                     .tipo-btn.active{background:#dcfce7;color:#166534;border-color:#22c55e}
-                    .inv-filter-btn{padding:6px 14px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white;color:#64748b;cursor:pointer;transition:all 0.15s}
-                    .inv-filter-btn:hover{border-color:#93c5fd;color:#3b82f6;background:#eff6ff}
-                    .inv-filter-btn.active{background:linear-gradient(135deg,#1e40af,#2563eb);color:white;border-color:#1e40af;box-shadow:0 2px 8px rgba(30,64,175,0.3)}
+                    .inv-filter-btn{padding:6px 14px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white!important;color:#64748b!important;cursor:pointer;transition:all 0.15s}
+                    .inv-filter-btn:hover{border-color:#93c5fd;color:#3b82f6!important;background:#eff6ff!important}
+                    .inv-filter-btn.active{background:linear-gradient(135deg,#1e40af,#2563eb)!important;color:white!important;border-color:#1e40af!important;box-shadow:0 2px 8px rgba(30,64,175,0.3)}
                     @media(max-width:768px){
                         .inv-form-grid{grid-template-columns:1fr}
                         .inv-form-dims{grid-template-columns:1fr 1fr}
@@ -246,7 +246,7 @@ const InvMovimientos = {
     },
 
     async filtrar(tipo) {
-        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.inv-filter-btn').forEach(c => c.classList.remove('active'));
         if (tipo === '') document.getElementById('fAll').classList.add('active');
         else if (tipo === 'entrada') document.getElementById('fEnt').classList.add('active');
         else document.getElementById('fSal').classList.add('active');
