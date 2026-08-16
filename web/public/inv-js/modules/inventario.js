@@ -81,7 +81,7 @@ const InvInventario = {
                 + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + (i.codigo_mp || '-') + '</span>'
                 + '<span style="font-size:18px;font-weight:800;color:' + stockColor + '">' + (i.stock || 0) + '</span>'
                 + '</div>'
-                + '<div style="font-size:12px;color:#475569;margin-bottom:4px">' + (i.tipo_cristal || '-') + ' ' + (i.espesor || 0) + 'mm</div>'
+                + '<div style="font-size:14px;color:#475569;margin-bottom:4px;font-weight:500">' + (i.tipo_cristal || '-') + ' ' + (i.espesor || 0) + 'mm</div>'
                 + '<div style="display:flex;gap:16px;font-size:11px;color:#64748b">'
                 + '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
                 + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>'
