@@ -165,48 +165,125 @@ App.registerModule('prod_config', {
         this._estaciones = await estRes.json();
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
-            <div class="card">
-                <div class="card-header" style="justify-content:space-between">
-                    <h3 style="margin:0">Familias de Producto</h3>
+            <div class="m-page">
+                <div class="m-hero" style="padding:10px 14px">
+                    <div style="position:relative;z-index:1">
+                        <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Familias de Producto</h2>
+                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Configuracion de costos y estaciones base</p>
+                    </div>
+                </div>
+
+                <div class="m-actions">
                     <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showFamiliaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Familia</button>
                 </div>
-                <div class="card-body" style="padding:0">
-                    <table><thead><tr><th>Codigo</th><th>Nombre</th><th>Costo HH</th><th>Costo Energia</th><th>Estaciones Base</th><th>Acciones</th></tr></thead>
-                    <tbody>${this._familias.map(f => {
-                        const estNames = (f.estaciones_base || []).map(e => `<span class="status-badge status-programada" style="margin:1px;font-size:10px">${e.nombre_estacion}</span>`).join(' ');
-                        return `<tr>
-                            <td><strong>${escapeHtml(f.codigo_familia)}</strong></td>
-                            <td>${escapeHtml(f.nombre_familia)}</td>
-                            <td>$${Number(f.costo_hh).toLocaleString('es-CL')}</td>
-                            <td>$${Number(f.costo_energia).toLocaleString('es-CL')}</td>
-                            <td>${estNames || '<span class="text-muted">Sin asignar</span>'}</td>
-                            <td class="table-actions">
-                                <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showFamiliaForm(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteFamilia(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                            </td>
-                        </tr>`;
-                    }).join('')}</tbody></table>
+
+                <div class="m-card">
+                    <div class="m-card-header">
+                        <h3 style="margin:0;font-size:13px">Lista <span style="color:#64748b;font-weight:400">(${this._familias.length})</span></h3>
+                    </div>
+                    <div class="m-card-body" style="padding:0">
+                        <div class="m-table-wrap">
+                            <table><thead><tr>
+                                <th>Codigo</th><th>Nombre</th><th>Costo HH</th><th>Costo Energia</th><th>Estaciones Base</th><th>Acciones</th>
+                            </tr></thead>
+                            <tbody>${this._familias.map(f => {
+                                const estNames = (f.estaciones_base || []).map(e => `<span class="status-badge status-programada" style="margin:1px;font-size:10px">${e.nombre_estacion}</span>`).join(' ');
+                                return `<tr>
+                                    <td><strong>${escapeHtml(f.codigo_familia)}</strong></td>
+                                    <td>${escapeHtml(f.nombre_familia)}</td>
+                                    <td>$${Number(f.costo_hh).toLocaleString('es-CL')}</td>
+                                    <td>$${Number(f.costo_energia).toLocaleString('es-CL')}</td>
+                                    <td>${estNames || '<span class="text-muted">Sin asignar</span>'}</td>
+                                    <td class="table-actions">
+                                        <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showFamiliaForm(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                                        <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteFamilia(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                    </td>
+                                </tr>`;
+                            }).join('')}</tbody></table>
+                        </div>
+                        <div class="m-cards-mobile" id="famCardsMobile" style="display:none;padding:12px"></div>
+                    </div>
                 </div>
             </div>`;
+        
+        this._renderFamiliasCards();
+    },
+
+    _renderFamiliasCards() {
+        const cardsMobile = document.getElementById('famCardsMobile');
+        if (!cardsMobile) return;
+        cardsMobile.innerHTML = this._familias.length ? this._familias.map(f => {
+            const estNames = (f.estaciones_base || []).map(e => e.nombre_estacion).join(', ');
+            return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+                    <div>
+                        <div style="font-weight:700;font-size:13px">${escapeHtml(f.codigo_familia)}</div>
+                        <div style="font-size:11px;color:#64748b">${escapeHtml(f.nombre_familia)}</div>
+                    </div>
+                    <div style="display:flex;gap:4px">
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showFamiliaForm(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                        <button class="btn btn-sm btn-danger" onclick="App.modules.prod_config.deleteFamilia(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;margin-bottom:6px">
+                    <div style="background:#f0fdf4;padding:4px 6px;border-radius:4px">
+                        <div style="color:#64748b">Costo HH</div>
+                        <div style="font-weight:600;color:#166534">$${Number(f.costo_hh).toLocaleString('es-CL')}</div>
+                    </div>
+                    <div style="background:#eff6ff;padding:4px 6px;border-radius:4px">
+                        <div style="color:#64748b">Costo Energia</div>
+                        <div style="font-weight:600;color:#1e40af">$${Number(f.costo_energia).toLocaleString('es-CL')}</div>
+                    </div>
+                </div>
+                <div style="font-size:10px;color:#64748b">
+                    <span style="font-weight:600">Estaciones:</span> ${estNames || 'Sin asignar'}
+                </div>
+            </div>`;
+        }).join('') : '<div style="text-align:center;padding:24px;color:#64748b">No hay familias configuradas</div>';
     },
 
     showFamiliaForm(id) {
         const fam = id ? this._familias.find(f => f.id === id) : null;
         const estIds = fam ? (familia => (familia.estaciones_base || []).map(e => e.estacion_id))(fam) : [];
+        
+        const style = document.createElement('style');
+        style.textContent = `
+            .fam-form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 10px;align-items:end}
+            .fam-form-grid>div{min-width:0;margin:0}
+            .fam-form-grid input{width:100%;box-sizing:border-box}
+            .fam-form-grid label{font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b}
+            .fam-form-grid input[type="text"],.fam-form-grid input[type="number"]{padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px}
+            @media(max-width:768px){.fam-form-grid{grid-template-columns:1fr}}
+        `;
+        document.head.appendChild(style);
+        
         App.showModal(`
-            <div class="form-row">
-                <div class="form-group"><label>Codigo Familia *</label><input class="form-control" id="famCodigo" value="${fam ? fam.codigo_familia : ''}" placeholder="Ej: TEMPLADO" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                <div class="form-group"><label>Nombre *</label><input class="form-control" id="famNombre" value="${fam ? fam.nombre_familia : ''}" placeholder="Ej: Templado" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+            <div class="m-card" style="margin-bottom:10px">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos de Familia</div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div class="fam-form-grid">
+                        <div class="form-group"><label>Codigo Familia *</label><input class="form-control" id="famCodigo" value="${fam ? fam.codigo_familia : ''}" placeholder="Ej: TEMPLADO"></div>
+                        <div class="form-group"><label>Nombre *</label><input class="form-control" id="famNombre" value="${fam ? fam.nombre_familia : ''}" placeholder="Ej: Templado"></div>
+                    </div>
+                </div>
             </div>
-            <div class="form-row">
-                <div class="form-group"><label>Costo Hora Hombre ($/m2)</label><input type="number" class="form-control" id="famHH" value="${fam ? fam.costo_hh : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                <div class="form-group"><label>Costo Energia ($/m2)</label><input type="number" class="form-control" id="famEnergia" value="${fam ? fam.costo_energia : 0}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+            <div class="m-card" style="margin-bottom:10px">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="color:#166534">Costos</span></div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div class="fam-form-grid">
+                        <div class="form-group"><label>Costo Hora Hombre ($/m2)</label><input type="number" class="form-control" id="famHH" value="${fam ? fam.costo_hh : 0}" min="0"></div>
+                        <div class="form-group"><label>Costo Energia ($/m2)</label><input type="number" class="form-control" id="famEnergia" value="${fam ? fam.costo_energia : 0}" min="0"></div>
+                    </div>
+                </div>
             </div>
-            <div class="form-group"><label>Estaciones Base del Proceso</label>
-                <div style="border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:4px 12px">
-                    ${this._estaciones.filter(e => e.activa).map(e => `<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
-                        <input type="checkbox" class="fam-est-check" value="${e.id}" ${estIds.includes(e.id) ? 'checked' : ''}> ${e.orden_secuencia_defecto}. ${e.nombre_estacion}
-                    </label>`).join('')}
+            <div class="m-card">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#eff6ff;border-bottom:1px solid #bfdbfe"><span style="color:#1e40af">Estaciones Base del Proceso</span></div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div style="display:flex;flex-wrap:wrap;gap:4px 12px">
+                        ${this._estaciones.filter(e => e.activa).map(e => `<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+                            <input type="checkbox" class="fam-est-check" value="${e.id}" ${estIds.includes(e.id) ? 'checked' : ''}> ${e.orden_secuencia_defecto}. ${e.nombre_estacion}
+                        </label>`).join('')}
+                    </div>
                 </div>
             </div>
         `, { title: fam ? 'Editar Familia' : 'Nueva Familia', lg: true });
