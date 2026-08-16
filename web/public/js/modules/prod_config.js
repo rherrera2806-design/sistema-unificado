@@ -9,6 +9,11 @@ App.registerModule('prod_config', {
     _calMonth: new Date().getMonth(),
     _calYear: new Date().getFullYear(),
 
+    _headers() {
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        return { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
+    },
+
     async render() {
         const el = document.getElementById('page-prod_config');
         const tabs = [
@@ -949,33 +954,84 @@ App.registerModule('prod_config', {
     // REGLAS PROCESOS EXTRAS
     // ═══════════════════════════════════════════
     async loadReglas() {
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const hdrs = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
         const [regRes, estRes] = await Promise.all([
-            fetch('/api/produccion/reglas-extras'),
-            fetch('/api/produccion/estaciones')
+            fetch('/api/produccion/reglas-extras', { headers: hdrs }),
+            fetch('/api/produccion/estaciones', { headers: hdrs })
         ]);
         this._reglas = await regRes.json();
         this._reglas.sort((a, b) => (a.orden_secuencia_defecto || 999) - (b.orden_secuencia_defecto || 999));
         this._estaciones = await estRes.json();
         const container = document.getElementById('prodConfigContent');
+        const total = this._reglas.length;
+        const activas = this._reglas.filter(r => r.activa).length;
         container.innerHTML = `
-            <div class="card">
-                <div class="card-header" style="justify-content:space-between">
-                    <h3 style="margin:0">Reglas de Procesos Extras (Banderas Excel)</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showReglaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Regla</button>
+            <div class="m-page">
+                <div class="m-hero">
+                    <div>
+                        <h2 class="m-hero-title">Reglas Extras</h2>
+                        <p class="m-hero-sub">Mapea las columnas del Excel de SAP con la estacion que se agrega cuando el valor es 1</p>
+                    </div>
                 </div>
-                <div class="card-body" style="padding:0">
-                    <p style="padding:8px 16px;font-size:12px;color:var(--text-light);margin:0">Mapea las columnas del Excel de SAP con la estacion que se agrega cuando el valor es 1</p>
-                    <table><thead><tr><th>Flag Excel</th><th>Estacion Asignada</th><th>Orden</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody>${this._reglas.map(r => `<tr>
-                        <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:4px">${escapeHtml(r.nombre_flag)}</code></td>
-                        <td>${escapeHtml(r.nombre_estacion || '-')}</td>
-                        <td>${r.orden_secuencia_defecto || '-'}</td>
-                        <td>${r.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
-                        <td class="table-actions">
-                            <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showReglaForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                            <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteRegla(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                        </td>
-                    </tr>`).join('')}</tbody></table>
+
+                <div class="m-stats">
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Total Reglas</div>
+                        <div style="font-size:20px;font-weight:700;color:#0f172a">${total}</div>
+                    </div>
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Activas</div>
+                        <div style="font-size:20px;font-weight:700;color:#16a34a">${activas}</div>
+                    </div>
+                </div>
+
+                <div class="m-actions">
+                    <button class="btn btn-primary" onclick="App.modules.prod_config.showReglaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Regla</button>
+                </div>
+
+                <div class="m-card">
+                    <div class="m-table-wrap">
+                        <table class="m-table">
+                            <thead>
+                                <tr>
+                                    <th>Flag Excel</th>
+                                    <th>Estacion Asignada</th>
+                                    <th>Orden</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>${this._reglas.map(r => `<tr>
+                                <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:4px">${escapeHtml(r.nombre_flag)}</code></td>
+                                <td>${escapeHtml(r.nombre_estacion || '-')}</td>
+                                <td>${r.orden_secuencia_defecto || '-'}</td>
+                                <td>${r.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showReglaForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteRegla(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                </td>
+                            </tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                    <div class="m-cards-mobile">${this._reglas.map(r => `
+                        <div class="m-card-header m-table-row">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%">
+                                <div style="flex:1">
+                                    <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px"><code style="background:#f1f5f9;padding:2px 8px;border-radius:4px">${escapeHtml(r.nombre_flag)}</code></div>
+                                    <div style="font-size:12px;color:#64748b;margin-bottom:4px">${escapeHtml(r.nombre_estacion || '-')}</div>
+                                    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                                        <span style="font-size:11px;color:#64748b">Orden: ${r.orden_secuencia_defecto || '-'}</span>
+                                        ${r.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}
+                                    </div>
+                                </div>
+                                <div style="display:flex;gap:4px;flex-shrink:0">
+                                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showReglaForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteRegla(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}</div>
                 </div>
             </div>`;
     },
@@ -983,9 +1039,9 @@ App.registerModule('prod_config', {
     showReglaForm(id) {
         const r = id ? this._reglas.find(x => x.id === id) : null;
         App.showModal(`
-            <div class="form-group"><label>Nombre Flag Excel *</label><input class="form-control" id="regFlag" value="${r ? r.nombre_flag : ''}" placeholder="Ej: radio, pulido, mecanizado..." onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"><small style="color:var(--text-light)">Nombre exacto de la columna en el Excel (sin espacios, minusculas)</small></div>
+            <div class="form-group"><label>Nombre Flag Excel *</label><input class="form-control" id="regFlag" value="${r ? r.nombre_flag : ''}" placeholder="Ej: radio, pulido, mecanizado..."><small style="color:var(--text-light)">Nombre exacto de la columna en el Excel (sin espacios, minusculas)</small></div>
             <div class="form-group"><label>Estacion a Asignar *</label>
-                <select class="form-control" id="regEstacion" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                <select class="form-control" id="regEstacion">
                     <option value="">Seleccionar...</option>
                     ${this._estaciones.filter(e => e.activa).map(e => `<option value="${e.id}" ${r && r.estacion_id === e.id ? 'selected' : ''}>${e.orden_secuencia_defecto}. ${e.nombre_estacion}</option>`).join('')}
                 </select>
