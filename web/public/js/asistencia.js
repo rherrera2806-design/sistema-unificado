@@ -1663,33 +1663,42 @@ const Asistencia = {
 
     filtrarReporte() {
         const input = document.getElementById('ast-rep-buscar');
-        if (!input) return;
+        if (!input) { console.log('[FILTRAR] input no encontrado'); return; }
         const query = input.value.toLowerCase().trim();
         const mostrarTodos = query.length === 0;
+        
+        console.log('[FILTRAR] query:', query, 'mostrarTodos:', mostrarTodos);
         
         // Filtrar tabla desktop
         const tbody = document.getElementById('ast-tabla-reporte');
         if (tbody) {
             const rows = tbody.querySelectorAll('tr');
+            console.log('[FILTRAR] tabla rows:', rows.length);
             rows.forEach(row => {
                 const nombreCell = row.querySelector('td:nth-child(2)');
                 if (!nombreCell) return;
                 const nombre = nombreCell.textContent.toLowerCase();
                 row.style.display = mostrarTodos || nombre.includes(query) ? '' : 'none';
             });
+        } else {
+            console.log('[FILTRAR] tbody no encontrado');
         }
         
         // Filtrar cards móvil
         const cardsEl = document.getElementById('ast-cards-reporte');
         if (cardsEl) {
             const cards = cardsEl.querySelectorAll('div[style*="border-left"]');
+            console.log('[FILTRAR] cards encontradas:', cards.length);
             cards.forEach(card => {
-                // Buscar el nombre en el primer span con font-weight:700
                 const nombreEl = card.querySelector('span[style*="font-weight:700"]');
-                if (!nombreEl) return;
+                if (!nombreEl) { console.log('[FILTRAR] nombreEl no encontrado en card'); return; }
                 const nombre = nombreEl.textContent.toLowerCase();
-                card.style.display = mostrarTodos || nombre.includes(query) ? '' : 'none';
+                const visible = mostrarTodos || nombre.includes(query);
+                card.style.display = visible ? '' : 'none';
+                console.log('[FILTRAR] card:', nombre, 'visible:', visible);
             });
+        } else {
+            console.log('[FILTRAR] cardsEl no encontrado');
         }
     },
 
