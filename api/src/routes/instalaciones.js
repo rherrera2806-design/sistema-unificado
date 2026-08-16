@@ -72,7 +72,7 @@ router.get('/api/instalaciones/:id/fotos', canView, async (req, res, next) => {
     catch (e) { next(e); }
 });
 
-router.get('/api/instalaciones/:instId/foto/:fotoId', canView, async (req, res, next) => {
+router.get('/api/instalaciones/:instId/foto/:fotoId', async (req, res, next) => {
     try {
         const foto = await instalaciones.getFoto(Number(req.params.fotoId));
         if (!foto) return res.status(404).json({ error: 'Foto no encontrada' });
