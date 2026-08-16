@@ -91,7 +91,6 @@ const SYSTEM_MODULES = {
     INV_INVENTARIO: 'inv_inventario',
     INV_MOVIMIENTOS: 'inv_movimientos',
     INV_HISTORIAL: 'inv_historial',
-    INV_CATALOGOS: 'inv_catalogos',
     
     // Módulo de Mantención
     DASHBOARD: 'dashboard',

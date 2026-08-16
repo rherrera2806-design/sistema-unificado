@@ -675,7 +675,7 @@ const SIDEBAR_SECTIONS = {
     asistencia: ['asistencia'],
     atencion: ['turnos_recepcion', 'turnos_bodega', 'turnos_almacen', 'turnos_facturar', 'turnos_qr', 'turnos_reporte'],
     instalaciones: ['instalaciones', 'inst_historial'],
-    inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_catalogos'],
+    inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial'],
     mantencion: ['dashboard', 'machineTypes', 'machines', 'components', 'preventive', 'corrective', 'calendar', 'notas', 'reports', 'history', 'bitacora'],
     pedidos: ['pedidos'],
     produccion: ['prod_ordenes', 'prod_planificacion', 'prod_reportes', 'prod_notas', 'prod_config', 'taller'],
@@ -737,8 +737,7 @@ function renderSidebar() {
         { key: 'inventario', label: 'INVENTARIO', items: [
             { id: 'inv_inventario', label: 'Inventario', icon: SVG.clipboard },
             { id: 'inv_movimientos', label: 'Movimientos', icon: SVG.list },
-            { id: 'inv_historial', label: 'Historial Inventario', icon: SVG.clock },
-            { id: 'inv_catalogos', label: 'Catalogos', icon: SVG.settings }
+            { id: 'inv_historial', label: 'Historial Inventario', icon: SVG.clock }
         ]},
         { key: 'mantencion', label: 'MANTENCION', items: [
             { id: 'dashboard', label: 'Dashboard', icon: SVG.dashboard },
@@ -893,8 +892,7 @@ const SVG = {
 const INV_PAGES = {
     inv_inventario: { label: 'Inventario', render: () => InvInventario.render() },
     inv_movimientos: { label: 'Movimientos', render: () => InvMovimientos.render() },
-    inv_historial: { label: 'Historial Inventario', render: () => InvHistorial.render() },
-    inv_catalogos: { label: 'Catalogos', render: () => InvCatalogos.render() }
+    inv_historial: { label: 'Historial Inventario', render: () => InvHistorial.render() }
 };
 
 function navigateToInv(name) {
