@@ -84,6 +84,9 @@ page.innerHTML = `
 - **Card header:** `padding:6px 12px; font-size:12px`
 - **Card body:** `padding:8px 12px`
 - **Secciones margin:** `margin-top:4px`
+- **Botón submit:** `padding:10px 28px; font-size:13px`
+- **Botones acción (sm):** `padding:5px 12px; font-size:11px`
+- **Filtros botones:** `padding:5px 12px; font-size:11px; border-radius:8px`
 
 ---
 
