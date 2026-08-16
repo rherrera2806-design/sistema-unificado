@@ -1,10 +1,14 @@
 const InvHistorial = {
+    _currentData: [],
+
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         try {
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const movimientos = await api.inv().getMovimientos();
+            this._currentData = Array.isArray(movimientos) ? movimientos : [];
+            
             page.innerHTML = `
                 <div class="m-page">
                     <div class="m-hero">
@@ -36,55 +40,72 @@ const InvHistorial = {
 
                     <div class="m-card">
                         <div class="m-card-header">
-                            <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">Historial <span id="hCount" style="color:var(--gray-500);font-weight:400;font-size:13px">(${movimientos.length})</span></h3>
+                            <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">Historial <span id="hCount" style="color:var(--gray-500);font-weight:400;font-size:13px">(${this._currentData.length})</span></h3>
                         </div>
-                        <div class="m-card-body">
-                            ${movimientos.length === 0 
-                                ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>'
-                                : `<div class="m-table-wrap"><table id="hTable"><thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Obs</th></tr></thead><tbody id="hBody">${this.renderRows(movimientos)}</tbody></table></div><div id="hCards" class="m-cards-mobile" style="display:none"></div>`
-                            }
+                        <div class="m-card-body" id="hContent">
                         </div>
                     </div>
                 </div>`;
+
+            this.renderContent();
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
     },
 
-    renderRows(movs) {
-        const html = movs.map(m => { 
-            const f = new Date(m.fecha_hora); 
-            return `<tr>
+    renderContent() {
+        const container = document.getElementById('hContent');
+        if (!container) return;
+        
+        if (this._currentData.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>';
+            return;
+        }
+
+        // Tabla para desktop
+        let tableHtml = '<div class="m-table-wrap"><table id="hTable"><thead><tr>'
+            + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Obs</th>'
+            + '</tr></thead><tbody id="hBody">';
+        
+        this._currentData.forEach(m => {
+            const f = new Date(m.fecha_hora);
+            tableHtml += `<tr>
                 <td>${f.toLocaleDateString('es-CL')}</td>
                 <td>${f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</td>
                 <td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span></td>
-                <td>${m.tipo_cristal}</td>
-                <td>${m.espesor}mm</td>
-                <td>${m.ancho} x ${m.alto} mm</td>
-                <td>${m.cantidad_planchas}</td>
-                <td>${Number(m.metros_cuadrados).toFixed(2)}</td>
+                <td>${m.tipo_cristal || '-'}</td>
+                <td>${m.espesor || 0}mm</td>
+                <td>${m.ancho || 0} x ${m.alto || 0} mm</td>
+                <td>${m.cantidad_planchas || 0}</td>
+                <td>${Number(m.metros_cuadrados || 0).toFixed(2)}</td>
                 <td>${m.proveedor || '-'}</td>
                 <td>${m.observaciones || '-'}</td>
-            </tr>`; 
-        }).join('');
-        setTimeout(() => this.renderCards(movs), 0);
-        return html;
-    },
+            </tr>`;
+        });
+        
+        tableHtml += '</tbody></table></div>';
 
-    renderCards(movs) {
-        const cardsEl = document.getElementById('hCards');
-        if (!cardsEl || typeof SigmaCards === 'undefined') return;
-        cardsEl.innerHTML = SigmaCards.generate({
-            title: m => '<strong>' + m.tipo_cristal + ' ' + m.espesor + 'mm</strong>',
-            subtitle: m => m.ancho + ' x ' + m.alto + ' mm',
-            badge: m => '<span class="sc-badge" style="background:' + (m.tipo_movimiento === 'entrada' ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">' + m.tipo_movimiento + '</span>',
-            fields: [
-                { label: 'Fecha', value: m => new Date(m.fecha_hora).toLocaleDateString('es-CL') },
-                { label: 'Hora', value: m => new Date(m.fecha_hora).toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'}) },
-                { label: 'Cantidad', value: m => m.cantidad_planchas + ' planchas' },
-                { label: 'm2', value: m => Number(m.metros_cuadrados).toFixed(2) + ' m2' },
-                { label: 'Proveedor', value: m => m.proveedor || '-' },
-                { label: 'Obs', value: m => m.observaciones || '-' }
-            ]
-        }, movs);
+        // Cards para móvil
+        let cardsHtml = '<div class="m-cards-mobile" style="display:none">';
+        this._currentData.forEach(m => {
+            const f = new Date(m.fecha_hora);
+            const color = m.tipo_movimiento === 'entrada' ? '#22c55e' : '#ef4444';
+            cardsHtml += `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ${color}">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#1e293b">${f.toLocaleDateString('es-CL')} ${f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</span>
+                    <span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>
+                </div>
+                <div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">${m.tipo_cristal || '-'} ${m.espesor || 0}mm</div>
+                <div style="font-size:12px;color:#475569">${m.ancho || 0} x ${m.alto || 0} mm</div>
+                <div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:#64748b">
+                    <span>Cantidad: <strong>${m.cantidad_planchas || 0}</strong></span>
+                    <span>m2: <strong>${Number(m.metros_cuadrados || 0).toFixed(2)}</strong></span>
+                </div>
+                ${m.proveedor ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Proveedor: ' + m.proveedor + '</div>' : ''}
+                ${m.observaciones ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Obs: ' + m.observaciones + '</div>' : ''}
+            </div>`;
+        });
+        cardsHtml += '</div>';
+
+        container.innerHTML = tableHtml + cardsHtml;
     },
 
     async buscar(e) {
@@ -98,10 +119,10 @@ const InvHistorial = {
         if (t) f.tipo = t;
         try {
             const movs = await api.inv().getMovimientos(f);
-            const tbody = document.getElementById('hBody');
+            this._currentData = Array.isArray(movs) ? movs : [];
             const count = document.getElementById('hCount');
-            if (tbody) tbody.innerHTML = this.renderRows(movs);
-            if (count) count.textContent = `(${movs.length})`;
+            if (count) count.textContent = `(${this._currentData.length})`;
+            this.renderContent();
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     },
 

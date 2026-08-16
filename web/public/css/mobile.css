@@ -147,6 +147,19 @@
     grid-template-columns: 1fr 1fr;
     gap: 12px;
 }
+.m-form-grid .form-group {
+    min-width: 0;
+    max-width: 100%;
+}
+.m-form-grid .form-control {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.m-form-grid .form-group label {
+    display: block;
+    margin-bottom: 4px;
+}
 
 /* ── Upload Section ── */
 .m-upload {
