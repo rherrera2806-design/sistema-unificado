@@ -102,10 +102,8 @@ const InvInventario = {
         } else {
             this._allItems = this._originalItems.filter(function(i) {
                 var espesorStr = String(i.espesor != null ? i.espesor : '').toLowerCase();
-                var codigo = String(i.codigo_mp || '').toLowerCase();
-                var sap = String(i.codigo_sap || '').toLowerCase();
                 var tipo = String(i.tipo_cristal || '').toLowerCase();
-                return codigo.includes(query) || sap.includes(query) || tipo.includes(query) || espesorStr.includes(query);
+                return tipo.includes(query) || espesorStr.includes(query);
             });
         }
         // Ordenar por tipo_cristal y luego por espesor
