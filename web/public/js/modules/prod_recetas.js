@@ -15,67 +15,64 @@ App.registerModule('prod_recetas', {
         const puedeEditar = permisos.includes('usuarios') || permisos.includes('produccion');
 
         el.innerHTML = `
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
-<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Recetas BOM · Modelo Híbrido</h2>
-<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Materia prima + ruta de procesos opcional para codigos estandarizados (Carroceros)</p></div>
-${puedeEditar ? `
-<div style="display:flex;gap:8px">
-                    <button class="btn btn-info" onclick="App.modules.prod_recetas.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar Excel</button>
-                    <button class="btn btn-primary" onclick="App.modules.prod_recetas.showCreateModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Receta</button>
-                    ${permisos.includes('usuarios') ? '<button class="btn btn-danger btn-sm" title="Eliminar todos los registros" onclick="App.modules.prod_recetas.deleteAll()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar Registros</button>' : ''}
-                </div>` : ''}
-</div></div>
-
-<style>
-@keyframes prec_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.prec-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
-.prec-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
-.prec-row{transition:all 0.2s}
-.prec-row:hover{transform:translateX(2px);background:#f8fafc!important}
-</style>
-
-            <div class="stats-grid" style="margin-bottom:14px">
-                <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
-                    <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Total Recetas</p><p class="stat-sub">Materia prima mapeada</p></div>
-                    <div class="stat-value" id="recTotalStat">0</div>
+            <div class="m-page">
+                <div class="m-hero">
+                    <div>
+                        <h2 class="m-hero-title">Recetas BOM · Modelo Hibrido</h2>
+                        <p class="m-hero-sub">Materia prima + ruta de procesos opcional para codigos estandarizados (Carroceros)</p>
+                    </div>
                 </div>
-                <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
-                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Con Ruta Custom</p><p class="stat-sub">Procesos especificos</p></div>
-                    <div class="stat-value" id="recCustomStat">0</div>
-                </div>
-                <div class="stat-card dash-card" style="border-left:4px solid #f59e0b">
-                    <div class="stat-icon orange"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Codigos Unicos</p><p class="stat-sub">Distintos en sistema</p></div>
-                    <div class="stat-value" id="recCodigosStat">0</div>
-                </div>
-            </div>
 
-            <div class="card prec-card">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                    <h3 style="margin:0">Listado de Recetas</h3>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <select class="form-control" id="recFilterRuta" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_recetas.filter()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                <div class="m-stats">
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Total Recetas</div>
+                        <div style="font-size:20px;font-weight:700;color:#0f172a" id="recTotalStat">0</div>
+                    </div>
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Con Ruta Custom</div>
+                        <div style="font-size:20px;font-weight:700;color:#7c3aed" id="recCustomStat">0</div>
+                    </div>
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Codigos Unicos</div>
+                        <div style="font-size:20px;font-weight:700;color:#f59e0b" id="recCodigosStat">0</div>
+                    </div>
+                </div>
+
+                <div class="m-actions">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                        <select class="form-control" id="recFilterRuta" style="width:auto;min-width:120px;padding:10px 12px;font-size:13px" onchange="App.modules.prod_recetas.filter()">
                             <option value="">Todas las rutas</option>
                             <option value="custom">Con ruta custom</option>
                         </select>
-                        <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar codigo o material..." oninput="App.modules.prod_recetas.filter()" style="width:220px;font-size:12px;padding:4px 8px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                        <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar codigo o material..." oninput="App.modules.prod_recetas.filter()" style="flex:1;min-width:150px;padding:10px 12px;font-size:13px">
+                        ${puedeEditar ? `
+                            <button class="btn btn-info" onclick="App.modules.prod_recetas.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar</button>
+                            <button class="btn btn-primary" onclick="App.modules.prod_recetas.showCreateModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Receta</button>
+                            ${permisos.includes('usuarios') ? '<button class="btn btn-danger btn-sm" onclick="App.modules.prod_recetas.deleteAll()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar</button>' : ''}
+                        ` : ''}
                     </div>
                 </div>
-                <div class="card-body" style="padding:0">
-                    <table style="font-size:13px"><thead><tr>
-                        <th style="padding:6px 12px">Codigo SAP</th>
-                        <th style="padding:6px 12px">Materia Prima</th>
-                        <th style="padding:6px 12px">Ruta de Procesos</th>
-                        <th style="padding:6px 12px">Cant.</th>
-                        <th style="padding:6px 12px">Ancho</th>
-                        <th style="padding:6px 12px">Alto</th>
-                        <th style="padding:6px 12px">Acciones</th>
-                    </tr></thead><tbody id="recTable">
-                        <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
-                    </tbody></table>
+
+                <div class="m-card">
+                    <div class="m-table-wrap">
+                        <table class="m-table">
+                            <thead>
+                                <tr>
+                                    <th>Codigo SAP</th>
+                                    <th>Materia Prima</th>
+                                    <th>Ruta de Procesos</th>
+                                    <th>Cant.</th>
+                                    <th>Ancho</th>
+                                    <th>Alto</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recTable">
+                                <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="m-cards-mobile" id="recCardsMobile"></div>
                 </div>
             </div>
 
@@ -101,7 +98,7 @@ ${puedeEditar ? `
                         </div>
                         <div class="form-group">
                             <label>Archivo Excel (.xlsx)</label>
-                            <input type="file" class="form-control" id="recImportFile" accept=".xlsx,.xls" onchange="window.recetas_onFileSelect(event)" style="font-size:12px">
+                            <input type="file" class="form-control" id="recImportFile" accept=".xlsx,.xls" onchange="window.recetas_onFileSelect(event)">
                         </div>
                         <div id="recImportPreview" style="display:none">
                             <div style="display:flex;align-items:center;gap:8px;margin:12px 0 8px">
@@ -135,24 +132,24 @@ ${puedeEditar ? `
                     <div class="modal-body">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                             <div class="form-group"><label>Codigo SAP Padre *</label>
-                                <input class="form-control" id="recCodigoPadre" list="recCodigosList" placeholder="Ej: 500" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                                <input class="form-control" id="recCodigoPadre" list="recCodigosList" placeholder="Ej: 500">
                                 <datalist id="recCodigosList"></datalist>
                             </div>
                             <div class="form-group"><label>Materia Prima *</label>
-                                <select class="form-control" id="recMateriaPrima" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></select>
+                                <select class="form-control" id="recMateriaPrima"></select>
                             </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                             <div class="form-group"><label>Cantidad</label>
-                                <input class="form-control" id="recCantidad" type="number" min="0.01" step="0.01" value="1" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                                <input class="form-control" id="recCantidad" type="number" min="0.01" step="0.01" value="1">
                             </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                             <div class="form-group"><label>Ancho <span style="color:#94a3b8;font-weight:400">(mm, opcional)</span></label>
-                                <input class="form-control" id="recAncho" type="number" min="0" step="0.01" placeholder="Ej: 1200" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                                <input class="form-control" id="recAncho" type="number" min="0" step="0.01" placeholder="Ej: 1200">
                             </div>
                             <div class="form-group"><label>Alto <span style="color:#94a3b8;font-weight:400">(mm, opcional)</span></label>
-                                <input class="form-control" id="recAlto" type="number" min="0" step="0.01" placeholder="Ej: 800" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                                <input class="form-control" id="recAlto" type="number" min="0" step="0.01" placeholder="Ej: 800">
                             </div>
                         </div>
 
@@ -161,14 +158,14 @@ ${puedeEditar ? `
                                 <div style="display:flex;align-items:center;gap:8px">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                                     <strong style="color:#5b21b6;font-size:13px">Ruta de Procesos Especifica</strong>
-                                    <span style="font-size:11px;color:#7c3aed">(opcional - para Carroceros)</span>
+                                    <span style="font-size:11px;color:#7c3aed">(opcional)</span>
                                 </div>
                                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#5b21b6;font-weight:600">
                                     <input type="checkbox" id="recUsarRutaCustom" onchange="App.modules.prod_recetas.toggleRutaCustom()" style="width:16px;height:16px;cursor:pointer"> Usar ruta especifica
                                 </label>
                             </div>
                             <div id="recRutaContainer" style="display:none">
-                                <p style="margin:0 0 8px;font-size:11px;color:#6b21a8">Define las estaciones en orden de secuencia. Si está activo, sobreescribe la familia.</p>
+                                <p style="margin:0 0 8px;font-size:11px;color:#6b21a8">Define las estaciones en orden de secuencia.</p>
                                 <div id="recProcesosList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div>
                                 <button onclick="App.modules.prod_recetas.addProcesoRow()" type="button" class="btn btn-outline btn-sm" style="border-color:#7c3aed;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar Estacion</button>
                             </div>
@@ -250,7 +247,7 @@ ${puedeEditar ? `
 
     renderTable(recetas) {
         const tbody = document.getElementById('recTable');
-        if (!recetas.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">No hay recetas BOM registradas. Crea una con "Nueva Receta" o importa desde el modulo de Códigos Carroceros.</td></tr>'; return; }
+        const cardsMobile = document.getElementById('recCardsMobile');
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
 
@@ -266,7 +263,30 @@ ${puedeEditar ? `
             grupos[padre].push(r);
         });
 
+        if (!recetas.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">No hay recetas BOM registradas</td></tr>';
+            if (cardsMobile) cardsMobile.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b">No hay recetas BOM registradas</div>';
+            return;
+        }
+
+        const getRutaHtml = (r) => {
+            const procs = Array.isArray(r.procesos_especificos_json) ? r.procesos_especificos_json : [];
+            if (procs.length > 0) {
+                const chips = procs.map((id, idx) => {
+                    const e = estMap[id];
+                    const nombre = e ? e.nombre_estacion : ('#' + id);
+                    return '<span style="display:inline-flex;align-items:center;gap:3px;background:#7c3aed15;color:#7c3aed;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-right:3px"><span style="font-size:8px;opacity:0.7">' + (idx + 1) + '</span>' + escapeHtml(nombre) + '</span>';
+                }).join('');
+                return '<div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center">' + chips + '</div>';
+            } else if (r.nombre_familia) {
+                return '<span style="display:inline-flex;align-items:center;gap:4px;color:#16a34a;font-size:11px;font-weight:500"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block"></span>Familia: ' + escapeHtml(r.nombre_familia) + '</span>';
+            }
+            return '<span style="color:#cbd5e1">-</span>';
+        };
+
         let html = '';
+        let cardsHtml = '';
+
         for (const [padre, items] of Object.entries(grupos)) {
             const customRoutes = items.filter(r => Array.isArray(r.procesos_especificos_json) && r.procesos_especificos_json.length > 0);
             const familiaNombre = items.find(r => r.nombre_familia)?.nombre_familia;
@@ -275,23 +295,17 @@ ${puedeEditar ? `
             if (desc) subtitleParts.push(escapeHtml(desc));
             if (familiaNombre) subtitleParts.push('Familia: ' + escapeHtml(familiaNombre));
             if (customRoutes.length > 0) subtitleParts.push('<span style="color:#7c3aed;font-weight:700">' + customRoutes.length + ' con ruta custom</span>');
-            const subtitle = subtitleParts.length ? '<span style="font-size:12px;color:var(--text);font-weight:400"> - ' + subtitleParts.join(' · ') + '</span>' : '';
-            html += `<tr class="prec-row" style="background:#f8fafc;line-height:1.3"><td colspan="7" style="padding:6px 12px"><strong style="color:var(--primary)">${escapeHtml(padre)}</strong> ${subtitle} <span style="font-size:11px;color:var(--text-light)">(${items.length} ${items.length === 1 ? 'receta' : 'recetas'})</span></td></tr>`;
+            const subtitle = subtitleParts.length ? ' - ' + subtitleParts.join(' · ') : '';
+
+            html += `<tr class="prec-row" style="background:#f8fafc;line-height:1.3"><td colspan="7" style="padding:6px 12px"><strong style="color:var(--primary)">${escapeHtml(padre)}</strong><span style="font-size:12px;color:var(--text);font-weight:400">${subtitle}</span> <span style="font-size:11px;color:var(--text-light)">(${items.length} ${items.length === 1 ? 'receta' : 'recetas'})</span></td></tr>`;
+
+            cardsHtml += `<div style="background:#f8fafc;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--primary)">
+                <div style="font-weight:700;font-size:14px;color:var(--primary);margin-bottom:2px">${escapeHtml(padre)}</div>
+                <div style="font-size:11px;color:#64748b;margin-bottom:6px">${subtitle || items.length + ' recetas'}</div>
+            </div>`;
+
             items.forEach(r => {
-                const procs = Array.isArray(r.procesos_especificos_json) ? r.procesos_especificos_json : [];
-                const chips = procs.map((id, idx) => {
-                    const e = estMap[id];
-                    const nombre = e ? e.nombre_estacion : ('#' + id);
-                    return '<span style="display:inline-flex;align-items:center;gap:3px;background:#7c3aed15;color:#7c3aed;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-right:3px"><span style="font-size:8px;opacity:0.7">' + (idx + 1) + '</span>' + escapeHtml(nombre) + '</span>';
-                }).join('');
-                let rutaHtml;
-                if (chips) {
-                    rutaHtml = '<div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center">' + chips + '</div>';
-                } else if (r.nombre_familia) {
-                    rutaHtml = '<span style="display:inline-flex;align-items:center;gap:4px;color:#16a34a;font-size:11px;font-weight:500"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block"></span>Familia: ' + escapeHtml(r.nombre_familia) + '</span>';
-                } else {
-                    rutaHtml = '<span style="color:#cbd5e1">-</span>';
-                }
+                const rutaHtml = getRutaHtml(r);
                 html += `<tr class="prec-row" style="line-height:1.3">
                     <td style="padding:6px 12px"><strong style="font-family:monospace;font-size:12px">${escapeHtml(padre)}</strong></td>
                     <td style="padding:6px 12px"><span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${escapeHtml(r.codigo_mp || '-')}</span> ${r.mp_nombre ? '<span style="color:#64748b;font-size:11px">· ' + escapeHtml(r.mp_nombre) + '</span>' : ''}</td>
@@ -301,9 +315,31 @@ ${puedeEditar ? `
                     <td style="padding:6px 12px;text-align:right">${r.alto ? '<span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + Math.round(r.alto) + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
                     <td style="padding:6px 12px;white-space:nowrap">${puedeEditar ? `<button onclick="App.modules.prod_recetas.edit(${r.id})" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button onclick="App.modules.prod_recetas.delete(${r.id})" class="btn btn-sm btn-danger" title="Eliminar" style="margin-left:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
                 </tr>`;
+
+                cardsHtml += `<div class="m-card-header m-table-row">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%">
+                        <div style="flex:1">
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">
+                                <span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${escapeHtml(r.codigo_mp || '-')}</span>
+                                <span style="font-size:11px;color:#64748b">${r.mp_nombre ? escapeHtml(r.mp_nombre) : ''}</span>
+                            </div>
+                            <div style="margin-bottom:4px">${rutaHtml}</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:#64748b">
+                                <span>Cant: <strong>${Math.round(r.cantidad || 1)}</strong></span>
+                                ${r.ancho ? '<span>Ancho: <strong>' + Math.round(r.ancho) + ' mm</strong></span>' : ''}
+                                ${r.alto ? '<span>Alto: <strong>' + Math.round(r.alto) + ' mm</strong></span>' : ''}
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:4px;flex-shrink:0">
+                            ${puedeEditar ? `<button onclick="App.modules.prod_recetas.edit(${r.id})" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button onclick="App.modules.prod_recetas.delete(${r.id})" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
+                        </div>
+                    </div>
+                </div>`;
             });
         }
+
         tbody.innerHTML = html;
+        if (cardsMobile) cardsMobile.innerHTML = cardsHtml;
     },
 
     showCreateModal() {
