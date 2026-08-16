@@ -537,6 +537,7 @@ router.get('/api/asistencia/reporte-mensual', canView, async (req, res) => {
                 t.id,
                 t.nombre,
                 t.rut,
+                t.fecha_ingreso,
                 (SELECT COUNT(*) FROM asistencia a 
                  WHERE a.trabajador_id = t.id 
                  AND a.fecha >= $1::date AND a.fecha < $2::date) as faltas,

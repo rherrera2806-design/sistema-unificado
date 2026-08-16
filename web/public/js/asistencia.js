@@ -1489,6 +1489,7 @@ const Asistencia = {
                         <thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                             <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">#</th>
                             <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                            <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días Hábiles</th>
                             <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Asistidos</th>
                             <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Faltas</th>
                             <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Permisos</th>
@@ -1525,26 +1526,49 @@ const Asistencia = {
     renderReporte(reporte) {
         const tbody = document.getElementById('ast-tabla-reporte');
         if (!tbody) return;
-        if (reporte.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:#94a3b8">Sin datos</td></tr>'; const cardsEl = document.getElementById('ast-cards-reporte'); if (cardsEl) cardsEl.innerHTML = ''; return; }
+        if (reporte.length === 0) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:#94a3b8">Sin datos</td></tr>'; const cardsEl = document.getElementById('ast-cards-reporte'); if (cardsEl) cardsEl.innerHTML = ''; return; }
         const mes = parseInt(document.getElementById('ast-hero-mes')?.value) || (new Date().getMonth() + 1);
         const anio = new Date().getFullYear();
         const hoy = new Date();
-        let diasHabiles = 0;
-        if (hoy.getFullYear() === anio && hoy.getMonth() + 1 === mes) {
-            for (let d = 1; d <= hoy.getDate(); d++) {
-                const fecha = new Date(anio, mes - 1, d);
-                const dow = fecha.getDay();
-                if (dow !== 0 && dow !== 6) diasHabiles++;
-            }
-        } else if (hoy.getFullYear() > anio || (hoy.getFullYear() === anio && hoy.getMonth() + 1 > mes)) {
-            const diasEnMes = new Date(anio, mes, 0).getDate();
-            for (let d = 1; d <= diasEnMes; d++) {
-                const fecha = new Date(anio, mes - 1, d);
-                const dow = fecha.getDay();
-                if (dow !== 0 && dow !== 6) diasHabiles++;
-            }
+        const diasEnMes = new Date(anio, mes, 0).getDate();
+        
+        // Calcular días hábiles del mes completo
+        let diasHabilesMes = 0;
+        for (let d = 1; d <= diasEnMes; d++) {
+            const fecha = new Date(anio, mes - 1, d);
+            const dow = fecha.getDay();
+            if (dow !== 0 && dow !== 6) diasHabilesMes++;
         }
+
         tbody.innerHTML = reporte.map((r, i) => {
+            // Calcular días hábiles considerando fecha de ingreso
+            let diasHabiles = diasHabilesMes;
+            if (r.fecha_ingreso) {
+                const fechaIngreso = new Date(r.fecha_ingreso);
+                const inicioMes = new Date(anio, mes - 1, 1);
+                if (fechaIngreso > inicioMes) {
+                    // El trabajador entró después del inicio del mes
+                    diasHabiles = 0;
+                    for (let d = fechaIngreso.getDate(); d <= diasEnMes; d++) {
+                        const fecha = new Date(anio, mes - 1, d);
+                        const dow = fecha.getDay();
+                        if (dow !== 0 && dow !== 6) diasHabiles++;
+                    }
+                }
+            }
+            
+            // Si el mes es el actual, solo contar hasta hoy
+            if (hoy.getFullYear() === anio && hoy.getMonth() + 1 === mes) {
+                const fechaIngreso = r.fecha_ingreso ? new Date(r.fecha_ingreso) : null;
+                const inicioEfectivo = fechaIngreso && fechaIngreso > new Date(anio, mes - 1, 1) ? fechaIngreso.getDate() : 1;
+                diasHabiles = 0;
+                for (let d = inicioEfectivo; d <= hoy.getDate(); d++) {
+                    const fecha = new Date(anio, mes - 1, d);
+                    const dow = fecha.getDay();
+                    if (dow !== 0 && dow !== 6) diasHabiles++;
+                }
+            }
+
             const faltas = Number(r.faltas) || 0;
             const permisos = Number(r.permisos_aprobados) || 0;
             const licencias = Number(r.dias_licencia) || 0;
@@ -1556,6 +1580,7 @@ const Asistencia = {
             return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + (i + 1) + '</strong></td>'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + r.nombre + '</strong></td>'
+                + '<td style="padding:12px 16px"><span style="font-weight:700;color:#3b82f6">' + diasHabiles + '</span></td>'
                 + '<td style="padding:12px 16px;color:#475569">' + asistidos.toFixed(1) + '</td>'
                 + '<td style="padding:12px 16px"><strong style="color:' + (faltas > 0 ? '#dc2626' : '#475569') + '">' + faltas + '</strong></td>'
                 + '<td style="padding:12px 16px"><span style="font-weight:600;color:' + (permisos > 0 ? '#d97706' : '#475569') + '">' + permisos.toFixed(1) + '</span></td>'
@@ -1575,6 +1600,7 @@ const Asistencia = {
                     const permisos = Number(r.permisos_aprobados) || 0;
                     const licencias = Number(r.dias_licencia) || 0;
                     const vacaciones = Number(r.dias_vacaciones) || 0;
+                    const diasHabiles = diasHabilesMes; // Simplificado para cards
                     const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
                     const pct = diasHabiles > 0 ? Math.round((asistidos / diasHabiles) * 100) : 0;
                     const color = pct >= 80 ? '#d1fae5;color:#059669' : pct >= 60 ? '#fef3c7;color:#d97706' : '#fee2e2;color:#dc2626';
@@ -1586,8 +1612,10 @@ const Asistencia = {
                     const licencias = Number(r.dias_licencia) || 0;
                     const vacaciones = Number(r.dias_vacaciones) || 0;
                     const he = Number(r.horas_extras) || 0;
+                    const diasHabiles = diasHabilesMes;
                     const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
                     return [
+                        { label: 'Días Hábiles', value: () => diasHabiles },
                         { label: 'Asistidos', value: () => asistidos.toFixed(1) },
                         { label: 'Faltas', value: () => faltas },
                         { label: 'Permisos', value: () => permisos.toFixed(1) + ' días' },
