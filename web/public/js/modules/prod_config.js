@@ -92,38 +92,122 @@ App.registerModule('prod_config', {
         this._estaciones = await res.json();
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
-            <div class="card">
-                <div class="card-header" style="justify-content:space-between">
-                    <h3 style="margin:0">Estaciones Maestras (Secuencia de Planta)</h3>
+            <div class="m-page">
+                <div class="m-hero" style="padding:10px 14px">
+                    <div style="position:relative;z-index:1">
+                        <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Estaciones Maestras</h2>
+                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Secuencia de planta y capacidad</p>
+                    </div>
+                </div>
+
+                <div class="m-actions">
                     <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showEstacionForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Estacion</button>
                 </div>
-                <div class="card-body" style="padding:0">
-                    <table><thead><tr><th>Orden</th><th>Nombre</th><th>Cap. Max</th><th>Cuello Botella</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody>                    ${this._estaciones.map(e => {
-                        return `<tr>
-                        <td><strong style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px">${e.orden_secuencia_defecto}</strong></td>
-                        <td>${escapeHtml(e.nombre_estacion)}</td>
-                        <td><strong>${Number(e.cap_max || 100).toFixed(0)}</strong> m²</td>
-                        <td>${e.cuello_botella ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#fee2e2;color:#991b1b">Cuello de Botella</span>' : '<span style="color:var(--text-light);font-size:11px">No</span>'}</td>
-                        <td>${e.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
-                        <td class="table-actions">
-                            <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showEstacionForm(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                            <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteEstacion(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                        </td>
-                    </tr>`;
-                    }).join('')}</tbody></table>
+
+                <div class="m-card">
+                    <div class="m-card-header">
+                        <h3 style="margin:0;font-size:13px">Lista <span style="color:#64748b;font-weight:400">(${this._estaciones.length})</span></h3>
+                    </div>
+                    <div class="m-card-body" style="padding:0">
+                        <div class="m-table-wrap">
+                            <table><thead><tr>
+                                <th>Orden</th><th>Nombre</th><th>Cap. Max</th><th>Cuello Botella</th><th>Estado</th><th>Acciones</th>
+                            </tr></thead>
+                            <tbody>${this._estaciones.map(e => {
+                                return `<tr>
+                                <td><strong style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px">${e.orden_secuencia_defecto}</strong></td>
+                                <td>${escapeHtml(e.nombre_estacion)}</td>
+                                <td><strong>${Number(e.cap_max || 100).toFixed(0)}</strong> m²</td>
+                                <td>${e.cuello_botella ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#fee2e2;color:#991b1b">Cuello de Botella</span>' : '<span style="color:var(--text-light);font-size:11px">No</span>'}</td>
+                                <td>${e.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
+                                <td class="table-actions">
+                                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showEstacionForm(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteEstacion(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                </td>
+                            </tr>`;
+                            }).join('')}</tbody></table>
+                        </div>
+                        <div class="m-cards-mobile" id="estCardsMobile" style="display:none;padding:12px"></div>
+                    </div>
                 </div>
             </div>`;
+        
+        this._renderEstacionesCards();
+    },
+
+    _renderEstacionesCards() {
+        const cardsMobile = document.getElementById('estCardsMobile');
+        if (!cardsMobile) return;
+        cardsMobile.innerHTML = this._estaciones.length ? this._estaciones.map(e => {
+            const statusBadge = e.activa 
+                ? '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Activa</span>'
+                : '<span style="background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Inactiva</span>';
+            const cuelloBadge = e.cuello_botella 
+                ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Cuello Botella</span>'
+                : '';
+            return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px;font-weight:700;font-size:12px">${e.orden_secuencia_defecto}</span>
+                        <div>
+                            <div style="font-weight:700;font-size:13px">${escapeHtml(e.nombre_estacion)}</div>
+                            <div style="font-size:10px;color:#64748b">${Number(e.cap_max || 100).toFixed(0)} m²/dia</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:4px">
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showEstacionForm(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                        <button class="btn btn-sm btn-danger" onclick="App.modules.prod_config.deleteEstacion(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    ${statusBadge}
+                    ${cuelloBadge}
+                </div>
+            </div>`;
+        }).join('') : '<div style="text-align:center;padding:24px;color:#64748b">No hay estaciones configuradas</div>';
     },
 
     showEstacionForm(id) {
         const est = id ? this._estaciones.find(e => e.id === id) : null;
         App.showModal(`
-            <div class="form-group"><label>Nombre de Estacion *</label><input class="form-control" id="estNombre" value="${est ? est.nombre_estacion : ''}" placeholder="Ej: Corte, Pulido, Templado..." onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-            <div class="form-group"><label>Orden de Secuencia *</label><input type="number" class="form-control" id="estOrden" value="${est ? est.orden_secuencia_defecto : (this._estaciones.length + 1)}" min="1" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-            <div class="form-group"><label>Capacidad Maxima (m²/día) *</label><input type="number" class="form-control" id="estCapacidad" value="${est ? (est.cap_max || 100) : 100}" min="1" step="0.01" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-            <div class="form-group"><label><input type="checkbox" id="estCuelloBotella" ${est && est.cuello_botella ? 'checked' : ''}> Es Cuello de Botella (limita capacidad diaria)</label></div>
-            <div class="form-group"><label><input type="checkbox" id="estActiva" ${!est || est.activa ? 'checked' : ''}> Activa</label></div>
+            <div class="m-card" style="margin-bottom:10px">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos de Estacion</div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">
+                        <div class="form-group" style="margin:0">
+                            <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Nombre de Estacion *</label>
+                            <input class="form-control" id="estNombre" value="${est ? est.nombre_estacion : ''}" placeholder="Ej: Corte, Pulido" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Orden de Secuencia *</label>
+                            <input type="number" class="form-control" id="estOrden" value="${est ? est.orden_secuencia_defecto : (this._estaciones.length + 1)}" min="1" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="m-card" style="margin-bottom:10px">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="color:#166534">Capacidad</span></div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div class="form-group" style="margin:0">
+                        <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Capacidad Maxima (m²/dia) *</label>
+                        <input type="number" class="form-control" id="estCapacidad" value="${est ? (est.cap_max || 100) : 100}" min="1" step="0.01" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
+                    </div>
+                </div>
+            </div>
+            <div class="m-card">
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                            <input type="checkbox" id="estCuelloBotella" ${est && est.cuello_botella ? 'checked' : ''} style="width:16px;height:16px">
+                            <span>Cuello de Botella (limita capacidad diaria)</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                            <input type="checkbox" id="estActiva" ${!est || est.activa ? 'checked' : ''} style="width:16px;height:16px">
+                            <span>Activa</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
         `, { title: est ? 'Editar Estacion' : 'Nueva Estacion' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
