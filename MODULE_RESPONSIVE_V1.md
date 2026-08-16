@@ -195,84 +195,121 @@ Diseño de tarjetas de ranking para mostrar top 5 de cualquier métrica.
 
 ### Uso:
 ```javascript
-// En el render del módulo:
-c.innerHTML = `<div id="ranking-container"></div>`;
+// Datos del ranking:
+const ranking = [
+    { nombre: 'Juan Pérez', horas: 12.0 },
+    { nombre: 'Pedro Gómez', horas: 8.5 },
+    { nombre: 'María López', horas: 6.0 }
+];
 
-// Función para renderizar:
-renderRanking(data) {
-    const c = document.getElementById('ranking-container');
-    if (!c || data.length === 0) { c.innerHTML = ''; return; }
-    
-    const configs = [
-        { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', icon: '🏆', labelColor: '#b45309' },
-        { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', labelColor: '#64748b' },
-        { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', labelColor: '#c2410c' },
-        { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '⭐', labelColor: '#7c3aed' },
-        { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '⭐', labelColor: '#7c3aed' }
-    ];
+// Renderizar:
+this._renderRanking('container-id', ranking, 'horas', 'Horas Extras');
+```
 
+### Helper centralizado (agregar al inicio del módulo):
+```javascript
+_rankingConfigs: [
+    { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', icon: '🏆', textColor: '#92400e', labelColor: '#b45309' },
+    { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
+    { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
+    { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '⭐', textColor: '#5b21b6', labelColor: '#7c3aed' },
+    { border: '#3b82f6', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#3b82f6', icon: '⭐', textColor: '#1e40af', labelColor: '#2563eb' }
+],
+
+_renderRanking(containerId, data, valueKey, label) {
+    const c = document.getElementById(containerId);
+    if (!c) return;
+    if (!data || data.length === 0) { c.innerHTML = ''; return; }
+    const configs = this._rankingConfigs;
     c.innerHTML = '<div class="ranking-container">' + data.slice(0, 5).map((r, i) => {
         const cfg = configs[i] || configs[4];
+        const valor = r[valueKey] !== undefined ? r[valueKey] : r.valor || 0;
         return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
-            <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
-            <div style="...">${i + 1}</div>
+            <div style="font-size:16px;margin-bottom:2px">${cfg.icon}</div>
+            <div style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${cfg.numBg};color:white;font-size:9px;font-weight:800;margin-bottom:2px">${i + 1}</div>
             <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
-            <div style="font-size:18px;font-weight:800;color:${cfg.numBg}">${r.valor}</div>
-            <div style="font-size:8px;...;color:${cfg.labelColor}">LABEL</div>
+            <div style="font-size:16px;font-weight:800;color:${cfg.numBg};line-height:1">${typeof valor === 'number' ? valor.toFixed(1) : valor}</div>
+            <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.5px;color:${cfg.labelColor};font-weight:700;margin-top:2px">${label}</div>
         </div>`;
     }).join('') + '</div>';
-}
+},
 ```
 
 ### CSS (agregar al inicio del módulo):
 ```css
 .ranking-container {
     display: flex;
-    gap: 10px;
-    justify-content: center;
+    gap: 6px;
+    justify-content: space-between;
     align-items: stretch;
-    padding: 12px 0;
-    flex-wrap: wrap;
+    padding: 10px 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 .ranking-card {
-    border-radius: 12px;
-    padding: 12px 14px 10px;
+    border-radius: 10px;
+    padding: 8px 4px;
     text-align: center;
     flex: 1 1 0;
-    min-width: 80px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    min-width: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    box-sizing: border-box;
 }
 .ranking-name {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     line-height: 1.2;
-    min-height: 28px;
+    min-height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    padding: 0 2px;
 }
 @media (max-width: 768px) {
-    .ranking-container { gap: 6px; padding: 8px 0; }
-    .ranking-card { padding: 8px 4px 6px; border-radius: 10px; }
-    .ranking-name { font-size: 9px !important; min-height: 20px; }
+    .ranking-container { gap: 4px; padding: 8px 0; }
+    .ranking-card { padding: 6px 2px; border-radius: 8px; }
+    .ranking-name { font-size: 9px; min-height: 22px; }
 }
 ```
 
-### Ejemplo de datos:
-```javascript
-const ranking = [
-    { nombre: 'Juan Pérez', valor: 12.0 },
-    { nombre: 'Pedro Gómez', valor: 8.5 },
-    { nombre: 'María López', valor: 6.0 }
-];
+### Colores estandarizados:
+| Lugar | Color | Hex | Icono |
+|-------|-------|-----|-------|
+| 🥇 1er | Dorado | `#f59e0b` | 🏆 |
+| 🥈 2do | Plata | `#94a3b8` | 🥈 |
+| 🥉 3er | Bronce | `#f97316` | 🥉 |
+| 4to | Púrpura | `#8b5cf6` | ⭐ |
+| 5to | Azul | `#3b82f6` | ⭐ |
+
+### Contenedor HTML:
+```html
+<div id="ranking-container"></div>
 ```
 
-### Colores por defecto:
-- 🥇 1er lugar: Dorado (`#f59e0b`)
-- 🥈 2do lugar: Plata (`#94a3b8`)
-- 🥉 3er lugar: Bronce (`#f97316`)
-- ⭐ 4to-5to: Púrpura (`#8b5cf6`)
+### Ejemplo de uso:
+```javascript
+// En el render del módulo:
+c.innerHTML = `<div id="mi-ranking-container"></div>`;
+
+// Calcular ranking:
+const ranking = datos.reduce((acc, d) => {
+    const nombre = d.nombre;
+    if (!acc[nombre]) acc[nombre] = 0;
+    acc[nombre] += d.horas;
+    return acc;
+}, {});
+const rankingArray = Object.entries(ranking)
+    .map(([nombre, horas]) => ({ nombre, horas }))
+    .sort((a, b) => b.horas - a.horas)
+    .slice(0, 5);
+
+// Renderizar:
+this._renderRanking('mi-ranking-container', rankingArray, 'horas', 'Horas Extras');
+```
 
 ---
 
