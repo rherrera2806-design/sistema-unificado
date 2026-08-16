@@ -96,20 +96,29 @@ const InvInventario = {
     },
 
     buscar(q) {
-        var query = q.toLowerCase().trim();
-        var queryNum = parseFloat(query);
-        var isNumeric = !isNaN(queryNum);
-        var filtered = query ? this._originalItems.filter(function(i) {
-            if (isNumeric && i.espesor != null && Number(i.espesor) === queryNum) return true;
-            return (i.codigo_mp || '').toLowerCase().includes(query)
-                || (i.codigo_sap || '').toLowerCase().includes(query)
-                || (i.tipo_cristal || '').toLowerCase().includes(query)
-                || String(i.espesor || '').includes(query);
-        }) : [...this._allItems];
-        this._allItems = filtered;
+        var query = (q || '').toLowerCase().trim();
+        if (!query) {
+            this._allItems = [...this._originalItems];
+        } else {
+            this._allItems = this._originalItems.filter(function(i) {
+                var espesorStr = String(i.espesor != null ? i.espesor : '').toLowerCase();
+                var codigo = String(i.codigo_mp || '').toLowerCase();
+                var sap = String(i.codigo_sap || '').toLowerCase();
+                var tipo = String(i.tipo_cristal || '').toLowerCase();
+                return codigo.includes(query) || sap.includes(query) || tipo.includes(query) || espesorStr.includes(query);
+            });
+        }
+        // Ordenar por tipo_cristal y luego por espesor
+        this._allItems.sort(function(a, b) {
+            var nameA = (a.tipo_cristal || '').toLowerCase();
+            var nameB = (b.tipo_cristal || '').toLowerCase();
+            if (nameA < nameB) return -1;
+            if (nameA > nameB) return 1;
+            return Number(a.espesor || 0) - Number(b.espesor || 0);
+        });
         this.renderContent();
         var counter = document.getElementById('invCount');
-        if (counter) counter.textContent = '(' + filtered.length + ' tipos)';
+        if (counter) counter.textContent = '(' + this._allItems.length + ' tipos)';
     },
 
     exportarExcel() {
