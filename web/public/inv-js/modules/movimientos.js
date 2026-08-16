@@ -29,6 +29,9 @@ const InvMovimientos = {
                     .tipo-btn{border:1px solid #e2e8f0;border-radius:6px;background:white;cursor:pointer;transition:all 0.15s}
                     .tipo-btn:hover{background:#f8fafc}
                     .tipo-btn.active{background:#dcfce7;color:#166534;border-color:#22c55e}
+                    .inv-filter-btn{padding:6px 14px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white;color:#64748b;cursor:pointer;transition:all 0.15s}
+                    .inv-filter-btn:hover{border-color:#93c5fd;color:#3b82f6;background:#eff6ff}
+                    .inv-filter-btn.active{background:linear-gradient(135deg,#1e40af,#2563eb);color:white;border-color:#1e40af;box-shadow:0 2px 8px rgba(30,64,175,0.3)}
                     @media(max-width:768px){
                         .inv-form-grid{grid-template-columns:1fr}
                         .inv-form-dims{grid-template-columns:1fr 1fr}
@@ -93,10 +96,9 @@ const InvMovimientos = {
 
                     <div class="m-actions" style="justify-content:space-between">
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                            <span style="font-weight:500;color:#64748b;font-size:12px">Filtrar:</span>
-                            <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll" style="font-size:11px;padding:4px 10px">Todos</a>
-                            <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt" style="font-size:11px;padding:4px 10px">Entradas</a>
-                            <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal" style="font-size:11px;padding:4px 10px">Salidas</a>
+                            <button class="btn btn-sm inv-filter-btn active" onclick="InvMovimientos.filtrar('')" id="fAll">Todos</button>
+                            <button class="btn btn-sm inv-filter-btn" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</button>
+                            <button class="btn btn-sm inv-filter-btn" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</button>
                         </div>
                         <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger btn-sm" style="font-size:11px;padding:5px 12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>
                     </div>
