@@ -983,21 +983,28 @@ const Asistencia = {
     // ═══════ PERMISOS ═══════
     renderPermisosTab(c) {
         c.innerHTML = `
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
-                <div class="sigma-table-wrap">
-                <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tipo</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Horas</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Motivo</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
-                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
-                    </tr></thead>
-                    <tbody id="ast-tabla-permisos"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
-                </table>
-                <div id="ast-cards-permisos"></div>
+            <div id="ast-ranking-permisos-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
+
+            <div class="m-card">
+                <div class="m-card-header" style="padding:6px 12px">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Permisos</h3>
+                </div>
+                <div class="m-card-body" style="padding:0">
+                    <div class="m-table-wrap">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px">
+                            <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tipo</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Horas</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Motivo</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                                <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                            </tr></thead>
+                            <tbody id="ast-tabla-permisos"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div id="ast-cards-permisos" class="m-cards-mobile" style="display:none;padding:12px"></div>
                 </div>
             </div>`;
         this.cargarPermisos();
@@ -1009,6 +1016,52 @@ const Asistencia = {
         try {
             const r = await authFetch('/api/asistencia/permisos?mes=' + mes + '&anio=' + new Date().getFullYear());
             const permisos = await r.json();
+            
+            // Calcular ranking de permisos por trabajador (horas aprobadas)
+            const rankingMap = {};
+            permisos.forEach(p => {
+                if (p.estado === 'aprobado') {
+                    const nombre = p.nombre || 'Desconocido';
+                    if (!rankingMap[nombre]) rankingMap[nombre] = 0;
+                    rankingMap[nombre] += Number(p.horas) || 0;
+                }
+            });
+            const ranking = Object.entries(rankingMap)
+                .map(([nombre, horas]) => ({ nombre, horas }))
+                .sort((a, b) => b.horas - a.horas)
+                .slice(0, 5);
+            
+            this.renderRankingPermisos(ranking);
+            this.renderTablaPermisos(permisos);
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    renderRankingPermisos(ranking) {
+        const c = document.getElementById('ast-ranking-permisos-container');
+        if (!c) return;
+        if (ranking.length === 0) { c.innerHTML = ''; return; }
+
+        const configs = [
+            { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', numColor: 'white', textColor: '#92400e', icon: '🏆', labelColor: '#b45309' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
+            { border: '#d97706', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#d97706', numColor: 'white', textColor: '#92400e', icon: '⭐', labelColor: '#b45309' },
+            { border: '#d97706', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#d97706', numColor: 'white', textColor: '#92400e', icon: '⭐', labelColor: '#b45309' }
+        ];
+
+        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.map((r, i) => {
+            const cfg = configs[i] || configs[4];
+            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
+            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
+            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
+            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + r.horas.toFixed(1) + '</div>'
+            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Horas Permiso</div>'
+            + '</div>';
+        }).join('') + '</div>';
+    },
+
+    renderTablaPermisos(permisos) {
             const tbody = document.getElementById('ast-tabla-permisos');
             if (!tbody) return;
             if (permisos.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">${MSG.SIN_DATOS}</td></tr>`; const cardsEl = document.getElementById('ast-cards-permisos'); if (cardsEl) cardsEl.innerHTML = ''; return; }
@@ -1036,34 +1089,24 @@ const Asistencia = {
 
             const cardsEl = document.getElementById('ast-cards-permisos');
             if (cardsEl) {
-                const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-                const permUser = user.permisos || [];
-                const puedeAprobar = canEditP;
-                cardsEl.innerHTML = SigmaCards.generate({
-                    title: p => '<strong>' + p.nombre + '</strong>',
-                    subtitle: p => (tipoL[p.tipo] || p.tipo),
-                    badge: p => {
-                        const ec = p.estado === 'aprobado' ? '#d1fae5;color:#059669' : p.estado === 'rechazado' ? '#fee2e2;color:#dc2626' : '#fef3c7;color:#d97706';
-                        return '<span class="sc-badge" style="background:' + ec + '">' + p.estado + '</span>';
-                    },
-                    fields: [
-                        { label: 'Fecha', value: p => this.fmtDate(p.fecha_inicio) },
-                        { label: 'Horas', value: p => (Number(p.horas) || 0) + ' hrs' },
-                        { label: 'Motivo', value: p => p.motivo || '-' }
-                    ],
-                    actions: p => {
-                        let html = '';
-                        if (p.estado === 'pendiente' && puedeAprobar) {
-                            html += `<button onclick="Asistencia.estadoPermiso(${p.id},'aprobado')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">${BTN.APROBAR}</button>`;
-                            html += `<button onclick="Asistencia.estadoPermiso(${p.id},'rechazado')" class="btn btn-sm btn-danger" style="margin-right:4px">${BTN.RECHAZAR}</button>`;
-                        }
-                        if (canEditP) html += `<button onclick="Asistencia.editarPermiso(${p.id})" class="btn btn-sm btn-outline" style="margin-right:4px">${BTN.EDITAR}</button>`;
-                        if (canDeleteP) html += `<button onclick="Asistencia.eliminarPermiso(${p.id})" class="btn btn-sm btn-danger">${BTN.ELIMINAR}</button>`;
-                        return html;
-                    }
-                }, permisos);
+                let cardsHtml = '';
+                permisos.forEach(p => {
+                    const ec = p.estado === 'aprobado' ? '#22c55e' : p.estado === 'rechazado' ? '#ef4444' : '#d97706';
+                    cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + ec + '">'
+                        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                        + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + p.nombre + '</span>'
+                        + '<span class="ast-badge" style="background:' + (p.estado === 'aprobado' ? '#d1fae5;color:#059669' : p.estado === 'rechazado' ? '#fee2e2;color:#dc2626' : '#fef3c7;color:#d97706') + '">' + p.estado + '</span>'
+                        + '</div>'
+                        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#64748b">'
+                        + '<span>Tipo: <strong>' + (tipoL[p.tipo] || p.tipo) + '</strong></span>'
+                        + '<span>Horas: <strong style="color:#8b5cf6">' + (Number(p.horas) || 0) + ' hrs</strong></span>'
+                        + '<span>Fecha: <strong>' + this.fmtDate(p.fecha_inicio) + '</strong></span>'
+                        + '</div>'
+                        + (p.motivo ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Motivo: ' + p.motivo + '</div>' : '')
+                        + '</div>';
+                });
+                cardsEl.innerHTML = cardsHtml;
             }
-        } catch(e) { console.error('Error:', e); }
     },
 
     async estadoPermiso(id, estado) {
@@ -1112,21 +1155,28 @@ const Asistencia = {
     // ═══════ LICENCIAS ═══════
     renderLicenciasTab(c) {
         c.innerHTML = `
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;overflow:hidden">
-                <div class="sigma-table-wrap">
-                <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Inicio</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fin</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Diagnóstico</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
-                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
-                    </tr></thead>
-                    <tbody id="ast-tabla-licencias"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
-                </table>
-                <div id="ast-cards-licencias"></div>
+            <div id="ast-ranking-licencias-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
+
+            <div class="m-card">
+                <div class="m-card-header" style="padding:6px 12px">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Licencias Médicas</h3>
+                </div>
+                <div class="m-card-body" style="padding:0">
+                    <div class="m-table-wrap">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px">
+                            <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Inicio</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fin</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Diagnóstico</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                                <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                            </tr></thead>
+                            <tbody id="ast-tabla-licencias"><tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div id="ast-cards-licencias" class="m-cards-mobile" style="display:none;padding:12px"></div>
                 </div>
             </div>`;
         this.cargarLicencias();
@@ -1138,6 +1188,53 @@ const Asistencia = {
         try {
             const r = await authFetch('/api/asistencia/licencias?mes=' + mes + '&anio=' + new Date().getFullYear());
             const licencias = await r.json();
+            
+            // Calcular ranking de licencias por trabajador (días aprobados)
+            const rankingMap = {};
+            licencias.forEach(l => {
+                if (l.estado === 'aprobada') {
+                    const nombre = l.nombre || 'Desconocido';
+                    if (!rankingMap[nombre]) rankingMap[nombre] = 0;
+                    const dias = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / 86400000) + 1;
+                    rankingMap[nombre] += dias;
+                }
+            });
+            const ranking = Object.entries(rankingMap)
+                .map(([nombre, dias]) => ({ nombre, dias }))
+                .sort((a, b) => b.dias - a.dias)
+                .slice(0, 5);
+            
+            this.renderRankingLicencias(ranking);
+            this.renderTablaLicencias(licencias);
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    renderRankingLicencias(ranking) {
+        const c = document.getElementById('ast-ranking-licencias-container');
+        if (!c) return;
+        if (ranking.length === 0) { c.innerHTML = ''; return; }
+
+        const configs = [
+            { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', numColor: 'white', textColor: '#166534', icon: '🏆', labelColor: '#15803d' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
+            { border: '#16a34a', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#16a34a', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' },
+            { border: '#16a34a', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#16a34a', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' }
+        ];
+
+        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.map((r, i) => {
+            const cfg = configs[i] || configs[4];
+            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
+            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
+            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
+            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + r.dias + '</div>'
+            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Días Licencia</div>'
+            + '</div>';
+        }).join('') + '</div>';
+    },
+
+    renderTablaLicencias(licencias) {
             const tbody = document.getElementById('ast-tabla-licencias');
             if (!tbody) return;
             if (licencias.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#94a3b8">${MSG.SIN_DATOS}</td></tr>`; const cardsEl = document.getElementById('ast-cards-licencias'); if (cardsEl) cardsEl.innerHTML = ''; return; }
@@ -1164,34 +1261,25 @@ const Asistencia = {
 
             const cardsEl = document.getElementById('ast-cards-licencias');
             if (cardsEl) {
-                const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-                const permUser = user.permisos || [];
-                const puedeAprobar = canEditL;
-                cardsEl.innerHTML = SigmaCards.generate({
-                    title: l => '<strong>' + l.nombre + '</strong>',
-                    subtitle: l => l.diagnostico || '-',
-                    badge: l => {
-                        const ec = l.estado === 'aprobada' ? '#d1fae5;color:#059669' : l.estado === 'rechazada' ? '#fee2e2;color:#dc2626' : '#fef3c7;color:#d97706';
-                        return '<span class="sc-badge" style="background:' + ec + '">' + l.estado + '</span>';
-                    },
-                    fields: [
-                        { label: 'Inicio', value: l => this.fmtDate(l.fecha_inicio) },
-                        { label: 'Fin', value: l => this.fmtDate(l.fecha_fin) },
-                        { label: 'Días', value: l => { const d = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / 86400000) + 1; return d + ' días'; } }
-                    ],
-                    actions: l => {
-                        let html = '';
-                        if (l.estado === 'pendiente' && puedeAprobar) {
-                            html += `<button onclick="Asistencia.estadoLicencia(${l.id},'aprobada')" class="btn btn-sm" style="background:#22c55e;color:white;margin-right:4px">${BTN.APROBAR}</button>`;
-                            html += `<button onclick="Asistencia.estadoLicencia(${l.id},'rechazada')" class="btn btn-sm btn-danger" style="margin-right:4px">${BTN.RECHAZAR}</button>`;
-                        }
-                        if (canEditL) html += `<button onclick="Asistencia.editarLicencia(${l.id})" class="btn btn-sm btn-outline" style="margin-right:4px">${BTN.EDITAR}</button>`;
-                        if (canDeleteL) html += `<button onclick="Asistencia.eliminarLicencia(${l.id})" class="btn btn-sm btn-danger">${BTN.ELIMINAR}</button>`;
-                        return html;
-                    }
-                }, licencias);
+                let cardsHtml = '';
+                licencias.forEach(l => {
+                    const dias = Math.ceil((new Date(l.fecha_fin) - new Date(l.fecha_inicio)) / 86400000) + 1;
+                    const ec = l.estado === 'aprobada' ? '#22c55e' : l.estado === 'rechazada' ? '#ef4444' : '#d97706';
+                    cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + ec + '">'
+                        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                        + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + l.nombre + '</span>'
+                        + '<span class="ast-badge" style="background:' + (l.estado === 'aprobada' ? '#d1fae5;color:#059669' : l.estado === 'rechazada' ? '#fee2e2;color:#dc2626' : '#fef3c7;color:#d97706') + '">' + l.estado + '</span>'
+                        + '</div>'
+                        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#64748b">'
+                        + '<span>Inicio: <strong>' + this.fmtDate(l.fecha_inicio) + '</strong></span>'
+                        + '<span>Fin: <strong>' + this.fmtDate(l.fecha_fin) + '</strong></span>'
+                        + '<span>Días: <strong style="color:#22c55e">' + dias + '</strong></span>'
+                        + '</div>'
+                        + (l.diagnostico ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Diagnóstico: ' + l.diagnostico + '</div>' : '')
+                        + '</div>';
+                });
+                cardsEl.innerHTML = cardsHtml;
             }
-        } catch(e) { console.error('Error:', e); }
     },
 
     async estadoLicencia(id, estado) {
@@ -1238,20 +1326,27 @@ const Asistencia = {
     // ═══════ VACACIONES ═══════
     renderVacacionesTab(c) {
         c.innerHTML = `
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;overflow:hidden">
-                <div class="sigma-table-wrap">
-                <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Inicio</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fin</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días</th>
-                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
-                        <th style="padding:11px 16px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
-                    </tr></thead>
-                    <tbody id="ast-tabla-vacaciones"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
-                </table>
-                <div id="ast-cards-vacaciones"></div>
+            <div id="ast-ranking-vacaciones-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
+
+            <div class="m-card">
+                <div class="m-card-header" style="padding:6px 12px">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Vacaciones</h3>
+                </div>
+                <div class="m-card-body" style="padding:0">
+                    <div class="m-table-wrap">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px">
+                            <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Trabajador</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Inicio</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fin</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Días</th>
+                                <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>
+                                <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
+                            </tr></thead>
+                            <tbody id="ast-tabla-vacaciones"><tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div id="ast-cards-vacaciones" class="m-cards-mobile" style="display:none;padding:12px"></div>
                 </div>
             </div>`;
         this.cargarVacaciones();
@@ -1261,8 +1356,52 @@ const Asistencia = {
         const mes = document.getElementById('ast-hero-mes')?.value;
         try {
             const url = '/api/asistencia/vacaciones' + (mes ? '?mes=' + mes + '&anio=' + new Date().getFullYear() : '');
-            const r = await fetch(url);
+            const r = await authFetch(url);
             const vacaciones = await r.json();
+            
+            // Calcular ranking de vacaciones por trabajador (días)
+            const rankingMap = {};
+            vacaciones.forEach(v => {
+                const nombre = v.nombre || 'Desconocido';
+                if (!rankingMap[nombre]) rankingMap[nombre] = 0;
+                rankingMap[nombre] += Number(v.dias) || 0;
+            });
+            const ranking = Object.entries(rankingMap)
+                .map(([nombre, dias]) => ({ nombre, dias }))
+                .sort((a, b) => b.dias - a.dias)
+                .slice(0, 5);
+            
+            this.renderRankingVacaciones(ranking);
+            this.renderTablaVacaciones(vacaciones);
+        } catch(e) { console.error('Error:', e); }
+    },
+
+    renderRankingVacaciones(ranking) {
+        const c = document.getElementById('ast-ranking-vacaciones-container');
+        if (!c) return;
+        if (ranking.length === 0) { c.innerHTML = ''; return; }
+
+        const configs = [
+            { border: '#3b82f6', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#3b82f6', numColor: 'white', textColor: '#1e40af', icon: '🏆', labelColor: '#2563eb' },
+            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', numColor: 'white', textColor: '#334155', icon: '🥈', labelColor: '#64748b' },
+            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', numColor: 'white', textColor: '#9a3412', icon: '🥉', labelColor: '#c2410c' },
+            { border: '#2563eb', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#2563eb', numColor: 'white', textColor: '#1e40af', icon: '⭐', labelColor: '#3b82f6' },
+            { border: '#2563eb', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#2563eb', numColor: 'white', textColor: '#1e40af', icon: '⭐', labelColor: '#3b82f6' }
+        ];
+
+        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.map((r, i) => {
+            const cfg = configs[i] || configs[4];
+            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
+            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
+            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
+            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + r.dias + '</div>'
+            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Días Vacaciones</div>'
+            + '</div>';
+        }).join('') + '</div>';
+    },
+
+    renderTablaVacaciones(vacaciones) {
             const tbody = document.getElementById('ast-tabla-vacaciones');
             if (!tbody) return;
             if (vacaciones.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:#94a3b8">${MSG.SIN_DATOS}</td></tr>`; const cardsEl = document.getElementById('ast-cards-vacaciones'); if (cardsEl) cardsEl.innerHTML = ''; return; }
@@ -1281,19 +1420,22 @@ const Asistencia = {
 
             const cardsEl = document.getElementById('ast-cards-vacaciones');
             if (cardsEl) {
-                cardsEl.innerHTML = SigmaCards.generate({
-                    title: v => '<strong>' + v.nombre + '</strong>',
-                    badge: v => '<span class="sc-badge" style="background:#dbeafe;color:#2563eb">' + (v.estado || 'Programado') + '</span>',
-                    fields: [
-                        { label: 'Inicio', value: v => this.fmtDate(v.fecha_inicio) },
-                        { label: 'Fin', value: v => this.fmtDate(v.fecha_fin) },
-                        { label: 'Días', value: v => v.dias + ' días' }
-                    ],
-                    actions: v => (canEditV ? `<button onclick="Asistencia.editarVacacion(${v.id})" class="btn btn-sm btn-outline" style="margin-right:4px">${BTN.EDITAR}</button>` : '')
-                        + (canDeleteV ? `<button onclick="Asistencia.eliminarVacacion(${v.id})" class="btn btn-sm btn-danger">${BTN.ELIMINAR}</button>` : '')
-                }, vacaciones);
+                let cardsHtml = '';
+                vacaciones.forEach(v => {
+                    const ec = '#3b82f6';
+                    cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + ec + '">'
+                        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                        + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + v.nombre + '</span>'
+                        + '<span class="ast-badge" style="background:#dbeafe;color:#2563eb">' + (v.estado || 'Programado') + '</span>'
+                        + '</div>'
+                        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#64748b">'
+                        + '<span>Inicio: <strong>' + this.fmtDate(v.fecha_inicio) + '</strong></span>'
+                        + '<span>Fin: <strong>' + this.fmtDate(v.fecha_fin) + '</strong></span>'
+                        + '<span>Días: <strong style="color:#3b82f6">' + v.dias + '</strong></span>'
+                        + '</div></div>';
+                });
+                cardsEl.innerHTML = cardsHtml;
             }
-        } catch(e) { console.error('Error:', e); }
     },
 
     editarVacacion(id) {
