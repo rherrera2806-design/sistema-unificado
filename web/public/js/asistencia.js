@@ -93,13 +93,13 @@ const Asistencia = {
                 + '.ast-avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:white;flex-shrink:0}'
                 + '.ast-podium{display:flex;justify-content:center;align-items:flex-end;gap:20px;margin:24px 0}'
                 + '.ast-rank{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-align:center;transition:all 0.2s;min-width:160px}'
-                + '.ranking-container{display:flex;gap:10px;justify-content:flex-start;align-items:stretch;padding:12px 0;overflow-x:auto;-webkit-overflow-scrolling:touch}'
-                + '.ranking-card{border-radius:12px;padding:12px 14px 10px;text-align:center;flex:0 0 auto;width:110px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}'
-                + '.ranking-name{font-size:11px;font-weight:700;margin-bottom:4px;line-height:1.2;min-height:28px;display:flex;align-items:center;justify-content:center}'
+                + '.ranking-container{display:flex;gap:6px;justify-content:space-between;align-items:stretch;padding:10px 0;width:100%;box-sizing:border-box}'
+                + '.ranking-card{border-radius:10px;padding:8px 4px;text-align:center;flex:1 1 0;min-width:0;box-shadow:0 2px 8px rgba(0,0,0,0.06);box-sizing:border-box}'
+                + '.ranking-name{font-size:9px;font-weight:700;margin-bottom:2px;line-height:1.1;min-height:20px;display:flex;align-items:center;justify-content:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
                 + '@media(max-width:768px){'
-                + '.ranking-container{gap:8px;padding:8px 0}'
-                + '.ranking-card{padding:8px 6px 6px;border-radius:10px;width:85px}'
-                + '.ranking-name{font-size:9px!important;min-height:20px}'
+                + '.ranking-container{gap:4px;padding:8px 0}'
+                + '.ranking-card{padding:6px 2px;border-radius:8px}'
+                + '.ranking-name{font-size:8px!important;min-height:18px}'
                 + '}'
                 + '.ast-rank:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}'
                 + '.ast-cal-header{display:grid;border-bottom:2px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:2}'
@@ -1062,11 +1062,11 @@ const Asistencia = {
             const cfg = configs[i] || configs[4];
             const valor = r[valueKey] !== undefined ? r[valueKey] : r.valor || 0;
             return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
-                <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
-                <div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${cfg.numBg};color:white;font-size:10px;font-weight:800;margin-bottom:2px">${i + 1}</div>
+                <div style="font-size:16px;margin-bottom:2px">${cfg.icon}</div>
+                <div style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${cfg.numBg};color:white;font-size:9px;font-weight:800;margin-bottom:2px">${i + 1}</div>
                 <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
-                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${typeof valor === 'number' ? valor.toFixed(1) : valor}</div>
-                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">${label}</div>
+                <div style="font-size:16px;font-weight:800;color:${cfg.numBg};line-height:1">${typeof valor === 'number' ? valor.toFixed(1) : valor}</div>
+                <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.5px;color:${cfg.labelColor};font-weight:700;margin-top:2px">${label}</div>
             </div>`;
         }).join('') + '</div>';
     },
