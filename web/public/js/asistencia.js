@@ -251,12 +251,14 @@ const Asistencia = {
                 + `<button onclick="Asistencia.cargarCalendario()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">${BTN.CARGAR}</button>`;
         } else if (tab === 'reportes') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + '<div style="position:relative;flex:1;min-width:100px;max-width:180px">'
+            container.innerHTML = '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+                + '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+                + `<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">${BTN.CARGAR}</button>`
+                + '</div>'
+                + '<div style="position:relative;width:100%;max-width:250px;margin-top:6px">'
                 + '<svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%)" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="ast-rep-buscar" placeholder="Buscar trabajador..." oninput="Asistencia.filtrarReporte()" style="width:100%;padding:6px 8px 6px 28px;font-size:11px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;box-sizing:border-box;background:rgba(255,255,255,0.1);color:white;outline:none" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
-                + '</div>'
-                + `<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">${BTN.CARGAR}</button>`;
+                + '</div>';
         } else if (tab === 'diaria') {
             container.innerHTML = '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
@@ -1661,13 +1663,28 @@ const Asistencia = {
 
     filtrarReporte() {
         const query = (document.getElementById('ast-rep-buscar')?.value || '').toLowerCase().trim();
-        const rows = document.querySelectorAll('#ast-tabla-reporte tr');
-        rows.forEach(row => {
-            const nombreCell = row.querySelector('td:nth-child(2)');
-            if (!nombreCell) return;
-            const nombre = nombreCell.textContent.toLowerCase();
-            row.style.display = !query || nombre.includes(query) ? '' : 'none';
-        });
+        // Filtrar tabla desktop
+        const tbody = document.getElementById('ast-tabla-reporte');
+        if (tbody) {
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(row => {
+                const nombreCell = row.querySelector('td:nth-child(2)');
+                if (!nombreCell) return;
+                const nombre = nombreCell.textContent.toLowerCase();
+                row.style.display = !query || nombre.includes(query) ? '' : 'none';
+            });
+        }
+        // Filtrar cards móvil
+        const cardsEl = document.getElementById('ast-cards-reporte');
+        if (cardsEl) {
+            const cards = cardsEl.querySelectorAll('div[style*="border-left"]');
+            cards.forEach(card => {
+                const nombreEl = card.querySelector('span:first-child');
+                if (!nombreEl) return;
+                const nombre = nombreEl.textContent.toLowerCase();
+                card.style.display = !query || nombre.includes(query) ? '' : 'none';
+            });
+        }
     },
 
     // ═══════ HELPERS ═══════
