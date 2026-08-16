@@ -125,11 +125,11 @@ App.registerModule('dashboard', {
                     <div class="stat-value">${statsSummary.overdueMaintenance}</div>
                 </div>
             </div>
+            ${this.renderTopFallas(topFallas)}
             <div class="row dash-grid-row">
                 ${this.renderOverdueLocal(overdue, maqMap, compMap)}
                 ${this.renderUpcomingLocal(upcoming, maqMap, compMap)}
             </div>
-            ${this.renderTopFallas(topFallas)}
             ${this.renderRecentFailuresLocal(correctivos, maqMap, compMap)}
             ${this.renderRecentPreventiveLocal(recentPreventive, maqMap, compMap)}
         `;
