@@ -95,7 +95,6 @@ const Asistencia = {
                 + '.ast-rank{background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;text-align:center;transition:all 0.2s;min-width:160px}'
                 + '.ranking-container{display:flex;gap:10px;justify-content:center;align-items:flex-end;padding:12px 0;flex-wrap:wrap}'
                 + '.ranking-card{border-radius:12px;padding:12px 14px 10px;text-align:center;min-width:100px;flex:1 1 100px;max-width:140px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}'
-                + '.ranking-first{padding:16px 14px 12px;transform:translateY(-8px);box-shadow:0 4px 16px rgba(0,0,0,0.12)}'
                 + '.ranking-name{font-size:11px;font-weight:700;margin-bottom:4px;line-height:1.2;min-height:28px;display:flex;align-items:center;justify-content:center}'
                 + '@media(max-width:768px){'
                 + '.ranking-container{gap:6px;padding:8px 0}'
@@ -1852,13 +1851,12 @@ const Asistencia = {
         c.innerHTML = '<div class="ranking-container">' + ranking.slice(0, 5).map((r, i) => {
             const total = (Number(r.faltas) || 0) + (Number(r.permisos_dias) || 0) + (Number(r.licencias_dias) || 0) + (Number(r.vacaciones_dias) || 0);
             const cfg = configs[i] || configs[4];
-            const isFirst = i === 0;
-            return '<div class="ranking-card' + (isFirst ? ' ranking-first' : '') + '" style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + '">'
-            + '<div style="font-size:' + (isFirst ? '28px' : '20px') + ';margin-bottom:2px">' + cfg.icon + '</div>'
-            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:' + (isFirst ? '26px' : '20px') + ';height:' + (isFirst ? '26px' : '20px') + ';border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:' + (isFirst ? '12px' : '10px') + ';font-weight:800;margin-bottom:2px">' + (i + 1) + '</div>'
-            + '<div class="ranking-name" style="color:' + cfg.textColor + ';font-size:' + (isFirst ? '13px' : '11px') + '">' + r.nombre + '</div>'
-            + '<div style="font-size:' + (isFirst ? '24px' : '18px') + ';font-weight:800;color:' + cfg.numBg + ';line-height:1">' + total.toFixed(1) + '</div>'
-            + '<div style="font-size:' + (isFirst ? '10px' : '8px') + ';text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:2px">Días fuera</div>'
+            return '<div class="ranking-card" style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + '">'
+            + '<div style="font-size:20px;margin-bottom:2px">' + cfg.icon + '</div>'
+            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:10px;font-weight:800;margin-bottom:2px">' + (i + 1) + '</div>'
+            + '<div class="ranking-name" style="color:' + cfg.textColor + '">' + r.nombre + '</div>'
+            + '<div style="font-size:18px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + total.toFixed(1) + '</div>'
+            + '<div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:2px">Días fuera</div>'
             + '</div>';
         }).join('') + '</div>';
     },
