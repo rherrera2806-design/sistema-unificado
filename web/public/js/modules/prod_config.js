@@ -323,48 +323,110 @@ App.registerModule('prod_config', {
         this._grupos = await res.json();
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
-            <div class="card">
-                <div class="card-header" style="justify-content:space-between">
-                    <h3 style="margin:0">Grupos de Produccion</h3>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showGrupoForm()">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo Grupo
-                    </button>
+            <div class="m-page">
+                <div class="m-hero" style="padding:10px 14px">
+                    <div style="position:relative;z-index:1">
+                        <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Grupos de Produccion</h2>
+                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Capacidad por grupo en kg/dia</p>
+                    </div>
                 </div>
-                <div class="card-body" style="padding:0">
-                    <table>
-                        <thead><tr>
-                            <th style="width:50px">Color</th><th>Grupo</th><th>Capacidad (kg/dia)</th><th>Estado</th><th>Acciones</th>
-                        </tr></thead>
-                        <tbody>${this._grupos.map(g => `<tr>
-                            <td><span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:${g.color || '#3b82f6'};border:2px solid rgba(0,0,0,0.1)"></span></td>
-                            <td><strong>${escapeHtml(g.grupo)}</strong></td>
-                            <td>${Number(g.capacidad_kg_dia).toLocaleString('es-CL')} kg</td>
-                            <td>${g.activo ? '<span class="status-badge status-terminado">Activo</span>' : '<span class="status-badge status-mermado">Inactivo</span>'}</td>
-                            <td class="table-actions">
-                                <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showGrupoForm(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteGrupo(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                            </td>
-                        </tr>`).join('')}</tbody>
-                    </table>
+
+                <div class="m-actions">
+                    <button class="btn btn-sm btn-primary" onclick="App.modules.prod_config.showGrupoForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo Grupo</button>
+                </div>
+
+                <div class="m-card">
+                    <div class="m-card-header">
+                        <h3 style="margin:0;font-size:13px">Lista <span style="color:#64748b;font-weight:400">(${this._grupos.length})</span></h3>
+                    </div>
+                    <div class="m-card-body" style="padding:0">
+                        <div class="m-table-wrap">
+                            <table><thead><tr>
+                                <th style="width:50px">Color</th><th>Grupo</th><th>Capacidad (kg/dia)</th><th>Estado</th><th>Acciones</th>
+                            </tr></thead>
+                            <tbody>${this._grupos.map(g => `<tr>
+                                <td><span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:${g.color || '#3b82f6'};border:2px solid rgba(0,0,0,0.1)"></span></td>
+                                <td><strong>${escapeHtml(g.grupo)}</strong></td>
+                                <td>${Number(g.capacidad_kg_dia).toLocaleString('es-CL')} kg</td>
+                                <td>${g.activo ? '<span class="status-badge status-terminado">Activo</span>' : '<span class="status-badge status-mermado">Inactivo</span>'}</td>
+                                <td class="table-actions">
+                                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showGrupoForm(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteGrupo(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                </td>
+                            </tr>`).join('')}</tbody>
+                        </table>
+                        </div>
+                        <div class="m-cards-mobile" id="grpCardsMobile" style="display:none;padding:12px"></div>
+                    </div>
                 </div>
             </div>`;
+        
+        this._renderGruposCards();
+    },
+
+    _renderGruposCards() {
+        const cardsMobile = document.getElementById('grpCardsMobile');
+        if (!cardsMobile) return;
+        cardsMobile.innerHTML = this._grupos.length ? this._grupos.map(g => {
+            const statusBadge = g.activo 
+                ? '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Activo</span>'
+                : '<span style="background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Inactivo</span>';
+            return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:${g.color || '#3b82f6'};border:2px solid rgba(0,0,0,0.1)"></span>
+                        <div>
+                            <div style="font-weight:700;font-size:13px">${escapeHtml(g.grupo)}</div>
+                            <div style="font-size:10px;color:#64748b">${Number(g.capacidad_kg_dia).toLocaleString('es-CL')} kg/dia</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:4px">
+                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showGrupoForm(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                        <button class="btn btn-sm btn-danger" onclick="App.modules.prod_config.deleteGrupo(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                    </div>
+                </div>
+                <div>${statusBadge}</div>
+            </div>`;
+        }).join('') : '<div style="text-align:center;padding:24px;color:#64748b">No hay grupos configurados</div>';
     },
 
     showGrupoForm(id) {
         const g = id ? this._grupos.find(x => x.id === id) : null;
         const colores = ['#22c55e','#06b6d4','#1e3a8a','#1e293b','#f97316','#fde047','#8b5cf6','#ef4444','#ec4899','#14b8a6'];
+        
         App.showModal(`
-            <div class="form-group"><label>Nombre del Grupo *</label>
-                <input class="form-control" id="grupoNombre" value="${g ? escapeHtml(g.grupo) : ''}" placeholder="Ej: Arquitectura, Laminado, etc."></div>
-            <div class="form-group"><label>Capacidad (kg/dia)</label>
-                <input type="number" class="form-control" id="grupoCapacidad" value="${g ? g.capacidad_kg_dia : 1500}" min="0"></div>
-            <div class="form-group"><label>Color</label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap" id="grupoColorPicker">
-                    ${colores.map(c => `<div onclick="document.getElementById('grupoColor').value='${c}';document.querySelectorAll('#grupoColorPicker div').forEach(d=>d.style.outline='none');this.style.outline='3px solid #3b82f6'" style="width:32px;height:32px;border-radius:8px;background:${c};cursor:pointer;border:2px solid rgba(0,0,0,0.1);${g && g.color === c ? 'outline:3px solid #3b82f6' : ''}"></div>`).join('')}
+            <div class="m-card" style="margin-bottom:10px">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos del Grupo</div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">
+                        <div class="form-group" style="margin:0">
+                            <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Nombre del Grupo *</label>
+                            <input class="form-control" id="grupoNombre" value="${g ? escapeHtml(g.grupo) : ''}" placeholder="Ej: Arquitectura" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Capacidad (kg/dia)</label>
+                            <input type="number" class="form-control" id="grupoCapacidad" value="${g ? g.capacidad_kg_dia : 1500}" min="0" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
+                        </div>
+                    </div>
                 </div>
-                <input type="hidden" id="grupoColor" value="${g ? (g.color || '#3b82f6') : '#3b82f6'}"></div>
-            <div class="form-group"><label>
-                <input type="checkbox" id="grupoActivo" ${!g || g.activo ? 'checked' : ''}> Activo</label></div>
+            </div>
+            <div class="m-card" style="margin-bottom:10px">
+                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#f0f9ff;border-bottom:1px solid #bae6fd"><span style="color:#0369a1">Color</span></div>
+                <div class="m-card-body" style="padding:8px 12px">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap" id="grupoColorPicker">
+                        ${colores.map(c => `<div onclick="document.getElementById('grupoColor').value='${c}';document.querySelectorAll('#grupoColorPicker div').forEach(d=>d.style.outline='none');this.style.outline='3px solid #3b82f6'" style="width:32px;height:32px;border-radius:8px;background:${c};cursor:pointer;border:2px solid rgba(0,0,0,0.1);${g && g.color === c ? 'outline:3px solid #3b82f6' : ''}"></div>`).join('')}
+                    </div>
+                    <input type="hidden" id="grupoColor" value="${g ? (g.color || '#3b82f6') : '#3b82f6'}">
+                </div>
+            </div>
+            <div class="m-card">
+                <div class="m-card-body" style="padding:8px 12px">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                        <input type="checkbox" id="grupoActivo" ${!g || g.activo ? 'checked' : ''} style="width:16px;height:16px">
+                        <span>Activo</span>
+                    </label>
+                </div>
+            </div>
         `, { title: g ? 'Editar Grupo' : 'Nuevo Grupo' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
