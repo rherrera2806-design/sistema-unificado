@@ -10,71 +10,66 @@ App.registerModule('prod_codigos', {
         const puedeEditar = permisos.includes('usuarios') || permisos.includes('produccion');
 
         el.innerHTML = `
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
-<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Codigos de Producto</h2>
-<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Catalogo maestro de codigos SAP - Grupo, Familia, Bloque de Tela</p></div>
-${puedeEditar ? `
-<div style="display:flex;gap:8px">
-                    <button class="btn btn-outline btn-sm" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.prod_codigos.importarExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar Excel</button>
-                    <button class="btn btn-outline btn-sm" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.prod_codigos.exportarExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Exportar Excel</button>
-                    ${permisos.includes('usuarios') ? '<button class="btn btn-danger btn-sm" title="Eliminar todos los registros" onclick="App.modules.prod_codigos.deleteAll()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar Registros</button>' : ''}
-                    <button class="btn btn-primary btn-sm" onclick="App.modules.prod_codigos.showCreateModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
-                </div>` : ''}
-</div></div>
-
-<style>
-@keyframes pcod_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.pcod-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
-.pcod-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
-.pcod-row{transition:all 0.2s}
-.pcod-row:hover{transform:translateX(2px);background:#f8fafc!important}
-</style>
-
-            <div class="stats-grid" style="margin-bottom:8px">
-                <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
-                    <div class="stat-icon blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Total Codigos</p><p class="stat-sub">Catalogo maestro SAP</p></div>
-                    <div class="stat-value" id="codTotal">0</div>
+            <div class="m-page">
+                <div class="m-hero">
+                    <div>
+                        <h2 class="m-hero-title">Codigos de Producto</h2>
+                        <p class="m-hero-sub">Catalogo maestro de codigos SAP - Grupo, Familia, Bloque de Tela</p>
+                    </div>
                 </div>
-                <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
-                    <div class="stat-icon" style="background:#f3e8ff;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Grupos</p><p class="stat-sub">Tipos diferentes</p></div>
-                    <div class="stat-value" id="codGrupos">0</div>
-                </div>
-                <div class="stat-card dash-card" style="border-left:4px solid #22c55e">
-                    <div class="stat-icon green"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Familias</p><p class="stat-sub">Subclasificaciones</p></div>
-                    <div class="stat-value" id="codFamilias">0</div>
-                </div>
-            </div>
 
-            <div class="card pcod-card">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;padding:10px 14px">
-                    <h3 style="margin:0;font-size:13px">Listado de Codigos</h3>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <select class="form-control" id="codFilterGrupo" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.onGrupoChange()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                <div class="m-stats">
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Total Codigos</div>
+                        <div style="font-size:20px;font-weight:700;color:#0f172a" id="codTotal">0</div>
+                    </div>
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Grupos</div>
+                        <div style="font-size:20px;font-weight:700;color:#7c3aed" id="codGrupos">0</div>
+                    </div>
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Familias</div>
+                        <div style="font-size:20px;font-weight:700;color:#16a34a" id="codFamilias">0</div>
+                    </div>
+                </div>
+
+                <div class="m-actions">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                        <select class="form-control" id="codFilterGrupo" style="width:auto;min-width:120px;padding:10px 12px;font-size:13px" onchange="App.modules.prod_codigos.onGrupoChange()">
                             <option value="">Todos los grupos</option>
                         </select>
-                        <select class="form-control" id="codFilterFamilia" style="width:auto;min-width:140px;font-size:12px;padding:4px 8px" onchange="App.modules.prod_codigos.filter()" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                        <select class="form-control" id="codFilterFamilia" style="width:auto;min-width:120px;padding:10px 12px;font-size:13px" onchange="App.modules.prod_codigos.filter()">
                             <option value="">Todas las familias</option>
                         </select>
-                        <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo, grupo... (min 2 caracteres)" oninput="App.modules.prod_codigos.filter()" style="width:200px;font-size:12px;padding:4px 8px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                        <input type="text" class="form-control" id="codFilterSearch" placeholder="Buscar codigo..." oninput="App.modules.prod_codigos.filter()" style="flex:1;min-width:150px;padding:10px 12px;font-size:13px">
+                        ${puedeEditar ? `
+                            <button class="btn btn-outline btn-sm" onclick="App.modules.prod_codigos.importarExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar</button>
+                            <button class="btn btn-outline btn-sm" onclick="App.modules.prod_codigos.exportarExcel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Exportar</button>
+                            ${permisos.includes('usuarios') ? '<button class="btn btn-danger btn-sm" onclick="App.modules.prod_codigos.deleteAll()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar</button>' : ''}
+                            <button class="btn btn-primary" onclick="App.modules.prod_codigos.showCreateModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                        ` : ''}
                     </div>
                 </div>
-                <div class="card-body" style="padding:0;max-height:700px;overflow-y:auto">
-                    <div style="overflow-x:auto">
-                    <table style="font-size:12px;width:100%;border-collapse:collapse"><thead><tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0">
-                        <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Codigo</th>
-                        <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Descripcion</th>
-                        <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Grupo</th>
-                        <th style="padding:6px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Familia</th>
-                        <th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Recetas</th>
-                        <th style="padding:6px 10px;text-align:center;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>
-                    </tr></thead><tbody id="codTable">
-                        <tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
-                    </tbody></table>
+
+                <div class="m-card">
+                    <div class="m-table-wrap">
+                        <table class="m-table">
+                            <thead>
+                                <tr>
+                                    <th>Codigo</th>
+                                    <th>Descripcion</th>
+                                    <th>Grupo</th>
+                                    <th>Familia</th>
+                                    <th>Recetas</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="codTable">
+                                <tr><td colspan="6" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
+                    <div class="m-cards-mobile" id="codCardsMobile"></div>
                 </div>
             </div>
 
@@ -82,10 +77,10 @@ ${puedeEditar ? `
                 <div class="modal" style="max-width:500px">
                     <div class="modal-header"><h3 id="codModalTitle">Nuevo Codigo</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_codigos.hideCreateModal()"></button></div>
                     <div class="modal-body">
-                        <div class="form-group"><label>Codigo SAP *</label><input class="form-control" id="codCodigo" placeholder="Ej: V659, 100, P123" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                        <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
-                        <div class="form-group"><label>Grupo</label><select class="form-control" id="codGrupo" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"><option value="">-- Seleccionar --</option></select></div>
-                        <div class="form-group"><label>Familia</label><select class="form-control" id="codFamilia" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"><option value="">-- Seleccionar --</option></select></div>
+                        <div class="form-group"><label>Codigo SAP *</label><input class="form-control" id="codCodigo" placeholder="Ej: V659, 100, P123"></div>
+                        <div class="form-group"><label>Descripcion</label><input class="form-control" id="codDescripcion" placeholder="Vidrio templado 10mm"></div>
+                        <div class="form-group"><label>Grupo</label><select class="form-control" id="codGrupo"><option value="">-- Seleccionar --</option></select></div>
+                        <div class="form-group"><label>Familia</label><select class="form-control" id="codFamilia"><option value="">-- Seleccionar --</option></select></div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.prod_codigos.hideCreateModal()">Cancelar</button>
@@ -98,8 +93,7 @@ ${puedeEditar ? `
                 <div class="modal" style="max-width:520px">
                     <div class="modal-header"><h3>Importar Codigos SAP</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_codigos.hideImportModal()">&times;</button></div>
                     <div class="modal-body">
-                        <div id="codImportArea" style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer"
-                             onclick="document.getElementById('codImportFile').click()">
+                        <div id="codImportArea" style="border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer" onclick="document.getElementById('codImportFile').click()">
                             <div style="font-size:32px;margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
                             <div style="color:var(--text-light)">Arrastra un Excel o haz clic para seleccionar</div>
                             <div id="codImportName" style="color:var(--success);font-weight:500;margin-top:8px;display:none"></div>
@@ -113,8 +107,7 @@ ${puedeEditar ? `
                             <div id="codPreviewSample" style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px;color:var(--text-light);max-height:140px;overflow-y:auto"></div>
                         </div>
                         <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-light)">
-                            <strong>Columnas esperadas:</strong><br>
-                            Codigo, Descripcion, Grupo, Familia<br>
+                            <strong>Columnas esperadas:</strong> Codigo, Descripcion, Grupo, Familia<br>
                             <em>Si el codigo ya existe, actualiza los datos (upsert)</em>
                         </div>
                     </div>
@@ -205,24 +198,72 @@ ${puedeEditar ? `
 
     renderTable(codigos) {
         const tbody = document.getElementById('codTable');
-        if (!codigos.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:#64748b">No hay codigos registrados</td></tr>'; return; }
+        const cardsMobile = document.getElementById('codCardsMobile');
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
-        const td = 'padding:4px 10px';
-        tbody.innerHTML = codigos.map(c => {
+
+        if (!codigos.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:#64748b">No hay codigos registrados</td></tr>';
+            if (cardsMobile) cardsMobile.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b">No hay codigos registrados</div>';
+            return;
+        }
+
+        const getGrupoBadge = (grupo) => {
+            if (!grupo) return '<span style="color:#cbd5e1">-</span>';
+            const hex = this._grupoColores[grupo] || '#3b82f6';
+            const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:rgba(${r},${g},${b},0.15);color:${hex}">${grupo}</span>`;
+        };
+
+        const getFamiliaBadge = (familia) => {
+            if (!familia) return '<span style="color:#cbd5e1">-</span>';
+            return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${familia}</span>`;
+        };
+
+        const getRecetasBadge = (c) => {
             const rc = parseInt(c.recetas_count) || 0;
-            const recetasBadge = rc > 0
-                ? `<span onclick="App.modules.prod_codigos.verRecetas('${escapeHtml(c.codigo)}')" style="cursor:pointer;background:#7c3aed15;color:#7c3aed;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px" title="Ver ${rc} receta(s) BOM"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${rc}</span>`
-                : `<span style="color:#cbd5e1;font-size:11px">-</span>`;
+            if (rc > 0) {
+                return `<span onclick="App.modules.prod_codigos.verRecetas('${escapeHtml(c.codigo)}')" style="cursor:pointer;background:#7c3aed15;color:#7c3aed;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px" title="Ver ${rc} receta(s)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${rc}</span>`;
+            }
+            return '<span style="color:#cbd5e1;font-size:11px">-</span>';
+        };
+
+        const getAcciones = (c) => {
+            if (!puedeEditar) return '';
+            return `<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_codigos.edit(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_codigos.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
+        };
+
+        tbody.innerHTML = codigos.map(c => {
             return `<tr class="pcod-row" style="line-height:1.3">
-            <td style="${td}"><strong>${c.codigo}</strong></td>
-            <td style="${td}">${c.descripcion || '-'}</td>
-            <td style="${td}">${c.grupo ? (() => { const hex = this._grupoColores[c.grupo] || '#3b82f6'; const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16); const light = (r*0.299+g*0.587+b*0.114) > 150; return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:rgba(${r},${g},${b},0.15);color:${hex}">${c.grupo}</span>`; })() : '-'}</td>
-            <td style="${td}">${c.familia ? `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${c.familia}</span>` : '-'}</td>
-            <td style="${td};text-align:center">${recetasBadge}</td>
-            <td style="${td}">${puedeEditar ? `<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_codigos.edit(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_codigos.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
-        </tr>`;
+                <td style="padding:4px 10px"><strong>${c.codigo}</strong></td>
+                <td style="padding:4px 10px">${c.descripcion || '-'}</td>
+                <td style="padding:4px 10px">${getGrupoBadge(c.grupo)}</td>
+                <td style="padding:4px 10px">${getFamiliaBadge(c.familia)}</td>
+                <td style="padding:4px 10px;text-align:center">${getRecetasBadge(c)}</td>
+                <td style="padding:4px 10px">${getAcciones(c)}</td>
+            </tr>`;
         }).join('');
+
+        if (cardsMobile) {
+            cardsMobile.innerHTML = codigos.map(c => `
+                <div class="m-card-header m-table-row">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%">
+                        <div style="flex:1">
+                            <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px">${c.codigo}</div>
+                            <div style="font-size:12px;color:#64748b;margin-bottom:6px">${c.descripcion || '-'}</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                                ${getGrupoBadge(c.grupo)}
+                                ${getFamiliaBadge(c.familia)}
+                                ${getRecetasBadge(c)}
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:4px;flex-shrink:0">
+                            ${getAcciones(c)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
     },
 
     _filterTimer: null,
