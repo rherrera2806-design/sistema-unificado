@@ -1044,30 +1044,38 @@ const Asistencia = {
         } catch(e) { console.error('Error:', e); }
     },
 
-    renderRankingPermisos(ranking) {
-        const c = document.getElementById('ast-ranking-permisos-container');
+    // ═══════ RANKING COLORS (estandarizado) ═══════
+    _rankingConfigs: [
+        { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', icon: '🏆', textColor: '#92400e', labelColor: '#b45309' },
+        { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
+        { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
+        { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '⭐', textColor: '#5b21b6', labelColor: '#7c3aed' },
+        { border: '#3b82f6', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#3b82f6', icon: '⭐', textColor: '#1e40af', labelColor: '#2563eb' }
+    ],
+
+    _renderRanking(containerId, data, valueKey, label) {
+        const c = document.getElementById(containerId);
         if (!c) return;
-        if (ranking.length === 0) { c.innerHTML = ''; return; }
-
-        const configs = [
-            { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', icon: '🏆', textColor: '#92400e', labelColor: '#b45309' },
-            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
-            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
-            { border: '#d97706', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#d97706', icon: '⭐', textColor: '#92400e', labelColor: '#b45309' },
-            { border: '#d97706', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#d97706', icon: '⭐', textColor: '#92400e', labelColor: '#b45309' }
-        ];
-
-        c.innerHTML = '<div class="ranking-container">' + ranking.map((r, i) => {
+        if (!data || data.length === 0) { c.innerHTML = ''; return; }
+        const configs = this._rankingConfigs;
+        c.innerHTML = '<div class="ranking-container">' + data.slice(0, 5).map((r, i) => {
             const cfg = configs[i] || configs[4];
+            const valor = r[valueKey] !== undefined ? r[valueKey] : r.valor || 0;
             return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
                 <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
                 <div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${cfg.numBg};color:white;font-size:10px;font-weight:800;margin-bottom:2px">${i + 1}</div>
                 <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
-                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${r.horas.toFixed(1)}</div>
-                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">Horas Permiso</div>
+                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${typeof valor === 'number' ? valor.toFixed(1) : valor}</div>
+                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">${label}</div>
             </div>`;
         }).join('') + '</div>';
     },
+
+    renderRanking(ranking) { this._renderRanking('ast-ranking-container', ranking, 'valor', 'Días fuera'); },
+    renderRankingPermisos(ranking) { this._renderRanking('ast-ranking-permisos-container', ranking, 'horas', 'Horas Permiso'); },
+    renderRankingLicencias(ranking) { this._renderRanking('ast-ranking-licencias-container', ranking, 'dias', 'Días Licencia'); },
+    renderRankingVacaciones(ranking) { this._renderRanking('ast-ranking-vacaciones-container', ranking, 'dias', 'Días Vacaciones'); },
+    renderRankingHorasExtras(ranking) { this._renderRanking('ast-ranking-he-container', ranking, 'horas', 'Horas Extras'); },
 
     renderTablaPermisos(permisos) {
             const tbody = document.getElementById('ast-tabla-permisos');
