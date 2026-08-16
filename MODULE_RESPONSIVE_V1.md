@@ -162,6 +162,33 @@ renderContent() {
 
 ---
 
+## ⚠️ LECCIÓN APRENDIDA: Revisión Exhaustiva
+
+Cuando el usuario pida "revisar" un módulo, **NO asumas que está bien**. Revisa CADA detalle:
+
+### Checklist de revisión obligatoria:
+
+| Elemento | Qué revisar |
+|----------|-------------|
+| **Header/Banner** | padding, font-size título, font-size subtítulo |
+| **Filtros** | gap, padding inputs, border-radius |
+| **StatCards** | grid columns, gap, padding, font-size valores/labels |
+| **Botones** | `btn-sm` vs padding manual, altura, font-size |
+| **Tabla** | min-width, overflow-x, headers font-size |
+| **Cards móvil** | border-radius, padding, font-size texto |
+| **Formularios** | gap, padding inputs, labels font-size, margin secciones |
+| **Espaciado** | margin-bottom entre secciones, padding cards |
+
+### Preguntas obligatorias antes de responder "está bien":
+
+1. ¿Los botones tienen `btn-sm`? → Siempre cambiar a `padding:8px 16px; font-size:12px`
+2. ¿Los inputs tienen padding suficiente? → Mínimo `padding:10px 12px`
+3. ¿El gap del grid es muy grande? → Máximo `6px 10px` para formularios
+4. ¿Los labels son muy grandes? → `font-size:10px; margin-bottom:2px`
+5. ¿Las cards tienen mucho padding? → `padding:8px 12px` para cards compactas
+
+---
+
 ## Checklist
 
 - [ ] Usar `m-page` como wrapper
