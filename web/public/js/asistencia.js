@@ -1367,31 +1367,6 @@ const Asistencia = {
         } catch(e) { console.error('Error:', e); }
     },
 
-    renderRankingVacaciones(ranking) {
-        const c = document.getElementById('ast-ranking-vacaciones-container');
-        if (!c) return;
-        if (ranking.length === 0) { c.innerHTML = ''; return; }
-
-        const configs = [
-            { border: '#3b82f6', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#3b82f6', icon: '🏆', textColor: '#1e40af', labelColor: '#2563eb' },
-            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
-            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
-            { border: '#2563eb', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#2563eb', icon: '⭐', textColor: '#1e40af', labelColor: '#3b82f6' },
-            { border: '#2563eb', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#2563eb', icon: '⭐', textColor: '#1e40af', labelColor: '#3b82f6' }
-        ];
-
-        c.innerHTML = '<div class="ranking-container">' + ranking.map((r, i) => {
-            const cfg = configs[i] || configs[4];
-            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
-                <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
-                <div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${cfg.numBg};color:white;font-size:10px;font-weight:800;margin-bottom:2px">${i + 1}</div>
-                <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
-                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${r.dias}</div>
-                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">Días Vacaciones</div>
-            </div>`;
-        }).join('') + '</div>';
-    },
-
     renderTablaVacaciones(vacaciones) {
             const tbody = document.getElementById('ast-tabla-vacaciones');
             if (!tbody) return;
@@ -1516,31 +1491,6 @@ const Asistencia = {
             this.renderRankingHorasExtras(ranking);
             this.renderTablaHorasExtras(horasExtras);
         } catch(e) { console.error('Error:', e); }
-    },
-
-    renderRankingHorasExtras(ranking) {
-        const c = document.getElementById('ast-ranking-he-container');
-        if (!c) return;
-        if (ranking.length === 0) { c.innerHTML = ''; return; }
-
-        const configs = [
-            { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '🏆', textColor: '#5b21b6', labelColor: '#7c3aed' },
-            { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
-            { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
-            { border: '#7c3aed', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#7c3aed', icon: '⭐', textColor: '#5b21b6', labelColor: '#8b5cf6' },
-            { border: '#7c3aed', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#7c3aed', icon: '⭐', textColor: '#5b21b6', labelColor: '#8b5cf6' }
-        ];
-
-        c.innerHTML = '<div class="ranking-container">' + ranking.map((r, i) => {
-            const cfg = configs[i] || configs[4];
-            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
-                <div style="font-size:20px;margin-bottom:2px">${cfg.icon}</div>
-                <div style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${cfg.numBg};color:white;font-size:10px;font-weight:800;margin-bottom:2px">${i + 1}</div>
-                <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
-                <div style="font-size:18px;font-weight:800;color:${cfg.numBg};line-height:1">${r.horas.toFixed(1)}</div>
-                <div style="font-size:8px;text-transform:uppercase;letter-spacing:0.8px;color:${cfg.labelColor};font-weight:700;margin-top:2px">Horas Extras</div>
-            </div>`;
-        }).join('') + '</div>';
     },
 
     renderTablaHorasExtras(horasExtras) {
