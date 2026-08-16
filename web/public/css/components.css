@@ -162,7 +162,7 @@
 .btn-ghost { background: transparent; color: var(--text-secondary); }
 .btn-ghost:hover { background: var(--gray-100); color: var(--text); }
 
-.btn-sm { padding: var(--space-1) var(--space-3); font-size: 0.75rem; }
+.btn-sm { padding: 0 var(--space-3); font-size: 0.75rem; height: 32px; min-height: 32px; }
 .btn-lg { padding: var(--space-3) var(--space-6); font-size: 0.875rem; }
 .btn-group { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 

@@ -226,7 +226,7 @@
 
     /* Actions */
     .m-actions { justify-content: stretch; }
-    .m-actions .btn { flex: 1; }
+    .m-actions .btn { flex: 1; height: 40px; min-height: 40px; }
 
     /* Table - hide on mobile, show cards */
     .m-table-wrap { display: none; }

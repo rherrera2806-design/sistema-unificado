@@ -93,7 +93,7 @@ App.registerModule('prod_config', {
     // ESTACIONES MAESTRAS
     // ═══════════════════════════════════════════
     async loadEstaciones() {
-        const res = await fetch('/api/produccion/estaciones');
+        const res = await fetch('/api/produccion/estaciones', { headers: this._headers() });
         this._estaciones = await res.json();
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
@@ -228,8 +228,8 @@ App.registerModule('prod_config', {
             activa: document.getElementById('estActiva').checked
         };
         if (!data.nombre_estacion || !data.orden_secuencia_defecto) { App.showAlert('Nombre y orden requeridos', 'danger'); return; }
-        if (id === 0) await fetch('/api/produccion/estaciones', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-        else await fetch(`/api/produccion/estaciones/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        if (id === 0) await fetch('/api/produccion/estaciones', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
+        else await fetch(`/api/produccion/estaciones/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
         App.hideModal();
         App.showAlert(id === 0 ? 'Estacion creada' : 'Estacion actualizada');
         this.loadEstaciones();
@@ -237,7 +237,7 @@ App.registerModule('prod_config', {
 
     async deleteEstacion(id) {
         if (!await App.confirm('¿Eliminar esta estacion?')) return;
-        await fetch(`/api/produccion/estaciones/${id}`, { method:'DELETE' });
+        await fetch(`/api/produccion/estaciones/${id}`, { method:'DELETE', headers:this._headers() });
         App.showAlert('Estacion eliminada');
         this.loadEstaciones();
     },
@@ -247,8 +247,8 @@ App.registerModule('prod_config', {
     // ═══════════════════════════════════════════
     async loadFamilias() {
         const [famRes, estRes] = await Promise.all([
-            fetch('/api/produccion/familias'),
-            fetch('/api/produccion/estaciones')
+            fetch('/api/produccion/familias', { headers: this._headers() }),
+            fetch('/api/produccion/estaciones', { headers: this._headers() })
         ]);
         this._familias = await famRes.json();
         this._estaciones = await estRes.json();
@@ -390,8 +390,8 @@ App.registerModule('prod_config', {
             estacion_ids: Array.from(document.querySelectorAll('.fam-est-check:checked')).map(c => parseInt(c.value))
         };
         if (!data.codigo_familia || !data.nombre_familia) { App.showAlert('Codigo y nombre requeridos', 'danger'); return; }
-        if (id === 0) await fetch('/api/produccion/familias', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-        else await fetch(`/api/produccion/familias/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        if (id === 0) await fetch('/api/produccion/familias', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
+        else await fetch(`/api/produccion/familias/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
         App.hideModal();
         App.showAlert(id === 0 ? 'Familia creada' : 'Familia actualizada');
         this.loadFamilias();
@@ -399,7 +399,7 @@ App.registerModule('prod_config', {
 
     async deleteFamilia(id) {
         if (!await App.confirm('¿Eliminar esta familia?')) return;
-        await fetch(`/api/produccion/familias/${id}`, { method:'DELETE' });
+        await fetch(`/api/produccion/familias/${id}`, { method:'DELETE', headers:this._headers() });
         App.showAlert('Familia eliminada');
         this.loadFamilias();
     },
@@ -408,7 +408,7 @@ App.registerModule('prod_config', {
     // GRUPOS DE PRODUCCION
     // ═══════════════════════════════════════════
     async loadGrupos() {
-        const res = await fetch('/api/produccion/capacidad-grupo/all');
+        const res = await fetch('/api/produccion/capacidad-grupo/all', { headers: this._headers() });
         this._grupos = await res.json();
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
@@ -531,9 +531,9 @@ App.registerModule('prod_config', {
         };
         if (!data.grupo) { App.showAlert('Nombre requerido', 'danger'); return; }
         if (id === 0)
-            await fetch('/api/produccion/capacidad-grupo', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+            await fetch('/api/produccion/capacidad-grupo', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
         else
-            await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+            await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
         App.hideModal();
         App.showAlert(id === 0 ? 'Grupo creado' : 'Grupo actualizado');
         this.loadGrupos();
@@ -541,7 +541,7 @@ App.registerModule('prod_config', {
 
     async deleteGrupo(id) {
         if (!await App.confirm('¿Eliminar este grupo?')) return;
-        await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'DELETE' });
+        await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'DELETE', headers:this._headers() });
         App.showAlert('Grupo eliminado');
         this.loadGrupos();
     },
@@ -550,7 +550,7 @@ App.registerModule('prod_config', {
     // MATERIAS PRIMAS
     // ═══════════════════════════════════════════
     async loadMaterias() {
-        const res = await fetch('/api/produccion/materias-primas');
+        const res = await fetch('/api/produccion/materias-primas', { headers: this._headers() });
         this._materias = await res.json();
         const search = document.getElementById('mpSearch')?.value || '';
         if (document.getElementById('mpTableBody')) {
@@ -769,7 +769,7 @@ App.registerModule('prod_config', {
         try {
             const res = await fetch('/api/produccion/materias-primas/import', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this._headers(),
                 body: JSON.stringify({ rows: this._mpImportData })
             });
             const result = await res.json();
@@ -936,8 +936,8 @@ App.registerModule('prod_config', {
             observacion: document.getElementById('mpObs').value.trim()
         };
         if (!data.codigo_mp || !data.nombre) { App.showAlert('Codigo y nombre requeridos', 'danger'); return; }
-        if (id === 0) await fetch('/api/produccion/materias-primas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-        else await fetch(`/api/produccion/materias-primas/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        if (id === 0) await fetch('/api/produccion/materias-primas', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
+        else await fetch(`/api/produccion/materias-primas/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
         App.hideModal();
         App.showAlert(id === 0 ? 'Materia prima creada' : 'Materia prima actualizada');
         this.loadMaterias();
@@ -945,7 +945,7 @@ App.registerModule('prod_config', {
 
     async deleteMateria(id) {
         if (!await App.confirm('¿Eliminar esta materia prima?')) return;
-        await fetch(`/api/produccion/materias-primas/${id}`, { method:'DELETE' });
+        await fetch(`/api/produccion/materias-primas/${id}`, { method:'DELETE', headers:this._headers() });
         App.showAlert('Materia prima eliminada');
         this.loadMaterias();
     },
@@ -1060,8 +1060,8 @@ App.registerModule('prod_config', {
             activa: document.getElementById('regActiva').checked
         };
         if (!data.nombre_flag || !data.estacion_id) { App.showAlert('Flag y estacion requeridos', 'danger'); return; }
-        if (id === 0) await fetch('/api/produccion/reglas-extras', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-        else await fetch(`/api/produccion/reglas-extras/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        if (id === 0) await fetch('/api/produccion/reglas-extras', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
+        else await fetch(`/api/produccion/reglas-extras/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
         App.hideModal();
         App.showAlert(id === 0 ? 'Regla creada' : 'Regla actualizada');
         this.loadReglas();
@@ -1069,7 +1069,7 @@ App.registerModule('prod_config', {
 
     async deleteRegla(id) {
         if (!await App.confirm('¿Eliminar esta regla?')) return;
-        await fetch(`/api/produccion/reglas-extras/${id}`, { method:'DELETE' });
+        await fetch(`/api/produccion/reglas-extras/${id}`, { method:'DELETE', headers:this._headers() });
         App.showAlert('Regla eliminada');
         this.loadReglas();
     },
@@ -1079,7 +1079,9 @@ App.registerModule('prod_config', {
     // ═══════════════════════════════════════════
 
     async loadCalendario() {
-        const res = await fetch('/api/produccion/calendario');
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const hdrs = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
+        const res = await fetch('/api/produccion/calendario', { headers: hdrs });
         this._calendario = await res.json();
         this.renderCalendario();
     },
@@ -1096,30 +1098,53 @@ App.registerModule('prod_config', {
             if (!c.es_laboral) noLabSet.add(c.fecha.substring(0, 10));
         }
         const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+        let countNoLab = 0;
+        for (let d = 1; d <= daysInMonth; d++) {
+            const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            if (noLabSet.has(fs)) countNoLab++;
+        }
         let html = `
-            <div class="card">
-                <div class="card-header" style="justify-content:space-between">
-                    <h3 style="margin:0">Calendario de Produccion</h3>
+            <div class="m-page">
+                <div class="m-hero">
+                    <div>
+                        <h2 class="m-hero-title">Calendario de Produccion</h2>
+                        <p class="m-hero-sub">Gestiona los dias laborales y no laborales del mes</p>
+                    </div>
+                </div>
+
+                <div class="m-stats">
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Mes Actual</div>
+                        <div style="font-size:16px;font-weight:700;color:#0f172a">${monthNames[month]} ${year}</div>
+                    </div>
+                    <div class="m-card m-card-header m-stat-card">
+                        <div style="font-size:11px;font-weight:600;color:#64748b">Dias Bloqueados</div>
+                        <div style="font-size:20px;font-weight:700;color:#ef4444">${countNoLab}</div>
+                    </div>
+                </div>
+
+                <div class="m-actions">
                     <div style="display:flex;gap:8px;align-items:center">
                         <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(-1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
-                        <strong>${monthNames[month]} ${year}</strong>
+                        <strong style="font-size:14px">${monthNames[month]} ${year}</strong>
                         <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
                     </div>
                 </div>
-                <div class="card-body">
-                    <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--text-light)">
-                        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dcfce7;vertical-align:middle"></span> Laboral</span>
-                        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fee2e2;vertical-align:middle"></span> No Laboral</span>
-                        <span style="margin-left:auto"><strong id="calBloqueados">0</strong> días bloqueados este mes</span>
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center">
-                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Lun</div>
-                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Mar</div>
-                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Mie</div>
-                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Jue</div>
-                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Vie</div>
-                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Sab</div>
-                        <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Dom</div>`;
+
+                <div class="m-card">
+                    <div class="m-card-body" style="padding:12px">
+                        <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--text-light)">
+                            <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dcfce7;vertical-align:middle"></span> Laboral</span>
+                            <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fee2e2;vertical-align:middle"></span> No Laboral</span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center">
+                            <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Lun</div>
+                            <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Mar</div>
+                            <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Mie</div>
+                            <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Jue</div>
+                            <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Vie</div>
+                            <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Sab</div>
+                            <div style="font-weight:600;font-size:11px;padding:6px;color:var(--text-light)">Dom</div>`;
         for (let i = 0; i < startOffset; i++) html += '<div></div>';
         for (let d = 1; d <= daysInMonth; d++) {
             const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
@@ -1132,15 +1157,8 @@ App.registerModule('prod_config', {
             const title = esNoLaboral ? (motivo || 'No laboral') : 'Laboral';
             html += `<div onclick="App.modules.prod_config.toggleDia('${fs}')" title="${title}" style="cursor:pointer;padding:8px 4px;border-radius:8px;border:1px solid ${borderColor};background:${bgColor};color:${textColor};font-weight:600;font-size:13px;transition:all .15s" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">${d}</div>`;
         }
-        html += `</div></div></div>`;
+        html += `</div></div></div></div>`;
         container.innerHTML = html;
-        let countNoLab = 0;
-        for (let d = 1; d <= daysInMonth; d++) {
-            const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-            if (noLabSet.has(fs)) countNoLab++;
-        }
-        const el = document.getElementById('calBloqueados');
-        if (el) el.textContent = countNoLab;
     },
 
     calCambiar(dir) {
@@ -1156,7 +1174,7 @@ App.registerModule('prod_config', {
         try {
             const res = await fetch('/api/produccion/calendario', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: this._headers(),
                 body: JSON.stringify({ fecha: fecha, es_laboral: !actualEsLaboral, motivo: '' })
             });
             if (!res.ok) { const err = await res.json(); App.showAlert('Error: ' + (err.error || res.status), 'danger'); return; }
