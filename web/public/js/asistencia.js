@@ -1598,38 +1598,33 @@ const Asistencia = {
 
         const cardsEl = document.getElementById('ast-cards-reporte');
         if (cardsEl) {
-            cardsEl.innerHTML = SigmaCards.generate({
-                title: (r, i) => '<strong>' + r.nombre + '</strong>',
-                badge: r => {
-                    const faltas = Number(r.faltas) || 0;
-                    const permisos = Number(r.permisos_aprobados) || 0;
-                    const licencias = Number(r.dias_licencia) || 0;
-                    const vacaciones = Number(r.dias_vacaciones) || 0;
-                    const diasHabiles = diasHabilesMes; // Simplificado para cards
-                    const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
-                    const pct = diasHabiles > 0 ? Math.round((asistidos / diasHabiles) * 100) : 0;
-                    const color = pct >= 80 ? '#d1fae5;color:#059669' : pct >= 60 ? '#fef3c7;color:#d97706' : '#fee2e2;color:#dc2626';
-                    return '<span class="sc-badge" style="background:' + color + '">' + pct + '%</span>';
-                },
-                fields: r => {
-                    const faltas = Number(r.faltas) || 0;
-                    const permisos = Number(r.permisos_aprobados) || 0;
-                    const licencias = Number(r.dias_licencia) || 0;
-                    const vacaciones = Number(r.dias_vacaciones) || 0;
-                    const he = Number(r.horas_extras) || 0;
-                    const diasHabiles = diasHabilesMes;
-                    const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
-                    return [
-                        { label: 'Días Hábiles', value: () => diasHabiles },
-                        { label: 'Asistidos', value: () => asistidos.toFixed(1) },
-                        { label: 'Faltas', value: () => faltas },
-                        { label: 'Permisos', value: () => permisos.toFixed(1) + ' días' },
-                        { label: 'Licencias', value: () => licencias + ' días' },
-                        { label: 'Vacaciones', value: () => vacaciones + ' días' },
-                        { label: 'H. Extras', value: () => he.toFixed(1) + ' hrs' }
-                    ];
-                }
-            }, reporte);
+            let cardsHtml = '';
+            reporte.forEach((r, i) => {
+                const faltas = Number(r.faltas) || 0;
+                const permisos = Number(r.permisos_aprobados) || 0;
+                const licencias = Number(r.dias_licencia) || 0;
+                const vacaciones = Number(r.dias_vacaciones) || 0;
+                const he = Number(r.horas_extras) || 0;
+                const diasHabiles = diasHabilesMes;
+                const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
+                const pct = diasHabiles > 0 ? Math.round((asistidos / diasHabiles) * 100) : 0;
+                const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+                cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + color + '">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                    + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + r.nombre + '</span>'
+                    + '<span style="background:' + (pct >= 80 ? '#d1fae5;color:#059669' : pct >= 60 ? '#fef3c7;color:#d97706' : '#fee2e2;color:#dc2626') + ';padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">' + pct + '%</span>'
+                    + '</div>'
+                    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#64748b">'
+                    + '<span>Días Hábiles: <strong style="color:#3b82f6">' + diasHabiles + '</strong></span>'
+                    + '<span>Asistidos: <strong>' + asistidos.toFixed(1) + '</strong></span>'
+                    + '<span>Faltas: <strong style="color:' + (faltas > 0 ? '#dc2626' : '#475569') + '">' + faltas + '</strong></span>'
+                    + '<span>Permisos: <strong>' + permisos.toFixed(1) + '</strong></span>'
+                    + '<span>Licencias: <strong>' + licencias + ' días</strong></span>'
+                    + '<span>Vacaciones: <strong>' + vacaciones + ' días</strong></span>'
+                    + '<span>H. Extras: <strong style="color:#8b5cf6">' + he.toFixed(1) + ' hrs</strong></span>'
+                    + '</div></div>';
+            });
+            cardsEl.innerHTML = cardsHtml;
         }
     },
 
