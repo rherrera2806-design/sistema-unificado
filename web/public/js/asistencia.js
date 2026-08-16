@@ -252,6 +252,10 @@ const Asistencia = {
         } else if (tab === 'reportes') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+                + '<div style="position:relative;flex:1;min-width:100px;max-width:180px">'
+                + '<svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%)" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+                + '<input type="text" id="ast-rep-buscar" placeholder="Buscar trabajador..." oninput="Asistencia.filtrarReporte()" style="width:100%;padding:6px 8px 6px 28px;font-size:11px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;box-sizing:border-box;background:rgba(255,255,255,0.1);color:white;outline:none" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
+                + '</div>'
                 + `<button onclick="Asistencia.cargarReportes()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#1e40af;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(30,64,175,0.15)">${BTN.CARGAR}</button>`;
         } else if (tab === 'diaria') {
             container.innerHTML = '<div style="position:relative">'
@@ -1641,18 +1645,29 @@ const Asistencia = {
             { border: '#22c55e', bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', numBg: '#22c55e', numColor: 'white', textColor: '#166534', icon: '⭐', labelColor: '#15803d' }
         ];
 
-        c.innerHTML = '<div style="display:flex;gap:16px;justify-content:center;align-items:flex-end;padding:20px 0">' + ranking.slice(0, 5).map((r, i) => {
+        c.innerHTML = '<div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;padding:16px 0;flex-wrap:wrap">' + ranking.slice(0, 5).map((r, i) => {
             const total = (Number(r.faltas) || 0) + (Number(r.permisos_dias) || 0) + (Number(r.licencias_dias) || 0) + (Number(r.vacaciones_dias) || 0);
             const cfg = configs[i] || configs[4];
             const s = i === 0 ? 1 : 0.88;
-            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:16px;padding:20px 22px 16px;text-align:center;min-width:150px;transform:scale(' + s + ');transform-origin:bottom center;box-shadow:0 2px 12px rgba(0,0,0,0.06);transition:all 0.2s">'
-            + '<div style="font-size:32px;margin-bottom:4px">' + cfg.icon + '</div>'
-            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:13px;font-weight:800;margin-bottom:6px">' + (i + 1) + '</div>'
-            + '<div style="font-size:13px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px">' + r.nombre + '</div>'
-            + '<div style="font-size:26px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + total.toFixed(1) + '</div>'
-            + '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Días fuera</div>'
+            return '<div style="background:' + cfg.bg + ';border:2px solid ' + cfg.border + ';border-radius:14px;padding:14px 16px 12px;text-align:center;min-width:120px;flex:1 1 120px;max-width:160px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">'
+            + '<div style="font-size:24px;margin-bottom:4px">' + cfg.icon + '</div>'
+            + '<div style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:' + cfg.numBg + ';color:' + cfg.numColor + ';font-size:12px;font-weight:800;margin-bottom:4px">' + (i + 1) + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:' + cfg.textColor + ';margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">' + r.nombre + '</div>'
+            + '<div style="font-size:22px;font-weight:800;color:' + cfg.numBg + ';line-height:1">' + total.toFixed(1) + '</div>'
+            + '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:' + cfg.labelColor + ';font-weight:700;margin-top:4px">Días fuera</div>'
             + '</div>';
         }).join('') + '</div>';
+    },
+
+    filtrarReporte() {
+        const query = (document.getElementById('ast-rep-buscar')?.value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('#ast-tabla-reporte tr');
+        rows.forEach(row => {
+            const nombreCell = row.querySelector('td:nth-child(2)');
+            if (!nombreCell) return;
+            const nombre = nombreCell.textContent.toLowerCase();
+            row.style.display = !query || nombre.includes(query) ? '' : 'none';
+        });
     },
 
     // ═══════ HELPERS ═══════
