@@ -1534,7 +1534,10 @@ const Asistencia = {
         } catch(e) { console.error('Error cargando reportes:', e); }
     },
 
+    _lastReporteData: null,
+
     renderReporte(reporte) {
+        this._lastReporteData = reporte;
         const tbody = document.getElementById('ast-tabla-reporte');
         if (!tbody) return;
         if (reporte.length === 0) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:32px;color:#94a3b8">Sin datos</td></tr>'; const cardsEl = document.getElementById('ast-cards-reporte'); if (cardsEl) cardsEl.innerHTML = ''; return; }
@@ -1663,42 +1666,91 @@ const Asistencia = {
 
     filtrarReporte() {
         const input = document.getElementById('ast-rep-buscar');
-        if (!input) { console.log('[FILTRAR] input no encontrado'); return; }
+        if (!input) return;
         const query = input.value.toLowerCase().trim();
         const mostrarTodos = query.length === 0;
-        
-        console.log('[FILTRAR] query:', query, 'mostrarTodos:', mostrarTodos);
         
         // Filtrar tabla desktop
         const tbody = document.getElementById('ast-tabla-reporte');
         if (tbody) {
             const rows = tbody.querySelectorAll('tr');
-            console.log('[FILTRAR] tabla rows:', rows.length);
             rows.forEach(row => {
                 const nombreCell = row.querySelector('td:nth-child(2)');
                 if (!nombreCell) return;
                 const nombre = nombreCell.textContent.toLowerCase();
                 row.style.display = mostrarTodos || nombre.includes(query) ? '' : 'none';
             });
-        } else {
-            console.log('[FILTRAR] tbody no encontrado');
         }
         
-        // Filtrar cards móvil
-        const cardsEl = document.getElementById('ast-cards-reporte');
-        if (cardsEl) {
-            const cards = cardsEl.querySelectorAll('div[style*="border-left"]');
-            console.log('[FILTRAR] cards encontradas:', cards.length);
-            cards.forEach(card => {
-                const nombreEl = card.querySelector('span[style*="font-weight:700"]');
-                if (!nombreEl) { console.log('[FILTRAR] nombreEl no encontrado en card'); return; }
-                const nombre = nombreEl.textContent.toLowerCase();
-                const visible = mostrarTodos || nombre.includes(query);
-                card.style.display = visible ? '' : 'none';
-                console.log('[FILTRAR] card:', nombre, 'visible:', visible);
-            });
-        } else {
-            console.log('[FILTRAR] cardsEl no encontrado');
+        // Filtrar cards móvil - re-renderizar con datos filtrados
+        if (this._lastReporteData) {
+            const cardsEl = document.getElementById('ast-cards-reporte');
+            if (cardsEl) {
+                const mes = parseInt(document.getElementById('ast-hero-mes')?.value) || (new Date().getMonth() + 1);
+                const anio = new Date().getFullYear();
+                const diasEnMes = new Date(anio, mes, 0).getDate();
+                const hoy = new Date();
+                let diasHabilesMes = 0;
+                for (let d = 1; d <= diasEnMes; d++) {
+                    const fecha = new Date(anio, mes - 1, d);
+                    const dow = fecha.getDay();
+                    if (dow !== 0 && dow !== 6) diasHabilesMes++;
+                }
+                
+                let cardsHtml = '';
+                this._lastReporteData.forEach((r, i) => {
+                    const nombre = r.nombre.toLowerCase();
+                    if (!mostrarTodos && !nombre.includes(query)) return;
+                    
+                    let diasHabiles = diasHabilesMes;
+                    if (r.fecha_ingreso) {
+                        const fechaIngreso = new Date(r.fecha_ingreso);
+                        const inicioMes = new Date(anio, mes - 1, 1);
+                        if (fechaIngreso > inicioMes) {
+                            diasHabiles = 0;
+                            for (let d = fechaIngreso.getDate(); d <= diasEnMes; d++) {
+                                const fecha = new Date(anio, mes - 1, d);
+                                const dow = fecha.getDay();
+                                if (dow !== 0 && dow !== 6) diasHabiles++;
+                            }
+                        }
+                    }
+                    if (hoy.getFullYear() === anio && hoy.getMonth() + 1 === mes) {
+                        const fechaIngreso = r.fecha_ingreso ? new Date(r.fecha_ingreso) : null;
+                        const inicioEfectivo = fechaIngreso && fechaIngreso > new Date(anio, mes - 1, 1) ? fechaIngreso.getDate() : 1;
+                        diasHabiles = 0;
+                        for (let d = inicioEfectivo; d <= hoy.getDate(); d++) {
+                            const fecha = new Date(anio, mes - 1, d);
+                            const dow = fecha.getDay();
+                            if (dow !== 0 && dow !== 6) diasHabiles++;
+                        }
+                    }
+                    
+                    const faltas = Number(r.faltas) || 0;
+                    const permisos = Number(r.permisos_aprobados) || 0;
+                    const licencias = Number(r.dias_licencia) || 0;
+                    const vacaciones = Number(r.dias_vacaciones) || 0;
+                    const he = Number(r.horas_extras) || 0;
+                    const asistidos = Math.max(0, diasHabiles - faltas - permisos - licencias - vacaciones);
+                    const pct = diasHabiles > 0 ? Math.round((asistidos / diasHabiles) * 100) : 0;
+                    const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+                    cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + color + '">'
+                        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                        + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + r.nombre + '</span>'
+                        + '<span style="background:' + (pct >= 80 ? '#d1fae5;color:#059669' : pct >= 60 ? '#fef3c7;color:#d97706' : '#fee2e2;color:#dc2626') + ';padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">' + pct + '%</span>'
+                        + '</div>'
+                        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#64748b">'
+                        + '<span>Días Hábiles: <strong style="color:#3b82f6">' + diasHabiles + '</strong></span>'
+                        + '<span>Asistidos: <strong>' + asistidos.toFixed(1) + '</strong></span>'
+                        + '<span>Faltas: <strong style="color:' + (faltas > 0 ? '#dc2626' : '#475569') + '">' + faltas + '</strong></span>'
+                        + '<span>Permisos: <strong>' + permisos.toFixed(1) + '</strong></span>'
+                        + '<span>Licencias: <strong>' + licencias + ' días</strong></span>'
+                        + '<span>Vacaciones: <strong>' + vacaciones + ' días</strong></span>'
+                        + '<span>H. Extras: <strong style="color:#8b5cf6">' + he.toFixed(1) + ' hrs</strong></span>'
+                        + '</div></div>';
+                });
+                cardsEl.innerHTML = cardsHtml;
+            }
         }
     },
 
