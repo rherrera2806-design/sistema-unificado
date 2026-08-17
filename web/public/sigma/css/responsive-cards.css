@@ -433,25 +433,10 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Costeo — Desktop + Mobile (siempre visible)
+   Costeo — Desktop + Mobile
    ═══════════════════════════════════════════════════════════════ */
 
 .costeo-wrap { max-width: 1100px; margin: 0 auto; }
-
-.costeo-header {
-    margin-bottom: 20px;
-}
-.costeo-header h2 {
-    font-size: 20px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0 0 4px;
-}
-.costeo-header p {
-    font-size: 13px;
-    color: #64748b;
-    margin: 0;
-}
 
 .costeo-grid {
     display: grid;
@@ -705,14 +690,6 @@
     font-weight: 700;
     color: #334155;
     margin-bottom: 8px;
-}
-
-/* ── Header button ── */
-.costeo-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
 }
 
 /* ── Toggle NAC/IMP ── */
