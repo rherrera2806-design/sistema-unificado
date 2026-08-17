@@ -594,6 +594,7 @@ App.registerModule('prod_config', {
                                 <th style="background:#eff6ff">Costo Imp</th>
                                 <th style="background:#fefce8">Diff $/m2</th>
                                 <th style="background:#fef3c7">CPM</th>
+                                <th style="background:#fce7f3">MPA %</th>
                                 <th>Observ.</th><th>Acc.</th>
                             </tr></thead>
                             <tbody id="mpTableBody"></tbody></table>
@@ -629,6 +630,7 @@ App.registerModule('prod_config', {
                 const cn = Number(m.costo_unitario_mp) || 0;
                 const ci = Number(m.costo_unitario_importado) || 0;
                 const cpm = Number(m.consumo_promedio_mensual) || 0;
+                const mpa = Number(m.mpa) || 0;
                 const diffM2 = (cn > 0 && ci > 0) ? ci - cn : 0;
                 const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
                 const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
@@ -645,12 +647,13 @@ App.registerModule('prod_config', {
                 <td style="background:#eff6ff">$${ci.toLocaleString('es-CL')}</td>
                 <td style="background:#fefce8;font-weight:600;color:${col(diffM2)}">${fmt(diffM2)}</td>
                 <td style="background:#fef3c7;text-align:right">${cpm.toLocaleString('es-CL')}</td>
+                <td style="background:#fce7f3;text-align:right">${mpa.toFixed(1)}%</td>
                 <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${obs}</td>
                 <td class="table-actions" style="white-space:nowrap">
                     <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                     <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                 </td>
-            </tr>`}).join('') : '<tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
+            </tr>`}).join('') : '<tr><td colspan="10" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
         }
         
         if (cardsMobile) {
@@ -658,6 +661,7 @@ App.registerModule('prod_config', {
                 const cn = Number(m.costo_unitario_mp) || 0;
                 const ci = Number(m.costo_unitario_importado) || 0;
                 const cpm = Number(m.consumo_promedio_mensual) || 0;
+                const mpa = Number(m.mpa) || 0;
                 const diffM2 = (cn > 0 && ci > 0) ? ci - cn : 0;
                 const fmt = (v) => '$' + Math.round(v).toLocaleString('es-CL');
                 const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
@@ -689,6 +693,12 @@ App.registerModule('prod_config', {
                         <div style="background:#fef3c7;padding:4px 6px;border-radius:4px">
                             <div style="color:#64748b">CPM</div>
                             <div style="font-weight:600;color:#92400e">${cpm.toLocaleString('es-CL')}</div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;margin-top:6px">
+                        <div style="background:#fce7f3;padding:4px 6px;border-radius:4px">
+                            <div style="color:#64748b">MPA</div>
+                            <div style="font-weight:600;color:#9d174d">${mpa.toFixed(1)}%</div>
                         </div>
                     </div>
                     ${badge ? '<div style="margin-top:6px">' + badge + '</div>' : ''}
@@ -794,6 +804,7 @@ App.registerModule('prod_config', {
             'Costo Importado ($/m2)': m.costo_unitario_importado, 'Hojas por paquete Imp': m.hojas_por_paquete_imp,
             'Ancho Imp': m.ancho_imp, 'Alto Imp': m.alto_imp, 'Paquetes por contenedor': m.paquetes_por_contenedor,
             'CPM': m.consumo_promedio_mensual || 0,
+            'MPA (%)': m.mpa || 0,
             'Observacion': m.observacion || ''
         }));
         const XLSXLib = window.XLSX;
@@ -869,9 +880,10 @@ App.registerModule('prod_config', {
             <div class="m-card" style="margin-bottom:10px">
                 <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#fefce8;border-bottom:1px solid #fde68a"><span style="color:#854d0e">Resumen (calculado)</span></div>
                 <div class="m-card-body" style="padding:8px 12px">
-                    <div class="mp-form-grid" style="grid-template-columns:1fr 2fr">
+                    <div class="mp-form-grid" style="grid-template-columns:1fr 1fr 1fr">
                         <div class="form-group"><label>Diferencia $/m2</label><input type="text" class="form-control" id="mpDiffM2" readonly style="background:#fff;font-weight:600"></div>
                         <div class="form-group"><label>Consumo Prom. Mensual (CPM)</label><input type="number" class="form-control" id="mpCPM" value="${v('consumo_promedio_mensual', true)}" min="0" step="1" placeholder="0"></div>
+                        <div class="form-group"><label>MPA (% Merma)</label><input type="number" class="form-control" id="mpMPA" value="${v('mpa')}" min="0" max="100" step="0.1" placeholder="0.0"></div>
                     </div>
                 </div>
             </div>
@@ -933,7 +945,8 @@ App.registerModule('prod_config', {
             alto_imp: parseFloat(document.getElementById('mpAltoImp').value) || 0,
             paquetes_por_contenedor: parseInt(document.getElementById('mpPaqContenedor').value) || 0,
             consumo_promedio_mensual: parseInt(document.getElementById('mpCPM').value) || 0,
-            observacion: document.getElementById('mpObs').value.trim()
+            observacion: document.getElementById('mpObs').value.trim(),
+            mpa: parseFloat(document.getElementById('mpMPA').value) || 0
         };
         if (!data.codigo_mp || !data.nombre) { App.showAlert('Codigo y nombre requeridos', 'danger'); return; }
         if (id === 0) await fetch('/api/produccion/materias-primas', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
