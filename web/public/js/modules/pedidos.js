@@ -188,7 +188,7 @@ App.registerModule('pedidos', {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch('/api/pedidos', {
-                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
+                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' }
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
@@ -402,7 +402,7 @@ App.registerModule('pedidos', {
             fd.append('archivo_pdf', this.selectedFile);
             const res = await fetch('/api/pedidos', {
                 method: 'POST',
-                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' },
                 body: fd
             });
             if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }
@@ -449,7 +449,7 @@ App.registerModule('pedidos', {
             if (goingToPendiente) body.estado = 'pendiente';
             const res = await fetch('/api/pedidos/' + this.currentPedido.id, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' },
                 body: JSON.stringify(body)
             });
             if (res.ok) { this.hideEditModal(); this.load(); App.toast(goingToPendiente ? 'Pedido editado, vuelve a pendiente para revisión' : 'Pedido actualizado'); }
@@ -467,7 +467,7 @@ App.registerModule('pedidos', {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch('/api/pedidos/' + this.currentPedido.id, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' },
                 body: JSON.stringify({ estado, motivo_rechazo: estado === 'rechazado' ? document.getElementById('pedMotivo').value.trim() : null, revisado_por: user.email || '' })
             });
             if (res.ok) {
@@ -498,7 +498,7 @@ App.registerModule('pedidos', {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch('/api/pedidos/' + id, {
                 method: 'DELETE',
-                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
+                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' }
             });
             if (res.ok) { this.load(); App.toast('Pedido eliminado'); }
             else { const data = await res.json(); alert(data.error || 'Error al eliminar'); }
@@ -513,7 +513,7 @@ App.registerModule('pedidos', {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch('/api/pedidos/' + id, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' },
                 body: JSON.stringify({ estado: 'rechazado', motivo_rechazo: motivo.trim(), revisado_por: user.email || '' })
             });
             if (res.ok) { this.load(); App.toast('Pedido rechazado'); }
