@@ -1,0 +1,443 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VitroFlow — Sistema de Gestion Industrial</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Space Grotesk',sans-serif;background:#06080f;color:white;overflow-x:hidden}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+
+/* Hero */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;text-align:center;padding:80px 24px}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(56,189,248,.08) 0%,rgba(168,85,247,.04) 40%,transparent 70%)}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.15);border-radius:20px;padding:5px 14px;margin-bottom:20px;font-size:10px;font-weight:600;color:#38bdf8;text-transform:uppercase;letter-spacing:1.5px}
+.hero h1{font-size:clamp(32px,5vw,52px);font-weight:700;letter-spacing:-1px;line-height:1.1;margin-bottom:16px}
+.hero h1 b{background:linear-gradient(135deg,#38bdf8,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{font-size:clamp(14px,2vw,18px);color:rgba(255,255,255,.45);max-width:600px;line-height:1.6;margin-bottom:32px}
+.hero-stats{display:flex;gap:40px;margin-bottom:40px}
+.hero-stat{text-align:center}
+.hero-stat-num{font-size:32px;font-weight:700;background:linear-gradient(135deg,#38bdf8,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-stat-label{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.scroll-hint{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.2);text-transform:uppercase;letter-spacing:2px;animation:bounce 2s infinite}
+@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(6px)}}
+
+/* Architecture Diagram */
+.arch-diagram{padding:60px 0}
+.section-tag{display:inline-flex;align-items:center;gap:6px;font-size:9px;font-weight:600;color:#38bdf8;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+.section-tag::before{content:'';width:20px;height:1px;background:#38bdf8}
+.section-title{font-size:clamp(24px,3vw,36px);font-weight:700;letter-spacing:-.5px;margin-bottom:8px}
+.section-sub{font-size:14px;color:rgba(255,255,255,.4);margin-bottom:40px}
+.diagram-canvas{width:100%;max-width:1100px;height:600px;margin:0 auto;position:relative;background:rgba(255,255,255,.01);border:1px solid rgba(255,255,255,.04);border-radius:20px;overflow:hidden}
+.diagram-canvas::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(56,189,248,.05) 0%,transparent 60%)}
+.diagram-canvas::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.02) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%);-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%)}
+
+/* Hub */
+.dHub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;height:120px;z-index:10}
+.dHub-core{width:100%;height:100%;border-radius:50%;background:conic-gradient(from 0deg,#38bdf8,#a855f7,#38bdf8);padding:2px;animation:hue 20s linear infinite}
+@keyframes hue{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(360deg)}}
+.dHub-inner{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 30% 30%,#131a2e,#0a0f1e);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.dHub-glyph{font-size:22px;filter:drop-shadow(0 0 8px rgba(56,189,248,.5))}
+.dHub-title{font-size:14px;font-weight:700;color:white}
+.dHub-tag{font-size:5px;font-weight:600;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:2px}
+.dHub-ring{position:absolute;inset:-12px;border-radius:50%;border:1px solid rgba(56,189,248,.1);animation:rPulse 4s ease-in-out infinite}
+.dHub-ring2{position:absolute;inset:-24px;border-radius:50%;border:1px dashed rgba(56,189,248,.05)}
+@keyframes rPulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
+
+/* Lines */
+.dLines{position:absolute;inset:0;z-index:1;pointer-events:none}
+.dLines svg{width:100%;height:100%}
+
+/* Module nodes */
+.dNode{position:absolute;z-index:10;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:all .25s}
+.dNode:hover{transform:translate(-50%,-50%) scale(1.1)}
+.dNode.active{transform:translate(-50%,-50%) scale(1.1)}
+.dHex{width:64px;height:64px;position:relative;display:flex;align-items:center;justify-content:center}
+.dShape{position:absolute;inset:0;opacity:.7;transition:opacity .25s}
+.dNode:hover .dShape{opacity:1}
+.dNode.active .dShape{opacity:1;stroke-width:2}
+.dIco{position:relative;z-index:2;font-size:24px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));transition:filter .25s}
+.dNode:hover .dIco{filter:drop-shadow(0 2px 12px rgba(0,0,0,.6)) brightness(1.15)}
+.dLbl{text-align:center}
+.dName{font-size:9px;font-weight:700;color:white;line-height:1.2}
+.dMeta{font-size:6px;color:rgba(255,255,255,.25);font-weight:500}
+
+/* Centered Popup Modal */
+.modal-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{width:420px;max-width:92vw;max-height:85vh;background:rgba(12,16,32,.96);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.7);overflow:hidden;opacity:0;transform:scale(.92);transition:all .25s cubic-bezier(.4,0,.2,1)}
+.modal-overlay.show .modal{opacity:1;transform:scale(1)}
+.modal-hdr{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-start;gap:12px}
+.modal-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.modal-title{font-size:18px;font-weight:700;color:white}
+.modal-sub{font-size:11px;color:rgba(255,255,255,.35);margin-top:2px}
+.modal-close{margin-left:auto;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:none;color:rgba(255,255,255,.4);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.modal-close:hover{background:rgba(255,255,255,.12);color:white}
+.modal-body{padding:16px 20px 20px;max-height:60vh;overflow-y:auto}
+.modal-body::-webkit-scrollbar{width:4px}
+.modal-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+.modal-section{margin-bottom:16px}
+.modal-section:last-child{margin-bottom:0}
+.modal-sec-title{font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.modal-item{display:flex;align-items:flex-start;gap:8px;padding:5px 0}
+.modal-item-icon{font-size:11px;margin-top:1px;flex-shrink:0}
+.modal-item-text{font-size:11px;color:rgba(255,255,255,.55);line-height:1.5}
+.modal-tag-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.modal-tag{font-size:9px;font-weight:500;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.05)}
+
+/* Module Cards Section */
+.mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:60px}
+.mod-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:24px;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
+.mod-card:hover{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.04);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.mod-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0;opacity:0;transition:opacity .3s}
+.mod-card:hover::before{opacity:1}
+.mod-card[data-c="blue"]::before{background:linear-gradient(90deg,#38bdf8,#3b82f6)}
+.mod-card[data-c="green"]::before{background:linear-gradient(90deg,#34d399,#10b981)}
+.mod-card[data-c="purple"]::before{background:linear-gradient(90deg,#a78bfa,#8b5cf6)}
+.mod-card[data-c="amber"]::before{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.mod-card[data-c="red"]::before{background:linear-gradient(90deg,#f87171,#ef4444)}
+.mod-card[data-c="cyan"]::before{background:linear-gradient(90deg,#22d3ee,#06b6d4)}
+.mod-card[data-c="pink"]::before{background:linear-gradient(90deg,#f472b6,#ec4899)}
+.mod-card[data-c="orange"]::before{background:linear-gradient(90deg,#fb923c,#f97316)}
+.mc-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.mc-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.mod-card[data-c="blue"] .mc-ico{background:rgba(56,189,248,.1)}
+.mod-card[data-c="green"] .mc-ico{background:rgba(52,211,153,.1)}
+.mod-card[data-c="purple"] .mc-ico{background:rgba(167,139,250,.1)}
+.mod-card[data-c="amber"] .mc-ico{background:rgba(251,191,36,.1)}
+.mod-card[data-c="red"] .mc-ico{background:rgba(248,113,113,.1)}
+.mod-card[data-c="cyan"] .mc-ico{background:rgba(34,211,238,.1)}
+.mod-card[data-c="pink"] .mc-ico{background:rgba(244,114,182,.1)}
+.mod-card[data-c="orange"] .mc-ico{background:rgba(251,146,60,.1)}
+.mc-name{font-size:15px;font-weight:700}
+.mc-count{font-size:9px;color:rgba(255,255,255,.3)}
+.mc-desc{font-size:11px;color:rgba(255,255,255,.4);line-height:1.5;margin-bottom:12px}
+
+/* Pricing */
+.pricing{padding:60px 0 80px}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px}
+.price-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:24px 20px;position:relative;transition:all .3s}
+.price-card:hover{border-color:rgba(255,255,255,.12);transform:translateY(-3px)}
+.price-card.feat{border-color:rgba(56,189,248,.3);background:rgba(56,189,248,.03)}
+.price-card.feat::before{content:'MAS POPULAR';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#38bdf8,#a855f7);color:white;font-size:8px;font-weight:700;letter-spacing:1px;padding:3px 12px;border-radius:10px}
+.pName{font-size:16px;font-weight:700;margin-bottom:4px}
+.pDesc{font-size:10px;color:rgba(255,255,255,.35);margin-bottom:14px}
+.pAmt{display:flex;align-items:baseline;gap:3px;margin-bottom:2px}
+.pCurr{font-size:14px;font-weight:600;color:rgba(255,255,255,.5)}
+.pNum{font-size:32px;font-weight:700;letter-spacing:-1px}
+.pPeriod{font-size:10px;color:rgba(255,255,255,.3)}
+.pNote{font-size:9px;color:rgba(255,255,255,.25);margin-bottom:16px}
+.pFeat{list-style:none;margin-bottom:20px}
+.pFeat li{font-size:10px;color:rgba(255,255,255,.5);padding:4px 0;display:flex;align-items:center;gap:6px}
+.pFeat li::before{content:'\2713';color:#34d399;font-weight:700;font-size:11px}
+.pBtn{width:100%;padding:10px;border-radius:10px;border:none;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s}
+.pBtn-p{background:linear-gradient(135deg,#38bdf8,#a855f7);color:white}
+.pBtn-p:hover{filter:brightness(1.1)}
+.pBtn-o{background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.12)}
+.pBtn-o:hover{border-color:rgba(255,255,255,.25);color:white}
+.footer-note{text-align:center;padding:24px;border-top:1px solid rgba(255,255,255,.04);margin-top:40px}
+.footer-note p{font-size:10px;color:rgba(255,255,255,.2)}
+
+/* Glows */
+.gB{filter:drop-shadow(0 0 8px rgba(56,189,248,.4))}
+.gG{filter:drop-shadow(0 0 8px rgba(52,211,153,.4))}
+.gP{filter:drop-shadow(0 0 8px rgba(167,139,250,.4))}
+.gA{filter:drop-shadow(0 0 8px rgba(251,191,36,.4))}
+.gR{filter:drop-shadow(0 0 8px rgba(248,113,113,.4))}
+.gC{filter:drop-shadow(0 0 8px rgba(34,211,238,.4))}
+.gPk{filter:drop-shadow(0 0 8px rgba(244,114,182,.4))}
+.gO{filter:drop-shadow(0 0 8px rgba(251,146,60,.4))}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">Plataforma todo-en-uno</div>
+  <h1>La plataforma <b>integral</b> para gestionar<br>toda tu planta de produccion</h1>
+  <p>VitroFlow conecta produccion, mantencion, inventario, pedidos, instalaciones y mas en una sola plataforma. Reduce tiempos, elimina errores y toma decisiones con datos reales.</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><div class="hero-stat-num">32</div><div class="hero-stat-label">Modulos</div></div>
+    <div class="hero-stat"><div class="hero-stat-num">8</div><div class="hero-stat-label">Areas</div></div>
+    <div class="hero-stat"><div class="hero-stat-num">24/7</div><div class="hero-stat-label">Disponibilidad</div></div>
+    <div class="hero-stat"><div class="hero-stat-num">100%</div><div class="hero-stat-label">Web-based</div></div>
+  </div>
+  <div class="scroll-hint">scroll para explorar &#8595;</div>
+</section>
+
+<!-- INTERACTIVE ARCHITECTURE -->
+<section class="arch-diagram">
+  <div class="wrap">
+    <div class="section-tag">Arquitectura del Sistema</div>
+    <div class="section-title">8 modulos conectados. Una sola plataforma.</div>
+    <div class="section-sub">Haz clic en cualquier modulo para ver que hace, sus ventajas y beneficios.</div>
+
+    <div class="diagram-canvas">
+      <!-- Lines -->
+      <div class="dLines"><svg viewBox="0 0 1100 600" fill="none">
+        <defs>
+          <linearGradient id="gl1" x1="550" y1="300" x2="160" y2="170"><stop offset="0%" stop-color="#38bdf8" stop-opacity=".25"/><stop offset="100%" stop-color="#38bdf8" stop-opacity=".03"/></linearGradient>
+          <linearGradient id="gl2" x1="550" y1="300" x2="940" y2="170"><stop offset="0%" stop-color="#34d399" stop-opacity=".25"/><stop offset="100%" stop-color="#34d399" stop-opacity=".03"/></linearGradient>
+          <linearGradient id="gl3" x1="550" y1="300" x2="550" y2="100"><stop offset="0%" stop-color="#a78bfa" stop-opacity=".25"/><stop offset="100%" stop-color="#a78bfa" stop-opacity=".03"/></linearGradient>
+          <linearGradient id="gl4" x1="550" y1="300" x2="160" y2="420"><stop offset="0%" stop-color="#fbbf24" stop-opacity=".25"/><stop offset="100%" stop-color="#fbbf24" stop-opacity=".03"/></linearGradient>
+          <linearGradient id="gl5" x1="550" y1="300" x2="940" y2="420"><stop offset="0%" stop-color="#f87171" stop-opacity=".25"/><stop offset="100%" stop-color="#f87171" stop-opacity=".03"/></linearGradient>
+          <linearGradient id="gl6" x1="550" y1="300" x2="320" y2="520"><stop offset="0%" stop-color="#22d3ee" stop-opacity=".25"/><stop offset="100%" stop-color="#22d3ee" stop-opacity=".03"/></linearGradient>
+          <linearGradient id="gl7" x1="550" y1="300" x2="780" y2="520"><stop offset="0%" stop-color="#f472b6" stop-opacity=".25"/><stop offset="100%" stop-color="#f472b6" stop-opacity=".03"/></linearGradient>
+          <linearGradient id="gl8" x1="550" y1="300" x2="550" y2="530"><stop offset="0%" stop-color="#fb923c" stop-opacity=".25"/><stop offset="100%" stop-color="#fb923c" stop-opacity=".03"/></linearGradient>
+        </defs>
+        <line x1="550" y1="300" x2="160" y2="170" stroke="url(#gl1)" stroke-width="1.5"/>
+        <line x1="550" y1="300" x2="940" y2="170" stroke="url(#gl2)" stroke-width="1.5"/>
+        <line x1="550" y1="300" x2="550" y2="100" stroke="url(#gl3)" stroke-width="1.5"/>
+        <line x1="550" y1="300" x2="160" y2="420" stroke="url(#gl4)" stroke-width="1.5"/>
+        <line x1="550" y1="300" x2="940" y2="420" stroke="url(#gl5)" stroke-width="1.5"/>
+        <line x1="550" y1="300" x2="320" y2="520" stroke="url(#gl6)" stroke-width="1.5"/>
+        <line x1="550" y1="300" x2="780" y2="520" stroke="url(#gl7)" stroke-width="1.5"/>
+        <line x1="550" y1="300" x2="550" y2="530" stroke="url(#gl8)" stroke-width="1.5"/>
+        <circle r="2" fill="#38bdf8"><animateMotion dur="3s" repeatCount="indefinite" path="M550,300 L160,170"/></circle>
+        <circle r="2" fill="#34d399"><animateMotion dur="3s" repeatCount="indefinite" path="M550,300 L940,170" begin=".6s"/></circle>
+        <circle r="2" fill="#a78bfa"><animateMotion dur="2.8s" repeatCount="indefinite" path="M550,300 L550,100" begin="1.2s"/></circle>
+        <circle r="2" fill="#fbbf24"><animateMotion dur="3s" repeatCount="indefinite" path="M550,300 L160,420" begin=".3s"/></circle>
+        <circle r="2" fill="#f87171"><animateMotion dur="3s" repeatCount="indefinite" path="M550,300 L940,420" begin="1.8s"/></circle>
+        <circle r="2" fill="#22d3ee"><animateMotion dur="2.8s" repeatCount="indefinite" path="M550,300 L320,520" begin=".9s"/></circle>
+        <circle r="2" fill="#f472b6"><animateMotion dur="2.8s" repeatCount="indefinite" path="M550,300 L780,520" begin="1.5s"/></circle>
+        <circle r="2" fill="#fb923c"><animateMotion dur="2.5s" repeatCount="indefinite" path="M550,300 L550,530" begin=".4s"/></circle>
+      </svg></div>
+
+      <!-- Hub -->
+      <div class="dHub">
+        <div class="dHub-ring"></div><div class="dHub-ring2"></div>
+        <div class="dHub-core"><div class="dHub-inner">
+          <div class="dHub-glyph">&#9881;</div>
+          <div class="dHub-title">VitroFlow</div>
+          <div class="dHub-tag">Central Core</div>
+        </div></div>
+      </div>
+
+      <!-- Nodes -->
+      <div class="dNode" data-mod="produccion" style="left:160px;top:170px">
+        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(56,189,248,.08)" stroke="rgba(56,189,248,.25)" stroke-width="1"/></svg><div class="dIco gB">&#127981;</div></div>
+        <div class="dLbl"><div class="dName">Produccion</div><div class="dMeta">10 modulos</div></div>
+      </div>
+      <div class="dNode" data-mod="sigma" style="left:940px;top:170px">
+        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(52,211,153,.08)" stroke="rgba(52,211,153,.25)" stroke-width="1"/></svg><div class="dIco gG">&#128295;</div></div>
+        <div class="dLbl"><div class="dName">SIGMA</div><div class="dMeta">12 modulos</div></div>
+      </div>
+      <div class="dNode" data-mod="instalaciones" style="left:550px;top:100px">
+        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(167,139,250,.08)" stroke="rgba(167,139,250,.25)" stroke-width="1"/></svg><div class="dIco gP">&#127968;</div></div>
+        <div class="dLbl"><div class="dName">Instalaciones</div><div class="dMeta">3 modulos</div></div>
+      </div>
+      <div class="dNode" data-mod="inventario" style="left:160px;top:420px">
+        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(251,191,36,.08)" stroke="rgba(251,191,36,.25)" stroke-width="1"/></svg><div class="dIco gA">&#128230;</div></div>
+        <div class="dLbl"><div class="dName">Inventario</div><div class="dMeta">3 modulos</div></div>
+      </div>
+      <div class="dNode" data-mod="pedidos" style="left:940px;top:420px">
+        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(248,113,113,.08)" stroke="rgba(248,113,113,.25)" stroke-width="1"/></svg><div class="dIco gR">&#128722;</div></div>
+        <div class="dLbl"><div class="dName">Pedidos</div><div class="dMeta">1 modulo</div></div>
+      </div>
+      <div class="dNode" data-mod="turnos" style="left:320px;top:520px">
+        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(34,211,238,.08)" stroke="rgba(34,211,238,.25)" stroke-width="1"/></svg><div class="dIco gC">&#128336;</div></div>
+        <div class="dLbl"><div class="dName">Turnos</div><div class="dMeta">6 modulos</div></div>
+      </div>
+      <div class="dNode" data-mod="asistencia" style="left:780px;top:520px">
+        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.25)" stroke-width="1"/></svg><div class="dIco gPk">&#128101;</div></div>
+        <div class="dLbl"><div class="dName">Asistencia</div><div class="dMeta">1 modulo</div></div>
+      </div>
+      <div class="dNode" data-mod="costeo" style="left:550px;top:530px">
+        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(251,146,60,.08)" stroke="rgba(251,146,60,.25)" stroke-width="1"/></svg><div class="dIco gO">&#129518;</div></div>
+        <div class="dLbl"><div class="dName">Costeo</div><div class="dMeta">1 modulo</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL (always centered) -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<!-- MODULE DETAILS -->
+<section style="padding:60px 0">
+  <div class="wrap">
+    <div class="section-tag">Detalle de Modulos</div>
+    <div class="section-title">Conoce que hace cada area</div>
+    <div class="section-sub">Cada modulo esta disenado para resolver problemas reales de tu operacion.</div>
+    <div class="mod-grid">
+      <div class="mod-card" data-c="blue" data-mod="produccion">
+        <div class="mc-head"><div class="mc-ico">&#127981;</div><div><div class="mc-name">Produccion</div><div class="mc-count">10 submodulos</div></div></div>
+        <div class="mc-desc">Ordenes, planificacion, estaciones, recetas BOM, materias primas, taller y SAP.</div>
+      </div>
+      <div class="mod-card" data-c="green" data-mod="sigma">
+        <div class="mc-head"><div class="mc-ico">&#128295;</div><div><div class="mc-name">SIGMA</div><div class="mc-count">12 submodulos</div></div></div>
+        <div class="mc-desc">Mantencion preventiva y correctiva, componentes, repuestos, historial y bitacora.</div>
+      </div>
+      <div class="mod-card" data-c="purple" data-mod="instalaciones">
+        <div class="mc-head"><div class="mc-ico">&#127968;</div><div><div class="mc-name">Instalaciones</div><div class="mc-count">3 submodulos</div></div></div>
+        <div class="mc-desc">Gestion de instalaciones, historial fotografico y seguimiento de tecnicos.</div>
+      </div>
+      <div class="mod-card" data-c="amber" data-mod="inventario">
+        <div class="mc-head"><div class="mc-ico">&#128230;</div><div><div class="mc-name">Inventario</div><div class="mc-count">3 submodulos</div></div></div>
+        <div class="mc-desc">Stock en tiempo real, movimientos y alertas de nivel minimo.</div>
+      </div>
+      <div class="mod-card" data-c="red" data-mod="pedidos">
+        <div class="mc-head"><div class="mc-ico">&#128722;</div><div><div class="mc-name">Pedidos</div><div class="mc-count">Gestion completa</div></div></div>
+        <div class="mc-desc">Flujo de aprobacion, archivos R2 y seguimiento de estados.</div>
+      </div>
+      <div class="mod-card" data-c="cyan" data-mod="turnos">
+        <div class="mc-head"><div class="mc-ico">&#128336;</div><div><div class="mc-name">Turnos</div><div class="mc-count">6 submodulos</div></div></div>
+        <div class="mc-desc">Recepcion, bodega, almacen, facturacion, QR y reportes.</div>
+      </div>
+      <div class="mod-card" data-c="pink" data-mod="asistencia">
+        <div class="mc-head"><div class="mc-ico">&#128101;</div><div><div class="mc-name">Asistencia</div><div class="mc-count">Control de personal</div></div></div>
+        <div class="mc-desc">Trabajadores, fichaje y reportes de horas.</div>
+      </div>
+      <div class="mod-card" data-c="orange" data-mod="costeo">
+        <div class="mc-head"><div class="mc-ico">&#129518;</div><div><div class="mc-name">Costeo</div><div class="mc-count">Calculadora</div></div></div>
+        <div class="mc-desc">Costos de produccion por pieza con margenes.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing">
+  <div class="wrap">
+    <div class="section-tag">Planes y Precios</div>
+    <div class="section-title">Invierte en eficiencia, no en licencias</div>
+    <div class="section-sub">Precios en UF para resistir la inflacion. Sin costos de implementacion. Soporte incluido.</div>
+    <div class="price-grid">
+      <div class="price-card">
+        <div class="pName">Starter</div><div class="pDesc">Para empresas que empiezan a digitalizar</div>
+        <div class="pAmt"><span class="pCurr">UF</span><span class="pNum">8</span></div>
+        <div class="pPeriod">/ mes (approx $320.000 CLP)</div><div class="pNote">Hasta 5 usuarios</div>
+        <ul class="pFeat"><li>Pedidos con aprobacion</li><li>Inventario basico</li><li>Turnos completos</li><li>Reportes por modulo</li><li>Soporte email</li></ul>
+        <button class="pBtn pBtn-o">Comenzar</button>
+      </div>
+      <div class="price-card feat">
+        <div class="pName">Professional</div><div class="pDesc">Suite completa para operacion industrial</div>
+        <div class="pAmt"><span class="pCurr">UF</span><span class="pNum">18</span></div>
+        <div class="pPeriod">/ mes (approx $720.000 CLP)</div><div class="pNote">Hasta 20 usuarios</div>
+        <ul class="pFeat"><li>Todo del Starter</li><li>Produccion (10 modulos)</li><li>SIGMA Mantencion (12)</li><li>Instalaciones</li><li>Costeo y margenes</li><li>Asistencia</li><li>Dashboard ejecutivo</li><li>Soporte prioritario</li></ul>
+        <button class="pBtn pBtn-p">Elegir Professional</button>
+      </div>
+      <div class="price-card">
+        <div class="pName">Enterprise</div><div class="pDesc">Para plantas con multiples sedes</div>
+        <div class="pAmt"><span class="pCurr">UF</span><span class="pNum">32</span></div>
+        <div class="pPeriod">/ mes (approx $1.280.000 CLP)</div><div class="pNote">Usuarios ilimitados</div>
+        <ul class="pFeat"><li>Todo del Professional</li><li>Multi-sede</li><li>Integracion SAP</li><li>API personalizada</li><li>SLA 99.9%</li><li>Capacitacion presencial</li><li>Gerente dedicado</li></ul>
+        <button class="pBtn pBtn-o">Contactar Ventas</button>
+      </div>
+    </div>
+    <div class="footer-note"><p>Todos los planes: actualizaciones gratis, soporte, respaldo automatico, SSL, hosting. Descuento 15% pago anual.</p></div>
+  </div>
+</section>
+
+<script>
+const MODAL_DATA={
+  produccion:{icon:'&#127981;',name:'Produccion',sub:'Sistema completo de gestion de produccion',color:'#38bdf8',
+    desc:'Controla todo el ciclo de produccion desde la planificacion hasta el despacho. Ordenes de produccion, estaciones de trabajo, recetas BOM, materias primas y codigos SAP integrados.',
+    benefits:[
+      {i:'&#9989;',t:'Reduce 40% el tiempo de planificacion semanal'},
+      {i:'&#9989;',t:'Detecta cuellos de botella antes de que afecten la entrega'},
+      {i:'&#9989;',t:'Recetas BOM automaticas con calculo de materiales y costos'},
+      {i:'&#9989;',t:'Importacion directa desde SAP sin reingreso de datos'},
+      {i:'&#9989;',t:'Dashboard con metricas de avance en tiempo real'}
+    ],
+    tags:['Ordenes','Planificacion','Estaciones','Recetas BOM','Materias Primas','Carroceria','Codigos SAP','Taller','Reportes','Grupos']},
+  sigma:{icon:'&#128295;',name:'SIGMA — Mantencion',sub:'Mantenimiento preventivo y correctivo',color:'#34d399',
+    desc:'Gestiona toda la mantencion de tus maquinas. Preventiva automatica, correctiva con registro de fallas, control de repuestos e historial completo por equipo.',
+    benefits:[
+      {i:'&#9989;',t:'Reduce 60% las paradas no programadas'},
+      {i:'&#9989;',t:'Programacion automatica por horometro y calendario'},
+      {i:'&#9989;',t:'Alertas de stock minimo de repuestos'},
+      {i:'&#9989;',t:'Historial completo: cada intervencion registrada'},
+      {i:'&#9989;',t:'KPIs: MTBF, MTTR, maquinas operativas vs detenidas'}
+    ],
+    tags:['Dashboard','Tipos de Area','Maquinas','Componentes','Preventiva','Correctiva','Repuestos','Calendario','Notas','Reportes','Bitacora','Historial']},
+  instalaciones:{icon:'&#127968;',name:'Instalaciones',sub:'Gestion de instalaciones en terreno',color:'#a78bfa',
+    desc:'Control centralizado de todas las instalaciones. Historial fotografico, asignacion de tecnicos y seguimiento de avance en tiempo real.',
+    benefits:[
+      {i:'&#9989;',t:'Documentacion fotografica automatica antes/despues'},
+      {i:'&#9989;',t:'Asignacion y seguimiento de tecnicos en tiempo real'},
+      {i:'&#9989;',t:'Calendario de instalaciones programadas'},
+      {i:'&#9989;',t:'Evidencia verificable para clientes y auditorias'}
+    ],
+    tags:['Instalaciones','Historial','Fotos / Detalle']},
+  inventario:{icon:'&#128230;',name:'Inventario',sub:'Control de stock en tiempo real',color:'#fbbf24',
+    desc:'Stock actualizado al instante, movimientos automaticos y alertas cuando el material baja del minimo. Sin sorpresas de material faltante.',
+    benefits:[
+      {i:'&#9989;',t:'Stock en tiempo real: fin de las sorpresas'},
+      {i:'&#9989;',t:'Registro automatico de cada movimiento'},
+      {i:'&#9989;',t:'Alertas de nivel minimo de stock'},
+      {i:'&#9989;',t:'Historial completo de entradas y salidas'}
+    ],
+    tags:['Stock','Movimientos','Historial']},
+  pedidos:{icon:'&#128722;',name:'Pedidos',sub:'Flujo completo de gestion de pedidos',color:'#f87171',
+    desc:'Desde la creacion hasta la entrega. Flujo de aprobacion configurable, subida de archivos y seguimiento de estados.',
+    benefits:[
+      {i:'&#9989;',t:'Flujo de aprobacion: gerente, bodega, calidad'},
+      {i:'&#9989;',t:'Subida de archivos PDF e imagenes'},
+      {i:'&#9989;',t:'Dashboard de pedidos pendientes y aprobados'},
+      {i:'&#9989;',t:'Trazabilidad completa: quien aprobo cada pedido'}
+    ],
+    tags:['Creacion','Aprobacion','Archivos R2','Estados']},
+  turnos:{icon:'&#128336;',name:'Turnos',sub:'Atencion al cliente optimizada',color:'#22d3ee',
+    desc:'Control del flujo de clientes por etapa: recepcion, bodega, almacen, facturacion. Codigos QR y reportes por turno.',
+    benefits:[
+      {i:'&#9989;',t:'Reduce 30% el tiempo de espera del cliente'},
+      {i:'&#9989;',t:'Codigos QR para identificacion rapida'},
+      {i:'&#9989;',t:'Reportes de productividad por turno'},
+      {i:'&#9989;',t:'Visibilidad total del flujo operativo diario'}
+    ],
+    tags:['Recepcion','Bodega','Almacen','Facturacion','QR','Reportes']},
+  asistencia:{icon:'&#128101;',name:'Asistencia',sub:'Control de personal y fichaje',color:'#f472b6',
+    desc:'Registro digital de entrada y salida, reportes automaticos de horas trabajadas y historial para calculo de remuneraciones.',
+    benefits:[
+      {i:'&#9989;',t:'Elimina errores en calculo de horas extras'},
+      {i:'&#9989;',t:'Reportes automaticos por trabajador y turno'},
+      {i:'&#9989;',t:'Historial de asistencia para RRHH'},
+      {i:'&#9989;',t:'Ahorro en tiempo administrativo'}
+    ],
+    tags:['Trabajadores','Fichaje','Reportes']},
+  costeo:{icon:'&#129518;',name:'Costeo',sub:'Calculadora de costos de produccion',color:'#fb923c',
+    desc:'Simula el costo de cada pieza: materia prima, mano de obra, energia, procesos y margen de ganancia. Cotizaciones precisas en minutos.',
+    benefits:[
+      {i:'&#9989;',t:'Calculo automatico: MP + HH + energia + procesos'},
+      {i:'&#9989;',t:'Simulacion rapida con cambio de variables'},
+      {i:'&#9989;',t:'Protege margenes con costos reales'},
+      {i:'&#9989;',t:'Configuracion de todos los procesos industriales'}
+    ],
+    tags:['Costos','Margenes','Simulacion','Configuracion']}
+};
+
+const overlay=document.getElementById('modalOverlay');
+const modal=document.getElementById('modal');
+let activeNode=null;
+
+function closeModal(){
+  overlay.classList.remove('show');
+  if(activeNode){activeNode.classList.remove('active');activeNode=null}
+}
+
+function openModal(key){
+  const d=MODAL_DATA[key];if(!d)return;
+  const benefits=d.benefits.map(b=>'<div class="modal-item"><span class="modal-item-icon">'+b.i+'</span><span class="modal-item-text">'+b.t+'</span></div>').join('');
+  const tags=d.tags.map(t=>'<span class="modal-tag">'+t+'</span>').join('');
+
+  modal.innerHTML='<div class="modal-hdr"><div class="modal-ico" style="background:'+d.color+'18">'+d.icon+'</div><div><div class="modal-title">'+d.name+'</div><div class="modal-sub">'+d.sub+'</div></div><button class="modal-close" onclick="closeModal()">&times;</button></div><div class="modal-body"><div class="modal-section"><div class="modal-sec-title">Que es</div><p style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6">'+d.desc+'</p></div><div class="modal-section"><div class="modal-sec-title">Beneficios clave</div>'+benefits+'</div><div class="modal-section"><div class="modal-sec-title">Submodulos</div><div class="modal-tag-row">'+tags+'</div></div></div>';
+
+  overlay.classList.add('show');
+}
+
+document.querySelectorAll('.dNode').forEach(n=>{
+  n.addEventListener('click',e=>{e.stopPropagation();if(activeNode)activeNode.classList.remove('active');activeNode=n;n.classList.add('active');openModal(n.dataset.mod)})
+});
+document.querySelectorAll('.mod-card').forEach(c=>{
+  c.addEventListener('click',e=>{e.stopPropagation();openModal(c.dataset.mod)})
+});
+overlay.addEventListener('click',closeModal);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+</script>
+</body>
+</html>
