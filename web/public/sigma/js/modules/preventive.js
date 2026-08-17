@@ -1,4 +1,28 @@
 ﻿App.registerModule('preventive', {
+    _rankingConfigs: [
+        { border: '#f59e0b', bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)', numBg: '#f59e0b', icon: '🏆', textColor: '#92400e', labelColor: '#b45309' },
+        { border: '#94a3b8', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', numBg: '#94a3b8', icon: '🥈', textColor: '#334155', labelColor: '#64748b' },
+        { border: '#f97316', bg: 'linear-gradient(135deg,#fff7ed,#ffedd5)', numBg: '#f97316', icon: '🥉', textColor: '#9a3412', labelColor: '#c2410c' },
+        { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '⭐', textColor: '#5b21b6', labelColor: '#7c3aed' },
+        { border: '#3b82f6', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#3b82f6', icon: '⭐', textColor: '#1e40af', labelColor: '#2563eb' }
+    ],
+    _renderRanking(containerId, data, valueKey, label) {
+        const c = document.getElementById(containerId);
+        if (!c) return;
+        if (!data || data.length === 0) { c.innerHTML = ''; return; }
+        const configs = this._rankingConfigs;
+        c.innerHTML = data.slice(0, 5).map((r, i) => {
+            const cfg = configs[i] || configs[4];
+            const valor = r[valueKey] !== undefined ? r[valueKey] : r.valor || 0;
+            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
+                <div style="font-size:16px;margin-bottom:2px">${cfg.icon}</div>
+                <div style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${cfg.numBg};color:white;font-size:9px;font-weight:800;margin-bottom:2px">${i + 1}</div>
+                <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
+                <div style="font-size:16px;font-weight:800;color:${cfg.numBg};line-height:1">${typeof valor === 'number' ? valor.toFixed(1) : valor}</div>
+                <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.5px;color:${cfg.labelColor};font-weight:700;margin-top:2px">${label}</div>
+            </div>`;
+        }).join('');
+    },
     async render() {
         const el = document.getElementById('page-preventive');
         const registros = await db.getAll('preventive_maintenance');
@@ -60,53 +84,18 @@
                     <div class="stat-value">${registros.filter(r => r.estado === 'Vencida').length}</div>
                 </div>
             </div>
-            ${(() => {
-                const ranking = {};
-                registros.forEach(r => {
-                    const name = maqMap[r.maquina_id]?.nombre || 'Sin máquina';
-                    if (!ranking[name]) ranking[name] = { total: 0, realizadas: 0, programadas: 0, vencidas: 0 };
-                    ranking[name].total++;
-                    if (r.estado === 'Realizada') ranking[name].realizadas++;
-                    else if (r.estado === 'Programada') ranking[name].programadas++;
-                    else ranking[name].vencidas++;
-                });
-                const sorted = Object.entries(ranking).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
-                if (sorted.length === 0) return '';
-                const maxCount = sorted[0][1].total;
-                const medals = ['🥇', '🥈', '🥉', '4°', '5°'];
-                const colors = ['#f59e0b', '#94a3b8', '#cd7f32', '#64748b', '#94a3b8'];
-                return `<div style="margin-bottom:16px">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-                        <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;font-size:14px">🏆</div>
-                        <h3 style="margin:0;font-size:13px;font-weight:700;color:#0f172a">Ranking de Mantenciones</h3>
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
-                        ${sorted.map(([name, data], i) => `
-                            <div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:center;position:relative;overflow:hidden;transition:all 0.2s;cursor:default" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-                                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${colors[i]}"></div>
-                                <div style="font-size:20px;margin-bottom:4px">${medals[i]}</div>
-                                <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${name}">${name}</div>
-                                <div style="font-size:22px;font-weight:800;color:${colors[i]};line-height:1.1">${data.total}</div>
-                                <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">mantenciones</div>
-                                <div style="margin-top:8px;height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden">
-                                    <div style="height:100%;width:${(data.total / maxCount * 100)}%;background:${colors[i]};border-radius:2px;transition:width 0.5s ease"></div>
-                                </div>
-                                <div style="display:flex;justify-content:center;gap:6px;margin-top:6px;font-size:9px;color:#64748b">
-                                    <span style="color:#22c55e">✓${data.realizadas}</span>
-                                    <span style="color:#3b82f6">◎${data.programadas}</span>
-                                    ${data.vencidas > 0 ? `<span style="color:#ef4444">✗${data.vencidas}</span>` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>`;
-            })()}
+            <div id="ranking-container" class="ranking-container"></div>
             <style>
 @keyframes prev_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .prev-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
 .prev-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
 .prev-row{transition:all 0.2s}
 .prev-row:hover{transform:translateX(2px);background:#f8fafc!important}
+.ranking-container{display:flex;gap:6px;justify-content:space-between;align-items:stretch;padding:10px 0;width:100%;box-sizing:border-box}
+.ranking-card{border-radius:10px;padding:8px 4px;text-align:center;flex:1 1 0;min-width:0;box-shadow:0 2px 8px rgba(0,0,0,0.06);box-sizing:border-box;transition:all 0.2s}
+.ranking-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,0.1)}
+.ranking-name{font-size:10px;font-weight:700;margin-bottom:2px;line-height:1.2;min-height:24px;display:flex;align-items:center;justify-content:center;word-break:break-word;overflow-wrap:break-word;hyphens:auto;padding:0 2px}
+@media(max-width:768px){.ranking-container{gap:4px;padding:8px 0}.ranking-card{padding:6px 2px;border-radius:8px}.ranking-name{font-size:9px;min-height:22px}}
 </style>
             <div class="card prev-card">
                 <div class="card-header">
@@ -160,11 +149,27 @@
                         actions: (r) => `${App.canEdit('preventive') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.preventive.showForm(${r.id})">Editar</button>` : ''} ${App.canDelete('preventive') ? `<button class="btn btn-sm btn-danger" onclick="App.modules.preventive.delete(${r.id})">Eliminar</button>` : ''}`
                     }, filtered)}
                     </div>`}
+                    </div>
                 </div>
             </div>`;
+        this._initRanking(maqMap);
     },
 
     _sortDir: 'asc',
+    async _initRanking(maquinaIdMap) {
+        const registros = await db.getAll('preventive_maintenance');
+        const ranking = {};
+        registros.forEach(r => {
+            const name = maquinaIdMap[r.maquina_id]?.nombre || 'Sin máquina';
+            if (!ranking[name]) ranking[name] = 0;
+            ranking[name]++;
+        });
+        const rankingArray = Object.entries(ranking)
+            .map(([nombre, total]) => ({ nombre, total }))
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 5);
+        this._renderRanking('ranking-container', rankingArray, 'total', 'Mantenciones');
+    },
     toggleSort() {
         this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
         const icon = document.getElementById('prev-sort-icon');
