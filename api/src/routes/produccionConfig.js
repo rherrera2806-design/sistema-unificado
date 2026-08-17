@@ -200,8 +200,10 @@ router.post('/api/produccion/materias-primas', canCreate, async (req, res, next)
 });
 
 router.put('/api/produccion/materias-primas/:id', canUpdate, async (req, res, next) => {
-    const result = await catalogos.editarMateriaPrima(Number(req.params.id), req.body);
-    res.json(result || { error: 'No encontrado' });
+    try {
+        const result = await catalogos.editarMateriaPrima(Number(req.params.id), req.body);
+        res.json(result || { error: 'No encontrado' });
+    } catch (e) { next(e); }
 });
 
 router.delete('/api/produccion/materias-primas/:id', canDelete, async (req, res, next) => {
