@@ -1,4 +1,4 @@
-App.registerModule('bitacora', {
+﻿App.registerModule('bitacora', {
     _data: [],
 
     async render() {
@@ -6,8 +6,8 @@ App.registerModule('bitacora', {
         el.innerHTML = `
             <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Bitacora de Mantencion</h2>
-<p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Historial completo de mantenciones realizadas</p></div></div>
+<div style="position:relative;z-index:1"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Bitacora de Mantencion</h2>
+<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Historial completo de mantenciones realizadas</p></div></div>
             <style>
 @keyframes bita_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .bita-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
@@ -17,7 +17,7 @@ App.registerModule('bitacora', {
 </style>
             <div class="card bita-card">
                 <div class="card-body">
-                    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:12px;align-items:end">
+                    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:12px;align-items:end">
                         <div class="form-group"><label>Fecha Desde</label><input type="date" class="form-control" id="bitFechaDesde" onchange="App.modules.bitacora.applyFilters()"></div>
                         <div class="form-group"><label>Fecha Hasta</label><input type="date" class="form-control" id="bitFechaHasta" onchange="App.modules.bitacora.applyFilters()"></div>
                         <div class="form-group"><label>Tipo</label>
@@ -39,6 +39,11 @@ App.registerModule('bitacora', {
                                 <option value="">Todos</option>
                             </select>
                         </div>
+                        <div class="form-group"><label>Máquina</label>
+                            <select class="form-control" id="bitMaquina" onchange="App.modules.bitacora.applyFilters()">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -55,6 +60,7 @@ App.registerModule('bitacora', {
         try {
             this._data = await db.getBitacora();
             this.populateTecnicos();
+            this.populateMaquinas();
             this.applyFilters();
         } catch(e) {
             console.error('Error loading bitacora:', e);
@@ -68,12 +74,19 @@ App.registerModule('bitacora', {
         select.innerHTML = '<option value="">Todos</option>' + tecnicos.sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
     },
 
+    populateMaquinas() {
+        const maquinas = [...new Set(this._data.map(r => r.maquina_nombre).filter(m => m && m !== '-'))];
+        const select = document.getElementById('bitMaquina');
+        select.innerHTML = '<option value="">Todas</option>' + maquinas.sort().map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+    },
+
     applyFilters() {
         const desde = document.getElementById('bitFechaDesde').value;
         const hasta = document.getElementById('bitFechaHasta').value;
         const tipo = document.getElementById('bitTipo').value;
         const turno = document.getElementById('bitTurno').value;
         const tecnico = document.getElementById('bitTecnico').value;
+        const maquina = document.getElementById('bitMaquina').value;
 
         let filtered = this._data.filter(r => {
             const estadoFinal = r.tipo_mantencion === 'Preventiva' ? (r.estado || '') : (r.estado || 'Reparada');
@@ -84,6 +97,7 @@ App.registerModule('bitacora', {
             if (tipo && r.tipo_mantencion !== tipo) return false;
             if (turno && (r.turno || 'Dia') !== turno) return false;
             if (tecnico && (r.tecnico || r.responsable || '-') !== tecnico) return false;
+            if (maquina && (r.maquina_nombre || '-') !== maquina) return false;
             return true;
         });
 
@@ -104,16 +118,18 @@ App.registerModule('bitacora', {
             const tecnico = r.tecnico || r.responsable || '-';
             const detalle = r.detalle || '-';
             const estado = r.tipo_mantencion === 'Preventiva' ? (r.estado || '-') : (r.estado || 'Reparada');
+            const maquina = r.maquina_nombre || '-';
             rows += `<tr>
                 <td>${App.formatDate(fecha)}</td>
                 <td><span style="background:${tipoColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${escapeHtml(r.tipo_mantencion)}</span></td>
                 <td>${escapeHtml(turno)}</td>
                 <td>${escapeHtml(tecnico)}</td>
+                <td>${escapeHtml(maquina)}</td>
                 <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(detalle)}">${escapeHtml(detalle)}</td>
                 <td><span class="status-badge ${App.getEstadoClass(estado)}">${escapeHtml(estado)}</span></td>
             </tr>`;
         }
-        container.innerHTML = `<div class="sigma-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Técnico</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>
+        container.innerHTML = `<div class="sigma-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Técnico</th><th>Máquina</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>
         ${SigmaCards.generate({
             title: (r) => {
                 const fecha = r.tipo_mantencion === 'Preventiva' ? (r.fecha_ejecutada || r.fecha_programada) : (r.fecha_falla || '');
@@ -126,6 +142,7 @@ App.registerModule('bitacora', {
                 return `<span style="background:${tipoColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;margin-right:4px">${escapeHtml(r.tipo_mantencion)}</span><span class="status-badge ${App.getEstadoClass(estado)}">${escapeHtml(estado)}</span>`;
             },
             fields: [
+                { label: 'Máquina', value: (r) => r.maquina_nombre || '-' },
                 { label: 'Turno', value: (r) => r.turno || 'Dia' },
                 { label: 'Detalle', value: (r) => (r.detalle || '-').substring(0, 60) }
             ],

@@ -17,7 +17,7 @@
 </style>
             <div class="card bita-card">
                 <div class="card-body">
-                    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:12px;align-items:end">
+                    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:12px;align-items:end">
                         <div class="form-group"><label>Fecha Desde</label><input type="date" class="form-control" id="bitFechaDesde" onchange="App.modules.bitacora.applyFilters()"></div>
                         <div class="form-group"><label>Fecha Hasta</label><input type="date" class="form-control" id="bitFechaHasta" onchange="App.modules.bitacora.applyFilters()"></div>
                         <div class="form-group"><label>Tipo</label>
@@ -39,6 +39,11 @@
                                 <option value="">Todos</option>
                             </select>
                         </div>
+                        <div class="form-group"><label>Máquina</label>
+                            <select class="form-control" id="bitMaquina" onchange="App.modules.bitacora.applyFilters()">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -55,6 +60,7 @@
         try {
             this._data = await db.getBitacora();
             this.populateTecnicos();
+            this.populateMaquinas();
             this.applyFilters();
         } catch(e) {
             console.error('Error loading bitacora:', e);
@@ -68,12 +74,19 @@
         select.innerHTML = '<option value="">Todos</option>' + tecnicos.sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
     },
 
+    populateMaquinas() {
+        const maquinas = [...new Set(this._data.map(r => r.maquina_nombre).filter(m => m && m !== '-'))];
+        const select = document.getElementById('bitMaquina');
+        select.innerHTML = '<option value="">Todas</option>' + maquinas.sort().map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+    },
+
     applyFilters() {
         const desde = document.getElementById('bitFechaDesde').value;
         const hasta = document.getElementById('bitFechaHasta').value;
         const tipo = document.getElementById('bitTipo').value;
         const turno = document.getElementById('bitTurno').value;
         const tecnico = document.getElementById('bitTecnico').value;
+        const maquina = document.getElementById('bitMaquina').value;
 
         let filtered = this._data.filter(r => {
             const estadoFinal = r.tipo_mantencion === 'Preventiva' ? (r.estado || '') : (r.estado || 'Reparada');
@@ -84,6 +97,7 @@
             if (tipo && r.tipo_mantencion !== tipo) return false;
             if (turno && (r.turno || 'Dia') !== turno) return false;
             if (tecnico && (r.tecnico || r.responsable || '-') !== tecnico) return false;
+            if (maquina && (r.maquina_nombre || '-') !== maquina) return false;
             return true;
         });
 
@@ -104,11 +118,13 @@
             const tecnico = r.tecnico || r.responsable || '-';
             const detalle = r.detalle || '-';
             const estado = r.tipo_mantencion === 'Preventiva' ? (r.estado || '-') : (r.estado || 'Reparada');
+            const maquina = r.maquina_nombre || '-';
             rows += `<tr>
                 <td>${App.formatDate(fecha)}</td>
                 <td><span style="background:${tipoColor};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">${escapeHtml(r.tipo_mantencion)}</span></td>
                 <td>${escapeHtml(turno)}</td>
                 <td>${escapeHtml(tecnico)}</td>
+                <td>${escapeHtml(maquina)}</td>
                 <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(detalle)}">${escapeHtml(detalle)}</td>
                 <td><span class="status-badge ${App.getEstadoClass(estado)}">${escapeHtml(estado)}</span></td>
             </tr>`;
@@ -121,10 +137,11 @@
             subtitle: r => App.formatDate(r.tipo_mantencion === 'Preventiva' ? (r.fecha_ejecutada || r.fecha_programada) : (r.fecha_falla || '')),
             fields: [
                 { label: 'Técnico', value: r => r.tecnico || r.responsable || '-' },
+                { label: 'Máquina', value: r => r.maquina_nombre || '-' },
                 { label: 'Detalle', value: r => (r.detalle || '-').substring(0, 60) + ((r.detalle || '').length > 60 ? '...' : '') },
                 { label: 'Estado', value: r => r.tipo_mantencion === 'Preventiva' ? (r.estado || '-') : (r.estado || 'Reparada') }
             ]
         }, data);
-        container.innerHTML = `<div class="sigma-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Técnico</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>${cardsHtml}</div>`;
+        container.innerHTML = `<div class="sigma-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Turno</th><th>Técnico</th><th>Máquina</th><th>Detalle</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table>${cardsHtml}</div>`;
     }
 });
