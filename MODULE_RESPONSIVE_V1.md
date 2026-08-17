@@ -6,6 +6,22 @@ Aplica este patrón a cualquier módulo para hacerlo responsive en móvil.
 
 ---
 
+## ⚠️ RUTAS DE ARCHIVOS (CRÍTICO)
+
+Los archivos sigma están en una ubicación diferente al resto de módulos:
+
+| Tipo | Ruta correcta |
+|------|---------------|
+| **Sigma (Mantención)** | `web/public/sigma/js/modules/*.js` |
+| **Producción** | `web/public/js/modules/prod_*.js` |
+| **Inventario/Pedidos** | `web/public/js/modules/*.js` |
+| **CSS compartido** | `web/public/css/mobile.css` |
+| **Sigma CSS** | `web/public/sigma/css/style.css` + `responsive-cards.css` |
+
+**NO editar** `web/public/js/modules/sigma/` — es una copia obsoleta que NO sirve el servidor.
+
+---
+
 ## Paso 1: Estructura HTML con clases CSS compartidas
 
 ```javascript

@@ -1,4 +1,4 @@
-App.registerModule('preventive', {
+﻿App.registerModule('preventive', {
     async render() {
         const el = document.getElementById('page-preventive');
         const registros = await db.getAll('preventive_maintenance');
@@ -31,11 +31,9 @@ App.registerModule('preventive', {
         el.innerHTML = `
             <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Mantenccion Preventiva</h2>
-            <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Programacion y control de mantenciones periodicas</p></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Mantenccion Preventiva</h2>
+            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Programacion y control de mantenciones periodicas</p></div>
             <div style="display:flex;gap:6px;align-items:center">
-                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Realizadas</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${registros.filter(r => r.estado === 'Realizada').length}</div></div>
-                <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;text-align:center"><div style="font-size:8px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600">Vencidas</div><div style="font-size:14px;font-weight:800;color:white;line-height:1.2">${registros.filter(r => r.estado === 'Vencida').length}</div></div>
                 ${App.canCreate('preventive') ? '<button class="btn btn-accent" style="padding:5px 12px;font-size:12px" onclick="App.modules.preventive.autoProgram()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Auto-programar</button>' : ''}
                 ${App.canCreate('preventive') ? '<button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.preventive.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : ''}
                 </div></div>
