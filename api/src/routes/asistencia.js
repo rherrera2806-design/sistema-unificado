@@ -117,7 +117,7 @@ router.delete('/api/asistencia/trabajadores/:id', canDelete, async (req, res) =>
         await client.query('BEGIN');
         await client.query('DELETE FROM asistencia WHERE trabajador_id = $1', [id]);
         await client.query('DELETE FROM permisos WHERE trabajador_id = $1', [id]);
-        await client.query('DELETE FROM licencias WHERE trabajador_id = $1', [id]);
+        await client.query('DELETE FROM licencias_medicas WHERE trabajador_id = $1', [id]);
         await client.query('DELETE FROM vacaciones WHERE trabajador_id = $1', [id]);
         await client.query('DELETE FROM horas_extras WHERE trabajador_id = $1', [id]);
         const r = await client.query('DELETE FROM trabajadores WHERE id = $1 RETURNING nombre', [id]);
