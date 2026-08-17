@@ -27,7 +27,7 @@ App.registerModule('inst_historial', {
                 .ih-filters{flex-direction:column;gap:8px}
                 .ih-filters>div,.ih-filters>select{width:100%;max-width:100%}
                 .ih-filters input,.ih-filters select{font-size:14px;padding:12px}
-                .ih-stats{grid-template-columns:1fr;gap:8px;margin-bottom:16px}
+                .ih-stats{grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px}
                 .ih-scroll{display:none}
                 .ih-cards-mobile{display:block!important}
             }
@@ -91,15 +91,12 @@ App.registerModule('inst_historial', {
         const curso = this.instalaciones.filter(i => i.estado === 'EN_CURSO' || i.estado === 'EN_CAMINO').length;
         const comp = this.instalaciones.filter(i => i.estado === 'COMPLETADA').length;
         const nov = this.instalaciones.filter(i => i.estado === 'CON_NOVEDADES' || i.estado === 'CANCELADA').length;
-        const mk = (icon, val, label, color, bg) => `<div class="ih-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid ${color};border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;align-items:center;gap:8px;box-sizing:border-box">
-            <div style="width:30px;height:30px;border-radius:6px;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0">${icon}</div>
-            <div style="min-width:0"><div style="font-size:18px;font-weight:800;color:${color};line-height:1">${val}</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">${label}</div></div></div>`;
         document.getElementById('instHistStats').innerHTML =
-            mk('<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>', total, 'Total', '#64748b', 'linear-gradient(135deg,#f1f5f9,#e2e8f0)')
-            + mk('<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', prog, 'Programadas', '#3b82f6', 'linear-gradient(135deg,#eff6ff,#bfdbfe)')
-            + mk('<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', curso, 'En Curso', '#f59e0b', 'linear-gradient(135deg,#fef3c7,#fde68a)')
-            + mk('<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', comp, 'Completadas', '#22c55e', 'linear-gradient(135deg,#f0fdf4,#bbf7d0)')
-            + mk('<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', nov, 'Novedades', '#ef4444', 'linear-gradient(135deg,#fef2f2,#fecaca)');
+            '<div class="m-stat-card stat-blue"><div class="m-stat-value">' + total + '</div><div class="m-stat-label">Total</div></div>'
+            + '<div class="m-stat-card stat-info"><div class="m-stat-value">' + prog + '</div><div class="m-stat-label">Programadas</div></div>'
+            + '<div class="m-stat-card stat-amber"><div class="m-stat-value">' + curso + '</div><div class="m-stat-label">En Curso</div></div>'
+            + '<div class="m-stat-card stat-green"><div class="m-stat-value">' + comp + '</div><div class="m-stat-label">Completadas</div></div>'
+            + '<div class="m-stat-card stat-red"><div class="m-stat-value">' + nov + '</div><div class="m-stat-label">Novedades</div></div>';
     },
 
     renderTabla() {

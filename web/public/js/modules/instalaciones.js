@@ -16,7 +16,7 @@ App.registerModule('instalaciones', {
             + '@keyframes instFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
             + '.inst-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
             + '.inst-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
-            + '.inst-stats{display:flex;gap:10px;margin-bottom:20px;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}'
+            + '.inst-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;max-width:100%;box-sizing:border-box}'
             + '.inst-stats .inst-card{min-width:140px;flex:1 0 0}'
             + '.inst-cal-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}'
             + '.inst-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(90px,1fr));min-width:630px}'
@@ -28,8 +28,8 @@ App.registerModule('instalaciones', {
             + '.inst-event-client{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1e293b;font-weight:500;font-size:9px}'
             + '.inst-day-label{display:none}'
             + '@media(max-width:768px){'
-            + '.inst-stats{flex-direction:column;gap:8px;overflow-x:visible;padding-bottom:0}'
-            + '.inst-stats .inst-card{min-width:100%;flex:1 1 auto}'
+            + '.inst-stats{grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px;overflow:visible}'
+            + '.inst-stats .inst-card{min-width:0;flex:1 1 auto}'
             + '.inst-cal-wrap{overflow-x:visible}'
             + '.inst-cal-grid{min-width:100%;grid-template-columns:1fr}'
             + '.inst-cal-header{display:none}'
@@ -81,25 +81,25 @@ App.registerModule('instalaciones', {
         const comp = this.instalaciones.filter(i => i.estado === 'COMPLETADA').length;
         const nov = this.instalaciones.filter(i => i.estado === 'CON_NOVEDADES' || i.estado === 'CANCELADA').length;
         document.getElementById('instStats').innerHTML = ''
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 0ms both;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
-            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>'
-            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#1e293b;line-height:1">' + total + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Total</div></div></div>'
+            + '<div class="m-stat-card stat-blue" style="animation:instFadeUp 0.5s ease 0ms both">'
+            + '<div class="m-stat-value">' + total + '</div>'
+            + '<div class="m-stat-label">Total</div></div>'
 
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 60ms both;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
-            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'
-            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#3b82f6;line-height:1">' + prog + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Programadas</div></div></div>'
+            + '<div class="m-stat-card stat-info" style="animation:instFadeUp 0.5s ease 60ms both">'
+            + '<div class="m-stat-value">' + prog + '</div>'
+            + '<div class="m-stat-label">Programadas</div></div>'
 
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #f59e0b;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 120ms both;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
-            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>'
-            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#f59e0b;line-height:1">' + curso + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">En Curso</div></div></div>'
+            + '<div class="m-stat-card stat-amber" style="animation:instFadeUp 0.5s ease 120ms both">'
+            + '<div class="m-stat-value">' + curso + '</div>'
+            + '<div class="m-stat-label">En Curso</div></div>'
 
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #22c55e;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 180ms both;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
-            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>'
-            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#22c55e;line-height:1">' + comp + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Completadas</div></div></div>'
+            + '<div class="m-stat-card stat-green" style="animation:instFadeUp 0.5s ease 180ms both">'
+            + '<div class="m-stat-value">' + comp + '</div>'
+            + '<div class="m-stat-label">Completadas</div></div>'
 
-            + '<div class="inst-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:instFadeUp 0.5s ease 240ms both;display:flex;align-items:center;gap:8px;box-sizing:border-box">'
-            + '<div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>'
-            + '<div style="min-width:0"><div style="font-size:18px;font-weight:800;color:#ef4444;line-height:1">' + nov + '</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Novedades</div></div></div>';
+            + '<div class="m-stat-card stat-red" style="animation:instFadeUp 0.5s ease 240ms both">'
+            + '<div class="m-stat-value">' + nov + '</div>'
+            + '<div class="m-stat-label">Novedades</div></div>';
     },
 
     renderCalendario() {
