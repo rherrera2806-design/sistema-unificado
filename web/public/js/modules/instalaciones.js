@@ -28,6 +28,8 @@ App.registerModule('instalaciones', {
             + '.inst-event-client{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1e293b;font-weight:500;font-size:9px}'
             + '.inst-day-label{display:none}'
             + '@media(max-width:768px){'
+            + '.inst-hero{padding:12px;border-radius:12px;margin-bottom:16px}'
+            + '.inst-hero-btns .btn{height:40px;min-height:40px;flex:1}'
             + '.inst-stats{grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px;overflow:visible}'
             + '.inst-stats .inst-card{min-width:0;flex:1 1 auto}'
             + '.inst-cal-wrap{overflow-x:visible}'
@@ -45,12 +47,12 @@ App.registerModule('instalaciones', {
             + '}'
             + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3);max-width:100%;box-sizing:border-box">'
+            + '<div class="inst-hero" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3);max-width:100%;box-sizing:border-box">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;max-width:100%">'
             + '<div style="min-width:0"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Instalaciones</h2>'
             + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Calendario mensual de trabajos en terreno</p></div>'
-            + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+            + '<div class="inst-hero-btns" style="display:flex;gap:8px;flex-wrap:wrap">'
             + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Vendedores</button>'
             + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Tecnicos</button>'
             + (puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
