@@ -60,6 +60,47 @@
                     <div class="stat-value">${registros.filter(r => r.estado === 'Vencida').length}</div>
                 </div>
             </div>
+            ${(() => {
+                const ranking = {};
+                registros.forEach(r => {
+                    const name = maqMap[r.maquina_id]?.nombre || 'Sin máquina';
+                    if (!ranking[name]) ranking[name] = { total: 0, realizadas: 0, programadas: 0, vencidas: 0 };
+                    ranking[name].total++;
+                    if (r.estado === 'Realizada') ranking[name].realizadas++;
+                    else if (r.estado === 'Programada') ranking[name].programadas++;
+                    else ranking[name].vencidas++;
+                });
+                const sorted = Object.entries(ranking).sort((a, b) => b[1].total - a[1].total).slice(0, 5);
+                if (sorted.length === 0) return '';
+                const maxCount = sorted[0][1].total;
+                const medals = ['🥇', '🥈', '🥉', '4°', '5°'];
+                const colors = ['#f59e0b', '#94a3b8', '#cd7f32', '#64748b', '#94a3b8'];
+                return `<div style="margin-bottom:16px">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                        <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;font-size:14px">🏆</div>
+                        <h3 style="margin:0;font-size:13px;font-weight:700;color:#0f172a">Ranking de Mantenciones</h3>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+                        ${sorted.map(([name, data], i) => `
+                            <div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;text-align:center;position:relative;overflow:hidden;transition:all 0.2s;cursor:default" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                                <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${colors[i]}"></div>
+                                <div style="font-size:20px;margin-bottom:4px">${medals[i]}</div>
+                                <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${name}">${name}</div>
+                                <div style="font-size:22px;font-weight:800;color:${colors[i]};line-height:1.1">${data.total}</div>
+                                <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">mantenciones</div>
+                                <div style="margin-top:8px;height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden">
+                                    <div style="height:100%;width:${(data.total / maxCount * 100)}%;background:${colors[i]};border-radius:2px;transition:width 0.5s ease"></div>
+                                </div>
+                                <div style="display:flex;justify-content:center;gap:6px;margin-top:6px;font-size:9px;color:#64748b">
+                                    <span style="color:#22c55e">✓${data.realizadas}</span>
+                                    <span style="color:#3b82f6">◎${data.programadas}</span>
+                                    ${data.vencidas > 0 ? `<span style="color:#ef4444">✗${data.vencidas}</span>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            })()}
             <style>
 @keyframes prev_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .prev-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
