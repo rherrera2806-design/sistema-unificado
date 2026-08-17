@@ -1,369 +1,1410 @@
 ﻿<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VitroFlow — Sistema de Gestion Industrial</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Space Grotesk',sans-serif;background:#06080f;color:white;overflow-x:hidden}
-.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitroFlow - Arquitectura del Sistema Unificado de Gestión Industrial</title>
+    <style>
+        :root {
+            --primary: #0a192f;
+            --primary-light: #112240;
+            --accent: #00d4aa;
+            --accent2: #64ffda;
+            --danger: #ff6b6b;
+            --warning: #ffd93d;
+            --success: #6bcb77;
+            --info: #4ecdc4;
+            --text: #e6f1ff;
+            --text-muted: #8892b0;
+            --card-bg: rgba(17, 34, 64, 0.8);
+            --border: rgba(100, 255, 218, 0.1);
+        }
 
-/* Hero */
-.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;text-align:center;padding:80px 24px}
-.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(56,189,248,.08) 0%,rgba(168,85,247,.04) 40%,transparent 70%)}
-.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.15);border-radius:20px;padding:5px 14px;margin-bottom:20px;font-size:10px;font-weight:600;color:#38bdf8;text-transform:uppercase;letter-spacing:1.5px}
-.hero h1{font-size:clamp(32px,5vw,52px);font-weight:700;letter-spacing:-1px;line-height:1.1;margin-bottom:16px}
-.hero h1 b{background:linear-gradient(135deg,#38bdf8,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero p{font-size:clamp(14px,2vw,18px);color:rgba(255,255,255,.45);max-width:600px;line-height:1.6;margin-bottom:32px}
-.hero-stats{display:flex;gap:40px;margin-bottom:40px}
-.hero-stat{text-align:center}
-.hero-stat-num{font-size:32px;font-weight:700;background:linear-gradient(135deg,#38bdf8,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero-stat-label{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
-.scroll-hint{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.2);text-transform:uppercase;letter-spacing:2px;animation:bounce 2s infinite}
-@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(6px)}}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-/* Architecture Diagram */
-.arch-diagram{padding:60px 0}
-.section-tag{display:inline-flex;align-items:center;gap:6px;font-size:9px;font-weight:600;color:#38bdf8;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
-.section-tag::before{content:'';width:20px;height:1px;background:#38bdf8}
-.section-title{font-size:clamp(24px,3vw,36px);font-weight:700;letter-spacing:-.5px;margin-bottom:8px}
-.section-sub{font-size:14px;color:rgba(255,255,255,.4);margin-bottom:40px}
-.diagram-canvas{width:100%;max-width:1100px;height:600px;margin:0 auto;position:relative;background:rgba(255,255,255,.01);border:1px solid rgba(255,255,255,.04);border-radius:20px;overflow:hidden}
-.diagram-canvas::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(56,189,248,.05) 0%,transparent 60%)}
-.diagram-canvas::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.02) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%);-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%)}
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--primary);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
 
-/* Hub */
-.dHub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:120px;height:120px;z-index:10}
-.dHub-core{width:100%;height:100%;border-radius:50%;background:conic-gradient(from 0deg,#38bdf8,#a855f7,#38bdf8);padding:2px;animation:hue 20s linear infinite}
-@keyframes hue{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(360deg)}}
-.dHub-inner{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 30% 30%,#131a2e,#0a0f1e);display:flex;flex-direction:column;align-items:center;justify-content:center}
-.dHub-glyph{font-size:22px;filter:drop-shadow(0 0 8px rgba(56,189,248,.5))}
-.dHub-title{font-size:14px;font-weight:700;color:white}
-.dHub-tag{font-size:5px;font-weight:600;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:2px}
-.dHub-ring{position:absolute;inset:-12px;border-radius:50%;border:1px solid rgba(56,189,248,.1);animation:rPulse 4s ease-in-out infinite}
-.dHub-ring2{position:absolute;inset:-24px;border-radius:50%;border:1px dashed rgba(56,189,248,.05)}
-@keyframes rPulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--primary) 0%, #0d1117 50%, var(--primary-light) 100%);
+            position: relative;
+            overflow: hidden;
+        }
 
-/* Lines */
-.dLines{position:absolute;inset:0;z-index:1;pointer-events:none}
-.dLines svg{width:100%;height:100%}
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 212, 170, 0.03) 0%, transparent 50%);
+            animation: pulse 8s ease-in-out infinite;
+        }
 
-/* Module nodes */
-.dNode{position:absolute;z-index:10;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;transition:all .25s}
-.dNode:hover{transform:translate(-50%,-50%) scale(1.1)}
-.dNode.active{transform:translate(-50%,-50%) scale(1.1)}
-.dHex{width:64px;height:64px;position:relative;display:flex;align-items:center;justify-content:center}
-.dShape{position:absolute;inset:0;opacity:.7;transition:opacity .25s}
-.dNode:hover .dShape{opacity:1}
-.dNode.active .dShape{opacity:1;stroke-width:2}
-.dIco{position:relative;z-index:2;font-size:24px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));transition:filter .25s}
-.dNode:hover .dIco{filter:drop-shadow(0 2px 12px rgba(0,0,0,.6)) brightness(1.15)}
-.dLbl{text-align:center}
-.dName{font-size:9px;font-weight:700;color:white;line-height:1.2}
-.dMeta{font-size:6px;color:rgba(255,255,255,.25);font-weight:500}
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
 
-/* Centered Popup Modal */
-.modal-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center}
-.modal-overlay.show{display:flex}
-.modal{width:420px;max-width:92vw;max-height:85vh;background:rgba(12,16,32,.96);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.7);overflow:hidden;opacity:0;transform:scale(.92);transition:all .25s cubic-bezier(.4,0,.2,1)}
-.modal-overlay.show .modal{opacity:1;transform:scale(1)}
-.modal-hdr{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-start;gap:12px}
-.modal-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.modal-title{font-size:18px;font-weight:700;color:white}
-.modal-sub{font-size:11px;color:rgba(255,255,255,.35);margin-top:2px}
-.modal-close{margin-left:auto;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:none;color:rgba(255,255,255,.4);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
-.modal-close:hover{background:rgba(255,255,255,.12);color:white}
-.modal-body{padding:16px 20px 20px;max-height:60vh;overflow-y:auto}
-.modal-body::-webkit-scrollbar{width:4px}
-.modal-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
-.modal-section{margin-bottom:16px}
-.modal-section:last-child{margin-bottom:0}
-.modal-sec-title{font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
-.modal-item{display:flex;align-items:flex-start;gap:8px;padding:5px 0}
-.modal-item-icon{font-size:11px;margin-top:1px;flex-shrink:0}
-.modal-item-text{font-size:11px;color:rgba(255,255,255,.55);line-height:1.5}
-.modal-tag-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
-.modal-tag{font-size:9px;font-weight:500;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.05)}
+        .hero-content {
+            max-width: 900px;
+            z-index: 1;
+        }
 
-/* Pricing */
-.pricing{padding:60px 0 80px}
-.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px}
-.price-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:24px 20px;position:relative;transition:all .3s}
-.price-card:hover{border-color:rgba(255,255,255,.12);transform:translateY(-3px)}
-.price-card.feat{border-color:rgba(56,189,248,.3);background:rgba(56,189,248,.03)}
-.price-card.feat::before{content:'MAS POPULAR';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#38bdf8,#a855f7);color:white;font-size:8px;font-weight:700;letter-spacing:1px;padding:3px 12px;border-radius:10px}
-.pName{font-size:16px;font-weight:700;margin-bottom:4px}
-.pDesc{font-size:10px;color:rgba(255,255,255,.35);margin-bottom:14px}
-.pAmt{display:flex;align-items:baseline;gap:3px;margin-bottom:2px}
-.pCurr{font-size:14px;font-weight:600;color:rgba(255,255,255,.5)}
-.pNum{font-size:32px;font-weight:700;letter-spacing:-1px}
-.pPeriod{font-size:10px;color:rgba(255,255,255,.3)}
-.pNote{font-size:9px;color:rgba(255,255,255,.25);margin-bottom:16px}
-.pFeat{list-style:none;margin-bottom:20px}
-.pFeat li{font-size:10px;color:rgba(255,255,255,.5);padding:4px 0;display:flex;align-items:center;gap:6px}
-.pFeat li::before{content:'\2713';color:#34d399;font-weight:700;font-size:11px}
-.pBtn{width:100%;padding:10px;border-radius:10px;border:none;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s}
-.pBtn-p{background:linear-gradient(135deg,#38bdf8,#a855f7);color:white}
-.pBtn-p:hover{filter:brightness(1.1)}
-.pBtn-o{background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.12)}
-.pBtn-o:hover{border-color:rgba(255,255,255,.25);color:white}
-.footer-note{text-align:center;padding:24px;border-top:1px solid rgba(255,255,255,.04);margin-top:40px}
-.footer-note p{font-size:10px;color:rgba(255,255,255,.2)}
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--text) 0%, var(--accent2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-/* Glows */
-.gB{filter:drop-shadow(0 0 8px rgba(56,189,248,.4))}
-.gG{filter:drop-shadow(0 0 8px rgba(52,211,153,.4))}
-.gP{filter:drop-shadow(0 0 8px rgba(167,139,250,.4))}
-.gA{filter:drop-shadow(0 0 8px rgba(251,191,36,.4))}
-.gR{filter:drop-shadow(0 0 8px rgba(248,113,113,.4))}
-.gC{filter:drop-shadow(0 0 8px rgba(34,211,238,.4))}
-.gPk{filter:drop-shadow(0 0 8px rgba(244,114,182,.4))}
-.gO{filter:drop-shadow(0 0 8px rgba(251,146,60,.4))}
-</style>
+        .hero .tagline {
+            font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .pain-hook {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(255, 217, 61, 0.1));
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 700px;
+        }
+
+        .pain-hook h2 {
+            color: var(--danger);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .pain-hook p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .pain-hook .stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .pain-hook .stat {
+            text-align: center;
+        }
+
+        .pain-hook .stat-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--danger);
+        }
+
+        .pain-hook .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--accent) 0%, #00b894 100%);
+            color: var(--primary);
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 40px rgba(0, 212, 170, 0.4);
+        }
+
+        /* Section Styles */
+        section {
+            padding: 5rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-title h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text) 0%, var(--accent2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-title p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Pain Points Section */
+        .pain-points {
+            background: linear-gradient(180deg, transparent, rgba(255, 107, 107, 0.02), transparent);
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+        }
+
+        .pain-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 107, 107, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pain-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--danger), #ff8787);
+        }
+
+        .pain-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 107, 107, 0.4);
+            box-shadow: 0 10px 40px rgba(255, 107, 107, 0.1);
+        }
+
+        .pain-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .pain-card h3 {
+            color: var(--danger);
+            font-size: 1.3rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .pain-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .pain-card .consequence {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 107, 107, 0.1);
+            font-size: 0.85rem;
+            color: #ff8787;
+            font-style: italic;
+        }
+
+        /* Solution Section */
+        .solution-section {
+            background: linear-gradient(180deg, transparent, rgba(0, 212, 170, 0.02), transparent);
+        }
+
+        .solution-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .solution-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--accent), var(--accent2));
+        }
+
+        .solution-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 212, 170, 0.4);
+            box-shadow: 0 10px 40px rgba(0, 212, 170, 0.1);
+        }
+
+        .solution-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .solution-card h3 {
+            color: var(--accent2);
+            font-size: 1.3rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .solution-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .solution-card .replaces {
+            margin-top: 1rem;
+            padding: 0.8rem;
+            background: rgba(0, 212, 170, 0.05);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--accent);
+        }
+
+        .solution-card .replaces strong {
+            color: var(--accent2);
+        }
+
+        /* Architecture Section */
+        .architecture-section {
+            padding: 5rem 2rem;
+        }
+
+        .architecture-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .architecture-svg {
+            width: 100%;
+            height: 600px;
+        }
+
+        .hex-module {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .hex-module:hover {
+            filter: brightness(1.3);
+        }
+
+        .hex-module:hover .hex-bg {
+            stroke: var(--accent2);
+            stroke-width: 3;
+        }
+
+        .hex-text {
+            fill: var(--text);
+            font-size: 11px;
+            font-weight: 600;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .hex-subtext {
+            fill: var(--text-muted);
+            font-size: 9px;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .center-hub {
+            fill: var(--primary-light);
+            stroke: var(--accent);
+            stroke-width: 2;
+        }
+
+        .connection-line {
+            stroke: rgba(0, 212, 170, 0.3);
+            stroke-width: 1.5;
+            stroke-dasharray: 5, 5;
+        }
+
+        .animated-dot {
+            fill: var(--accent);
+            r: 3;
+        }
+
+        @keyframes moveDot {
+            0% { offset-distance: 0%; }
+            100% { offset-distance: 100%; }
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 25, 47, 0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--primary-light);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: var(--primary-light);
+            z-index: 1;
+        }
+
+        .modal-header h2 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, var(--text) 0%, var(--accent2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            line-height: 1;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: var(--danger);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .modal-section {
+            margin-bottom: 2rem;
+        }
+
+        .modal-section h3 {
+            color: var(--accent2);
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-section h3::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .table-tag {
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid rgba(0, 212, 170, 0.2);
+            border-radius: 8px;
+            padding: 0.5rem 0.8rem;
+            font-size: 0.8rem;
+            color: var(--accent2);
+            font-family: 'Consolas', monospace;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.8rem;
+            padding: 1rem;
+            background: rgba(0, 212, 170, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 212, 170, 0.1);
+        }
+
+        .feature-item .check {
+            color: var(--accent);
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .feature-item p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .modal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, rgba(0, 212, 170, 0.2), rgba(100, 255, 218, 0.1));
+            border: 1px solid var(--accent);
+            border-radius: 50px;
+            padding: 0.5rem 1.5rem;
+            font-size: 0.9rem;
+            color: var(--accent2);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Pricing Section */
+        .pricing-section {
+            background: linear-gradient(180deg, transparent, rgba(0, 212, 170, 0.02), transparent);
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pricing-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .pricing-card.featured {
+            border-color: var(--accent);
+            transform: scale(1.05);
+            box-shadow: 0 20px 60px rgba(0, 212, 170, 0.15);
+        }
+
+        .pricing-card.featured::before {
+            content: 'MAS POPULAR';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--accent), #00b894);
+            color: var(--primary);
+            padding: 0.4rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--accent);
+        }
+
+        .pricing-card.featured:hover {
+            transform: scale(1.05) translateY(-10px);
+        }
+
+        .pricing-tier {
+            font-size: 1.2rem;
+            color: var(--accent2);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-name {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .pricing-price {
+            margin-bottom: 2rem;
+        }
+
+        .pricing-price .currency {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            vertical-align: super;
+        }
+
+        .pricing-price .amount {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text) 0%, var(--accent2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .pricing-price .period {
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+
+        .pricing-features {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 2rem;
+        }
+
+        .pricing-features li {
+            padding: 0.8rem 0;
+            border-bottom: 1px solid rgba(100, 255, 218, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .pricing-features li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .pricing-features li.disabled {
+            opacity: 0.4;
+        }
+
+        .pricing-features li.disabled::before {
+            content: '✕';
+            color: var(--danger);
+        }
+
+        .pricing-btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--accent);
+            background: transparent;
+            color: var(--accent2);
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .pricing-btn:hover {
+            background: var(--accent);
+            color: var(--primary);
+        }
+
+        .pricing-card.featured .pricing-btn {
+            background: linear-gradient(135deg, var(--accent), #00b894);
+            color: var(--primary);
+            border-color: transparent;
+        }
+
+        .pricing-card.featured .pricing-btn:hover {
+            box-shadow: 0 10px 30px rgba(0, 212, 170, 0.4);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-card.featured {
+                transform: scale(1);
+            }
+
+            .pricing-card.featured:hover {
+                transform: translateY(-10px);
+            }
+
+            .architecture-svg {
+                height: 500px;
+            }
+
+            .modal {
+                margin: 1rem;
+                max-height: 90vh;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 212, 170, 0.3);
+        }
+
+        /* Web + Mobile Section */
+        .platform-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.03), rgba(168, 85, 247, 0.03));
+        }
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 40px;
+        }
+        .platform-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 28px 24px;
+            text-align: center;
+            transition: all .3s;
+        }
+        .platform-card:hover {
+            border-color: rgba(255,255,255,0.12);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .platform-ico {
+            font-size: 40px;
+            margin-bottom: 14px;
+            display: block;
+        }
+        .platform-name {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .platform-desc {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            line-height: 1.6;
+        }
+        .platform-badge {
+            display: inline-block;
+            margin-top: 12px;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: rgba(56,189,248,0.1);
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        @media (max-width: 768px) {
+            .platform-grid { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 <body>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-badge">Plataforma todo-en-uno</div>
-  <h1>La plataforma <b>integral</b> para gestionar<br>toda tu planta de produccion</h1>
-  <p>VitroFlow conecta produccion, mantencion, inventario, pedidos, instalaciones y mas en una sola plataforma. Reduce tiempos, elimina errores y toma decisiones con datos reales.</p>
-  <div class="hero-stats">
-    <div class="hero-stat"><div class="hero-stat-num">32</div><div class="hero-stat-label">Modulos</div></div>
-    <div class="hero-stat"><div class="hero-stat-num">8</div><div class="hero-stat-label">Areas</div></div>
-    <div class="hero-stat"><div class="hero-stat-num">24/7</div><div class="hero-stat-label">Disponibilidad</div></div>
-    <div class="hero-stat"><div class="hero-stat-num">100%</div><div class="hero-stat-label">Web-based</div></div>
-  </div>
-  <div class="scroll-hint">scroll para explorar &#8595;</div>
-</section>
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>VitroFlow</h1>
+            <p class="tagline">La plataforma unificada que transforma la gestión industrial del vidrio</p>
+            
+            <div class="pain-hook">
+                <h2>¿Cansado de gestionar tu planta con Excel y WhatsApp?</h2>
+                <p>Cada día pierdes horas buscando información en hojas de cálculo, respondiendo mensajes y tomando decisiones con datos desactualizados.</p>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-number">4.2h</div>
+                        <div class="stat-label">Promedio diario en tareas manuales</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">37%</div>
+                        <div class="stat-label">Errores por datos duplicados</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">2.3</div>
+                        <div class="stat-label">Días promedio para un reporte</div>
+                    </div>
+                </div>
+            </div>
 
-<!-- INTERACTIVE ARCHITECTURE -->
-<section class="arch-diagram">
-  <div class="wrap">
-    <div class="section-tag">Arquitectura del Sistema</div>
-    <div class="section-title">8 modulos conectados. Una sola plataforma.</div>
-    <div class="section-sub">Haz clic en cualquier modulo para ver que hace, sus ventajas y beneficios.</div>
+            <a href="#arquitectura" class="cta-button">Explorar la Arquitectura</a>
+        </div>
+    </section>
 
-    <div class="diagram-canvas">
-      <!-- Lines -->
-      <div class="dLines"><svg viewBox="0 0 1100 600" fill="none">
-        <defs>
-          <linearGradient id="gl1" x1="550" y1="300" x2="160" y2="170"><stop offset="0%" stop-color="#38bdf8" stop-opacity=".25"/><stop offset="100%" stop-color="#38bdf8" stop-opacity=".03"/></linearGradient>
-          <linearGradient id="gl2" x1="550" y1="300" x2="940" y2="170"><stop offset="0%" stop-color="#34d399" stop-opacity=".25"/><stop offset="100%" stop-color="#34d399" stop-opacity=".03"/></linearGradient>
-          <linearGradient id="gl3" x1="550" y1="300" x2="550" y2="100"><stop offset="0%" stop-color="#a78bfa" stop-opacity=".25"/><stop offset="100%" stop-color="#a78bfa" stop-opacity=".03"/></linearGradient>
-          <linearGradient id="gl4" x1="550" y1="300" x2="160" y2="420"><stop offset="0%" stop-color="#fbbf24" stop-opacity=".25"/><stop offset="100%" stop-color="#fbbf24" stop-opacity=".03"/></linearGradient>
-          <linearGradient id="gl5" x1="550" y1="300" x2="940" y2="420"><stop offset="0%" stop-color="#f87171" stop-opacity=".25"/><stop offset="100%" stop-color="#f87171" stop-opacity=".03"/></linearGradient>
-          <linearGradient id="gl6" x1="550" y1="300" x2="320" y2="520"><stop offset="0%" stop-color="#22d3ee" stop-opacity=".25"/><stop offset="100%" stop-color="#22d3ee" stop-opacity=".03"/></linearGradient>
-          <linearGradient id="gl7" x1="550" y1="300" x2="780" y2="520"><stop offset="0%" stop-color="#f472b6" stop-opacity=".25"/><stop offset="100%" stop-color="#f472b6" stop-opacity=".03"/></linearGradient>
-          <linearGradient id="gl8" x1="550" y1="300" x2="550" y2="530"><stop offset="0%" stop-color="#fb923c" stop-opacity=".25"/><stop offset="100%" stop-color="#fb923c" stop-opacity=".03"/></linearGradient>
-        </defs>
-        <line x1="550" y1="300" x2="160" y2="170" stroke="url(#gl1)" stroke-width="1.5"/>
-        <line x1="550" y1="300" x2="940" y2="170" stroke="url(#gl2)" stroke-width="1.5"/>
-        <line x1="550" y1="300" x2="550" y2="100" stroke="url(#gl3)" stroke-width="1.5"/>
-        <line x1="550" y1="300" x2="160" y2="420" stroke="url(#gl4)" stroke-width="1.5"/>
-        <line x1="550" y1="300" x2="940" y2="420" stroke="url(#gl5)" stroke-width="1.5"/>
-        <line x1="550" y1="300" x2="320" y2="520" stroke="url(#gl6)" stroke-width="1.5"/>
-        <line x1="550" y1="300" x2="780" y2="520" stroke="url(#gl7)" stroke-width="1.5"/>
-        <line x1="550" y1="300" x2="550" y2="530" stroke="url(#gl8)" stroke-width="1.5"/>
-        <circle r="2" fill="#38bdf8"><animateMotion dur="3s" repeatCount="indefinite" path="M550,300 L160,170"/></circle>
-        <circle r="2" fill="#34d399"><animateMotion dur="3s" repeatCount="indefinite" path="M550,300 L940,170" begin=".6s"/></circle>
-        <circle r="2" fill="#a78bfa"><animateMotion dur="2.8s" repeatCount="indefinite" path="M550,300 L550,100" begin="1.2s"/></circle>
-        <circle r="2" fill="#fbbf24"><animateMotion dur="3s" repeatCount="indefinite" path="M550,300 L160,420" begin=".3s"/></circle>
-        <circle r="2" fill="#f87171"><animateMotion dur="3s" repeatCount="indefinite" path="M550,300 L940,420" begin="1.8s"/></circle>
-        <circle r="2" fill="#22d3ee"><animateMotion dur="2.8s" repeatCount="indefinite" path="M550,300 L320,520" begin=".9s"/></circle>
-        <circle r="2" fill="#f472b6"><animateMotion dur="2.8s" repeatCount="indefinite" path="M550,300 L780,520" begin="1.5s"/></circle>
-        <circle r="2" fill="#fb923c"><animateMotion dur="2.5s" repeatCount="indefinite" path="M550,300 L550,530" begin=".4s"/></circle>
-      </svg></div>
+    <!-- PAIN POINTS SECTION -->
+    <section class="pain-points" id="problemas">
+        <div class="section-title">
+            <h2>Los Problemas que Enfrentas Cada Día</h2>
+            <p>Estos son los obstáculos que limitan el crecimiento de tu planta de vidrio</p>
+        </div>
 
-      <!-- Hub -->
-      <div class="dHub">
-        <div class="dHub-ring"></div><div class="dHub-ring2"></div>
-        <div class="dHub-core"><div class="dHub-inner">
-          <div class="dHub-glyph">&#9881;</div>
-          <div class="dHub-title">VitroFlow</div>
-          <div class="dHub-tag">Central Core</div>
-        </div></div>
-      </div>
+        <div class="cards-grid">
+            <div class="pain-card">
+                <div class="icon">📊</div>
+                <h3>Datos Fragmentados</h3>
+                <p>La información está repartida entre Excel, WhatsApp, cuadernos y hojas sueltas. Nadie tiene la imagen completa.</p>
+                <div class="consequence">Resultado: Decisiones lentas y basadas en suposiciones</div>
+            </div>
 
-      <!-- Nodes -->
-      <div class="dNode" data-mod="produccion" style="left:160px;top:170px">
-        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(56,189,248,.08)" stroke="rgba(56,189,248,.25)" stroke-width="1"/></svg><div class="dIco gB">&#127981;</div></div>
-        <div class="dLbl"><div class="dName">Produccion</div><div class="dMeta">10 modulos</div></div>
-      </div>
-      <div class="dNode" data-mod="sigma" style="left:940px;top:170px">
-        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(52,211,153,.08)" stroke="rgba(52,211,153,.25)" stroke-width="1"/></svg><div class="dIco gG">&#128295;</div></div>
-        <div class="dLbl"><div class="dName">SIGMA</div><div class="dMeta">12 modulos</div></div>
-      </div>
-      <div class="dNode" data-mod="instalaciones" style="left:550px;top:100px">
-        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(167,139,250,.08)" stroke="rgba(167,139,250,.25)" stroke-width="1"/></svg><div class="dIco gP">&#127968;</div></div>
-        <div class="dLbl"><div class="dName">Instalaciones</div><div class="dMeta">3 modulos</div></div>
-      </div>
-      <div class="dNode" data-mod="inventario" style="left:160px;top:420px">
-        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(251,191,36,.08)" stroke="rgba(251,191,36,.25)" stroke-width="1"/></svg><div class="dIco gA">&#128230;</div></div>
-        <div class="dLbl"><div class="dName">Inventario</div><div class="dMeta">3 modulos</div></div>
-      </div>
-      <div class="dNode" data-mod="pedidos" style="left:940px;top:420px">
-        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(248,113,113,.08)" stroke="rgba(248,113,113,.25)" stroke-width="1"/></svg><div class="dIco gR">&#128722;</div></div>
-        <div class="dLbl"><div class="dName">Pedidos</div><div class="dMeta">1 modulo</div></div>
-      </div>
-      <div class="dNode" data-mod="turnos" style="left:320px;top:520px">
-        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(34,211,238,.08)" stroke="rgba(34,211,238,.25)" stroke-width="1"/></svg><div class="dIco gC">&#128336;</div></div>
-        <div class="dLbl"><div class="dName">Turnos</div><div class="dMeta">6 modulos</div></div>
-      </div>
-      <div class="dNode" data-mod="asistencia" style="left:780px;top:520px">
-        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(244,114,182,.08)" stroke="rgba(244,114,182,.25)" stroke-width="1"/></svg><div class="dIco gPk">&#128101;</div></div>
-        <div class="dLbl"><div class="dName">Asistencia</div><div class="dMeta">1 modulo</div></div>
-      </div>
-      <div class="dNode" data-mod="costeo" style="left:550px;top:530px">
-        <div class="dHex"><svg class="dShape" viewBox="0 0 64 64"><polygon points="32,2 60,17 60,47 32,62 4,47 4,17" fill="rgba(251,146,60,.08)" stroke="rgba(251,146,60,.25)" stroke-width="1"/></svg><div class="dIco gO">&#129518;</div></div>
-        <div class="dLbl"><div class="dName">Costeo</div><div class="dMeta">1 modulo</div></div>
-      </div>
+            <div class="pain-card">
+                <div class="icon">⏱️</div>
+                <h3>Pérdida de Tiempo</h3>
+                <p>Tus gerentes dedican horas a buscar datos, crear reportes manualmente y actualizar planillas que nadie revisa.</p>
+                <div class="consequence">Resultado: 4+ horas diarias en tareas sin valor</div>
+            </div>
+
+            <div class="pain-card">
+                <div class="icon">📉</div>
+                <h3>Sin Visibilidad en Tiempo Real</h3>
+                <p>No sabes qué está pasando en producción, almacén o instalaciones hasta que alguien te lo reporta.</p>
+                <div class="consequence">Resultado: Problemas detectados cuando ya es tarde</div>
+            </div>
+
+            <div class="pain-card">
+                <div class="icon">🔄</div>
+                <h3>Errores Humanos</h3>
+                <p>Datos duplicados, órdenes perdidas, inventarios incorrectos. El error humano cuesta miles mensualmente.</p>
+                <div class="consequence">Resultado: 37% de errores por falta de integridad de datos</div>
+            </div>
+
+            <div class="pain-card">
+                <div class="icon">👥</div>
+                <h3>Comunicación Desorganizada</h3>
+                <p>Instrucciones perdidas en WhatsApp, cambios no comunicados, responsabilidades difusas entre equipos.</p>
+                <div class="consequence">Resultado: Retrabajo y conflictos entre departamentos</div>
+            </div>
+
+            <div class="pain-card">
+                <div class="icon">📈</div>
+                <h3>Crecimiento Limitado</h3>
+                <p>Sin datos confiables, no puedes escalar. Cada nuevo cliente o máquina agrega más complejidad al caos actual.</p>
+                <div class="consequence">Resultado: Techo de crecimiento auto-impuesto</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOLUTION SECTION -->
+    <section class="solution-section" id="solucion">
+        <div class="section-title">
+            <h2>La Solución Integral VitroFlow</h2>
+            <p>Un solo sistema que reemplaza todas tus herramientas fragmentadas</p>
+        </div>
+
+        <div class="cards-grid">
+            <div class="solution-card">
+                <div class="icon">🏭</div>
+                <h3>Gestión de Producción</h3>
+                <p>Control completo de órdenes, pasos, máquinas y recetas BOM con algoritmo DBR.</p>
+                <div class="replaces"><strong>Reemplaza:</strong> Excel de producción + WhatsApp de supervisor + cuaderno de máquina</div>
+            </div>
+
+            <div class="solution-card">
+                <div class="icon">🔧</div>
+                <h3>Mantenimiento SIGMA</h3>
+                <p>Mantenimiento preventivo y correctivo con KPIs de MTBF/MTTR y alertas de repuestos.</p>
+                <div class="replaces"><strong>Reemplaza:</strong> Calendario de mantenimiento + control de inventario de repuestos + reportes manuales</div>
+            </div>
+
+            <div class="solution-card">
+                <div class="icon">🏗️</div>
+                <h3>Control de Instalaciones</h3>
+                <p>Fotos antes/después, firma del cliente, calendario y asignación de técnicos.</p>
+                <div class="replaces"><strong>Reemplaza:</strong> Fotos en WhatsApp + agenda del técnico + formularios en papel</div>
+            </div>
+
+            <div class="solution-card">
+                <div class="icon">📦</div>
+                <h3>Inventario Inteligente</h3>
+                <p>Stock en tiempo real, cálculo m² por tipo de vidrio, alertas críticas y estimación de autonomía.</p>
+                <div class="replaces"><strong>Reemplaza:</strong> Excel de inventario + conteos manuales + WhatsApp de "¿hay vidrio?"</div>
+            </div>
+
+            <div class="solution-card">
+                <div class="icon">📋</div>
+                <h3>Gestión de Pedidos</h3>
+                <p>Flujo de aprobación completo, carga de PDFs, almacenamiento en nube y auditoría total.</p>
+                <div class="replaces"><strong>Reemplaza:</strong> Aprobaciones por WhatsApp + archivos sueltos + seguimiento manual</div>
+            </div>
+
+            <div class="solution-card">
+                <div class="icon">🚛</div>
+                <h3>Turnos y Entregas</h3>
+                <p>Códigos QR, cola en tiempo real, flujo multi-paso y registro de cambios de estado.</p>
+                <div class="replaces"><strong>Reemplaza:</strong> Lista de espera en papel + llamadas al repartidor + sin trazabilidad</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ARCHITECTURE SECTION -->
+    <section class="architecture-section" id="arquitectura">
+        <div class="section-title">
+            <h2>Arquitectura del Sistema</h2>
+            <p>Haz clic en cada módulo hexagonal para explorar su estructura interna</p>
+        </div>
+
+        <div class="architecture-container">
+            <svg class="architecture-svg" viewBox="0 0 800 600">
+                <!-- Connection Lines -->
+                <line x1="400" y1="300" x2="400" y2="100" class="connection-line"/>
+                <line x1="400" y1="300" x2="570" y2="150" class="connection-line"/>
+                <line x1="400" y1="300" x2="630" y2="300" class="connection-line"/>
+                <line x1="400" y1="300" x2="570" y2="450" class="connection-line"/>
+                <line x1="400" y1="300" x2="400" y2="500" class="connection-line"/>
+                <line x1="400" y1="300" x2="230" y2="450" class="connection-line"/>
+                <line x1="400" y1="300" x2="170" y2="300" class="connection-line"/>
+                <line x1="400" y1="300" x2="230" y2="150" class="connection-line"/>
+
+                <!-- Animated Dots on Lines -->
+                <circle r="3" fill="#00d4aa">
+                    <animateMotion dur="3s" repeatCount="indefinite" path="M400,300 L400,100"/>
+                </circle>
+                <circle r="3" fill="#00d4aa">
+                    <animateMotion dur="3.5s" repeatCount="indefinite" path="M400,300 L570,150"/>
+                </circle>
+                <circle r="3" fill="#00d4aa">
+                    <animateMotion dur="2.8s" repeatCount="indefinite" path="M400,300 L630,300"/>
+                </circle>
+                <circle r="3" fill="#00d4aa">
+                    <animateMotion dur="3.2s" repeatCount="indefinite" path="M400,300 L570,450"/>
+                </circle>
+                <circle r="3" fill="#00d4aa">
+                    <animateMotion dur="3.8s" repeatCount="indefinite" path="M400,300 L400,500"/>
+                </circle>
+                <circle r="3" fill="#00d4aa">
+                    <animateMotion dur="2.9s" repeatCount="indefinite" path="M400,300 L230,450"/>
+                </circle>
+                <circle r="3" fill="#00d4aa">
+                    <animateMotion dur="3.4s" repeatCount="indefinite" path="M400,300 L170,300"/>
+                </circle>
+                <circle r="3" fill="#00d4aa">
+                    <animateMotion dur="3.1s" repeatCount="indefinite" path="M400,300 L230,150"/>
+                </circle>
+
+                <!-- Center Hub -->
+                <circle cx="400" cy="300" r="70" class="center-hub"/>
+                <text x="400" y="290" text-anchor="middle" fill="#00d4aa" font-size="14" font-weight="700">VitroFlow</text>
+                <text x="400" y="310" text-anchor="middle" fill="#8892b0" font-size="10">Hub Central</text>
+                <text x="400" y="325" text-anchor="middle" fill="#8892b0" font-size="9">116+ tablas</text>
+
+                <!-- Produccion (Top) -->
+                <g class="hex-module" onclick="openModal('produccion')">
+                    <polygon points="400,60 450,85 450,135 400,160 350,135 350,85" fill="#112240" stroke="#00d4aa" stroke-width="2" class="hex-bg"/>
+                    <text x="400" y="105" class="hex-text">Producción</text>
+                    <text x="400" y="120" class="hex-subtext">16 tablas</text>
+                </g>
+
+                <!-- SIGMA (Top Right) -->
+                <g class="hex-module" onclick="openModal('sigma')">
+                    <polygon points="570,110 620,135 620,185 570,210 520,185 520,135" fill="#112240" stroke="#00d4aa" stroke-width="2" class="hex-bg"/>
+                    <text x="570" y="155" class="hex-text">SIGMA</text>
+                    <text x="570" y="170" class="hex-subtext">9 tablas</text>
+                </g>
+
+                <!-- Instalaciones (Right) -->
+                <g class="hex-module" onclick="openModal('instalaciones')">
+                    <polygon points="630,260 680,285 680,335 630,360 580,335 580,285" fill="#112240" stroke="#00d4aa" stroke-width="2" class="hex-bg"/>
+                    <text x="630" y="305" class="hex-text">Instalaciones</text>
+                    <text x="630" y="320" class="hex-subtext">3 tablas</text>
+                </g>
+
+                <!-- Inventario (Bottom Right) -->
+                <g class="hex-module" onclick="openModal('inventario')">
+                    <polygon points="570,410 620,435 620,485 570,510 520,485 520,435" fill="#112240" stroke="#00d4aa" stroke-width="2" class="hex-bg"/>
+                    <text x="570" y="455" class="hex-text">Inventario</text>
+                    <text x="570" y="470" class="hex-subtext">Tiempo real</text>
+                </g>
+
+                <!-- Pedidos (Bottom) -->
+                <g class="hex-module" onclick="openModal('pedidos')">
+                    <polygon points="400,460 450,485 450,535 400,560 350,535 350,485" fill="#112240" stroke="#00d4aa" stroke-width="2" class="hex-bg"/>
+                    <text x="400" y="505" class="hex-text">Pedidos</text>
+                    <text x="400" y="520" class="hex-subtext">Workflow</text>
+                </g>
+
+                <!-- Turnos (Bottom Left) -->
+                <g class="hex-module" onclick="openModal('turnos')">
+                    <polygon points="230,410 280,435 280,485 230,510 180,485 180,435" fill="#112240" stroke="#00d4aa" stroke-width="2" class="hex-bg"/>
+                    <text x="230" y="455" class="hex-text">Turnos</text>
+                    <text x="230" y="470" class="hex-subtext">5 tablas</text>
+                </g>
+
+                <!-- Asistencia (Left) -->
+                <g class="hex-module" onclick="openModal('asistencia')">
+                    <polygon points="170,260 220,285 220,335 170,360 120,335 120,285" fill="#112240" stroke="#00d4aa" stroke-width="2" class="hex-bg"/>
+                    <text x="170" y="305" class="hex-text">Asistencia</text>
+                    <text x="170" y="320" class="hex-subtext">6 tablas</text>
+                </g>
+
+                <!-- Costeo (Top Left) -->
+                <g class="hex-module" onclick="openModal('costeo')">
+                    <polygon points="230,110 280,135 280,185 230,210 180,185 180,135" fill="#112240" stroke="#00d4aa" stroke-width="2" class="hex-bg"/>
+                    <text x="230" y="155" class="hex-text">Costeo</text>
+                    <text x="230" y="170" class="hex-subtext">20 params</text>
+                </g>
+            </svg>
+        </div>
+    </section>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">Module Title</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic content -->
+            </div>
+        </div>
     </div>
-  </div>
-</section>
 
-<!-- MODAL (always centered) -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal" id="modal"></div>
-</div>
+    <!-- WEB + MOBILE SECTION -->
+    <section class="platform-section">
+        <div class="section-title" style="text-align:center">
+            <h2>Web y Movil. Siempre conectado.</h2>
+            <p style="margin:0 auto">Accede desde cualquier dispositivo. En la oficina, en la planta o en terreno.</p>
+        </div>
+        <div style="max-width:1100px;margin:0 auto;padding:0 24px">
+            <div class="platform-grid">
+                <div class="platform-card">
+                    <span class="platform-ico">&#128187;</span>
+                    <div class="platform-name">Version Web</div>
+                    <div class="platform-desc">Desde cualquier navegador. Sin instalar nada. Actualizaciones automaticas. Dashboard completo con graficos y reportes.</div>
+                    <span class="platform-badge">Escritorio + Notebook</span>
+                </div>
+                <div class="platform-card">
+                    <span class="platform-ico">&#128241;</span>
+                    <div class="platform-name">Version Movil</div>
+                    <div class="platform-desc">PWA instalable en celular y tablet. Funciona sin conexion. sincroniza automaticamente cuando hay internet.</div>
+                    <span class="platform-badge">iOS + Android</span>
+                </div>
+                <div class="platform-card">
+                    <span class="platform-ico">&#9881;</span>
+                    <div class="platform-name">Un Solo Sistema</div>
+                    <div class="platform-desc">Mismos datos en todos los dispositivos. Sin copias, sin duplicados. Lo que ves en la oficina es lo mismo que ve el tecnico en terreno.</div>
+                    <span class="platform-badge">Sincronizado en tiempo real</span>
+                </div>
+            </div>
+        </div>
+    </section>
 
-<!-- PRICING -->
-<section class="pricing">
-  <div class="wrap">
-    <div class="section-tag">Planes y Precios</div>
-    <div class="section-title">Invierte en eficiencia, no en licencias</div>
-    <div class="section-sub">Precios en UF para resistir la inflacion. Sin costos de implementacion. Soporte incluido.</div>
-    <div class="price-grid">
-      <div class="price-card">
-        <div class="pName">Starter</div><div class="pDesc">Para empresas que empiezan a digitalizar</div>
-        <div class="pAmt"><span class="pCurr">UF</span><span class="pNum">8</span></div>
-        <div class="pPeriod">/ mes (approx $320.000 CLP)</div><div class="pNote">Hasta 5 usuarios</div>
-        <ul class="pFeat"><li>Pedidos con aprobacion</li><li>Inventario basico</li><li>Turnos completos</li><li>Reportes por modulo</li><li>Soporte email</li></ul>
-        <button class="pBtn pBtn-o">Comenzar</button>
-      </div>
-      <div class="price-card feat">
-        <div class="pName">Professional</div><div class="pDesc">Suite completa para operacion industrial</div>
-        <div class="pAmt"><span class="pCurr">UF</span><span class="pNum">18</span></div>
-        <div class="pPeriod">/ mes (approx $720.000 CLP)</div><div class="pNote">Hasta 20 usuarios</div>
-        <ul class="pFeat"><li>Todo del Starter</li><li>Produccion (10 modulos)</li><li>SIGMA Mantencion (12)</li><li>Instalaciones</li><li>Costeo y margenes</li><li>Asistencia</li><li>Dashboard ejecutivo</li><li>Soporte prioritario</li></ul>
-        <button class="pBtn pBtn-p">Elegir Professional</button>
-      </div>
-      <div class="price-card">
-        <div class="pName">Enterprise</div><div class="pDesc">Para plantas con multiples sedes</div>
-        <div class="pAmt"><span class="pCurr">UF</span><span class="pNum">32</span></div>
-        <div class="pPeriod">/ mes (approx $1.280.000 CLP)</div><div class="pNote">Usuarios ilimitados</div>
-        <ul class="pFeat"><li>Todo del Professional</li><li>Multi-sede</li><li>Integracion SAP</li><li>API personalizada</li><li>SLA 99.9%</li><li>Capacitacion presencial</li><li>Gerente dedicado</li></ul>
-        <button class="pBtn pBtn-o">Contactar Ventas</button>
-      </div>
-    </div>
-    <div class="footer-note"><p>Todos los planes: actualizaciones gratis, soporte, respaldo automatico, SSL, hosting. Descuento 15% pago anual.</p></div>
-  </div>
-</section>
+    <!-- PRICING SECTION -->
+    <section class="pricing-section" id="precios">
+        <div class="section-title">
+            <h2>Planes y Precios</h2>
+            <p>Elige el plan que mejor se adapte a tu operación</p>
+        </div>
 
-<script>
-const MODAL_DATA={
-  produccion:{icon:'&#127981;',name:'Produccion',sub:'Sistema completo de gestion de produccion',color:'#38bdf8',
-    desc:'Controla todo el ciclo de produccion desde la planificacion hasta el despacho. Ordenes de produccion, estaciones de trabajo, recetas BOM, materias primas y codigos SAP integrados.',
-    benefits:[
-      {i:'&#9989;',t:'Reduce 40% el tiempo de planificacion semanal'},
-      {i:'&#9989;',t:'Detecta cuellos de botella antes de que afecten la entrega'},
-      {i:'&#9989;',t:'Recetas BOM automaticas con calculo de materiales y costos'},
-      {i:'&#9989;',t:'Importacion directa desde SAP sin reingreso de datos'},
-      {i:'&#9989;',t:'Dashboard con metricas de avance en tiempo real'}
-    ],
-    tags:['Ordenes','Planificacion','Estaciones','Recetas BOM','Materias Primas','Carroceria','Codigos SAP','Taller','Reportes','Grupos']},
-  sigma:{icon:'&#128295;',name:'SIGMA — Mantencion',sub:'Mantenimiento preventivo y correctivo',color:'#34d399',
-    desc:'Gestiona toda la mantencion de tus maquinas. Preventiva automatica, correctiva con registro de fallas, control de repuestos e historial completo por equipo.',
-    benefits:[
-      {i:'&#9989;',t:'Reduce 60% las paradas no programadas'},
-      {i:'&#9989;',t:'Programacion automatica por horometro y calendario'},
-      {i:'&#9989;',t:'Alertas de stock minimo de repuestos'},
-      {i:'&#9989;',t:'Historial completo: cada intervencion registrada'},
-      {i:'&#9989;',t:'KPIs: MTBF, MTTR, maquinas operativas vs detenidas'}
-    ],
-    tags:['Dashboard','Tipos de Area','Maquinas','Componentes','Preventiva','Correctiva','Repuestos','Calendario','Notas','Reportes','Bitacora','Historial']},
-  instalaciones:{icon:'&#127968;',name:'Instalaciones',sub:'Gestion de instalaciones en terreno',color:'#a78bfa',
-    desc:'Control centralizado de todas las instalaciones. Historial fotografico, asignacion de tecnicos y seguimiento de avance en tiempo real.',
-    benefits:[
-      {i:'&#9989;',t:'Documentacion fotografica automatica antes/despues'},
-      {i:'&#9989;',t:'Asignacion y seguimiento de tecnicos en tiempo real'},
-      {i:'&#9989;',t:'Calendario de instalaciones programadas'},
-      {i:'&#9989;',t:'Evidencia verificable para clientes y auditorias'}
-    ],
-    tags:['Instalaciones','Historial','Fotos / Detalle']},
-  inventario:{icon:'&#128230;',name:'Inventario',sub:'Control de stock en tiempo real',color:'#fbbf24',
-    desc:'Stock actualizado al instante, movimientos automaticos y alertas cuando el material baja del minimo. Sin sorpresas de material faltante.',
-    benefits:[
-      {i:'&#9989;',t:'Stock en tiempo real: fin de las sorpresas'},
-      {i:'&#9989;',t:'Registro automatico de cada movimiento'},
-      {i:'&#9989;',t:'Alertas de nivel minimo de stock'},
-      {i:'&#9989;',t:'Historial completo de entradas y salidas'}
-    ],
-    tags:['Stock','Movimientos','Historial']},
-  pedidos:{icon:'&#128722;',name:'Pedidos',sub:'Flujo completo de gestion de pedidos',color:'#f87171',
-    desc:'Desde la creacion hasta la entrega. Flujo de aprobacion configurable, subida de archivos y seguimiento de estados.',
-    benefits:[
-      {i:'&#9989;',t:'Flujo de aprobacion: gerente, bodega, calidad'},
-      {i:'&#9989;',t:'Subida de archivos PDF e imagenes'},
-      {i:'&#9989;',t:'Dashboard de pedidos pendientes y aprobados'},
-      {i:'&#9989;',t:'Trazabilidad completa: quien aprobo cada pedido'}
-    ],
-    tags:['Creacion','Aprobacion','Archivos R2','Estados']},
-  turnos:{icon:'&#128336;',name:'Turnos',sub:'Atencion al cliente optimizada',color:'#22d3ee',
-    desc:'Control del flujo de clientes por etapa: recepcion, bodega, almacen, facturacion. Codigos QR y reportes por turno.',
-    benefits:[
-      {i:'&#9989;',t:'Reduce 30% el tiempo de espera del cliente'},
-      {i:'&#9989;',t:'Codigos QR para identificacion rapida'},
-      {i:'&#9989;',t:'Reportes de productividad por turno'},
-      {i:'&#9989;',t:'Visibilidad total del flujo operativo diario'}
-    ],
-    tags:['Recepcion','Bodega','Almacen','Facturacion','QR','Reportes']},
-  asistencia:{icon:'&#128101;',name:'Asistencia',sub:'Control de personal y fichaje',color:'#f472b6',
-    desc:'Registro digital de entrada y salida, reportes automaticos de horas trabajadas y historial para calculo de remuneraciones.',
-    benefits:[
-      {i:'&#9989;',t:'Elimina errores en calculo de horas extras'},
-      {i:'&#9989;',t:'Reportes automaticos por trabajador y turno'},
-      {i:'&#9989;',t:'Historial de asistencia para RRHH'},
-      {i:'&#9989;',t:'Ahorro en tiempo administrativo'}
-    ],
-    tags:['Trabajadores','Fichaje','Reportes']},
-  costeo:{icon:'&#129518;',name:'Costeo',sub:'Calculadora de costos de produccion',color:'#fb923c',
-    desc:'Simula el costo de cada pieza: materia prima, mano de obra, energia, procesos y margen de ganancia. Cotizaciones precisas en minutos.',
-    benefits:[
-      {i:'&#9989;',t:'Calculo automatico: MP + HH + energia + procesos'},
-      {i:'&#9989;',t:'Simulacion rapida con cambio de variables'},
-      {i:'&#9989;',t:'Protege margenes con costos reales'},
-      {i:'&#9989;',t:'Configuracion de todos los procesos industriales'}
-    ],
-    tags:['Costos','Margenes','Simulacion','Configuracion']}
-};
+        <div class="pricing-grid">
+            <!-- Starter -->
+            <div class="pricing-card">
+                <div class="pricing-tier">Plan Starter</div>
+                <div class="pricing-name">Básico</div>
+                <div class="pricing-price">
+                    <span class="currency">UF</span>
+                    <span class="amount">8</span>
+                    <span class="period">/mes</span>
+                </div>
+                <ul class="pricing-features">
+                    <li>Hasta 5 usuarios</li>
+                    <li>Módulo de Producción básico</li>
+                    <li>Inventario básico</li>
+                    <li>Reportes estándar</li>
+                    <li>Soporte por email</li>
+                    <li class="disabled">Mantenimiento SIGMA</li>
+                    <li class="disabled">Gestión de turnos</li>
+                    <li class="disabled">Costeo avanzado</li>
+                </ul>
+                <button class="pricing-btn">Comenzar Ahora</button>
+            </div>
 
-const overlay=document.getElementById('modalOverlay');
-const modal=document.getElementById('modal');
-let activeNode=null;
+            <!-- Professional -->
+            <div class="pricing-card featured">
+                <div class="pricing-tier">Plan Professional</div>
+                <div class="pricing-name">Profesional</div>
+                <div class="pricing-price">
+                    <span class="currency">UF</span>
+                    <span class="amount">18</span>
+                    <span class="period">/mes</span>
+                </div>
+                <ul class="pricing-features">
+                    <li>Hasta 20 usuarios</li>
+                    <li>Todos los módulos incluidos</li>
+                    <li>SIGMA mantenimiento completo</li>
+                    <li>Gestión de turnos y entregas</li>
+                    <li>Costeo con 20 parámetros</li>
+                    <li>Reportes personalizados</li>
+                    <li>Soporte prioritario 24/7</li>
+                    <li class="disabled">API personalizada</li>
+                </ul>
+                <button class="pricing-btn">Solicitar Demo</button>
+            </div>
 
-function closeModal(){
-  overlay.classList.remove('show');
-  if(activeNode){activeNode.classList.remove('active');activeNode=null}
-}
+            <!-- Enterprise -->
+            <div class="pricing-card">
+                <div class="pricing-tier">Plan Enterprise</div>
+                <div class="pricing-name">Empresarial</div>
+                <div class="pricing-price">
+                    <span class="currency">UF</span>
+                    <span class="amount">32</span>
+                    <span class="period">/mes</span>
+                </div>
+                <ul class="pricing-features">
+                    <li>Usuarios ilimitados</li>
+                    <li>Todo lo del plan Professional</li>
+                    <li>API personalizada</li>
+                    <li>Integración SAP completa</li>
+                    <li>Múltiples plantas</li>
+                    <li>Dashboard ejecutivo BI</li>
+                    <li>Gerente de cuenta dedicado</li>
+                    <li>SLA 99.9% uptime</li>
+                </ul>
+                <button class="pricing-btn">Contactar Ventas</button>
+            </div>
+        </div>
+    </section>
 
-function openModal(key){
-  const d=MODAL_DATA[key];if(!d)return;
-  const benefits=d.benefits.map(b=>'<div class="modal-item"><span class="modal-item-icon">'+b.i+'</span><span class="modal-item-text">'+b.t+'</span></div>').join('');
-  const tags=d.tags.map(t=>'<span class="modal-tag">'+t+'</span>').join('');
+    <!-- FOOTER -->
+    <footer>
+        <p>&copy; 2024 VitroFlow - Sistema Unificado de Gestión Industrial para el Vidrio</p>
+        <p style="margin-top: 0.5rem;">Transformando la industria del vidrio con tecnología de vanguardia</p>
+    </footer>
 
-  modal.innerHTML='<div class="modal-hdr"><div class="modal-ico" style="background:'+d.color+'18">'+d.icon+'</div><div><div class="modal-title">'+d.name+'</div><div class="modal-sub">'+d.sub+'</div></div><button class="modal-close" onclick="closeModal()">&times;</button></div><div class="modal-body"><div class="modal-section"><div class="modal-sec-title">Que es</div><p style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6">'+d.desc+'</p></div><div class="modal-section"><div class="modal-sec-title">Beneficios clave</div>'+benefits+'</div><div class="modal-section"><div class="modal-sec-title">Submodulos</div><div class="modal-tag-row">'+tags+'</div></div></div>';
+    <script>
+        // Module Data
+        const moduleData = {
+            produccion: {
+                title: 'Producción',
+                tables: [
+                    'produccion_ordenes',
+                    'produccion_pasos',
+                    'produccion_maquinas',
+                    'produccion_codigos',
+                    'recetas_bom',
+                    'materias_primas',
+                    'estaciones_maestras',
+                    'familias_producto',
+                    'familia_estaciones_base',
+                    'reglas_procesos_extras',
+                    'cola_produccion_pasos',
+                    'produccion_capacidad_grupo',
+                    'calendario_produccion',
+                    'mermas',
+                    'prod_notas',
+                    'procesos_carroceria_sap'
+                ],
+                features: [
+                    { icon: '🔄', text: 'Algoritmo DBR (Drum-Buffer-Rope) para optimización de flujo' },
+                    { icon: '📥', text: 'Importación directa desde SAP con procesos de carrocería' },
+                    { icon: '🧩', text: 'Explosión BOM automática con recetas y materias primas' },
+                    { icon: '🏭', text: '8 estaciones de trabajo configurables' },
+                    { icon: '📊', text: '4 niveles de prioridad con cola inteligente' },
+                    { icon: '♻️', text: 'Control de mermas con reposición automática' },
+                    { icon: '📅', text: 'Calendario de producción con capacidad por grupo' },
+                    { icon: '📝', text: 'Notas y seguimiento por orden de producción' }
+                ],
+                description: 'Módulo central del sistema con 16 tablas que gestionan todo el ciclo productivo, desde la recepción de órdenes hasta la planificación de capacidad.'
+            },
+            sigma: {
+                title: 'SIGMA - Mantenimiento',
+                tables: [
+                    'machine_types',
+                    'machines',
+                    'components',
+                    'component_type_links',
+                    'machine_components',
+                    'spare_parts',
+                    'preventive_maintenance',
+                    'corrective_maintenance',
+                    'notas'
+                ],
+                features: [
+                    { icon: '📅', text: '6 frecuencias de mantenimiento (diaria, semanal, mensual, trimestral, semestral, anual)' },
+                    { icon: '📊', text: 'KPIs de MTBF (Mean Time Between Failures) y MTTR (Mean Time To Repair)' },
+                    { icon: '🔧', text: 'Inventario de repuestos con alertas de stock mínimo' },
+                    { icon: '📆', text: 'Calendario de mantenimiento preventivo automatizado' },
+                    { icon: '🏆', text: 'Ranking de máquinas por disponibilidad y eficiencia' },
+                    { icon: '📝', text: 'Registro completo de mantenimiento preventivo y correctivo' },
+                    { icon: '🔍', text: 'Rastreo de componentes por máquina con tipos y enlaces' },
+                    { icon: '📈', text: 'Análisis de tendencias y predicción de fallas' }
+                ],
+                description: 'Sistema integral de mantenimiento con 9 tablas que controla la salud de tus máquinas, inventario de repuestos y programación de actividades.'
+            },
+            instalaciones: {
+                title: 'Instalaciones',
+                tables: [
+                    'instalaciones',
+                    'instalaciones_historial',
+                    'instalaciones_fotos'
+                ],
+                features: [
+                    { icon: '📸', text: 'Fotografías antes y después de cada instalación' },
+                    { icon: '✍️', text: 'Firma digital del cliente para confirmación' },
+                    { icon: '📅', text: 'Calendario de programación de instalaciones' },
+                    { icon: '👷', text: 'Asignación de técnicos con disponibilidad' },
+                    { icon: '📋', text: 'Historial completo de cada instalación' },
+                    { icon: '📱', text: 'Acceso móvil para técnicos en campo' }
+                ],
+                description: 'Gestión completa de instalaciones con 3 tablas que capturan todo el ciclo desde la programación hasta la confirmación del cliente.'
+            },
+            inventario: {
+                title: 'Inventario',
+                tables: [
+                    'stock_principal',
+                    'stock_por_tipo',
+                    'movimientos_stock',
+                    'alertas_stock',
+                    'configuracion_tipos_vidrio'
+                ],
+                features: [
+                    { icon: '⏱️', text: 'Stock en tiempo real con actualización instantánea' },
+                    { icon: '📐', text: 'Cálculo de m² por tipo de vidrio y espesor' },
+                    { icon: '🚨', text: 'Alertas críticas cuando el stock baja del mínimo' },
+                    { icon: '📈', text: 'Estimación de autonomía basada en consumo promedio' },
+                    { icon: '📜', text: 'Historial completo de movimientos (entradas/salidas)' },
+                    { icon: '🔍', text: 'Búsqueda y filtrado por tipo, ubicación o fecha' }
+                ],
+                description: 'Control inteligente de inventario que monitorea stock en tiempo real, calcula disponibilidad y alerta sobre niveles críticos.'
+            },
+            pedidos: {
+                title: 'Pedidos',
+                tables: [
+                    'pedidos',
+                    'pedidos_archivos',
+                    'pedidos_historial',
+                    'pedidos_aprobaciones',
+                    'pedidos_detalle'
+                ],
+                features: [
+                    { icon: '✅', text: 'Flujo de aprobación: Gerente → Bodega → Calidad' },
+                    { icon: '📄', text: 'Carga de PDFs de órdenes de compra directamente' },
+                    { icon: '☁️', text: 'Almacenamiento en Cloudflare R2 con acceso seguro' },
+                    { icon: '📋', text: 'Auditoría completa con snapshots antes/después' },
+                    { icon: '🔄', text: 'Seguimiento del estado en tiempo real' },
+                    { icon: '📊', text: 'Reportes de pedidos por período y estado' }
+                ],
+                description: 'Gestión integral de pedidos con 5 tablas que controlan el flujo completo desde la recepción hasta la entrega, con auditoría total.'
+            },
+            turnos: {
+                title: 'Turnos y Entregas',
+                tables: [
+                    'turnos',
+                    'entregas',
+                    'turnos_adjuntos',
+                    'turnos_estados_log',
+                    'tecnicos_almacen'
+                ],
+                features: [
+                    { icon: '📱', text: 'Códigos QR para identificación única de cada entrega' },
+                    { icon: '⏱️', text: 'Cola en tiempo real con tiempos de espera estimados' },
+                    { icon: '🔄', text: 'Flujo multi-paso: Preparación → Despacho → Entrega → Confirmación' },
+                    { icon: '📝', text: 'Registro de cada cambio de estado con timestamp' },
+                    { icon: '👷', text: 'Asignación de técnicos de almacén por turno' },
+                    { icon: '📎', text: 'Documentos adjuntos por entrega (fotos, firmas, documentos)' }
+                ],
+                description: 'Sistema de turnos con 5 tablas que gestiona la cola de entregas, asigna recursos y registra cada paso del proceso de despacho.'
+            },
+            asistencia: {
+                title: 'Asistencia',
+                tables: [
+                    'trabajadores',
+                    'asistencia',
+                    'permisos',
+                    'vacaciones',
+                    'licencias_medicas',
+                    'horas_extras'
+                ],
+                features: [
+                    { icon: '📅', text: 'Vista mensual del calendario de asistencia' },
+                    { icon: '🏃', text: 'Registro de ausencias con tipos (permiso, vacación, licencia)' },
+                    { icon: '✅', text: 'Flujo de aprobación para permisos y vacaciones' },
+                    { icon: '⏰', text: 'Control de horas extras con justificación' },
+                    { icon: '📋', text: 'Historial completo por trabajador' },
+                    { icon: '📊', text: 'Reportes de asistencia por período y departamento' }
+                ],
+                description: 'Gestión de recursos humanos con 6 tablas que controla asistencia, permisos, vacaciones y horas extras de todo el personal.'
+            },
+            costeo: {
+                title: 'Costeo',
+                tables: [
+                    'costo_parametros',
+                    'costo_procesos',
+                    'costo_materiales',
+                    'costo_mano_obra',
+                    'costo_energia',
+                    'costo_pulido',
+                    'costo_perforacion',
+                    'costo_corte',
+                    'costo_pintura',
+                    'costo_mermas',
+                    'costo_margenes',
+                    'costo_historial',
+                    'costo_reportes',
+                    'costo_configuracion',
+                    'costo_tipo_proceso',
+                    'costo_grupo_producto',
+                    'costo_formula',
+                    'costo_variables',
+                    'costo_fixed',
+                    'costo_kpi'
+                ],
+                features: [
+                    { icon: '⚙️', text: '20 parámetros de costos configurables por usuario' },
+                    { icon: '🔄', text: '4 tipos de proceso: Crudo sin pulir, Crudo pulido, Templado plano, Templado curvo' },
+                    { icon: '💰', text: 'Desglose completo: Material + Mano de obra + Energía + Pulido + Perforación + Corte + Pintura + Mermas' },
+                    { icon: '📈', text: 'Cálculo automático de márgenes de ganancia' },
+                    { icon: '🧮', text: 'Fórmulas configurables por tipo de producto' },
+                    { icon: '📊', text: 'Reportes de costo por orden, producto y período' }
+                ],
+                description: 'Motor de costeo con 20 tablas y parámetros que calcula el costo real de producción incluyendo todos los factores del proceso.'
+            }
+        };
 
-  overlay.classList.add('show');
-}
+        // Modal Functions
+        function openModal(moduleKey) {
+            const data = moduleData[moduleKey];
+            if (!data) return;
 
-document.querySelectorAll('.dNode').forEach(n=>{
-  n.addEventListener('click',e=>{e.stopPropagation();if(activeNode)activeNode.classList.remove('active');activeNode=n;n.classList.add('active');openModal(n.dataset.mod)})
-});
-overlay.addEventListener('click',closeModal);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
-</script>
+            document.getElementById('modalTitle').textContent = data.title;
+            
+            let html = `
+                <div class="modal-badge">
+                    📊 Base de datos: ${data.tables.length} tablas
+                </div>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">${data.description}</p>
+                
+                <div class="modal-section">
+                    <h3>Tablas de Base de Datos</h3>
+                    <div class="tables-grid">
+                        ${data.tables.map(t => `<div class="table-tag">${t}</div>`).join('')}
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Funcionalidades Principales</h3>
+                    <div class="features-list">
+                        ${data.features.map(f => `
+                            <div class="feature-item">
+                                <span class="check">✓</span>
+                                <p>${f.text}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('modalOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close on overlay click
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
