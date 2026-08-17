@@ -96,7 +96,7 @@ router.post('/api/sigma/reset', requireAdmin, async (req, res, next) => {
     res.json({ ok: true, message: 'Base de datos reiniciada' });
 });
 
-router.get('/api/sigma/diagnostico', canView, async (req, res, next) => {
+router.get('/api/sigma/diagnostico', async (req, res, next) => {
     try {
         const [maquinas, tipos, links, machineComps, preventivos] = await Promise.all([
             query('SELECT id, nombre, codigo, tipo_id FROM machines ORDER BY id'),
