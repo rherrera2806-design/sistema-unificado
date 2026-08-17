@@ -237,6 +237,8 @@
 
     /* Stats - 3 columns equal */
     .m-stats { grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 16px; }
+    .inst-stats { grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 16px; }
+    .ih-stats { grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 16px; }
     .m-stat-card {
         flex-direction: column;
         align-items: center;
