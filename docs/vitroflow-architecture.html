@@ -87,34 +87,6 @@ body{font-family:'Space Grotesk',sans-serif;background:#06080f;color:white;overf
 .modal-tag-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .modal-tag{font-size:9px;font-weight:500;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.05)}
 
-/* Module Cards Section */
-.mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:60px}
-.mod-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:24px;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
-.mod-card:hover{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.04);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
-.mod-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0;opacity:0;transition:opacity .3s}
-.mod-card:hover::before{opacity:1}
-.mod-card[data-c="blue"]::before{background:linear-gradient(90deg,#38bdf8,#3b82f6)}
-.mod-card[data-c="green"]::before{background:linear-gradient(90deg,#34d399,#10b981)}
-.mod-card[data-c="purple"]::before{background:linear-gradient(90deg,#a78bfa,#8b5cf6)}
-.mod-card[data-c="amber"]::before{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
-.mod-card[data-c="red"]::before{background:linear-gradient(90deg,#f87171,#ef4444)}
-.mod-card[data-c="cyan"]::before{background:linear-gradient(90deg,#22d3ee,#06b6d4)}
-.mod-card[data-c="pink"]::before{background:linear-gradient(90deg,#f472b6,#ec4899)}
-.mod-card[data-c="orange"]::before{background:linear-gradient(90deg,#fb923c,#f97316)}
-.mc-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.mc-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.mod-card[data-c="blue"] .mc-ico{background:rgba(56,189,248,.1)}
-.mod-card[data-c="green"] .mc-ico{background:rgba(52,211,153,.1)}
-.mod-card[data-c="purple"] .mc-ico{background:rgba(167,139,250,.1)}
-.mod-card[data-c="amber"] .mc-ico{background:rgba(251,191,36,.1)}
-.mod-card[data-c="red"] .mc-ico{background:rgba(248,113,113,.1)}
-.mod-card[data-c="cyan"] .mc-ico{background:rgba(34,211,238,.1)}
-.mod-card[data-c="pink"] .mc-ico{background:rgba(244,114,182,.1)}
-.mod-card[data-c="orange"] .mc-ico{background:rgba(251,146,60,.1)}
-.mc-name{font-size:15px;font-weight:700}
-.mc-count{font-size:9px;color:rgba(255,255,255,.3)}
-.mc-desc{font-size:11px;color:rgba(255,255,255,.4);line-height:1.5;margin-bottom:12px}
-
 /* Pricing */
 .pricing{padding:60px 0 80px}
 .price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px}
@@ -257,49 +229,6 @@ body{font-family:'Space Grotesk',sans-serif;background:#06080f;color:white;overf
   <div class="modal" id="modal"></div>
 </div>
 
-<!-- MODULE DETAILS -->
-<section style="padding:60px 0">
-  <div class="wrap">
-    <div class="section-tag">Detalle de Modulos</div>
-    <div class="section-title">Conoce que hace cada area</div>
-    <div class="section-sub">Cada modulo esta disenado para resolver problemas reales de tu operacion.</div>
-    <div class="mod-grid">
-      <div class="mod-card" data-c="blue" data-mod="produccion">
-        <div class="mc-head"><div class="mc-ico">&#127981;</div><div><div class="mc-name">Produccion</div><div class="mc-count">10 submodulos</div></div></div>
-        <div class="mc-desc">Ordenes, planificacion, estaciones, recetas BOM, materias primas, taller y SAP.</div>
-      </div>
-      <div class="mod-card" data-c="green" data-mod="sigma">
-        <div class="mc-head"><div class="mc-ico">&#128295;</div><div><div class="mc-name">SIGMA</div><div class="mc-count">12 submodulos</div></div></div>
-        <div class="mc-desc">Mantencion preventiva y correctiva, componentes, repuestos, historial y bitacora.</div>
-      </div>
-      <div class="mod-card" data-c="purple" data-mod="instalaciones">
-        <div class="mc-head"><div class="mc-ico">&#127968;</div><div><div class="mc-name">Instalaciones</div><div class="mc-count">3 submodulos</div></div></div>
-        <div class="mc-desc">Gestion de instalaciones, historial fotografico y seguimiento de tecnicos.</div>
-      </div>
-      <div class="mod-card" data-c="amber" data-mod="inventario">
-        <div class="mc-head"><div class="mc-ico">&#128230;</div><div><div class="mc-name">Inventario</div><div class="mc-count">3 submodulos</div></div></div>
-        <div class="mc-desc">Stock en tiempo real, movimientos y alertas de nivel minimo.</div>
-      </div>
-      <div class="mod-card" data-c="red" data-mod="pedidos">
-        <div class="mc-head"><div class="mc-ico">&#128722;</div><div><div class="mc-name">Pedidos</div><div class="mc-count">Gestion completa</div></div></div>
-        <div class="mc-desc">Flujo de aprobacion, archivos R2 y seguimiento de estados.</div>
-      </div>
-      <div class="mod-card" data-c="cyan" data-mod="turnos">
-        <div class="mc-head"><div class="mc-ico">&#128336;</div><div><div class="mc-name">Turnos</div><div class="mc-count">6 submodulos</div></div></div>
-        <div class="mc-desc">Recepcion, bodega, almacen, facturacion, QR y reportes.</div>
-      </div>
-      <div class="mod-card" data-c="pink" data-mod="asistencia">
-        <div class="mc-head"><div class="mc-ico">&#128101;</div><div><div class="mc-name">Asistencia</div><div class="mc-count">Control de personal</div></div></div>
-        <div class="mc-desc">Trabajadores, fichaje y reportes de horas.</div>
-      </div>
-      <div class="mod-card" data-c="orange" data-mod="costeo">
-        <div class="mc-head"><div class="mc-ico">&#129518;</div><div><div class="mc-name">Costeo</div><div class="mc-count">Calculadora</div></div></div>
-        <div class="mc-desc">Costos de produccion por pieza con margenes.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- PRICING -->
 <section class="pricing">
   <div class="wrap">
@@ -432,9 +361,6 @@ function openModal(key){
 
 document.querySelectorAll('.dNode').forEach(n=>{
   n.addEventListener('click',e=>{e.stopPropagation();if(activeNode)activeNode.classList.remove('active');activeNode=n;n.classList.add('active');openModal(n.dataset.mod)})
-});
-document.querySelectorAll('.mod-card').forEach(c=>{
-  c.addEventListener('click',e=>{e.stopPropagation();openModal(c.dataset.mod)})
 });
 overlay.addEventListener('click',closeModal);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
