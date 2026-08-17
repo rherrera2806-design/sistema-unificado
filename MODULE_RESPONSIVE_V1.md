@@ -160,6 +160,38 @@ renderContent() {
 | `m-card` | max-width:100% | box-sizing:border-box |
 | `m-form-grid` | grid 2col | grid 1col |
 
+### Stat Cards - Sistema de Colores
+
+```css
+/* Estructura base */
+.m-stat-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    border-left: 4px solid var(--gray-300);  /* default */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.m-stat-value { font-size: 18px; font-weight: 800; }
+.m-stat-label { font-size: 9px; font-weight: 600; color: #64748b; text-transform: uppercase; }
+```
+
+**Clases de color (elegir según significado):**
+
+| Clase | Color | Uso |
+|-------|-------|-----|
+| `stat-blue` | `--glass` (#1e40af) | Datos principales, totales |
+| `stat-green` | `--success` (#059669) | Activos, positivos, completados |
+| `stat-amber` | `--accent` (#f59e0b) | Advertencias, cantidades |
+| `stat-red` | `--danger` (#dc2626) | Alertas, negativos, bloqueados |
+| `stat-purple` | #8b5cf6 | Categorías, grupos, custom |
+| `stat-info` | `--info` (#3b82f6) | Informativo secundario |
+
+**Mobile:** 3 columnas iguales, labels con `text-overflow: ellipsis`
+
 ---
 
 ## ⚠️ LECCIÓN APRENDIDA: Revisión Exhaustiva
