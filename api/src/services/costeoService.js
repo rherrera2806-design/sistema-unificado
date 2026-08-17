@@ -29,7 +29,7 @@ class CosteoService {
      */
     async getCristales() {
         const result = await query(
-            'SELECT id, codigo_mp, nombre, espesor_mm, costo_unitario_mp, costo_unitario_importado FROM materias_primas ORDER BY nombre'
+            'SELECT id, codigo_mp, nombre, espesor_mm, costo_unitario_mp, costo_unitario_importado, mpa FROM materias_primas ORDER BY nombre'
         );
         return result.rows;
     }
@@ -73,9 +73,10 @@ class CosteoService {
         // 2. Obtener precio del cristal según origen
         let precio_cristal = 0;
         let nombre_cristal = '';
+        let mpa_cristal = 0;
         if (cristal_id) {
             const cristalResult = await query(
-                'SELECT nombre, costo_unitario_mp, costo_unitario_importado FROM materias_primas WHERE id = $1',
+                'SELECT nombre, costo_unitario_mp, costo_unitario_importado, mpa FROM materias_primas WHERE id = $1',
                 [cristal_id]
             );
             if (cristalResult.rows.length > 0) {
@@ -84,6 +85,7 @@ class CosteoService {
                     ? (parseFloat(row.costo_unitario_importado) || 0)
                     : (parseFloat(row.costo_unitario_mp) || 0);
                 nombre_cristal = row.nombre;
+                mpa_cristal = parseFloat(row.mpa) || 0;
             }
         }
 
@@ -114,7 +116,7 @@ class CosteoService {
         // 6. (B) COSTO DE MERMAS
         const costos_sin_materia_prima = hh + energia + pulido + perforado + destaje + pintura + insumos_pintura + otros;
         const merma_proceso = costos_sin_materia_prima * (merma_proceso_pct / 100);
-        const merma_aprovechamiento = materia_prima * (merma_aprovechamiento_pct / 100);
+        const merma_aprovechamiento = materia_prima * (mpa_cristal / 100);
         const costo_mermas = merma_proceso + merma_aprovechamiento;
 
         // 7. TOTAL COSTO
@@ -176,7 +178,7 @@ class CosteoService {
             _config: {
                 costo_hh, costo_energia, costo_pulido_ml, costo_perforacion,
                 costo_destaje_kg, costo_destaje_complejo, costo_pintura_ml,
-                costo_insumos_pintura, merma_proceso_pct, merma_aprovechamiento_pct
+                costo_insumos_pintura, merma_proceso_pct, mpa_cristal
             }
         };
     }
