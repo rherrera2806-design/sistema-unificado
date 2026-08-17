@@ -194,22 +194,78 @@ renderContent() {
 
 ---
 
+## Header/Hero Estándar (Todos los módulos)
+
+```css
+/* Desktop */
+.m-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
+    border-radius: 16px;
+    padding: 8px 16px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(15,23,42,0.3);
+}
+.m-hero h2 { margin:0; font-size:15px; font-weight:800; color:white; letter-spacing:-0.5px }
+.m-hero p  { margin:2px 0 0; font-size:10px; color:rgba(255,255,255,0.7) }
+
+/* Mobile */
+@media(max-width:768px) {
+    .m-hero { padding:12px; border-radius:12px; margin-bottom:16px }
+}
+```
+
+### Botones en Header (siempre dentro de `.m-hero`)
+
+```html
+<!-- Botón outline transparente -->
+<button class="btn btn-outline"
+    style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)">
+    Texto
+</button>
+
+<!-- Botón primario (accent) -->
+<button class="btn btn-primary">+ Nuevo</button>
+```
+
+### Mobile botones en header
+```css
+@media(max-width:768px) {
+    .m-hero-btns { display:flex; gap:8px; flex-wrap:wrap }
+    .m-hero-btns .btn { height:40px; min-height:40px; flex:1 }
+}
+```
+
+### Valores estándar
+
+| Propiedad | Desktop | Mobile |
+|-----------|---------|--------|
+| Header padding | `8px 16px` | `12px` |
+| Border-radius | `16px` | `12px` |
+| h2 font-size | `15px` | `15px` |
+| Subtitle font-size | `10px` | `10px` |
+| Radial gradient | `180x180px` | `180x180px` |
+| Botón height | normal | `40px` |
+
+---
+
 ## ⚠️ LECCIÓN APRENDIDA: Revisión Exhaustiva
 
 Cuando el usuario pida "revisar" un módulo, **NO asumas que está bien**. Revisa CADA detalle:
 
 ### Checklist de revisión obligatoria:
 
-| Elemento | Qué revisar |
-|----------|-------------|
-| **Header/Banner** | padding, font-size título, font-size subtítulo |
-| **Filtros** | gap, padding inputs, border-radius |
-| **StatCards** | grid columns, gap, padding, font-size valores/labels |
-| **Botones** | `btn-sm` vs padding manual, altura, font-size |
-| **Tabla** | min-width, overflow-x, headers font-size |
-| **Cards móvil** | border-radius, padding, font-size texto |
-| **Formularios** | gap, padding inputs, labels font-size, margin secciones |
-| **Espaciado** | margin-bottom entre secciones, padding cards |
+| Elemento | Qué revisar | Valor estándar |
+|----------|-------------|----------------|
+| **Header/Banner** | padding, font-size título, font-size subtítulo | `8px 16px`, `15px`, `10px` |
+| **Filtros** | gap, padding inputs, border-radius | `8px`, `10px 12px`, `8px` |
+| **StatCards** | grid columns, gap, padding, font-size | 5col→3col mobile, `12px`, `12px 14px`, `18px`/`9px` |
+| **Botones** | altura mobile, font-size mobile | `40px`, `12px` |
+| **Tabla** | min-width, overflow-x, headers font-size | `800px`, auto, `11px` |
+| **Cards móvil** | border-radius, padding, font-size texto | `10px`, `12px`, `12px` |
+| **Formularios** | gap, padding inputs, labels font-size, margin secciones | `12px`, `10px 12px`, `11px`, `16px` |
+| **Espaciado** | margin-bottom entre secciones, padding cards | `20px`, `16px` |
 
 ### Preguntas obligatorias antes de responder "está bien":
 
