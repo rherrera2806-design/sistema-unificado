@@ -647,7 +647,7 @@ App.registerModule('prod_config', {
                 <td style="background:#eff6ff">$${ci.toLocaleString('es-CL')}</td>
                 <td style="background:#fefce8;font-weight:600;color:${col(diffM2)}">${fmt(diffM2)}</td>
                 <td style="background:#fef3c7;text-align:right">${cpm.toLocaleString('es-CL')}</td>
-                <td style="background:#fce7f3;text-align:right">${mpa.toFixed(1)}%</td>
+                <td style="background:#fce7f3;text-align:right">${mpa.toFixed(2)}%</td>
                 <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${obs}</td>
                 <td class="table-actions" style="white-space:nowrap">
                     <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -698,7 +698,7 @@ App.registerModule('prod_config', {
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;margin-top:6px">
                         <div style="background:#fce7f3;padding:4px 6px;border-radius:4px">
                             <div style="color:#64748b">MPA</div>
-                            <div style="font-weight:600;color:#9d174d">${mpa.toFixed(1)}%</div>
+                            <div style="font-weight:600;color:#9d174d">${mpa.toFixed(2)}%</div>
                         </div>
                     </div>
                     ${badge ? '<div style="margin-top:6px">' + badge + '</div>' : ''}
@@ -883,7 +883,7 @@ App.registerModule('prod_config', {
                     <div class="mp-form-grid" style="grid-template-columns:1fr 1fr 1fr">
                         <div class="form-group"><label>Diferencia $/m2</label><input type="text" class="form-control" id="mpDiffM2" readonly style="background:#fff;font-weight:600"></div>
                         <div class="form-group"><label>Consumo Prom. Mensual (CPM)</label><input type="number" class="form-control" id="mpCPM" value="${v('consumo_promedio_mensual', true)}" min="0" step="1" placeholder="0"></div>
-                        <div class="form-group"><label>MPA (% Merma)</label><input type="number" class="form-control" id="mpMPA" value="${v('mpa')}" min="0" max="100" step="0.1" placeholder="0.0"></div>
+                        <div class="form-group"><label>MPA (% Merma)</label><input type="number" class="form-control" id="mpMPA" value="${v('mpa')}" min="0" max="100" step="0.01" placeholder="0.00"></div>
                     </div>
                 </div>
             </div>

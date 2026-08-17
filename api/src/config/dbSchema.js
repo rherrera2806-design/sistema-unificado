@@ -301,7 +301,7 @@ async function initDB() {
     await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS alto_imp DECIMAL(10,2) DEFAULT 0`).catch(() => {});
     await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS paquetes_por_contenedor INTEGER DEFAULT 0`).catch(() => {});
     await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS consumo_promedio_mensual INTEGER DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS mpa NUMERIC(5,1) DEFAULT 0`).catch(() => {});
+    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS mpa NUMERIC(5,2) DEFAULT 0`).catch(() => {});
     await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_padre ON recetas_bom(codigo_sap_padre)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)`);
     await query(`CREATE TABLE IF NOT EXISTS reglas_procesos_extras (
