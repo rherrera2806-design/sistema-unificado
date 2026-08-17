@@ -703,6 +703,8 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
     .page-header h2 { font-size: 18px; }
     .btn-group { flex-wrap: wrap; }
+    .btn { height: 40px; min-height: 40px; }
+    .btn-sm { height: 36px; min-height: 36px; padding: 6px 14px; font-size: 12px; }
     .modal { width: 95%; max-width: none; margin: 10px; }
     .modal-lg { max-width: none; }
     .card-header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 12px; }
