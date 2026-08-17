@@ -259,7 +259,7 @@ App.registerModule('costeo', {
                 <div class="costeo-row"><span>Otros</span><span>${fmt(r.otros)}</span></div>
                 <div class="costeo-row costeo-row-subtotal"><span>(A) Costo sin Mermas</span><span>${fmt(r.costo_sin_mermas)}</span></div>
                 <div class="costeo-row costeo-row-merma"><span>Merma proceso (${r._config.merma_proceso_pct}%)</span><span>${fmt(r.merma_proceso)}</span></div>
-                <div class="costeo-row costeo-row-merma"><span>Merma aprovech. MPA (${r._config.mpa_cristal}%)</span><span>${fmt(r.merma_aprovechamiento)}</span></div>
+                <div class="costeo-row costeo-row-merma"><span>Merma Aprovech. ${r._config.merma_fuente === 'global' ? 'Global' : 'MPA'} (${r._config.merma_pct}%)</span><span>${fmt(r.merma_aprovechamiento)}</span></div>
                 <div class="costeo-row costeo-row-subtotal"><span>(B) Costo de Mermas</span><span>${fmt(r.costo_mermas)}</span></div>
                 <div class="costeo-row costeo-row-total"><span>TOTAL COSTO (A + B)</span><span>${fmt(r.total_costo)}</span></div>
                 <div class="costeo-row costeo-row-venta"><span>VALOR VENTA</span><span>${fmt(r.valor_venta)}</span></div>

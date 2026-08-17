@@ -116,7 +116,8 @@ class CosteoService {
         // 6. (B) COSTO DE MERMAS
         const costos_sin_materia_prima = hh + energia + pulido + perforado + destaje + pintura + insumos_pintura + otros;
         const merma_proceso = costos_sin_materia_prima * (merma_proceso_pct / 100);
-        const merma_aprovechamiento = materia_prima * (mpa_cristal / 100);
+        const merma_pct = merma_aprovechamiento_pct > 0 ? merma_aprovechamiento_pct : mpa_cristal;
+        const merma_aprovechamiento = materia_prima * (merma_pct / 100);
         const costo_mermas = merma_proceso + merma_aprovechamiento;
 
         // 7. TOTAL COSTO
@@ -178,7 +179,8 @@ class CosteoService {
             _config: {
                 costo_hh, costo_energia, costo_pulido_ml, costo_perforacion,
                 costo_destaje_kg, costo_destaje_complejo, costo_pintura_ml,
-                costo_insumos_pintura, merma_proceso_pct, mpa_cristal
+                costo_insumos_pintura, merma_proceso_pct, mpa_cristal, merma_pct,
+                merma_fuente: merma_aprovechamiento_pct > 0 ? 'global' : 'mpa'
             }
         };
     }
