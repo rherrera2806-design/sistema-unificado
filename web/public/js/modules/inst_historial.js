@@ -12,7 +12,7 @@ App.registerModule('inst_historial', {
             .ih-row:hover{background:#f8fafc!important}
             #iHistSearch::placeholder{color:rgba(255,255,255,0.6)}
             .ih-page{width:100%;max-width:100%;overflow-x:hidden;box-sizing:border-box}
-            .ih-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3);width:100%;max-width:100%;box-sizing:border-box}
+            .ih-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3);width:100%;max-width:100%;box-sizing:border-box}
             .ih-hero-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;width:100%;max-width:100%;box-sizing:border-box}
             .ih-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;max-width:100%;box-sizing:border-box}
             .ih-filters>div,.ih-filters>select{flex:1;min-width:0;max-width:100%}
