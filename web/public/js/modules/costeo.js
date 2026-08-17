@@ -366,8 +366,17 @@ App.registerModule('costeo', {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-outline btn-sm" onclick="App.modules.costeo.closeConfig()">Cancelar</button>
-                    <button class="btn btn-primary btn-sm" onclick="App.modules.costeo.saveConfig()">Guardar Configuración</button>
+                    <div style="display:flex;gap:6px">
+                        <button class="btn btn-outline btn-sm" onclick="App.modules.costeo.exportConfig()" title="Descargar configuración">Exportar</button>
+                        <label class="btn btn-outline btn-sm" title="Subir configuración" style="cursor:pointer;margin:0">
+                            Importar
+                            <input type="file" accept=".json" style="display:none" onchange="App.modules.costeo.importConfig(event)">
+                        </label>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button class="btn btn-outline btn-sm" onclick="App.modules.costeo.closeConfig()">Cancelar</button>
+                        <button class="btn btn-primary btn-sm" onclick="App.modules.costeo.saveConfig()">Guardar Configuración</button>
+                    </div>
                 </div>
             </div>`;
         document.body.appendChild(modal);
@@ -407,5 +416,45 @@ App.registerModule('costeo', {
             console.error('Error saving config:', e);
             App.showAlert('Error al guardar configuración', 'danger');
         }
+    },
+
+    async exportConfig() {
+        try {
+            const res = await fetch('/api/costeo/config/export');
+            const config = await res.json();
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'costos_config_' + new Date().toISOString().slice(0, 10) + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            App.showAlert('Configuración descargada correctamente', 'success');
+        } catch (e) {
+            console.error('Error exporting config:', e);
+            App.showAlert('Error al exportar configuración', 'danger');
+        }
+    },
+
+    async importConfig(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const config = JSON.parse(text);
+            const res = await fetch('/api/costeo/config/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            const data = await res.json();
+            if (data.error) return App.showAlert(data.error, 'danger');
+            App.showAlert(data.mensaje, 'success');
+            this.closeConfig();
+        } catch (e) {
+            console.error('Error importing config:', e);
+            App.showAlert('Error al importar: archivo inválido', 'danger');
+        }
+        event.target.value = '';
     }
 });

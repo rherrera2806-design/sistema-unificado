@@ -33,6 +33,39 @@ router.put('/api/costeo/config', canUpdate, async (req, res) => {
     }
 });
 
+// GET /api/costeo/config/export — Exportar configuración como JSON
+router.get('/api/costeo/config/export', canView, async (req, res) => {
+    try {
+        const config = await costeoService.getConfig();
+        res.setHeader('Content-Disposition', 'attachment; filename=costos_config.json');
+        res.json(config);
+    } catch (e) {
+        console.error('Error exporting config:', e);
+        res.status(500).json({ error: 'Error al exportar configuración' });
+    }
+});
+
+// POST /api/costeo/config/import — Importar configuración desde JSON
+router.post('/api/costeo/config/import', canUpdate, async (req, res) => {
+    try {
+        const config = req.body;
+        if (!config || typeof config !== 'object') {
+            return res.status(400).json({ error: 'Formato inválido' });
+        }
+        let count = 0;
+        for (const [clave, data] of Object.entries(config)) {
+            if (data && typeof data.valor === 'number') {
+                await costeoService.updateConfig(clave, data.valor);
+                count++;
+            }
+        }
+        res.json({ ok: true, mensaje: `${count} parámetros importados correctamente` });
+    } catch (e) {
+        console.error('Error importing config:', e);
+        res.status(500).json({ error: 'Error al importar configuración' });
+    }
+});
+
 // GET /api/costeo/cristales — Lista de cristales para selector
 router.get('/api/costeo/cristales', canView, async (req, res) => {
     try {

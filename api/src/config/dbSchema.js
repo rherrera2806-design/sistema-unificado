@@ -618,29 +618,32 @@ async function runMigrations() {
             unidad VARCHAR(20),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
-        const defaultParams = [
-            ['costo_hh', 0, 'Costo hora-hombre por m²', '$/m²'],
-            ['costo_energia_m2', 0, 'Costo energía por m²', '$/m²'],
-            ['costo_pulido_ml', 0, 'Costo pulido por metro lineal', '$/ml'],
-            ['costo_perforacion', 0, 'Costo por perforación', '$/ud'],
-            ['costo_destaje_kg', 0, 'Costo destaje normal por kg', '$/kg'],
-            ['costo_destaje_complejo_kg', 0, 'Costo destaje complejo por kg', '$/kg'],
-            ['costo_pintura_ml', 0, 'Costo pintura por ml', '$/ml'],
-            ['costo_insumos_pintura', 0, 'Costos insumos de pintura por m²', '$/m²'],
-            ['costo_otros_m2', 0, 'Costos otros por m²', '$/m²'],
-            ['hh_crudo_sin_pulir', 0, 'HH Crudo/Laminado sin pulir', '$/m²'],
-            ['energia_crudo_sin_pulir', 0, 'Energía Crudo/Laminado sin pulir', '$/m²'],
-            ['hh_crudo_pulido', 0, 'HH Crudo/Laminado pulido', '$/m²'],
-            ['energia_crudo_pulido', 0, 'Energía Crudo/Laminado pulido', '$/m²'],
-            ['hh_templado_plano', 0, 'HH Templado plano', '$/m²'],
-            ['energia_templado_plano', 0, 'Energía Templado plano', '$/m²'],
-            ['hh_templado_curvo', 0, 'HH Templado curvo', '$/m²'],
-            ['energia_templado_curvo', 0, 'Energía Templado curvo', '$/m²'],
-            ['merma_proceso_pct', 0, 'Porcentaje merma de proceso', '%'],
-            ['merma_aprovechamiento_pct', 0, 'Porcentaje merma de aprovechamiento', '%']
-        ];
-        for (const [clave, valor, descripcion, unidad] of defaultParams) {
-            await query('INSERT INTO costos_config (clave, valor, descripcion, unidad) VALUES ($1, $2, $3, $4) ON CONFLICT (clave) DO NOTHING', [clave, valor, descripcion, unidad]);
+        const existingCount = await query('SELECT COUNT(*) FROM costos_config WHERE valor != 0');
+        if (parseInt(existingCount.rows[0].count) === 0) {
+            const defaultParams = [
+                ['costo_hh', 0, 'Costo hora-hombre por m²', '$/m²'],
+                ['costo_energia_m2', 0, 'Costo energía por m²', '$/m²'],
+                ['costo_pulido_ml', 0, 'Costo pulido por metro lineal', '$/ml'],
+                ['costo_perforacion', 0, 'Costo por perforación', '$/ud'],
+                ['costo_destaje_kg', 0, 'Costo destaje normal por kg', '$/kg'],
+                ['costo_destaje_complejo_kg', 0, 'Costo destaje complejo por kg', '$/kg'],
+                ['costo_pintura_ml', 0, 'Costo pintura por ml', '$/ml'],
+                ['costo_insumos_pintura', 0, 'Costos insumos de pintura por m²', '$/m²'],
+                ['costo_otros_m2', 0, 'Costos otros por m²', '$/m²'],
+                ['hh_crudo_sin_pulir', 0, 'HH Crudo/Laminado sin pulir', '$/m²'],
+                ['energia_crudo_sin_pulir', 0, 'Energía Crudo/Laminado sin pulir', '$/m²'],
+                ['hh_crudo_pulido', 0, 'HH Crudo/Laminado pulido', '$/m²'],
+                ['energia_crudo_pulido', 0, 'Energía Crudo/Laminado pulido', '$/m²'],
+                ['hh_templado_plano', 0, 'HH Templado plano', '$/m²'],
+                ['energia_templado_plano', 0, 'Energía Templado plano', '$/m²'],
+                ['hh_templado_curvo', 0, 'HH Templado curvo', '$/m²'],
+                ['energia_templado_curvo', 0, 'Energía Templado curvo', '$/m²'],
+                ['merma_proceso_pct', 0, 'Porcentaje merma de proceso', '%'],
+                ['merma_aprovechamiento_pct', 0, 'Porcentaje merma de aprovechamiento', '%']
+            ];
+            for (const [clave, valor, descripcion, unidad] of defaultParams) {
+                await query('INSERT INTO costos_config (clave, valor, descripcion, unidad) VALUES ($1, $2, $3, $4) ON CONFLICT (clave) DO NOTHING', [clave, valor, descripcion, unidad]);
+            }
         }
     } catch (e) {
         console.error('Migration warning (costos_config):', e.message);
