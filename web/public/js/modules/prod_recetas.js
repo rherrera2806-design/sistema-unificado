@@ -24,17 +24,17 @@ App.registerModule('prod_recetas', {
                 </div>
 
                 <div class="m-stats">
-                    <div class="m-card m-stat-card">
+                    <div class="m-stat-card stat-blue">
                         <div class="m-stat-label">Total Recetas</div>
-                        <div class="m-stat-value" style="color:#0f172a" id="recTotalStat">0</div>
+                        <div class="m-stat-value" id="recTotalStat">0</div>
                     </div>
-                    <div class="m-card m-stat-card">
+                    <div class="m-stat-card stat-purple">
                         <div class="m-stat-label">Ruta Custom</div>
-                        <div class="m-stat-value" style="color:#7c3aed" id="recCustomStat">0</div>
+                        <div class="m-stat-value" id="recCustomStat">0</div>
                     </div>
-                    <div class="m-card m-stat-card">
+                    <div class="m-stat-card stat-amber">
                         <div class="m-stat-label">Codigos Unicos</div>
-                        <div class="m-stat-value" style="color:#f59e0b" id="recCodigosStat">0</div>
+                        <div class="m-stat-value" id="recCodigosStat">0</div>
                     </div>
                 </div>
 

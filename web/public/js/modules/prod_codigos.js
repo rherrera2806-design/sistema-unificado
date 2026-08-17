@@ -19,17 +19,17 @@ App.registerModule('prod_codigos', {
                 </div>
 
                 <div class="m-stats">
-                    <div class="m-card m-stat-card">
+                    <div class="m-stat-card stat-blue">
                         <div class="m-stat-label">Total Codigos</div>
-                        <div class="m-stat-value" style="color:#0f172a" id="codTotal">0</div>
+                        <div class="m-stat-value" id="codTotal">0</div>
                     </div>
-                    <div class="m-card m-stat-card">
+                    <div class="m-stat-card stat-purple">
                         <div class="m-stat-label">Grupos</div>
-                        <div class="m-stat-value" style="color:#7c3aed" id="codGrupos">0</div>
+                        <div class="m-stat-value" id="codGrupos">0</div>
                     </div>
-                    <div class="m-card m-stat-card">
+                    <div class="m-stat-card stat-green">
                         <div class="m-stat-label">Familias</div>
-                        <div class="m-stat-value" style="color:#16a34a" id="codFamilias">0</div>
+                        <div class="m-stat-value" id="codFamilias">0</div>
                     </div>
                 </div>
 
