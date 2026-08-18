@@ -3,6 +3,7 @@ const InvMovimientos = {
     tipoSalida: '',
     _allMovimientos: [],
     _materiasPrimas: [],
+    _stockDimensiones: [],
 
     async render() {
         const page = document.querySelector('.page.active');
@@ -72,21 +73,38 @@ const InvMovimientos = {
                                         </div>
                                     </div>
                                 </div>
+
+                                <div id="stockDimGroup" style="display:none;margin-top:4px">
+                                    <div class="inv-form-dims">
+                                        <div class="form-group" style="grid-column:span 2"><label>Medida disponible (stock)</label>
+                                            <select id="stockDimensionSelect" class="form-control" onchange="InvMovimientos.onStockDimChange()">
+                                                <option value="">Seleccionar medida...</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group"><label>Stock</label>
+                                            <div id="stockDimInfo" style="padding:10px 12px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-size:13px;font-weight:600;color:#166534">-</div>
+                                        </div>
+                                        <div class="form-group"><label>m² Unitario</label>
+                                            <div id="m2UnitDisplay" style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;color:#2563eb">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="inv-form-dims" style="margin-top:4px">
                                     <div class="form-group"><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                     <div class="form-group"><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                     <div class="form-group"><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                <div class="form-group"><label>m²</label><div id="m2Display" style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:700;color:#2563eb">0.00</div></div>
-                            </div>
-                            <div class="inv-form-grid" style="margin-top:4px">
-                                <div class="form-group"><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
-                                <div class="form-group"><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
-                                <div class="form-group"><label>Fecha</label><input type="date" id="fecha"></div>
-                            </div>
-                            <div style="margin-top:4px">
-                                <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Observaciones</label>
-                                <input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;box-sizing:border-box">
-                            </div>
+                                    <div class="form-group"><label>m²</label><div id="m2Display" style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:700;color:#2563eb">0.00</div></div>
+                                </div>
+                                <div class="inv-form-grid" style="margin-top:4px">
+                                    <div class="form-group"><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
+                                    <div class="form-group"><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
+                                    <div class="form-group"><label>Fecha</label><input type="date" id="fecha"></div>
+                                </div>
+                                <div style="margin-top:4px">
+                                    <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Observaciones</label>
+                                    <input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;box-sizing:border-box">
+                                </div>
                                 <div class="inv-form-bottom">
                                     <button type="submit" class="btn btn-primary" style="padding:10px 28px;font-size:13px">Registrar</button>
                                 </div>
@@ -124,7 +142,6 @@ const InvMovimientos = {
             return;
         }
 
-        // Tabla desktop
         let tableHtml = '<div class="m-table-wrap"><table><thead><tr>'
             + '<th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Turno</th><th>Acciones</th>'
             + '</tr></thead><tbody>';
@@ -150,7 +167,6 @@ const InvMovimientos = {
 
         tableHtml += '</tbody></table></div>';
 
-        // Cards móvil
         let cardsHtml = '<div class="m-cards-mobile" style="display:none">';
         this._allMovimientos.forEach(function(m) {
             var f = new Date(m.fecha_hora);
@@ -179,14 +195,87 @@ const InvMovimientos = {
     onMpChange() {
         const sel = document.getElementById('materiaPrimaId');
         if (!sel) return;
-        const opt = sel.options[sel.selectedIndex];
-        if (opt && opt.value) {
-            const ancho = opt.dataset.ancho;
-            const alto = opt.dataset.alto;
-            if (ancho && parseInt(ancho) > 0) document.getElementById('ancho').value = ancho;
-            if (alto && parseInt(alto) > 0) document.getElementById('alto').value = alto;
-            this.calcM2();
+        const mpId = sel.value;
+        if (!mpId) return;
+
+        if (this.tipoMovimiento === 'salida' && this.tipoSalida === 'plancha_completa') {
+            this.cargarStockDimensiones(mpId);
+        } else {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt && opt.value) {
+                const ancho = opt.dataset.ancho;
+                const alto = opt.dataset.alto;
+                if (ancho && parseInt(ancho) > 0) document.getElementById('ancho').value = ancho;
+                if (alto && parseInt(alto) > 0) document.getElementById('alto').value = alto;
+                this.calcM2();
+            }
         }
+    },
+
+    async cargarStockDimensiones(mpId) {
+        const group = document.getElementById('stockDimGroup');
+        const select = document.getElementById('stockDimensionSelect');
+        const info = document.getElementById('stockDimInfo');
+        const m2Info = document.getElementById('m2UnitDisplay');
+        try {
+            const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            const res = await fetch('/api/inv/stock-por-dimension?mp_id=' + mpId, { headers: hdrs });
+            this._stockDimensiones = await res.json();
+
+            if (this._stockDimensiones.length === 0) {
+                group.style.display = 'none';
+                this.resetDimInputs(false);
+                return;
+            }
+
+            select.innerHTML = '<option value="">Seleccionar medida...</option>' +
+                this._stockDimensiones.map(function(d, i) {
+                    return '<option value="' + i + '">' + d.ancho + ' x ' + d.alto + ' mm (' + d.stock + ' plchas, ' + d.m2_unitario + ' m2/u)</option>';
+                }).join('');
+
+            if (this._stockDimensiones.length === 1) {
+                select.value = '0';
+                this.onStockDimChange();
+            } else {
+                info.textContent = '-';
+                m2Info.textContent = '-';
+                this.resetDimInputs(true);
+            }
+
+            group.style.display = 'block';
+        } catch(e) {
+            group.style.display = 'none';
+        }
+    },
+
+    onStockDimChange() {
+        const select = document.getElementById('stockDimensionSelect');
+        const info = document.getElementById('stockDimInfo');
+        const m2Info = document.getElementById('m2UnitDisplay');
+        const idx = select.value;
+
+        if (idx === '') {
+            info.textContent = '-';
+            m2Info.textContent = '-';
+            this.resetDimInputs(true);
+            return;
+        }
+
+        var dim = this._stockDimensiones[parseInt(idx)];
+        document.getElementById('ancho').value = dim.ancho;
+        document.getElementById('alto').value = dim.alto;
+        document.getElementById('ancho').readOnly = true;
+        document.getElementById('alto').readOnly = true;
+        info.textContent = dim.stock + ' planchas';
+        m2Info.textContent = dim.m2_unitario + ' m2';
+        this.calcM2();
+    },
+
+    resetDimInputs(readonly) {
+        var ancho = document.getElementById('ancho');
+        var alto = document.getElementById('alto');
+        if (ancho) { ancho.readOnly = readonly; if (readonly) ancho.value = ''; }
+        if (alto) { alto.readOnly = readonly; if (readonly) alto.value = ''; }
     },
 
     setTipo(t) {
@@ -204,12 +293,25 @@ const InvMovimientos = {
             btnS.style.background = ''; btnS.style.color = ''; btnS.style.border = '';
         }
         document.getElementById('tipoSalidaGroup').style.display = t === 'salida' ? 'block' : 'none';
+        document.getElementById('stockDimGroup').style.display = 'none';
+        this.resetDimInputs(false);
+        this.tipoSalida = '';
+        document.getElementById('btnPlancha').classList.remove('active');
+        document.getElementById('btnTrozo').classList.remove('active');
     },
 
     setTipoSalida(ts) {
         this.tipoSalida = ts;
         document.getElementById('btnPlancha').classList.toggle('active', ts === 'plancha_completa');
         document.getElementById('btnTrozo').classList.toggle('active', ts === 'trozo');
+
+        var mpId = document.getElementById('materiaPrimaId').value;
+        if (ts === 'plancha_completa' && mpId) {
+            this.cargarStockDimensiones(mpId);
+        } else {
+            document.getElementById('stockDimGroup').style.display = 'none';
+            this.resetDimInputs(false);
+        }
     },
 
     calcM2() {
@@ -226,6 +328,15 @@ const InvMovimientos = {
         if (!this.tipoMovimiento) { App.toast('Selecciona tipo de movimiento', 'error'); return; }
         const materiaPrimaId = document.getElementById('materiaPrimaId').value;
         if (!materiaPrimaId) { App.toast('Selecciona una materia prima', 'error'); return; }
+
+        if (this.tipoMovimiento === 'salida' && this.tipoSalida === 'plancha_completa') {
+            var sel = document.getElementById('stockDimensionSelect');
+            if (!sel || sel.value === '') { App.toast('Selecciona una medida disponible', 'error'); return; }
+            var dim = this._stockDimensiones[parseInt(sel.value)];
+            var cant = parseInt(document.getElementById('cantidadPlanchas').value) || 0;
+            if (cant > dim.stock) { App.toast('Cantidad excede stock disponible (' + dim.stock + ' planchas)', 'error'); return; }
+        }
+
         const data = {
             tipo_movimiento: this.tipoMovimiento,
             materia_prima_id: parseInt(materiaPrimaId),
@@ -251,7 +362,6 @@ const InvMovimientos = {
         else if (tipo === 'entrada') document.getElementById('fEnt').classList.add('active');
         else document.getElementById('fSal').classList.add('active');
         try {
-            const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const movs = tipo ? await api.inv().getMovimientos({ tipo }) : await api.inv().getMovimientos();
             this._allMovimientos = Array.isArray(movs) ? movs : [];
             const counter = document.getElementById('invMovCount');

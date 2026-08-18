@@ -76,22 +76,24 @@ async function getInventario(filtros = {}) {
         mp.espesor_mm as espesor,
         mp.costo_unitario_mp,
         mp.costo_unitario_importado,
-        mp.ancho_nal as ancho,
-        mp.alto_nal as alto,
+        m.ancho,
+        m.alto,
         COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad_planchas ELSE 0 END), 0) as entradas,
         COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.cantidad_planchas ELSE 0 END), 0) as salidas_plancha,
         COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'trozo' THEN m.cantidad_planchas ELSE 0 END), 0) as trozos,
         COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.metros_cuadrados ELSE 0 END), 0) as m2_entradas,
         COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.metros_cuadrados ELSE 0 END), 0) as m2_salidas
-        FROM materias_primas mp
-        LEFT JOIN movimientos m ON m.materia_prima_id = mp.id`;
+        FROM movimientos m
+        LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id
+        WHERE m.ancho IS NOT NULL AND m.alto IS NOT NULL`;
     const conditions = [];
     const params = [];
     let idx = 1;
     if (filtros.cristal) { conditions.push(`mp.nombre ILIKE $${idx}`); params.push('%' + filtros.cristal + '%'); idx++; }
     if (filtros.espesor) { conditions.push(`mp.espesor_mm = $${idx}`); params.push(filtros.espesor); idx++; }
-    if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
-    sql += ' GROUP BY mp.id, mp.codigo_mp, mp.codigo_sap, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, mp.ancho_nal, mp.alto_nal ORDER BY mp.nombre, mp.espesor_mm';
+    if (conditions.length > 0) sql += ' AND ' + conditions.join(' AND ');
+    sql += ` GROUP BY mp.codigo_mp, mp.codigo_sap, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, m.ancho, m.alto
+        ORDER BY mp.nombre, mp.espesor_mm, m.ancho, m.alto`;
     const result = await query(sql, params);
     return result.rows.map(r => ({
         ...r, stock: Number(r.entradas) - Number(r.salidas_plancha),
@@ -117,6 +119,25 @@ async function getEstadisticas() {
     };
 }
 
+async function getStockPorDimension(materiaPrimaId) {
+    const result = await query(`
+        SELECT m.ancho, m.alto,
+            COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad_planchas ELSE 0 END), 0) -
+            COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.cantidad_planchas ELSE 0 END), 0) as stock,
+            ROUND((m.ancho * m.alto) / 1000000.0, 4) as m2_unitario
+        FROM movimientos m
+        WHERE m.materia_prima_id = $1 AND m.ancho IS NOT NULL AND m.alto IS NOT NULL
+        GROUP BY m.ancho, m.alto
+        HAVING SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad_planchas ELSE 0 END) -
+               SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.cantidad_planchas ELSE 0 END) > 0
+        ORDER BY m.ancho, m.alto
+    `, [materiaPrimaId]);
+    return result.rows.map(r => ({
+        ancho: Number(r.ancho), alto: Number(r.alto),
+        stock: Number(r.stock), m2_unitario: Number(r.m2_unitario)
+    }));
+}
+
 async function getEstadisticasPorTipo() {
     const result = await query(`SELECT 
         mp.nombre as tipo,
@@ -131,4 +152,4 @@ async function getEstadisticasPorTipo() {
     }));
 }
 
-module.exports = { getMovimientos, crearMovimiento, eliminarMovimiento, limpiarMovimientos, getInventario, getEstadisticas, getEstadisticasPorTipo };
+module.exports = { getMovimientos, crearMovimiento, eliminarMovimiento, limpiarMovimientos, getInventario, getStockPorDimension, getEstadisticas, getEstadisticasPorTipo };

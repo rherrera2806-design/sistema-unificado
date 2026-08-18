@@ -82,6 +82,14 @@ router.get('/api/inv/inventario', canViewInv, async (req, res, next) => {
     catch (e) { next(e); }
 });
 
+router.get('/api/inv/stock-por-dimension', canViewInv, async (req, res, next) => {
+    try {
+        const mpId = Number(req.query.mp_id);
+        if (!mpId) return res.status(400).json({ error: 'mp_id requerido' });
+        res.json(await inventarioService.getStockPorDimension(mpId));
+    } catch (e) { next(e); }
+});
+
 router.get('/api/inv/estadisticas', canViewInv, async (req, res, next) => {
     try { res.json(await inventarioService.getEstadisticas()); }
     catch (e) { next(e); }
