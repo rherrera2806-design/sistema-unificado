@@ -95,19 +95,48 @@
         const compMap = {};
         (data.componentes || []).forEach(c => { compMap[c.id] = c; });
 
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const maqPriority = {};
+        (data.maquinas || []).forEach(m => {
+            const prevMaq = (data.preventivos || []).filter(r => r.maquina_id === m.id && r.estado === 'Realizada');
+            const corrMaq = (data.correctivos || []).filter(r => r.maquina_id === m.id);
+            const lastPrev = prevMaq.length > 0 ? prevMaq.reduce((a, b) => (a.fecha_programada || '') > (b.fecha_programada || '') ? a : b) : null;
+            const lastCorr = corrMaq.length > 0 ? corrMaq.reduce((a, b) => (a.fecha_falla || '') > (b.fecha_falla || '') ? a : b) : null;
+            const lastDate = [lastPrev?.fecha_programada, lastCorr?.fecha_falla].filter(Boolean).sort().pop() || null;
+            const recentCorr = corrMaq.filter(r => r.fecha_falla >= sixMonthsAgo.toISOString().split('T')[0]).length;
+            let priority = 0;
+            if (!lastDate) priority = 100;
+            else {
+                const daysSince = Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000);
+                priority = Math.max(0, 50 - Math.floor(daysSince / 30));
+            }
+            priority += recentCorr * 15;
+            maqPriority[m.id] = priority;
+        });
+
+        const getPriorityBadge = (maqId) => {
+            const p = maqPriority[maqId] || 0;
+            if (p >= 100) return { label: 'CRITICA', color: '#dc2626', bg: '#fee2e2' };
+            if (p >= 60) return { label: 'URGENTE', color: '#ea580c', bg: '#fff7ed' };
+            if (p >= 30) return { label: 'MEDIA', color: '#ca8a04', bg: '#fefce8' };
+            return { label: 'OK', color: '#16a34a', bg: '#f0fdf4' };
+        };
+
         for (const r of (data.preventivos || [])) {
             const maq = maqMap[r.maquina_id];
             const comp = compMap[r.componente_id];
-            const label = `${maq ? maq.codigo : ''}: ${comp ? comp.nombre : ''}`;
+            const pri = getPriorityBadge(r.maquina_id);
+            const label = `${maq ? maq.nombre : ''} - ${comp ? comp.nombre : ''}`;
             if (r.fecha_programada) {
                 let status = r.estado;
                 if (r.estado !== 'Realizada' && r.fecha_programada < today) {
                     status = 'Vencida';
                 }
-                events.push({ date: r.fecha_programada, title: label, status: status });
+                events.push({ date: r.fecha_programada, title: label, status: status, priority: pri });
             }
             if (r.fecha_ejecutada && r.fecha_ejecutada !== r.fecha_programada)
-                events.push({ date: r.fecha_ejecutada, title: `${label}`, status: 'Realizada' });
+                events.push({ date: r.fecha_ejecutada, title: label, status: 'Realizada', priority: null });
         }
 
         for (const r of (data.correctivos || [])) {
@@ -115,8 +144,8 @@
             const comp = compMap[r.componente_id];
             if (r.fecha_falla) {
                 const status = r.estado === 'Reparada' ? 'Realizada' : 'Vencida';
-                const icon = r.estado === 'Reparada' ? '' : '';
-                events.push({ date: r.fecha_falla, title: `${icon} ${maq ? maq.codigo : ''}: ${comp ? comp.nombre : ''}`, status: status });
+                const pri = getPriorityBadge(r.maquina_id);
+                events.push({ date: r.fecha_falla, title: `${maq ? maq.nombre : ''} - ${comp ? comp.nombre : ''}`, status: status, priority: pri });
             }
         }
         return events;
@@ -133,7 +162,8 @@
                 <div class="day-number">${day}</div>
                 ${dayEvents.map(e => {
                     const cls = e.status === 'Realizada' ? 'status-realizada' : e.status === 'Vencida' ? 'status-vencida' : 'status-programada';
-                    return `<div class="calendar-event" style="background:${e.status === 'Realizada' ? '#e8f5e9' : e.status === 'Vencida' ? '#ffebee' : '#e3f2fd'};color:${e.status === 'Realizada' ? '#2e7d32' : e.status === 'Vencida' ? '#c62828' : '#0277bd'}" title="${(e.title || '').replace(/"/g, '&quot;')}">${e.title}</div>`;
+                    const priBadge = e.priority && e.status !== 'Realizada' ? `<span style="display:inline-block;padding:0 4px;border-radius:3px;font-size:8px;font-weight:700;margin-left:3px;background:${e.priority.bg};color:${e.priority.color};line-height:1.4;vertical-align:middle">${e.priority.label}</span>` : '';
+                    return `<div class="calendar-event" style="background:${e.status === 'Realizada' ? '#e8f5e9' : e.status === 'Vencida' ? '#ffebee' : '#e3f2fd'};color:${e.status === 'Realizada' ? '#2e7d32' : e.status === 'Vencida' ? '#c62828' : '#0277bd'}" title="${(e.title || '').replace(/"/g, '&quot;')}">${e.title}${priBadge}</div>`;
                 }).join('')}
             </div>`;
         }
