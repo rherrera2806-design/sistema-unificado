@@ -37,6 +37,34 @@ router.delete('/api/sigma/preventive/clear-programmed', canDelete, async (req, r
     } catch (e) { next(e); }
 });
 
+router.post('/api/sigma/preventive/bulk', canCreate, async (req, res, next) => {
+    try {
+        const { tasks } = req.body;
+        if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
+            return res.status(400).json({ error: 'No tasks provided' });
+        }
+        let created = 0;
+        const batchSize = 100;
+        for (let i = 0; i < tasks.length; i += batchSize) {
+            const batch = tasks.slice(i, i + batchSize);
+            const values = [];
+            const params = [];
+            let paramIdx = 1;
+            for (const t of batch) {
+                values.push(`($${paramIdx}, $${paramIdx+1}, $${paramIdx+2}, $${paramIdx+3}, $${paramIdx+4})`);
+                params.push(t.maquina_id, t.componente_id, t.fecha_programada, t.estado || 'Programada', t.checklist || '');
+                paramIdx += 5;
+            }
+            const result = await query(
+                `INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, estado, checklist) VALUES ${values.join(',')}`,
+                params
+            );
+            created += result.rowCount;
+        }
+        res.json({ created });
+    } catch (e) { next(e); }
+});
+
 router.get('/api/sigma/corrective-data', canView, async (req, res, next) => {
     try { res.json(await sigmaReports.getCorrectiveData()); }
     catch (e) { next(e); }

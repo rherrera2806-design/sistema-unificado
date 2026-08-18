@@ -419,8 +419,6 @@
         if (!fechaInicio) { App.showAlert('Selecciona una fecha de inicio', 'danger'); return; }
 
         try {
-            App.hideModal();
-
             const workingDays = [];
             const day = new Date(fechaInicio + 'T12:00:00');
             while (workingDays.length < diasHabiles) {
@@ -439,28 +437,52 @@
             }
 
             const tasksPerDay = Math.ceil(allTasks.length / workingDays.length);
-            let created = 0;
-
+            const tasks = [];
             for (let i = 0; i < workingDays.length && allTasks.length > 0; i++) {
                 const dateStr = workingDays[i].toISOString().split('T')[0];
                 const dayTasks = allTasks.splice(0, tasksPerDay);
-
                 for (const task of dayTasks) {
-                    await db.insert('preventive_maintenance', {
-                        maquina_id: task.maquina_id,
-                        componente_id: task.componente_id,
-                        fecha_programada: dateStr,
-                        estado: 'Programada',
-                        checklist: ''
-                    });
-                    created++;
+                    tasks.push({ maquina_id: task.maquina_id, componente_id: task.componente_id, fecha_programada: dateStr, estado: 'Programada', checklist: '' });
                 }
             }
 
-            const fechaFin = workingDays[Math.min(created > 0 ? Math.ceil(created / tasksPerDay) - 1 : 0, workingDays.length - 1)].toISOString().split('T')[0];
-            App.showAlert(`${created} mantenciones auto-programadas\n${fechaInicio} al ${fechaFin}`);
-            this.render();
-        } catch(e) { App.showAlert('Error al auto-programar: ' + e.message, 'danger'); }
+            const modalBody = document.querySelector('#modalOverlay .modal-body');
+            const modalFooter = document.querySelector('#modalOverlay .modal-footer');
+            if (modalBody) modalBody.innerHTML = `
+                <div style="text-align:center;padding:32px">
+                    <div style="width:48px;height:48px;border:3px solid #e2e8f0;border-top-color:#f59e0b;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px"></div>
+                    <h3 style="margin:0 0 8px;color:#1e293b;font-size:16px">Creando ${tasks.length} mantenciones...</h3>
+                    <p style="margin:0;color:#64748b;font-size:13px" id="autoProgProgress">Preparando datos...</p>
+                    <div style="margin-top:16px;background:#f1f5f9;border-radius:8px;height:8px;overflow:hidden">
+                        <div id="autoProgBar" style="height:100%;background:linear-gradient(90deg,#f59e0b,#f97316);width:0%;transition:width 0.3s;border-radius:8px"></div>
+                    </div>
+                </div>`;
+            if (modalFooter) modalFooter.innerHTML = '';
+
+            const res = await fetch('/api/sigma/preventive/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tasks })
+            });
+            if (!res.ok) throw new Error('Error al crear mantenciones');
+            const data = await res.json();
+
+            const fechaFin = workingDays[Math.min(Math.ceil(data.created / tasksPerDay) - 1, workingDays.length - 1)].toISOString().split('T')[0];
+
+            if (modalBody) modalBody.innerHTML = `
+                <div style="text-align:center;padding:32px">
+                    <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <h3 style="margin:0 0 8px;color:#1e293b;font-size:16px">${data.created} mantenciones creadas</h3>
+                    <p style="margin:0;color:#64748b;font-size:13px">${fechaInicio} al ${fechaFin}</p>
+                </div>`;
+            if (modalFooter) modalFooter.innerHTML = `<button class="btn btn-primary" onclick="App.hideModal(); App.modules.preventive.render()">Cerrar</button>`;
+
+        } catch(e) {
+            App.hideModal();
+            App.showAlert('Error al auto-programar: ' + e.message, 'danger');
+        }
     },
 
     getDefaultChecklist(tipoId) {
