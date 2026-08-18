@@ -3,6 +3,9 @@
         const el = document.getElementById('page-machines');
         const maquinas = await db.getAll('machines');
         const tipos = await db.getAll('machine_types');
+        const allComps = await db.getAll('machine_components');
+        const compsCount = {};
+        allComps.forEach(mc => { compsCount[mc.maquina_id] = (compsCount[mc.maquina_id] || 0) + 1; });
         const filterTipo = document.getElementById('filterTipoMaq')?.value || '';
         const filterEstado = document.getElementById('filterEstadoMaq')?.value || '';
         const searchTerm = (document.getElementById('searchMaquina')?.value || '').toLowerCase();
@@ -13,12 +16,15 @@
         let rows = '';
         for (const m of filtered) {
             const tipo = tipos.find(t => t.id === m.tipo_id);
+            const nComps = compsCount[m.id] || 0;
+            const compBadge = nComps > 0
+                ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>${nComps}</span>`
+                : `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>0</span>`;
             rows += `<tr>
                 <td><strong>${m.codigo || '-'}</strong></td>
                 <td>${m.nombre}</td>
                 <td>${tipo ? tipo.nombre : '-'}</td>
-                <td>${m.marca || '-'}</td>
-                <td>${m.ubicacion || '-'}</td>
+                <td>${compBadge}</td>
                 <td><span class="status-badge ${App.getEstadoClass(m.estado_operativo)}">${m.estado_operativo}</span></td>
                 <td class="table-actions">
                     <button class="btn btn-sm btn-info" title="Ver detalle" onclick="App.modules.machines.showDetail(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -57,6 +63,11 @@
                     <div class="stat-info"><p class="stat-label">Detenidas</p><p class="stat-sub">Fuera de operacion</p></div>
                     <div class="stat-value">${maquinas.filter(m => m.estado_operativo === 'Detenido').length}</div>
                 </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
+                    <div class="stat-icon" style="color:#8b5cf6"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" style="vertical-align:-2px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Sin Componentes</p><p class="stat-sub">Requieren asignacion</p></div>
+                    <div class="stat-value">${maquinas.filter(m => !compsCount[m.id]).length}</div>
+                </div>
             </div>
             <style>
 @keyframes mach_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -88,15 +99,14 @@
                 <div class="card-body" style="padding:0">
                     ${filtered.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No se encontraron máquinas</h4><p style="margin:0;color:#94a3b8;font-size:13px">Intenta con otros filtros</p></div>' : `
                     <div class="sigma-table-wrap">
-                    <table><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Marca</th><th>Ubicación</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <table><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Componentes</th><th>Marca</th><th>Estado</th><th>Acciones</th></tr></thead>
                     <tbody>${rows}</tbody></table>
                     ${SigmaCards.generate({
                         title: (m) => `${m.codigo || '-'} — ${m.nombre}`,
                         subtitle: (m) => { const tipo = tipos.find(t => t.id === m.tipo_id); return tipo ? tipo.nombre : ''; },
                         badge: (m) => `<span class="status-badge ${App.getEstadoClass(m.estado_operativo)}">${m.estado_operativo}</span>`,
                         fields: [
-                            { label: 'Marca', value: (m) => m.marca || '-' },
-                            { label: 'Ubicación', value: (m) => m.ubicacion || '-' }
+                            { label: 'Marca', value: (m) => m.marca || '-' }
                         ],
                         actions: (m) => `<button class="btn btn-sm btn-info" onclick="App.modules.machines.showDetail(${m.id})">Detalle</button> ${App.canEdit('machines') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.machines.showForm(${m.id})">Editar</button>` : ''} ${App.canDelete('machines') ? `<button class="btn btn-sm btn-danger" onclick="App.modules.machines.delete(${m.id})">Eliminar</button>` : ''}`
                     }, filtered)}
