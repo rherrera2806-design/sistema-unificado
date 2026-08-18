@@ -207,7 +207,7 @@
         if (maquinaId) {
             try {
                 const saved = await db.getMachineComponents(maquinaId);
-                if (saved && saved.length > 0) selectedIds = saved;
+                if (saved && saved.length > 0) selectedIds = saved.map(c => c.id);
             } catch(e) { }
         }
         return `<div style="display:flex;flex-wrap:wrap;gap:8px">${comps.map(c => `
