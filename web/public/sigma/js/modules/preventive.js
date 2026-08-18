@@ -474,14 +474,11 @@
                 }
                 const selected = available.slice(0, m.assigned);
                 for (const compId of selected) {
-                    allTasks.push({ maquina_id: m.id, componente_id: compId });
+                    allTasks.push({ maquina_id: m.id, componente_id: compId, priority: m.priority });
                 }
             }
 
-            for (let i = allTasks.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [allTasks[i], allTasks[j]] = [allTasks[j], allTasks[i]];
-            }
+            allTasks.sort((a, b) => b.priority - a.priority);
 
             const tasksPerDay = Math.ceil(allTasks.length / workingDays.length);
             const tasks = [];
