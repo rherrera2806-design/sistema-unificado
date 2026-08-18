@@ -9,10 +9,12 @@
         const filterTipo = document.getElementById('filterTipoMaq')?.value || '';
         const filterEstado = document.getElementById('filterEstadoMaq')?.value || '';
         const searchTerm = (document.getElementById('searchMaquina')?.value || '').toLowerCase();
+        const filterSinComps = this._filterSinComps || false;
         let filtered = [...maquinas];
         if (filterTipo) filtered = filtered.filter(m => m.tipo_id === parseInt(filterTipo));
         if (filterEstado) filtered = filtered.filter(m => m.estado_operativo === filterEstado);
         if (searchTerm) filtered = filtered.filter(m => m.nombre.toLowerCase().includes(searchTerm) || (m.codigo || '').toLowerCase().includes(searchTerm));
+        if (filterSinComps) filtered = filtered.filter(m => !compsCount[m.id]);
         let rows = '';
         for (const m of filtered) {
             const tipo = tipos.find(t => t.id === m.tipo_id);
@@ -63,9 +65,14 @@
                     <div class="stat-info"><p class="stat-label">Detenidas</p><p class="stat-sub">Fuera de operacion</p></div>
                     <div class="stat-value">${maquinas.filter(m => m.estado_operativo === 'Detenido').length}</div>
                 </div>
-                <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
+                <div class="stat-card dash-card" style="border-left:4px solid #06b6d4">
+                    <div class="stat-icon" style="color:#06b6d4"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+                    <div class="stat-info"><p class="stat-label">Componentes Asociados</p><p class="stat-sub">Total asignados</p></div>
+                    <div class="stat-value">${Object.values(compsCount).reduce((a, b) => a + b, 0)}</div>
+                </div>
+                <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6;cursor:pointer;${filterSinComps ? 'background:#f5f3ff;box-shadow:0 0 0 2px #8b5cf6' : ''}" onclick="App.modules.machines.toggleSinComps()">
                     <div class="stat-icon" style="color:#8b5cf6"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" style="vertical-align:-2px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-                    <div class="stat-info"><p class="stat-label">Sin Componentes</p><p class="stat-sub">Requieren asignacion</p></div>
+                    <div class="stat-info"><p class="stat-label">Sin Componentes</p><p class="stat-sub">${filterSinComps ? 'Mostrando solo estas' : 'Requieren asignacion'}</p></div>
                     <div class="stat-value">${maquinas.filter(m => !compsCount[m.id]).length}</div>
                 </div>
             </div>
@@ -113,6 +120,11 @@
                     </div>`}
                 </div>
             </div>`;
+    },
+
+    toggleSinComps() {
+        this._filterSinComps = !this._filterSinComps;
+        this.render();
     },
 
     async showForm(id) {
