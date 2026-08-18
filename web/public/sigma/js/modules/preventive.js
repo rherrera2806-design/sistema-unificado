@@ -148,7 +148,7 @@
                         const isVencida = r.estado !== 'Realizada' && r.fecha_programada && r.fecha_programada < today;
                         const rowStyle = isVencida ? 'background:#fff3f3;' : '';
                         let pBadge, pLabel;
-                        if (r.priority >= 100) { pBadge = '#dc2626'; pLabel = 'NUNCA'; }
+                        if (r.priority >= 100) { pBadge = '#dc2626'; pLabel = 'CRITICA'; }
                         else if (r.priority >= 60) { pBadge = '#f97316'; pLabel = 'URGENTE'; }
                         else if (r.priority >= 30) { pBadge = '#eab308'; pLabel = 'MEDIA'; }
                         else { pBadge = '#22c55e'; pLabel = 'OK'; }
@@ -458,7 +458,7 @@
             table.innerHTML = distribution.filter(m => m.assigned > 0).map((p, i) => {
                 const m = this._autoProgData.maquinas.find(x => x.id === p.id);
                 let badge, label;
-                if (p.priority >= 100) { badge = '#dc2626'; label = 'NUNCA'; }
+                if (p.priority >= 100) { badge = '#dc2626'; label = 'CRITICA'; }
                 else if (p.priority >= 60) { badge = '#f97316'; label = 'URGENTE'; }
                 else if (p.priority >= 30) { badge = '#eab308'; label = 'MEDIA'; }
                 else { badge = '#22c55e'; label = 'OK'; }
