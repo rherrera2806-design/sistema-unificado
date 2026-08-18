@@ -280,41 +280,143 @@
     },
 
     async autoProgram() {
-        const confirmed = await App.confirm('¿Auto-programar mantenciones?\n\n• 2 tareas aleatorias por día\n• Desde mañana hasta completar 5 días hábiles');
-        if (!confirmed) return;
+        try {
+            const [maquinas, machineComps] = await Promise.all([
+                db.getAll('machines'),
+                db.getAll('machine_components')
+            ]);
+            if (maquinas.length === 0) { App.showAlert('No hay máquinas registradas', 'danger'); return; }
+            if (machineComps.length === 0) { App.showAlert('No hay componentes asignados a máquinas', 'danger'); return; }
+
+            const maqMap = {};
+            maquinas.forEach(m => { maqMap[m.id] = m; });
+
+            const compsByMaq = {};
+            machineComps.forEach(mc => {
+                if (!compsByMaq[mc.maquina_id]) compsByMaq[mc.maquina_id] = [];
+                compsByMaq[mc.maquina_id].push(mc.componente_id);
+            });
+
+            const maqConComps = Object.keys(compsByMaq).map(Number);
+            const maqSinComps = maquinas.filter(m => !compsByMaq[m.id]).length;
+            const totalTareas = machineComps.length;
+            const today = new Date().toISOString().split('T')[0];
+
+            App.showModal(`
+                <div style="text-align:center;margin-bottom:16px">
+                    <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    </div>
+                    <h3 style="margin:0;color:#1e293b;font-size:16px">Auto-programar Mantención Preventiva</h3>
+                    <p style="margin:4px 0 0;color:#64748b;font-size:12px">Genera tareas para todos los componentes asignados</p>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+                    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;text-align:center">
+                        <div style="font-size:20px;font-weight:800;color:#0369a1">${maquinas.length}</div>
+                        <div style="font-size:10px;color:#0284c7;font-weight:600">MÁQUINAS</div>
+                    </div>
+                    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;text-align:center">
+                        <div style="font-size:20px;font-weight:800;color:#166534">${maqConComps.length}</div>
+                        <div style="font-size:10px;color:#16a34a;font-weight:600">CON COMPONENTES</div>
+                    </div>
+                    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;text-align:center">
+                        <div style="font-size:20px;font-weight:800;color:#dc2626">${maqSinComps}</div>
+                        <div style="font-size:10px;color:#dc2626;font-weight:600">SIN COMPONENTES</div>
+                    </div>
+                </div>
+
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:16px">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-size:12px;color:#64748b">Total tareas a crear:</span>
+                        <span style="font-size:18px;font-weight:800;color:#3b82f6">${totalTareas}</span>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+                    <div class="form-group" style="margin:0">
+                        <label style="font-size:11px;font-weight:600;color:#475569;margin-bottom:4px;display:block">Fecha inicio</label>
+                        <input type="date" class="form-control" id="autoProgFecha" value="${today}" style="font-size:13px" onchange="App.modules.preventive.updateAutoProgPreview()">
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label style="font-size:11px;font-weight:600;color:#475569;margin-bottom:4px;display:block">Días hábiles</label>
+                        <input type="number" class="form-control" id="autoProgDias" value="20" min="1" max="365" style="font-size:13px" onchange="App.modules.preventive.updateAutoProgPreview()" oninput="App.modules.preventive.updateAutoProgPreview()">
+                    </div>
+                </div>
+
+                <div id="autoProgPreview" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin-bottom:16px;text-align:center">
+                    <span style="font-size:12px;color:#1e40af">~${Math.ceil(totalTareas / 20)} tareas/día</span>
+                </div>
+
+                <div style="max-height:120px;overflow-y:auto;margin-bottom:16px">
+                    <table style="width:100%;font-size:11px;border-collapse:collapse">
+                        <thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:left;color:#475569">Máquina</th><th style="padding:6px 8px;text-align:center;color:#475569">Tipo</th><th style="padding:6px 8px;text-align:center;color:#475569">Componentes</th></tr></thead>
+                        <tbody>${maqConComps.map(id => {
+                            const m = maqMap[id];
+                            return `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:5px 8px"><strong>${m.codigo}</strong> ${m.nombre}</td><td style="padding:5px 8px;text-align:center">${m.tipo_id || '-'}</td><td style="padding:5px 8px;text-align:center"><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-weight:600">${compsByMaq[id].length}</span></td></tr>`;
+                        }).join('')}</tbody>
+                    </table>
+                </div>
+            `, {
+                title: '',
+                footer: `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
+                         <button class="btn btn-accent" onclick="App.modules.preventive.executeAutoProgram()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Cargar ${totalTareas} tareas</button>`
+            });
+
+            this._autoProgData = { maquinas, machineComps, compsByMaq, maqConComps, totalTareas };
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    updateAutoProgPreview() {
+        const dias = parseInt(document.getElementById('autoProgDias')?.value) || 20;
+        const total = this._autoProgData?.totalTareas || 0;
+        const preview = document.getElementById('autoProgPreview');
+        if (preview) {
+            const porDia = Math.ceil(total / dias);
+            preview.innerHTML = `<span style="font-size:12px;color:#1e40af">~${porDia} tareas/día × ${dias} días hábiles = ${total} tareas</span>`;
+        }
+    },
+
+    async executeAutoProgram() {
+        const { maquinas, machineComps, compsByMaq, maqConComps, totalTareas } = this._autoProgData || {};
+        if (!maquinas || !machineComps) { App.showAlert('Error: datos no cargados', 'danger'); return; }
+
+        const fechaInicio = document.getElementById('autoProgFecha')?.value;
+        const diasHabiles = parseInt(document.getElementById('autoProgDias')?.value) || 20;
+
+        if (!fechaInicio) { App.showAlert('Selecciona una fecha de inicio', 'danger'); return; }
 
         try {
-            const maquinas = await db.getAll('machines');
-            if (maquinas.length === 0) { App.showAlert('No hay máquinas registradas', 'danger'); return; }
+            App.hideModal();
 
             const workingDays = [];
-            const day = new Date();
-            day.setDate(day.getDate() + 1); // Empezar desde mañana
-
-            while (workingDays.length < 5) {
-                const dayOfWeek = day.getDay();
-                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            const day = new Date(fechaInicio + 'T12:00:00');
+            while (workingDays.length < diasHabiles) {
+                const dow = day.getDay();
+                if (dow !== 0 && dow !== 6) {
                     workingDays.push(new Date(day));
                 }
                 day.setDate(day.getDate() + 1);
             }
 
+            const allTasks = [];
+            for (const maqId of maqConComps) {
+                for (const compId of compsByMaq[maqId]) {
+                    allTasks.push({ maquina_id: maqId, componente_id: compId });
+                }
+            }
+
+            const tasksPerDay = Math.ceil(allTasks.length / workingDays.length);
             let created = 0;
 
-            for (const d of workingDays) {
-                const dateStr = d.toISOString().split('T')[0];
-                const shuffledMaquinas = [...maquinas].sort(() => 0.5 - Math.random());
-                const dailyMachines = shuffledMaquinas.slice(0, 2);
+            for (let i = 0; i < workingDays.length && allTasks.length > 0; i++) {
+                const dateStr = workingDays[i].toISOString().split('T')[0];
+                const dayTasks = allTasks.splice(0, tasksPerDay);
 
-                for (const maq of dailyMachines) {
-                    const comps = await db.getComponentsByType(maq.tipo_id).catch(() => []);
-                    if (comps.length === 0) continue;
-                    const comp = comps[Math.floor(Math.random() * comps.length)];
-                    const checklist = this.getDefaultChecklist(maq.tipo_id);
-
+                for (const task of dayTasks) {
                     await db.insert('preventive_maintenance', {
-                        maquina_id: maq.id,
-                        componente_id: comp.id,
+                        maquina_id: task.maquina_id,
+                        componente_id: task.componente_id,
                         fecha_programada: dateStr,
                         estado: 'Programada',
                         checklist: ''
@@ -323,8 +425,7 @@
                 }
             }
 
-            const fechaInicio = workingDays[0].toISOString().split('T')[0];
-            const fechaFin = workingDays[4].toISOString().split('T')[0];
+            const fechaFin = workingDays[Math.min(created > 0 ? Math.ceil(created / tasksPerDay) - 1 : 0, workingDays.length - 1)].toISOString().split('T')[0];
             App.showAlert(`${created} mantenciones auto-programadas\n${fechaInicio} al ${fechaFin}`);
             this.render();
         } catch(e) { App.showAlert('Error al auto-programar: ' + e.message, 'danger'); }
