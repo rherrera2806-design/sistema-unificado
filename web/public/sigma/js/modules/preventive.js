@@ -182,7 +182,6 @@
     async showForm(id) {
         const reg = id ? await db.getById('preventive_maintenance', id) : null;
         const maquinas = await db.getAll('machines');
-        const componentes = await db.getAll('components');
         App.showModal(`
             <div class="form-row">
                 <div class="form-group"><label>Máquina *</label>
@@ -193,8 +192,7 @@
                 </div>
                 <div class="form-group"><label>Componente *</label>
                     <select class="form-control" id="prevComponente">
-                        <option value="">Seleccionar...</option>
-                        ${componentes.map(c => `<option value="${c.id}" ${reg && reg.componente_id === c.id ? 'selected' : ''}>${c.nombre}</option>`).join('')}
+                        <option value="">Seleccionar máquina primero...</option>
                     </select>
                 </div>
             </div>
@@ -239,16 +237,15 @@
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.preventive.save(${id || 0})">${reg ? 'Actualizar' : 'Guardar'}</button>
         `;
+        if (reg && reg.maquina_id) this.updateComponentes(reg.componente_id);
     },
 
-    async updateComponentes() {
+    async updateComponentes(selectedId) {
         const maqId = parseInt(document.getElementById('prevMaquina').value);
         const select = document.getElementById('prevComponente');
         if (!maqId) { select.innerHTML = '<option value="">Seleccionar...</option>'; return; }
-        const maq = await db.getById('machines', maqId);
-        if (!maq) return;
-        const comps = await db.getComponentsByType(maq.tipo_id);
-        select.innerHTML = '<option value="">Seleccionar...</option>' + comps.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+        const comps = await db.getMachineComponents(maqId);
+        select.innerHTML = '<option value="">Seleccionar...</option>' + comps.map(c => `<option value="${c.id}" ${selectedId && c.id === selectedId ? 'selected' : ''}>${c.nombre}</option>`).join('');
     },
 
     async save(id) {
