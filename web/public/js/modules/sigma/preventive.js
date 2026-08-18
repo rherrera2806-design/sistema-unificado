@@ -6,7 +6,7 @@
         { border: '#8b5cf6', bg: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', numBg: '#8b5cf6', icon: '⭐', textColor: '#5b21b6', labelColor: '#7c3aed' },
         { border: '#3b82f6', bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)', numBg: '#3b82f6', icon: '⭐', textColor: '#1e40af', labelColor: '#2563eb' }
     ],
-    _renderRanking(containerId, data, valueKey, label) {
+    _renderRanking(containerId, data, valueKey, label, onClickKey) {
         const c = document.getElementById(containerId);
         if (!c) return;
         if (!data || data.length === 0) { c.innerHTML = ''; return; }
@@ -14,7 +14,10 @@
         c.innerHTML = data.slice(0, 5).map((r, i) => {
             const cfg = configs[i] || configs[4];
             const valor = r[valueKey] !== undefined ? r[valueKey] : r.valor || 0;
-            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border}">
+            const clickId = onClickKey && r[onClickKey] ? r[onClickKey] : '';
+            const onclick = clickId ? `onclick="App.modules.preventive.showMachineDetail(${clickId})"` : '';
+            const cursor = clickId ? 'cursor:pointer' : '';
+            return `<div class="ranking-card" style="background:${cfg.bg};border:2px solid ${cfg.border};${cursor}" ${onclick}>
                 <div style="font-size:16px;margin-bottom:2px">${cfg.icon}</div>
                 <div style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:${cfg.numBg};color:white;font-size:9px;font-weight:800;margin-bottom:2px">${i + 1}</div>
                 <div class="ranking-name" style="color:${cfg.textColor}">${r.nombre}</div>
@@ -160,14 +163,13 @@
         const ranking = {};
         registros.forEach(r => {
             const name = maquinaIdMap[r.maquina_id]?.nombre || 'Sin máquina';
-            if (!ranking[name]) ranking[name] = 0;
-            ranking[name]++;
+            if (!ranking[name]) ranking[name] = { nombre: name, total: 0, maquina_id: r.maquina_id };
+            ranking[name].total++;
         });
-        const rankingArray = Object.entries(ranking)
-            .map(([nombre, total]) => ({ nombre, total }))
+        const rankingArray = Object.values(ranking)
             .sort((a, b) => b.total - a.total)
             .slice(0, 5);
-        this._renderRanking('ranking-container', rankingArray, 'total', 'Mantenciones');
+        this._renderRanking('ranking-container', rankingArray, 'total', 'Mantenciones', 'maquina_id');
     },
     toggleSort() {
         this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
@@ -443,6 +445,88 @@
             8: 'Revisar sistema hidráulico\nVerificar presión\nCambiar aceite\nRevisar válvulas'
         };
         return checklists[tipoId] || 'Verificar estado general\nLimpiar\nRevisar conexiones\nVerificar funcionamiento';
+    },
+
+    async showMachineDetail(maquinaId) {
+        const info = await db.getMachineWithDetails(maquinaId);
+        if (!info) return;
+        const { maquina, tipo, componentes, preventivos, correctivos } = info;
+        let prevRows = '', corrRows = '';
+        for (const p of preventivos) {
+            const comp = await db.getById('components', p.componente_id).catch(() => null);
+            prevRows += `<tr><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(p.fecha_programada)}</td><td><span class="status-badge ${App.getEstadoClass(p.estado)}">${p.estado}</span></td></tr>`;
+        }
+        for (const c of correctivos) {
+            const comp = await db.getById('components', c.componente_id).catch(() => null);
+            corrRows += `<tr><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(c.fecha_falla)}</td><td>${c.descripcion_falla}</td><td>${c.horas_detencion}</td></tr>`;
+        }
+        App.showModal(`
+            <div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:10px;padding:16px;margin-bottom:16px;border:1px solid #e2e8f0">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                    <div style="width:48px;height:48px;border-radius:10px;background:white;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#3b82f6">${maquina.codigo || '-'}</div>
+                    <div style="flex:1">
+                        <h3 style="margin:0;font-size:16px;color:#1e293b">${maquina.nombre}</h3>
+                        <p style="margin:2px 0 0;font-size:12px;color:#64748b">${tipo ? tipo.nombre : 'Sin tipo'} ${maquina.marca ? '• ' + maquina.marca : ''}</p>
+                    </div>
+                    <span class="status-badge ${App.getEstadoClass(maquina.estado_operativo)}" style="font-size:12px">${maquina.estado_operativo}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12px">
+                    <div><span style="color:#64748b">Modelo:</span> <strong>${maquina.modelo || '-'}</strong></div>
+                    <div><span style="color:#64748b">Serie:</span> <strong>${maquina.numero_serie || '-'}</strong></div>
+                    <div><span style="color:#64748b">Ubicacion:</span> <strong>${maquina.ubicacion || '-'}</strong></div>
+                    <div><span style="color:#64748b">Compra:</span> <strong>${App.formatDate(maquina.fecha_compra)}</strong></div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:18px;font-weight:800;color:#1d4ed8">${componentes.length}</div>
+                    <div style="font-size:10px;color:#3b82f6;font-weight:600">COMPONENTES</div>
+                </div>
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:18px;font-weight:800;color:#166534">${preventivos.length}</div>
+                    <div style="font-size:10px;color:#16a34a;font-weight:600">PREVENTIVOS</div>
+                </div>
+                <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:18px;font-weight:800;color:#dc2626">${correctivos.length}</div>
+                    <div style="font-size:10px;color:#dc2626;font-weight:600">FALLAS</div>
+                </div>
+            </div>
+            <div style="margin-bottom:16px">
+                <h4 style="margin:0 0 8px;font-size:13px;color:#475569;display:flex;align-items:center;gap:6px">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    Componentes Asociados
+                </h4>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">${componentes.map(c => `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;background:#eff6ff;color:#1e40af;font-size:11px;font-weight:500;border:1px solid #bfdbfe">${c.nombre}</span>`).join('') || '<span style="color:#94a3b8;font-size:12px">Sin componentes asignados</span>'}</div>
+            </div>
+            <div style="margin-bottom:16px">
+                <h4 style="margin:0 0 8px;font-size:13px;color:#475569;display:flex;align-items:center;gap:6px">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                    Mantencion Preventiva (${preventivos.length})
+                </h4>
+                ${preventivos.length === 0 ? '<p style="color:#94a3b8;font-size:12px;margin:0">Sin registros</p>' : `
+                <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+                    <table style="width:100%;font-size:12px;border-collapse:collapse">
+                        <thead><tr style="background:#f8fafc"><th style="padding:8px 12px;text-align:left;color:#64748b;font-weight:600">Componente</th><th style="padding:8px 12px;text-align:left;color:#64748b;font-weight:600">Fecha Prog.</th><th style="padding:8px 12px;text-align:left;color:#64748b;font-weight:600">Estado</th></tr></thead>
+                        <tbody>${prevRows}</tbody>
+                    </table>
+                </div>`}
+            </div>
+            <div>
+                <h4 style="margin:0 0 8px;font-size:13px;color:#475569;display:flex;align-items:center;gap:6px">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Fallas Registradas (${correctivos.length})
+                </h4>
+                ${correctivos.length === 0 ? '<p style="color:#94a3b8;font-size:12px;margin:0">Sin fallas registradas</p>' : `
+                <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+                    <table style="width:100%;font-size:12px;border-collapse:collapse">
+                        <thead><tr style="background:#f8fafc"><th style="padding:8px 12px;text-align:left;color:#64748b;font-weight:600">Componente</th><th style="padding:8px 12px;text-align:left;color:#64748b;font-weight:600">Fecha</th><th style="padding:8px 12px;text-align:left;color:#64748b;font-weight:600">Falla</th><th style="padding:8px 12px;text-align:left;color:#64748b;font-weight:600">Horas</th></tr></thead>
+                        <tbody>${corrRows}</tbody>
+                    </table>
+                </div>`}
+            </div>
+        `, { title: `Ficha: ${maquina.nombre}`, lg: true });
+        const footer = document.querySelector('#modalOverlay .modal-footer');
+        footer.innerHTML = `<button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>`;
     },
 
     async delete(id) {
