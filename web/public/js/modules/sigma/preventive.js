@@ -301,7 +301,7 @@
 
             const maqConComps = Object.keys(compsByMaq).map(Number);
             const maqSinComps = maquinas.filter(m => !compsByMaq[m.id]).length;
-            const totalTareas = machineComps.length;
+            const totalAvailable = machineComps.length;
             const today = new Date().toISOString().split('T')[0];
             const sixMonthsAgo = new Date();
             sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -320,40 +320,42 @@
                     priority = Math.max(0, 50 - Math.floor(daysSince / 30));
                 }
                 priority += recentCorr * 15;
-                return { id, lastDate, recentCorr, priority, total: compsByMaq[id].length };
+                const comps = compsByMaq[id].length;
+                return { id, lastDate, recentCorr, priority, total: comps };
             });
 
             maqPriority.sort((a, b) => b.priority - a.priority);
-            const sortedIds = maqPriority.map(m => m.id);
+            const defaultTasks = Math.min(150, totalAvailable);
 
             App.showModal(`
                 <div style="text-align:center;margin-bottom:16px">
                     <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     </div>
-                    <h3 style="margin:0;color:#1e293b;font-size:16px">Auto-programar Mantención Preventiva</h3>
-                    <p style="margin:4px 0 0;color:#64748b;font-size:12px">Genera tareas para todos los componentes asignados</p>
+                    <h3 style="margin:0;color:#1e293b;font-size:16px">Auto-programar Mantencion Preventiva</h3>
+                    <p style="margin:4px 0 0;color:#64748b;font-size:12px">Distribucion inteligente por prioridad</p>
                 </div>
 
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
                     <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;text-align:center">
                         <div style="font-size:20px;font-weight:800;color:#0369a1">${maquinas.length}</div>
-                        <div style="font-size:10px;color:#0284c7;font-weight:600">MÁQUINAS</div>
+                        <div style="font-size:10px;color:#0284c7;font-weight:600">MAQUINAS</div>
                     </div>
                     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;text-align:center">
                         <div style="font-size:20px;font-weight:800;color:#166534">${maqConComps.length}</div>
                         <div style="font-size:10px;color:#16a34a;font-weight:600">CON COMPONENTES</div>
                     </div>
                     <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;text-align:center">
-                        <div style="font-size:20px;font-weight:800;color:#dc2626">${maqSinComps}</div>
-                        <div style="font-size:10px;color:#dc2626;font-weight:600">SIN COMPONENTES</div>
+                        <div style="font-size:20px;font-weight:800;color:#dc2626">${totalAvailable}</div>
+                        <div style="font-size:10px;color:#dc2626;font-weight:600">COMP. DISPONIBLES</div>
                     </div>
                 </div>
 
                 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:16px">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                        <span style="font-size:12px;color:#64748b">Total tareas a crear:</span>
-                        <span style="font-size:18px;font-weight:800;color:#3b82f6">${totalTareas}</span>
+                    <label style="font-size:11px;font-weight:600;color:#475569;display:block;margin-bottom:6px">Tareas a crear</label>
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <input type="range" id="autoProgTotal" min="10" max="${totalAvailable}" value="${defaultTasks}" style="flex:1;accent-color:#3b82f6" oninput="App.modules.preventive.updateAutoProgPreview()">
+                        <input type="number" id="autoProgTotalNum" value="${defaultTasks}" min="10" max="${totalAvailable}" style="width:70px;font-size:13px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;text-align:center" oninput="document.getElementById('autoProgTotal').value=this.value;App.modules.preventive.updateAutoProgPreview()">
                     </div>
                 </div>
 
@@ -363,57 +365,91 @@
                         <input type="date" class="form-control" id="autoProgFecha" value="${today}" style="font-size:13px" onchange="App.modules.preventive.updateAutoProgPreview()">
                     </div>
                     <div class="form-group" style="margin:0">
-                        <label style="font-size:11px;font-weight:600;color:#475569;margin-bottom:4px;display:block">Días hábiles</label>
+                        <label style="font-size:11px;font-weight:600;color:#475569;margin-bottom:4px;display:block">Dias habiles</label>
                         <input type="number" class="form-control" id="autoProgDias" value="20" min="1" max="365" style="font-size:13px" onchange="App.modules.preventive.updateAutoProgPreview()" oninput="App.modules.preventive.updateAutoProgPreview()">
                     </div>
                 </div>
 
-                <div id="autoProgPreview" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin-bottom:16px;text-align:center">
-                    <span style="font-size:12px;color:#1e40af">~${Math.ceil(totalTareas / 20)} tareas/día</span>
-                </div>
+                <div id="autoProgPreview" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px;margin-bottom:16px;text-align:center"></div>
 
                 <div style="max-height:180px;overflow-y:auto;margin-bottom:16px">
                     <table style="width:100%;font-size:11px;border-collapse:collapse">
-                        <thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:center;color:#475569;width:28px">#</th><th style="padding:6px 8px;text-align:left;color:#475569">Máquina</th><th style="padding:6px 8px;text-align:center;color:#475569">Componentes</th><th style="padding:6px 8px;text-align:center;color:#475569">Prioridad</th></tr></thead>
-                        <tbody>${maqPriority.map((p, i) => {
-                            const m = maqMap[p.id];
-                            let badge, label;
-                            if (p.priority >= 100) { badge = '#dc2626'; label = 'NUNCA'; }
-                            else if (p.priority >= 60) { badge = '#f97316'; label = 'URGENTE'; }
-                            else if (p.priority >= 30) { badge = '#eab308'; label = 'MEDIA'; }
-                            else { badge = '#22c55e'; label = 'OK'; }
-                            const corrTag = p.recentCorr > 0 ? `<span style="background:#fef2f2;color:#dc2626;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:600;margin-left:4px">${p.recentCorr} falla${p.recentCorr > 1 ? 's' : ''}</span>` : '';
-                            return `<tr style="border-bottom:1px solid #f1f5f9;${i < 3 ? 'background:#fffbeb' : ''}"><td style="padding:5px 8px;text-align:center;font-weight:700;color:#64748b">${i + 1}</td><td style="padding:5px 8px"><strong>${m.codigo}</strong> ${m.nombre}${corrTag}</td><td style="padding:5px 8px;text-align:center"><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-weight:600">${p.total}</span></td><td style="padding:5px 8px;text-align:center"><span style="background:${badge};color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${label}</span></td></tr>`;
-                        }).join('')}</tbody>
+                        <thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:center;color:#475569;width:28px">#</th><th style="padding:6px 8px;text-align:left;color:#475569">Maquina</th><th style="padding:6px 8px;text-align:center;color:#475569">Comp.</th><th style="padding:6px 8px;text-align:center;color:#475569">Prioridad</th></tr></thead>
+                        <tbody id="autoProgTable"></tbody>
                     </table>
                 </div>
-            `, {
-                title: ''
-            });
+            `, { title: '' });
 
             const footer = document.querySelector('#modalOverlay .modal-footer');
-            if (footer) footer.innerHTML = `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button><button class="btn btn-accent" onclick="App.modules.preventive.executeAutoProgram()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Cargar ${totalTareas} tareas</button>`;
+            if (footer) footer.innerHTML = `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button><button class="btn btn-accent" id="autoProgBtn" onclick="App.modules.preventive.executeAutoProgram()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Cargar tareas</button>`;
 
-            this._autoProgData = { maquinas, machineComps, compsByMaq, maqConComps: sortedIds, totalTareas };
+            this._autoProgData = { maquinas, machineComps, compsByMaq, maqConComps: maqPriority, totalAvailable };
+            this.updateAutoProgPreview();
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
+    _calcDistribution(totalTasks, maqPriority) {
+        const totalWeight = maqPriority.reduce((sum, m) => sum + m.priority + 1, 0);
+        const distribution = [];
+        let assigned = 0;
+        maqPriority.forEach((m, i) => {
+            const weight = (m.priority + 1) / totalWeight;
+            let count = Math.round(totalTasks * weight);
+            count = Math.min(count, m.total);
+            count = Math.max(count, i < maqPriority.length ? 1 : 0);
+            assigned += count;
+            distribution.push({ ...m, assigned: count });
+        });
+        let diff = totalTasks - assigned;
+        for (let i = 0; i < distribution.length && diff !== 0; i++) {
+            if (diff > 0 && distribution[i].assigned < distribution[i].total) { distribution[i].assigned++; diff--; }
+            else if (diff < 0 && distribution[i].assigned > 1) { distribution[i].assigned--; diff++; }
+        }
+        return distribution;
+    },
+
     updateAutoProgPreview() {
+        const totalTasks = parseInt(document.getElementById('autoProgTotal')?.value) || 150;
+        const numInput = document.getElementById('autoProgTotalNum');
+        if (numInput) numInput.value = totalTasks;
         const dias = parseInt(document.getElementById('autoProgDias')?.value) || 20;
-        const total = this._autoProgData?.totalTareas || 0;
+        const { maqConComps } = this._autoProgData || {};
+        if (!maqConComps) return;
+
+        const distribution = this._calcDistribution(totalTasks, maqConComps);
+        const activeMachines = distribution.filter(m => m.assigned > 0);
+
         const preview = document.getElementById('autoProgPreview');
         if (preview) {
-            const porDia = Math.ceil(total / dias);
-            preview.innerHTML = `<span style="font-size:12px;color:#1e40af">~${porDia} tareas/día × ${dias} días hábiles = ${total} tareas</span>`;
+            const porDia = Math.ceil(totalTasks / dias);
+            preview.innerHTML = `<span style="font-size:12px;color:#1e40af">~${porDia} tareas/dia x ${dias} dias habiles = ${totalTasks} tareas en ${activeMachines.length} maquinas</span>`;
         }
+
+        const table = document.getElementById('autoProgTable');
+        if (table) {
+            table.innerHTML = distribution.filter(m => m.assigned > 0).map((p, i) => {
+                const m = this._autoProgData.maquinas.find(x => x.id === p.id);
+                let badge, label;
+                if (p.priority >= 100) { badge = '#dc2626'; label = 'NUNCA'; }
+                else if (p.priority >= 60) { badge = '#f97316'; label = 'URGENTE'; }
+                else if (p.priority >= 30) { badge = '#eab308'; label = 'MEDIA'; }
+                else { badge = '#22c55e'; label = 'OK'; }
+                const corrTag = p.recentCorr > 0 ? `<span style="background:#fef2f2;color:#dc2626;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:600;margin-left:4px">${p.recentCorr} falla${p.recentCorr > 1 ? 's' : ''}</span>` : '';
+                return `<tr style="border-bottom:1px solid #f1f5f9;${i < 3 ? 'background:#fffbeb' : ''}"><td style="padding:5px 8px;text-align:center;font-weight:700;color:#64748b">${i + 1}</td><td style="padding:5px 8px"><strong>${m.codigo}</strong> ${m.nombre}${corrTag}</td><td style="padding:5px 8px;text-align:center"><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-weight:700">${p.assigned}</span><span style="color:#94a3b8;font-size:9px">/${p.total}</span></td><td style="padding:5px 8px;text-align:center"><span style="background:${badge};color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${label}</span></td></tr>`;
+            }).join('');
+        }
+
+        const btn = document.getElementById('autoProgBtn');
+        if (btn) btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Cargar ${totalTasks} tareas`;
     },
 
     async executeAutoProgram() {
-        const { maquinas, machineComps, compsByMaq, maqConComps, totalTareas } = this._autoProgData || {};
+        const { maquinas, machineComps, compsByMaq, maqConComps, totalAvailable } = this._autoProgData || {};
         if (!maquinas || !machineComps) { App.showAlert('Error: datos no cargados', 'danger'); return; }
 
         const fechaInicio = document.getElementById('autoProgFecha')?.value;
         const diasHabiles = parseInt(document.getElementById('autoProgDias')?.value) || 20;
+        const totalTasks = parseInt(document.getElementById('autoProgTotal')?.value) || 150;
 
         if (!fechaInicio) { App.showAlert('Selecciona una fecha de inicio', 'danger'); return; }
 
@@ -422,17 +458,28 @@
             const day = new Date(fechaInicio + 'T12:00:00');
             while (workingDays.length < diasHabiles) {
                 const dow = day.getDay();
-                if (dow !== 0 && dow !== 6) {
-                    workingDays.push(new Date(day));
-                }
+                if (dow !== 0 && dow !== 6) workingDays.push(new Date(day));
                 day.setDate(day.getDate() + 1);
             }
 
+            const distribution = this._calcDistribution(totalTasks, maqConComps);
             const allTasks = [];
-            for (const maqId of maqConComps) {
-                for (const compId of compsByMaq[maqId]) {
-                    allTasks.push({ maquina_id: maqId, componente_id: compId });
+            for (const m of distribution) {
+                if (m.assigned <= 0) continue;
+                const available = [...compsByMaq[m.id]];
+                for (let i = available.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [available[i], available[j]] = [available[j], available[i]];
                 }
+                const selected = available.slice(0, m.assigned);
+                for (const compId of selected) {
+                    allTasks.push({ maquina_id: m.id, componente_id: compId });
+                }
+            }
+
+            for (let i = allTasks.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allTasks[i], allTasks[j]] = [allTasks[j], allTasks[i]];
             }
 
             const tasksPerDay = Math.ceil(allTasks.length / workingDays.length);
@@ -451,10 +498,7 @@
                 <div style="text-align:center;padding:32px">
                     <div style="width:48px;height:48px;border:3px solid #e2e8f0;border-top-color:#f59e0b;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px"></div>
                     <h3 style="margin:0 0 8px;color:#1e293b;font-size:16px">Creando ${tasks.length} mantenciones...</h3>
-                    <p style="margin:0;color:#64748b;font-size:13px" id="autoProgProgress">Preparando datos...</p>
-                    <div style="margin-top:16px;background:#f1f5f9;border-radius:8px;height:8px;overflow:hidden">
-                        <div id="autoProgBar" style="height:100%;background:linear-gradient(90deg,#f59e0b,#f97316);width:0%;transition:width 0.3s;border-radius:8px"></div>
-                    </div>
+                    <p style="margin:0;color:#64748b;font-size:13px">Distribuidas en ${workingDays.length} dias habiles</p>
                 </div>`;
             if (modalFooter) modalFooter.innerHTML = '';
 
