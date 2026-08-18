@@ -29,20 +29,43 @@
     async render() {
         const el = document.getElementById('page-preventive');
         const registros = await db.getAll('preventive_maintenance');
-        const [maquinas, componentes] = await Promise.all([
+        const [maquinas, componentes, corrRecords] = await Promise.all([
             db.getAll('machines'),
-            db.getAll('components')
+            db.getAll('components'),
+            db.getAll('corrective_maintenance')
         ]);
         const maqMap = {};
         maquinas.forEach(m => { maqMap[m.id] = m; });
         const compMap = {};
         componentes.forEach(c => { compMap[c.id] = c; });
+
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const maqPriority = {};
+        maquinas.forEach(m => {
+            const prevMaq = registros.filter(r => r.maquina_id === m.id && r.estado === 'Realizada');
+            const corrMaq = corrRecords.filter(r => r.maquina_id === m.id);
+            const lastPrev = prevMaq.length > 0 ? prevMaq.reduce((a, b) => (a.fecha_programada || '') > (b.fecha_programada || '') ? a : b) : null;
+            const lastCorr = corrMaq.length > 0 ? corrMaq.reduce((a, b) => (a.fecha_falla || '') > (b.fecha_falla || '') ? a : b) : null;
+            const lastDate = [lastPrev?.fecha_programada, lastCorr?.fecha_falla].filter(Boolean).sort().pop() || null;
+            const recentCorr = corrMaq.filter(r => r.fecha_falla >= sixMonthsAgo.toISOString().split('T')[0]).length;
+            let priority = 0;
+            if (!lastDate) priority = 100;
+            else {
+                const daysSince = Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000);
+                priority = Math.max(0, 50 - Math.floor(daysSince / 30));
+            }
+            priority += recentCorr * 15;
+            maqPriority[m.id] = priority;
+        });
+
         const filterEstado = document.getElementById('filterPrevEstado')?.value || 'Programada';
         const filterMaquina = document.getElementById('filterPrevMaq')?.value || '';
         let filtered = registros.map(r => ({
             ...r,
             maquinaNombre: maqMap[r.maquina_id] ? maqMap[r.maquina_id].nombre : '',
-            componenteNombre: compMap[r.componente_id] ? compMap[r.componente_id].nombre : ''
+            componenteNombre: compMap[r.componente_id] ? compMap[r.componente_id].nombre : '',
+            priority: maqPriority[r.maquina_id] || 0
         }));
         if (filterEstado) filtered = filtered.filter(r => r.estado === filterEstado);
         if (filterMaquina) filtered = filtered.filter(r => r.maquina_id === parseInt(filterMaquina));
@@ -120,15 +143,19 @@
                 <div class="card-body" style="padding:0">
                     <div class="sigma-table-wrap">
                     ${filtered.length === 0 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay registros</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra la primera mantención preventiva</p></div>' : `
-                    <table><thead><tr><th>Máquina</th><th>Componente</th><th>Checklist</th><th onclick="App.modules.preventive.toggleSort()" style="cursor:pointer;user-select:none" title="Click para cambiar orden">Fecha Prog. <span id="prev-sort-icon">▲</span></th><th>Fecha Ejec.</th><th>Días</th><th>Hs.Oc.</th><th>Técnico</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <table><thead><tr><th>Máquina</th><th>Componente</th><th>Prioridad</th><th onclick="App.modules.preventive.toggleSort()" style="cursor:pointer;user-select:none" title="Click para cambiar orden">Fecha Prog. <span id="prev-sort-icon">▲</span></th><th>Fecha Ejec.</th><th>Días</th><th>Hs.Oc.</th><th>Técnico</th><th>Estado</th><th>Acciones</th></tr></thead>
                     <tbody>${filtered.map(r => {
                         const dias = r.fecha_programada && r.fecha_ejecutada ? Math.round((new Date(r.fecha_ejecutada) - new Date(r.fecha_programada)) / 86400000) : '-';
                         const isVencida = r.estado !== 'Realizada' && r.fecha_programada && r.fecha_programada < today;
                         const rowStyle = isVencida ? 'background:#fff3f3;' : '';
-                        const checklistPreview = r.checklist ? r.checklist.split('\n').slice(0, 2).join(', ').substring(0, 40) + (r.checklist.length > 40 ? '...' : '') : '-';
+                        let pBadge, pLabel;
+                        if (r.priority >= 100) { pBadge = '#dc2626'; pLabel = 'NUNCA'; }
+                        else if (r.priority >= 60) { pBadge = '#f97316'; pLabel = 'URGENTE'; }
+                        else if (r.priority >= 30) { pBadge = '#eab308'; pLabel = 'MEDIA'; }
+                        else { pBadge = '#22c55e'; pLabel = 'OK'; }
                         return `<tr style="${rowStyle}">
                         <td>${r.maquinaNombre}</td><td>${r.componenteNombre}</td>
-                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(r.checklist || '').replace(/"/g, '&quot;')}">${checklistPreview}</td>
+                        <td><span style="background:${pBadge};color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${pLabel}</span></td>
                         <td>${App.formatDate(r.fecha_programada)}</td>
                         <td>${App.formatDate(r.fecha_ejecutada)}</td>
                         <td>${dias}</td>
