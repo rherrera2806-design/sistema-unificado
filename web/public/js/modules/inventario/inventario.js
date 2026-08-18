@@ -49,7 +49,7 @@ const InvInventario = {
             <td style="font-weight:600">${i.codigo_mp || '-'}</td>
             <td>${i.tipo_cristal}</td>
             <td style="font-weight:600;color:#334155">${i.espesor}mm</td>
-            <td style="font-weight:600;color:#1e40af">${i.ancho || '-'}x${i.alto || '-'}mm</td>
+            <td style="font-weight:600;color:#1e40af">${Math.round(i.ancho || 0)}x${Math.round(i.alto || 0)}mm</td>
             <td style="color:var(--success);font-weight:600">${i.entradas}</td>
             <td style="color:var(--danger)">${i.salidas_plancha}</td>
             <td style="color:var(--warning)">${i.trozos}</td>
@@ -67,7 +67,7 @@ const InvInventario = {
             badge: i => '<span class="sc-badge" style="background:' + (i.stock > 0 ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">Stock: ' + i.stock + '</span>',
             fields: [
                 { label: 'Espesor', value: i => i.espesor + 'mm' },
-                { label: 'Medida', value: i => (i.ancho || '-') + 'x' + (i.alto || '-') + 'mm' },
+                { label: 'Medida', value: i => Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm' },
                 { label: 'Entradas', value: i => i.entradas },
                 { label: 'Salidas', value: i => i.salidas_plancha },
                 { label: 'm2 Stock', value: i => (i.m2_entradas - i.m2_salidas).toFixed(2) + ' m2' }
