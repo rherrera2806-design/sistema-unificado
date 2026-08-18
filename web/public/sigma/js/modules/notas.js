@@ -1,12 +1,12 @@
-App.registerModule('notas', {
+﻿App.registerModule('notas', {
     _notasData: [],
     async render() {
         const el = document.getElementById('page-notas');
         el.innerHTML = `
             <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:12px;padding:6px 14px;margin-bottom:16px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
             <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h2 style="margin:0;font-size:14px;font-weight:800;color:white;letter-spacing:-0.5px">Notas</h2>
-            <p style="margin:2px 0 0;font-size:9px;color:rgba(255,255,255,0.7)">Comunicacion entre turnos</p></div>
+            <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Notas</h2>
+            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Comunicacion entre turnos</p></div>
                 <div style="display:flex;align-items:center;gap:8px">
                     <div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="notaSearch" placeholder="Buscar..." oninput="App.modules.notas.filtrar()" style="width:240px;padding:8px 12px 8px 32px;border:none;border-radius:8px;font-size:12px;color:white;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);outline:none;transition:all 0.2s" onfocus="this.style.background='rgba(255,255,255,0.25)'" onblur="this.style.background='rgba(255,255,255,0.15)'"></div>
                     ${App.canCreate('notas') ? '<button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.notas.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : ''}

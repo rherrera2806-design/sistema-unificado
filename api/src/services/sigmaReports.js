@@ -86,6 +86,39 @@ const getMachineTypesData = async () => {
 const { getStatsSummary, getOverdue, getUpcoming, getCompleted, getRecentCompleted, getTopFailingMachines, getByPeriod, getBitacora } = require('./sigmaReportData');
 const { getComponentsByType, getMachineDetails, getMachineComponents, setMachineComponents } = require('./sigmaMachineDetails');
 
+const { query } = require('../config/db');
+
+const getProveedores = async () => {
+    const result = await query('SELECT * FROM proveedores ORDER BY nombre');
+    return result.rows;
+};
+const getProveedorById = async (id) => {
+    const result = await query('SELECT * FROM proveedores WHERE id = $1', [id]);
+    return result.rows[0] || null;
+};
+const createProveedor = async (data) => {
+    const result = await query(
+        `INSERT INTO proveedores (nombre, rut, telefono, email, direccion, persona_contacto, especialidad, observaciones, estado)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+        [data.nombre, data.rut || null, data.telefono || null, data.email || null, data.direccion || null,
+         data.persona_contacto || null, data.especialidad || null, data.observaciones || null, data.estado || 'Activo']
+    );
+    return result.rows[0];
+};
+const updateProveedor = async (id, data) => {
+    const result = await query(
+        `UPDATE proveedores SET nombre=$1, rut=$2, telefono=$3, email=$4, direccion=$5,
+         persona_contacto=$6, especialidad=$7, observaciones=$8, estado=$9 WHERE id=$10 RETURNING *`,
+        [data.nombre, data.rut || null, data.telefono || null, data.email || null, data.direccion || null,
+         data.persona_contacto || null, data.especialidad || null, data.observaciones || null, data.estado || 'Activo', id]
+    );
+    return result.rows[0];
+};
+const deleteProveedor = async (id) => {
+    await query('DELETE FROM proveedores WHERE id = $1', [id]);
+    return { ok: true };
+};
+
 module.exports = {
     getCalendarData,
     getDashboardData,
@@ -103,5 +136,10 @@ module.exports = {
     getRecentCompleted,
     getTopFailingMachines,
     getByPeriod,
-    getBitacora
+    getBitacora,
+    getProveedores,
+    getProveedorById,
+    createProveedor,
+    updateProveedor,
+    deleteProveedor
 };

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Idea - Stats Mobile Horizontal</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; padding: 16px; max-width: 375px; margin: 0 auto; }
+.m-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+
+/* ═══ IDEA A: 3 cards en fila ═══ */
+.m-stats-a { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 20px; }
+.m-stats-a .m-card { text-align: center; padding: 6px 4px; }
+.m-stats-a .stat-label { font-size: 9px; font-weight: 600; color: #64748b; }
+.m-stats-a .stat-value { font-size: 16px; font-weight: 800; }
+
+/* ═══ IDEA B: 2+1 scroll horizontal ═══ */
+.m-stats-b { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+.m-stats-b .m-card { min-width: 130px; flex-shrink: 0; scroll-snap-align: start; padding: 10px 14px; }
+.m-stats-b .stat-label { font-size: 10px; font-weight: 600; color: #64748b; }
+.m-stats-b .stat-value { font-size: 18px; font-weight: 800; }
+
+/* ═══ IDEA C: 2+1 grid con 2 arriba, 1 abajo ═══ */
+.m-stats-c { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 20px; }
+.m-stats-c .m-card { padding: 8px 10px; }
+.m-stats-c .m-card:last-child { grid-column: 1 / -1; }
+.m-stats-c .stat-label { font-size: 10px; font-weight: 600; color: #64748b; }
+.m-stats-c .stat-value { font-size: 17px; font-weight: 800; }
+
+h3 { font-size: 12px; color: #94a3b8; margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<h3>Opcion A: 3 en fila</h3>
+<div class="m-stats-a">
+  <div class="m-card">
+    <div class="stat-label">Total</div>
+    <div class="stat-value" style="color:#0f172a">156</div>
+  </div>
+  <div class="m-card">
+    <div class="stat-label">Activas</div>
+    <div class="stat-value" style="color:#16a34a">8</div>
+  </div>
+  <div class="m-card">
+    <div class="stat-label">Inactivas</div>
+    <div class="stat-value" style="color:#ef4444">3</div>
+  </div>
+</div>
+
+<h3>Opcion B: Scroll horizontal</h3>
+<div class="m-stats-b">
+  <div class="m-card">
+    <div class="stat-label">Total Recetas</div>
+    <div class="stat-value" style="color:#0f172a">156</div>
+  </div>
+  <div class="m-card">
+    <div class="stat-label">Con Ruta Custom</div>
+    <div class="stat-value" style="color:#7c3aed">42</div>
+  </div>
+  <div class="m-card">
+    <div class="stat-label">Codigos Unicos</div>
+    <div class="stat-value" style="color:#f59e0b">89</div>
+  </div>
+</div>
+
+<h3>Opcion C: 2+1</h3>
+<div class="m-stats-c">
+  <div class="m-card">
+    <div class="stat-label">Total</div>
+    <div class="stat-value" style="color:#0f172a">156</div>
+  </div>
+  <div class="m-card">
+    <div class="stat-label">Activas</div>
+    <div class="stat-value" style="color:#16a34a">8</div>
+  </div>
+  <div class="m-card">
+    <div class="stat-label">Inactivas</div>
+    <div class="stat-value" style="color:#ef4444">3</div>
+  </div>
+</div>
+
+</body>
+</html>

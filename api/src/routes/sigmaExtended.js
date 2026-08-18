@@ -63,6 +63,27 @@ router.put('/api/sigma/machines/:id/components', canUpdate, async (req, res, nex
     res.json({ ok: true });
 });
 
+router.get('/api/sigma/proveedores', canView, async (req, res, next) => {
+    try { res.json(await sigmaReports.getProveedores()); }
+    catch (e) { next(e); }
+});
+router.get('/api/sigma/proveedores/:id', canView, async (req, res, next) => {
+    try { res.json(await sigmaReports.getProveedorById(Number(req.params.id))); }
+    catch (e) { next(e); }
+});
+router.post('/api/sigma/proveedores', canCreate, async (req, res, next) => {
+    try { res.status(201).json(await sigmaReports.createProveedor(req.body)); }
+    catch (e) { next(e); }
+});
+router.put('/api/sigma/proveedores/:id', canUpdate, async (req, res, next) => {
+    try { res.json(await sigmaReports.updateProveedor(Number(req.params.id), req.body)); }
+    catch (e) { next(e); }
+});
+router.delete('/api/sigma/proveedores/:id', canDelete, async (req, res, next) => {
+    try { res.json(await sigmaReports.deleteProveedor(Number(req.params.id))); }
+    catch (e) { next(e); }
+});
+
 router.get('/api/sigma/reports/overdue', canView, async (req, res, next) => {
     res.json(await sigmaReports.getOverdue());
 });

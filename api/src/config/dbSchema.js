@@ -109,6 +109,12 @@ async function initDB() {
         id SERIAL PRIMARY KEY, maquina_id INTEGER, componente_id INTEGER,
         UNIQUE(maquina_id, componente_id)
     )`);
+    await query(`CREATE TABLE IF NOT EXISTS proveedores (
+        id SERIAL PRIMARY KEY, nombre VARCHAR(200) NOT NULL, rut VARCHAR(20),
+        telefono VARCHAR(30), email VARCHAR(150), direccion TEXT,
+        persona_contacto VARCHAR(150), especialidad TEXT, observaciones TEXT,
+        estado VARCHAR(20) DEFAULT 'Activo', fecha_registro DATE DEFAULT CURRENT_DATE
+    )`);
     await query(`CREATE TABLE IF NOT EXISTS notas (
         id SERIAL PRIMARY KEY, tecnico TEXT, nota TEXT, fecha TEXT, hora TEXT
     )`);

@@ -59,7 +59,8 @@ const App = {
                 { id: 'preventive', icon: '📋', label: 'Preventivo', badge: overdueCount },
                 { id: 'corrective', icon: '🔴', label: 'Correctivo' },
                 { id: 'calendar', icon: '📅', label: 'Calendario' },
-                { id: 'notas', icon: '📒', label: 'Notas' }
+                { id: 'notas', icon: '📒', label: 'Notas' },
+                { id: 'proveedores', icon: '🏢', label: 'Proveedores' }
             ]},
             { label: 'REPORTES', items: [
                 { id: 'reports', icon: '📈', label: 'Reportes' },

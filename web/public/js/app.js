@@ -9,6 +9,7 @@ const App = {
         preventive: { icon: '🔧', label: 'Mant. Preventiva', render: () => SigmaPreventive.render() },
         corrective: { icon: '⚠️', label: 'Mant. Correctiva', render: () => SigmaCorrective.render() },
         spareparts: { icon: '📦', label: 'Repuestos', render: () => SigmaSpareparts.render() },
+        proveedores: { icon: '🏢', label: 'Proveedores', render: () => SigmaProveedores.render() },
         reports: { icon: '📈', label: 'Reportes', render: () => SigmaReports.render() }
     },
 
