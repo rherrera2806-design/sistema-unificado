@@ -59,6 +59,12 @@ App.registerModule('pedidos', {
                 + '<input type="text" id="pedFilterSearch" placeholder="Buscar..." oninput="App.modules.pedidos.debouncedFilter()" style="font-size:12px;padding:8px 12px 8px 32px;border:none;border-radius:8px;color:white;background:rgba(255,255,255,0.2);backdrop-filter:blur(8px);outline:none;transition:all 0.2s;width:100%;box-sizing:border-box" onfocus="this.style.background=\'rgba(255,255,255,0.3)\'" onblur="this.style.background=\'rgba(255,255,255,0.2)\'"></div>'
                 + '<select id="pedFilterEstado" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:none;border-radius:8px;color:white;background:rgba(255,255,255,0.2);backdrop-filter:blur(8px);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.background=\'rgba(255,255,255,0.3)\'" onblur="this.style.background=\'rgba(255,255,255,0.2)\'">'
                 + '<option value="" style="color:#1e293b;background:white">Todos</option><option value="pendiente" style="color:#1e293b;background:white">Pendiente</option><option value="aprobado" style="color:#1e293b;background:white">Aprobado</option><option value="rechazado" style="color:#1e293b;background:white">Rechazado</option></select>'
+                + '<select id="pedFilterAnio" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:none;border-radius:8px;color:white;background:rgba(255,255,255,0.2);backdrop-filter:blur(8px);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.background=\'rgba(255,255,255,0.3)\'" onblur="this.style.background=\'rgba(255,255,255,0.2)\'">'
+                + '<option value="" style="color:#1e293b;background:white">Todos los Años</option></select>'
+                + '<select id="pedFilterMes" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:none;border-radius:8px;color:white;background:rgba(255,255,255,0.2);backdrop-filter:blur(8px);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.background=\'rgba(255,255,255,0.3)\'" onblur="this.style.background=\'rgba(255,255,255,0.2)\'">'
+                + '<option value="" style="color:#1e293b;background:white">Todos los Meses</option>'
+                + '<option value="1" style="color:#1e293b;background:white">Enero</option><option value="2" style="color:#1e293b;background:white">Febrero</option><option value="3" style="color:#1e293b;background:white">Marzo</option><option value="4" style="color:#1e293b;background:white">Abril</option><option value="5" style="color:#1e293b;background:white">Mayo</option><option value="6" style="color:#1e293b;background:white">Junio</option><option value="7" style="color:#1e293b;background:white">Julio</option><option value="8" style="color:#1e293b;background:white">Agosto</option><option value="9" style="color:#1e293b;background:white">Septiembre</option><option value="10" style="color:#1e293b;background:white">Octubre</option><option value="11" style="color:#1e293b;background:white">Noviembre</option><option value="12" style="color:#1e293b;background:white">Diciembre</option>'
+                + '</select>'
                 + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" class="btn btn-primary" title="Nuevo pedido" style="white-space:nowrap;padding:8px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
                 + '</div></div></div>'
 
@@ -197,6 +203,7 @@ App.registerModule('pedidos', {
             const data = await res.json();
             this.allPedidos = Array.isArray(data) ? data : [];
             this.renderStats();
+            this.populateYears();
             this.filter();
             this.notifyRechazados(user);
         } catch(e) {
@@ -238,6 +245,16 @@ App.registerModule('pedidos', {
             + this.statCard(rech, 'Rechazados', '#ef4444', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', 300);
     },
 
+    populateYears() {
+        const sel = document.getElementById('pedFilterAnio');
+        if (!sel) return;
+        const current = sel.value;
+        const years = [...new Set(this.allPedidos.map(p => new Date(p.fecha_subida).getFullYear()))].sort((a, b) => b - a);
+        sel.innerHTML = '<option value="" style="color:#1e293b;background:white">Todos los Años</option>'
+            + years.map(y => '<option value="' + y + '" style="color:#1e293b;background:white">' + y + '</option>').join('');
+        if (current && years.includes(parseInt(current))) sel.value = current;
+    },
+
     statCard(value, label, color, icon, delay) {
         return '<div class="ped-card" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:10px;border-left:4px solid ' + color + ';box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pedFadeUp 0.5s ease ' + delay + 'ms both;position:relative;overflow:hidden">'
             + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:' + color + ';opacity:0.04;border-radius:50%"></div>'
@@ -250,10 +267,15 @@ App.registerModule('pedidos', {
     filter() {
         const search = (document.getElementById('pedFilterSearch')?.value || '').toLowerCase();
         const estado = document.getElementById('pedFilterEstado')?.value || '';
+        const anio = document.getElementById('pedFilterAnio')?.value || '';
+        const mes = document.getElementById('pedFilterMes')?.value || '';
         const filtered = this.allPedidos.filter(p => {
             const matchSearch = !search || (p.numero_pedido || '').toLowerCase().includes(search) || (p.cliente || '').toLowerCase().includes(search) || (p.vendedor || '').toLowerCase().includes(search);
             const matchEstado = !estado || p.estado === estado;
-            return matchSearch && matchEstado;
+            const fecha = new Date(p.fecha_subida);
+            const matchAnio = !anio || fecha.getFullYear() === parseInt(anio);
+            const matchMes = !mes || (fecha.getMonth() + 1) === parseInt(mes);
+            return matchSearch && matchEstado && matchAnio && matchMes;
         });
         this.filteredPedidos = filtered;
         this.renderTable(filtered);
