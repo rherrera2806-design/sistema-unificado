@@ -537,7 +537,8 @@
                     </table>
                 </div>`}
             </div>
-        `, { title: `Ficha: ${maquina.nombre}`, lg: true });
+        `;
+        if (modalTitle) modalTitle.textContent = `Ficha: ${maquina.nombre}`;
         const footer = document.querySelector('#modalOverlay .modal-footer');
         footer.innerHTML = `<button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>`;
     },
