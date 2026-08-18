@@ -3,12 +3,9 @@
         const el = document.getElementById('page-machines');
         const maquinas = await db.getAll('machines');
         const tipos = await db.getAll('machine_types');
-        const allPrev = await db.getAll('preventive_maintenance');
-        const compsPerMachine = {};
-        allPrev.forEach(p => {
-            if (!compsPerMachine[p.maquina_id]) compsPerMachine[p.maquina_id] = new Set();
-            compsPerMachine[p.maquina_id].add(p.componente_id);
-        });
+        const allComps = await db.getAll('machine_components');
+        const compsCount = {};
+        allComps.forEach(mc => { compsCount[mc.maquina_id] = (compsCount[mc.maquina_id] || 0) + 1; });
         const filterTipo = document.getElementById('filterTipoMaq')?.value || '';
         const filterEstado = document.getElementById('filterEstadoMaq')?.value || '';
         const searchTerm = (document.getElementById('searchMaquina')?.value || '').toLowerCase();
@@ -20,7 +17,7 @@
         let cardsHtml = '';
         for (const m of filtered) {
             const tipo = tipos.find(t => t.id === m.tipo_id);
-            const nComps = compsPerMachine[m.id] ? compsPerMachine[m.id].size : 0;
+            const nComps = compsCount[m.id] || 0;
             const compBadge = nComps > 0
                 ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>${nComps}</span>`
                 : `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>0</span>`;
