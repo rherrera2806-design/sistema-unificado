@@ -676,7 +676,7 @@ const SIDEBAR_SECTIONS = {
     atencion: ['turnos_recepcion', 'turnos_bodega', 'turnos_almacen', 'turnos_facturar', 'turnos_qr', 'turnos_reporte'],
     instalaciones: ['instalaciones', 'inst_historial'],
     inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial'],
-    mantencion: ['dashboard', 'machineTypes', 'machines', 'components', 'preventive', 'corrective', 'calendar', 'notas', 'reports', 'history', 'bitacora'],
+    mantencion: ['dashboard', 'machineTypes', 'machines', 'components', 'preventive', 'corrective', 'calendar', 'notas', 'proveedores', 'reports', 'history', 'bitacora'],
     pedidos: ['pedidos'],
     produccion: ['prod_ordenes', 'prod_planificacion', 'prod_reportes', 'prod_notas', 'prod_config', 'taller'],
     costeo: ['costeo']
@@ -748,6 +748,7 @@ function renderSidebar() {
             { id: 'corrective', label: 'Correctivo', icon: SVG.alert },
             { id: 'calendar', label: 'Calendario', icon: SVG.calendar },
             { id: 'notas', label: 'Notas', icon: SVG.file },
+            { id: 'proveedores', label: 'Proveedores', icon: SVG.building },
             { id: 'reports', label: 'Reportes', icon: SVG.chart },
             { id: 'history', label: 'Historial', icon: SVG.clock },
             { id: 'bitacora', label: 'Bitacora de Mantencion', icon: SVG.book }
@@ -884,6 +885,7 @@ const SVG = {
     qrcode: '<svg viewBox="0 0 24 24"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="4" height="4"/><line x1="22" y1="14" x2="22" y2="22"/><line x1="14" y1="22" x2="22" y2="22"/></svg>',
     barChart: '<svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
     home: '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+    building: '<svg viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>',
     tool: '<svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
     logOut: '<svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
 };

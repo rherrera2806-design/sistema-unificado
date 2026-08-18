@@ -1,4 +1,4 @@
-const SigmaProveedores = {
+App.registerModule('proveedores', {
     async render() {
         const el = document.getElementById('page-proveedores');
         const data = await db.getAll('proveedores');
@@ -157,4 +157,4 @@ const SigmaProveedores = {
             this.render();
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     }
-};
+});
