@@ -362,10 +362,11 @@
                     </table>
                 </div>
             `, {
-                title: '',
-                footer: `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
-                         <button class="btn btn-accent" onclick="App.modules.preventive.executeAutoProgram()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Cargar ${totalTareas} tareas</button>`
+                title: ''
             });
+
+            const footer = document.querySelector('#modalOverlay .modal-footer');
+            if (footer) footer.innerHTML = `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button><button class="btn btn-accent" onclick="App.modules.preventive.executeAutoProgram()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Cargar ${totalTareas} tareas</button>`;
 
             this._autoProgData = { maquinas, machineComps, compsByMaq, maqConComps, totalTareas };
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
