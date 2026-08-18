@@ -9,8 +9,16 @@
     },
 
     async showMachineDetail(maquinaId) {
+        App.showModal(`
+            <div style="text-align:center;padding:32px">
+                <div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px"></div>
+                <p style="color:#64748b;font-size:13px">Cargando ficha...</p>
+            </div>
+            <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+        `, { title: 'Ficha de Maquina', lg: true });
+
         const info = await db.getMachineWithDetails(maquinaId);
-        if (!info) return;
+        if (!info) { App.hideModal(); return; }
         const { maquina, tipo, componentes, preventivos, correctivos } = info;
         let prevRows = '', corrRows = '';
         for (const p of preventivos) {
@@ -21,7 +29,10 @@
             const comp = await db.getById('components', c.componente_id).catch(() => null);
             corrRows += `<tr><td>${comp ? comp.nombre : '-'}</td><td>${App.formatDate(c.fecha_falla)}</td><td>${c.descripcion_falla}</td><td>${c.horas_detencion}</td></tr>`;
         }
-        App.showModal(`
+        const modalBody = document.querySelector('#modalOverlay .modal-body');
+        const modalTitle = document.querySelector('#modalOverlay .modal-title');
+        if (modalTitle) modalTitle.textContent = `Ficha: ${maquina.nombre}`;
+        if (modalBody) modalBody.innerHTML = `
             <div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:10px;padding:16px;margin-bottom:16px;border:1px solid #e2e8f0">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
                     <div style="width:48px;height:48px;border-radius:10px;background:white;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#3b82f6">${maquina.codigo || '-'}</div>
@@ -85,7 +96,7 @@
                     </table>
                 </div>`}
             </div>
-        `, { title: `Ficha: ${maquina.nombre}`, lg: true });
+        `;
         const footer = document.querySelector('#modalOverlay .modal-footer');
         footer.innerHTML = `<button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>`;
     },
