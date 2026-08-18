@@ -86,7 +86,7 @@ const getMachineTypesData = async () => {
 const { getStatsSummary, getOverdue, getUpcoming, getCompleted, getRecentCompleted, getTopFailingMachines, getByPeriod, getBitacora } = require('./sigmaReportData');
 const { getComponentsByType, getMachineDetails, getMachineComponents, setMachineComponents } = require('./sigmaMachineDetails');
 
-const { query } = require('../config/db');
+const { query } = require('../config/database');
 
 const getProveedores = async () => {
     const result = await query('SELECT * FROM proveedores ORDER BY nombre');
