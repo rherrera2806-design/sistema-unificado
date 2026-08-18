@@ -30,6 +30,13 @@ router.get('/api/sigma/preventive-data', canView, async (req, res, next) => {
     catch (e) { next(e); }
 });
 
+router.delete('/api/sigma/preventive/clear-programmed', canDelete, async (req, res, next) => {
+    try {
+        const result = await query('DELETE FROM preventive_maintenance WHERE estado = $1', ['Programada']);
+        res.json({ deleted: result.rowCount });
+    } catch (e) { next(e); }
+});
+
 router.get('/api/sigma/corrective-data', canView, async (req, res, next) => {
     try { res.json(await sigmaReports.getCorrectiveData()); }
     catch (e) { next(e); }
