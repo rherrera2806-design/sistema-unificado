@@ -507,14 +507,11 @@
 
             allTasks.sort((a, b) => b.priority - a.priority);
 
-            const tasksPerDay = Math.ceil(allTasks.length / workingDays.length);
             const tasks = [];
-            for (let i = 0; i < workingDays.length && allTasks.length > 0; i++) {
-                const dateStr = workingDays[i].toISOString().split('T')[0];
-                const dayTasks = allTasks.splice(0, tasksPerDay);
-                for (const task of dayTasks) {
-                    tasks.push({ maquina_id: task.maquina_id, componente_id: task.componente_id, fecha_programada: dateStr, estado: 'Programada', checklist: '' });
-                }
+            for (let i = 0; i < allTasks.length; i++) {
+                const dayIdx = i % workingDays.length;
+                const dateStr = workingDays[dayIdx].toISOString().split('T')[0];
+                tasks.push({ maquina_id: allTasks[i].maquina_id, componente_id: allTasks[i].componente_id, fecha_programada: dateStr, estado: 'Programada', checklist: '' });
             }
 
             const modalBody = document.querySelector('#modalOverlay .modal-body');
@@ -535,7 +532,8 @@
             if (!res.ok) throw new Error('Error al crear mantenciones');
             const data = await res.json();
 
-            const fechaFin = workingDays[Math.min(Math.ceil(data.created / tasksPerDay) - 1, workingDays.length - 1)].toISOString().split('T')[0];
+            const lastDayIdx = (data.created - 1) % workingDays.length;
+            const fechaFin = workingDays[lastDayIdx].toISOString().split('T')[0];
 
             if (modalBody) modalBody.innerHTML = `
                 <div style="text-align:center;padding:32px">
