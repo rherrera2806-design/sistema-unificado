@@ -284,9 +284,11 @@
 
     async autoProgram() {
         try {
-            const [maquinas, machineComps] = await Promise.all([
+            const [maquinas, machineComps, prevRecords, corrRecords] = await Promise.all([
                 db.getAll('machines'),
-                db.getAll('machine_components')
+                db.getAll('machine_components'),
+                db.getAll('preventive_maintenance'),
+                db.getAll('corrective_maintenance')
             ]);
             if (maquinas.length === 0) { App.showAlert('No hay máquinas registradas', 'danger'); return; }
             if (machineComps.length === 0) { App.showAlert('No hay componentes asignados a máquinas', 'danger'); return; }
@@ -304,6 +306,28 @@
             const maqSinComps = maquinas.filter(m => !compsByMaq[m.id]).length;
             const totalTareas = machineComps.length;
             const today = new Date().toISOString().split('T')[0];
+            const sixMonthsAgo = new Date();
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+            const maqPriority = maqConComps.map(id => {
+                const prevMaq = prevRecords.filter(r => r.maquina_id === id && r.estado === 'Realizada');
+                const corrMaq = corrRecords.filter(r => r.maquina_id === id);
+                const lastPrev = prevMaq.length > 0 ? prevMaq.reduce((a, b) => (a.fecha_programada || '') > (b.fecha_programada || '') ? a : b) : null;
+                const lastCorr = corrMaq.length > 0 ? corrMaq.reduce((a, b) => (a.fecha_falla || '') > (b.fecha_falla || '') ? a : b) : null;
+                const lastDate = [lastPrev?.fecha_programada, lastCorr?.fecha_falla].filter(Boolean).sort().pop() || null;
+                const recentCorr = corrMaq.filter(r => r.fecha_falla >= sixMonthsAgo.toISOString().split('T')[0]).length;
+                let priority = 0;
+                if (!lastDate) priority = 100;
+                else {
+                    const daysSince = Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000);
+                    priority = Math.max(0, 50 - Math.floor(daysSince / 30));
+                }
+                priority += recentCorr * 15;
+                return { id, lastDate, recentCorr, priority, total: compsByMaq[id].length };
+            });
+
+            maqPriority.sort((a, b) => b.priority - a.priority);
+            const sortedIds = maqPriority.map(m => m.id);
 
             App.showModal(`
                 <div style="text-align:center;margin-bottom:16px">
@@ -351,13 +375,18 @@
                     <span style="font-size:12px;color:#1e40af">~${Math.ceil(totalTareas / 20)} tareas/día</span>
                 </div>
 
-                <div style="max-height:120px;overflow-y:auto;margin-bottom:16px">
+                <div style="max-height:180px;overflow-y:auto;margin-bottom:16px">
                     <table style="width:100%;font-size:11px;border-collapse:collapse">
-                        <thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:left;color:#475569">Máquina</th><th style="padding:6px 8px;text-align:center;color:#475569">Tipo</th><th style="padding:6px 8px;text-align:center;color:#475569">Componentes</th></tr></thead>
-                        <tbody>${maqConComps.map(id => {
-                            const m = maqMap[id];
-                            const tipos = maquinas.length ? '' : '';
-                            return `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:5px 8px"><strong>${m.codigo}</strong> ${m.nombre}</td><td style="padding:5px 8px;text-align:center">${m.tipo_id || '-'}</td><td style="padding:5px 8px;text-align:center"><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-weight:600">${compsByMaq[id].length}</span></td></tr>`;
+                        <thead><tr style="background:#f1f5f9"><th style="padding:6px 8px;text-align:center;color:#475569;width:28px">#</th><th style="padding:6px 8px;text-align:left;color:#475569">Máquina</th><th style="padding:6px 8px;text-align:center;color:#475569">Componentes</th><th style="padding:6px 8px;text-align:center;color:#475569">Prioridad</th></tr></thead>
+                        <tbody>${maqPriority.map((p, i) => {
+                            const m = maqMap[p.id];
+                            let badge, label;
+                            if (p.priority >= 100) { badge = '#dc2626'; label = 'NUNCA'; }
+                            else if (p.priority >= 60) { badge = '#f97316'; label = 'URGENTE'; }
+                            else if (p.priority >= 30) { badge = '#eab308'; label = 'MEDIA'; }
+                            else { badge = '#22c55e'; label = 'OK'; }
+                            const corrTag = p.recentCorr > 0 ? `<span style="background:#fef2f2;color:#dc2626;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:600;margin-left:4px">${p.recentCorr} falla${p.recentCorr > 1 ? 's' : ''}</span>` : '';
+                            return `<tr style="border-bottom:1px solid #f1f5f9;${i < 3 ? 'background:#fffbeb' : ''}"><td style="padding:5px 8px;text-align:center;font-weight:700;color:#64748b">${i + 1}</td><td style="padding:5px 8px"><strong>${m.codigo}</strong> ${m.nombre}${corrTag}</td><td style="padding:5px 8px;text-align:center"><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-weight:600">${p.total}</span></td><td style="padding:5px 8px;text-align:center"><span style="background:${badge};color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${label}</span></td></tr>`;
                         }).join('')}</tbody>
                     </table>
                 </div>
@@ -368,7 +397,7 @@
             const footer = document.querySelector('#modalOverlay .modal-footer');
             if (footer) footer.innerHTML = `<button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button><button class="btn btn-accent" onclick="App.modules.preventive.executeAutoProgram()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Cargar ${totalTareas} tareas</button>`;
 
-            this._autoProgData = { maquinas, machineComps, compsByMaq, maqConComps, totalTareas };
+            this._autoProgData = { maquinas, machineComps, compsByMaq, maqConComps: sortedIds, totalTareas };
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
