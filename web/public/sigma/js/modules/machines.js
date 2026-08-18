@@ -3,9 +3,9 @@
         const el = document.getElementById('page-machines');
         const maquinas = await db.getAll('machines');
         const tipos = await db.getAll('machine_types');
-        const allComps = await db.getAll('machine_components');
-        const compsCount = {};
-        allComps.forEach(mc => { compsCount[mc.maquina_id] = (compsCount[mc.maquina_id] || 0) + 1; });
+        const allTypeLinks = await db.getAll('component_type_links');
+        const compsPerType = {};
+        allTypeLinks.forEach(l => { compsPerType[l.tipo_id] = (compsPerType[l.tipo_id] || 0) + 1; });
         const filterTipo = document.getElementById('filterTipoMaq')?.value || '';
         const filterEstado = document.getElementById('filterEstadoMaq')?.value || '';
         const searchTerm = (document.getElementById('searchMaquina')?.value || '').toLowerCase();
@@ -16,7 +16,7 @@
         let rows = '';
         for (const m of filtered) {
             const tipo = tipos.find(t => t.id === m.tipo_id);
-            const nComps = compsCount[m.id] || 0;
+            const nComps = compsPerType[m.tipo_id] || 0;
             const compBadge = nComps > 0
                 ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>${nComps}</span>`
                 : `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>0</span>`;
@@ -66,7 +66,7 @@
                 <div class="stat-card dash-card" style="border-left:4px solid #8b5cf6">
                     <div class="stat-icon" style="color:#8b5cf6"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" style="vertical-align:-2px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
                     <div class="stat-info"><p class="stat-label">Sin Componentes</p><p class="stat-sub">Requieren asignacion</p></div>
-                    <div class="stat-value">${maquinas.filter(m => !compsCount[m.id]).length}</div>
+                    <div class="stat-value">${maquinas.filter(m => !compsPerType[m.tipo_id]).length}</div>
                 </div>
             </div>
             <style>
