@@ -35,7 +35,7 @@
         if (modalBody) modalBody.innerHTML = `
             <div style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:10px;padding:16px;margin-bottom:16px;border:1px solid #e2e8f0">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-                    <div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3)">${maquina.codigo || '-'}</div>
+                    <div style="min-width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:0 6px;white-space:nowrap">${maquina.codigo || '-'}</div>
                     <div style="flex:1">
                         <h3 style="margin:0;font-size:16px;color:#1e293b">${maquina.nombre}</h3>
                         <p style="margin:2px 0 0;font-size:12px;color:#64748b">${tipo ? tipo.nombre : 'Sin tipo'} ${maquina.marca ? '• ' + maquina.marca : ''}</p>
