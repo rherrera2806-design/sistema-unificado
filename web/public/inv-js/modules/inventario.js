@@ -55,7 +55,7 @@ const InvInventario = {
 
         // Tabla desktop
         let tableHtml = '<div class="m-table-wrap"><table id="invTable"><thead><tr>'
-            + '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th>'
+            + '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th>'
             + '</tr></thead><tbody id="invBody">';
 
         this._allItems.forEach(function(i) {
@@ -64,6 +64,7 @@ const InvInventario = {
                 + '<td style="font-weight:600">' + (i.codigo_mp || '-') + '</td>'
                 + '<td>' + (i.tipo_cristal || '-') + '</td>'
                 + '<td style="font-weight:600;color:#334155">' + (i.espesor || 0) + 'mm</td>'
+                + '<td style="font-weight:600;color:#1e40af">' + (i.ancho || '-') + 'x' + (i.alto || '-') + 'mm</td>'
                 + '<td style="color:var(--success);font-weight:600">' + (i.entradas || 0) + '</td>'
                 + '<td style="color:var(--danger)">' + (i.salidas_plancha || 0) + '</td>'
                 + '<td style="color:var(--warning)">' + (i.trozos || 0) + '</td>'
@@ -84,6 +85,7 @@ const InvInventario = {
                 + '<span style="font-size:18px;font-weight:800;color:' + stockColor + '">' + (i.stock || 0) + '</span>'
                 + '</div>'
                 + '<div style="font-size:14px;color:#475569;margin-bottom:4px;font-weight:500">' + (i.tipo_cristal || '-') + ' ' + (i.espesor || 0) + 'mm</div>'
+                + '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + (i.ancho || '-') + 'x' + (i.alto || '-') + 'mm</div>'
                 + '<div style="display:flex;gap:16px;font-size:11px;color:#64748b">'
                 + '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
                 + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>'
@@ -103,7 +105,9 @@ const InvInventario = {
             this._allItems = this._originalItems.filter(function(i) {
                 var espesorStr = String(i.espesor != null ? i.espesor : '').toLowerCase();
                 var tipo = String(i.tipo_cristal || '').toLowerCase();
-                return tipo.includes(query) || espesorStr.includes(query);
+                var ancho = String(i.ancho || '').toLowerCase();
+                var alto = String(i.alto || '').toLowerCase();
+                return tipo.includes(query) || espesorStr.includes(query) || ancho.includes(query) || alto.includes(query);
             });
         }
         // Ordenar por tipo_cristal y luego por espesor
