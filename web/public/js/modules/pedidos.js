@@ -12,6 +12,18 @@ App.registerModule('pedidos', {
         this._filterTimer = setTimeout(() => this.filter(), 200);
     },
 
+    toggleActions(btn, id) {
+        event.stopPropagation();
+        const drop = document.getElementById('pedDrop' + id);
+        const wasOpen = drop.classList.contains('open');
+        this.closeAllDropdowns();
+        if (!wasOpen) drop.classList.add('open');
+    },
+
+    closeAllDropdowns() {
+        document.querySelectorAll('.ped-dropdown.open').forEach(d => d.classList.remove('open'));
+    },
+
     async render() {
         const el = document.getElementById('page-pedidos');
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
@@ -42,6 +54,14 @@ App.registerModule('pedidos', {
                 + '.ped-mono{font-size:12px;color:#64748b}'
                 + '.ped-dt{line-height:1.4}'
                 + '.ped-dt-sub{font-size:11px;color:#94a3b8;font-weight:400}'
+                + '.ped-actions-btn{width:32px;height:32px;border-radius:8px;border:1px solid #e2e8f0;background:white;cursor:pointer;font-size:16px;color:#64748b;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s}'
+                + '.ped-actions-btn:hover{background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}'
+                + '.ped-dropdown{display:none;position:absolute;right:0;top:100%;margin-top:4px;background:white;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:20;min-width:140px;padding:4px;overflow:hidden}'
+                + '.ped-dropdown.open{display:block}'
+                + '.ped-drop-item{padding:8px 12px;font-size:12px;color:#334155;cursor:pointer;border-radius:6px;transition:background 0.1s}'
+                + '.ped-drop-item:hover{background:#f1f5f9}'
+                + '.ped-drop-danger{color:#dc2626}'
+                + '.ped-drop-danger:hover{background:#fef2f2}'
                 + '</style>'
 
                 + '<div class="m-page">'
@@ -108,6 +128,7 @@ App.registerModule('pedidos', {
                 + '</style>';
 
             this.setupDragDrop();
+            document.addEventListener('click', () => this.closeAllDropdowns());
         }
         await this.load();
     },
@@ -316,14 +337,16 @@ App.registerModule('pedidos', {
                 + '<td class="ped-td" style="color:#475569">' + escapeHtml(p.revisor_nombre || '-') + '</td>'
                 + '<td class="ped-td ped-mono">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</td>'
                 + '<td class="ped-td ped-mono">' + this.fmtTiempo(p.fecha_subida, p.fecha_revision) + '</td>'
-                + '<td class="ped-td" style="text-align:center;white-space:nowrap">'
-                + (p.estado === 'pendiente' ? '<button title="Ver PDF" onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')" class="btn btn-sm btn-info">PDF</button> ' : '')
-                + (this.canAuthorize && p.estado === 'pendiente' ? '<button title="Revisar" onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')" class="btn btn-sm btn-info">Revisar</button> ' : '')
-                + (this.canAuthorize && p.estado === 'aprobado' ? '<button title="Rechazar" onclick="event.stopPropagation();App.modules.pedidos.rechazarAprobado(' + p.id + ')" class="btn btn-sm btn-danger">X</button> ' : '')
-                + (p.estado !== 'pendiente' ? '<button title="Historial" onclick="event.stopPropagation();App.modules.pedidos.showHistorial(' + p.id + ')" class="btn btn-sm btn-info">History</button> ' : '')
-                + (this.canAuthorize ? '<button title="Eliminar" onclick="event.stopPropagation();App.modules.pedidos.deletePedido(' + p.id + ',\'' + escapeHtml(p.numero_pedido) + '\')" class="btn btn-sm btn-danger">Del</button>' : '')
-                + (this.canAuthorize ? '<button title="Editar" onclick="event.stopPropagation();App.modules.pedidos.showEditModal(' + p.id + ')" class="btn btn-sm btn-outline">Edit</button>' : '')
-                + '</td></tr>';
+                + '<td class="ped-td" style="text-align:center;white-space:nowrap;position:relative">'
+                + '<button onclick="event.stopPropagation();App.modules.pedidos.toggleActions(this,' + p.id + ')" class="ped-actions-btn">⋮</button>'
+                + '<div class="ped-dropdown" id="pedDrop' + p.id + '">'
+                + (p.estado === 'pendiente' ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')">Ver PDF</div>' : '')
+                + (this.canAuthorize && p.estado === 'pendiente' ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')">Revisar</div>' : '')
+                + (this.canAuthorize && p.estado === 'aprobado' ? '<div class="ped-drop-item ped-drop-danger" onclick="event.stopPropagation();App.modules.pedidos.rechazarAprobado(' + p.id + ')">Rechazar</div>' : '')
+                + (p.estado !== 'pendiente' ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.showHistorial(' + p.id + ')">Historial</div>' : '')
+                + (this.canAuthorize ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.showEditModal(' + p.id + ')">Editar</div>' : '')
+                + (this.canAuthorize ? '<div class="ped-drop-item ped-drop-danger" onclick="event.stopPropagation();App.modules.pedidos.deletePedido(' + p.id + ',\'' + escapeHtml(p.numero_pedido) + '\')">Eliminar</div>' : '')
+                + '</div></td></tr>';
         }).join('');
 
         if (cardsEl && cardsEl.offsetParent !== null) {
