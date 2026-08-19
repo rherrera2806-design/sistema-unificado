@@ -19,10 +19,19 @@ App.registerModule('pedidos', {
         const wasOpen = drop.classList.contains('open');
         this.closeAllDropdowns();
         if (!wasOpen) {
+            const rect = drop.parentElement.getBoundingClientRect();
+            drop.style.position = 'fixed';
+            drop.style.top = (rect.bottom + 4) + 'px';
+            drop.style.left = (rect.right - 150) + 'px';
+            drop.style.right = 'auto';
             drop.classList.add('open');
             const close = (e) => {
                 if (!drop.contains(e.target)) {
                     drop.classList.remove('open');
+                    drop.style.position = '';
+                    drop.style.top = '';
+                    drop.style.left = '';
+                    drop.style.right = '';
                     document.removeEventListener('click', close);
                 }
             };
@@ -66,7 +75,7 @@ App.registerModule('pedidos', {
                 + '.ped-dt-sub{font-size:11px;color:#94a3b8;font-weight:400}'
                 + '.ped-actions-btn{width:32px;height:32px;border-radius:8px;border:1px solid #e2e8f0;background:white;cursor:pointer;font-size:16px;color:#64748b;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s}'
                 + '.ped-actions-btn:hover{background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}'
-                + '.ped-dropdown{display:none;position:absolute;right:0;top:100%;margin-top:4px;background:white;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:20;min-width:140px;padding:4px;overflow:hidden}'
+                + '.ped-dropdown{display:none;background:white;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:9999;min-width:140px;padding:4px;overflow:hidden}'
                 + '.ped-dropdown.open{display:block}'
                 + '.ped-drop-item{padding:8px 12px;font-size:12px;color:#334155;cursor:pointer;border-radius:6px;transition:background 0.1s}'
                 + '.ped-drop-item:hover{background:#f1f5f9}'
