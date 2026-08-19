@@ -6,6 +6,7 @@ App.registerModule('pedidos', {
     canAuthorize: false,
     uploading: false,
     _filterTimer: null,
+    activeStatFilter: null,
 
     debouncedFilter() {
         clearTimeout(this._filterTimer);
@@ -57,8 +58,9 @@ App.registerModule('pedidos', {
             el.innerHTML = '<style>'
                 + '@keyframes pedFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
                 + '@keyframes pedCount{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}'
-                + '.ped-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
+                + '.ped-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1);cursor:pointer}'
                 + '.ped-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 28px rgba(0,0,0,0.12)!important}'
+                + '.ped-card-active{outline:2px solid #3b82f6;outline-offset:-2px;background:#f0f7ff!important}'
                 + '.ped-row{will-change:auto;transition:background 0.15s ease}'
                 + '.ped-row:hover{background:#f8fafc}'
                 + '.ped-section{animation:pedFadeUp 0.5s ease both}'
@@ -89,10 +91,10 @@ App.registerModule('pedidos', {
                 + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
                 + '<div style="flex-shrink:0"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Pedidos / Ordenes</h2>'
                 + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestion de pedidos y documentos de ventas</p></div>'
-                + '<div class="m-hero-btns" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;min-width:0">'
-                + '<div style="position:relative;flex:1;min-width:120px"><svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+                + '<div class="m-hero-btns" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0">'
+                + '<div style="position:relative;width:180px;flex-shrink:0"><svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="pedFilterSearch" placeholder="Buscar..." oninput="App.modules.pedidos.debouncedFilter()" style="font-size:12px;padding:8px 10px 8px 28px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);outline:none;transition:border-color 0.2s;width:100%;box-sizing:border-box" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'"></div>'
-                + '<select id="pedFilterEstado" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
+                + '<select id="pedFilterEstado" onchange="App.modules.pedidos.onDropdownFilter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
                 + '<option value="" style="color:#1e293b;background:white">Todos</option><option value="pendiente" style="color:#1e293b;background:white">Pendiente</option><option value="aprobado" style="color:#1e293b;background:white">Aprobado</option><option value="rechazado" style="color:#1e293b;background:white">Rechazado</option></select>'
                 + '<select id="pedFilterAnio" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
                 + '<option value="" style="color:#1e293b;background:white">Año</option></select>'
@@ -286,11 +288,12 @@ App.registerModule('pedidos', {
             else if (e === 'aprobado') apr++;
             else if (e === 'rechazado') rech++;
         }
+        const af = this.activeStatFilter;
         document.getElementById('pedStats').innerHTML =
-            this.statCard(total, 'Total', '#64748b', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', 0, 'stat-blue')
-            + this.statCard(pend, 'Pendientes', '#f59e0b', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', 100, 'stat-green')
-            + this.statCard(apr, 'Aprobados', '#22c55e', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 200, 'stat-green')
-            + this.statCard(rech, 'Rechazados', '#ef4444', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', 300, 'stat-red');
+            this.statCard(total, 'Total', '#64748b', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', 0, 'stat-blue', !af)
+            + this.statCard(pend, 'Pendientes', '#f59e0b', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', 100, 'stat-green', af === 'pendiente')
+            + this.statCard(apr, 'Aprobados', '#22c55e', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 200, 'stat-green', af === 'aprobado')
+            + this.statCard(rech, 'Rechazados', '#ef4444', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>', 300, 'stat-red', af === 'rechazado');
     },
 
     populateYears() {
@@ -303,9 +306,10 @@ App.registerModule('pedidos', {
         if (current && years.includes(parseInt(current))) sel.value = current;
     },
 
-    statCard(value, label, color, icon, delay, cls) {
+    statCard(value, label, color, icon, delay, cls, active) {
         cls = cls || 'stat-blue';
-        return '<div class="m-stat-card ' + cls + ' ped-card" style="animation:pedFadeUp 0.5s ease ' + delay + 'ms both">'
+        const activeCls = active ? ' ped-card-active' : '';
+        return '<div class="m-stat-card ' + cls + ' ped-card' + activeCls + '" style="animation:pedFadeUp 0.5s ease ' + delay + 'ms both" onclick="App.modules.pedidos.toggleStatFilter(\'' + (label === 'Total' ? '' : label.toLowerCase().replace(/s$/, '')) + '\')">'
             + '<div style="display:flex;align-items:center;gap:10px;position:relative;z-index:1">'
             + '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
             + '<div><div style="font-size:20px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1;animation:pedCount 0.6s ease ' + (delay + 200) + 'ms both">' + value + '</div>'
@@ -314,7 +318,7 @@ App.registerModule('pedidos', {
 
     filter() {
         const search = (document.getElementById('pedFilterSearch')?.value || '').toLowerCase();
-        const estado = document.getElementById('pedFilterEstado')?.value || '';
+        const estado = this.activeStatFilter || document.getElementById('pedFilterEstado')?.value || '';
         const anio = document.getElementById('pedFilterAnio')?.value || '';
         const mes = document.getElementById('pedFilterMes')?.value || '';
         const filtered = this.allPedidos.filter(p => {
@@ -331,6 +335,24 @@ App.registerModule('pedidos', {
         this.renderTable(filtered);
         const gc = document.getElementById('pedGraficoContainer');
         if (gc && gc.style.display !== 'none') this.renderGrafico();
+    },
+
+    toggleStatFilter(estado) {
+        if (this.activeStatFilter === estado) {
+            this.activeStatFilter = null;
+        } else {
+            this.activeStatFilter = estado;
+        }
+        const estadoSelect = document.getElementById('pedFilterEstado');
+        if (estadoSelect) estadoSelect.value = this.activeStatFilter || '';
+        this.renderStats();
+        this.filter();
+    },
+
+    onDropdownFilter() {
+        this.activeStatFilter = null;
+        this.renderStats();
+        this.filter();
     },
 
     renderTable(pedidos) {
