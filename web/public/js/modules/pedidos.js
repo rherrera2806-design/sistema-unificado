@@ -13,11 +13,19 @@ App.registerModule('pedidos', {
     },
 
     toggleActions(btn, id) {
-        event.stopPropagation();
         const drop = document.getElementById('pedDrop' + id);
         const wasOpen = drop.classList.contains('open');
         this.closeAllDropdowns();
-        if (!wasOpen) drop.classList.add('open');
+        if (!wasOpen) {
+            drop.classList.add('open');
+            const close = (e) => {
+                if (!drop.contains(e.target) && e.target !== btn) {
+                    drop.classList.remove('open');
+                    document.removeEventListener('click', close);
+                }
+            };
+            setTimeout(() => document.addEventListener('click', close), 0);
+        }
     },
 
     closeAllDropdowns() {
