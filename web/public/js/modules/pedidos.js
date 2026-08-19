@@ -28,8 +28,8 @@ App.registerModule('pedidos', {
                 + '@keyframes pedCount{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}'
                 + '.ped-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
                 + '.ped-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 28px rgba(0,0,0,0.12)!important}'
-                + '.ped-row{transition:all 0.2s ease}'
-                + '.ped-row:hover{transform:translateX(4px)!important}'
+                + '.ped-row{will-change:transform}'
+                + '.ped-row:hover{background:#f8fafc;transform:translateX(4px)}'
                 + '.ped-section{animation:pedFadeUp 0.5s ease both}'
                 + '.ped-badge{transition:all 0.2s ease}'
                 + '.ped-badge:hover{transform:scale(1.08)}'
@@ -46,12 +46,12 @@ App.registerModule('pedidos', {
                 + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestion de pedidos y documentos de ventas</p></div>'
                 + '<div class="m-hero-btns" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;min-width:0">'
                 + '<div style="position:relative;flex:1;min-width:120px"><svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-                + '<input type="text" id="pedFilterSearch" placeholder="Buscar..." oninput="App.modules.pedidos.debouncedFilter()" style="font-size:12px;padding:8px 10px 8px 28px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);backdrop-filter:blur(8px);outline:none;transition:all 0.2s;width:100%;box-sizing:border-box" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'"></div>'
-                + '<select id="pedFilterEstado" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);backdrop-filter:blur(8px);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
+                + '<input type="text" id="pedFilterSearch" placeholder="Buscar..." oninput="App.modules.pedidos.debouncedFilter()" style="font-size:12px;padding:8px 10px 8px 28px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);outline:none;transition:border-color 0.2s;width:100%;box-sizing:border-box" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'"></div>'
+                + '<select id="pedFilterEstado" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
                 + '<option value="" style="color:#1e293b;background:white">Todos</option><option value="pendiente" style="color:#1e293b;background:white">Pendiente</option><option value="aprobado" style="color:#1e293b;background:white">Aprobado</option><option value="rechazado" style="color:#1e293b;background:white">Rechazado</option></select>'
-                + '<select id="pedFilterAnio" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);backdrop-filter:blur(8px);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
+                + '<select id="pedFilterAnio" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
                 + '<option value="" style="color:#1e293b;background:white">Año</option></select>'
-                + '<select id="pedFilterMes" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);backdrop-filter:blur(8px);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
+                + '<select id="pedFilterMes" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
                 + '<option value="" style="color:#1e293b;background:white">Mes</option>'
                 + '<option value="1" style="color:#1e293b;background:white">Ene</option><option value="2" style="color:#1e293b;background:white">Feb</option><option value="3" style="color:#1e293b;background:white">Mar</option><option value="4" style="color:#1e293b;background:white">Abr</option><option value="5" style="color:#1e293b;background:white">May</option><option value="6" style="color:#1e293b;background:white">Jun</option><option value="7" style="color:#1e293b;background:white">Jul</option><option value="8" style="color:#1e293b;background:white">Ago</option><option value="9" style="color:#1e293b;background:white">Sep</option><option value="10" style="color:#1e293b;background:white">Oct</option><option value="11" style="color:#1e293b;background:white">Nov</option><option value="12" style="color:#1e293b;background:white">Dic</option>'
                 + '</select>'
@@ -300,9 +300,7 @@ App.registerModule('pedidos', {
         }
         tbody.innerHTML = pedidos.map(p => {
             const badge = this.badgeHtml(p.estado, p.motivo_rechazo);
-            return '<tr class="ped-row" style="border-bottom:1px solid #f1f5f9;cursor:pointer" '
-                + 'onmouseover="this.style.background=\'#f8fafc\';this.style.transform=\'translateX(4px)\'" '
-                + 'onmouseout="this.style.background=\'white\';this.style.transform=\'none\'">'
+            return '<tr class="ped-row" style="border-bottom:1px solid #f1f5f9;cursor:pointer">'
                 + '<td style="padding:12px 14px"><span style="font-weight:700;color:#0f172a;font-family:\'JetBrains Mono\',monospace;font-size:13px;background:#f1f5f9;padding:4px 10px;border-radius:6px">' + escapeHtml(p.numero_pedido) + '</span></td>'
                 + '<td style="padding:12px 14px;font-weight:600;color:#0f172a">' + escapeHtml(p.cliente) + '</td>'
                 + '<td style="padding:12px 14px">' + this.tipoOvBadge(p.tipo_ov) + '</td>'
@@ -322,7 +320,7 @@ App.registerModule('pedidos', {
                 + '</td></tr>';
         }).join('');
 
-        if (cardsEl) {
+        if (cardsEl && cardsEl.offsetParent !== null) {
             cardsEl.innerHTML = SigmaCards.generate({
                 title: p => '<strong>' + escapeHtml(p.numero_pedido) + '</strong>',
                 subtitle: p => escapeHtml(p.cliente),
