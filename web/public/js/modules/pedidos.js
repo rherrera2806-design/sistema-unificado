@@ -94,8 +94,6 @@ App.registerModule('pedidos', {
                 + '<div class="m-hero-btns" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0">'
                 + '<div style="position:relative;width:180px;flex-shrink:0"><svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="pedFilterSearch" placeholder="Buscar..." oninput="App.modules.pedidos.debouncedFilter()" style="font-size:12px;padding:8px 10px 8px 28px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);outline:none;transition:border-color 0.2s;width:100%;box-sizing:border-box" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'"></div>'
-                + '<select id="pedFilterEstado" onchange="App.modules.pedidos.onDropdownFilter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
-                + '<option value="" style="color:#1e293b;background:white">Todos</option><option value="pendiente" style="color:#1e293b;background:white">Pendiente</option><option value="aprobado" style="color:#1e293b;background:white">Aprobado</option><option value="rechazado" style="color:#1e293b;background:white">Rechazado</option></select>'
                 + '<select id="pedFilterAnio" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
                 + '<option value="" style="color:#1e293b;background:white">Año</option></select>'
                 + '<select id="pedFilterMes" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
@@ -318,7 +316,7 @@ App.registerModule('pedidos', {
 
     filter() {
         const search = (document.getElementById('pedFilterSearch')?.value || '').toLowerCase();
-        const estado = this.activeStatFilter || document.getElementById('pedFilterEstado')?.value || '';
+        const estado = this.activeStatFilter || '';
         const anio = document.getElementById('pedFilterAnio')?.value || '';
         const mes = document.getElementById('pedFilterMes')?.value || '';
         const filtered = this.allPedidos.filter(p => {
@@ -343,14 +341,6 @@ App.registerModule('pedidos', {
         } else {
             this.activeStatFilter = estado;
         }
-        const estadoSelect = document.getElementById('pedFilterEstado');
-        if (estadoSelect) estadoSelect.value = this.activeStatFilter || '';
-        this.renderStats();
-        this.filter();
-    },
-
-    onDropdownFilter() {
-        this.activeStatFilter = null;
         this.renderStats();
         this.filter();
     },
