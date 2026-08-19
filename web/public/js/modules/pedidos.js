@@ -12,14 +12,16 @@ App.registerModule('pedidos', {
         this._filterTimer = setTimeout(() => this.filter(), 200);
     },
 
-    toggleActions(btn, id) {
+    toggleActions(evt, id) {
+        if (evt) evt.stopPropagation();
         const drop = document.getElementById('pedDrop' + id);
+        if (!drop) return;
         const wasOpen = drop.classList.contains('open');
         this.closeAllDropdowns();
         if (!wasOpen) {
             drop.classList.add('open');
             const close = (e) => {
-                if (!drop.contains(e.target) && e.target !== btn) {
+                if (!drop.contains(e.target)) {
                     drop.classList.remove('open');
                     document.removeEventListener('click', close);
                 }
@@ -346,7 +348,7 @@ App.registerModule('pedidos', {
                 + '<td class="ped-td ped-mono">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</td>'
                 + '<td class="ped-td ped-mono">' + this.fmtTiempo(p.fecha_subida, p.fecha_revision) + '</td>'
                 + '<td class="ped-td" style="text-align:center;white-space:nowrap;position:relative">'
-                + '<button onclick="event.stopPropagation();App.modules.pedidos.toggleActions(this,' + p.id + ')" class="ped-actions-btn">⋮</button>'
+                + '<button onclick="App.modules.pedidos.toggleActions(event,' + p.id + ')" class="ped-actions-btn">⋮</button>'
                 + '<div class="ped-dropdown" id="pedDrop' + p.id + '">'
                 + (p.estado === 'pendiente' ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')">Ver PDF</div>' : '')
                 + (this.canAuthorize && p.estado === 'pendiente' ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')">Revisar</div>' : '')
