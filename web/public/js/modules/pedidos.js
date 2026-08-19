@@ -28,14 +28,20 @@ App.registerModule('pedidos', {
                 + '@keyframes pedCount{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}'
                 + '.ped-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
                 + '.ped-card:hover{transform:translateY(-3px)!important;box-shadow:0 12px 28px rgba(0,0,0,0.12)!important}'
-                + '.ped-row{will-change:transform}'
-                + '.ped-row:hover{background:#f8fafc;transform:translateX(4px)}'
+                + '.ped-row{will-change:auto;transition:background 0.15s ease}'
+                + '.ped-row:hover{background:#f8fafc}'
                 + '.ped-section{animation:pedFadeUp 0.5s ease both}'
                 + '.ped-badge{transition:all 0.2s ease}'
                 + '.ped-badge:hover{transform:scale(1.08)}'
                 + '.ped-btn{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}'
                 + '.ped-btn:hover{transform:translateY(-1px)!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}'
                 + '#pedFilterSearch::placeholder{color:rgba(255,255,255,0.6)}'
+                + '.ped-th{padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px}'
+                + '.ped-td{padding:10px 12px;border-bottom:1px solid #f1f5f9}'
+                + '.ped-num{font-weight:700;color:#0f172a;font-size:13px;background:#f1f5f9;padding:4px 10px;border-radius:6px}'
+                + '.ped-mono{font-size:12px;color:#64748b}'
+                + '.ped-dt{line-height:1.4}'
+                + '.ped-dt-sub{font-size:11px;color:#94a3b8;font-weight:400}'
                 + '</style>'
 
                 + '<div class="m-page">'
@@ -68,17 +74,17 @@ App.registerModule('pedidos', {
                 + '<button onclick="App.modules.pedidos.toggleGrafico()" id="pedBtnGrafico" class="btn btn-info" style="padding:6px 12px;font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Grafico</button></div>'
                 + '<div id="pedGraficoContainer" style="display:none;padding:16px;border-bottom:1px solid #f1f5f9"></div>'
                 + '<div class="m-card-body" style="padding:0">'
-                + '<div class="m-table-wrap" style="overflow-x:auto;max-height:65vh"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px">'
-                + '<thead style="position:sticky;top:0;z-index:2"><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">'
-                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">N Pedido</th>'
-                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Cliente</th>'
-                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tipo</th>'
-                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Vendedor</th>'
-                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Fecha</th>'
-                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Estado</th>'
-                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Revisor</th>'
-                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Tiempo</th>'
-                + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Acciones</th>'
+                + '<div class="m-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px">'
+                + '<thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">'
+                + '<th class="ped-th">N Pedido</th>'
+                + '<th class="ped-th">Cliente</th>'
+                + '<th class="ped-th">Tipo</th>'
+                + '<th class="ped-th">Vendedor</th>'
+                + '<th class="ped-th">Fecha</th>'
+                + '<th class="ped-th">Estado</th>'
+                + '<th class="ped-th">Revisor</th>'
+                + '<th class="ped-th">Tiempo</th>'
+                + '<th class="ped-th" style="text-align:center">Acciones</th>'
                 + '</tr></thead><tbody id="pedidosTable">'
                 + '<tr><td colspan="9" style="text-align:center;padding:48px;color:#94a3b8">Cargando pedidos...</td></tr>'
                 + '</tbody></table></div>'
@@ -300,23 +306,23 @@ App.registerModule('pedidos', {
         }
         tbody.innerHTML = pedidos.map(p => {
             const badge = this.badgeHtml(p.estado, p.motivo_rechazo);
-            return '<tr class="ped-row" style="border-bottom:1px solid #f1f5f9;cursor:pointer">'
-                + '<td style="padding:12px 14px"><span style="font-weight:700;color:#0f172a;font-family:\'JetBrains Mono\',monospace;font-size:13px;background:#f1f5f9;padding:4px 10px;border-radius:6px">' + escapeHtml(p.numero_pedido) + '</span></td>'
-                + '<td style="padding:12px 14px;font-weight:600;color:#0f172a">' + escapeHtml(p.cliente) + '</td>'
-                + '<td style="padding:12px 14px">' + this.tipoOvBadge(p.tipo_ov) + '</td>'
-                + '<td style="padding:12px 14px;color:#475569">' + escapeHtml(p.vendedor_nombre || p.vendedor) + '</td>'
-                + '<td style="padding:12px 14px"><div style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + this.fmtDateTime(p.fecha_subida) + '</div></td>'
-                + '<td style="padding:12px 14px">' + badge + '</td>'
-                + '<td style="padding:12px 14px;color:#475569">' + escapeHtml(p.revisor_nombre || '-') + '</td>'
-                + '<td style="padding:12px 14px"><div style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</div></td>'
-                + '<td style="padding:12px 14px"><span style="font-size:12px;color:#64748b;font-family:\'JetBrains Mono\',monospace">' + this.fmtTiempo(p.fecha_subida, p.fecha_revision) + '</span></td>'
-                + '<td style="padding:12px 14px;text-align:center;white-space:nowrap">'
-                + (p.estado === 'pendiente' ? '<button title="Ver PDF" onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')" class="btn btn-sm btn-info"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button> ' : '')
-                + (this.canAuthorize && p.estado === 'pendiente' ? '<button title="Revisar pedido" onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')" class="btn btn-sm btn-info"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button> ' : '')
-                + (this.canAuthorize && p.estado === 'aprobado' ? '<button title="Rechazar pedido" onclick="event.stopPropagation();App.modules.pedidos.rechazarAprobado(' + p.id + ')" class="btn btn-sm btn-danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button> ' : '')
-                + (p.estado !== 'pendiente' ? '<button title="Ver historial" onclick="event.stopPropagation();App.modules.pedidos.showHistorial(' + p.id + ')" class="btn btn-sm btn-info"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button> ' : '')
-                + (this.canAuthorize ? '<button title="Eliminar pedido" onclick="event.stopPropagation();App.modules.pedidos.deletePedido(' + p.id + ',\'' + escapeHtml(p.numero_pedido) + '\')" class="btn btn-sm btn-danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
-                + (this.canAuthorize ? '<button title="Editar pedido" onclick="event.stopPropagation();App.modules.pedidos.showEditModal(' + p.id + ')" class="btn btn-sm btn-outline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
+            return '<tr class="ped-row" style="cursor:pointer">'
+                + '<td class="ped-td"><span class="ped-num">' + escapeHtml(p.numero_pedido) + '</span></td>'
+                + '<td class="ped-td" style="font-weight:600;color:#0f172a">' + escapeHtml(p.cliente) + '</td>'
+                + '<td class="ped-td">' + this.tipoOvBadge(p.tipo_ov) + '</td>'
+                + '<td class="ped-td" style="color:#475569">' + escapeHtml(p.vendedor_nombre || p.vendedor) + '</td>'
+                + '<td class="ped-td ped-mono">' + this.fmtDateTime(p.fecha_subida) + '</td>'
+                + '<td class="ped-td">' + badge + '</td>'
+                + '<td class="ped-td" style="color:#475569">' + escapeHtml(p.revisor_nombre || '-') + '</td>'
+                + '<td class="ped-td ped-mono">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</td>'
+                + '<td class="ped-td ped-mono">' + this.fmtTiempo(p.fecha_subida, p.fecha_revision) + '</td>'
+                + '<td class="ped-td" style="text-align:center;white-space:nowrap">'
+                + (p.estado === 'pendiente' ? '<button title="Ver PDF" onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')" class="btn btn-sm btn-info">PDF</button> ' : '')
+                + (this.canAuthorize && p.estado === 'pendiente' ? '<button title="Revisar" onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')" class="btn btn-sm btn-info">Revisar</button> ' : '')
+                + (this.canAuthorize && p.estado === 'aprobado' ? '<button title="Rechazar" onclick="event.stopPropagation();App.modules.pedidos.rechazarAprobado(' + p.id + ')" class="btn btn-sm btn-danger">X</button> ' : '')
+                + (p.estado !== 'pendiente' ? '<button title="Historial" onclick="event.stopPropagation();App.modules.pedidos.showHistorial(' + p.id + ')" class="btn btn-sm btn-info">History</button> ' : '')
+                + (this.canAuthorize ? '<button title="Eliminar" onclick="event.stopPropagation();App.modules.pedidos.deletePedido(' + p.id + ',\'' + escapeHtml(p.numero_pedido) + '\')" class="btn btn-sm btn-danger">Del</button>' : '')
+                + (this.canAuthorize ? '<button title="Editar" onclick="event.stopPropagation();App.modules.pedidos.showEditModal(' + p.id + ')" class="btn btn-sm btn-outline">Edit</button>' : '')
                 + '</td></tr>';
         }).join('');
 
@@ -683,7 +689,7 @@ App.registerModule('pedidos', {
     },
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); },
-    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return '<div style="line-height:1.4">' + f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '</div><div style="font-size:11px;color:#94a3b8;font-weight:400">' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + '</div>'; },
+    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return '<div class="ped-dt">' + f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '</div><div class="ped-dt-sub">' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + '</div>'; },
     fmtTiempo(inicio, fin) {
         if (!inicio || !fin) return '<span style="color:#cbd5e1">-</span>';
         const diff = new Date(fin) - new Date(inicio);
