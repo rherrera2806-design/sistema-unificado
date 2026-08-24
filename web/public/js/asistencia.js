@@ -993,6 +993,8 @@ const Asistencia = {
         c.innerHTML = `
             <div id="ast-ranking-permisos-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
 
+            <div id="ast-total-permisos-container" style="margin-bottom:16px;animation:astFadeUp 0.4s ease 100ms both"></div>
+
             <div class="m-card">
                 <div class="m-card-header" style="padding:6px 12px">
                     <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Permisos</h3>
@@ -1041,6 +1043,7 @@ const Asistencia = {
             
             this.renderRankingPermisos(ranking);
             this.renderTablaPermisos(permisos);
+            this.renderTotalPermisos(permisos);
         } catch(e) { console.error('Error:', e); }
     },
 
@@ -1084,27 +1087,77 @@ const Asistencia = {
     renderRankingVacaciones(ranking) { this._renderRanking('ast-ranking-vacaciones-container', ranking, 'dias', 'Días Vacaciones'); },
     renderRankingHorasExtras(ranking) { this._renderRanking('ast-ranking-he-container', ranking, 'horas', 'Horas Extras'); },
 
+    _statCard(value, label, color, iconSvg, delay) {
+        return `<div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid ${color};border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease ${delay}ms both;min-width:120px;flex:1 0 0;display:flex;align-items:center;gap:8px">
+            <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,${color}15,${color}30);display:flex;align-items:center;justify-content:center;flex-shrink:0">${iconSvg}</div>
+            <div><div style="font-size:18px;font-weight:800;color:${color};line-height:1">${value}</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">${label}</div></div>
+        </div>`;
+    },
+
+    renderTotalPermisos(permisos) {
+        const container = document.getElementById('ast-total-permisos-container');
+        if (!container) return;
+        const total = permisos.length;
+        const aprobados = permisos.filter(p => p.estado === 'aprobado').length;
+        const pendientes = permisos.filter(p => p.estado === 'pendiente').length;
+        const totalHoras = permisos.reduce((sum, p) => sum + (Number(p.horas) || 0), 0);
+        const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+        const iconClock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        const iconX = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
+        container.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+            + this._statCard(totalHoras + 'h', 'Total Horas', '#3b82f6', iconClock, 0)
+            + this._statCard(aprobados, 'Aprobados', '#22c55e', iconCheck, 60)
+            + this._statCard(pendientes, 'Pendientes', '#f59e0b', iconClock, 120)
+            + this._statCard(total, 'Registros', '#8b5cf6', iconX, 180)
+            + '</div>';
+    },
+
+    renderTotalLicencias(licencias) {
+        const container = document.getElementById('ast-total-licencias-container');
+        if (!container) return;
+        const total = licencias.length;
+        const aprobadas = licencias.filter(l => l.estado === 'aprobada').length;
+        const pendientes = licencias.filter(l => l.estado === 'pendiente').length;
+        const totalDias = licencias.reduce((sum, l) => sum + (Number(l.dias) || 0), 0);
+        const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+        const iconClock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        const iconX = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
+        container.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+            + this._statCard(totalDias + 'd', 'Total Días', '#3b82f6', iconClock, 0)
+            + this._statCard(aprobadas, 'Aprobadas', '#22c55e', iconCheck, 60)
+            + this._statCard(pendientes, 'Pendientes', '#f59e0b', iconClock, 120)
+            + this._statCard(total, 'Registros', '#8b5cf6', iconX, 180)
+            + '</div>';
+    },
+
+    renderTotalVacaciones(vacaciones) {
+        const container = document.getElementById('ast-total-vacaciones-container');
+        if (!container) return;
+        const total = vacaciones.length;
+        const totalDias = vacaciones.reduce((sum, v) => sum + (Number(v.dias) || 0), 0);
+        const trabajadores = new Set(vacaciones.map(v => v.trabajador_id)).size;
+        const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+        const iconUsers = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
+        container.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+            + this._statCard(totalDias + 'd', 'Total Días', '#3b82f6', iconCheck, 0)
+            + this._statCard(trabajadores, 'Trabajadores', '#8b5cf6', iconUsers, 60)
+            + this._statCard(total, 'Registros', '#22c55e', iconCheck, 120)
+            + '</div>';
+    },
+
     renderTotalHorasExtras(horasExtras) {
         const container = document.getElementById('ast-total-he-container');
         if (!container) return;
         const total = horasExtras.reduce((sum, he) => sum + (Number(he.horas) || 0), 0);
         const aprobadas = horasExtras.filter(he => he.estado === 'aprobada').reduce((sum, he) => sum + (Number(he.horas) || 0), 0);
         const pendientes = horasExtras.filter(he => he.estado === 'pendiente').reduce((sum, he) => sum + (Number(he.horas) || 0), 0);
-        container.innerHTML = `
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-                <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #93c5fd;border-radius:12px;padding:16px;text-align:center">
-                    <div style="font-size:24px;font-weight:800;color:#1e40af">${total.toFixed(1)}</div>
-                    <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px">Total Horas</div>
-                </div>
-                <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:12px;padding:16px;text-align:center">
-                    <div style="font-size:24px;font-weight:800;color:#166534">${aprobadas.toFixed(1)}</div>
-                    <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px">Aprobadas</div>
-                </div>
-                <div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:12px;padding:16px;text-align:center">
-                    <div style="font-size:24px;font-weight:800;color:#92400e">${pendientes.toFixed(1)}</div>
-                    <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px">Pendientes</div>
-                </div>
-            </div>`;
+        const iconClock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+        container.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+            + this._statCard(total.toFixed(1) + 'h', 'Total Horas', '#3b82f6', iconClock, 0)
+            + this._statCard(aprobadas.toFixed(1), 'Aprobadas', '#22c55e', iconCheck, 60)
+            + this._statCard(pendientes.toFixed(1), 'Pendientes', '#f59e0b', iconClock, 120)
+            + '</div>';
     },
 
     renderTablaPermisos(permisos) {
@@ -1203,6 +1256,8 @@ const Asistencia = {
         c.innerHTML = `
             <div id="ast-ranking-licencias-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
 
+            <div id="ast-total-licencias-container" style="margin-bottom:16px;animation:astFadeUp 0.4s ease 100ms both"></div>
+
             <div class="m-card">
                 <div class="m-card-header" style="padding:6px 12px">
                     <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Licencias Médicas</h3>
@@ -1252,6 +1307,7 @@ const Asistencia = {
             
             this.renderRankingLicencias(ranking);
             this.renderTablaLicencias(licencias);
+            this.renderTotalLicencias(licencias);
         } catch(e) { console.error('Error:', e); }
     },
 
@@ -1349,6 +1405,8 @@ const Asistencia = {
         c.innerHTML = `
             <div id="ast-ranking-vacaciones-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
 
+            <div id="ast-total-vacaciones-container" style="margin-bottom:16px;animation:astFadeUp 0.4s ease 100ms both"></div>
+
             <div class="m-card">
                 <div class="m-card-header" style="padding:6px 12px">
                     <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Vacaciones</h3>
@@ -1394,6 +1452,7 @@ const Asistencia = {
             
             this.renderRankingVacaciones(ranking);
             this.renderTablaVacaciones(vacaciones);
+            this.renderTotalVacaciones(vacaciones);
         } catch(e) { console.error('Error:', e); }
     },
 
