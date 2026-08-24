@@ -61,9 +61,8 @@ const InvInventario = {
         this._allItems.forEach(function(i) {
             var stockColor = i.stock > 0 ? 'var(--success)' : 'var(--danger)';
             var cpm = Number(i.consumo_promedio_mensual) || 0;
-            var autoDias = Number(i.autonomia_dias) || 0;
             var autoMeses = Number(i.autonomia_meses) || 0;
-            var autoColor = autoDias <= 0 ? 'var(--danger)' : autoDias <= 21 ? 'var(--warning)' : 'var(--success)';
+            var autoColor = autoMeses <= 0 ? 'var(--danger)' : autoMeses <= 1 ? 'var(--warning)' : 'var(--success)';
             tableHtml += '<tr>'
                 + '<td style="font-weight:600">' + (i.codigo_mp || '-') + '</td>'
                 + '<td>' + (i.tipo_cristal || '-') + '</td>'
@@ -74,7 +73,7 @@ const InvInventario = {
                 + '<td style="color:var(--warning)">' + (i.trozos || 0) + '</td>'
                 + '<td><span style="font-size:18px;font-weight:700;color:' + stockColor + '">' + (i.stock || 0) + '</span></td>'
                 + '<td style="font-weight:600;color:#92400e;background:#fef3c7">' + cpm.toLocaleString('es-CL') + '</td>'
-                + '<td style="font-weight:600;color:' + autoColor + '">' + autoDias + 'd / ' + autoMeses + 'm</td>'
+                + '<td style="font-weight:600;color:' + autoColor + '">' + autoMeses + ' m</td>'
                 + '<td>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + ' m2</td>'
                 + '</tr>';
         });
@@ -86,9 +85,8 @@ const InvInventario = {
         this._allItems.forEach(function(i) {
             var stockColor = i.stock > 0 ? '#22c55e' : '#ef4444';
             var cpm = Number(i.consumo_promedio_mensual) || 0;
-            var autoDias = Number(i.autonomia_dias) || 0;
             var autoMeses = Number(i.autonomia_meses) || 0;
-            var autoColor = autoDias <= 0 ? '#ef4444' : autoDias <= 21 ? '#f59e0b' : '#22c55e';
+            var autoColor = autoMeses <= 0 ? '#ef4444' : autoMeses <= 1 ? '#f59e0b' : '#22c55e';
             cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + stockColor + '">'
                 + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
                 + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + (i.codigo_mp || '-') + '</span>'
@@ -101,7 +99,7 @@ const InvInventario = {
                 + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>'
                 + '<span>m2: <strong>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + '</strong></span>'
                 + '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-weight:600">CPM: ' + cpm.toLocaleString('es-CL') + '</span>'
-                + '<span style="background:' + autoColor + '20;color:' + autoColor + ';padding:1px 6px;border-radius:8px;font-weight:600">Auto: ' + autoDias + 'd / ' + autoMeses + 'm</span>'
+                + '<span style="background:' + autoColor + '20;color:' + autoColor + ';padding:1px 6px;border-radius:8px;font-weight:600">Auto: ' + autoMeses + ' m</span>'
                 + '</div></div>';
         });
         cardsHtml += '</div>';

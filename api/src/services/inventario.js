@@ -111,12 +111,10 @@ async function getInventario(filtros = {}) {
         const cpm = Number(r.consumo_promedio_mensual) || 0;
         const stockM2 = Number(r.m2_entradas) - Number(r.m2_salidas);
         const autonomiaMeses = cpm > 0 ? (stockM2 / cpm) : 0;
-        const autonomiaDias = autonomiaMeses * 21;
         return {
             ...r, stock, entradas: Number(r.entradas), salidas_plancha: Number(r.salidas_plancha),
             trozos: Number(r.trozos), m2_entradas: Number(r.m2_entradas), m2_salidas: Number(r.m2_salidas),
-            autonomia_meses: Math.round(autonomiaMeses * 10) / 10,
-            autonomia_dias: Math.round(autonomiaDias)
+            autonomia_meses: Math.round(autonomiaMeses * 10) / 10
         };
     });
 }
