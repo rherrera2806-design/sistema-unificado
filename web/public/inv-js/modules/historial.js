@@ -1,6 +1,5 @@
 const InvHistorial = {
     _currentData: [],
-    _tipoFilter: '',
 
     async render() {
         const page = document.querySelector('.page.active');
@@ -37,20 +36,13 @@ const InvHistorial = {
                                 <div class="inv-form-grid">
                                     <div class="form-group"><label>Fecha Inicio</label><input type="date" id="hFechaInicio"></div>
                                     <div class="form-group"><label>Fecha Fin</label><input type="date" id="hFechaFin"></div>
+                                    <div class="form-group"><label>Tipo</label><select id="hTipo"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select></div>
                                 </div>
                                 <div style="display:flex;gap:8px;margin-top:6px;justify-content:flex-end">
                                     <button type="submit" class="btn btn-primary" style="padding:10px 28px;font-size:13px">Buscar</button>
                                     <button type="button" class="btn btn-outline" style="padding:10px 28px;font-size:13px" onclick="InvHistorial.limpiar()">Limpiar</button>
                                 </div>
                             </form>
-                        </div>
-                    </div>
-
-                    <div class="m-actions" style="margin-bottom:10px;justify-content:center">
-                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                            <a class="filter-chip active" onclick="InvHistorial.filtrarTipo('')" id="hFAll" style="font-size:11px;padding:4px 10px">Todos</a>
-                            <a class="filter-chip" onclick="InvHistorial.filtrarTipo('entrada')" id="hFEnt" style="font-size:11px;padding:4px 10px">Entradas</a>
-                            <a class="filter-chip" onclick="InvHistorial.filtrarTipo('salida')" id="hFSal" style="font-size:11px;padding:4px 10px">Salidas</a>
                         </div>
                     </div>
 
@@ -86,7 +78,7 @@ const InvHistorial = {
             + '</tr></thead><tbody>';
 
         this._currentData.forEach(function(m) {
-            var f = new Date(m.fecha_hora);
+            var f = new Date(m.fecha_hora.replace('Z', ''));
             var hora = f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', hour12:false});
             tableHtml += '<tr>'
                 + '<td>' + f.toLocaleDateString('es-CL') + '</td>'
@@ -108,7 +100,7 @@ const InvHistorial = {
         // Cards móvil
         let cardsHtml = '<div class="m-cards-mobile" style="display:none">';
         this._currentData.forEach(function(m) {
-            var f = new Date(m.fecha_hora);
+            var f = new Date(m.fecha_hora.replace('Z', ''));
             var hora = f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', hour12:false});
             var color = m.tipo_movimiento === 'entrada' ? '#22c55e' : '#ef4444';
             cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + color + '">'
@@ -137,31 +129,11 @@ const InvHistorial = {
         var f = {};
         var fi = document.getElementById('hFechaInicio').value;
         var ff = document.getElementById('hFechaFin').value;
+        var t = document.getElementById('hTipo').value;
         if (fi) f.fechaInicio = fi;
         if (ff) f.fechaFin = ff;
-        if (this._tipoFilter) f.tipo = this._tipoFilter;
+        if (t) f.tipo = t;
         try {
-            var movs = await api.inv().getMovimientos(f);
-            this._currentData = Array.isArray(movs) ? movs : [];
-            var count = document.getElementById('hCount');
-            if (count) count.textContent = '(' + this._currentData.length + ')';
-            this.renderContent();
-        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
-    },
-
-    async filtrarTipo(tipo) {
-        this._tipoFilter = tipo;
-        document.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
-        if (tipo === '') document.getElementById('hFAll').classList.add('active');
-        else if (tipo === 'entrada') document.getElementById('hFEnt').classList.add('active');
-        else document.getElementById('hFSal').classList.add('active');
-        try {
-            var f = {};
-            var fi = document.getElementById('hFechaInicio') ? document.getElementById('hFechaInicio').value : '';
-            var ff = document.getElementById('hFechaFin') ? document.getElementById('hFechaFin').value : '';
-            if (fi) f.fechaInicio = fi;
-            if (ff) f.fechaFin = ff;
-            if (tipo) f.tipo = tipo;
             var movs = await api.inv().getMovimientos(f);
             this._currentData = Array.isArray(movs) ? movs : [];
             var count = document.getElementById('hCount');
@@ -173,7 +145,7 @@ const InvHistorial = {
     limpiar() {
         document.getElementById('hFechaInicio').value = '';
         document.getElementById('hFechaFin').value = '';
-        this._tipoFilter = '';
+        document.getElementById('hTipo').value = '';
         this.render();
     },
 

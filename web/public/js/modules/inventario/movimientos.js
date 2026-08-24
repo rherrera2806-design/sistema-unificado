@@ -116,7 +116,7 @@ const InvMovimientos = {
                         <div class="m-card-body" style="padding:14px 16px">
                             ${movimientos.length === 0
                                 ? '<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">Sin movimientos registrados</div>'
-                                : `<div class="m-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Turno</th></tr></thead><tbody>${this.renderRows(movimientos.slice(0, 20))}</tbody></table></div>`
+                                : `<div class="m-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Turno</th>${App.canDelete('inv_inventario') ? '<th>Acciones</th>' : ''}</tr></thead><tbody>${this.renderRows(movimientos.slice(0, 20))}</tbody></table></div>`
                             }
                         </div>
                     </div>
@@ -125,7 +125,11 @@ const InvMovimientos = {
     },
 
     renderRows(movs) {
-        return movs.map(m => `<tr><td>${new Date(m.fecha_hora).toLocaleDateString('es-CL')}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}</td><td>${m.codigo_mp || '-'}</td><td>${m.mp_nombre || m.tipo_cristal}</td><td>${m.espesor_mm || m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td>${m.turno || '-'}</td></tr>`).join('');
+        const canDel = App.canDelete('inv_inventario');
+        return movs.map(m => {
+            const f = new Date(m.fecha_hora.replace('Z', ''));
+            return `<tr><td>${f.toLocaleDateString('es-CL')}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}</td><td>${m.codigo_mp || '-'}</td><td>${m.mp_nombre || m.tipo_cristal}</td><td>${m.espesor_mm || m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td>${m.turno || '-'}</td>${canDel ? `<td><button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>` : ''}</tr>`;
+        }).join('');
     },
 
     onMpChange() {
@@ -273,7 +277,11 @@ const InvMovimientos = {
             if (cant > dim.stock) { App.toast('Cantidad excede stock disponible (' + dim.stock + ' planchas)', 'error'); return; }
         }
 
+        const user = (() => { try { return JSON.parse(localStorage.getItem('unified_user')); } catch { return null; } })();
+        const now = new Date();
+        const fechaLocal = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + 'T' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
         const data = {
+            usuario_id: user ? user.id : null,
             tipo_movimiento: this.tipoMovimiento,
             materia_prima_id: parseInt(materiaPrimaId),
             ancho: parseInt(document.getElementById('ancho').value) || 0,
@@ -283,7 +291,7 @@ const InvMovimientos = {
             turno: document.getElementById('turno').value || null,
             tipo_salida: this.tipoMovimiento === 'salida' ? this.tipoSalida : null,
             observaciones: document.getElementById('observaciones').value || null,
-            fecha_hora: document.getElementById('fecha').value || new Date().toISOString()
+            fecha_hora: document.getElementById('fecha').value ? document.getElementById('fecha').value + 'T00:00:00' : fechaLocal
         };
         try {
             await api.inv().crearMovimiento(data);
