@@ -1118,7 +1118,13 @@ const Asistencia = {
         const total = licencias.length;
         const aprobadas = licencias.filter(l => l.estado === 'aprobada').length;
         const pendientes = licencias.filter(l => l.estado === 'pendiente').length;
-        const totalDias = licencias.reduce((sum, l) => sum + (Number(l.dias) || 0), 0);
+        const calcDias = (l) => {
+            if (l.dias) return Number(l.dias);
+            const ini = new Date(l.fecha_inicio);
+            const fin = new Date(l.fecha_fin);
+            return Math.round((fin - ini) / (1000 * 60 * 60 * 24)) + 1;
+        };
+        const totalDias = licencias.reduce((sum, l) => sum + calcDias(l), 0);
         const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
         const iconClock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
         const iconX = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
@@ -1134,7 +1140,13 @@ const Asistencia = {
         const container = document.getElementById('ast-total-vacaciones-container');
         if (!container) return;
         const total = vacaciones.length;
-        const totalDias = vacaciones.reduce((sum, v) => sum + (Number(v.dias) || 0), 0);
+        const calcDias = (v) => {
+            if (v.dias) return Number(v.dias);
+            const ini = new Date(v.fecha_inicio);
+            const fin = new Date(v.fecha_fin);
+            return Math.round((fin - ini) / (1000 * 60 * 60 * 24)) + 1;
+        };
+        const totalDias = vacaciones.reduce((sum, v) => sum + calcDias(v), 0);
         const trabajadores = new Set(vacaciones.map(v => v.trabajador_id)).size;
         const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
         const iconUsers = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
