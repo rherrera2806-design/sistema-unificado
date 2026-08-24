@@ -243,7 +243,7 @@ const Asistencia = {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
                 + `<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">${BTN.FILTRAR}</button>`
-                + (canAgT ? `<button onclick="Asistencia.abrirModalVacacion()" class="btn btn-primary" title="${BTN.NUEVO} vacación" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
+                + (canAgT ? `<button onclick="Asistencia.abrirModalVacacion()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'horas_extras') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
