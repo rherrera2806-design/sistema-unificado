@@ -55,7 +55,7 @@ const InvInventario = {
 
         // Tabla desktop
         let tableHtml = '<div class="m-table-wrap"><table id="invTable"><thead><tr>'
-            + '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>CPM</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th>'
+            + '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>CPM</th><th>m2 Stock</th>'
             + '</tr></thead><tbody id="invBody">';
 
         this._allItems.forEach(function(i) {
@@ -66,11 +66,11 @@ const InvInventario = {
                 + '<td>' + (i.tipo_cristal || '-') + '</td>'
                 + '<td style="font-weight:600;color:#334155">' + (i.espesor || 0) + 'mm</td>'
                 + '<td style="font-weight:600;color:#1e40af">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</td>'
-                + '<td style="font-weight:600;color:#92400e;background:#fef3c7">' + cpm.toLocaleString('es-CL') + '</td>'
                 + '<td style="color:var(--success);font-weight:600">' + (i.entradas || 0) + '</td>'
                 + '<td style="color:var(--danger)">' + (i.salidas_plancha || 0) + '</td>'
                 + '<td style="color:var(--warning)">' + (i.trozos || 0) + '</td>'
                 + '<td><span style="font-size:18px;font-weight:700;color:' + stockColor + '">' + (i.stock || 0) + '</span></td>'
+                + '<td style="font-weight:600;color:#92400e;background:#fef3c7">' + cpm.toLocaleString('es-CL') + '</td>'
                 + '<td>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + ' m2</td>'
                 + '</tr>';
         });
@@ -92,8 +92,8 @@ const InvInventario = {
                 + '<div style="display:flex;gap:12px;font-size:11px;color:#64748b;flex-wrap:wrap">'
                 + '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
                 + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>'
-                + '<span>m2: <strong>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + '</strong></span>'
                 + '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-weight:600">CPM: ' + cpm.toLocaleString('es-CL') + '</span>'
+                + '<span>m2: <strong>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + '</strong></span>'
                 + '</div></div>';
         });
         cardsHtml += '</div>';
