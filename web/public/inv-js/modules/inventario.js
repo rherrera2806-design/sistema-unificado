@@ -55,16 +55,18 @@ const InvInventario = {
 
         // Tabla desktop
         let tableHtml = '<div class="m-table-wrap"><table id="invTable"><thead><tr>'
-            + '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th>'
+            + '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>CPM</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th>'
             + '</tr></thead><tbody id="invBody">';
 
         this._allItems.forEach(function(i) {
             var stockColor = i.stock > 0 ? 'var(--success)' : 'var(--danger)';
+            var cpm = Number(i.consumo_promedio_mensual) || 0;
             tableHtml += '<tr>'
                 + '<td style="font-weight:600">' + (i.codigo_mp || '-') + '</td>'
                 + '<td>' + (i.tipo_cristal || '-') + '</td>'
                 + '<td style="font-weight:600;color:#334155">' + (i.espesor || 0) + 'mm</td>'
                 + '<td style="font-weight:600;color:#1e40af">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</td>'
+                + '<td style="font-weight:600;color:#92400e;background:#fef3c7">' + cpm.toLocaleString('es-CL') + '</td>'
                 + '<td style="color:var(--success);font-weight:600">' + (i.entradas || 0) + '</td>'
                 + '<td style="color:var(--danger)">' + (i.salidas_plancha || 0) + '</td>'
                 + '<td style="color:var(--warning)">' + (i.trozos || 0) + '</td>'
@@ -79,6 +81,7 @@ const InvInventario = {
         let cardsHtml = '<div class="m-cards-mobile" style="display:none">';
         this._allItems.forEach(function(i) {
             var stockColor = i.stock > 0 ? '#22c55e' : '#ef4444';
+            var cpm = Number(i.consumo_promedio_mensual) || 0;
             cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + stockColor + '">'
                 + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
                 + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + (i.codigo_mp || '-') + '</span>'
@@ -86,10 +89,11 @@ const InvInventario = {
                 + '</div>'
                 + '<div style="font-size:14px;color:#475569;margin-bottom:4px;font-weight:500">' + (i.tipo_cristal || '-') + ' ' + (i.espesor || 0) + 'mm</div>'
                 + '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</div>'
-                + '<div style="display:flex;gap:16px;font-size:11px;color:#64748b">'
+                + '<div style="display:flex;gap:12px;font-size:11px;color:#64748b;flex-wrap:wrap">'
                 + '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
                 + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>'
                 + '<span>m2: <strong>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + '</strong></span>'
+                + '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-weight:600">CPM: ' + cpm.toLocaleString('es-CL') + '</span>'
                 + '</div></div>';
         });
         cardsHtml += '</div>';
@@ -107,7 +111,8 @@ const InvInventario = {
                 var tipo = String(i.tipo_cristal || '').toLowerCase();
                 var ancho = String(i.ancho || '').toLowerCase();
                 var alto = String(i.alto || '').toLowerCase();
-                return tipo.includes(query) || espesorStr.includes(query) || ancho.includes(query) || alto.includes(query);
+                var cpm = String(i.consumo_promedio_mensual || '').toLowerCase();
+                return tipo.includes(query) || espesorStr.includes(query) || ancho.includes(query) || alto.includes(query) || cpm.includes(query);
             });
         }
         // Ordenar por tipo_cristal y luego por espesor
