@@ -73,13 +73,23 @@ const InvHistorial = {
         }
 
         // Tabla desktop
+        var canDel = App.canDelete('inv_inventario');
+        var canEdit = App.canEdit('inv_inventario');
         let tableHtml = '<div class="m-table-wrap"><table id="hTable"><thead><tr>'
             + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Usuario</th><th>Obs</th>'
+            + (canEdit || canDel ? '<th>Acciones</th>' : '')
             + '</tr></thead><tbody>';
 
         this._currentData.forEach(function(m) {
             var f = new Date(m.fecha_hora.replace('Z', ''));
             var hora = f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', hour12:false});
+            var acciones = '';
+            if (canEdit || canDel) {
+                acciones = '<td style="white-space:nowrap">';
+                if (canEdit) acciones += '<button class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;margin-right:4px" title="Editar" onclick="InvHistorial.editar(' + m.id + ')">Editar</button>';
+                if (canDel) acciones += '<button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvHistorial.eliminar(' + m.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
+                acciones += '</td>';
+            }
             tableHtml += '<tr>'
                 + '<td>' + f.toLocaleDateString('es-CL') + '</td>'
                 + '<td>' + hora + '</td>'
@@ -92,6 +102,7 @@ const InvHistorial = {
                 + '<td>' + (m.proveedor || '-') + '</td>'
                 + '<td>' + (m.usuario_nombre || '-') + '</td>'
                 + '<td>' + (m.observaciones || '-') + '</td>'
+                + acciones
                 + '</tr>';
         });
 
@@ -161,5 +172,60 @@ const InvHistorial = {
         link.download = 'historial_' + new Date().toISOString().slice(0, 10) + '.csv';
         link.click();
         App.toast('Excel exportado');
+    },
+
+    editar(id) {
+        var m = this._currentData.find(function(x) { return x.id === id; });
+        if (!m) return;
+        var f = new Date(m.fecha_hora.replace('Z', ''));
+        var fechaVal = f.getFullYear() + '-' + String(f.getMonth()+1).padStart(2,'0') + '-' + String(f.getDate()).padStart(2,'0');
+        var modal = document.createElement('div');
+        modal.id = 'modalEditarMov';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+        modal.innerHTML = '<div style="background:white;border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">'
+            + '<h3 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#1e293b">Editar Movimiento</h3>'
+            + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Proveedor</label>'
+            + '<input type="text" id="editProveedor" value="' + (m.proveedor || '') + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
+            + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Turno</label>'
+            + '<select id="editTurno" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px">'
+            + '<option value="">Seleccionar...</option><option value="Dia"' + (m.turno==='Dia'?' selected':'') + '>Dia</option><option value="Noche"' + (m.turno==='Noche'?' selected':'') + '>Noche</option></select></div>'
+            + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Fecha</label>'
+            + '<input type="date" id="editFecha" value="' + fechaVal + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
+            + '<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Observaciones</label>'
+            + '<input type="text" id="editObs" value="' + (m.observaciones || '') + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
+            + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+            + '<button class="btn btn-outline" onclick="InvHistorial.cerrarModal()">Cancelar</button>'
+            + '<button class="btn btn-primary" onclick="InvHistorial.guardarEdicion(' + m.id + ')">Guardar</button>'
+            + '</div></div>';
+        document.body.appendChild(modal);
+    },
+
+    cerrarModal() {
+        var m = document.getElementById('modalEditarMov');
+        if (m) m.remove();
+    },
+
+    async guardarEdicion(id) {
+        var data = {
+            proveedor: document.getElementById('editProveedor').value || null,
+            turno: document.getElementById('editTurno').value || null,
+            observaciones: document.getElementById('editObs').value || null,
+            fecha_hora: document.getElementById('editFecha').value ? document.getElementById('editFecha').value + 'T00:00:00' : null
+        };
+        try {
+            await api.inv().editarMovimiento(id, data);
+            App.toast('Movimiento actualizado');
+            this.cerrarModal();
+            this.render();
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
+    },
+
+    async eliminar(id) {
+        if (!confirm('Eliminar este movimiento?')) return;
+        try {
+            await api.inv().eliminarMovimiento(id);
+            App.toast('Movimiento eliminado');
+            this.render();
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     }
 };
