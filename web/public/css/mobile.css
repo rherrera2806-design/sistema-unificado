@@ -160,7 +160,7 @@
     flex-wrap: wrap;
     gap: 10px;
 }
-.m-card-body { padding: 24px; max-width: 100%; overflow: hidden; }
+.m-card-body { padding: 24px; max-width: 100%; overflow: visible; }
 
 /* ── Info Grid ── */
 .m-info-grid {
