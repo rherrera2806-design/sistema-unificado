@@ -55,7 +55,7 @@ App.registerModule('instalaciones', {
             + '<div class="inst-hero-btns" style="display:flex;gap:8px;flex-wrap:wrap">'
             + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.instalaciones.showVendedores()" title="Configurar vendedores"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Vendedores</button>'
             + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.instalaciones.showTecnicos()" title="Configurar tecnicos"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Tecnicos</button>'
-            + (puedeCrear ? '<button class="btn btn-primary" onclick="App.modules.instalaciones.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
+            + (puedeCrear ? '<button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.instalaciones.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
             + '</div></div></div>'
 
             + '<div id="instStats" class="inst-stats"></div>'
@@ -295,7 +295,7 @@ App.registerModule('instalaciones', {
             + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
         const html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
             + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Tecnicos (' + list.length + ')</h3>'
-            + '<button onclick="App.modules.instalaciones.formTecnico()" class="btn btn-primary btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
+            + '<button onclick="App.modules.instalaciones.formTecnico()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
             + '</div><div id="tecnicoFormInst"></div>' + tableHtml;
         App.showModal(html, { title: 'Configurar Tecnicos' });
     },
@@ -365,7 +365,7 @@ App.registerModule('instalaciones', {
             + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
         const html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
             + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#1e293b">Vendedores (' + list.length + ')</h3>'
-            + '<button onclick="App.modules.instalaciones.formVendedor()" class="btn btn-primary btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
+            + '<button onclick="App.modules.instalaciones.formVendedor()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
             + '</div><div id="vendedorFormInst"></div>' + tableHtml;
         App.showModal(html, { title: 'Configurar Vendedores' });
     },

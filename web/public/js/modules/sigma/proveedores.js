@@ -28,7 +28,7 @@ App.registerModule('proveedores', {
                             <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Directorio de proveedores del departamento</p>
                         </div>
                         <div class="m-hero-btns" style="display:flex;gap:6px;align-items:center">
-                            ${App.canCreate('proveedores') ? '<button class="btn btn-accent" style="padding:5px 12px;font-size:12px" onclick="App.modules.proveedores.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : ''}
+                            ${App.canCreate('proveedores') ? '<button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.proveedores.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : ''}
                         </div>
                     </div>
                 </div>

@@ -18,7 +18,7 @@
             <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Componentes</h2>
             <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Biblioteca de componentes industriales</p></div>
             <div style="display:flex;gap:6px;align-items:center">
-                <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="App.modules.components.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.components.showForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                 </div></div></div>
             <div class="stats-grid">
                 <div class="stat-card dash-card" style="border-left:4px solid #3b82f6">
