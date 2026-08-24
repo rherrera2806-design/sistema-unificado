@@ -1,5 +1,6 @@
 const InvHistorial = {
     _currentData: [],
+    _tipoFilter: '',
 
     async render() {
         const page = document.querySelector('.page.active');
@@ -26,10 +27,17 @@ const InvHistorial = {
                                 <div class="m-form-grid">
                                     <div class="form-group"><label>Fecha Inicio</label><input type="date" id="hFechaInicio" class="form-control"></div>
                                     <div class="form-group"><label>Fecha Fin</label><input type="date" id="hFechaFin" class="form-control"></div>
-                                    <div class="form-group"><label>Tipo</label><select id="hTipo" class="form-control"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select></div>
                                     <div class="form-group" style="display:flex;gap:8px;align-items:flex-end"><button type="submit" class="btn btn-primary">Buscar</button><button type="button" class="btn btn-outline" onclick="InvHistorial.limpiar()">Limpiar</button></div>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+
+                    <div class="m-actions" style="margin-bottom:16px;justify-content:center">
+                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                            <a class="filter-chip active" onclick="InvHistorial.filtrarTipo('')" id="hFAll" style="font-size:12px;padding:6px 14px">Todos</a>
+                            <a class="filter-chip" onclick="InvHistorial.filtrarTipo('entrada')" id="hFEnt" style="font-size:12px;padding:6px 14px">Entradas</a>
+                            <a class="filter-chip" onclick="InvHistorial.filtrarTipo('salida')" id="hFSal" style="font-size:12px;padding:6px 14px">Salidas</a>
                         </div>
                     </div>
 
@@ -62,14 +70,15 @@ const InvHistorial = {
 
         // Tabla para desktop
         let tableHtml = '<div class="m-table-wrap"><table id="hTable"><thead><tr>'
-            + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Obs</th>'
+            + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Usuario</th><th>Obs</th>'
             + '</tr></thead><tbody id="hBody">';
         
         this._currentData.forEach(m => {
             const f = new Date(m.fecha_hora);
+            const hora = f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', hour12:false});
             tableHtml += `<tr>
                 <td>${f.toLocaleDateString('es-CL')}</td>
-                <td>${f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</td>
+                <td>${hora}</td>
                 <td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span></td>
                 <td>${m.tipo_cristal || '-'}</td>
                 <td>${m.espesor || 0}mm</td>
@@ -77,6 +86,7 @@ const InvHistorial = {
                 <td>${m.cantidad_planchas || 0}</td>
                 <td>${Number(m.metros_cuadrados || 0).toFixed(2)}</td>
                 <td>${m.proveedor || '-'}</td>
+                <td>${m.usuario_nombre || '-'}</td>
                 <td>${m.observaciones || '-'}</td>
             </tr>`;
         });
@@ -87,10 +97,11 @@ const InvHistorial = {
         let cardsHtml = '<div class="m-cards-mobile">';
         this._currentData.forEach(m => {
             const f = new Date(m.fecha_hora);
+            const hora = f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', hour12:false});
             const color = m.tipo_movimiento === 'entrada' ? '#22c55e' : '#ef4444';
             cardsHtml += `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ${color}">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#1e293b">${f.toLocaleDateString('es-CL')} ${f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:#1e293b">${f.toLocaleDateString('es-CL')} ${hora}</span>
                     <span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>
                 </div>
                 <div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">${m.tipo_cristal || '-'} ${m.espesor || 0}mm</div>
@@ -100,6 +111,7 @@ const InvHistorial = {
                     <span>m2: <strong>${Number(m.metros_cuadrados || 0).toFixed(2)}</strong></span>
                 </div>
                 ${m.proveedor ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Proveedor: ' + m.proveedor + '</div>' : ''}
+                ${m.usuario_nombre ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Registrado por: <strong>' + m.usuario_nombre + '</strong></div>' : ''}
                 ${m.observaciones ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Obs: ' + m.observaciones + '</div>' : ''}
             </div>`;
         });
@@ -113,11 +125,31 @@ const InvHistorial = {
         const f = {};
         const fi = document.getElementById('hFechaInicio').value;
         const ff = document.getElementById('hFechaFin').value;
-        const t = document.getElementById('hTipo').value;
         if (fi) f.fechaInicio = fi;
         if (ff) f.fechaFin = ff;
-        if (t) f.tipo = t;
+        if (this._tipoFilter) f.tipo = this._tipoFilter;
         try {
+            const movs = await api.inv().getMovimientos(f);
+            this._currentData = Array.isArray(movs) ? movs : [];
+            const count = document.getElementById('hCount');
+            if (count) count.textContent = `(${this._currentData.length})`;
+            this.renderContent();
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
+    },
+
+    async filtrarTipo(tipo) {
+        this._tipoFilter = tipo;
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        if (tipo === '') document.getElementById('hFAll').classList.add('active');
+        else if (tipo === 'entrada') document.getElementById('hFEnt').classList.add('active');
+        else document.getElementById('hFSal').classList.add('active');
+        try {
+            const f = {};
+            const fi = document.getElementById('hFechaInicio')?.value;
+            const ff = document.getElementById('hFechaFin')?.value;
+            if (fi) f.fechaInicio = fi;
+            if (ff) f.fechaFin = ff;
+            if (tipo) f.tipo = tipo;
             const movs = await api.inv().getMovimientos(f);
             this._currentData = Array.isArray(movs) ? movs : [];
             const count = document.getElementById('hCount');
@@ -129,7 +161,7 @@ const InvHistorial = {
     limpiar() {
         document.getElementById('hFechaInicio').value = '';
         document.getElementById('hFechaFin').value = '';
-        document.getElementById('hTipo').value = '';
+        this._tipoFilter = '';
         this.render();
     },
 

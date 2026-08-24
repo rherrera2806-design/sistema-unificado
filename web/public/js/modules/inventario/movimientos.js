@@ -93,9 +93,12 @@ const InvMovimientos = {
                                     <div class="form-group"><label>m²</label><div id="m2Display" style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:16px;font-weight:700;color:#2563eb">0.00</div></div>
                                 </div>
                                 <div class="inv-form-grid" style="margin-top:10px">
-                                    <div class="form-group"><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
                                     <div class="form-group"><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
                                     <div class="form-group"><label>Fecha</label><input type="date" id="fecha"></div>
+                                </div>
+                                <div style="margin-top:10px">
+                                    <label style="font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b">Proveedor</label>
+                                    <input type="text" id="proveedor" placeholder="Opcional" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box">
                                 </div>
                                 <div style="margin-top:10px">
                                     <label style="font-size:11px;margin-bottom:4px;display:block;font-weight:600;color:#64748b">Observaciones</label>
@@ -108,24 +111,12 @@ const InvMovimientos = {
                         </div>
                     </div>
 
-                    <div class="m-actions" style="justify-content:space-between">
-                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                            <span style="font-weight:500;color:#64748b;font-size:12px">Filtrar:</span>
-                            <a class="filter-chip active" onclick="InvMovimientos.filtrar('')" id="fAll" style="font-size:11px;padding:4px 10px">Todos</a>
-                            <a class="filter-chip" onclick="InvMovimientos.filtrar('entrada')" id="fEnt" style="font-size:11px;padding:4px 10px">Entradas</a>
-                            <a class="filter-chip" onclick="InvMovimientos.filtrar('salida')" id="fSal" style="font-size:11px;padding:4px 10px">Salidas</a>
-                        </div>
-                        ${App.canDelete('inv_inventario') ? '<button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger btn-sm" style="font-size:11px;padding:5px 12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>' : ''}
-                    </div>
-
-                    <div class="m-card">
-                        <div class="m-card-header">
-                            <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">Movimientos <span style="color:var(--gray-500);font-weight:400;font-size:13px">(${movimientos.length})</span></h3>
-                        </div>
-                        <div class="m-card-body">
+                    <div class="m-card" style="margin-bottom:16px">
+                        <div class="m-card-header" style="padding:10px 16px;font-size:13px;font-weight:600">Últimos Movimientos</div>
+                        <div class="m-card-body" style="padding:14px 16px">
                             ${movimientos.length === 0
-                                ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>'
-                                : `<div class="m-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Turno</th><th>Acciones</th></tr></thead><tbody id="invMovBody">${this.renderRows(movimientos)}</tbody></table></div><div id="invMovCards" class="m-cards-mobile"></div>`
+                                ? '<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">Sin movimientos registrados</div>'
+                                : `<div class="m-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Turno</th></tr></thead><tbody>${this.renderRows(movimientos.slice(0, 20))}</tbody></table></div>`
                             }
                         </div>
                     </div>
@@ -134,29 +125,7 @@ const InvMovimientos = {
     },
 
     renderRows(movs) {
-        const canDel = App.canDelete('inv_inventario');
-        return movs.map(m => `<tr><td>${new Date(m.fecha_hora).toLocaleDateString('es-CL')}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}</td><td>${m.codigo_mp || '-'}</td><td>${m.mp_nombre || m.tipo_cristal}</td><td>${m.espesor_mm || m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td>${m.turno || '-'}</td><td>${canDel ? '<button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(' + m.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : ''}</td></tr>`).join('');
-    },
-
-    renderCards(movs) {
-        const cardsEl = document.getElementById('invMovCards');
-        if (!cardsEl) return;
-        if (movs.length === 0) { cardsEl.innerHTML = ''; return; }
-        cardsEl.innerHTML = movs.map(m => {
-            const isEntrada = m.tipo_movimiento === 'entrada';
-            const badgeColor = isEntrada ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626';
-            return '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + (isEntrada ? '#22c55e' : '#ef4444') + '">'
-                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-                + '<span style="font-weight:700;color:#0f172a;font-size:13px">' + (m.codigo_mp || m.tipo_cristal || '-') + '</span>'
-                + '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:12px;background:' + badgeColor + '">' + m.tipo_movimiento + '</span></div>'
-                + '<div style="font-size:13px;color:#475569;margin-bottom:4px;font-weight:500">' + (m.mp_nombre || m.tipo_cristal) + ' ' + (m.espesor_mm || m.espesor) + 'mm</div>'
-                + '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</div>'
-                + '<div style="display:flex;gap:16px;font-size:11px;color:#64748b">'
-                + '<span>Cant: <strong>' + (m.cantidad_planchas || 0) + '</strong></span>'
-                + '<span>m2: <strong>' + Number(m.metros_cuadrados || 0).toFixed(2) + '</strong></span>'
-                + '<span>' + (m.proveedor || '-') + '</span>'
-                + '</div></div>';
-        }).join('');
+        return movs.map(m => `<tr><td>${new Date(m.fecha_hora).toLocaleDateString('es-CL')}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}</td><td>${m.codigo_mp || '-'}</td><td>${m.mp_nombre || m.tipo_cristal}</td><td>${m.espesor_mm || m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td>${m.turno || '-'}</td></tr>`).join('');
     },
 
     onMpChange() {
@@ -323,40 +292,12 @@ const InvMovimientos = {
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     },
 
-    async filtrar(tipo) {
-        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-        if (tipo === '') document.getElementById('fAll').classList.add('active');
-        else if (tipo === 'entrada') document.getElementById('fEnt').classList.add('active');
-        else document.getElementById('fSal').classList.add('active');
-        try {
-            const movs = tipo ? await api.inv().getMovimientos({ tipo }) : await api.inv().getMovimientos();
-            this.allMovimientos = movs;
-            const tbody = document.getElementById('invMovBody');
-            if (tbody) tbody.innerHTML = this.renderRows(movs);
-            this.renderCards(movs);
-        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
-    },
-
     async eliminar(id) {
         if (!confirm('Eliminar este movimiento?')) return;
         try {
             await api.inv().eliminarMovimiento(id);
             App.toast('Movimiento eliminado');
             this.render();
-        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
-    },
-
-    async limpiarTodos() {
-        if (!confirm('¿ELIMINAR TODOS LOS MOVIMIENTOS?\n\nEsta acción no se puede deshacer. Se borrarán todas las entradas y salidas registradas.')) return;
-        if (!confirm('¿Estás SEGURO? Se perderán TODOS los datos de movimientos.')) return;
-        try {
-            const result = await fetch('/api/inv/movimientos', { method: 'DELETE' }).then(r => r.json());
-            if (result.ok) {
-                App.toast('Se eliminaron ' + result.eliminados + ' movimientos');
-                this.render();
-            } else {
-                App.toast('Error al limpiar movimientos', 'error');
-            }
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     }
 };
