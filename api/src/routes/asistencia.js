@@ -392,7 +392,7 @@ router.get('/api/asistencia/calendario', canView, async (req, res) => {
         const anioActual = parseInt(req.query.anio) || new Date().getFullYear();
         const mesStr = String(mesActual).padStart(2, '0');
         const fechaInicio = anioActual + '-' + mesStr + '-01';
-        const fechaFin = anioActual + '-' + mesStr + '-28';
+        const fechaFin = anioActual + '-' + mesStr + '-' + String(new Date(anioActual, mesActual, 0).getDate()).padStart(2, '0');
         
         const trabajadores = await pool.query(
             'SELECT * FROM trabajadores WHERE activo = true ORDER BY nombre'

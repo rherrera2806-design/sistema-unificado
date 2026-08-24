@@ -225,30 +225,30 @@ const Asistencia = {
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="ast-hero-buscar" class="ast-input" placeholder="Buscar nombre o RUT..." oninput="Asistencia.debouncedBuscarTrabajadoresAdmin()" style="padding-left:32px;width:100%;min-width:120px;max-width:200px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px">'
                 + '</div>'
-                + (canAgT ? `<button onclick="Asistencia.showFormTrabajador()" class="btn btn-primary" title="${BTN.NUEVO} trabajador" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '')
+                + (canAgT ? `<button onclick="Asistencia.showFormTrabajador()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '')
                 + `<button onclick="Asistencia.exportExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#16a34a;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(22,163,74,0.15)">${BTN.EXPORTAR_EXCEL}</button>`
                 + `<button onclick="Asistencia.importarExcelTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#0e7490;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(14,116,144,0.15)" title="${BTN.IMPORTAR} desde Excel/CSV">${BTN.IMPORTAR}</button>`
                 + `<button onclick="Asistencia.exportPDFTrabajadores()" class="ast-btn" style="background:rgba(255,255,255,0.95);color:#dc2626;font-weight:700;font-size:11px;padding:6px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(220,38,38,0.15)">${BTN.EXPORTAR_PDF}</button>`;
         } else         if (tab === 'permisos') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + `<button onclick="Asistencia.cargarPermisos()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">${BTN.FILTRAR}</button>`
-                + (canAgT ? `<button onclick="Asistencia.abrirModalPermiso()" class="btn btn-primary" title="${BTN.NUEVO} permiso" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
+                + `<button onclick="Asistencia.cargarPermisos()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.FILTRAR}</button>`
+                + (canAgT ? `<button onclick="Asistencia.abrirModalPermiso()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'licencias') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + `<button onclick="Asistencia.cargarLicencias()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">${BTN.FILTRAR}</button>`
-                + (canAgT ? `<button onclick="Asistencia.abrirModalLicencia()" class="btn btn-primary" title="${BTN.NUEVO} licencia" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
+                + `<button onclick="Asistencia.cargarLicencias()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.FILTRAR}</button>`
+                + (canAgT ? `<button onclick="Asistencia.abrirModalLicencia()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'vacaciones') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + `<button onclick="Asistencia.cargarVacaciones()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">${BTN.FILTRAR}</button>`
+                + `<button onclick="Asistencia.cargarVacaciones()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.FILTRAR}</button>`
                 + (canAgT ? `<button onclick="Asistencia.abrirModalVacacion()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'horas_extras') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
-                + `<button onclick="Asistencia.cargarHorasExtras()" class="ast-btn" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);backdrop-filter:blur(8px)">${BTN.FILTRAR}</button>`
-                + (canAgT ? `<button onclick="Asistencia.abrirModalHorasExtras()" class="btn btn-primary" title="${BTN.NUEVO} horas extras" style="padding:5px 12px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
+                + `<button onclick="Asistencia.cargarHorasExtras()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.FILTRAR}</button>`
+                + (canAgT ? `<button onclick="Asistencia.abrirModalHorasExtras()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'calendario') {
             let mesOpts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             let yearOpts = '';
@@ -1084,6 +1084,29 @@ const Asistencia = {
     renderRankingVacaciones(ranking) { this._renderRanking('ast-ranking-vacaciones-container', ranking, 'dias', 'Días Vacaciones'); },
     renderRankingHorasExtras(ranking) { this._renderRanking('ast-ranking-he-container', ranking, 'horas', 'Horas Extras'); },
 
+    renderTotalHorasExtras(horasExtras) {
+        const container = document.getElementById('ast-total-he-container');
+        if (!container) return;
+        const total = horasExtras.reduce((sum, he) => sum + (Number(he.horas) || 0), 0);
+        const aprobadas = horasExtras.filter(he => he.estado === 'aprobada').reduce((sum, he) => sum + (Number(he.horas) || 0), 0);
+        const pendientes = horasExtras.filter(he => he.estado === 'pendiente').reduce((sum, he) => sum + (Number(he.horas) || 0), 0);
+        container.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+                <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #93c5fd;border-radius:12px;padding:16px;text-align:center">
+                    <div style="font-size:24px;font-weight:800;color:#1e40af">${total.toFixed(1)}</div>
+                    <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px">Total Horas</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:12px;padding:16px;text-align:center">
+                    <div style="font-size:24px;font-weight:800;color:#166534">${aprobadas.toFixed(1)}</div>
+                    <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px">Aprobadas</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:12px;padding:16px;text-align:center">
+                    <div style="font-size:24px;font-weight:800;color:#92400e">${pendientes.toFixed(1)}</div>
+                    <div style="font-size:11px;color:#64748b;font-weight:600;margin-top:2px">Pendientes</div>
+                </div>
+            </div>`;
+    },
+
     renderTablaPermisos(permisos) {
             const tbody = document.getElementById('ast-tabla-permisos');
             if (!tbody) return;
@@ -1452,6 +1475,8 @@ const Asistencia = {
         c.innerHTML = `
             <div id="ast-ranking-he-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
 
+            <div id="ast-total-he-container" style="margin-bottom:16px;animation:astFadeUp 0.4s ease 100ms both"></div>
+
             <div class="m-card">
                 <div class="m-card-header" style="padding:6px 12px">
                     <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Horas Extras</h3>
@@ -1497,6 +1522,7 @@ const Asistencia = {
             
             this.renderRankingHorasExtras(ranking);
             this.renderTablaHorasExtras(horasExtras);
+            this.renderTotalHorasExtras(horasExtras);
         } catch(e) { console.error('Error:', e); }
     },
 
