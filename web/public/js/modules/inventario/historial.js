@@ -84,7 +84,7 @@ const InvHistorial = {
         tableHtml += '</tbody></table></div>';
 
         // Cards para móvil
-        let cardsHtml = '<div class="m-cards-mobile" style="display:none">';
+        let cardsHtml = '<div class="m-cards-mobile">';
         this._currentData.forEach(m => {
             const f = new Date(m.fecha_hora);
             const color = m.tipo_movimiento === 'entrada' ? '#22c55e' : '#ef4444';

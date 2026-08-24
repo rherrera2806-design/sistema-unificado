@@ -125,7 +125,7 @@ const InvMovimientos = {
                         <div class="m-card-body">
                             ${movimientos.length === 0
                                 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay movimientos</h4><p style="margin:0;color:#94a3b8;font-size:13px">Registra el primer movimiento</p></div>'
-                                : `<div class="m-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Turno</th><th>Acciones</th></tr></thead><tbody id="invMovBody">${this.renderRows(movimientos)}</tbody></table></div><div id="invMovCards" class="m-cards-mobile" style="display:none"></div>`
+                                : `<div class="m-table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Turno</th><th>Acciones</th></tr></thead><tbody id="invMovBody">${this.renderRows(movimientos)}</tbody></table></div><div id="invMovCards" class="m-cards-mobile"></div>`
                             }
                         </div>
                     </div>
@@ -139,21 +139,23 @@ const InvMovimientos = {
 
     renderCards(movs) {
         const cardsEl = document.getElementById('invMovCards');
-        if (!cardsEl || typeof SigmaCards === 'undefined') return;
-        cardsEl.innerHTML = SigmaCards.generate({
-            title: m => '<strong>' + (m.codigo_mp || m.tipo_cristal) + '</strong>',
-            subtitle: m => (m.mp_nombre || m.tipo_cristal) + ' ' + (m.espesor_mm || m.espesor) + 'mm',
-            badge: m => '<span class="sc-badge" style="background:' + (m.tipo_movimiento === 'entrada' ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">' + m.tipo_movimiento + '</span>',
-            fields: [
-                { label: 'Fecha', value: m => new Date(m.fecha_hora).toLocaleDateString('es-CL') },
-                { label: 'Turno', value: m => m.turno || '-' },
-                { label: 'Dimensiones', value: m => Math.round(m.ancho) + ' x ' + Math.round(m.alto) + ' mm' },
-                { label: 'Cantidad', value: m => m.cantidad_planchas + ' planchas' },
-                { label: 'm2', value: m => Number(m.metros_cuadrados).toFixed(2) + ' m2' },
-                { label: 'Proveedor', value: m => m.proveedor || '-' }
-            ],
-            actions: m => '<button class="btn btn-danger btn-sm" onclick="InvMovimientos.eliminar(' + m.id + ')">Eliminar</button>'
-        }, movs);
+        if (!cardsEl) return;
+        if (movs.length === 0) { cardsEl.innerHTML = ''; return; }
+        cardsEl.innerHTML = movs.map(m => {
+            const isEntrada = m.tipo_movimiento === 'entrada';
+            const badgeColor = isEntrada ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626';
+            return '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + (isEntrada ? '#22c55e' : '#ef4444') + '">'
+                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                + '<span style="font-weight:700;color:#0f172a;font-size:13px">' + (m.codigo_mp || m.tipo_cristal || '-') + '</span>'
+                + '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:12px;background:' + badgeColor + '">' + m.tipo_movimiento + '</span></div>'
+                + '<div style="font-size:13px;color:#475569;margin-bottom:4px;font-weight:500">' + (m.mp_nombre || m.tipo_cristal) + ' ' + (m.espesor_mm || m.espesor) + 'mm</div>'
+                + '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</div>'
+                + '<div style="display:flex;gap:16px;font-size:11px;color:#64748b">'
+                + '<span>Cant: <strong>' + (m.cantidad_planchas || 0) + '</strong></span>'
+                + '<span>m2: <strong>' + Number(m.metros_cuadrados || 0).toFixed(2) + '</strong></span>'
+                + '<span>' + (m.proveedor || '-') + '</span>'
+                + '</div></div>';
+        }).join('');
     },
 
     onMpChange() {

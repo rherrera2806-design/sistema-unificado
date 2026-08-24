@@ -34,7 +34,7 @@ const InvInventario = {
                         <div class="m-card-body">
                             ${items.length === 0
                                 ? '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay items en inventario</h4><p style="margin:0;color:#94a3b8;font-size:13px">Agrega el primer item</p></div>'
-                                : `<div class="m-table-wrap"><table id="invTable"><thead><tr><th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(items)}</tbody></table></div><div id="invCards" class="m-cards-mobile" style="display:none"></div>`
+                                : `<div class="m-table-wrap"><table id="invTable"><thead><tr><th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>m2 Stock</th></tr></thead><tbody id="invBody">${this.renderRows(items)}</tbody></table></div><div id="invCards" class="m-cards-mobile"></div>`
                             }
                         </div>
                     </div>
@@ -60,19 +60,22 @@ const InvInventario = {
 
     renderCards(items) {
         const cardsEl = document.getElementById('invCards');
-        if (!cardsEl || typeof SigmaCards === 'undefined') return;
-        cardsEl.innerHTML = SigmaCards.generate({
-            title: i => '<strong>' + (i.codigo_mp || '-') + '</strong>',
-            subtitle: i => i.tipo_cristal,
-            badge: i => '<span class="sc-badge" style="background:' + (i.stock > 0 ? '#d1fae5;color:#059669' : '#fee2e2;color:#dc2626') + '">Stock: ' + i.stock + '</span>',
-            fields: [
-                { label: 'Espesor', value: i => i.espesor + 'mm' },
-                { label: 'Medida', value: i => Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm' },
-                { label: 'Entradas', value: i => i.entradas },
-                { label: 'Salidas', value: i => i.salidas_plancha },
-                { label: 'm2 Stock', value: i => (i.m2_entradas - i.m2_salidas).toFixed(2) + ' m2' }
-            ]
-        }, items);
+        if (!cardsEl) return;
+        if (items.length === 0) { cardsEl.innerHTML = ''; return; }
+        cardsEl.innerHTML = items.map(i => {
+            const sc = i.stock > 0 ? '#22c55e' : '#ef4444';
+            return '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + sc + '">'
+                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + (i.codigo_mp || '-') + '</span>'
+                + '<span style="font-size:18px;font-weight:800;color:' + sc + '">' + (i.stock || 0) + '</span></div>'
+                + '<div style="font-size:14px;color:#475569;margin-bottom:4px;font-weight:500">' + (i.tipo_cristal || '-') + ' ' + (i.espesor || 0) + 'mm</div>'
+                + '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</div>'
+                + '<div style="display:flex;gap:16px;font-size:11px;color:#64748b">'
+                + '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
+                + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>'
+                + '<span>m2: <strong>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + '</strong></span>'
+                + '</div></div>';
+        }).join('');
     },
 
     buscar(q) {
