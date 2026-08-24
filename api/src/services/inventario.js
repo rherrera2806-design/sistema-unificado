@@ -64,10 +64,11 @@ async function eliminarMovimiento(id) {
 }
 
 async function editarMovimiento(id, data) {
-    const { proveedor, turno, observaciones, fecha_hora } = data;
+    const { tipo_movimiento, tipo_salida, ancho, alto, cantidad_planchas, proveedor, turno, observaciones, fecha_hora } = data;
+    const m2 = ((parseInt(ancho) || 0) * (parseInt(alto) || 0) * (parseInt(cantidad_planchas) || 0)) / 1000000;
     const result = await query(
-        `UPDATE movimientos SET proveedor = $1, turno = $2, observaciones = $3, fecha_hora = $4 WHERE id = $5 RETURNING *`,
-        [proveedor || null, turno || null, observaciones || null, fecha_hora || null, id]
+        `UPDATE movimientos SET tipo_movimiento = $1, tipo_salida = $2, ancho = $3, alto = $4, cantidad_planchas = $5, metros_cuadrados = $6, proveedor = $7, turno = $8, observaciones = $9, fecha_hora = $10 WHERE id = $11 RETURNING *`,
+        [tipo_movimiento, tipo_salida || null, parseInt(ancho) || 0, parseInt(alto) || 0, parseInt(cantidad_planchas) || 0, m2.toFixed(4), proveedor || null, turno || null, observaciones || null, fecha_hora || null, id]
     );
     return result.rows[0] || null;
 }

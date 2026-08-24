@@ -181,19 +181,37 @@ const InvHistorial = {
         var fechaVal = f.getFullYear() + '-' + String(f.getMonth()+1).padStart(2,'0') + '-' + String(f.getDate()).padStart(2,'0');
         var modal = document.createElement('div');
         modal.id = 'modalEditarMov';
-        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center';
-        modal.innerHTML = '<div style="background:white;border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">'
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;overflow:auto';
+        modal.innerHTML = '<div style="background:white;border-radius:12px;padding:24px;max-width:560px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">'
             + '<h3 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#1e293b">Editar Movimiento</h3>'
-            + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Proveedor</label>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+            + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Tipo Movimiento</label>'
+            + '<select id="editTipo" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px">'
+            + '<option value="entrada"' + (m.tipo_movimiento==='entrada'?' selected':'') + '>Entrada</option><option value="salida"' + (m.tipo_movimiento==='salida'?' selected':'') + '>Salida</option></select></div>'
+            + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Tipo Salida</label>'
+            + '<select id="editTipoSalida" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px">'
+            + '<option value="">N/A</option><option value="plancha_completa"' + (m.tipo_salida==='plancha_completa'?' selected':'') + '>Plancha</option><option value="trozo"' + (m.tipo_salida==='trozo'?' selected':'') + '>Trozo</option></select></div>'
+            + '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Cristal</label>'
+            + '<input type="text" value="' + (m.tipo_cristal || '') + '" readonly style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box;background:#f8fafc;color:#64748b"></div>'
+            + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Ancho (mm)</label>'
+            + '<input type="number" id="editAncho" value="' + (m.ancho || 0) + '" min="1" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
+            + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Alto (mm)</label>'
+            + '<input type="number" id="editAlto" value="' + (m.alto || 0) + '" min="1" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
+            + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Cantidad</label>'
+            + '<input type="number" id="editCant" value="' + (m.cantidad_planchas || 0) + '" min="1" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
+            + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">m²</label>'
+            + '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-weight:700;color:#2563eb">' + Number(m.metros_cuadrados || 0).toFixed(2) + '</div></div>'
+            + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Proveedor</label>'
             + '<input type="text" id="editProveedor" value="' + (m.proveedor || '') + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
-            + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Turno</label>'
+            + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Turno</label>'
             + '<select id="editTurno" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px">'
             + '<option value="">Seleccionar...</option><option value="Dia"' + (m.turno==='Dia'?' selected':'') + '>Dia</option><option value="Noche"' + (m.turno==='Noche'?' selected':'') + '>Noche</option></select></div>'
-            + '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Fecha</label>'
+            + '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Fecha</label>'
             + '<input type="date" id="editFecha" value="' + fechaVal + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
-            + '<div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Observaciones</label>'
+            + '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Observaciones</label>'
             + '<input type="text" id="editObs" value="' + (m.observaciones || '') + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
-            + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+            + '</div>'
+            + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid #f1f5f9">'
             + '<button class="btn btn-outline" onclick="InvHistorial.cerrarModal()">Cancelar</button>'
             + '<button class="btn btn-primary" onclick="InvHistorial.guardarEdicion(' + m.id + ')">Guardar</button>'
             + '</div></div>';
@@ -207,6 +225,11 @@ const InvHistorial = {
 
     async guardarEdicion(id) {
         var data = {
+            tipo_movimiento: document.getElementById('editTipo').value,
+            tipo_salida: document.getElementById('editTipoSalida').value || null,
+            ancho: parseInt(document.getElementById('editAncho').value) || 0,
+            alto: parseInt(document.getElementById('editAlto').value) || 0,
+            cantidad_planchas: parseInt(document.getElementById('editCant').value) || 0,
             proveedor: document.getElementById('editProveedor').value || null,
             turno: document.getElementById('editTurno').value || null,
             observaciones: document.getElementById('editObs').value || null,
