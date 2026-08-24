@@ -57,8 +57,8 @@ router.delete('/api/catalogos/espesores/:id', canDelete, async (req, res, next) 
 
 router.get('/api/inv/materias-primas', canViewInv, async (req, res, next) => {
     try {
-        const catalogosService = require('../services/catalogos');
-        res.json(await catalogosService.getMateriasPrimas());
+        const prodCatalogos = require('../services/produccionCatalogos');
+        res.json(await prodCatalogos.getMateriasPrimas());
     } catch (e) { next(e); }
 });
 
