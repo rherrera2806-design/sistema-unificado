@@ -126,9 +126,19 @@ const InvMovimientos = {
 
     renderRows(movs) {
         const canDel = App.canDelete('inv_inventario');
+        const canEdit = App.canEdit('inv_inventario');
         return movs.map(m => {
             const f = new Date(m.fecha_hora.replace('Z', ''));
-            return `<tr><td>${f.toLocaleDateString('es-CL')}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}</td><td>${m.codigo_mp || '-'}</td><td>${m.mp_nombre || m.tipo_cristal}</td><td>${m.espesor_mm || m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td>${m.turno || '-'}</td>${canDel ? `<td><button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>` : ''}</tr>`;
+            const fechaStr = f.getFullYear() + '-' + String(f.getMonth()+1).padStart(2,'0') + '-' + String(f.getDate()).padStart(2,'0');
+            const horaStr = String(f.getHours()).padStart(2,'0') + ':' + String(f.getMinutes()).padStart(2,'0');
+            let acciones = '';
+            if (canEdit || canDel) {
+                acciones = '<td style="white-space:nowrap">';
+                if (canEdit) acciones += `<button class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;margin-right:4px" title="Editar" onclick='InvMovimientos.editar(${JSON.stringify(m).replace(/'/g,"&#39;")})'>Editar</button>`;
+                if (canDel) acciones += `<button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
+                acciones += '</td>';
+            }
+            return `<tr><td>${f.toLocaleDateString('es-CL')}</td><td><span class="badge ${m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida'}">${m.tipo_movimiento}</span>${m.tipo_salida ? `<span class="badge badge-trozo" style="margin-left:4px;">${m.tipo_salida === 'trozo' ? 'Trozo' : 'Plancha'}</span>` : ''}</td><td>${m.codigo_mp || '-'}</td><td>${m.mp_nombre || m.tipo_cristal}</td><td>${m.espesor_mm || m.espesor}mm</td><td>${m.ancho} x ${m.alto} mm</td><td>${m.cantidad_planchas}</td><td>${Number(m.metros_cuadrados).toFixed(2)}</td><td>${m.proveedor || '-'}</td><td>${m.turno || '-'}</td>${acciones}</tr>`;
         }).join('');
     },
 
@@ -305,6 +315,52 @@ const InvMovimientos = {
         try {
             await api.inv().eliminarMovimiento(id);
             App.toast('Movimiento eliminado');
+            this.render();
+        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
+    },
+
+    editar(m) {
+        const f = new Date(m.fecha_hora.replace('Z', ''));
+        const fechaVal = f.getFullYear() + '-' + String(f.getMonth()+1).padStart(2,'0') + '-' + String(f.getDate()).padStart(2,'0');
+        const horaVal = String(f.getHours()).padStart(2,'0') + ':' + String(f.getMinutes()).padStart(2,'0');
+        const modal = document.createElement('div');
+        modal.id = 'modalEditarMov';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+        modal.innerHTML = `<div style="background:white;border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+            <h3 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#1e293b">Editar Movimiento</h3>
+            <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Proveedor</label>
+                <input type="text" id="editProveedor" value="${m.proveedor || ''}" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>
+            <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Turno</label>
+                <select id="editTurno" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px">
+                    <option value="">Seleccionar...</option><option value="Dia" ${m.turno==='Dia'?'selected':''}>Dia</option><option value="Noche" ${m.turno==='Noche'?'selected':''}>Noche</option></select></div>
+            <div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Fecha</label>
+                <input type="date" id="editFecha" value="${fechaVal}" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>
+            <div style="margin-bottom:16px"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Observaciones</label>
+                <input type="text" id="editObs" value="${m.observaciones || ''}" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button class="btn btn-outline" onclick="InvMovimientos.cerrarModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="InvMovimientos.guardarEdicion(${m.id})">Guardar</button>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+    },
+
+    cerrarModal() {
+        const m = document.getElementById('modalEditarMov');
+        if (m) m.remove();
+    },
+
+    async guardarEdicion(id) {
+        const data = {
+            proveedor: document.getElementById('editProveedor').value || null,
+            turno: document.getElementById('editTurno').value || null,
+            observaciones: document.getElementById('editObs').value || null,
+            fecha_hora: document.getElementById('editFecha').value ? document.getElementById('editFecha').value + 'T00:00:00' : null
+        };
+        try {
+            await api.inv().editarMovimiento(id, data);
+            App.toast('Movimiento actualizado');
+            this.cerrarModal();
             this.render();
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     }

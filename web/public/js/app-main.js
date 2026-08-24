@@ -77,6 +77,7 @@ class InvApiClient {
         return {
             getMovimientos: (f = {}) => { const qs = new URLSearchParams(f).toString(); return self.request('GET', `/inv/movimientos${qs ? '?' + qs : ''}`); },
             crearMovimiento: (d) => self.request('POST', '/inv/movimientos', d),
+            editarMovimiento: (id, d) => self.request('PUT', `/inv/movimientos/${id}`, d),
             eliminarMovimiento: (id) => self.request('DELETE', `/inv/movimientos/${id}`),
             getInventario: (f = {}) => { const qs = new URLSearchParams(f).toString(); return self.request('GET', `/inv/inventario${qs ? '?' + qs : ''}`); },
             getEstadisticas: () => self.request('GET', '/inv/estadisticas'),

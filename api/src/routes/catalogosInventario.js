@@ -77,6 +77,14 @@ router.delete('/api/inv/movimientos/:id', canDeleteInv, async (req, res, next) =
     res.json({ ok: true });
 });
 
+router.put('/api/inv/movimientos/:id', canUpdateInv, async (req, res, next) => {
+    try {
+        const result = await inventarioService.editarMovimiento(Number(req.params.id), sanitizeObject(req.body));
+        if (result) res.json(result);
+        else res.status(404).json({ error: 'Movimiento no encontrado' });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 router.delete('/api/inv/movimientos', canDeleteInv, async (req, res, next) => {
     try {
         const result = await inventarioService.limpiarMovimientos();

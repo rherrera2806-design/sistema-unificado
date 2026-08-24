@@ -63,6 +63,15 @@ async function eliminarMovimiento(id) {
     return result.rowCount > 0;
 }
 
+async function editarMovimiento(id, data) {
+    const { proveedor, turno, observaciones, fecha_hora } = data;
+    const result = await query(
+        `UPDATE movimientos SET proveedor = $1, turno = $2, observaciones = $3, fecha_hora = $4 WHERE id = $5 RETURNING *`,
+        [proveedor || null, turno || null, observaciones || null, fecha_hora || null, id]
+    );
+    return result.rows[0] || null;
+}
+
 async function limpiarMovimientos() {
     const result = await query('DELETE FROM movimientos');
     return result.rowCount;
@@ -152,4 +161,4 @@ async function getEstadisticasPorTipo() {
     }));
 }
 
-module.exports = { getMovimientos, crearMovimiento, eliminarMovimiento, limpiarMovimientos, getInventario, getStockPorDimension, getEstadisticas, getEstadisticasPorTipo };
+module.exports = { getMovimientos, crearMovimiento, editarMovimiento, eliminarMovimiento, limpiarMovimientos, getInventario, getStockPorDimension, getEstadisticas, getEstadisticasPorTipo };

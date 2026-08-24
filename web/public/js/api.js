@@ -52,6 +52,7 @@ class ApiClient {
         return {
             getMovimientos: (f = {}) => self.getAll('inv/movimientos', f),
             crearMovimiento: (data) => self.insert('inv/movimientos', data),
+            editarMovimiento: (id, data) => self.update('inv/movimientos', id, data),
             eliminarMovimiento: (id) => self.delete('inv/movimientos', id),
             getInventario: (f = {}) => self.getAll('inv/inventario', f),
             getEstadisticas: () => self.request('GET', '/inv/estadisticas'),
