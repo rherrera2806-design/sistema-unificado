@@ -153,7 +153,7 @@ const InvMovimientos = {
 
             select.innerHTML = '<option value="">Seleccionar medida...</option>' +
                 this._stockDimensiones.map(function(d, i) {
-                    return '<option value="' + i + '">' + d.ancho + ' x ' + d.alto + ' mm (' + d.stock + ' plchas, ' + d.m2_unitario + ' m2/u)</option>';
+                    return '<option value="' + i + '">' + d.ancho + ' x ' + d.alto + ' mm</option>';
                 }).join('');
 
             if (this._stockDimensiones.length === 1) {

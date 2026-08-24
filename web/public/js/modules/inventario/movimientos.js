@@ -148,7 +148,7 @@ const InvMovimientos = {
 
             select.innerHTML = '<option value="">Seleccionar medida...</option>' +
                 this.stockDimensiones.map((d, i) =>
-                    `<option value="${i}">${d.ancho} x ${d.alto} mm (${d.stock} plchas, ${d.m2_unitario} m2/u)</option>`
+                    `<option value="${i}">${d.ancho} x ${d.alto} mm</option>`
                 ).join('');
 
             if (this.stockDimensiones.length === 1) {
