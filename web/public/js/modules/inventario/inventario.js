@@ -80,14 +80,12 @@ const InvInventario = {
 
     buscar(q) {
         const query = q.toLowerCase().trim();
-        const filtered = query ? this.allItems.filter(i =>
-            (i.codigo_mp || '').toLowerCase().includes(query) ||
-            (i.codigo_sap || '').toLowerCase().includes(query) ||
-            (i.tipo_cristal || '').toLowerCase().includes(query) ||
-            String(i.espesor || '').includes(query) ||
-            String(i.ancho || '').includes(query) ||
-            String(i.alto || '').includes(query)
-        ) : this.allItems;
+        const filtered = query ? this.allItems.filter(i => {
+            const nombre = (i.tipo_cristal || '').toLowerCase();
+            const codigo = (i.codigo_mp || '').toLowerCase();
+            const espesor = i.espesor != null ? Number(i.espesor).toString() : '';
+            return nombre.includes(query) || codigo.includes(query) || espesor.includes(query);
+        }) : this.allItems;
         const tbody = document.getElementById('invBody');
         if (tbody) tbody.innerHTML = this.renderRows(filtered);
         this.renderCards(filtered);
