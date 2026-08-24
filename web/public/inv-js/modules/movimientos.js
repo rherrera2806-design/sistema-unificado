@@ -118,7 +118,7 @@ const InvMovimientos = {
                             <button class="btn btn-sm inv-filter-btn" onclick="InvMovimientos.filtrar('entrada')" id="fEnt">Entradas</button>
                             <button class="btn btn-sm inv-filter-btn" onclick="InvMovimientos.filtrar('salida')" id="fSal">Salidas</button>
                         </div>
-                        <button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger" style="padding:8px 16px;font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>
+                        ${App.canDelete('inv_inventario') ? '<button onclick="InvMovimientos.limpiarTodos()" class="btn btn-danger" style="padding:8px 16px;font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>' : ''}
                     </div>
 
                     <div class="m-card">
@@ -143,9 +143,11 @@ const InvMovimientos = {
         }
 
         let tableHtml = '<div class="m-table-wrap"><table><thead><tr>'
-            + '<th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Turno</th><th>Acciones</th>'
+            + '<th>Fecha</th><th>Tipo</th><th>Codigo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Turno</th>'
+            + (App.canDelete('inv_inventario') ? '<th>Acciones</th>' : '')
             + '</tr></thead><tbody>';
 
+        const canDel = App.canDelete('inv_inventario');
         this._allMovimientos.forEach(function(m) {
             var f = new Date(m.fecha_hora);
             var badge = '<span class="badge ' + (m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida') + '">' + m.tipo_movimiento + '</span>';
@@ -161,7 +163,7 @@ const InvMovimientos = {
                 + '<td>' + Number(m.metros_cuadrados || 0).toFixed(2) + '</td>'
                 + '<td>' + (m.proveedor || '-') + '</td>'
                 + '<td>' + (m.turno || '-') + '</td>'
-                + '<td><button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(' + m.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>'
+                + (canDel ? '<td><button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvMovimientos.eliminar(' + m.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>' : '')
                 + '</tr>';
         });
 
@@ -184,7 +186,7 @@ const InvMovimientos = {
                 + '</div>'
                 + (m.proveedor ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Proveedor: ' + m.proveedor + '</div>' : '')
                 + (m.turno ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Turno: ' + m.turno + '</div>' : '')
-                + '<div style="margin-top:8px"><button class="btn btn-danger btn-sm" onclick="InvMovimientos.eliminar(' + m.id + ')">Eliminar</button></div>'
+                + (canDel ? '<div style="margin-top:8px"><button class="btn btn-danger btn-sm" onclick="InvMovimientos.eliminar(' + m.id + ')">Eliminar</button></div>' : '')
                 + '</div>';
         });
         cardsHtml += '</div>';
