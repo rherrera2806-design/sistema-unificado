@@ -1,6 +1,7 @@
 const InvInventario = {
     _allItems: [],
     _originalItems: [],
+    _filterCriticos: false,
 
     async render() {
         const page = document.querySelector('.page.active');
@@ -28,6 +29,7 @@ const InvInventario = {
                     </div>
 
                     <div class="m-actions">
+                        <button onclick="InvInventario.toggleCriticos()" id="btnCriticos" class="btn btn-outline" style="padding:8px 16px;font-size:12px;border-color:#ef4444;color:#ef4444">Stock Crítico</button>
                         <button onclick="InvInventario.exportarExcel()" class="btn btn-success" style="padding:8px 16px;font-size:12px">Exportar Excel</button>
                         <button onclick="window.print()" class="btn btn-outline" style="padding:8px 16px;font-size:12px">Imprimir</button>
                     </div>
@@ -131,6 +133,31 @@ const InvInventario = {
             if (nameA > nameB) return 1;
             return Number(a.espesor || 0) - Number(b.espesor || 0);
         });
+        this.renderContent();
+        var counter = document.getElementById('invCount');
+        if (counter) counter.textContent = '(' + this._allItems.length + ' tipos)';
+    },
+
+    toggleCriticos() {
+        this._filterCriticos = !this._filterCriticos;
+        const btn = document.getElementById('btnCriticos');
+        if (this._filterCriticos) {
+            btn.style.background = '#ef4444';
+            btn.style.color = 'white';
+            btn.classList.remove('btn-outline');
+            btn.classList.add('btn-danger');
+            this._allItems = this._originalItems.filter(function(i) {
+                var cpm = Number(i.consumo_promedio_mensual) || 0;
+                var autoMeses = Number(i.autonomia_meses) || 0;
+                return cpm > 0 && autoMeses <= 1;
+            });
+        } else {
+            btn.style.background = '';
+            btn.style.color = '#ef4444';
+            btn.classList.add('btn-outline');
+            btn.classList.remove('btn-danger');
+            this._allItems = [...this._originalItems];
+        }
         this.renderContent();
         var counter = document.getElementById('invCount');
         if (counter) counter.textContent = '(' + this._allItems.length + ' tipos)';
