@@ -55,6 +55,13 @@ router.delete('/api/catalogos/espesores/:id', canDelete, async (req, res, next) 
     res.json({ ok: true, item });
 });
 
+router.get('/api/inv/materias-primas', canViewInv, async (req, res, next) => {
+    try {
+        const catalogosService = require('../services/catalogos');
+        res.json(await catalogosService.getMateriasPrimas());
+    } catch (e) { next(e); }
+});
+
 router.get('/api/inv/movimientos', canViewInv, async (req, res, next) => {
     try { res.json(await inventarioService.getMovimientos(req.query)); }
     catch (e) { next(e); }

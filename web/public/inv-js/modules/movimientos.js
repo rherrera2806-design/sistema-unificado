@@ -12,7 +12,7 @@ const InvMovimientos = {
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const [movimientos, mpData] = await Promise.all([
                 api.inv().getMovimientos(),
-                fetch('/api/produccion/materias-primas', { headers: hdrs }).then(r => r.json()).catch(() => [])
+                fetch('/api/inv/materias-primas', { headers: hdrs }).then(r => r.json()).catch(() => [])
             ]);
             this._allMovimientos = Array.isArray(movimientos) ? movimientos : [];
             this._materiasPrimas = Array.isArray(mpData) ? mpData : [];
