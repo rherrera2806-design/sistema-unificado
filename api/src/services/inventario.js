@@ -109,8 +109,7 @@ async function getInventario(filtros = {}) {
     return result.rows.map(r => {
         const stock = Number(r.entradas) - Number(r.salidas_plancha);
         const cpm = Number(r.consumo_promedio_mensual) || 0;
-        const stockM2 = Number(r.m2_entradas) - Number(r.m2_salidas);
-        const autonomiaMeses = cpm > 0 ? (stockM2 / cpm) : 0;
+        const autonomiaMeses = cpm > 0 ? (stock / cpm) : 0;
         return {
             ...r, stock, entradas: Number(r.entradas), salidas_plancha: Number(r.salidas_plancha),
             trozos: Number(r.trozos), m2_entradas: Number(r.m2_entradas), m2_salidas: Number(r.m2_salidas),
