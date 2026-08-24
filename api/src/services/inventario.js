@@ -106,11 +106,19 @@ async function getInventario(filtros = {}) {
     sql += ` GROUP BY mp.codigo_mp, mp.codigo_sap, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, mp.consumo_promedio_mensual, m.ancho, m.alto
         ORDER BY mp.nombre, mp.espesor_mm, m.ancho, m.alto`;
     const result = await query(sql, params);
-    return result.rows.map(r => ({
-        ...r, stock: Number(r.entradas) - Number(r.salidas_plancha),
-        entradas: Number(r.entradas), salidas_plancha: Number(r.salidas_plancha),
-        trozos: Number(r.trozos), m2_entradas: Number(r.m2_entradas), m2_salidas: Number(r.m2_salidas)
-    }));
+    return result.rows.map(r => {
+        const stock = Number(r.entradas) - Number(r.salidas_plancha);
+        const cpm = Number(r.consumo_promedio_mensual) || 0;
+        const stockM2 = Number(r.m2_entradas) - Number(r.m2_salidas);
+        const autonomiaMeses = cpm > 0 ? (stockM2 / cpm) : 0;
+        const autonomiaDias = autonomiaMeses * 21;
+        return {
+            ...r, stock, entradas: Number(r.entradas), salidas_plancha: Number(r.salidas_plancha),
+            trozos: Number(r.trozos), m2_entradas: Number(r.m2_entradas), m2_salidas: Number(r.m2_salidas),
+            autonomia_meses: Math.round(autonomiaMeses * 10) / 10,
+            autonomia_dias: Math.round(autonomiaDias)
+        };
+    });
 }
 
 async function getEstadisticas() {
