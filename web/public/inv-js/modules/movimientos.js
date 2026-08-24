@@ -264,6 +264,8 @@ const InvMovimientos = {
         try { user = JSON.parse(localStorage.getItem('unified_user')); } catch(e) {}
         var now = new Date();
         var fechaLocal = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + 'T' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+        var fechaSeleccionada = document.getElementById('fecha').value;
+        var fechaHora = fechaSeleccionada ? fechaSeleccionada + 'T' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0') : fechaLocal;
         const data = {
             usuario_id: user ? user.id : null,
             tipo_movimiento: this.tipoMovimiento,
@@ -275,7 +277,7 @@ const InvMovimientos = {
             turno: document.getElementById('turno').value || null,
             tipo_salida: this.tipoMovimiento === 'salida' ? this.tipoSalida : null,
             observaciones: document.getElementById('observaciones').value || null,
-            fecha_hora: document.getElementById('fecha').value ? document.getElementById('fecha').value + 'T00:00:00' : fechaLocal
+            fecha_hora: fechaHora
         };
         try {
             await api.inv().crearMovimiento(data);
