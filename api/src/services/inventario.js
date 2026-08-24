@@ -106,10 +106,20 @@ async function getInventario(filtros = {}) {
     sql += ` GROUP BY mp.codigo_mp, mp.codigo_sap, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, mp.consumo_promedio_mensual, m.ancho, m.alto
         ORDER BY mp.nombre, mp.espesor_mm, m.ancho, m.alto`;
     const result = await query(sql, params);
+    
+    // Calcular autonomia por codigo_mp (stock total del codigo / CPM)
+    const stockPorCodigo = {};
+    result.rows.forEach(r => {
+        const cod = r.codigo_mp;
+        if (!stockPorCodigo[cod]) stockPorCodigo[cod] = 0;
+        stockPorCodigo[cod] += Number(r.entradas) - Number(r.salidas_plancha);
+    });
+    
     return result.rows.map(r => {
         const stock = Number(r.entradas) - Number(r.salidas_plancha);
         const cpm = Number(r.consumo_promedio_mensual) || 0;
-        const autonomiaMeses = cpm > 0 ? (stock / cpm) : 0;
+        const stockTotalCodigo = stockPorCodigo[r.codigo_mp] || 0;
+        const autonomiaMeses = cpm > 0 ? (stockTotalCodigo / cpm) : 0;
         const autonomiaDias = Math.round(autonomiaMeses * 21);
         return {
             ...r, stock, entradas: Number(r.entradas), salidas_plancha: Number(r.salidas_plancha),
