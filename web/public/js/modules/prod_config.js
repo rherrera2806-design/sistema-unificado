@@ -1000,7 +1000,7 @@ App.registerModule('prod_config', {
                 </div>
 
                 <div class="m-actions">
-                    <button class="btn btn-primary" onclick="App.modules.prod_config.showReglaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Regla</button>
+                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.prod_config.showReglaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                 </div>
 
                 <div class="m-card">
