@@ -159,7 +159,43 @@ filtrarTrabajadores(filtro) {
 
 ---
 
-## 4. Paleta de Colores Completa
+## 4. Select Dropdown en Hero
+
+### Estructura HTML
+
+```html
+<select id="ast-hero-mes" style="width:auto;padding:8px 12px;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:12px;border-radius:6px;outline:none;cursor:pointer">
+    <option value="1">Enero</option>
+    <option value="2">Febrero</option>
+</select>
+```
+
+### Valores clave
+
+| Propiedad | Valor |
+|-----------|-------|
+| padding | `8px 12px` |
+| background | `rgba(255,255,255,0.3)` |
+| color | `white` |
+| border | `1px solid rgba(255,255,255,0.5)` |
+| font-size | `12px` |
+| border-radius | `6px` |
+| outline | `none` |
+| cursor | `pointer` |
+| NO usar | `class="ast-input"` |
+
+### Select de año (Calendario)
+
+```html
+<select id="ast-hero-anio" style="width:auto;padding:8px 12px;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:12px;border-radius:6px;outline:none;cursor:pointer">
+    <option value="2024">2024</option>
+    <option value="2025">2025</option>
+</select>
+```
+
+---
+
+## 5. Paleta de Colores Completa
 
 | Uso | Color | Hex |
 |-----|-------|-----|
@@ -242,11 +278,14 @@ _aplicarEfectoFiltro(filtro, colors) {
 
 ---
 
-## 6. Checklist
+## 7. Checklist
 
 - [ ] Botones acción: `padding:8px 14px`, `font-size:12px`, `border-radius:8px`
 - [ ] Filtros: `padding:6px 12px`, `font-size:11px`, `border-radius:6px`
-- [ ] Buscador: `padding-left:32px`, `background:rgba(255,255,255,0.35)`
+- [ ] Selects: `padding:8px 12px`, `font-size:12px`, `border-radius:6px`, `cursor:pointer`
+- [ ] Buscador: `padding:8px 12px 8px 32px`, `background:rgba(255,255,255,0.35)`
+- [ ] Buscador: CSS placeholder `color:rgba(255,255,255,0.8)!important`
+- [ ] Buscador: NO usar `class="ast-input"`
 - [ ] Filtros con `class="btn-vitro-filter"` y `data-filter="..."`
 - [ ] Efecto selección: `opacity`, `scale(1.05)`, `box-shadow`
 - [ ] Colores semánticos: verde=éxito, cyan=info, rojo=peligro
