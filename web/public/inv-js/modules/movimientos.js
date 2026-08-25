@@ -252,6 +252,8 @@ const InvMovimientos = {
         const materiaPrimaId = document.getElementById('materiaPrimaId').value;
         if (!materiaPrimaId) { App.toast('Selecciona una materia prima', 'error'); return; }
 
+        if (this.tipoMovimiento === 'salida' && !this.tipoSalida) { App.toast('Selecciona tipo de salida: Plancha o Trozo', 'error'); return; }
+
         if (this.tipoMovimiento === 'salida' && this.tipoSalida === 'plancha_completa') {
             var sel = document.getElementById('stockDimensionSelect');
             if (!sel || sel.value === '') { App.toast('Selecciona una medida disponible', 'error'); return; }

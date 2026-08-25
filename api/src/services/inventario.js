@@ -104,6 +104,8 @@ async function getInventario(filtros = {}) {
     if (filtros.espesor) { conditions.push(`mp.espesor_mm = $${idx}`); params.push(filtros.espesor); idx++; }
     if (conditions.length > 0) sql += ' AND ' + conditions.join(' AND ');
     sql += ` GROUP BY mp.codigo_mp, mp.codigo_sap, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, mp.consumo_promedio_mensual, m.ancho, m.alto
+        HAVING COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad_planchas ELSE 0 END), 0) > 0
+           OR COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.cantidad_planchas ELSE 0 END), 0) > 0
         ORDER BY mp.nombre, mp.espesor_mm, m.ancho, m.alto`;
     const result = await query(sql, params);
     
