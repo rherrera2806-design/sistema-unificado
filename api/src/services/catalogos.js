@@ -77,8 +77,7 @@ async function getAutonomia() {
             autonomiaMeses = stock / consumo;
             autonomiaSemanas = Math.round(autonomiaMeses * 4.33 * 10) / 10;
             autonomiaDias = Math.round(autonomiaMeses * 30);
-            if (stock <= critico) estado = 'critico';
-            else if (autonomiaMeses <= 1) estado = 'advertencia';
+            if (autonomiaMeses <= 1) estado = 'critico';
         }
         return { codigo_mp: codigo, tipo: cat.nombre || '', espesor: Number(cat.espesor_mm || 0), stock, consumoMensual: consumo, stockCritico: critico,
             autonomiaMeses: autonomiaMeses !== null ? Math.round(autonomiaMeses * 10) / 10 : null,
