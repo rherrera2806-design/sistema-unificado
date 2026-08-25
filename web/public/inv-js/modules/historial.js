@@ -52,8 +52,12 @@ const InvHistorial = {
                     </div>
 
                     <div class="m-card">
-                        <div class="m-card-header" style="padding:6px 12px">
-                            <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Historial <span id="hCount" style="color:var(--gray-500);font-weight:400;font-size:12px">(${this._currentData.length})</span></h3>
+                        <div class="m-card-header" style="padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                            <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b;flex:1;min-width:120px">Historial <span id="hCount" style="color:var(--gray-500);font-weight:400;font-size:12px">(${this._currentData.length})</span></h3>
+                            <div style="position:relative">
+                                <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="hBuscar" placeholder="Cristal o espesor..." oninput="InvHistorial.filtrar()" style="padding:8px 12px 8px 32px;width:100%;min-width:120px;max-width:200px;font-size:11px;border:1px solid #e2e8f0;border-radius:8px;outline:none;transition:all 0.15s;font-family:inherit" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                            </div>
                         </div>
                         <div class="m-card-body" id="hContent"></div>
                     </div>
@@ -157,7 +161,98 @@ const InvHistorial = {
         document.getElementById('hFechaInicio').value = '';
         document.getElementById('hFechaFin').value = '';
         document.getElementById('hTipo').value = '';
+        var buscador = document.getElementById('hBuscar');
+        if (buscador) buscador.value = '';
         this.render();
+    },
+
+    filtrar() {
+        var q = (document.getElementById('hBuscar')?.value || '').toLowerCase().trim();
+        if (!q) {
+            this.renderContent();
+            return;
+        }
+        var filtered = this._currentData.filter(function(m) {
+            var cristal = (m.tipo_cristal || '').toLowerCase();
+            var espesor = String(m.espesor || '').toLowerCase();
+            return cristal.includes(q) || espesor.includes(q);
+        });
+        this.renderContentFiltered(filtered);
+    },
+
+    renderContentFiltered(data) {
+        var container = document.getElementById('hContent');
+        if (!container) return;
+
+        if (data.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin resultados</h4><p style="margin:0;color:#94a3b8;font-size:13px">No se encontraron movimientos con ese criterio</p></div>';
+            var count = document.getElementById('hCount');
+            if (count) count.textContent = '(0)';
+            return;
+        }
+
+        var count = document.getElementById('hCount');
+        if (count) count.textContent = '(' + data.length + ')';
+
+        var canDel = App.canDelete('inv_inventario');
+        var canEdit = App.canEdit('inv_inventario');
+        var tableHtml = '<div class="m-table-wrap"><table id="hTable"><thead><tr>'
+            + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Usuario</th><th>Obs</th>'
+            + (canEdit || canDel ? '<th>Acciones</th>' : '')
+            + '</tr></thead><tbody>';
+
+        data.forEach(function(m) {
+            var f = new Date(m.fecha_hora.replace('Z', ''));
+            var hora = f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', hour12:false});
+            var acciones = '';
+            if (canEdit || canDel) {
+                acciones = '<td style="white-space:nowrap">';
+                if (canEdit) acciones += '<button class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;margin-right:4px" title="Editar" onclick="InvHistorial.editar(' + m.id + ')">Editar</button>';
+                if (canDel) acciones += '<button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvHistorial.eliminar(' + m.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
+                acciones += '</td>';
+            }
+            tableHtml += '<tr>'
+                + '<td>' + f.toLocaleDateString('es-CL') + '</td>'
+                + '<td>' + hora + '</td>'
+                + '<td><span class="badge ' + (m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida') + '">' + m.tipo_movimiento + '</span></td>'
+                + '<td>' + (m.tipo_cristal || '-') + '</td>'
+                + '<td>' + (m.espesor || 0) + 'mm</td>'
+                + '<td>' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</td>'
+                + '<td>' + (m.cantidad_planchas || 0) + '</td>'
+                + '<td>' + Number(m.metros_cuadrados || 0).toFixed(2) + '</td>'
+                + '<td>' + (m.proveedor || '-') + '</td>'
+                + '<td>' + (m.usuario_nombre || '-') + '</td>'
+                + '<td>' + (m.observaciones || '-') + '</td>'
+                + acciones
+                + '</tr>';
+        });
+
+        tableHtml += '</tbody></table></div>';
+
+        var cardsHtml = '<div class="m-cards-mobile" style="display:none">';
+        data.forEach(function(m) {
+            var f = new Date(m.fecha_hora.replace('Z', ''));
+            var hora = f.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit', hour12:false});
+            var color = m.tipo_movimiento === 'entrada' ? '#22c55e' : '#ef4444';
+            cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + color + '">'
+                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+                + '<span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:600;color:#1e293b">' + f.toLocaleDateString('es-CL') + ' ' + hora + '</span>'
+                + '<span class="badge ' + (m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida') + '">' + m.tipo_movimiento + '</span>'
+                + '</div>'
+                + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">' + (m.tipo_cristal || '-') + ' ' + (m.espesor || 0) + 'mm</div>'
+                + '<div style="font-size:12px;color:#475569">' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</div>'
+                + '<div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:#64748b">'
+                + '<span>Cantidad: <strong>' + (m.cantidad_planchas || 0) + '</strong></span>'
+                + '<span>m2: <strong>' + Number(m.metros_cuadrados || 0).toFixed(2) + '</strong></span>'
+                + '</div>'
+                + (m.proveedor ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Proveedor: ' + m.proveedor + '</div>' : '')
+                + (m.usuario_nombre ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Registrado por: <strong>' + m.usuario_nombre + '</strong></div>' : '')
+                + (m.observaciones ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Obs: ' + m.observaciones + '</div>' : '')
+                + '</div>';
+        });
+        cardsHtml += '</div>';
+
+        container.innerHTML = tableHtml + cardsHtml;
     },
 
     exportarExcel() {
