@@ -62,6 +62,8 @@ App.registerModule('usuarios', {
         } catch(e) { console.error(e); }
     },
 
+    selectedArea: null,
+
     renderStats(users) {
         const stats = document.getElementById('uStats');
         if (!stats) return;
@@ -72,9 +74,20 @@ App.registerModule('usuarios', {
             areas[area] = (areas[area] || 0) + 1;
         });
         const sorted = Object.entries(areas).sort((a, b) => b[1] - a[1]);
-        const stat = (val, label, cls) => '<div class="m-stat-card ' + cls + '"><span class="stat-val">' + val + '</span><span class="stat-lbl">' + label + '</span></div>';
-        stats.innerHTML = sorted.map(([area, count], i) => stat(count, area, colors[i % colors.length])).join('');
+        const stat = (val, label, cls, area) => {
+            const sel = this.selectedArea === area;
+            return '<div class="m-stat-card ' + cls + '" onclick="App.modules.usuarios.filterByArea(\'' + area.replace(/'/g, "\\'") + '\')" style="cursor:pointer;opacity:' + (sel || !this.selectedArea ? '1' : '0.5') + ';transform:' + (sel ? 'scale(1.03)' : 'scale(1)') + ';box-shadow:' + (sel ? '0 4px 16px rgba(0,0,0,0.15)' : '') + ';transition:all 0.2s"><span class="stat-val">' + val + '</span><span class="stat-lbl">' + label + '</span></div>';
+        };
+        stats.innerHTML = sorted.map(([area, count], i) => stat(count, area, colors[i % colors.length], area)).join('');
         stats.style.gridTemplateColumns = 'repeat(' + Math.min(sorted.length, 4) + ', 1fr)';
+    },
+
+    filterByArea(area) {
+        this.selectedArea = this.selectedArea === area ? null : area;
+        this.renderStats(this.allUsers);
+        if (!this.selectedArea) return this.renderUsers(this.allUsers);
+        const filtered = this.allUsers.filter(u => ((u.area || '').trim() || 'Sin área') === this.selectedArea);
+        this.renderUsers(filtered);
     },
 
     filterUsers() {
