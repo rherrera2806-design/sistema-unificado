@@ -67,6 +67,12 @@ const Asistencia = {
         this._calendarioTimer = setTimeout(() => this.filtrarCalendario(), 200);
     },
 
+    _searchTimers: {},
+    debouncedSearch(key, fn) {
+        clearTimeout(this._searchTimers[key]);
+        this._searchTimers[key] = setTimeout(fn, 200);
+    },
+
     async render() {
         const el = document.getElementById('page-asistencia');
         if (!el) return;
@@ -989,6 +995,7 @@ const Asistencia = {
     },
 
     // ═══════ PERMISOS ═══════
+    _permisosData: [],
     renderPermisosTab(c) {
         c.innerHTML = `
             <div id="ast-ranking-permisos-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
@@ -996,8 +1003,12 @@ const Asistencia = {
             <div id="ast-total-permisos-container" style="margin-bottom:16px;animation:astFadeUp 0.4s ease 100ms both"></div>
 
             <div class="m-card">
-                <div class="m-card-header" style="padding:6px 12px">
-                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Permisos</h3>
+                <div class="m-card-header" style="padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b;flex:1;min-width:120px">Registro de Permisos</h3>
+                    <div style="position:relative">
+                        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="ast-search-permisos" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.debouncedSearch('permisos',()=>Asistencia.filtrarTabla('permisos'))" style="padding-left:32px;width:100%;min-width:120px;max-width:180px;font-size:11px">
+                    </div>
                 </div>
                 <div class="m-card-body" style="padding:0">
                     <div class="m-table-wrap">
@@ -1026,6 +1037,7 @@ const Asistencia = {
         try {
             const r = await authFetch('/api/asistencia/permisos?mes=' + mes + '&anio=' + new Date().getFullYear());
             const permisos = await r.json();
+            this._permisosData = permisos;
             
             // Calcular ranking de permisos por trabajador (horas aprobadas)
             const rankingMap = {};
@@ -1086,6 +1098,21 @@ const Asistencia = {
     renderRankingLicencias(ranking) { this._renderRanking('ast-ranking-licencias-container', ranking, 'dias', 'Días Licencia'); },
     renderRankingVacaciones(ranking) { this._renderRanking('ast-ranking-vacaciones-container', ranking, 'dias', 'Días Vacaciones'); },
     renderRankingHorasExtras(ranking) { this._renderRanking('ast-ranking-he-container', ranking, 'horas', 'Horas Extras'); },
+
+    filtrarTabla(tab) {
+        const input = document.getElementById('ast-search-' + tab);
+        const q = input ? input.value.toLowerCase() : '';
+        const dataKey = '_' + tab + 'Data';
+        const data = this[dataKey] || [];
+        const filtered = q ? data.filter(r => (r.nombre || '').toLowerCase().includes(q)) : data;
+        const renderFn = {
+            permisos: 'renderTablaPermisos',
+            licencias: 'renderTablaLicencias',
+            vacaciones: 'renderTablaVacaciones',
+            horas_extras: 'renderTablaHorasExtras'
+        }[tab];
+        if (renderFn) this[renderFn](filtered);
+    },
 
     _statCard(value, label, color, iconSvg, delay) {
         return `<div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid ${color};border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease ${delay}ms both;min-width:120px;flex:1 0 0;display:flex;align-items:center;gap:8px">
@@ -1300,6 +1327,7 @@ const Asistencia = {
     },
 
     // ═══════ LICENCIAS ═══════
+    _licenciasData: [],
     renderLicenciasTab(c) {
         c.innerHTML = `
             <div id="ast-ranking-licencias-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
@@ -1307,8 +1335,12 @@ const Asistencia = {
             <div id="ast-total-licencias-container" style="margin-bottom:16px;animation:astFadeUp 0.4s ease 100ms both"></div>
 
             <div class="m-card">
-                <div class="m-card-header" style="padding:6px 12px">
-                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Licencias Médicas</h3>
+                <div class="m-card-header" style="padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b;flex:1;min-width:120px">Registro de Licencias Médicas</h3>
+                    <div style="position:relative">
+                        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="ast-search-licencias" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.debouncedSearch('licencias',()=>Asistencia.filtrarTabla('licencias'))" style="padding-left:32px;width:100%;min-width:120px;max-width:180px;font-size:11px">
+                    </div>
                 </div>
                 <div class="m-card-body" style="padding:0">
                     <div class="m-table-wrap">
@@ -1337,6 +1369,7 @@ const Asistencia = {
         try {
             const r = await authFetch('/api/asistencia/licencias?mes=' + mes + '&anio=' + new Date().getFullYear());
             const licencias = await r.json();
+            this._licenciasData = licencias;
             
             // Calcular ranking de licencias por trabajador (días aprobados)
             const rankingMap = {};
@@ -1449,6 +1482,7 @@ const Asistencia = {
     },
 
     // ═══════ VACACIONES ═══════
+    _vacacionesData: [],
     renderVacacionesTab(c) {
         c.innerHTML = `
             <div id="ast-ranking-vacaciones-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
@@ -1456,8 +1490,12 @@ const Asistencia = {
             <div id="ast-total-vacaciones-container" style="margin-bottom:16px;animation:astFadeUp 0.4s ease 100ms both"></div>
 
             <div class="m-card">
-                <div class="m-card-header" style="padding:6px 12px">
-                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Vacaciones</h3>
+                <div class="m-card-header" style="padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b;flex:1;min-width:120px">Registro de Vacaciones</h3>
+                    <div style="position:relative">
+                        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="ast-search-vacaciones" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.debouncedSearch('vacaciones',()=>Asistencia.filtrarTabla('vacaciones'))" style="padding-left:32px;width:100%;min-width:120px;max-width:180px;font-size:11px">
+                    </div>
                 </div>
                 <div class="m-card-body" style="padding:0">
                     <div class="m-table-wrap">
@@ -1485,6 +1523,7 @@ const Asistencia = {
             const url = '/api/asistencia/vacaciones' + (mes ? '?mes=' + mes + '&anio=' + new Date().getFullYear() : '');
             const r = await authFetch(url);
             const vacaciones = await r.json();
+            this._vacacionesData = vacaciones;
             
             // Calcular ranking de vacaciones por trabajador (días)
             const rankingMap = {};
@@ -1578,6 +1617,7 @@ const Asistencia = {
     },
 
     // ═══════ HORAS EXTRAS ═══════
+    _horasExtrasData: [],
     renderHorasExtrasTab(c) {
         c.innerHTML = `
             <div id="ast-ranking-he-container" style="margin-bottom:24px;animation:astFadeUp 0.4s ease 60ms both"></div>
@@ -1585,8 +1625,12 @@ const Asistencia = {
             <div id="ast-total-he-container" style="margin-bottom:16px;animation:astFadeUp 0.4s ease 100ms both"></div>
 
             <div class="m-card">
-                <div class="m-card-header" style="padding:6px 12px">
-                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Registro de Horas Extras</h3>
+                <div class="m-card-header" style="padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b;flex:1;min-width:120px">Registro de Horas Extras</h3>
+                    <div style="position:relative">
+                        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="ast-search-horas_extras" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.debouncedSearch('horas_extras',()=>Asistencia.filtrarTabla('horas_extras'))" style="padding-left:32px;width:100%;min-width:120px;max-width:180px;font-size:11px">
+                    </div>
                 </div>
                 <div class="m-card-body" style="padding:0">
                     <div class="m-table-wrap">
@@ -1614,6 +1658,7 @@ const Asistencia = {
             const url = '/api/asistencia/horas-extras' + (mes ? '?mes=' + mes + '&anio=' + new Date().getFullYear() : '');
             const r = await authFetch(url);
             const horasExtras = await r.json();
+            this._horasExtrasData = horasExtras;
             
             // Calcular ranking de horas extras por trabajador
             const rankingMap = {};
