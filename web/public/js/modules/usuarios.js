@@ -8,24 +8,28 @@ App.registerModule('usuarios', {
             + '.us-table tbody tr{transition:background 0.15s;border-bottom:1px solid #f1f5f9}'
             + '.us-table tbody tr:hover{background:#f8fafc!important}'
             + '#uSearch::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
-            + '@media(max-width:768px){#uStats{grid-template-columns:repeat(2,1fr)!important}}'
             + '</style>'
 
-            + '<div style="width:100%;padding:0 16px">'
-            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div class="m-page">'
+            + '<div class="m-hero">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</h2>'
+            + '<div class="m-hero-inner"><div class="m-hero-title"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</h2>'
             + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestionar usuarios y permisos del sistema</p></div>'
-            + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-            + '<div style="position:relative"><svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="uSearch" placeholder="Buscar nombre, email o area..." oninput="App.modules.usuarios.filterUsers()" style="padding:8px 12px 8px 32px;border:none;border-radius:6px;background:rgba(255,255,255,0.35);backdrop-filter:blur(10px);color:white;font-size:12px;outline:none;width:200px" onfocus="this.style.background=\'rgba(255,255,255,0.45)\'" onblur="this.style.background=\'rgba(255,255,255,0.35)\'"></div>'
-            + '<button onclick="App.modules.usuarios.showForm()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
-            + '<button onclick="window.open(\'/api/admin/usuarios/export\',\'_blank\')" class="btn" style="background:#16a34a;color:white;white-space:nowrap;padding:8px 14px;font-size:12px;border:none;border-radius:8px;font-weight:600;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar</button>'
+            + '<div class="m-filters">'
+            + '<div style="position:relative"><svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="uSearch" placeholder="Buscar nombre, email o area..." oninput="App.modules.usuarios.filterUsers()" style="padding:8px 12px 8px 32px;border:none;border-radius:6px;background:rgba(255,255,255,0.35);color:white;font-size:12px;outline:none;width:200px" onfocus="this.style.background=\'rgba(255,255,255,0.45)\'" onblur="this.style.background=\'rgba(255,255,255,0.35)\'"></div>'
             + '</div></div></div>'
 
-            + '<div id="uStats" class="m-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>'
+            + '<div id="uStats" class="m-stats"></div>'
 
-            + '<div style="background:white;border-radius:14px;padding:24px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:usFadeUp 0.5s ease both">'
-            + '<div style="overflow-x:auto"><table class="us-table" style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr>'
+            + '<div class="m-actions">'
+            + '<button onclick="App.modules.usuarios.showForm()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
+            + '<button onclick="window.open(\'/api/admin/usuarios/export\',\'_blank\')" class="btn" style="background:#16a34a;color:white;white-space:nowrap;padding:8px 14px;font-size:12px;border:none;border-radius:8px;font-weight:600;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar</button>'
+            + '</div>'
+
+            + '<div class="m-card">'
+            + '<div class="m-card-header"><h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Listado <span id="uCount" style="color:#94a3b8;font-weight:400;font-size:12px"></span></h3></div>'
+            + '<div class="m-card-body">'
+            + '<div class="m-table-wrap"><table class="us-table" style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Nombre</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Email</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Rol</th>'
@@ -33,7 +37,9 @@ App.registerModule('usuarios', {
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0;min-width:320px">Permisos</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Estado</th>'
             + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Acciones</th>'
-            + '</tr></thead><tbody id="uTableBody"><tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div>Cargando...</div></td></tr></tbody></table></div></div></div>'
+            + '</tr></thead><tbody id="uTableBody"><tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div>Cargando...</div></td></tr></tbody></table></div>'
+            + '<div id="uCardsMobile" class="m-cards-mobile"></div>'
+            + '</div></div></div>'
 
             + '<div id="uModalOverlay" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px)" onclick="if(event.target===this)App.modules.usuarios.closeModal()">'
             + '<div onclick="event.stopPropagation()" style="background:white;border-radius:16px;width:90%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">'
@@ -76,10 +82,11 @@ App.registerModule('usuarios', {
         const sorted = Object.entries(areas).sort((a, b) => b[1] - a[1]);
         const stat = (val, label, cls, area) => {
             const sel = this.selectedArea === area;
-            return '<div class="m-stat-card ' + cls + '" onclick="App.modules.usuarios.filterByArea(\'' + area.replace(/'/g, "\\'") + '\')" style="cursor:pointer;opacity:' + (sel || !this.selectedArea ? '1' : '0.5') + ';transform:' + (sel ? 'scale(1.03)' : 'scale(1)') + ';box-shadow:' + (sel ? '0 4px 16px rgba(0,0,0,0.15)' : '') + ';transition:all 0.2s"><span class="stat-val">' + val + '</span><span class="stat-lbl">' + label + '</span></div>';
+            const style = 'cursor:pointer;opacity:' + (sel || !this.selectedArea ? '1' : '0.5') + ';transform:' + (sel ? 'scale(1.03)' : 'scale(1)') + ';box-shadow:' + (sel ? '0 4px 16px rgba(0,0,0,0.15)' : '0 1px 3px rgba(0,0,0,0.06)') + ';transition:all 0.2s';
+            return '<div class="m-stat-card ' + cls + '" onclick="App.modules.usuarios.filterByArea(\'' + area.replace(/'/g, "\\'") + '\')" style="' + style + '"><span class="stat-val">' + val + '</span><span class="stat-lbl">' + label + '</span></div>';
         };
         stats.innerHTML = sorted.map(([area, count], i) => stat(count, area, colors[i % colors.length], area)).join('');
-        stats.style.gridTemplateColumns = 'repeat(' + Math.min(sorted.length, 4) + ', 1fr)';
+        stats.style.gridTemplateColumns = 'repeat(' + Math.min(sorted.length, 3) + ', 1fr)';
     },
 
     filterByArea(area) {
@@ -99,8 +106,15 @@ App.registerModule('usuarios', {
 
     renderUsers(users) {
         const tbody = document.getElementById('uTableBody');
+        const cards = document.getElementById('uCardsMobile');
+        const count = document.getElementById('uCount');
+        if (count) count.textContent = '(' + users.length + ')';
         if (!tbody) return;
-        if (users.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8">Sin resultados</td></tr>'; return; }
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8">Sin resultados</td></tr>';
+            if (cards) cards.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8">Sin resultados</div>';
+            return;
+        }
         const MOD_SUBS = {
             asistencia: [{id:'asistencia',l:'ASIST'}],
             atencion: [{id:'turnos_recepcion',l:'Recep'},{id:'turnos_bodega',l:'Bodega'},{id:'turnos_almacen',l:'Almacen'},{id:'turnos_facturar',l:'Facturar'},{id:'turnos_qr',l:'QR'},{id:'turnos_reporte',l:'Reporte'}],
@@ -149,6 +163,28 @@ App.registerModule('usuarios', {
                     + (u.rol !== 'admin' ? '<button onclick="App.modules.usuarios.remove(' + u.id + ')" title="Eliminar" class="btn btn-sm btn-danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
                     + '</div></td></tr>';
             }).join('');
+
+        if (cards) {
+            cards.innerHTML = users.map(u => {
+                const up = Array.isArray(u.permisos) ? u.permisos : [];
+                const rolBadge = u.rol === 'admin'
+                    ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed">admin</span>'
+                    : '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:600;background:#f1f5f9;color:#64748b">usuario</span>';
+                const estado = u.activo !== false
+                    ? '<span style="color:#16a34a;font-size:10px;font-weight:600">Activo</span>'
+                    : '<span style="color:#ef4444;font-size:10px;font-weight:600">Inactivo</span>';
+                return '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+                    + '<strong style="font-size:13px;color:#0f172a">' + escapeHtml(u.nombre) + '</strong>'
+                    + '<div style="display:flex;gap:4px">' + rolBadge + estado + '</div></div>'
+                    + '<div style="font-size:11px;color:#64748b;margin-bottom:4px">' + escapeHtml(u.email) + '</div>'
+                    + '<div style="font-size:11px;color:#475569;margin-bottom:6px">' + (u.area ? escapeHtml(u.area) : '<span style="color:#cbd5e1">Sin área</span>') + '</div>'
+                    + '<div style="display:flex;gap:4px">'
+                    + '<button onclick="App.modules.usuarios.showForm(' + u.id + ')" style="flex:1;padding:6px;font-size:11px;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#475569;cursor:pointer">Editar</button>'
+                    + (u.rol !== 'admin' ? '<button onclick="App.modules.usuarios.remove(' + u.id + ')" style="padding:6px 10px;font-size:11px;border:1px solid #fecaca;border-radius:6px;background:#fef2f2;color:#ef4444;cursor:pointer">Eliminar</button>' : '')
+                    + '</div></div>';
+            }).join('');
+        }
     },
 
     async showForm(id) {
