@@ -231,22 +231,22 @@ const Asistencia = {
                 + `<button onclick="Asistencia.exportPDFTrabajadores()" class="btn" style="background:#dc2626;color:white;white-space:nowrap;padding:8px 14px;font-size:12px;border:none;border-radius:8px;font-weight:600;cursor:pointer">${BTN.EXPORTAR_PDF}</button>`;
         } else         if (tab === 'permisos') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+            container.innerHTML = '<select id="ast-hero-mes" style="width:auto;padding:8px 12px;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:12px;border-radius:6px;outline:none;cursor:pointer">' + opts + '</select>'
                 + `<button onclick="Asistencia.cargarPermisos()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.FILTRAR}</button>`
                 + (canAgT ? `<button onclick="Asistencia.abrirModalPermiso()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'licencias') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+            container.innerHTML = '<select id="ast-hero-mes" style="width:auto;padding:8px 12px;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:12px;border-radius:6px;outline:none;cursor:pointer">' + opts + '</select>'
                 + `<button onclick="Asistencia.cargarLicencias()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.FILTRAR}</button>`
                 + (canAgT ? `<button onclick="Asistencia.abrirModalLicencia()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'vacaciones') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+            container.innerHTML = '<select id="ast-hero-mes" style="width:auto;padding:8px 12px;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:12px;border-radius:6px;outline:none;cursor:pointer">' + opts + '</select>'
                 + `<button onclick="Asistencia.cargarVacaciones()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.FILTRAR}</button>`
                 + (canAgT ? `<button onclick="Asistencia.abrirModalVacacion()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'horas_extras') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+            container.innerHTML = '<select id="ast-hero-mes" style="width:auto;padding:8px 12px;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:12px;border-radius:6px;outline:none;cursor:pointer">' + opts + '</select>'
                 + `<button onclick="Asistencia.cargarHorasExtras()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.FILTRAR}</button>`
                 + (canAgT ? `<button onclick="Asistencia.abrirModalHorasExtras()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.ICON.NUEVO} ${BTN.NUEVO}</button>` : '');
         } else if (tab === 'calendario') {
@@ -254,8 +254,8 @@ const Asistencia = {
             let yearOpts = '';
             const yearActual = new Date().getFullYear();
             for (let y = 2024; y <= 2027; y++) yearOpts += '<option value="' + y + '"' + (y === yearActual ? ' selected' : '') + '>' + y + '</option>';
-            container.innerHTML = '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + mesOpts + '</select>'
-                + '<select id="ast-hero-anio" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + yearOpts + '</select>'
+            container.innerHTML = '<select id="ast-hero-mes" style="width:auto;padding:8px 12px;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:12px;border-radius:6px;outline:none;cursor:pointer">' + mesOpts + '</select>'
+                + '<select id="ast-hero-anio" style="width:auto;padding:8px 12px;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:12px;border-radius:6px;outline:none;cursor:pointer">' + yearOpts + '</select>'
                 + `<button onclick="Asistencia.cargarCalendario()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.CARGAR}</button>`;
         } else if (tab === 'reportes') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
