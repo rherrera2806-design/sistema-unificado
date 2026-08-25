@@ -262,10 +262,10 @@ const Asistencia = {
             container.innerHTML = '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
                 + '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
                 + `<button onclick="Asistencia.cargarReportes()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.CARGAR}</button>`
-                + '</div>'
-                + '<div style="position:relative;width:100%;max-width:250px;margin-top:6px">'
+                + '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
                 + '<input type="text" id="ast-rep-buscar" class="ast-input" placeholder="Buscar trabajador..." oninput="Asistencia.filtrarReporte()" style="padding-left:32px;width:100%;min-width:120px;max-width:200px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px;border-radius:6px">'
+                + '</div>'
                 + '</div>';
         } else if (tab === 'diaria') {
             container.innerHTML = '<div style="position:relative">'
