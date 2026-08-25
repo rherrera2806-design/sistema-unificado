@@ -116,12 +116,13 @@ const InvInventario = {
             this._allItems = [...this._originalItems];
         } else {
             this._allItems = this._originalItems.filter(function(i) {
+                var codigo = String(i.codigo_mp || '').toLowerCase();
                 var espesorStr = String(i.espesor != null ? i.espesor : '').toLowerCase();
                 var tipo = String(i.tipo_cristal || '').toLowerCase();
                 var ancho = String(i.ancho || '').toLowerCase();
                 var alto = String(i.alto || '').toLowerCase();
                 var cpm = String(i.consumo_promedio_mensual || '').toLowerCase();
-                return tipo.includes(query) || espesorStr.includes(query) || ancho.includes(query) || alto.includes(query) || cpm.includes(query);
+                return codigo.includes(query) || tipo.includes(query) || espesorStr.includes(query) || ancho.includes(query) || alto.includes(query) || cpm.includes(query);
             });
         }
         // Ordenar por tipo_cristal y luego por espesor
