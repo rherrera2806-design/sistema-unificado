@@ -1104,11 +1104,11 @@ const Asistencia = {
         const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
         const iconClock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
         const iconX = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
-        container.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-            + this._statCard(totalHoras + 'h', 'Total Horas', '#3b82f6', iconClock, 0)
-            + this._statCard(aprobados, 'Aprobados', '#22c55e', iconCheck, 60)
-            + this._statCard(pendientes, 'Pendientes', '#f59e0b', iconClock, 120)
-            + this._statCard(total, 'Registros', '#8b5cf6', iconX, 180)
+        container.innerHTML = '<div class="m-stats">'
+            + '<div class="m-stat-card stat-info"><div class="m-stat-icon" style="background:linear-gradient(135deg,#3b82f615,#3b82f630)">' + iconClock + '</div><div class="m-stat-value" style="color:#3b82f6">' + totalHoras + 'h</div><div class="m-stat-label">Total Horas</div></div>'
+            + '<div class="m-stat-card stat-green"><div class="m-stat-icon" style="background:linear-gradient(135deg,#22c55e15,#22c55e30)">' + iconCheck + '</div><div class="m-stat-value" style="color:#22c55e">' + aprobados + '</div><div class="m-stat-label">Aprobados</div></div>'
+            + '<div class="m-stat-card stat-amber"><div class="m-stat-icon" style="background:linear-gradient(135deg,#f59e0b15,#f59e0b30)">' + iconClock + '</div><div class="m-stat-value" style="color:#f59e0b">' + pendientes + '</div><div class="m-stat-label">Pendientes</div></div>'
+            + '<div class="m-stat-card stat-purple"><div class="m-stat-icon" style="background:linear-gradient(135deg,#8b5cf615,#8b5cf630)">' + iconX + '</div><div class="m-stat-value" style="color:#8b5cf6">' + total + '</div><div class="m-stat-label">Registros</div></div>'
             + '</div>';
     },
 
