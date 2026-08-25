@@ -3,7 +3,7 @@ const { sanitizeString } = require('../utils/helpers');
 
 async function getMovimientos(filtros = {}) {
     let sql = `SELECT m.*, u.nombre as usuario_nombre,
-        mp.codigo_mp, mp.nombre as mp_nombre, mp.espesor_mm, mp.costo_unitario_mp
+        mp.codigo_mp, mp.nombre as mp_nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.codigo_sap
         FROM movimientos m 
         LEFT JOIN usuarios u ON m.usuario_id = u.id
         LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id`;
