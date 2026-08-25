@@ -57,7 +57,7 @@ const InvInventario = {
 
         // Tabla desktop
         let tableHtml = '<div class="m-table-wrap"><table id="invTable"><thead><tr>'
-            + '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>Entradas</th><th>Salidas</th><th>Trozos</th><th>Stock</th><th>CPM</th><th>Autonomía</th><th>m2 Stock</th>'
+            + '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>Entradas</th><th>Salidas</th><th>Stock</th><th>CPM</th><th>Autonomía</th><th>m2 Stock</th>'
             + '</tr></thead><tbody id="invBody">';
 
         this._allItems.forEach(function(i) {
@@ -73,7 +73,6 @@ const InvInventario = {
                 + '<td style="font-weight:600;color:#1e40af">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</td>'
                 + '<td style="color:var(--success);font-weight:600">' + (i.entradas || 0) + '</td>'
                 + '<td style="color:var(--danger)">' + (i.salidas_plancha || 0) + '</td>'
-                + '<td style="color:var(--warning)">' + (i.trozos || 0) + '</td>'
                 + '<td><span style="font-size:18px;font-weight:700;color:' + stockColor + '">' + (i.stock || 0) + '</span></td>'
                 + '<td style="font-weight:600;color:#92400e;background:#fef3c7">' + cpm.toLocaleString('es-CL') + '</td>'
                 + '<td style="font-weight:600;color:' + autoColor + '">' + (cpm > 0 ? autoDias + 'd / ' + autoMeses + 'm' : '-') + '</td>'
