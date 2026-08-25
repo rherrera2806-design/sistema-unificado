@@ -51,22 +51,24 @@ async function getStockPorTipo() {
 
 async function getAutonomia() {
     const [stockResult, catalogoResult] = await Promise.all([
-        query(`SELECT tipo_cristal, espesor,
-            SUM(CASE WHEN tipo_movimiento = 'entrada' THEN cantidad_planchas ELSE 0 END) -
-            SUM(CASE WHEN tipo_movimiento = 'salida' AND tipo_salida = 'plancha_completa' THEN cantidad_planchas ELSE 0 END) as stock_planca
-            FROM movimientos GROUP BY tipo_cristal, espesor`),
-        query("SELECT nombre, espesor, stock_critico, consumo_mensual_aprox FROM catalogo_tipos_cristal WHERE activo = TRUE")
+        query(`SELECT mp.codigo_mp, mp.nombre as tipo_cristal, mp.espesor_mm as espesor,
+            SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad_planchas ELSE 0 END) -
+            SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.cantidad_planchas ELSE 0 END) as stock_planca
+            FROM movimientos m
+            LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id
+            WHERE mp.codigo_mp IS NOT NULL
+            GROUP BY mp.codigo_mp, mp.nombre, mp.espesor_mm`),
+        query("SELECT codigo_mp, nombre, espesor_mm, stock_critico, consumo_promedio_mensual FROM materias_primas WHERE activo = TRUE")
     ]);
     const catalogoMap = {};
-    catalogoResult.rows.forEach(c => { catalogoMap[`${c.nombre}_${c.espesor}`] = c; });
+    catalogoResult.rows.forEach(c => { catalogoMap[c.codigo_mp] = c; });
     const stockMap = {};
-    stockResult.rows.forEach(s => { stockMap[`${s.tipo_cristal}_${s.espesor}`] = Number(s.stock_planca); });
+    stockResult.rows.forEach(s => { stockMap[s.codigo_mp] = (stockMap[s.codigo_mp] || 0) + Number(s.stock_planca); });
     const allKeys = new Set([...Object.keys(stockMap), ...Object.keys(catalogoMap)]);
-    return Array.from(allKeys).map(key => {
-        const [nombre, espesor] = key.split('_');
-        const stock = stockMap[key] || 0;
-        const cat = catalogoMap[key] || {};
-        const consumo = Number(cat.consumo_mensual_aprox) || 0;
+    return Array.from(allKeys).map(codigo => {
+        const stock = stockMap[codigo] || 0;
+        const cat = catalogoMap[codigo] || {};
+        const consumo = Number(cat.consumo_promedio_mensual) || 0;
         const critico = Number(cat.stock_critico) || 0;
         let autonomiaMeses = null, autonomiaSemanas = null, autonomiaDias = null, estado = 'ok';
         if (stock <= 0) { estado = 'sin_stock'; }
@@ -78,7 +80,7 @@ async function getAutonomia() {
             if (stock <= critico) estado = 'critico';
             else if (autonomiaMeses <= 1) estado = 'advertencia';
         }
-        return { tipo: nombre, espesor: Number(espesor), stock, consumoMensual: consumo, stockCritico: critico,
+        return { codigo_mp: codigo, tipo: cat.nombre || '', espesor: Number(cat.espesor_mm || 0), stock, consumoMensual: consumo, stockCritico: critico,
             autonomiaMeses: autonomiaMeses !== null ? Math.round(autonomiaMeses * 10) / 10 : null,
             autonomiaSemanas, autonomiaDias, estado };
     });
