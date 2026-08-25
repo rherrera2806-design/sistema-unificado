@@ -127,7 +127,7 @@ filtrarTrabajadores(filtro) {
     <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
     </svg>
-    <input type="text" placeholder="Buscar..." style="padding-left:32px;width:100%;min-width:120px;max-width:200px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px;border-radius:6px">
+    <input type="text" class="ast-input" placeholder="Buscar..." style="padding-left:32px;width:100%;min-width:120px;max-width:200px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px;border-radius:6px">
 </div>
 ```
 
@@ -135,15 +135,17 @@ filtrarTrabajadores(filtro) {
 
 | Propiedad | Valor |
 |-----------|-------|
+| class | `ast-input` |
 | padding-left | `32px` (para icono) |
+| width | `100%` |
 | min-width | `120px` |
 | max-width | `200px` |
 | background | `rgba(255,255,255,0.35)` |
 | color | `white` |
 | border | `1px solid rgba(255,255,255,0.5)` |
-| font-size | `11px` |
 | border-radius | `6px` |
-| icono | `left:10px`, `stroke:rgba(255,255,255,0.5)` |
+| font-size | `11px` |
+| icono SVG | `left:10px`, `width:14`, `height:14`, `stroke:rgba(255,255,255,0.5)` |
 
 ---
 
