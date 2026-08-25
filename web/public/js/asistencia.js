@@ -1102,8 +1102,8 @@ const Asistencia = {
     filtrarTabla(tab) {
         const input = document.getElementById('ast-search-' + tab);
         const q = input ? input.value.toLowerCase() : '';
-        const dataKey = '_' + tab + 'Data';
-        const data = this[dataKey] || [];
+        const dataKeys = { permisos: '_permisosData', licencias: '_licenciasData', vacaciones: '_vacacionesData', horas_extras: '_horasExtrasData' };
+        const data = this[dataKeys[tab]] || [];
         const filtered = q ? data.filter(r => (r.nombre || '').toLowerCase().includes(q)) : data;
         const renderFn = {
             permisos: 'renderTablaPermisos',
