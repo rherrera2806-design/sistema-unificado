@@ -65,12 +65,16 @@ App.registerModule('usuarios', {
     renderStats(users) {
         const stats = document.getElementById('uStats');
         if (!stats) return;
-        const total = users.length;
-        const activos = users.filter(u => u.activo !== false).length;
-        const inactivos = total - activos;
-        const admins = users.filter(u => u.rol === 'admin').length;
+        const colors = ['stat-blue', 'stat-green', 'stat-orange', 'stat-gray', 'stat-red', 'stat-cyan'];
+        const areas = {};
+        users.forEach(u => {
+            const area = (u.area || '').trim() || 'Sin área';
+            areas[area] = (areas[area] || 0) + 1;
+        });
+        const sorted = Object.entries(areas).sort((a, b) => b[1] - a[1]);
         const stat = (val, label, cls) => '<div class="m-stat-card ' + cls + '"><span class="stat-val">' + val + '</span><span class="stat-lbl">' + label + '</span></div>';
-        stats.innerHTML = stat(total, 'Total', 'stat-blue') + stat(activos, 'Activos', 'stat-green') + stat(inactivos, 'Inactivos', 'stat-gray') + stat(admins, 'Admins', 'stat-orange');
+        stats.innerHTML = sorted.map(([area, count], i) => stat(count, area, colors[i % colors.length])).join('');
+        stats.style.gridTemplateColumns = 'repeat(' + Math.min(sorted.length, 4) + ', 1fr)';
     },
 
     filterUsers() {
