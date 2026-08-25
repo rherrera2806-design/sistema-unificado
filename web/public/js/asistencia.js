@@ -1889,16 +1889,19 @@ const Asistencia = {
             const pct = diasHabiles > 0 ? Math.round((asistidos / diasHabiles) * 100) : 0;
             const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
             const he = Number(r.horas_extras) || 0;
+            const tid = r.id;
+            const cellStyle = 'cursor:pointer;transition:all 0.15s';
+            const cellHover = ' onmouseover="this.style.background=\'#f0f9ff\';this.style.transform=\'scale(1.03)\'" onmouseout="this.style.background=\'\';this.style.transform=\'\'"';
             return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + (i + 1) + '</strong></td>'
                 + '<td style="padding:12px 16px"><strong style="color:#1e293b">' + r.nombre + '</strong></td>'
                 + '<td style="padding:12px 16px"><span style="font-weight:700;color:#3b82f6">' + diasHabiles + '</span></td>'
                 + '<td style="padding:12px 16px;color:#475569">' + asistidos.toFixed(1) + '</td>'
-                + '<td style="padding:12px 16px"><strong style="color:' + (faltas > 0 ? '#dc2626' : '#475569') + '">' + faltas + '</strong></td>'
-                + '<td style="padding:12px 16px"><span style="font-weight:600;color:' + (permisos > 0 ? '#d97706' : '#475569') + '">' + permisos.toFixed(1) + '</span></td>'
-                + '<td style="padding:12px 16px"><span style="font-weight:600;color:' + (licencias > 0 ? '#d97706' : '#475569') + '">' + licencias + ' días</span></td>'
-                + '<td style="padding:12px 16px"><span style="font-weight:600;color:' + (vacaciones > 0 ? '#d97706' : '#475569') + '">' + vacaciones + ' días</span></td>'
-                + '<td style="padding:12px 16px"><span style="font-weight:700;color:' + (he > 0 ? '#8b5cf6' : '#94a3b8') + '">' + he.toFixed(1) + ' hrs</span></td>'
+                + '<td style="padding:12px 16px;'+cellStyle+'"'+cellHover+' onclick="Asistencia.verDetalleReporte('+tid+',\'faltas\',\''+r.nombre+'\')"><strong style="color:' + (faltas > 0 ? '#dc2626' : '#475569') + '">' + faltas + (faltas > 0 ? ' <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' : '') + '</strong></td>'
+                + '<td style="padding:12px 16px;'+cellStyle+'"'+cellHover+' onclick="Asistencia.verDetalleReporte('+tid+',\'permisos\',\''+r.nombre+'\')"><span style="font-weight:600;color:' + (permisos > 0 ? '#d97706' : '#475569') + '">' + permisos.toFixed(1) + (permisos > 0 ? ' <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' : '') + '</span></td>'
+                + '<td style="padding:12px 16px;'+cellStyle+'"'+cellHover+' onclick="Asistencia.verDetalleReporte('+tid+',\'licencias\',\''+r.nombre+'\')"><span style="font-weight:600;color:' + (licencias > 0 ? '#d97706' : '#475569') + '">' + licencias + ' días' + (licencias > 0 ? ' <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' : '') + '</span></td>'
+                + '<td style="padding:12px 16px;'+cellStyle+'"'+cellHover+' onclick="Asistencia.verDetalleReporte('+tid+',\'vacaciones\',\''+r.nombre+'\')"><span style="font-weight:600;color:' + (vacaciones > 0 ? '#d97706' : '#475569') + '">' + vacaciones + ' días' + (vacaciones > 0 ? ' <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' : '') + '</span></td>'
+                + '<td style="padding:12px 16px;'+cellStyle+'"'+cellHover+' onclick="Asistencia.verDetalleReporte('+tid+',\'horas_extras\',\''+r.nombre+'\')"><span style="font-weight:700;color:' + (he > 0 ? '#8b5cf6' : '#94a3b8') + '">' + he.toFixed(1) + ' hrs' + (he > 0 ? ' <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;opacity:0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>' : '') + '</span></td>'
                 + '<td style="padding:12px 16px"><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:3px"></div></div><span style="font-size:12px;font-weight:700;color:' + color + '">' + pct + '%</span></div></td>'
                 + '</tr>';
         }).join('');
@@ -2028,6 +2031,54 @@ const Asistencia = {
                 cardsEl.innerHTML = cardsHtml;
             }
         }
+    },
+
+    async verDetalleReporte(trabajadorId, tipo, nombre) {
+        const mes = document.getElementById('ast-hero-mes')?.value || (new Date().getMonth() + 1);
+        const anio = document.getElementById('ast-hero-anio')?.value || new Date().getFullYear();
+        const titulos = { faltas: 'Faltas', permisos: 'Permisos', licencias: 'Licencias', vacaciones: 'Vacaciones', horas_extras: 'Horas Extras' };
+        const colores = { faltas: '#dc2626', permisos: '#d97706', licencias: '#d97706', vacaciones: '#2563eb', horas_extras: '#8b5cf6' };
+        const color = colores[tipo] || '#3b82f6';
+
+        try {
+            const r = await authFetch('/api/asistencia/detalle-reporte?trabajador_id=' + trabajadorId + '&mes=' + mes + '&anio=' + anio + '&tipo=' + tipo);
+            if (!r.ok) return;
+            const detalle = await r.json();
+
+            let bodyHtml = '';
+            if (detalle.length === 0) {
+                bodyHtml = '<div style="text-align:center;padding:24px;color:#94a3b8">Sin registros este mes</div>';
+            } else {
+                bodyHtml = '<div style="display:flex;flex-direction:column;gap:6px">';
+                detalle.forEach(d => {
+                    const fecha = d.fecha ? this.fmtDate(d.fecha.split('T')[0]) : '';
+                    const fechaFin = d.fecha_fin ? ' - ' + this.fmtDate(d.fecha_fin.split('T')[0]) : '';
+                    const estadoBadge = d.estado ? '<span class="ast-badge" style="font-size:9px;padding:2px 8px;'
+                        + (d.estado === 'aprobado' || d.estado === 'aprobada' ? 'background:#d1fae5;color:#059669' : d.estado === 'rechazado' || d.estado === 'rechazada' ? 'background:#fee2e2;color:#dc2626' : 'background:#fef3c7;color:#d97706')
+                        + '">' + d.estado + '</span>' : '';
+                    bodyHtml += '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8fafc;border-radius:8px;border-left:3px solid ' + color + '">'
+                        + '<div style="flex:1;min-width:0">'
+                        + '<div style="font-size:12px;font-weight:700;color:#1e293b">' + fecha + fechaFin + '</div>'
+                        + (d.label ? '<div style="font-size:11px;color:#64748b;margin-top:2px">' + d.label + '</div>' : '')
+                        + '</div>'
+                        + estadoBadge
+                        + '</div>';
+                });
+                bodyHtml += '</div>';
+            }
+
+            const header = '<div style="display:flex;align-items:center;gap:8px">'
+                + '<div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,' + color + '15,' + color + '30);display:flex;align-items:center;justify-content:center">'
+                + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + color + '" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>'
+                + '</div>'
+                + '<span style="font-size:14px;font-weight:700;color:#1e293b">' + (titulos[tipo] || tipo) + ' — ' + nombre + '</span>'
+                + '<span style="margin-left:auto;background:' + color + ';color:white;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">' + detalle.length + '</span>'
+                + '</div>';
+
+            App.showModal(bodyHtml, { title: '' });
+            const modalHeader = document.querySelector('#modalOverlay .modal-header h3');
+            if (modalHeader) modalHeader.innerHTML = header;
+        } catch(e) { console.error('Error:', e); }
     },
 
     // ═══════ HELPERS ═══════

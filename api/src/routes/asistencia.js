@@ -580,6 +580,59 @@ router.get('/api/asistencia/reporte-mensual', canView, async (req, res) => {
     }
 });
 
+router.get('/api/asistencia/detalle-reporte', canView, async (req, res) => {
+    try {
+        const { trabajador_id, mes, anio, tipo } = req.query;
+        if (!trabajador_id || !tipo) return res.status(400).json({ error: 'trabajador_id y tipo requeridos' });
+        const mesActual = parseInt(mes) || new Date().getMonth() + 1;
+        const anioActual = parseInt(anio) || new Date().getFullYear();
+        const mesStr = String(mesActual).padStart(2, '0');
+        const siguienteMes = mesActual === 12 ? 1 : mesActual + 1;
+        const siguienteAnio = mesActual === 12 ? anioActual + 1 : anioActual;
+        const sigMesStr = String(siguienteMes).padStart(2, '0');
+        const fi = anioActual + '-' + mesStr + '-01';
+        const ff = siguienteAnio + '-' + sigMesStr + '-01';
+        const tid = parseInt(trabajador_id);
+        let rows = [];
+
+        if (tipo === 'faltas') {
+            const r = await pool.query(
+                `SELECT a.fecha FROM asistencia a WHERE a.trabajador_id = $1 AND a.fecha >= $2::date AND a.fecha < $3::date ORDER BY a.fecha`,
+                [tid, fi, ff]
+            );
+            rows = r.rows.map(r => ({ fecha: r.fecha, label: 'Falta' }));
+        } else if (tipo === 'permisos') {
+            const r = await pool.query(
+                `SELECT p.fecha_inicio, p.fecha_fin, p.horas, p.tipo, p.motivo, p.estado FROM permisos p WHERE p.trabajador_id = $1 AND p.fecha_inicio >= $2::date AND p.fecha_inicio < $3::date ORDER BY p.fecha_inicio`,
+                [tid, fi, ff]
+            );
+            rows = r.rows.map(p => ({ fecha: p.fecha_inicio, label: (p.tipo || '-') + (p.horas ? ' (' + p.horas + 'h)' : '') + (p.motivo ? ': ' + p.motivo : ''), estado: p.estado }));
+        } else if (tipo === 'licencias') {
+            const r = await pool.query(
+                `SELECT l.fecha_inicio, l.fecha_fin, l.diagnostico, l.estado FROM licencias_medicas l WHERE l.trabajador_id = $1 AND l.fecha_inicio < $2::date AND (l.fecha_fin IS NULL OR l.fecha_fin >= $3::date) ORDER BY l.fecha_inicio`,
+                [tid, ff, fi]
+            );
+            rows = r.rows.map(l => ({ fecha: l.fecha_inicio, fecha_fin: l.fecha_fin, label: l.diagnostico || '-', estado: l.estado }));
+        } else if (tipo === 'vacaciones') {
+            const r = await pool.query(
+                `SELECT v.fecha_inicio, v.fecha_fin, v.dias, v.estado FROM vacaciones v WHERE v.trabajador_id = $1 AND v.fecha_inicio < $2::date AND (v.fecha_fin IS NULL OR v.fecha_fin >= $3::date) ORDER BY v.fecha_inicio`,
+                [tid, ff, fi]
+            );
+            rows = r.rows.map(v => ({ fecha: v.fecha_inicio, fecha_fin: v.fecha_fin, label: (v.dias || '') + ' días', estado: v.estado }));
+        } else if (tipo === 'horas_extras') {
+            const r = await pool.query(
+                `SELECT he.fecha, he.horas, he.motivo, he.estado FROM horas_extras he WHERE he.trabajador_id = $1 AND he.fecha >= $2::date AND he.fecha < $3::date ORDER BY he.fecha`,
+                [tid, fi, ff]
+            );
+            rows = r.rows.map(h => ({ fecha: h.fecha, label: h.horas + ' hrs' + (h.motivo ? ': ' + h.motivo : ''), estado: h.estado }));
+        }
+
+        res.json(rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 router.get('/api/asistencia/ranking', canView, async (req, res) => {
     try {
         const mesActual = parseInt(req.query.mes) || new Date().getMonth() + 1;
