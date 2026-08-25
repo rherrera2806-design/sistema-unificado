@@ -80,7 +80,7 @@ const InvHistorial = {
         var canDel = App.canDelete('inv_inventario');
         var canEdit = App.canEdit('inv_inventario');
         let tableHtml = '<div class="m-table-wrap"><table id="hTable"><thead><tr>'
-            + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>SAP</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Usuario</th><th>Obs</th>'
+            + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Código</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Usuario</th><th>Obs</th>'
             + (canEdit || canDel ? '<th>Acciones</th>' : '')
             + '</tr></thead><tbody>';
 
@@ -102,8 +102,8 @@ const InvHistorial = {
                 + '<td>' + f.toLocaleDateString('es-CL') + '</td>'
                 + '<td>' + hora + '</td>'
                 + '<td>' + tipoHtml + '</td>'
+                + '<td style="font-weight:600;color:#3b82f6">' + (m.codigo_mp || '-') + '</td>'
                 + '<td>' + (m.tipo_cristal || '-') + '</td>'
-                + '<td>' + (m.codigo_sap || '-') + '</td>'
                 + '<td>' + (m.espesor || 0) + 'mm</td>'
                 + '<td>' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</td>'
                 + '<td>' + (m.cantidad_planchas || 0) + '</td>'
@@ -130,7 +130,7 @@ const InvHistorial = {
                 + '</div>'
                 + (m.tipo_movimiento === 'salida' && m.tipo_salida ? '<div style="font-size:10px;color:#64748b;margin-bottom:4px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : m.tipo_salida) + '</div>' : '')
                 + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">' + (m.tipo_cristal || '-') + ' ' + (m.espesor || 0) + 'mm</div>'
-                + (m.codigo_sap ? '<div style="font-size:11px;color:#3b82f6;font-weight:600;margin-bottom:2px">SAP: ' + m.codigo_sap + '</div>' : '')
+                + (m.codigo_mp ? '<div style="font-size:11px;color:#3b82f6;font-weight:600;margin-bottom:2px">Código: ' + m.codigo_mp + '</div>' : '')
                 + '<div style="font-size:12px;color:#475569">' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</div>'
                 + '<div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:#64748b">'
                 + '<span>Cantidad: <strong>' + (m.cantidad_planchas || 0) + '</strong></span>'
@@ -204,7 +204,7 @@ const InvHistorial = {
         var canDel = App.canDelete('inv_inventario');
         var canEdit = App.canEdit('inv_inventario');
         var tableHtml = '<div class="m-table-wrap"><table id="hTable"><thead><tr>'
-            + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Cristal</th><th>SAP</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Usuario</th><th>Obs</th>'
+            + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Código</th><th>Cristal</th><th>Espesor</th><th>Dimensiones</th><th>Cantidad</th><th>m2</th><th>Proveedor</th><th>Usuario</th><th>Obs</th>'
             + (canEdit || canDel ? '<th>Acciones</th>' : '')
             + '</tr></thead><tbody>';
 
@@ -226,8 +226,8 @@ const InvHistorial = {
                 + '<td>' + f.toLocaleDateString('es-CL') + '</td>'
                 + '<td>' + hora + '</td>'
                 + '<td>' + tipoHtml + '</td>'
+                + '<td style="font-weight:600;color:#3b82f6">' + (m.codigo_mp || '-') + '</td>'
                 + '<td>' + (m.tipo_cristal || '-') + '</td>'
-                + '<td>' + (m.codigo_sap || '-') + '</td>'
                 + '<td>' + (m.espesor || 0) + 'mm</td>'
                 + '<td>' + (m.tipo_cristal || '-') + '</td>'
                 + '<td>' + (m.espesor || 0) + 'mm</td>'
@@ -255,7 +255,7 @@ const InvHistorial = {
                 + '</div>'
                 + (m.tipo_movimiento === 'salida' && m.tipo_salida ? '<div style="font-size:10px;color:#64748b;margin-bottom:4px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : m.tipo_salida) + '</div>' : '')
                 + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">' + (m.tipo_cristal || '-') + ' ' + (m.espesor || 0) + 'mm</div>'
-                + (m.codigo_sap ? '<div style="font-size:11px;color:#3b82f6;font-weight:600;margin-bottom:2px">SAP: ' + m.codigo_sap + '</div>' : '')
+                + (m.codigo_mp ? '<div style="font-size:11px;color:#3b82f6;font-weight:600;margin-bottom:2px">Código: ' + m.codigo_mp + '</div>' : '')
                 + '<div style="font-size:12px;color:#475569">' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</div>'
                 + '<div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:#64748b">'
                 + '<span>Cantidad: <strong>' + (m.cantidad_planchas || 0) + '</strong></span>'
