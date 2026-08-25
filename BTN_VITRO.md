@@ -60,10 +60,24 @@ Botones de acción con estilo sólido, colores semánticos, diseño consistente 
 ## Botones en Hero (sobre fondo oscuro)
 
 ```html
-<!-- Filtros (transparentes) -->
-<button style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.4);font-size:11px;padding:6px 12px;border-radius:6px">
+<!-- Filtros (sólidos) -->
+<button style="background:white;color:#1e293b;padding:6px 12px;font-size:11px;border:none;border-radius:6px;font-weight:600;cursor:pointer">
     Todos
 </button>
+<button style="background:#16a34a;color:white;padding:6px 12px;font-size:11px;border:none;border-radius:6px;font-weight:600;cursor:pointer">
+    Activos
+</button>
+<button style="background:#64748b;color:white;padding:6px 12px;font-size:11px;border:none;border-radius:6px;font-weight:600;cursor:pointer">
+    Inactivos
+</button>
+
+<!-- Buscador (transparente) -->
+<div style="position:relative">
+    <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="text" placeholder="Buscar..." style="padding-left:32px;width:100%;min-width:120px;max-width:200px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px;border-radius:6px">
+</div>
 
 <!-- Acción principal (accent) -->
 <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">
@@ -106,16 +120,52 @@ container.innerHTML = this._btnVitro('Nuevo', 'accent')
 
 ---
 
-## Filtros en Hero (transparentes)
+## Filtros en Hero (sólidos)
 
 ```javascript
-_btnFiltro(text, active) {
-    const bg = active ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)';
-    const color = active ? 'white' : 'rgba(255,255,255,0.8)';
-    const border = active ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.2)';
-    return '<button style="background:' + bg + ';color:' + color + ';border:1px solid ' + border + ';font-size:11px;padding:6px 12px;border-radius:6px;cursor:pointer">' + text + '</button>';
+_btnFiltro(text, color) {
+    const colorMap = {
+        white: 'background:white;color:#1e293b',
+        green: 'background:#16a34a;color:white',
+        gray: 'background:#64748b;color:white',
+        red: 'background:#dc2626;color:white',
+        blue: 'background:#3b82f6;color:white'
+    };
+    const styles = colorMap[color] || colorMap.white;
+    return '<button style="' + styles + ';padding:6px 12px;font-size:11px;border:none;border-radius:6px;font-weight:600;cursor:pointer">' + text + '</button>';
 },
+
+// Uso:
+container.innerHTML = this._btnFiltro('Todos', 'white')
+    + this._btnFiltro('Activos', 'green')
+    + this._btnFiltro('Inactivos', 'gray');
 ```
+
+---
+
+## Buscador en Hero (transparente)
+
+```html
+<div style="position:relative">
+    <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="text" placeholder="Buscar..." style="padding-left:32px;width:100%;min-width:120px;max-width:200px;background:rgba(255,255,255,0.35);color:white;border:1px solid rgba(255,255,255,0.5);font-size:11px;border-radius:6px">
+</div>
+```
+
+### Valores buscador
+
+| Propiedad | Valor |
+|-----------|-------|
+| padding-left | `32px` (para icono) |
+| min-width | `120px` |
+| max-width | `200px` |
+| background | `rgba(255,255,255,0.35)` |
+| color | `white` |
+| border | `1px solid rgba(255,255,255,0.5)` |
+| font-size | `11px` |
+| border-radius | `6px` |
 
 ---
 

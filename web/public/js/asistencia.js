@@ -217,9 +217,9 @@ const Asistencia = {
         const canViewMod = canView(MOD);
         if (tab === 'trabajadores') {
             container.innerHTML = '<div style="display:flex;gap:6px;align-items:center">'
-                + '<button onclick="Asistencia.filtrarTrabajadores(\'todos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.4);font-size:11px;padding:6px 12px" data-filter="todos">Todos</button>'
-                + '<button onclick="Asistencia.filtrarTrabajadores(\'activos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.2);font-size:11px;padding:6px 12px" data-filter="activos">Activos</button>'
-                + '<button onclick="Asistencia.filtrarTrabajadores(\'inactivos\')" class="ast-btn ast-hero-trab-filter" style="background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.2);font-size:11px;padding:6px 12px" data-filter="inactivos">Inactivos</button>'
+                + '<button onclick="Asistencia.filtrarTrabajadores(\'todos\')" class="btn btn-vitro-filter" style="background:white;color:#1e293b;padding:6px 12px;font-size:11px;border:none;border-radius:6px;font-weight:600;cursor:pointer" data-filter="todos">Todos</button>'
+                + '<button onclick="Asistencia.filtrarTrabajadores(\'activos\')" class="btn btn-vitro-filter" style="background:#16a34a;color:white;padding:6px 12px;font-size:11px;border:none;border-radius:6px;font-weight:600;cursor:pointer" data-filter="activos">Activos</button>'
+                + '<button onclick="Asistencia.filtrarTrabajadores(\'inactivos\')" class="btn btn-vitro-filter" style="background:#64748b;color:white;padding:6px 12px;font-size:11px;border:none;border-radius:6px;font-weight:600;cursor:pointer" data-filter="inactivos">Inactivos</button>'
                 + '</div>'
                 + '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
