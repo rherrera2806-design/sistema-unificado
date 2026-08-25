@@ -15,11 +15,11 @@ App.registerModule('usuarios', {
             + '.us-stats .m-stat-icon svg{width:12px;height:12px}'
             + '.us-stats .m-stat-value{font-size:14px;font-weight:800;white-space:nowrap}'
             + '.us-stats .m-stat-label{font-size:8px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}'
-            + '@media(max-width:768px){.us-stats{grid-template-columns:repeat(2,1fr);gap:6px}.us-stats .m-stat-card{padding:5px 8px;min-height:42px;gap:5px}.us-stats .m-stat-icon{width:22px;height:22px}.us-stats .m-stat-icon svg{width:10px;height:10px}.us-stats .m-stat-value{font-size:12px}.us-stats .m-stat-label{font-size:7px}.m-cards-mobile{display:block!important;padding:12px}.m-table-wrap{display:none}}'
+            + '@media(max-width:768px){.us-stats{grid-template-columns:repeat(2,1fr);gap:6px}.us-stats .m-stat-card{padding:5px 8px;min-height:42px;gap:5px}.us-stats .m-stat-icon{width:22px;height:22px}.us-stats .m-stat-icon svg{width:10px;height:10px}.us-stats .m-stat-value{font-size:12px}.us-stats .m-stat-label{font-size:7px}.m-cards-mobile{display:block!important;padding:12px}.m-table-wrap{display:none}.us-hero-mobile{padding:8px 12px!important;gap:6px!important}.us-hero-mobile .m-hero-title h2{font-size:13px!important}.us-hero-mobile .m-hero-title p{display:none!important}.us-hero-mobile #uSearch{width:100%!important;min-width:0!important;padding:6px 10px 6px 28px!important;font-size:11px!important}}'
             + '</style>'
 
             + '<div class="m-page">'
-            + '<div class="m-hero">'
+            + '<div class="m-hero us-hero-mobile">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
             + '<div class="m-hero-inner"><div class="m-hero-title"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</h2>'
             + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestionar usuarios y permisos del sistema</p></div>'
