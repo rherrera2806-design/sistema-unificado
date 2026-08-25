@@ -8,6 +8,8 @@ App.registerModule('usuarios', {
             + '.us-table tbody tr{transition:background 0.15s;border-bottom:1px solid #f1f5f9}'
             + '.us-table tbody tr:hover{background:#f8fafc!important}'
             + '#uSearch::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
+            + '.m-cards-mobile{display:none}'
+            + '@media(max-width:768px){.m-cards-mobile{display:block!important;padding:12px}.m-table-wrap{display:none}}'
             + '</style>'
 
             + '<div class="m-page">'
