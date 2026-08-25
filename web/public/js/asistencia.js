@@ -526,19 +526,19 @@ const Asistencia = {
     // ═══════ ASISTENCIA DIARIA ═══════
     async renderDiaria(c) {
         c.innerHTML = `
-            <div style="display:flex;gap:8px;margin-bottom:12px;max-width:100%;overflow-x:auto;padding-bottom:4px">
-                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #22c55e;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 0ms both;min-width:120px;flex:1 0 0;display:flex;align-items:center;gap:8px">
-                    <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
-                    <div><div id="ast-stat-presentes" style="font-size:18px;font-weight:800;color:#059669;line-height:1">0</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Presentes</div></div>
-                </div>
-                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #ef4444;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 60ms both;min-width:120px;flex:1 0 0;display:flex;align-items:center;gap:8px">
-                    <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#fef2f2,#fecaca);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
-                    <div><div id="ast-stat-faltas" style="font-size:18px;font-weight:800;color:#dc2626;line-height:1">0</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Faltas</div></div>
-                </div>
-                <div class="ast-card" style="background:white;border:1px solid #e2e8f0;border-left:4px solid #3b82f6;border-radius:10px;padding:8px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:astFadeUp 0.4s ease 120ms both;min-width:120px;flex:1 0 0;display:flex;align-items:center;gap:8px">
-                    <div style="width:30px;height:30px;border-radius:6px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-                    <div><div id="ast-stat-total" style="font-size:18px;font-weight:800;color:#1e293b;line-height:1">0</div><div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px">Total</div></div>
-                </div>
+            <style>
+                .ast-perm-stats{grid-template-columns:repeat(3,1fr)}
+                .ast-perm-stats .m-stat-card{flex-direction:row;align-items:center;gap:6px;padding:6px 10px;min-height:48px;overflow:hidden}
+                .ast-perm-stats .m-stat-icon{width:26px;height:26px;flex-shrink:0}
+                .ast-perm-stats .m-stat-icon svg{width:12px;height:12px}
+                .ast-perm-stats .m-stat-value{font-size:14px;white-space:nowrap}
+                .ast-perm-stats .m-stat-label{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+                @media(max-width:768px){.ast-perm-stats{grid-template-columns:repeat(3,1fr);gap:6px}.ast-perm-stats .m-stat-card{padding:5px 8px;min-height:42px;gap:5px}.ast-perm-stats .m-stat-icon{width:22px;height:22px}.ast-perm-stats .m-stat-icon svg{width:10px;height:10px}.ast-perm-stats .m-stat-value{font-size:12px}.ast-perm-stats .m-stat-label{font-size:7px}}
+            </style>
+            <div class="m-stats ast-perm-stats" style="margin-bottom:12px">
+                <div class="m-stat-card stat-green"><div class="m-stat-icon" style="background:linear-gradient(135deg,#22c55e15,#22c55e30)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div id="ast-stat-presentes" class="m-stat-value" style="color:#22c55e">0</div><div class="m-stat-label">Presentes</div></div></div>
+                <div class="m-stat-card stat-red"><div class="m-stat-icon" style="background:linear-gradient(135deg,#ef444415,#ef444430)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div id="ast-stat-faltas" class="m-stat-value" style="color:#ef4444">0</div><div class="m-stat-label">Faltas</div></div></div>
+                <div class="m-stat-card stat-blue"><div class="m-stat-icon" style="background:linear-gradient(135deg,#3b82f615,#3b82f630)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div id="ast-stat-total" class="m-stat-value" style="color:#3b82f6">0</div><div class="m-stat-label">Total</div></div></div>
             </div>
 
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:20px;animation:astFadeUp 0.4s ease 180ms both">
@@ -1134,14 +1134,23 @@ const Asistencia = {
             return Math.round((fin - ini) / (1000 * 60 * 60 * 24)) + 1;
         };
         const totalDias = licencias.reduce((sum, l) => sum + calcDias(l), 0);
-        const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
-        const iconClock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
-        const iconX = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
-        container.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-            + this._statCard(totalDias + 'd', 'Total Días', '#3b82f6', iconClock, 0)
-            + this._statCard(aprobadas, 'Aprobadas', '#22c55e', iconCheck, 60)
-            + this._statCard(pendientes, 'Pendientes', '#f59e0b', iconClock, 120)
-            + this._statCard(total, 'Registros', '#8b5cf6', iconX, 180)
+        const iconCheck = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+        const iconClock = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        const iconX = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
+        container.innerHTML = '<style>'
+            + '.ast-perm-stats{grid-template-columns:repeat(4,1fr)}'
+            + '.ast-perm-stats .m-stat-card{flex-direction:row;align-items:center;gap:6px;padding:6px 10px;min-height:48px;overflow:hidden}'
+            + '.ast-perm-stats .m-stat-icon{width:26px;height:26px;flex-shrink:0}'
+            + '.ast-perm-stats .m-stat-icon svg{width:12px;height:12px}'
+            + '.ast-perm-stats .m-stat-value{font-size:14px;white-space:nowrap}'
+            + '.ast-perm-stats .m-stat-label{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+            + '@media(max-width:768px){.ast-perm-stats{grid-template-columns:repeat(2,1fr);gap:6px}.ast-perm-stats .m-stat-card{padding:5px 8px;min-height:42px;gap:5px}.ast-perm-stats .m-stat-icon{width:22px;height:22px}.ast-perm-stats .m-stat-icon svg{width:10px;height:10px}.ast-perm-stats .m-stat-value{font-size:12px}.ast-perm-stats .m-stat-label{font-size:7px}}'
+            + '</style>'
+            + '<div class="m-stats ast-perm-stats">'
+            + '<div class="m-stat-card stat-info"><div class="m-stat-icon" style="background:linear-gradient(135deg,#3b82f615,#3b82f630)">' + iconClock + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#3b82f6">' + totalDias + 'd</div><div class="m-stat-label">Total Días</div></div></div>'
+            + '<div class="m-stat-card stat-green"><div class="m-stat-icon" style="background:linear-gradient(135deg,#22c55e15,#22c55e30)">' + iconCheck + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#22c55e">' + aprobadas + '</div><div class="m-stat-label">Aprobadas</div></div></div>'
+            + '<div class="m-stat-card stat-amber"><div class="m-stat-icon" style="background:linear-gradient(135deg,#f59e0b15,#f59e0b30)">' + iconClock + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#f59e0b">' + pendientes + '</div><div class="m-stat-label">Pendientes</div></div></div>'
+            + '<div class="m-stat-card stat-purple"><div class="m-stat-icon" style="background:linear-gradient(135deg,#8b5cf615,#8b5cf630)">' + iconX + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#8b5cf6">' + total + '</div><div class="m-stat-label">Registros</div></div></div>'
             + '</div>';
     },
 
@@ -1157,12 +1166,21 @@ const Asistencia = {
         };
         const totalDias = vacaciones.reduce((sum, v) => sum + calcDias(v), 0);
         const trabajadores = new Set(vacaciones.map(v => v.trabajador_id)).size;
-        const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
-        const iconUsers = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
-        container.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-            + this._statCard(totalDias + 'd', 'Total Días', '#3b82f6', iconCheck, 0)
-            + this._statCard(trabajadores, 'Trabajadores', '#8b5cf6', iconUsers, 60)
-            + this._statCard(total, 'Registros', '#22c55e', iconCheck, 120)
+        const iconCheck = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+        const iconUsers = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
+        container.innerHTML = '<style>'
+            + '.ast-perm-stats{grid-template-columns:repeat(3,1fr)}'
+            + '.ast-perm-stats .m-stat-card{flex-direction:row;align-items:center;gap:6px;padding:6px 10px;min-height:48px;overflow:hidden}'
+            + '.ast-perm-stats .m-stat-icon{width:26px;height:26px;flex-shrink:0}'
+            + '.ast-perm-stats .m-stat-icon svg{width:12px;height:12px}'
+            + '.ast-perm-stats .m-stat-value{font-size:14px;white-space:nowrap}'
+            + '.ast-perm-stats .m-stat-label{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+            + '@media(max-width:768px){.ast-perm-stats{grid-template-columns:repeat(3,1fr);gap:6px}.ast-perm-stats .m-stat-card{padding:5px 8px;min-height:42px;gap:5px}.ast-perm-stats .m-stat-icon{width:22px;height:22px}.ast-perm-stats .m-stat-icon svg{width:10px;height:10px}.ast-perm-stats .m-stat-value{font-size:12px}.ast-perm-stats .m-stat-label{font-size:7px}}'
+            + '</style>'
+            + '<div class="m-stats ast-perm-stats">'
+            + '<div class="m-stat-card stat-info"><div class="m-stat-icon" style="background:linear-gradient(135deg,#3b82f615,#3b82f630)">' + iconCheck + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#3b82f6">' + totalDias + 'd</div><div class="m-stat-label">Total Días</div></div></div>'
+            + '<div class="m-stat-card stat-purple"><div class="m-stat-icon" style="background:linear-gradient(135deg,#8b5cf615,#8b5cf630)">' + iconUsers + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#8b5cf6">' + trabajadores + '</div><div class="m-stat-label">Trabajadores</div></div></div>'
+            + '<div class="m-stat-card stat-green"><div class="m-stat-icon" style="background:linear-gradient(135deg,#22c55e15,#22c55e30)">' + iconCheck + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#22c55e">' + total + '</div><div class="m-stat-label">Registros</div></div></div>'
             + '</div>';
     },
 
@@ -1172,12 +1190,21 @@ const Asistencia = {
         const total = horasExtras.reduce((sum, he) => sum + (Number(he.horas) || 0), 0);
         const aprobadas = horasExtras.filter(he => he.estado === 'aprobada').reduce((sum, he) => sum + (Number(he.horas) || 0), 0);
         const pendientes = horasExtras.filter(he => he.estado === 'pendiente').reduce((sum, he) => sum + (Number(he.horas) || 0), 0);
-        const iconClock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
-        const iconCheck = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
-        container.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-            + this._statCard(total.toFixed(1) + 'h', 'Total Horas', '#3b82f6', iconClock, 0)
-            + this._statCard(aprobadas.toFixed(1), 'Aprobadas', '#22c55e', iconCheck, 60)
-            + this._statCard(pendientes.toFixed(1), 'Pendientes', '#f59e0b', iconClock, 120)
+        const iconClock = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        const iconCheck = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+        container.innerHTML = '<style>'
+            + '.ast-perm-stats{grid-template-columns:repeat(3,1fr)}'
+            + '.ast-perm-stats .m-stat-card{flex-direction:row;align-items:center;gap:6px;padding:6px 10px;min-height:48px;overflow:hidden}'
+            + '.ast-perm-stats .m-stat-icon{width:26px;height:26px;flex-shrink:0}'
+            + '.ast-perm-stats .m-stat-icon svg{width:12px;height:12px}'
+            + '.ast-perm-stats .m-stat-value{font-size:14px;white-space:nowrap}'
+            + '.ast-perm-stats .m-stat-label{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+            + '@media(max-width:768px){.ast-perm-stats{grid-template-columns:repeat(3,1fr);gap:6px}.ast-perm-stats .m-stat-card{padding:5px 8px;min-height:42px;gap:5px}.ast-perm-stats .m-stat-icon{width:22px;height:22px}.ast-perm-stats .m-stat-icon svg{width:10px;height:10px}.ast-perm-stats .m-stat-value{font-size:12px}.ast-perm-stats .m-stat-label{font-size:7px}}'
+            + '</style>'
+            + '<div class="m-stats ast-perm-stats">'
+            + '<div class="m-stat-card stat-info"><div class="m-stat-icon" style="background:linear-gradient(135deg,#3b82f615,#3b82f630)">' + iconClock + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#3b82f6">' + total.toFixed(1) + 'h</div><div class="m-stat-label">Total Horas</div></div></div>'
+            + '<div class="m-stat-card stat-green"><div class="m-stat-icon" style="background:linear-gradient(135deg,#22c55e15,#22c55e30)">' + iconCheck + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#22c55e">' + aprobadas.toFixed(1) + '</div><div class="m-stat-label">Aprobadas</div></div></div>'
+            + '<div class="m-stat-card stat-amber"><div class="m-stat-icon" style="background:linear-gradient(135deg,#f59e0b15,#f59e0b30)">' + iconClock + '</div><div style="display:flex;flex-direction:column;min-width:0;overflow:hidden"><div class="m-stat-value" style="color:#f59e0b">' + pendientes.toFixed(1) + '</div><div class="m-stat-label">Pendientes</div></div></div>'
             + '</div>';
     },
 
