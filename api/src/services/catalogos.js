@@ -88,7 +88,7 @@ async function getAutonomia() {
 
 async function getAlertas() {
     const autonomia = await getAutonomia();
-    return autonomia.filter(a => a.estado === 'critico' || a.estado === 'sin_stock');
+    return autonomia.filter(a => a.estado === 'critico');
 }
 
 async function getEspesores() {
