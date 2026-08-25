@@ -117,7 +117,7 @@ const Asistencia = {
                 + '.ast-cal-day-num{font-size:12px;font-weight:700;line-height:1.1}'
                 + '.ast-cal-day-name{font-size:8px;font-weight:500;opacity:0.7;line-height:1}'
                 + '}'
-                + '#ast-hero-buscar::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
+                + '#ast-hero-buscar::placeholder,#ast-rep-buscar::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
                 + '#ast-hero-fecha{color-scheme:dark}'
                 + '#ast-hero-mes option,#ast-hero-anio option{color:#1e293b;background:white}'
                 + '.ast-hero-wrap{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:10px;padding:10px 16px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3);max-width:100%;box-sizing:border-box}'
