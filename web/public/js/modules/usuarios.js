@@ -9,7 +9,13 @@ App.registerModule('usuarios', {
             + '.us-table tbody tr:hover{background:#f8fafc!important}'
             + '#uSearch::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
             + '.m-cards-mobile{display:none}'
-            + '@media(max-width:768px){.m-cards-mobile{display:block!important;padding:12px}.m-table-wrap{display:none}}'
+            + '.us-stats{grid-template-columns:repeat(4,1fr)}'
+            + '.us-stats .m-stat-card{flex-direction:row;align-items:center;gap:6px;padding:6px 10px;min-height:48px;overflow:hidden}'
+            + '.us-stats .m-stat-icon{width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center}'
+            + '.us-stats .m-stat-icon svg{width:12px;height:12px}'
+            + '.us-stats .m-stat-value{font-size:14px;font-weight:800;white-space:nowrap}'
+            + '.us-stats .m-stat-label{font-size:8px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}'
+            + '@media(max-width:768px){.us-stats{grid-template-columns:repeat(2,1fr);gap:6px}.us-stats .m-stat-card{padding:5px 8px;min-height:42px;gap:5px}.us-stats .m-stat-icon{width:22px;height:22px}.us-stats .m-stat-icon svg{width:10px;height:10px}.us-stats .m-stat-value{font-size:12px}.us-stats .m-stat-label{font-size:7px}.m-cards-mobile{display:block!important;padding:12px}.m-table-wrap{display:none}}'
             + '</style>'
 
             + '<div class="m-page">'
@@ -75,20 +81,28 @@ App.registerModule('usuarios', {
     renderStats(users) {
         const stats = document.getElementById('uStats');
         if (!stats) return;
-        const colors = ['stat-blue', 'stat-green', 'stat-orange', 'stat-gray', 'stat-red', 'stat-cyan'];
+        const colorMap = { blue: '#3b82f6', green: '#22c55e', amber: '#f59e0b', red: '#ef4444', purple: '#8b5cf6', cyan: '#0891b2' };
+        const colorClasses = ['blue', 'green', 'amber', 'red', 'purple', 'cyan'];
+        const iconUsers = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
         const areas = {};
         users.forEach(u => {
             const area = (u.area || '').trim() || 'Sin área';
             areas[area] = (areas[area] || 0) + 1;
         });
         const sorted = Object.entries(areas).sort((a, b) => b[1] - a[1]);
-        const stat = (val, label, cls, area) => {
+        stats.className = 'm-stats us-stats';
+        stats.innerHTML = sorted.map(([area, count], i) => {
+            const cc = colorClasses[i % colorClasses.length];
+            const clr = colorMap[cc];
             const sel = this.selectedArea === area;
             const style = 'cursor:pointer;opacity:' + (sel || !this.selectedArea ? '1' : '0.5') + ';transform:' + (sel ? 'scale(1.03)' : 'scale(1)') + ';box-shadow:' + (sel ? '0 4px 16px rgba(0,0,0,0.15)' : '0 1px 3px rgba(0,0,0,0.06)') + ';transition:all 0.2s';
-            return '<div class="m-stat-card ' + cls + '" onclick="App.modules.usuarios.filterByArea(\'' + area.replace(/'/g, "\\'") + '\')" style="' + style + '"><span class="stat-val">' + val + '</span><span class="stat-lbl">' + label + '</span></div>';
-        };
-        stats.innerHTML = sorted.map(([area, count], i) => stat(count, area, colors[i % colors.length], area)).join('');
-        stats.style.gridTemplateColumns = 'repeat(' + Math.min(sorted.length, 3) + ', 1fr)';
+            return '<div class="m-stat-card stat-' + cc + '" onclick="App.modules.usuarios.filterByArea(\'' + area.replace(/'/g, "\\'") + '\')" style="' + style + '">'
+                + '<div class="m-stat-icon" style="background:linear-gradient(135deg,' + clr + '15,' + clr + '30)">' + iconUsers + '</div>'
+                + '<div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">'
+                + '<div class="m-stat-value" style="color:' + clr + '">' + count + '</div>'
+                + '<div class="m-stat-label">' + area + '</div>'
+                + '</div></div>';
+        }).join('');
     },
 
     filterByArea(area) {
