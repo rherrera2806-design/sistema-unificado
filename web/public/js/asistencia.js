@@ -348,6 +348,7 @@ const Asistencia = {
             </div>`;
 
         this.trabFilter = 'todos';
+        setTimeout(() => this.filtrarTrabajadores('todos'), 50);
         await this.cargarTodosTrabajadores();
     },
 
@@ -422,17 +423,16 @@ const Asistencia = {
 
     filtrarTrabajadores(filtro) {
         this.trabFilter = filtro;
-        document.querySelectorAll('.ast-hero-trab-filter').forEach(b => {
-            b.style.background = 'rgba(255,255,255,0.15)';
-            b.style.color = 'rgba(255,255,255,0.8)';
-            b.style.border = '1px solid rgba(255,255,255,0.2)';
+        const colors = { todos: { bg: '#ffffff', text: '#1e293b' }, activos: { bg: '#16a34a', text: '#ffffff' }, inactivos: { bg: '#64748b', text: '#ffffff' } };
+        document.querySelectorAll('.btn-vitro-filter').forEach(b => {
+            const f = b.dataset.filter;
+            const c = colors[f] || colors.todos;
+            b.style.background = c.bg;
+            b.style.color = c.text;
+            b.style.opacity = f === filtro ? '1' : '0.5';
+            b.style.transform = f === filtro ? 'scale(1.05)' : 'scale(1)';
+            b.style.boxShadow = f === filtro ? '0 2px 8px rgba(0,0,0,0.2)' : 'none';
         });
-        const active = document.querySelector('[data-filter="' + filtro + '"]');
-        if (active) {
-            active.style.background = 'rgba(255,255,255,0.3)';
-            active.style.color = 'white';
-            active.style.border = '1px solid rgba(255,255,255,0.4)';
-        }
         this.renderTablaTrabajadores();
     },
 
