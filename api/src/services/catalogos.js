@@ -58,7 +58,7 @@ async function getAutonomia() {
             LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id
             WHERE mp.codigo_mp IS NOT NULL
             GROUP BY mp.codigo_mp, mp.nombre, mp.espesor_mm`),
-        query("SELECT codigo_mp, nombre, espesor_mm, stock_critico, consumo_promedio_mensual FROM materias_primas WHERE activo = TRUE")
+        query("SELECT codigo_mp, nombre, espesor_mm, stock_critico, consumo_promedio_mensual FROM materias_primas")
     ]);
     const catalogoMap = {};
     catalogoResult.rows.forEach(c => { catalogoMap[c.codigo_mp] = c; });
