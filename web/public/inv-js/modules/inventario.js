@@ -2,15 +2,21 @@ const InvInventario = {
     _allItems: [],
     _originalItems: [],
     _filterCriticos: false,
+    _verSensible: false,
 
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         try {
+            this._verSensible = typeof hasPerm === 'function' && hasPerm('inv_inventario.sensible');
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const items = await api.inv().getInventario();
             this._originalItems = Array.isArray(items) ? items : [];
             this._allItems = [...this._originalItems];
+
+            const btnsSensibles = this._verSensible ? `
+                        <button onclick="InvInventario.exportarExcel()" class="btn btn-success" style="padding:8px 16px;font-size:12px">Exportar Excel</button>
+                        <button onclick="window.print()" class="btn btn-outline" style="padding:8px 16px;font-size:12px">Imprimir</button>` : '';
 
             page.innerHTML = `
                 <div class="m-page">
@@ -30,8 +36,7 @@ const InvInventario = {
 
                     <div class="m-actions">
                         <button onclick="InvInventario.toggleCriticos()" id="btnCriticos" class="btn btn-outline" style="padding:8px 16px;font-size:12px;border-color:#ef4444;color:#ef4444">Stock Crítico</button>
-                        <button onclick="InvInventario.exportarExcel()" class="btn btn-success" style="padding:8px 16px;font-size:12px">Exportar Excel</button>
-                        <button onclick="window.print()" class="btn btn-outline" style="padding:8px 16px;font-size:12px">Imprimir</button>
+                        ${btnsSensibles}
                     </div>
 
                     <div class="m-card">
@@ -49,6 +54,7 @@ const InvInventario = {
     renderContent() {
         const container = document.getElementById('invContent');
         if (!container) return;
+        const verS = this._verSensible;
 
         if (this._allItems.length === 0) {
             container.innerHTML = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay items en inventario</h4><p style="margin:0;color:#94a3b8;font-size:13px">Agrega el primer item</p></div>';
@@ -56,9 +62,13 @@ const InvInventario = {
         }
 
         // Tabla desktop
-        let tableHtml = '<div class="m-table-wrap"><table id="invTable"><thead><tr>'
-            + '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th><th>Entradas</th><th>Salidas</th><th>Stock</th><th>CPM</th><th>Autonomía</th><th>m2 Stock</th>'
-            + '</tr></thead><tbody id="invBody">';
+        let headers = '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th>';
+        if (verS) headers += '<th>Entradas</th><th>Salidas</th>';
+        headers += '<th>Stock</th>';
+        if (verS) headers += '<th>CPM</th><th>Autonomía</th>';
+        headers += '<th>m2 Stock</th>';
+
+        let tableHtml = '<div class="m-table-wrap"><table id="invTable"><thead><tr>' + headers + '</tr></thead><tbody id="invBody">';
 
         this._allItems.forEach(function(i) {
             var stockColor = i.stock > 0 ? 'var(--success)' : 'var(--danger)';
@@ -70,13 +80,13 @@ const InvInventario = {
                 + '<td style="font-weight:600">' + (i.codigo_mp || '-') + '</td>'
                 + '<td>' + (i.tipo_cristal || '-') + '</td>'
                 + '<td style="font-weight:600;color:#334155">' + (i.espesor || 0) + 'mm</td>'
-                + '<td style="font-weight:600;color:#1e40af">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</td>'
-                + '<td style="color:var(--success);font-weight:600">' + (i.entradas || 0) + '</td>'
-                + '<td style="color:var(--danger)">' + (i.salidas_plancha || 0) + '</td>'
-                + '<td><span style="font-size:18px;font-weight:700;color:' + stockColor + '">' + (i.stock || 0) + '</span></td>'
-                + '<td style="font-weight:600;color:#92400e;background:#fef3c7">' + cpm.toLocaleString('es-CL') + '</td>'
-                + '<td style="font-weight:600;color:' + autoColor + '">' + (cpm > 0 ? autoDias + 'd / ' + autoMeses + 'm' : '-') + '</td>'
-                + '<td>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + ' m2</td>'
+                + '<td style="font-weight:600;color:#1e40af">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</td>';
+            if (verS) tableHtml += '<td style="color:var(--success);font-weight:600">' + (i.entradas || 0) + '</td>'
+                + '<td style="color:var(--danger)">' + (i.salidas_plancha || 0) + '</td>';
+            tableHtml += '<td><span style="font-size:18px;font-weight:700;color:' + stockColor + '">' + (i.stock || 0) + '</span></td>';
+            if (verS) tableHtml += '<td style="font-weight:600;color:#92400e;background:#fef3c7">' + cpm.toLocaleString('es-CL') + '</td>'
+                + '<td style="font-weight:600;color:' + autoColor + '">' + (cpm > 0 ? autoDias + 'd / ' + autoMeses + 'm' : '-') + '</td>';
+            tableHtml += '<td>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + ' m2</td>'
                 + '</tr>';
         });
 
@@ -97,13 +107,13 @@ const InvInventario = {
                 + '</div>'
                 + '<div style="font-size:14px;color:#475569;margin-bottom:4px;font-weight:500">' + (i.tipo_cristal || '-') + ' ' + (i.espesor || 0) + 'mm</div>'
                 + '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</div>'
-                + '<div style="display:flex;gap:12px;font-size:11px;color:#64748b;flex-wrap:wrap">'
-                + '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
-                + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>'
-                + '<span>m2: <strong>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + '</strong></span>'
-                + '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-weight:600">CPM: ' + cpm.toLocaleString('es-CL') + '</span>'
-                + (cpm > 0 ? '<span style="background:' + autoColor + '20;color:' + autoColor + ';padding:1px 6px;border-radius:8px;font-weight:600">Auto: ' + autoDias + 'd / ' + autoMeses + 'm</span>' : '')
-                + '</div></div>';
+                + '<div style="display:flex;gap:12px;font-size:11px;color:#64748b;flex-wrap:wrap">';
+            if (verS) cardsHtml += '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
+                + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>';
+            cardsHtml += '<span>m2: <strong>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + '</strong></span>';
+            if (verS) cardsHtml += '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-weight:600">CPM: ' + cpm.toLocaleString('es-CL') + '</span>'
+                + (cpm > 0 ? '<span style="background:' + autoColor + '20;color:' + autoColor + ';padding:1px 6px;border-radius:8px;font-weight:600">Auto: ' + autoDias + 'd / ' + autoMeses + 'm</span>' : '');
+            cardsHtml += '</div></div>';
         });
         cardsHtml += '</div>';
 
