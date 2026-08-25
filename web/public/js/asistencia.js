@@ -260,7 +260,7 @@ const Asistencia = {
         } else if (tab === 'reportes') {
             let opts = meses.map((m, i) => '<option value="' + (i + 1) + '"' + (i === mesActual ? ' selected' : '') + '>' + m + '</option>').join('');
             container.innerHTML = '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
-                + '<select id="ast-hero-mes" class="ast-input" style="width:auto;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5)">' + opts + '</select>'
+                + '<select id="ast-hero-mes" style="width:auto;padding:8px 12px;background:rgba(255,255,255,0.3);color:white;border:1px solid rgba(255,255,255,0.5);font-size:12px;border-radius:6px;outline:none;cursor:pointer">' + opts + '</select>'
                 + `<button onclick="Asistencia.cargarReportes()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">${BTN.CARGAR}</button>`
                 + '<div style="position:relative">'
                 + '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
