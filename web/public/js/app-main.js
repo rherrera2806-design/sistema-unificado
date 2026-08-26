@@ -675,13 +675,13 @@ function doLogout() {
 const SIDEBAR_SECTIONS = {
     asistencia: ['asistencia'],
     atencion: ['turnos_recepcion', 'turnos_bodega', 'turnos_almacen', 'turnos_facturar', 'turnos_qr', 'turnos_reporte'],
+    costeo: ['costeo'],
     instalaciones: ['instalaciones', 'inst_historial'],
     inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial'],
-    reclamos: ['reclamos'],
-    mantencion: ['dashboard', 'machineTypes', 'machines', 'components', 'preventive', 'corrective', 'calendar', 'notas', 'proveedores', 'reports', 'history', 'bitacora'],
+    mantencion: ['bitacora', 'calendar', 'components', 'corrective', 'dashboard', 'history', 'machines', 'machineTypes', 'notas', 'preventive', 'proveedores', 'reports'],
     pedidos: ['pedidos'],
-    produccion: ['prod_ordenes', 'prod_planificacion', 'prod_reportes', 'prod_notas', 'prod_config', 'taller'],
-    costeo: ['costeo']
+    produccion: ['prod_config', 'prod_notas', 'prod_planificacion', 'prod_ordenes', 'prod_reportes', 'taller'],
+    reclamos: ['reclamos']
 };
 
 function getUserPerms() {
@@ -732,6 +732,9 @@ function renderSidebar() {
             { id: 'turnos_qr', label: 'QR Clientes', icon: SVG.qrcode },
             { id: 'turnos_reporte', label: 'Reporte', icon: SVG.barChart }
         ]},
+        { key: 'costeo', label: 'COSTOS', items: [
+            { id: 'costeo', label: 'Costeo', icon: SVG.chart }
+        ]},
         { key: 'instalaciones', label: 'INSTALACIONES', items: [
             { id: 'instalaciones', label: 'Instalaciones', icon: SVG.tool },
             { id: 'inst_historial', label: 'Historial', icon: SVG.clock }
@@ -741,36 +744,33 @@ function renderSidebar() {
             { id: 'inv_movimientos', label: 'Movimientos', icon: SVG.list },
             { id: 'inv_historial', label: 'Historial Inventario', icon: SVG.clock }
         ]},
-        { key: 'reclamos', label: 'RECLAMOS', items: [
-            { id: 'reclamos', label: 'Reclamos y Devoluciones', icon: SVG.alert }
-        ]},
         { key: 'mantencion', label: 'MANTENCION', items: [
-            { id: 'dashboard', label: 'Dashboard', icon: SVG.dashboard },
-            { id: 'machineTypes', label: 'Tipos de Area', icon: SVG.layers },
-            { id: 'machines', label: 'Maquinas', icon: SVG.box },
-            { id: 'components', label: 'Componentes', icon: SVG.wrench },
-            { id: 'preventive', label: 'Preventivo', icon: SVG.check },
-            { id: 'corrective', label: 'Correctivo', icon: SVG.alert },
+            { id: 'bitacora', label: 'Bitacora de Mantencion', icon: SVG.book },
             { id: 'calendar', label: 'Calendario', icon: SVG.calendar },
-            { id: 'notas', label: 'Notas', icon: SVG.file },
-            { id: 'proveedores', label: 'Proveedores', icon: SVG.building },
-            { id: 'reports', label: 'Reportes', icon: SVG.chart },
+            { id: 'components', label: 'Componentes', icon: SVG.wrench },
+            { id: 'corrective', label: 'Correctivo', icon: SVG.alert },
+            { id: 'dashboard', label: 'Dashboard', icon: SVG.dashboard },
             { id: 'history', label: 'Historial', icon: SVG.clock },
-            { id: 'bitacora', label: 'Bitacora de Mantencion', icon: SVG.book }
+            { id: 'machines', label: 'Maquinas', icon: SVG.box },
+            { id: 'machineTypes', label: 'Tipos de Area', icon: SVG.layers },
+            { id: 'notas', label: 'Notas', icon: SVG.file },
+            { id: 'preventive', label: 'Preventivo', icon: SVG.check },
+            { id: 'proveedores', label: 'Proveedores', icon: SVG.building },
+            { id: 'reports', label: 'Reportes', icon: SVG.chart }
         ]},
         { key: 'pedidos', label: 'PEDIDOS', items: [
             { id: 'pedidos', label: 'Pedidos / Ordenes', icon: SVG.file }
         ]},
         { key: 'produccion', label: 'PRODUCCION', items: [
-            { id: 'prod_ordenes', label: 'Produccion', icon: SVG.box },
-            { id: 'prod_planificacion', label: 'Planificacion', icon: SVG.calendar },
-            { id: 'prod_reportes', label: 'Reporte Fechas', icon: SVG.chart },
-            { id: 'prod_notas', label: 'Mis Pendientes', icon: SVG.clipboard },
             { id: 'prod_config', label: 'Configuracion', icon: SVG.settings },
+            { id: 'prod_notas', label: 'Mis Pendientes', icon: SVG.clipboard },
+            { id: 'prod_planificacion', label: 'Planificacion', icon: SVG.calendar },
+            { id: 'prod_ordenes', label: 'Produccion', icon: SVG.box },
+            { id: 'prod_reportes', label: 'Reporte Fechas', icon: SVG.chart },
             { id: 'taller', label: 'Taller', icon: SVG.home, external: '/taller/' }
         ]},
-        { key: 'costeo', label: 'COSTOS', items: [
-            { id: 'costeo', label: 'Costeo', icon: SVG.chart }
+        { key: 'reclamos', label: 'RECLAMOS', items: [
+            { id: 'reclamos', label: 'Reclamos y Devoluciones', icon: SVG.alert }
         ]}
     ];
 
