@@ -391,6 +391,7 @@ router.get('/api/reclamos/dashboard/stats', perms.view, async (req, res) => {
 // Listar todos los responsables únicos
 router.get('/api/reclamos/responsables/lista', perms.view, async (req, res) => {
     try {
+        await ensureColumns();
         const result = await pool.query(
             "SELECT DISTINCT responsable FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable"
         );
@@ -403,6 +404,7 @@ router.get('/api/reclamos/responsables/lista', perms.view, async (req, res) => {
 // Listar motivos por responsable
 router.get('/api/reclamos/motivos/:responsable', perms.view, async (req, res) => {
     try {
+        await ensureColumns();
         const result = await pool.query(
             "SELECT id, motivo FROM matriz_responsables_motivos WHERE responsable = $1 AND activo = TRUE ORDER BY motivo",
             [req.params.responsable]
@@ -416,6 +418,7 @@ router.get('/api/reclamos/motivos/:responsable', perms.view, async (req, res) =>
 // Listar toda la matriz
 router.get('/api/reclamos/matriz', perms.view, async (req, res) => {
     try {
+        await ensureColumns();
         const result = await pool.query(
             "SELECT * FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable, motivo"
         );
@@ -428,6 +431,7 @@ router.get('/api/reclamos/matriz', perms.view, async (req, res) => {
 // Agregar responsable/motivo
 router.post('/api/reclamos/matriz', perms.create, async (req, res) => {
     try {
+        await ensureColumns();
         const { responsable, motivo } = req.body;
         if (!responsable || !motivo) return res.status(400).json({ error: 'Responsable y motivo requeridos' });
         const result = await pool.query(
@@ -444,6 +448,7 @@ router.post('/api/reclamos/matriz', perms.create, async (req, res) => {
 // Eliminar responsable/motivo (soft delete)
 router.delete('/api/reclamos/matriz/:id', perms.delete, async (req, res) => {
     try {
+        await ensureColumns();
         const result = await pool.query(
             'UPDATE matriz_responsables_motivos SET activo = FALSE WHERE id = $1 RETURNING id',
             [req.params.id]
