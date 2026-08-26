@@ -324,7 +324,7 @@ const Reclamos = {
                                                 <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:30px">#</th>
                                                 <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:80px">Item</th>
                                                 <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:100px">Código</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:150px">Descripción</th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:220px">Descripción</th>
                                                 <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Ancho</th>
                                                 <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Alto</th>
                                                 <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Espesor</th>
@@ -610,7 +610,7 @@ const Reclamos = {
         } catch(e) {}
     },
 
-    _onValorInput(idx) {
+    _onValorBlur(idx) {
         const input = document.getElementById('rcValor_' + idx);
         if (!input) return;
         const raw = this._parse(input.value);
@@ -620,6 +620,27 @@ const Reclamos = {
             this._setItems(items);
         }
         input.value = raw ? this._fmtCLP(raw) : '';
+    },
+
+    _onValorInput(idx) {
+        const input = document.getElementById('rcValor_' + idx);
+        if (!input) return;
+        const items = this._getItems();
+        if (items[idx]) {
+            items[idx].valor_unitario = this._parse(input.value);
+            this._setItems(items);
+        }
+    },
+
+    _onDimBlur(idx) {
+        const items = this._getItems();
+        const it = items[idx];
+        if (!it) return;
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ? this._fmt(v) : ''; };
+        setVal('rcAncho_' + idx, it.ancho);
+        setVal('rcAlto_' + idx, it.alto);
+        setVal('rcM2_' + idx, it.m2 || '');
+        setVal('rcKg_' + idx, it.kg || '');
     },
 
     renderItems() {
@@ -641,18 +662,20 @@ const Reclamos = {
             const onCalc = 'App.modules.reclamos._calcItem(' + i + ')';
             const onSync = 'App.modules.reclamos._syncItemFromRow(' + i + ')';
             const onCodigo = 'App.modules.reclamos._onCodigoInput(' + i + ')';
-            const onValor = 'App.modules.reclamos._onValorInput(' + i + ')';
+            const onValorIn = 'App.modules.reclamos._onValorInput(' + i + ')';
+            const onValorBl = 'App.modules.reclamos._onValorBlur(' + i + ')';
+            const onDimBl = 'App.modules.reclamos._onDimBlur(' + i + ')';
             return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="' + tdBase + 'text-align:center;padding:6px 4px;font-weight:700;color:#7c3aed;font-size:12px">' + (i + 1) + '</td>'
                 + '<td style="' + tdBase + '"><input id="rcItem_' + i + '" value="' + v(it.item) + '" style="' + inpBase + '" placeholder="#" oninput="' + onSync + '"></td>'
                 + '<td style="' + tdBase + '"><input id="rcCodigo_' + i + '" value="' + v(it.codigo) + '" style="' + inpBase + '" placeholder="Código SAP" oninput="' + onCodigo + '"></td>'
                 + '<td style="' + tdBase + '"><input id="rcDesc_' + i + '" value="' + v(it.descripcion) + '" style="' + inpBase + '" placeholder="Descripción" oninput="' + onSync + '"></td>'
-                + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.ancho)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '"></td>'
-                + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.alto)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '"></td>'
-                + '<td style="' + tdBase + '"><input id="rcEspesor_' + i + '" type="text" inputmode="decimal" value="' + v(it.espesor || '') + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.ancho)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.alto)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcEspesor_' + i + '" type="text" inputmode="decimal" value="' + v(it.espesor || '') + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '"></td>'
                 + '<td style="' + tdBase + '"><input id="rcM2_' + i + '" type="text" value="' + v(it.m2 || '') + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
                 + '<td style="' + tdBase + '"><input id="rcKg_' + i + '" type="text" value="' + v(it.kg || '') + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
-                + '<td style="' + tdBase + '"><input id="rcValor_' + i + '" type="text" inputmode="numeric" value="' + v(it.valor_unitario ? this._fmtCLP(it.valor_unitario) : '') + '" style="' + inpBase + 'text-align:right" placeholder="$0" oninput="' + onValor + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcValor_' + i + '" type="text" inputmode="numeric" value="' + v(it.valor_unitario ? this._fmtCLP(it.valor_unitario) : '') + '" style="' + inpBase + 'text-align:right" placeholder="$0" oninput="' + onValorIn + '" onblur="' + onValorBl + '"></td>'
                 + '<td style="padding:4px 6px;text-align:center"><button type="button" onclick="App.modules.reclamos.removeItem(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>'
                 + '</tr>';
         }).join('');
