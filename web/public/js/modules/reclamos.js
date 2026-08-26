@@ -59,10 +59,10 @@ const Reclamos = {
                         <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestión de control de calidad y reclamos de clientes</p>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                        <button class="rc-filter-btn active" data-filter="TODOS" onclick="Reclamos.filtrar('TODOS')">Todos</button>
-                        <button class="rc-filter-btn" data-filter="PENDIENTE" onclick="Reclamos.filtrar('PENDIENTE')">Pendientes</button>
-                        <button class="rc-filter-btn" data-filter="EN REVISION" onclick="Reclamos.filtrar('EN REVISION')">En Revisión</button>
-                        <button class="rc-filter-btn" data-filter="FINALIZADO" onclick="Reclamos.filtrar('FINALIZADO')">Finalizados</button>
+                        <button class="rc-filter-btn active" data-filter="TODOS" onclick="App.modules.reclamos.filtrar('TODOS')">Todos</button>
+                        <button class="rc-filter-btn" data-filter="PENDIENTE" onclick="App.modules.reclamos.filtrar('PENDIENTE')">Pendientes</button>
+                        <button class="rc-filter-btn" data-filter="EN REVISION" onclick="App.modules.reclamos.filtrar('EN REVISION')">En Revisión</button>
+                        <button class="rc-filter-btn" data-filter="FINALIZADO" onclick="App.modules.reclamos.filtrar('FINALIZADO')">Finalizados</button>
                     </div>
                 </div>
             </div>
@@ -72,14 +72,14 @@ const Reclamos = {
             <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
                 <div style="position:relative;flex:1;min-width:180px">
                     <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" id="rcBuscar" placeholder="Buscar por cliente, OV, código o folio..." oninput="Reclamos.buscar()" style="padding:9px 12px 9px 34px;width:100%;font-size:12px;border:1px solid #e2e8f0;border-radius:8px;outline:none">
+                    <input type="text" id="rcBuscar" placeholder="Buscar por cliente, OV, código o folio..." oninput="App.modules.reclamos.buscar()" style="padding:9px 12px 9px 34px;width:100%;font-size:12px;border:1px solid #e2e8f0;border-radius:8px;outline:none">
                 </div>
-                <button onclick="Reclamos.showForm()" class="btn btn-primary" style="padding:9px 18px;font-size:12px;white-space:nowrap">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <button onclick="App.modules.reclamos.showForm()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Nuevo
                 </button>
-                <button onclick="Reclamos.showMatriz()" class="btn btn-outline" style="padding:9px 14px;font-size:12px;white-space:nowrap">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <button onclick="App.modules.reclamos.showMatriz()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     Configuración
                 </button>
             </div>
@@ -178,8 +178,8 @@ const Reclamos = {
             html += '<td style="padding:12px 14px"><span class="rc-badge ' + badge + '">' + r.estado + '</span></td>';
             html += '<td style="padding:12px 14px"><span style="font-weight:600;color:' + resColor + ';font-size:12px">' + (r.resolucion || '-') + '</span></td>';
             html += '<td style="padding:12px 14px;text-align:center;white-space:nowrap">';
-            html += '<button onclick="Reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
-            html += '<button onclick="Reclamos.eliminar(' + r.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
+            html += '<button onclick="App.modules.reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
+            html += '<button onclick="App.modules.reclamos.eliminar(' + r.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
             html += '</td></tr>';
         });
 
@@ -200,8 +200,8 @@ const Reclamos = {
             html += '<div style="font-size:12px;color:#475569;margin-bottom:8px">' + (r.descripcion || '-') + '</div>';
             if (r.resolucion) html += '<div style="font-size:11px;font-weight:600;color:' + (r.resolucion === 'Rechazada' ? '#ef4444' : '#22c55e') + ';margin-bottom:8px">Resolución: ' + r.resolucion + '</div>';
             html += '<div style="display:flex;gap:6px">';
-            html += '<button onclick="Reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="flex:1">Editar</button>';
-            html += '<button onclick="Reclamos.eliminar(' + r.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
+            html += '<button onclick="App.modules.reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="flex:1">Editar</button>';
+            html += '<button onclick="App.modules.reclamos.eliminar(' + r.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
             html += '</div></div>';
         });
         html += '</div>';
@@ -255,10 +255,10 @@ const Reclamos = {
                         </div>
                         <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">${id ? 'Editar Reclamo #' + (r.numero_reclamo || '') : 'Nuevo Reclamo / Devolución'}</h3>
                     </div>
-                    <button onclick="Reclamos.hideForm()" class="btn btn-sm btn-outline">Cerrar</button>
+                    <button onclick="App.modules.reclamos.hideForm()" class="btn btn-sm btn-outline">Cerrar</button>
                 </div>
 
-                <form onsubmit="Reclamos.guardar(event)" style="padding:16px">
+                <form onsubmit="App.modules.reclamos.guardar(event)" style="padding:16px">
                     <!-- SECCIÓN VENTAS (APERTURA) -->
                     <div class="rc-section">
                         <div class="rc-section-header" style="background:linear-gradient(135deg,#eff6ff,#dbeafe)">
@@ -326,7 +326,7 @@ const Reclamos = {
                             <div style="margin-top:10px">
                                 <label>Fotos Adjuntas</label>
                                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                                    <input type="file" id="rcFotosInput" accept="image/*" multiple style="display:none" onchange="Reclamos.handleFotos(this)">
+                                    <input type="file" id="rcFotosInput" accept="image/*" multiple style="display:none" onchange="App.modules.reclamos.handleFotos(this)">
                                     <button type="button" onclick="document.getElementById('rcFotosInput').click()" class="btn btn-sm btn-outline" style="font-size:11px">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                                         Adjuntar Fotos
@@ -354,7 +354,7 @@ const Reclamos = {
                             <div class="rc-form-grid">
                                 <div>
                                     <label>Responsable de Falla</label>
-                                    <select id="rcResponsableFalla" onchange="Reclamos.onResponsableChange()">
+                                    <select id="rcResponsableFalla" onchange="App.modules.reclamos.onResponsableChange()">
                                         <option value="">Seleccionar...</option>
                                         ${respOptions}
                                     </select>
@@ -378,7 +378,7 @@ const Reclamos = {
                     </div>
 
                     <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #f1f5f9">
-                        <button type="button" onclick="Reclamos.hideForm()" class="btn btn-outline">Cancelar</button>
+                        <button type="button" onclick="App.modules.reclamos.hideForm()" class="btn btn-outline">Cancelar</button>
                         <button type="submit" class="btn btn-primary" style="padding:10px 28px">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                             Guardar
@@ -457,7 +457,7 @@ const Reclamos = {
         const preview = document.getElementById('rcFotosPreview');
         if (!preview) return;
         preview.innerHTML = fotos.map((f, i) =>
-            '<img src="' + f + '" class="rc-foto-thumb" onclick="Reclamos.removeFoto(' + i + ')" title="Click para eliminar">'
+            '<img src="' + f + '" class="rc-foto-thumb" onclick="App.modules.reclamos.removeFoto(' + i + ')" title="Click para eliminar">'
         ).join('');
     },
 
@@ -555,7 +555,7 @@ const Reclamos = {
             agrupado[resp].forEach(m => {
                 bodyHtml += '<div style="padding:6px 12px 6px 26px;font-size:12px;color:#475569;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f1f5f9">';
                 bodyHtml += '<span>' + m.motivo + '</span>';
-                bodyHtml += '<button onclick="Reclamos.eliminarMotivo(' + m.id + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
+                bodyHtml += '<button onclick="App.modules.reclamos.eliminarMotivo(' + m.id + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
                 bodyHtml += '</div>';
             });
             bodyHtml += '</div>';
@@ -568,7 +568,7 @@ const Reclamos = {
         bodyHtml += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
         bodyHtml += '<input type="text" id="matrizResp" placeholder="Responsable (ej: CORTE)" style="flex:1;min-width:120px;padding:8px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px">';
         bodyHtml += '<input type="text" id="matrizMotivo" placeholder="Motivo (ej: MAL CORTADO)" style="flex:1;min-width:120px;padding:8px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px">';
-        bodyHtml += '<button onclick="Reclamos.agregarMotivo()" class="btn btn-primary btn-sm" style="font-size:11px">Agregar</button>';
+        bodyHtml += '<button onclick="App.modules.reclamos.agregarMotivo()" class="btn btn-primary btn-sm" style="font-size:11px">Agregar</button>';
         bodyHtml += '</div></div>';
 
         App.showModal(bodyHtml, { title: 'Configuración - Responsables y Motivos' });
