@@ -29,7 +29,7 @@ router.get('/api/reclamos/setup', async (req, res) => {
             CREATE TABLE IF NOT EXISTS reclamos_devoluciones (
                 id SERIAL PRIMARY KEY,
                 numero_reclamo SERIAL,
-                fecha_ingreso DATE NOT NULL DEFAULT CURRENT_DATE,
+                fecha_ingreso TIMESTAMP DEFAULT NOW(),
                 responsable_ingreso VARCHAR(200) DEFAULT '',
                 cliente VARCHAR(200) DEFAULT '',
                 numero_orden VARCHAR(50) DEFAULT '',
@@ -42,6 +42,12 @@ router.get('/api/reclamos/setup', async (req, res) => {
                 motivo VARCHAR(200) DEFAULT '',
                 observacion_analisis TEXT DEFAULT '',
                 resolucion VARCHAR(50) DEFAULT '',
+                fecha_revision TIMESTAMP,
+                responsable_revision VARCHAR(200) DEFAULT '',
+                fecha_proceso TIMESTAMP,
+                responsable_proceso VARCHAR(200) DEFAULT '',
+                fecha_fin TIMESTAMP,
+                responsable_fin VARCHAR(200) DEFAULT '',
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
             );
@@ -49,6 +55,18 @@ router.get('/api/reclamos/setup', async (req, res) => {
             CREATE INDEX IF NOT EXISTS idx_reclamos_fecha ON reclamos_devoluciones(fecha_ingreso);
             CREATE INDEX IF NOT EXISTS idx_reclamos_cliente ON reclamos_devoluciones(cliente);
             CREATE INDEX IF NOT EXISTS idx_reclamos_numero ON reclamos_devoluciones(numero_reclamo);
+
+            CREATE TABLE IF NOT EXISTS reclamos_historial (
+                id SERIAL PRIMARY KEY,
+                reclamo_id INTEGER NOT NULL REFERENCES reclamos_devoluciones(id) ON DELETE CASCADE,
+                accion VARCHAR(100) NOT NULL,
+                estado_antes VARCHAR(30),
+                estado_despues VARCHAR(30),
+                responsable VARCHAR(200) DEFAULT '',
+                observacion TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_reclamos_hist_id ON reclamos_historial(reclamo_id);
 
             INSERT INTO matriz_responsables_motivos (responsable, motivo) VALUES
                 ('CORTE', 'MAL CORTADO'), ('CORTE', 'DIMENSION INCORRECTA'), ('CORTE', 'ESQUINA ROTA'),
@@ -62,33 +80,53 @@ router.get('/api/reclamos/setup', async (req, res) => {
             ON CONFLICT DO NOTHING;
         `);
 
-        // Agregar columna items si no existe y migrar datos
-        const colCheck = await pool.query(`
-            SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='reclamos_devoluciones' AND column_name='items')
+        // Agregar columnas de workflow si no existen
+        const cols = await pool.query(`
+            SELECT column_name FROM information_schema.columns WHERE table_name='reclamos_devoluciones'
         `);
-        if (!colCheck.rows[0].exists) {
+        const existing = cols.rows.map(r => r.column_name);
+
+        if (!existing.includes('items')) {
             await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
-            // Migrar datos existentes de columnas sueltas a items[]
+        }
+        if (!existing.includes('fecha_revision')) {
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_revision TIMESTAMP`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_revision VARCHAR(200) DEFAULT ''`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_proceso TIMESTAMP`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_proceso VARCHAR(200) DEFAULT ''`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
+        }
+
+        // Migrar fecha_ingreso de DATE a TIMESTAMP si es necesario
+        const colType = await pool.query(`
+            SELECT data_type FROM information_schema.columns WHERE table_name='reclamos_devoluciones' AND column_name='fecha_ingreso'
+        `);
+        if (colType.rows[0] && colType.rows[0].data_type === 'date') {
+            await pool.query(`ALTER TABLE reclamos_devoluciones ALTER COLUMN fecha_ingreso TYPE TIMESTAMP USING fecha_ingreso::timestamp`);
+        }
+
+        // Crear tabla historial si no existe
+        const histCheck = await pool.query(`
+            SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')
+        `);
+        if (!histCheck.rows[0].exists) {
             await pool.query(`
-                UPDATE reclamos_devoluciones
-                SET items = jsonb_build_array(
-                    jsonb_build_object(
-                        'item', COALESCE(item, ''),
-                        'codigo', COALESCE(codigo, ''),
-                        'descripcion', COALESCE(descripcion, ''),
-                        'ancho', COALESCE(ancho, 0),
-                        'alto', COALESCE(alto, 0),
-                        'espesor', COALESCE(espesor, 0),
-                        'm2', COALESCE(m2, 0),
-                        'kg', COALESCE(kg, 0),
-                        'valor_unitario', COALESCE(valor_unitario, 0)
-                    )
-                )
-                WHERE items = '[]'::jsonb AND (item != '' OR codigo != '')
+                CREATE TABLE IF NOT EXISTS reclamos_historial (
+                    id SERIAL PRIMARY KEY,
+                    reclamo_id INTEGER NOT NULL REFERENCES reclamos_devoluciones(id) ON DELETE CASCADE,
+                    accion VARCHAR(100) NOT NULL,
+                    estado_antes VARCHAR(30),
+                    estado_despues VARCHAR(30),
+                    responsable VARCHAR(200) DEFAULT '',
+                    observacion TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+                CREATE INDEX IF NOT EXISTS idx_reclamos_hist_id ON reclamos_historial(reclamo_id);
             `);
         }
 
-        res.json({ ok: true, message: 'Tablas creadas, columna items JSONB agregada y datos migrados' });
+        res.json({ ok: true, message: 'Tablas creadas, workflow configurado' });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -157,26 +195,30 @@ router.get('/api/reclamos/:id', perms.view, async (req, res) => {
 router.post('/api/reclamos', perms.create, async (req, res) => {
     try {
         const d = req.body;
-        const user = req.user || {};
+        const user = req.headers['x-user-email'] || '';
+        const userName = req.headers['x-user-name'] || user;
         const items = Array.isArray(d.items) ? d.items : [];
         const result = await pool.query(
             `INSERT INTO reclamos_devoluciones (
-                fecha_ingreso, responsable_ingreso, cliente, numero_orden, items,
-                descripcion, detalle_reclamo, fotos, estado, responsable_falla, motivo,
-                observacion_analisis, resolucion
+                responsable_ingreso, cliente, numero_orden, items,
+                descripcion, detalle_reclamo, fotos, estado
             ) VALUES (
-                COALESCE($1, CURRENT_DATE), $2, $3, $4, $5,
-                $6, $7, $8, COALESCE($9, 'PENDIENTE'), $10, $11,
-                $12, $13
+                $1, $2, $3, $4,
+                $5, $6, $7, 'PENDIENTE'
             ) RETURNING *`,
             [
-                d.fecha_ingreso || null, d.responsable_ingreso || user.email || '', d.cliente || '', d.numero_orden || '',
+                userName || user, d.cliente || '', d.numero_orden || '',
                 JSON.stringify(items), d.descripcion || '', d.detalle_reclamo || '',
-                JSON.stringify(d.fotos || []), d.estado || 'PENDIENTE', d.responsable_falla || '', d.motivo || '',
-                d.observacion_analisis || '', d.resolucion || ''
+                JSON.stringify(d.fotos || [])
             ]
         );
-        res.json(result.rows[0]);
+        // Registrar en historial
+        const reclamo = result.rows[0];
+        await pool.query(
+            'INSERT INTO reclamos_historial (reclamo_id, accion, estado_despues, responsable) VALUES ($1, $2, $3, $4)',
+            [reclamo.id, 'Creación', 'PENDIENTE', userName || user]
+        );
+        res.json(reclamo);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -233,13 +275,57 @@ router.delete('/api/reclamos/:id', perms.delete, async (req, res) => {
 // Cambiar estado rápido
 router.put('/api/reclamos/:id/estado', perms.update, async (req, res) => {
     try {
-        const { estado } = req.body;
-        const result = await pool.query(
-            'UPDATE reclamos_devoluciones SET estado = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-            [estado, req.params.id]
+        const { estado, observacion } = req.body;
+        const user = req.headers['x-user-email'] || '';
+        const userName = req.headers['x-user-name'] || user;
+
+        // Obtener estado actual
+        const before = await pool.query('SELECT estado FROM reclamos_devoluciones WHERE id = $1', [req.params.id]);
+        if (before.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
+        const estadoAntes = before.rows[0].estado;
+
+        // Mapear estado a columnas de tracking
+        const columnMap = {
+            'EN REVISION': { col: 'fecha_revision', colR: 'responsable_revision' },
+            'EN PROCESO': { col: 'fecha_proceso', colR: 'responsable_proceso' },
+            'FINALIZADO': { col: 'fecha_fin', colR: 'responsable_fin' }
+        };
+
+        let sql = 'UPDATE reclamos_devoluciones SET estado = $1, updated_at = NOW()';
+        const params = [estado];
+        let idx = 2;
+
+        if (columnMap[estado]) {
+            sql += `, ${columnMap[estado].col} = NOW()`;
+            sql += `, ${columnMap[estado].colR} = $${idx++}`;
+            params.push(userName || user);
+        }
+
+        sql += ` WHERE id = $${idx} RETURNING *`;
+        params.push(req.params.id);
+
+        const result = await pool.query(sql, params);
+
+        // Registrar en historial
+        await pool.query(
+            'INSERT INTO reclamos_historial (reclamo_id, accion, estado_antes, estado_despues, responsable, observacion) VALUES ($1, $2, $3, $4, $5, $6)',
+            [req.params.id, `Cambio a ${estado}`, estadoAntes, estado, userName || user, observacion || '']
         );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
+
         res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Historial de un reclamo
+router.get('/api/reclamos/:id/historial', perms.view, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM reclamos_historial WHERE reclamo_id = $1 ORDER BY created_at ASC',
+            [req.params.id]
+        );
+        res.json(result.rows);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

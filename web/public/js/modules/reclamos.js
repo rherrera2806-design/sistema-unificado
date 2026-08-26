@@ -184,6 +184,14 @@ const Reclamos = {
             html += '<td style="padding:12px 14px"><span class="rc-badge ' + badge + '">' + r.estado + '</span></td>';
             html += '<td style="padding:12px 14px"><span style="font-weight:600;color:' + resColor + ';font-size:12px">' + (r.resolucion || '-') + '</span></td>';
             html += '<td style="padding:12px 14px;text-align:center;white-space:nowrap">';
+            // Botones de workflow rápido según estado
+            if (r.estado === 'PENDIENTE') {
+                html += '<button onclick="App.modules.reclamos.cambiarEstado(' + r.id + ',\'EN REVISION\')" class="btn btn-sm" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;margin-right:4px" title="Iniciar Revisión">🔍 Revisar</button>';
+            } else if (r.estado === 'EN REVISION') {
+                html += '<button onclick="App.modules.reclamos.cambiarEstado(' + r.id + ',\'EN PROCESO\')" class="btn btn-sm" style="background:#fffbeb;color:#f59e0b;border:1px solid #fde68a;margin-right:4px" title="Iniciar Proceso">⚙️ Proceso</button>';
+            } else if (r.estado === 'EN PROCESO') {
+                html += '<button onclick="App.modules.reclamos.cambiarEstado(' + r.id + ',\'FINALIZADO\')" class="btn btn-sm" style="background:#f0fdf4;color:#22c55e;border:1px solid #bbf7d0;margin-right:4px" title="Finalizar">✅ Fin</button>';
+            }
             html += '<button onclick="App.modules.reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
             html += '<button onclick="App.modules.reclamos.eliminar(' + r.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
             html += '</td></tr>';
@@ -252,9 +260,7 @@ const Reclamos = {
         const resolucionOptions = ['', 'Aceptada Fabricacion nueva', 'Aceptada Reproceso', 'Rechazada'].map(v =>
             '<option value="' + v + '"' + (r.resolucion === v ? ' selected' : '') + '>' + (v || 'Seleccionar...') + '</option>'
         ).join('');
-        const estadoOptions = ['PENDIENTE', 'EN REVISION', 'FINALIZADO'].map(v =>
-            '<option value="' + v + '"' + (r.estado === v ? ' selected' : '') + '>' + v + '</option>'
-        ).join('');
+
 
         container.innerHTML = `
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden">
@@ -281,21 +287,16 @@ const Reclamos = {
                             </div>
                         </div>
                         <div class="rc-section-body">
+                            ${id ? '<div class="rc-form-grid" style="margin-bottom:10px">'
+                                + '<div><label>Fecha Ingreso</label><input type="text" value="' + this.fmtDateTime(r.fecha_ingreso) + '" readonly style="background:#f8fafc;color:#64748b"></div>'
+                                + '<div><label>Responsable Ingreso</label><input type="text" value="' + (r.responsable_ingreso || '') + '" readonly style="background:#f8fafc;color:#64748b"></div>'
+                                + '<div><label>Estado</label><input type="text" value="' + (r.estado || 'PENDIENTE') + '" readonly style="background:#f8fafc;color:#64748b;font-weight:600"></div>'
+                                + '</div>' : '<div class="rc-form-grid" style="margin-bottom:10px">'
+                                + '<div><label>Fecha Ingreso</label><input type="text" value="' + new Date().toLocaleString('es-CL') + '" readonly style="background:#f8fafc;color:#64748b"></div>'
+                                + '<div><label>Responsable Ingreso</label><input type="text" value="' + (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || JSON.parse(localStorage.getItem('unified_user') || '{}').email || '') + '" readonly style="background:#f8fafc;color:#64748b"></div>'
+                                + '<div><label>Estado</label><input type="text" value="PENDIENTE" readonly style="background:#f8fafc;color:#64748b;font-weight:600"></div>'
+                                + '</div>'}
                             <div class="rc-form-grid">
-                                <div>
-                                    <label>Fecha Ingreso</label>
-                                    <input type="date" id="rcFecha" value="${r.fecha_ingreso ? r.fecha_ingreso.split('T')[0] : new Date().toISOString().split('T')[0]}">
-                                </div>
-                                <div>
-                                    <label>Responsable Ingreso</label>
-                                    <input type="text" id="rcResponsableIngreso" value="${r.responsable_ingreso || ''}" placeholder="Nombre de quien registra">
-                                </div>
-                                <div>
-                                    <label>Estado</label>
-                                    <select id="rcEstado">${estadoOptions}</select>
-                                </div>
-                            </div>
-                            <div class="rc-form-grid" style="margin-top:10px">
                                 <div>
                                     <label>Cliente *</label>
                                     <input type="text" id="rcCliente" value="${r.cliente || ''}" required placeholder="Nombre del cliente">
@@ -321,6 +322,7 @@ const Reclamos = {
                                         <thead>
                                             <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                                                 <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:30px">#</th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:80px">Item</th>
                                                 <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:100px">Código</th>
                                                 <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:150px">Descripción</th>
                                                 <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Ancho</th>
@@ -403,6 +405,8 @@ const Reclamos = {
                             Guardar
                         </button>
                     </div>
+
+                    ${id ? this._renderWorkflowBar(r) : ''}
                 </form>
             </div>
         `;
@@ -549,6 +553,10 @@ const Reclamos = {
         if (!tbody) return;
         const items = this._getItems();
 
+        const thBase = 'padding:6px 8px;font-size:10px;font-weight:700;color:#64748b;';
+        const tdBase = 'padding:0;';
+        const inpBase = 'width:100%;box-sizing:border-box;padding:6px 8px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;font-family:inherit;';
+
         if (items.length === 0) {
             tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#94a3b8;font-size:12px">Sin items. Haz clic en "Agregar Item" para comenzar.</td></tr>';
             return;
@@ -557,16 +565,16 @@ const Reclamos = {
         tbody.innerHTML = items.map((it, i) => {
             const val = (v) => (v || v === 0) ? v : '';
             return '<tr style="border-bottom:1px solid #f1f5f9" oninput="App.modules.reclamos._syncItemFromRow(' + i + ')">'
-                + '<td style="padding:4px 6px;text-align:center;font-weight:700;color:#7c3aed;font-size:12px">' + (i + 1) + '</td>'
-                + '<td style="padding:4px 4px"><input id="rcItem_' + i + '" value="' + val(it.item) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none" placeholder="#"></td>'
-                + '<td style="padding:4px 4px"><input id="rcCodigo_' + i + '" value="' + val(it.codigo) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none" placeholder="Código SAP"></td>'
-                + '<td style="padding:4px 4px"><input id="rcDesc_' + i + '" value="' + val(it.descripcion) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none" placeholder="Descripción"></td>'
-                + '<td style="padding:4px 4px"><input id="rcAncho_' + i + '" type="number" value="' + val(it.ancho) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
-                + '<td style="padding:4px 4px"><input id="rcAlto_' + i + '" type="number" value="' + val(it.alto) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
-                + '<td style="padding:4px 4px"><input id="rcEspesor_' + i + '" type="number" value="' + val(it.espesor) + '" step="0.1" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
-                + '<td style="padding:4px 4px"><input id="rcM2_' + i + '" type="number" value="' + val(it.m2) + '" step="0.01" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
-                + '<td style="padding:4px 4px"><input id="rcKg_' + i + '" type="number" value="' + val(it.kg) + '" step="0.01" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
-                + '<td style="padding:4px 4px"><input id="rcValor_' + i + '" type="number" value="' + val(it.valor_unitario) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
+                + '<td style="' + tdBase + 'text-align:center;padding:6px 4px;font-weight:700;color:#7c3aed;font-size:12px">' + (i + 1) + '</td>'
+                + '<td style="' + tdBase + '"><input id="rcItem_' + i + '" value="' + val(it.item) + '" style="' + inpBase + '" placeholder="#"></td>'
+                + '<td style="' + tdBase + '"><input id="rcCodigo_' + i + '" value="' + val(it.codigo) + '" style="' + inpBase + '" placeholder="Código SAP"></td>'
+                + '<td style="' + tdBase + '"><input id="rcDesc_' + i + '" value="' + val(it.descripcion) + '" style="' + inpBase + '" placeholder="Descripción"></td>'
+                + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="number" value="' + val(it.ancho) + '" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
+                + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="number" value="' + val(it.alto) + '" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
+                + '<td style="' + tdBase + '"><input id="rcEspesor_' + i + '" type="number" value="' + val(it.espesor) + '" step="0.1" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
+                + '<td style="' + tdBase + '"><input id="rcM2_' + i + '" type="number" value="' + val(it.m2) + '" step="0.01" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
+                + '<td style="' + tdBase + '"><input id="rcKg_' + i + '" type="number" value="' + val(it.kg) + '" step="0.01" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
+                + '<td style="' + tdBase + '"><input id="rcValor_' + i + '" type="number" value="' + val(it.valor_unitario) + '" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
                 + '<td style="padding:4px 6px;text-align:center"><button type="button" onclick="App.modules.reclamos.removeItem(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>'
                 + '</tr>';
         }).join('');
@@ -581,15 +589,12 @@ const Reclamos = {
         const items = this._getItems();
 
         const data = {
-            fecha_ingreso: document.getElementById('rcFecha').value,
-            responsable_ingreso: document.getElementById('rcResponsableIngreso').value,
             cliente: document.getElementById('rcCliente').value,
             numero_orden: document.getElementById('rcOrden').value,
             items: items,
             descripcion: items.map(it => it.descripcion).filter(Boolean).join(', '),
             detalle_reclamo: document.getElementById('rcDetalle').value,
             fotos: fotos,
-            estado: document.getElementById('rcEstado').value,
             responsable_falla: document.getElementById('rcResponsableFalla').value,
             motivo: document.getElementById('rcMotivo').value,
             observacion_analisis: document.getElementById('rcObservacion').value,
@@ -702,10 +707,140 @@ const Reclamos = {
         }
     },
 
+    _renderWorkflowBar(r) {
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const email = user.email || '';
+        const estado = r.estado || 'PENDIENTE';
+
+        const transitions = {
+            'PENDIENTE': [
+                { next: 'EN REVISION', label: 'Iniciar Revisión', icon: '🔍', color: '#3b82f6', bg: '#eff6ff' }
+            ],
+            'EN REVISION': [
+                { next: 'EN PROCESO', label: 'Iniciar Proceso', icon: '⚙️', color: '#f59e0b', bg: '#fffbeb' },
+                { next: 'PENDIENTE', label: 'Volver a Pendiente', icon: '↩️', color: '#64748b', bg: '#f1f5f9' }
+            ],
+            'EN PROCESO': [
+                { next: 'FINALIZADO', label: 'Finalizar', icon: '✅', color: '#22c55e', bg: '#f0fdf4' },
+                { next: 'EN REVISION', label: 'Volver a Revisión', icon: '↩️', color: '#64748b', bg: '#f1f5f9' }
+            ],
+            'FINALIZADO': []
+        };
+
+        const actions = transitions[estado] || [];
+        if (actions.length === 0) return '';
+
+        let html = '<div style="margin-top:16px;padding:14px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:10px;border:1px solid #e2e8f0">';
+        html += '<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px;letter-spacing:0.5px">Acciones de Flujo</div>';
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+
+        actions.forEach(a => {
+            html += '<button type="button" onclick="App.modules.reclamos.cambiarEstado(' + r.id + ',\'' + a.next + '\')" '
+                + 'style="padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid ' + a.color + '30;background:' + a.bg + ';color:' + a.color + ';cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s" '
+                + 'onmouseover="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 2px 8px ' + a.color + '20\'" '
+                + 'onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">'
+                + '<span>' + a.icon + '</span> ' + a.label + '</button>';
+        });
+
+        html += '<button type="button" onclick="App.modules.reclamos.showHistorial(' + r.id + ')" '
+            + 'style="padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white;color:#475569;cursor:pointer;display:flex;align-items:center;gap:6px" '
+            + 'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'white\'">'
+            + '📋 Historial</button>';
+
+        html += '</div></div>';
+
+        // Timeline de estados
+        const timestamps = [
+            { label: 'Ingreso', fecha: r.fecha_ingreso, resp: r.responsable_ingreso },
+            { label: 'Revisión', fecha: r.fecha_revision, resp: r.responsable_revision },
+            { label: 'Proceso', fecha: r.fecha_proceso, resp: r.responsable_proceso },
+            { label: 'Fin', fecha: r.fecha_fin, resp: r.responsable_fin }
+        ].filter(t => t.fecha);
+
+        if (timestamps.length > 0) {
+            html += '<div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">';
+            timestamps.forEach((t, i) => {
+                html += '<div style="font-size:10px;color:#64748b"><span style="font-weight:700;color:#475569">' + t.label + ':</span> ' + this.fmtDateTime(t.fecha);
+                if (t.resp) html += ' <span style="color:#94a3b8">(' + t.resp + ')</span>';
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+
+        return html;
+    },
+
+    async cambiarEstado(id, nuevoEstado) {
+        const msg = nuevoEstado === 'FINALIZADO' ? '¿Marcar como FINALIZADO?' : '¿Cambiar estado a ' + nuevoEstado + '?';
+        if (!confirm(msg)) return;
+
+        try {
+            await authFetch('/api/reclamos/' + id + '/estado', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: nuevoEstado })
+            });
+            App.toast('Estado cambiado a ' + nuevoEstado);
+            await this.cargarDatos();
+            // Recargar formulario si está abierto
+            const container = document.getElementById('rc-form-container');
+            if (container && container.style.display !== 'none') {
+                await this.showForm(id);
+            }
+        } catch(e) {
+            App.toast('Error: ' + e.message, 'error');
+        }
+    },
+
+    async showHistorial(id) {
+        let historial = [];
+        try {
+            const resp = await authFetch('/api/reclamos/' + id + '/historial').then(r => r.json());
+            historial = Array.isArray(resp) ? resp : [];
+        } catch(e) {}
+
+        let bodyHtml = '';
+        if (historial.length === 0) {
+            bodyHtml = '<div style="text-align:center;padding:24px;color:#94a3b8">Sin historial de cambios</div>';
+        } else {
+            bodyHtml = '<div style="max-height:400px;overflow-y:auto">';
+            historial.forEach(h => {
+                const color = h.estado_despues === 'FINALIZADO' ? '#22c55e' : h.estado_despues === 'EN REVISION' ? '#3b82f6' : h.estado_despues === 'EN PROCESO' ? '#f59e0b' : '#64748b';
+                bodyHtml += '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9">';
+                bodyHtml += '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';margin-top:5px;flex-shrink:0"></div>';
+                bodyHtml += '<div style="flex:1">';
+                bodyHtml += '<div style="font-size:12px;font-weight:600;color:#1e293b">' + h.accion + '</div>';
+                if (h.estado_antes) bodyHtml += '<div style="font-size:11px;color:#64748b">' + h.estado_antes + ' → ' + h.estado_despues + '</div>';
+                if (h.responsable) bodyHtml += '<div style="font-size:11px;color:#94a3b8">' + h.responsable + '</div>';
+                if (h.observacion) bodyHtml += '<div style="font-size:11px;color:#475569;margin-top:4px;font-style:italic">"' + h.observacion + '"</div>';
+                bodyHtml += '<div style="font-size:10px;color:#cbd5e1;margin-top:2px">' + this.fmtDateTime(h.created_at) + '</div>';
+                bodyHtml += '</div></div>';
+            });
+            bodyHtml += '</div>';
+        }
+
+        App.showModal(bodyHtml, { title: 'Historial del Reclamo #' + id });
+    },
+
     fmtDate(d) {
         if (!d) return '-';
         const parts = d.split('T')[0].split('-');
         return parts[2] + '/' + parts[1] + '/' + parts[0];
+    },
+
+    fmtDateTime(d) {
+        if (!d) return '-';
+        try {
+            const dt = new Date(d);
+            const day = String(dt.getDate()).padStart(2, '0');
+            const month = String(dt.getMonth() + 1).padStart(2, '0');
+            const year = dt.getFullYear();
+            const hours = String(dt.getHours()).padStart(2, '0');
+            const mins = String(dt.getMinutes()).padStart(2, '0');
+            return day + '/' + month + '/' + year + ' ' + hours + ':' + mins;
+        } catch(e) {
+            return this.fmtDate(d);
+        }
     }
 };
 
