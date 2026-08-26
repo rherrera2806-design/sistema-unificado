@@ -10,6 +10,33 @@ const pool = new Pool({
 const MOD = 'reclamos';
 const perms = crudPerms(MOD);
 
+// Auto-migración: asegurar columnas existen
+async function ensureColumns() {
+    try {
+        const cols = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='reclamos_devoluciones'`);
+        const existing = cols.rows.map(r => r.column_name);
+        if (!existing.includes('items')) {
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
+        }
+        if (!existing.includes('fecha_revision')) {
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_revision TIMESTAMP`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_revision VARCHAR(200) DEFAULT ''`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_proceso TIMESTAMP`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_proceso VARCHAR(200) DEFAULT ''`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
+        }
+        const histCheck = await pool.query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')`);
+        if (!histCheck.rows[0].exists) {
+            await pool.query(`CREATE TABLE IF NOT EXISTS reclamos_historial (
+                id SERIAL PRIMARY KEY, reclamo_id INTEGER NOT NULL REFERENCES reclamos_devoluciones(id) ON DELETE CASCADE,
+                accion VARCHAR(100) NOT NULL, estado_antes VARCHAR(30), estado_despues VARCHAR(30),
+                responsable VARCHAR(200) DEFAULT '', observacion TEXT DEFAULT '', created_at TIMESTAMP DEFAULT NOW()
+            )`);
+        }
+    } catch(e) { console.error('ensureColumns error:', e.message); }
+}
+
 // ═══════════════════════════════════════════════════════
 // SETUP - Ejecutar una vez para crear tablas
 // ═══════════════════════════════════════════════════════
@@ -139,6 +166,7 @@ router.get('/api/reclamos/setup', async (req, res) => {
 // Listar todos (con filtros opcionales)
 router.get('/api/reclamos', perms.view, async (req, res) => {
     try {
+        await ensureColumns();
         const { estado, buscar, fecha_inicio, fecha_fin } = req.query;
         let sql = 'SELECT * FROM reclamos_devoluciones';
         const conditions = [];
@@ -194,6 +222,7 @@ router.get('/api/reclamos/:id', perms.view, async (req, res) => {
 // Crear nuevo reclamo
 router.post('/api/reclamos', perms.create, async (req, res) => {
     try {
+        await ensureColumns();
         const d = req.body;
         const user = req.headers['x-user-email'] || '';
         const userName = req.headers['x-user-name'] || user;
@@ -217,7 +246,7 @@ router.post('/api/reclamos', perms.create, async (req, res) => {
         await pool.query(
             'INSERT INTO reclamos_historial (reclamo_id, accion, estado_despues, responsable) VALUES ($1, $2, $3, $4)',
             [reclamo.id, 'Creación', 'PENDIENTE', userName || user]
-        );
+        ).catch(() => {});
         res.json(reclamo);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -227,6 +256,7 @@ router.post('/api/reclamos', perms.create, async (req, res) => {
 // Actualizar reclamo
 router.put('/api/reclamos/:id', perms.update, async (req, res) => {
     try {
+        await ensureColumns();
         const d = req.body;
         const items = Array.isArray(d.items) ? d.items : undefined;
         const result = await pool.query(
@@ -275,6 +305,7 @@ router.delete('/api/reclamos/:id', perms.delete, async (req, res) => {
 // Cambiar estado rápido
 router.put('/api/reclamos/:id/estado', perms.update, async (req, res) => {
     try {
+        await ensureColumns();
         const { estado, observacion } = req.body;
         const user = req.headers['x-user-email'] || '';
         const userName = req.headers['x-user-name'] || user;
@@ -321,6 +352,7 @@ router.put('/api/reclamos/:id/estado', perms.update, async (req, res) => {
 // Historial de un reclamo
 router.get('/api/reclamos/:id/historial', perms.view, async (req, res) => {
     try {
+        await ensureColumns();
         const result = await pool.query(
             'SELECT * FROM reclamos_historial WHERE reclamo_id = $1 ORDER BY created_at ASC',
             [req.params.id]
@@ -334,6 +366,7 @@ router.get('/api/reclamos/:id/historial', perms.view, async (req, res) => {
 // Dashboard stats
 router.get('/api/reclamos/dashboard/stats', perms.view, async (req, res) => {
     try {
+        await ensureColumns();
         const result = await pool.query(`
             SELECT 
                 COUNT(*) as total,
