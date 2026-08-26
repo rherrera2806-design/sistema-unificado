@@ -502,6 +502,9 @@ const Reclamos = {
     // ═══════════════════════════════════════════════════
     // ITEMS DINAMICOS
     // ═══════════════════════════════════════════════════
+    _codigosCache: null,
+    _lookupTimers: {},
+
     _itemDefaults() {
         return { item: '', codigo: '', descripcion: '', ancho: 0, alto: 0, espesor: 0, m2: 0, kg: 0, valor_unitario: 0 };
     },
@@ -513,6 +516,21 @@ const Reclamos = {
     _setItems(items) {
         const el = document.getElementById('rcItemsData');
         if (el) el.value = JSON.stringify(items);
+    },
+
+    _fmt(n) {
+        if (!n && n !== 0) return '';
+        return Number(n).toLocaleString('es-CL');
+    },
+
+    _parse(s) {
+        if (!s) return 0;
+        return parseFloat(String(s).replace(/\./g, '').replace(',', '.')) || 0;
+    },
+
+    _fmtCLP(n) {
+        if (!n && n !== 0) return '';
+        return '$' + Number(n).toLocaleString('es-CL');
     },
 
     addItem() {
@@ -532,20 +550,76 @@ const Reclamos = {
     _syncItemFromRow(idx) {
         const items = this._getItems();
         if (!items[idx]) return;
-        const get = (id) => {
-            const el = document.getElementById(id);
-            return el ? el.value : '';
-        };
+        const get = (id) => document.getElementById(id)?.value || '';
         items[idx].item = get('rcItem_' + idx);
         items[idx].codigo = get('rcCodigo_' + idx);
         items[idx].descripcion = get('rcDesc_' + idx);
-        items[idx].ancho = parseFloat(get('rcAncho_' + idx)) || 0;
-        items[idx].alto = parseFloat(get('rcAlto_' + idx)) || 0;
-        items[idx].espesor = parseFloat(get('rcEspesor_' + idx)) || 0;
-        items[idx].m2 = parseFloat(get('rcM2_' + idx)) || 0;
-        items[idx].kg = parseFloat(get('rcKg_' + idx)) || 0;
-        items[idx].valor_unitario = parseFloat(get('rcValor_' + idx)) || 0;
+        items[idx].ancho = this._parse(get('rcAncho_' + idx));
+        items[idx].alto = this._parse(get('rcAlto_' + idx));
+        items[idx].espesor = this._parse(get('rcEspesor_' + idx));
+        items[idx].m2 = this._parse(get('rcM2_' + idx));
+        items[idx].kg = this._parse(get('rcKg_' + idx));
+        items[idx].valor_unitario = this._parse(get('rcValor_' + idx));
         this._setItems(items);
+    },
+
+    _calcItem(idx) {
+        const items = this._getItems();
+        const it = items[idx];
+        if (!it) return;
+        const ancho = this._parse(document.getElementById('rcAncho_' + idx)?.value);
+        const alto = this._parse(document.getElementById('rcAlto_' + idx)?.value);
+        const espesor = this._parse(document.getElementById('rcEspesor_' + idx)?.value);
+        it.ancho = ancho;
+        it.alto = alto;
+        it.espesor = espesor;
+        it.m2 = ancho && alto ? parseFloat(((ancho * alto) / 1000000).toFixed(4)) : 0;
+        it.kg = it.m2 && espesor ? parseFloat((it.m2 * espesor * 2.5).toFixed(2)) : 0;
+        this._setItems(items);
+        const m2El = document.getElementById('rcM2_' + idx);
+        const kgEl = document.getElementById('rcKg_' + idx);
+        if (m2El) m2El.value = it.m2 || '';
+        if (kgEl) kgEl.value = it.kg || '';
+    },
+
+    _onCodigoInput(idx) {
+        clearTimeout(this._lookupTimers[idx]);
+        this._lookupTimers[idx] = setTimeout(() => this._lookupCodigo(idx), 400);
+    },
+
+    async _lookupCodigo(idx) {
+        const input = document.getElementById('rcCodigo_' + idx);
+        const codigo = input?.value?.trim();
+        if (!codigo || codigo.length < 1) return;
+
+        try {
+            if (!this._codigosCache) {
+                const resp = await authFetch('/api/produccion/codigos?search=' + encodeURIComponent(codigo)).then(r => r.json());
+                this._codigosCache = Array.isArray(resp) ? resp : [];
+            }
+            const match = this._codigosCache.find(c => c.codigo?.toLowerCase() === codigo.toLowerCase());
+            if (match) {
+                const descEl = document.getElementById('rcDesc_' + idx);
+                if (descEl && !descEl.value) descEl.value = match.descripcion || '';
+                const items = this._getItems();
+                if (items[idx]) {
+                    items[idx].descripcion = match.descripcion || '';
+                    this._setItems(items);
+                }
+            }
+        } catch(e) {}
+    },
+
+    _onValorInput(idx) {
+        const input = document.getElementById('rcValor_' + idx);
+        if (!input) return;
+        const raw = this._parse(input.value);
+        const items = this._getItems();
+        if (items[idx]) {
+            items[idx].valor_unitario = raw;
+            this._setItems(items);
+        }
+        input.value = raw ? this._fmtCLP(raw) : '';
     },
 
     renderItems() {
@@ -558,23 +632,27 @@ const Reclamos = {
         const inpBase = 'width:100%;box-sizing:border-box;padding:6px 8px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;font-family:inherit;';
 
         if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#94a3b8;font-size:12px">Sin items. Haz clic en "Agregar Item" para comenzar.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="padding:16px;text-align:center;color:#94a3b8;font-size:12px">Sin items. Haz clic en "Agregar Item" para comenzar.</td></tr>';
             return;
         }
 
         tbody.innerHTML = items.map((it, i) => {
-            const val = (v) => (v || v === 0) ? v : '';
-            return '<tr style="border-bottom:1px solid #f1f5f9" oninput="App.modules.reclamos._syncItemFromRow(' + i + ')">'
+            const v = (x) => (x || x === 0) ? x : '';
+            const onCalc = 'App.modules.reclamos._calcItem(' + i + ')';
+            const onSync = 'App.modules.reclamos._syncItemFromRow(' + i + ')';
+            const onCodigo = 'App.modules.reclamos._onCodigoInput(' + i + ')';
+            const onValor = 'App.modules.reclamos._onValorInput(' + i + ')';
+            return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="' + tdBase + 'text-align:center;padding:6px 4px;font-weight:700;color:#7c3aed;font-size:12px">' + (i + 1) + '</td>'
-                + '<td style="' + tdBase + '"><input id="rcItem_' + i + '" value="' + val(it.item) + '" style="' + inpBase + '" placeholder="#"></td>'
-                + '<td style="' + tdBase + '"><input id="rcCodigo_' + i + '" value="' + val(it.codigo) + '" style="' + inpBase + '" placeholder="Código SAP"></td>'
-                + '<td style="' + tdBase + '"><input id="rcDesc_' + i + '" value="' + val(it.descripcion) + '" style="' + inpBase + '" placeholder="Descripción"></td>'
-                + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="number" value="' + val(it.ancho) + '" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
-                + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="number" value="' + val(it.alto) + '" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
-                + '<td style="' + tdBase + '"><input id="rcEspesor_' + i + '" type="number" value="' + val(it.espesor) + '" step="0.1" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
-                + '<td style="' + tdBase + '"><input id="rcM2_' + i + '" type="number" value="' + val(it.m2) + '" step="0.01" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
-                + '<td style="' + tdBase + '"><input id="rcKg_' + i + '" type="number" value="' + val(it.kg) + '" step="0.01" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
-                + '<td style="' + tdBase + '"><input id="rcValor_' + i + '" type="number" value="' + val(it.valor_unitario) + '" style="' + inpBase + 'text-align:right" placeholder="0"></td>'
+                + '<td style="' + tdBase + '"><input id="rcItem_' + i + '" value="' + v(it.item) + '" style="' + inpBase + '" placeholder="#" oninput="' + onSync + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcCodigo_' + i + '" value="' + v(it.codigo) + '" style="' + inpBase + '" placeholder="Código SAP" oninput="' + onCodigo + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcDesc_' + i + '" value="' + v(it.descripcion) + '" style="' + inpBase + '" placeholder="Descripción" oninput="' + onSync + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.ancho)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.alto)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcEspesor_' + i + '" type="text" inputmode="decimal" value="' + v(it.espesor || '') + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcM2_' + i + '" type="text" value="' + v(it.m2 || '') + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
+                + '<td style="' + tdBase + '"><input id="rcKg_' + i + '" type="text" value="' + v(it.kg || '') + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
+                + '<td style="' + tdBase + '"><input id="rcValor_' + i + '" type="text" inputmode="numeric" value="' + v(it.valor_unitario ? this._fmtCLP(it.valor_unitario) : '') + '" style="' + inpBase + 'text-align:right" placeholder="$0" oninput="' + onValor + '"></td>'
                 + '<td style="padding:4px 6px;text-align:center"><button type="button" onclick="App.modules.reclamos.removeItem(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>'
                 + '</tr>';
         }).join('');
