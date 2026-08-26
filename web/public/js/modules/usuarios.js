@@ -136,6 +136,7 @@ App.registerModule('usuarios', {
             atencion: [{id:'turnos_recepcion',l:'Recep'},{id:'turnos_bodega',l:'Bodega'},{id:'turnos_almacen',l:'Almacen'},{id:'turnos_facturar',l:'Facturar'},{id:'turnos_qr',l:'QR'},{id:'turnos_reporte',l:'Reporte'}],
             instalaciones: [{id:'instalaciones',l:'Inst'},{id:'inst_historial',l:'Historial'}],
             inventario: [{id:'inv_inventario',l:'Inv'},{id:'inv_inventario.sensible',l:'Sensible'},{id:'inv_movimientos',l:'Mov'},{id:'inv_historial',l:'Historial'}],
+            reclamos: [{id:'reclamos',l:'Reclamos'}],
             mantencion: [{id:'dashboard',l:'Dash'},{id:'machineTypes',l:'Areas'},{id:'machines',l:'Maq'},{id:'components',l:'Comp'},{id:'preventive',l:'Prev'},{id:'corrective',l:'Correc'},{id:'calendar',l:'Cal'},{id:'notas',l:'Notas'},{id:'reports',l:'Rep'},{id:'history',l:'Hist'},{id:'bitacora',l:'Bitac'},{id:'proveedores',l:'Prov'}],
             pedidos: [{id:'pedidos',l:'Pedidos'}],
             produccion: [{id:'prod_ordenes',l:'Prod'},{id:'prod_planificacion',l:'Plan'},{id:'prod_reportes',l:'Reportes'},{id:'prod_notas',l:'Pend'},{id:'prod_config',l:'Config'},{id:'taller',l:'Taller'}]
@@ -238,6 +239,9 @@ App.registerModule('usuarios', {
                 { id: 'inv_inventario.sensible', label: 'Ver Sensible (costos/CPM)' },
                 { id: 'inv_movimientos', label: 'Movimientos' },
                 { id: 'inv_historial', label: 'Historial Inventario' }
+            ]},
+            { key: 'reclamos', label: 'RECLAMOS', subs: [
+                { id: 'reclamos', label: 'Reclamos y Devoluciones' }
             ]},
             { key: 'mantencion', label: 'MANTENCION', subs: [
                 { id: 'dashboard', label: 'Dashboard' },

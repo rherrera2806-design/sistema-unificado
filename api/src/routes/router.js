@@ -20,5 +20,6 @@ router.use(require('./pedidos'));
 router.use(require('./asistencia'));
 router.use(require('./maintenance'));
 router.use(require('./costeo'));
+router.use(require('./reclamos'));
 
 module.exports = router;
