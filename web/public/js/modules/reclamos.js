@@ -188,8 +188,6 @@ const Reclamos = {
             if (r.estado === 'PENDIENTE') {
                 html += '<button onclick="App.modules.reclamos.cambiarEstado(' + r.id + ',\'EN REVISION\')" class="btn btn-sm" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;margin-right:4px" title="Iniciar Revisión">🔍 Revisar</button>';
             } else if (r.estado === 'EN REVISION') {
-                html += '<button onclick="App.modules.reclamos.cambiarEstado(' + r.id + ',\'EN PROCESO\')" class="btn btn-sm" style="background:#fffbeb;color:#f59e0b;border:1px solid #fde68a;margin-right:4px" title="Iniciar Proceso">⚙️ Proceso</button>';
-            } else if (r.estado === 'EN PROCESO') {
                 html += '<button onclick="App.modules.reclamos.cambiarEstado(' + r.id + ',\'FINALIZADO\')" class="btn btn-sm" style="background:#f0fdf4;color:#22c55e;border:1px solid #bbf7d0;margin-right:4px" title="Finalizar">✅ Fin</button>';
             }
             html += '<button onclick="App.modules.reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
@@ -820,12 +818,8 @@ const Reclamos = {
                 { next: 'EN REVISION', label: 'Iniciar Revisión', icon: '🔍', color: '#3b82f6', bg: '#eff6ff' }
             ],
             'EN REVISION': [
-                { next: 'EN PROCESO', label: 'Iniciar Proceso', icon: '⚙️', color: '#f59e0b', bg: '#fffbeb' },
-                { next: 'PENDIENTE', label: 'Volver a Pendiente', icon: '↩️', color: '#64748b', bg: '#f1f5f9' }
-            ],
-            'EN PROCESO': [
                 { next: 'FINALIZADO', label: 'Finalizar', icon: '✅', color: '#22c55e', bg: '#f0fdf4' },
-                { next: 'EN REVISION', label: 'Volver a Revisión', icon: '↩️', color: '#64748b', bg: '#f1f5f9' }
+                { next: 'PENDIENTE', label: 'Volver a Pendiente', icon: '↩️', color: '#64748b', bg: '#f1f5f9' }
             ],
             'FINALIZADO': []
         };
@@ -856,7 +850,6 @@ const Reclamos = {
         const timestamps = [
             { label: 'Ingreso', fecha: r.fecha_ingreso, resp: r.responsable_ingreso },
             { label: 'Revisión', fecha: r.fecha_revision, resp: r.responsable_revision },
-            { label: 'Proceso', fecha: r.fecha_proceso, resp: r.responsable_proceso },
             { label: 'Fin', fecha: r.fecha_fin, resp: r.responsable_fin }
         ].filter(t => t.fecha);
 
@@ -908,7 +901,7 @@ const Reclamos = {
         } else {
             bodyHtml = '<div style="max-height:400px;overflow-y:auto">';
             historial.forEach(h => {
-                const color = h.estado_despues === 'FINALIZADO' ? '#22c55e' : h.estado_despues === 'EN REVISION' ? '#3b82f6' : h.estado_despues === 'EN PROCESO' ? '#f59e0b' : '#64748b';
+                const color = h.estado_despues === 'FINALIZADO' ? '#22c55e' : h.estado_despues === 'EN REVISION' ? '#3b82f6' : '#64748b';
                 bodyHtml += '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9">';
                 bodyHtml += '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';margin-top:5px;flex-shrink:0"></div>';
                 bodyHtml += '<div style="flex:1">';
