@@ -13,6 +13,18 @@ const perms = crudPerms(MOD);
 // Auto-migración: asegurar columnas existen
 async function ensureColumns() {
     try {
+        // Asegurar tabla matriz_responsables_motivos
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS matriz_responsables_motivos (
+                id SERIAL PRIMARY KEY,
+                responsable VARCHAR(100) NOT NULL,
+                motivo VARCHAR(200) NOT NULL,
+                activo BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )`);
+        await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_resp_motivo_unique
+            ON matriz_responsables_motivos(responsable, motivo) WHERE activo = TRUE`);
+
         const cols = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='reclamos_devoluciones'`);
         const existing = cols.rows.map(r => r.column_name);
         if (!existing.includes('items')) {
