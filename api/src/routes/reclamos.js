@@ -33,15 +33,8 @@ router.get('/api/reclamos/setup', async (req, res) => {
                 responsable_ingreso VARCHAR(200) DEFAULT '',
                 cliente VARCHAR(200) DEFAULT '',
                 numero_orden VARCHAR(50) DEFAULT '',
-                item VARCHAR(100) DEFAULT '',
-                codigo VARCHAR(50) DEFAULT '',
+                items JSONB DEFAULT '[]',
                 descripcion TEXT DEFAULT '',
-                ancho DECIMAL(10,2) DEFAULT 0,
-                alto DECIMAL(10,2) DEFAULT 0,
-                espesor DECIMAL(6,2) DEFAULT 0,
-                m2 DECIMAL(10,4) DEFAULT 0,
-                kg DECIMAL(10,2) DEFAULT 0,
-                valor_unitario DECIMAL(12,2) DEFAULT 0,
                 detalle_reclamo TEXT DEFAULT '',
                 fotos JSONB DEFAULT '[]',
                 estado VARCHAR(30) DEFAULT 'PENDIENTE',
@@ -68,7 +61,34 @@ router.get('/api/reclamos/setup', async (req, res) => {
                 ('PRODUCCION', 'DEFECTO DE FABRICACION'), ('PRODUCCION', 'MATERIAL DEFECTUOSO')
             ON CONFLICT DO NOTHING;
         `);
-        res.json({ ok: true, message: 'Tablas reclamos_devoluciones y matriz_responsables_motivos creadas correctamente' });
+
+        // Agregar columna items si no existe y migrar datos
+        const colCheck = await pool.query(`
+            SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='reclamos_devoluciones' AND column_name='items')
+        `);
+        if (!colCheck.rows[0].exists) {
+            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
+            // Migrar datos existentes de columnas sueltas a items[]
+            await pool.query(`
+                UPDATE reclamos_devoluciones
+                SET items = jsonb_build_array(
+                    jsonb_build_object(
+                        'item', COALESCE(item, ''),
+                        'codigo', COALESCE(codigo, ''),
+                        'descripcion', COALESCE(descripcion, ''),
+                        'ancho', COALESCE(ancho, 0),
+                        'alto', COALESCE(alto, 0),
+                        'espesor', COALESCE(espesor, 0),
+                        'm2', COALESCE(m2, 0),
+                        'kg', COALESCE(kg, 0),
+                        'valor_unitario', COALESCE(valor_unitario, 0)
+                    )
+                )
+                WHERE items = '[]'::jsonb AND (item != '' OR codigo != '')
+            `);
+        }
+
+        res.json({ ok: true, message: 'Tablas creadas, columna items JSONB agregada y datos migrados' });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -100,7 +120,7 @@ router.get('/api/reclamos', perms.view, async (req, res) => {
             params.push(fecha_fin);
         }
         if (buscar) {
-            conditions.push(`(cliente ILIKE $${idx} OR numero_orden ILIKE $${idx} OR codigo ILIKE $${idx} OR descripcion ILIKE $${idx} OR CAST(numero_reclamo AS TEXT) ILIKE $${idx})`);
+            conditions.push(`(cliente ILIKE $${idx} OR numero_orden ILIKE $${idx} OR descripcion ILIKE $${idx} OR CAST(numero_reclamo AS TEXT) ILIKE $${idx} OR items::text ILIKE $${idx})`);
             params.push('%' + buscar + '%');
             idx++;
         }
@@ -109,7 +129,14 @@ router.get('/api/reclamos', perms.view, async (req, res) => {
         sql += ' ORDER BY numero_reclamo DESC';
 
         const result = await pool.query(sql, params);
-        res.json(result.rows);
+        // Parsear items JSONB
+        const rows = result.rows.map(r => {
+            if (typeof r.items === 'string') {
+                try { r.items = JSON.parse(r.items); } catch(e) { r.items = []; }
+            }
+            return r;
+        });
+        res.json(rows);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -131,22 +158,21 @@ router.post('/api/reclamos', perms.create, async (req, res) => {
     try {
         const d = req.body;
         const user = req.user || {};
+        const items = Array.isArray(d.items) ? d.items : [];
         const result = await pool.query(
             `INSERT INTO reclamos_devoluciones (
-                fecha_ingreso, responsable_ingreso, cliente, numero_orden, item, codigo,
-                descripcion, ancho, alto, espesor, m2, kg, valor_unitario,
-                detalle_reclamo, fotos, estado, responsable_falla, motivo,
+                fecha_ingreso, responsable_ingreso, cliente, numero_orden, items,
+                descripcion, detalle_reclamo, fotos, estado, responsable_falla, motivo,
                 observacion_analisis, resolucion
             ) VALUES (
-                COALESCE($1, CURRENT_DATE), $2, $3, $4, $5, $6,
-                $7, $8, $9, $10, $11, $12, $13,
-                $14, $15, COALESCE($16, 'PENDIENTE'), $17, $18,
-                $19, $20
+                COALESCE($1, CURRENT_DATE), $2, $3, $4, $5,
+                $6, $7, $8, COALESCE($9, 'PENDIENTE'), $10, $11,
+                $12, $13
             ) RETURNING *`,
             [
-                d.fecha_ingreso || null, d.responsable_ingreso || user.email || '', d.cliente || '', d.numero_orden || '', d.item || '', d.codigo || '',
-                d.descripcion || '', d.ancho || 0, d.alto || 0, d.espesor || 0, d.m2 || 0, d.kg || 0, d.valor_unitario || 0,
-                d.detalle_reclamo || '', JSON.stringify(d.fotos || []), d.estado || 'PENDIENTE', d.responsable_falla || '', d.motivo || '',
+                d.fecha_ingreso || null, d.responsable_ingreso || user.email || '', d.cliente || '', d.numero_orden || '',
+                JSON.stringify(items), d.descripcion || '', d.detalle_reclamo || '',
+                JSON.stringify(d.fotos || []), d.estado || 'PENDIENTE', d.responsable_falla || '', d.motivo || '',
                 d.observacion_analisis || '', d.resolucion || ''
             ]
         );
@@ -160,33 +186,27 @@ router.post('/api/reclamos', perms.create, async (req, res) => {
 router.put('/api/reclamos/:id', perms.update, async (req, res) => {
     try {
         const d = req.body;
+        const items = Array.isArray(d.items) ? d.items : undefined;
         const result = await pool.query(
             `UPDATE reclamos_devoluciones SET
                 fecha_ingreso = COALESCE($1, fecha_ingreso),
                 responsable_ingreso = COALESCE($2, responsable_ingreso),
                 cliente = COALESCE($3, cliente),
                 numero_orden = COALESCE($4, numero_orden),
-                item = COALESCE($5, item),
-                codigo = COALESCE($6, codigo),
-                descripcion = COALESCE($7, descripcion),
-                ancho = COALESCE($8, ancho),
-                alto = COALESCE($9, alto),
-                espesor = COALESCE($10, espesor),
-                m2 = COALESCE($11, m2),
-                kg = COALESCE($12, kg),
-                valor_unitario = COALESCE($13, valor_unitario),
-                detalle_reclamo = COALESCE($14, detalle_reclamo),
-                fotos = COALESCE($15, fotos),
-                estado = COALESCE($16, estado),
-                responsable_falla = COALESCE($17, responsable_falla),
-                motivo = COALESCE($18, motivo),
-                observacion_analisis = COALESCE($19, observacion_analisis),
-                resolucion = COALESCE($20, resolucion),
+                items = COALESCE($5, items),
+                descripcion = COALESCE($6, descripcion),
+                detalle_reclamo = COALESCE($7, detalle_reclamo),
+                fotos = COALESCE($8, fotos),
+                estado = COALESCE($9, estado),
+                responsable_falla = COALESCE($10, responsable_falla),
+                motivo = COALESCE($11, motivo),
+                observacion_analisis = COALESCE($12, observacion_analisis),
+                resolucion = COALESCE($13, resolucion),
                 updated_at = NOW()
-            WHERE id = $21 RETURNING *`,
+            WHERE id = $14 RETURNING *`,
             [
-                d.fecha_ingreso, d.responsable_ingreso, d.cliente, d.numero_orden, d.item, d.codigo,
-                d.descripcion, d.ancho, d.alto, d.espesor, d.m2, d.kg, d.valor_unitario,
+                d.fecha_ingreso, d.responsable_ingreso, d.cliente, d.numero_orden,
+                items !== undefined ? JSON.stringify(items) : null, d.descripcion,
                 d.detalle_reclamo, d.fotos ? JSON.stringify(d.fotos) : null, d.estado,
                 d.responsable_falla, d.motivo, d.observacion_analisis, d.resolucion,
                 req.params.id

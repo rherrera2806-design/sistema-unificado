@@ -12,44 +12,42 @@ CREATE TABLE IF NOT EXISTS matriz_responsables_motivos (
 );
 
 -- Índice único para evitar duplicados
-CREATE UNIQUE INDEX IF NOT EXISTS idx_resp_motivo_unique 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_resp_motivo_unique
     ON matriz_responsables_motivos(responsable, motivo) WHERE activo = TRUE;
 
 -- Tabla principal: Reclamos y Devoluciones
 CREATE TABLE IF NOT EXISTS reclamos_devoluciones (
     id SERIAL PRIMARY KEY,
     numero_reclamo SERIAL,
-    
+
     -- Datos de ingreso
     fecha_ingreso DATE NOT NULL DEFAULT CURRENT_DATE,
     responsable_ingreso VARCHAR(200) DEFAULT '',
-    
+
     -- Datos del cliente/orden
     cliente VARCHAR(200) DEFAULT '',
     numero_orden VARCHAR(50) DEFAULT '',
-    item VARCHAR(100) DEFAULT '',
-    codigo VARCHAR(50) DEFAULT '',
+
+    -- Items del reclamo (JSONB array)
+    -- Cada item: { item, codigo, descripcion, ancho, alto, espesor, m2, kg, valor_unitario }
+    items JSONB DEFAULT '[]',
+
+    -- Descripción general (resumen de items)
     descripcion TEXT DEFAULT '',
-    ancho DECIMAL(10,2) DEFAULT 0,
-    alto DECIMAL(10,2) DEFAULT 0,
-    espesor DECIMAL(6,2) DEFAULT 0,
-    m2 DECIMAL(10,4) DEFAULT 0,
-    kg DECIMAL(10,2) DEFAULT 0,
-    valor_unitario DECIMAL(12,2) DEFAULT 0,
-    
+
     -- Detalle del reclamo
     detalle_reclamo TEXT DEFAULT '',
     fotos JSONB DEFAULT '[]',
-    
+
     -- Estado
     estado VARCHAR(30) DEFAULT 'PENDIENTE',
-    
+
     -- Campos de calidad/resolución
     responsable_falla VARCHAR(100) DEFAULT '',
     motivo VARCHAR(200) DEFAULT '',
     observacion_analisis TEXT DEFAULT '',
     resolucion VARCHAR(50) DEFAULT '',
-    
+
     -- Metadatos
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()

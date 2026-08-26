@@ -139,12 +139,15 @@ const Reclamos = {
             data = data.filter(r => r.estado === this._currentFilter);
         }
         if (buscar) {
-            data = data.filter(r =>
-                (r.cliente || '').toLowerCase().includes(buscar) ||
-                (r.numero_orden || '').toLowerCase().includes(buscar) ||
-                (r.codigo || '').toLowerCase().includes(buscar) ||
-                String(r.numero_reclamo || '').includes(buscar)
-            );
+            data = data.filter(r => {
+                const items = Array.isArray(r.items) ? r.items : [];
+                const itemsText = items.map(it => (it.codigo + ' ' + it.descripcion + ' ' + it.item).toLowerCase()).join(' ');
+                return (r.cliente || '').toLowerCase().includes(buscar) ||
+                    (r.numero_orden || '').toLowerCase().includes(buscar) ||
+                    (r.descripcion || '').toLowerCase().includes(buscar) ||
+                    String(r.numero_reclamo || '').includes(buscar) ||
+                    itemsText.includes(buscar);
+            });
         }
 
         if (data.length === 0) {
@@ -158,8 +161,7 @@ const Reclamos = {
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Fecha</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Cliente</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">OV</th>';
-        html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Código</th>';
-        html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Descripción</th>';
+        html += '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Items</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Estado</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Resolución</th>';
         html += '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Acciones</th>';
@@ -168,13 +170,17 @@ const Reclamos = {
         data.forEach(r => {
             const badge = r.estado === 'PENDIENTE' ? 'rc-badge-pendiente' : r.estado === 'EN REVISION' ? 'rc-badge-revision' : 'rc-badge-finalizado';
             const resColor = r.resolucion === 'Rechazada' ? '#ef4444' : r.resolucion ? '#22c55e' : '#94a3b8';
+            const items = Array.isArray(r.items) ? r.items : [];
+            const itemsCount = items.length;
+            const itemsResumen = itemsCount > 0
+                ? (itemsCount === 1 ? (items[0].codigo || items[0].descripcion || '1 item') : itemsCount + ' items')
+                : '-';
             html += '<tr style="border-bottom:1px solid #f1f5f9">';
             html += '<td style="padding:12px 14px"><strong style="color:#7c3aed;font-size:14px">#' + (r.numero_reclamo || '-') + '</strong></td>';
             html += '<td style="padding:12px 14px;color:#475569;font-size:12px">' + this.fmtDate(r.fecha_ingreso) + '</td>';
             html += '<td style="padding:12px 14px"><strong style="color:#1e293b">' + (r.cliente || '-') + '</strong></td>';
             html += '<td style="padding:12px 14px;color:#475569">' + (r.numero_orden || '-') + '</td>';
-            html += '<td style="padding:12px 14px;font-weight:600;color:#3b82f6">' + (r.codigo || '-') + '</td>';
-            html += '<td style="padding:12px 14px;color:#475569;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (r.descripcion || '-') + '</td>';
+            html += '<td style="padding:12px 14px;text-align:center"><span style="background:#f1f5f9;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;color:#475569">' + itemsResumen + '</span></td>';
             html += '<td style="padding:12px 14px"><span class="rc-badge ' + badge + '">' + r.estado + '</span></td>';
             html += '<td style="padding:12px 14px"><span style="font-weight:600;color:' + resColor + ';font-size:12px">' + (r.resolucion || '-') + '</span></td>';
             html += '<td style="padding:12px 14px;text-align:center;white-space:nowrap">';
@@ -190,14 +196,18 @@ const Reclamos = {
         data.forEach(r => {
             const badge = r.estado === 'PENDIENTE' ? 'rc-badge-pendiente' : r.estado === 'EN REVISION' ? 'rc-badge-revision' : 'rc-badge-finalizado';
             const borderColor = r.estado === 'PENDIENTE' ? '#f59e0b' : r.estado === 'EN REVISION' ? '#3b82f6' : '#22c55e';
+            const items = Array.isArray(r.items) ? r.items : [];
+            const itemsCount = items.length;
             html += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px;border-left:4px solid ' + borderColor + '">';
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
             html += '<span style="font-weight:800;color:#7c3aed;font-size:16px">#' + (r.numero_reclamo || '-') + '</span>';
             html += '<span class="rc-badge ' + badge + '">' + r.estado + '</span>';
             html += '</div>';
             html += '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">' + (r.cliente || '-') + '</div>';
-            html += '<div style="font-size:12px;color:#64748b;margin-bottom:6px">OV: ' + (r.numero_orden || '-') + ' · ' + (r.codigo || '-') + '</div>';
-            html += '<div style="font-size:12px;color:#475569;margin-bottom:8px">' + (r.descripcion || '-') + '</div>';
+            html += '<div style="font-size:12px;color:#64748b;margin-bottom:6px">OV: ' + (r.numero_orden || '-') + ' · ' + itemsCount + ' item(s)</div>';
+            if (items.length > 0) {
+                html += '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + items.map(it => it.codigo || it.descripcion).filter(Boolean).join(', ') + '</div>';
+            }
             if (r.resolucion) html += '<div style="font-size:11px;font-weight:600;color:' + (r.resolucion === 'Rechazada' ? '#ef4444' : '#22c55e') + ';margin-bottom:8px">Resolución: ' + r.resolucion + '</div>';
             html += '<div style="display:flex;gap:6px">';
             html += '<button onclick="App.modules.reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="flex:1">Editar</button>';
@@ -294,31 +304,40 @@ const Reclamos = {
                                     <label>N° Orden de Venta (OV)</label>
                                     <input type="text" id="rcOrden" value="${r.numero_orden || ''}" placeholder="Ej: OV-12345">
                                 </div>
-                                <div>
-                                    <label>Item</label>
-                                    <input type="text" id="rcItem" value="${r.item || ''}" placeholder="N° item">
+                                <div></div>
+                            </div>
+
+                            <!-- TABLA DE ITEMS -->
+                            <div style="margin-top:14px">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                                    <label style="margin:0;font-size:12px;font-weight:700;color:#1e293b">Items del Reclamo</label>
+                                    <button type="button" onclick="App.modules.reclamos.addItem()" class="btn btn-accent" style="padding:5px 12px;font-size:11px">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        Agregar Item
+                                    </button>
                                 </div>
-                            </div>
-                            <div class="rc-form-grid" style="margin-top:10px">
-                                <div>
-                                    <label>Código</label>
-                                    <input type="text" id="rcCodigo" value="${r.codigo || ''}" placeholder="Código SAP">
+                                <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px">
+                                    <table style="width:100%;border-collapse:collapse;font-size:11px" id="rcItemsTable">
+                                        <thead>
+                                            <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+                                                <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:30px">#</th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:100px">Código</th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:150px">Descripción</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Ancho</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Alto</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Espesor</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">m²</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Kg</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:80px">V. Unitario</th>
+                                                <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:40px"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="rcItemsBody"></tbody>
+                                    </table>
                                 </div>
-                                <div style="grid-column:span 2">
-                                    <label>Descripción</label>
-                                    <input type="text" id="rcDescripcion" value="${r.descripcion || ''}" placeholder="Descripción del producto">
-                                </div>
+                                <input type="hidden" id="rcItemsData" value='${JSON.stringify(r.items || [])}'>
                             </div>
-                            <div class="rc-form-grid" style="margin-top:10px">
-                                <div><label>Ancho (mm)</label><input type="number" id="rcAncho" value="${r.ancho || ''}" placeholder="0"></div>
-                                <div><label>Alto (mm)</label><input type="number" id="rcAlto" value="${r.alto || ''}" placeholder="0"></div>
-                                <div><label>Espesor (mm)</label><input type="number" id="rcEspesor" value="${r.espesor || ''}" step="0.1" placeholder="0"></div>
-                            </div>
-                            <div class="rc-form-grid" style="margin-top:10px">
-                                <div><label>m²</label><input type="number" id="rcM2" value="${r.m2 || ''}" step="0.01" placeholder="0.00"></div>
-                                <div><label>Kg</label><input type="number" id="rcKg" value="${r.kg || ''}" step="0.01" placeholder="0.00"></div>
-                                <div><label>Valor Unitario</label><input type="number" id="rcValor" value="${r.valor_unitario || ''}" step="1" placeholder="0"></div>
-                            </div>
+
                             <div style="margin-top:10px">
                                 <label>Detalle del Reclamo *</label>
                                 <textarea id="rcDetalle" rows="3" required placeholder="Describe el problema reportado por el cliente...">${r.detalle_reclamo || ''}</textarea>
@@ -387,6 +406,9 @@ const Reclamos = {
                 </form>
             </div>
         `;
+
+        // Renderizar items existentes
+        this.renderItems();
 
         // Cargar motivos si hay responsable seleccionado
         if (r.responsable_falla) {
@@ -473,25 +495,98 @@ const Reclamos = {
         this.renderFotosPreview(fotos);
     },
 
+    // ═══════════════════════════════════════════════════
+    // ITEMS DINAMICOS
+    // ═══════════════════════════════════════════════════
+    _itemDefaults() {
+        return { item: '', codigo: '', descripcion: '', ancho: 0, alto: 0, espesor: 0, m2: 0, kg: 0, valor_unitario: 0 };
+    },
+
+    _getItems() {
+        try { return JSON.parse(document.getElementById('rcItemsData').value || '[]'); } catch(e) { return []; }
+    },
+
+    _setItems(items) {
+        const el = document.getElementById('rcItemsData');
+        if (el) el.value = JSON.stringify(items);
+    },
+
+    addItem() {
+        const items = this._getItems();
+        items.push(this._itemDefaults());
+        this._setItems(items);
+        this.renderItems();
+    },
+
+    removeItem(idx) {
+        const items = this._getItems();
+        items.splice(idx, 1);
+        this._setItems(items);
+        this.renderItems();
+    },
+
+    _syncItemFromRow(idx) {
+        const items = this._getItems();
+        if (!items[idx]) return;
+        const get = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value : '';
+        };
+        items[idx].item = get('rcItem_' + idx);
+        items[idx].codigo = get('rcCodigo_' + idx);
+        items[idx].descripcion = get('rcDesc_' + idx);
+        items[idx].ancho = parseFloat(get('rcAncho_' + idx)) || 0;
+        items[idx].alto = parseFloat(get('rcAlto_' + idx)) || 0;
+        items[idx].espesor = parseFloat(get('rcEspesor_' + idx)) || 0;
+        items[idx].m2 = parseFloat(get('rcM2_' + idx)) || 0;
+        items[idx].kg = parseFloat(get('rcKg_' + idx)) || 0;
+        items[idx].valor_unitario = parseFloat(get('rcValor_' + idx)) || 0;
+        this._setItems(items);
+    },
+
+    renderItems() {
+        const tbody = document.getElementById('rcItemsBody');
+        if (!tbody) return;
+        const items = this._getItems();
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="padding:16px;text-align:center;color:#94a3b8;font-size:12px">Sin items. Haz clic en "Agregar Item" para comenzar.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = items.map((it, i) => {
+            const val = (v) => (v || v === 0) ? v : '';
+            return '<tr style="border-bottom:1px solid #f1f5f9" oninput="App.modules.reclamos._syncItemFromRow(' + i + ')">'
+                + '<td style="padding:4px 6px;text-align:center;font-weight:700;color:#7c3aed;font-size:12px">' + (i + 1) + '</td>'
+                + '<td style="padding:4px 4px"><input id="rcItem_' + i + '" value="' + val(it.item) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none" placeholder="#"></td>'
+                + '<td style="padding:4px 4px"><input id="rcCodigo_' + i + '" value="' + val(it.codigo) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none" placeholder="Código SAP"></td>'
+                + '<td style="padding:4px 4px"><input id="rcDesc_' + i + '" value="' + val(it.descripcion) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none" placeholder="Descripción"></td>'
+                + '<td style="padding:4px 4px"><input id="rcAncho_' + i + '" type="number" value="' + val(it.ancho) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
+                + '<td style="padding:4px 4px"><input id="rcAlto_' + i + '" type="number" value="' + val(it.alto) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
+                + '<td style="padding:4px 4px"><input id="rcEspesor_' + i + '" type="number" value="' + val(it.espesor) + '" step="0.1" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
+                + '<td style="padding:4px 4px"><input id="rcM2_' + i + '" type="number" value="' + val(it.m2) + '" step="0.01" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
+                + '<td style="padding:4px 4px"><input id="rcKg_' + i + '" type="number" value="' + val(it.kg) + '" step="0.01" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
+                + '<td style="padding:4px 4px"><input id="rcValor_' + i + '" type="number" value="' + val(it.valor_unitario) + '" style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;text-align:right" placeholder="0"></td>'
+                + '<td style="padding:4px 6px;text-align:center"><button type="button" onclick="App.modules.reclamos.removeItem(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>'
+                + '</tr>';
+        }).join('');
+    },
+
     async guardar(e) {
         e.preventDefault();
         let fotos = [];
         try { fotos = JSON.parse(document.getElementById('rcFotosData').value || '[]'); } catch(e) {}
+
+        // Sincronizar todos los items desde la tabla
+        const items = this._getItems();
 
         const data = {
             fecha_ingreso: document.getElementById('rcFecha').value,
             responsable_ingreso: document.getElementById('rcResponsableIngreso').value,
             cliente: document.getElementById('rcCliente').value,
             numero_orden: document.getElementById('rcOrden').value,
-            item: document.getElementById('rcItem').value,
-            codigo: document.getElementById('rcCodigo').value,
-            descripcion: document.getElementById('rcDescripcion').value,
-            ancho: parseFloat(document.getElementById('rcAncho').value) || 0,
-            alto: parseFloat(document.getElementById('rcAlto').value) || 0,
-            espesor: parseFloat(document.getElementById('rcEspesor').value) || 0,
-            m2: parseFloat(document.getElementById('rcM2').value) || 0,
-            kg: parseFloat(document.getElementById('rcKg').value) || 0,
-            valor_unitario: parseFloat(document.getElementById('rcValor').value) || 0,
+            items: items,
+            descripcion: items.map(it => it.descripcion).filter(Boolean).join(', '),
             detalle_reclamo: document.getElementById('rcDetalle').value,
             fotos: fotos,
             estado: document.getElementById('rcEstado').value,
