@@ -842,9 +842,21 @@ const Reclamos = {
     async showMatriz() {
         let matriz = [];
         try {
-            const resp = await authFetch('/api/reclamos/matriz').then(r => r.json());
-            matriz = Array.isArray(resp) ? resp : [];
-        } catch(e) { matriz = []; }
+            const resp = await authFetch('/api/reclamos/matriz');
+            if (!resp.ok) {
+                console.error('showMatriz API error:', resp.status, await resp.text());
+                App.toast('Error al cargar configuración: ' + resp.status, 'error');
+                return;
+            }
+            const data = await resp.json();
+            matriz = Array.isArray(data) ? data : [];
+        } catch(e) {
+            console.error('showMatriz fetch error:', e);
+            App.toast('Error de conexión al cargar configuración', 'error');
+            return;
+        }
+
+        console.log('showMatriz data:', matriz);
 
         const agrupado = {};
         matriz.forEach(m => {
@@ -867,6 +879,10 @@ const Reclamos = {
             bodyHtml += '</div>';
         });
         bodyHtml += '</div>';
+
+        if (Object.keys(agrupado).length === 0) {
+            bodyHtml += '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:12px">No hay responsables configurados. Agrega uno abajo.</div>';
+        }
 
         // Formulario para agregar nuevo
         bodyHtml += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0">';
