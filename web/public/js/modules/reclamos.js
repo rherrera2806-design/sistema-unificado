@@ -94,13 +94,13 @@ const Reclamos = {
     async cargarDatos() {
         try {
             const [reclamos, stats, responsables] = await Promise.all([
-                authFetch('/api/reclamos').then(r => r.json()),
-                authFetch('/api/reclamos/dashboard/stats').then(r => r.json()),
-                authFetch('/api/reclamos/responsables/lista').then(r => r.json())
+                authFetch('/api/reclamos').then(r => r.json()).catch(() => []),
+                authFetch('/api/reclamos/dashboard/stats').then(r => r.json()).catch(() => ({})),
+                authFetch('/api/reclamos/responsables/lista').then(r => r.json()).catch(() => [])
             ]);
             this._data = Array.isArray(reclamos) ? reclamos : [];
             this._responsables = Array.isArray(responsables) ? responsables : [];
-            this.renderStats(stats);
+            this.renderStats(stats || {});
             this.renderLista();
         } catch(e) { console.error('Error:', e); }
     },
@@ -238,7 +238,7 @@ const Reclamos = {
             } catch(e) {}
         }
 
-        const respOptions = this._responsables.map(resp => '<option value="' + resp + '"' + (r.responsable_falla === resp ? ' selected' : '') + '>' + resp + '</option>').join('');
+        const respOptions = (Array.isArray(this._responsables) ? this._responsables : []).map(resp => '<option value="' + resp + '"' + (r.responsable_falla === resp ? ' selected' : '') + '>' + resp + '</option>').join('');
         const resolucionOptions = ['', 'Aceptada Fabricacion nueva', 'Aceptada Reproceso', 'Rechazada'].map(v =>
             '<option value="' + v + '"' + (r.resolucion === v ? ' selected' : '') + '>' + (v || 'Seleccionar...') + '</option>'
         ).join('');
@@ -422,7 +422,8 @@ const Reclamos = {
         // Cache de motivos
         if (!this._motivosCache[resp]) {
             try {
-                this._motivosCache[resp] = await authFetch('/api/reclamos/motivos/' + encodeURIComponent(resp)).then(r => r.json());
+                const data = await authFetch('/api/reclamos/motivos/' + encodeURIComponent(resp)).then(r => r.json());
+                this._motivosCache[resp] = Array.isArray(data) ? data : [];
             } catch(e) { this._motivosCache[resp] = []; }
         }
 
@@ -537,8 +538,9 @@ const Reclamos = {
     async showMatriz() {
         let matriz = [];
         try {
-            matriz = await authFetch('/api/reclamos/matriz').then(r => r.json());
-        } catch(e) {}
+            const resp = await authFetch('/api/reclamos/matriz').then(r => r.json());
+            matriz = Array.isArray(resp) ? resp : [];
+        } catch(e) { matriz = []; }
 
         const agrupado = {};
         matriz.forEach(m => {
