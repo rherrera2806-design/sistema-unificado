@@ -220,6 +220,107 @@ router.get('/api/reclamos', perms.view, async (req, res) => {
     }
 });
 
+// Dashboard stats
+router.get('/api/reclamos/dashboard/stats', perms.view, async (req, res) => {
+    try {
+        await ensureColumns();
+        const result = await pool.query(`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE estado = 'PENDIENTE') as pendientes,
+                COUNT(*) FILTER (WHERE estado = 'EN REVISION') as en_revision,
+                COUNT(*) FILTER (WHERE estado = 'FINALIZADO') as finalizados,
+                COUNT(*) FILTER (WHERE resolucion = 'Aceptada Fabricacion nueva') as fab_nueva,
+                COUNT(*) FILTER (WHERE resolucion = 'Aceptada Reproceso') as reproceso,
+                COUNT(*) FILTER (WHERE resolucion = 'Rechazada') as rechazadas
+            FROM reclamos_devoluciones
+        `);
+        res.json(result.rows[0]);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// MATRIZ DE RESPONSABLES Y MOTIVOS
+// ═══════════════════════════════════════════════════════
+
+// Listar todos los responsables únicos
+router.get('/api/reclamos/responsables/lista', perms.view, async (req, res) => {
+    try {
+        await ensureColumns();
+        const result = await pool.query(
+            "SELECT DISTINCT responsable FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable"
+        );
+        res.json(result.rows.map(r => r.responsable));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Listar motivos por responsable
+router.get('/api/reclamos/motivos/:responsable', perms.view, async (req, res) => {
+    try {
+        await ensureColumns();
+        const result = await pool.query(
+            "SELECT id, motivo FROM matriz_responsables_motivos WHERE responsable = $1 AND activo = TRUE ORDER BY motivo",
+            [req.params.responsable]
+        );
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Listar toda la matriz
+router.get('/api/reclamos/matriz', perms.view, async (req, res) => {
+    try {
+        await ensureColumns();
+        const result = await pool.query(
+            "SELECT * FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable, motivo"
+        );
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Agregar responsable/motivo
+router.post('/api/reclamos/matriz', perms.create, async (req, res) => {
+    try {
+        await ensureColumns();
+        const { responsable, motivo } = req.body;
+        if (!responsable || !motivo) return res.status(400).json({ error: 'Responsable y motivo requeridos' });
+        const result = await pool.query(
+            'INSERT INTO matriz_responsables_motivos (responsable, motivo) VALUES ($1, $2) RETURNING *',
+            [responsable.toUpperCase().trim(), motivo.toUpperCase().trim()]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        if (e.code === '23505') return res.status(400).json({ error: 'Ya existe esta combinación' });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Eliminar responsable/motivo (soft delete)
+router.delete('/api/reclamos/matriz/:id', perms.delete, async (req, res) => {
+    try {
+        await ensureColumns();
+        const result = await pool.query(
+            'UPDATE matriz_responsables_motivos SET activo = FALSE WHERE id = $1 RETURNING id',
+            [req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+// RECLAMOS - CRUD (después de rutas nombradas)
+// ═══════════════════════════════════════════════════════
+
 // Obtener uno por ID
 router.get('/api/reclamos/:id', perms.view, async (req, res) => {
     try {
@@ -370,103 +471,6 @@ router.get('/api/reclamos/:id/historial', perms.view, async (req, res) => {
             [req.params.id]
         );
         res.json(result.rows);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Dashboard stats
-router.get('/api/reclamos/dashboard/stats', perms.view, async (req, res) => {
-    try {
-        await ensureColumns();
-        const result = await pool.query(`
-            SELECT 
-                COUNT(*) as total,
-                COUNT(*) FILTER (WHERE estado = 'PENDIENTE') as pendientes,
-                COUNT(*) FILTER (WHERE estado = 'EN REVISION') as en_revision,
-                COUNT(*) FILTER (WHERE estado = 'FINALIZADO') as finalizados,
-                COUNT(*) FILTER (WHERE resolucion = 'Aceptada Fabricacion nueva') as fab_nueva,
-                COUNT(*) FILTER (WHERE resolucion = 'Aceptada Reproceso') as reproceso,
-                COUNT(*) FILTER (WHERE resolucion = 'Rechazada') as rechazadas
-            FROM reclamos_devoluciones
-        `);
-        res.json(result.rows[0]);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// ═══════════════════════════════════════════════════════
-// MATRIZ DE RESPONSABLES Y MOTIVOS
-// ═══════════════════════════════════════════════════════
-
-// Listar todos los responsables únicos
-router.get('/api/reclamos/responsables/lista', perms.view, async (req, res) => {
-    try {
-        await ensureColumns();
-        const result = await pool.query(
-            "SELECT DISTINCT responsable FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable"
-        );
-        res.json(result.rows.map(r => r.responsable));
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Listar motivos por responsable
-router.get('/api/reclamos/motivos/:responsable', perms.view, async (req, res) => {
-    try {
-        await ensureColumns();
-        const result = await pool.query(
-            "SELECT id, motivo FROM matriz_responsables_motivos WHERE responsable = $1 AND activo = TRUE ORDER BY motivo",
-            [req.params.responsable]
-        );
-        res.json(result.rows);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Listar toda la matriz
-router.get('/api/reclamos/matriz', perms.view, async (req, res) => {
-    try {
-        await ensureColumns();
-        const result = await pool.query(
-            "SELECT * FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable, motivo"
-        );
-        res.json(result.rows);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Agregar responsable/motivo
-router.post('/api/reclamos/matriz', perms.create, async (req, res) => {
-    try {
-        await ensureColumns();
-        const { responsable, motivo } = req.body;
-        if (!responsable || !motivo) return res.status(400).json({ error: 'Responsable y motivo requeridos' });
-        const result = await pool.query(
-            'INSERT INTO matriz_responsables_motivos (responsable, motivo) VALUES ($1, $2) RETURNING *',
-            [responsable.toUpperCase().trim(), motivo.toUpperCase().trim()]
-        );
-        res.json(result.rows[0]);
-    } catch (e) {
-        if (e.code === '23505') return res.status(400).json({ error: 'Ya existe esta combinación' });
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Eliminar responsable/motivo (soft delete)
-router.delete('/api/reclamos/matriz/:id', perms.delete, async (req, res) => {
-    try {
-        await ensureColumns();
-        const result = await pool.query(
-            'UPDATE matriz_responsables_motivos SET activo = FALSE WHERE id = $1 RETURNING id',
-            [req.params.id]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
-        res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
