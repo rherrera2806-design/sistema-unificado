@@ -246,6 +246,13 @@ const Reclamos = {
             r = this._data.find(x => x.id === id) || {};
         }
 
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const permisos = user.permisos || [];
+        const canCreate = permisos.includes('reclamos.agregar') || permisos.includes('usuarios');
+        const canEdit = permisos.includes('reclamos.editar') || permisos.includes('usuarios');
+        this._canCreate = canCreate;
+        this._canEdit = canEdit;
+
         const container = document.getElementById('rc-form-container');
         container.style.display = 'block';
 
@@ -283,7 +290,7 @@ const Reclamos = {
                             </div>
                             <div>
                                 <h4 style="margin:0;font-size:13px;font-weight:700;color:#1e40af">Sección Ventas (Apertura)</h4>
-                                <p style="margin:0;font-size:10px;color:#64748b">Datos del cliente y detalle del reclamo</p>
+                                <p style="margin:0;font-size:10px;color:#64748b">${canCreate ? 'Datos del cliente y detalle del reclamo' : 'Solo lectura — requiere permiso Agregar'}</p>
                             </div>
                         </div>
                         <div class="rc-section-body">
@@ -299,11 +306,11 @@ const Reclamos = {
                             <div class="rc-form-grid">
                                 <div>
                                     <label>Cliente *</label>
-                                    <input type="text" id="rcCliente" value="${r.cliente || ''}" required placeholder="Nombre del cliente">
+                                    <input type="text" id="rcCliente" value="${r.cliente || ''}" required placeholder="Nombre del cliente" ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>
                                 </div>
                                 <div>
                                     <label>N° Orden de Venta (OV)</label>
-                                    <input type="text" id="rcOrden" value="${r.numero_orden || ''}" placeholder="Ej: OV-12345">
+                                    <input type="text" id="rcOrden" value="${r.numero_orden || ''}" placeholder="Ej: OV-12345" ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>
                                 </div>
                                 <div></div>
                             </div>
@@ -312,10 +319,7 @@ const Reclamos = {
                             <div style="margin-top:14px">
                                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                                     <label style="margin:0;font-size:12px;font-weight:700;color:#1e293b">Items del Reclamo</label>
-                                    <button type="button" onclick="App.modules.reclamos.addItem()" class="btn btn-accent" style="padding:5px 12px;font-size:11px">
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                        Agregar Item
-                                    </button>
+                                    ${canCreate ? '<button type="button" onclick="App.modules.reclamos.addItem()" class="btn btn-accent" style="padding:5px 12px;font-size:11px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar Item</button>' : ''}
                                 </div>
                                 <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px">
                                     <table style="width:100%;border-collapse:collapse;font-size:11px" id="rcItemsTable">
@@ -342,7 +346,7 @@ const Reclamos = {
 
                             <div style="margin-top:10px">
                                 <label>Detalle del Reclamo *</label>
-                                <textarea id="rcDetalle" rows="3" required placeholder="Describe el problema reportado por el cliente...">${r.detalle_reclamo || ''}</textarea>
+                                <textarea id="rcDetalle" rows="3" required placeholder="Describe el problema reportado por el cliente..." ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>${r.detalle_reclamo || ''}</textarea>
                             </div>
                             <div style="margin-top:10px">
                                 <label>Fotos Adjuntas</label>
@@ -368,45 +372,42 @@ const Reclamos = {
                             </div>
                             <div>
                                 <h4 style="margin:0;font-size:13px;font-weight:700;color:#6d28d9">Sección Calidad / Resolución</h4>
-                                <p style="margin:0;font-size:10px;color:#64748b">Análisis técnico y resolución del reclamo</p>
+                                <p style="margin:0;font-size:10px;color:#64748b">${canEdit ? 'Análisis técnico y resolución del reclamo' : 'Solo lectura — requiere permiso Editar'}</p>
                             </div>
                         </div>
                         <div class="rc-section-body">
                             <div class="rc-form-grid">
                                 <div>
                                     <label>Responsable de Falla</label>
-                                    <select id="rcResponsableFalla" onchange="App.modules.reclamos.onResponsableChange()">
+                                    <select id="rcResponsableFalla" onchange="App.modules.reclamos.onResponsableChange()" ${!canEdit ? 'disabled' : ''}>
                                         <option value="">Seleccionar...</option>
                                         ${respOptions}
                                     </select>
                                 </div>
                                 <div>
                                     <label>Motivo</label>
-                                    <select id="rcMotivo">
+                                    <select id="rcMotivo" ${!canEdit ? 'disabled' : ''}>
                                         <option value="">Seleccionar responsable primero...</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label>Resolución</label>
-                                    <select id="rcResolucion">${resolucionOptions}</select>
+                                    <select id="rcResolucion" ${!canEdit ? 'disabled' : ''}>${resolucionOptions}</select>
                                 </div>
                             </div>
                             <div style="margin-top:10px">
                                 <label>Observación / Análisis Técnico</label>
-                                <textarea id="rcObservacion" rows="4" placeholder="Análisis técnico del problema, respuesta al cliente, acciones correctivas...">${r.observacion_analisis || ''}</textarea>
+                                <textarea id="rcObservacion" rows="4" placeholder="Análisis técnico del problema, respuesta al cliente, acciones correctivas..." ${!canEdit ? 'readonly style="background:#f8fafc"' : ''}>${r.observacion_analisis || ''}</textarea>
                             </div>
                         </div>
                     </div>
 
                     <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #f1f5f9">
                         <button type="button" onclick="App.modules.reclamos.hideForm()" class="btn btn-outline">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" style="padding:10px 28px">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                            Guardar
-                        </button>
+                        ${(canCreate || canEdit) ? '<button type="submit" class="btn btn-primary" style="padding:10px 28px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar</button>' : ''}
                     </div>
 
-                    ${id ? this._renderWorkflowBar(r) : ''}
+                    ${id && canEdit ? this._renderWorkflowBar(r) : ''}
                 </form>
             </div>
         `;
@@ -657,6 +658,10 @@ const Reclamos = {
             return;
         }
 
+        const canCreate = this._canCreate !== false;
+        const ro = canCreate ? '' : 'readonly style="background:#f8fafc"';
+        const roInp = canCreate ? '' : 'readonly';
+
         tbody.innerHTML = items.map((it, i) => {
             const v = (x) => (x || x === 0) ? x : '';
             const onCalc = 'App.modules.reclamos._calcItem(' + i + ')';
@@ -667,16 +672,16 @@ const Reclamos = {
             const onDimBl = 'App.modules.reclamos._onDimBlur(' + i + ')';
             return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="' + tdBase + 'text-align:center;padding:6px 4px;font-weight:700;color:#7c3aed;font-size:12px">' + (i + 1) + '</td>'
-                + '<td style="' + tdBase + '"><input id="rcItem_' + i + '" value="' + v(it.item) + '" style="' + inpBase + '" placeholder="#" oninput="' + onSync + '"></td>'
-                + '<td style="' + tdBase + '"><input id="rcCodigo_' + i + '" value="' + v(it.codigo) + '" style="' + inpBase + '" placeholder="Código SAP" oninput="' + onCodigo + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcItem_' + i + '" value="' + v(it.item) + '" style="' + inpBase + '" placeholder="#" oninput="' + onSync + '" ' + roInp + '></td>'
+                + '<td style="' + tdBase + '"><input id="rcCodigo_' + i + '" value="' + v(it.codigo) + '" style="' + inpBase + '" placeholder="Código SAP" oninput="' + onCodigo + '" ' + roInp + '></td>'
                 + '<td style="' + tdBase + '"><input id="rcDesc_' + i + '" value="' + v(it.descripcion) + '" style="' + inpBase + 'background:#f8fafc" placeholder="Descripción" readonly></td>'
-                + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.ancho)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '"></td>'
-                + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.alto)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '"></td>'
-                + '<td style="' + tdBase + '"><input id="rcEspesor_' + i + '" type="text" inputmode="decimal" value="' + v(it.espesor || '') + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '"></td>'
+                + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.ancho)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
+                + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.alto)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
+                + '<td style="' + tdBase + '"><input id="rcEspesor_' + i + '" type="text" inputmode="decimal" value="' + v(it.espesor || '') + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
                 + '<td style="' + tdBase + '"><input id="rcM2_' + i + '" type="text" value="' + v(it.m2 || '') + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
                 + '<td style="' + tdBase + '"><input id="rcKg_' + i + '" type="text" value="' + v(it.kg || '') + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
-                + '<td style="' + tdBase + '"><input id="rcValor_' + i + '" type="text" inputmode="numeric" value="' + v(it.valor_unitario ? this._fmtCLP(it.valor_unitario) : '') + '" style="' + inpBase + 'text-align:right" placeholder="$0" oninput="' + onValorIn + '" onblur="' + onValorBl + '"></td>'
-                + '<td style="padding:4px 6px;text-align:center"><button type="button" onclick="App.modules.reclamos.removeItem(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>'
+                + '<td style="' + tdBase + '"><input id="rcValor_' + i + '" type="text" inputmode="numeric" value="' + v(it.valor_unitario ? this._fmtCLP(it.valor_unitario) : '') + '" style="' + inpBase + 'text-align:right" placeholder="$0" oninput="' + onValorIn + '" onblur="' + onValorBl + '" ' + roInp + '></td>'
+                + (canCreate ? '<td style="padding:4px 6px;text-align:center"><button type="button" onclick="App.modules.reclamos.removeItem(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>' : '<td></td>')
                 + '</tr>';
         }).join('');
     },
