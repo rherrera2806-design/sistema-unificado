@@ -49,6 +49,15 @@ const Reclamos = {
                 @media(min-width:769px) and (max-width:1024px){
                     .rc-form-grid{grid-template-columns:repeat(2,1fr)}
                 }
+                .rc-codigo-wrap{position:relative}
+                .rc-codigo-drop{position:absolute;top:100%;left:0;right:0;max-height:220px;overflow-y:auto;background:white;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:100;display:none;margin-top:2px}
+                .rc-codigo-drop.show{display:block}
+                .rc-codigo-drop input{width:100%;box-sizing:border-box;padding:8px 10px;font-size:12px;border:none;border-bottom:1px solid #e2e8f0;outline:none}
+                .rc-codigo-item{padding:7px 10px;font-size:11px;cursor:pointer;display:flex;gap:8px;align-items:center;border-bottom:1px solid #f8fafc}
+                .rc-codigo-item:hover{background:#eff6ff}
+                .rc-codigo-item .rc-cod{font-weight:700;color:#3b82f6;min-width:50px}
+                .rc-codigo-item .rc-desc{color:#475569;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                .rc-codigo-item .rc-grp{font-size:10px;color:#94a3b8;white-space:nowrap}
             </style>
 
             <div class="rc-hero">
@@ -415,6 +424,11 @@ const Reclamos = {
         // Renderizar items existentes
         this.renderItems();
 
+        // Cerrar dropdown de código al hacer click fuera
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.rc-codigo-wrap')) this._closeCodigoSearch();
+        });
+
         // Cargar motivos si hay responsable seleccionado
         if (r.responsable_falla) {
             await this.onResponsableChange();
@@ -611,6 +625,82 @@ const Reclamos = {
         } catch(e) {}
     },
 
+    // ═══════════════════════════════════════════════════
+    // DROPDOWN BÚSQUEDA DE CÓDIGO
+    // ═══════════════════════════════════════════════════
+    _openCodigoSearch(idx) {
+        this._closeCodigoSearch();
+        const wrap = document.getElementById('rcCodigoWrap_' + idx);
+        if (!wrap) return;
+        let drop = wrap.querySelector('.rc-codigo-drop');
+        if (!drop) {
+            drop = document.createElement('div');
+            drop.className = 'rc-codigo-drop';
+            drop.innerHTML = '<input type="text" placeholder="Buscar código o descripción..." oninput="App.modules.reclamos._searchCodigo(this.value,' + idx + ')">'
+                + '<div id="rcCodigoResults_' + idx + '" style="max-height:180px;overflow-y:auto"></div>';
+            wrap.appendChild(drop);
+        }
+        drop.classList.add('show');
+        const searchInput = drop.querySelector('input');
+        setTimeout(() => searchInput.focus(), 50);
+        searchInput.value = '';
+        this._searchCodigo('', idx);
+    },
+
+    _closeCodigoSearch() {
+        document.querySelectorAll('.rc-codigo-drop.show').forEach(d => d.classList.remove('show'));
+    },
+
+    async _searchCodigo(query, idx) {
+        const resultsEl = document.getElementById('rcCodigoResults_' + idx);
+        if (!resultsEl) return;
+
+        if (!this._codigosCache) {
+            try {
+                const resp = await authFetch('/api/produccion/codigos').then(r => r.json());
+                this._codigosCache = Array.isArray(resp) ? resp : [];
+            } catch(e) { this._codigosCache = []; }
+        }
+
+        const q = query.toLowerCase().trim();
+        let results = this._codigosCache;
+        if (q) {
+            results = results.filter(c =>
+                (c.codigo || '').toLowerCase().includes(q) ||
+                (c.descripcion || '').toLowerCase().includes(q) ||
+                (c.grupo || '').toLowerCase().includes(q)
+            );
+        }
+        results = results.slice(0, 50);
+
+        if (results.length === 0) {
+            resultsEl.innerHTML = '<div style="padding:12px;text-align:center;color:#94a3b8;font-size:11px">Sin resultados</div>';
+            return;
+        }
+
+        resultsEl.innerHTML = results.map(c =>
+            '<div class="rc-codigo-item" onclick="App.modules.reclamos._selectCodigo(' + idx + ',\'' + (c.codigo || '').replace(/'/g, "\\'") + '\',\'' + (c.descripcion || '').replace(/'/g, "\\'") + '\')">'
+            + '<span class="rc-cod">' + (c.codigo || '') + '</span>'
+            + '<span class="rc-desc">' + (c.descripcion || '') + '</span>'
+            + (c.grupo ? '<span class="rc-grp">' + c.grupo + '</span>' : '')
+            + '</div>'
+        ).join('');
+    },
+
+    _selectCodigo(idx, codigo, descripcion) {
+        const codEl = document.getElementById('rcCodigo_' + idx);
+        const descEl = document.getElementById('rcDesc_' + idx);
+        if (codEl) codEl.value = codigo;
+        if (descEl) descEl.value = descripcion;
+        const items = this._getItems();
+        if (items[idx]) {
+            items[idx].codigo = codigo;
+            items[idx].descripcion = descripcion;
+            this._setItems(items);
+        }
+        this._closeCodigoSearch();
+    },
+
     _onValorBlur(idx) {
         const input = document.getElementById('rcValor_' + idx);
         if (!input) return;
@@ -673,7 +763,7 @@ const Reclamos = {
             return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="' + tdBase + 'text-align:center;padding:6px 4px;font-weight:700;color:#7c3aed;font-size:12px">' + (i + 1) + '</td>'
                 + '<td style="' + tdBase + '"><input id="rcItem_' + i + '" value="' + v(it.item) + '" style="' + inpBase + '" placeholder="#" oninput="' + onSync + '" ' + roInp + '></td>'
-                + '<td style="' + tdBase + '"><input id="rcCodigo_' + i + '" value="' + v(it.codigo) + '" style="' + inpBase + '" placeholder="Código SAP" oninput="' + onCodigo + '" ' + roInp + '></td>'
+                + '<td style="' + tdBase + '" class="rc-codigo-wrap" id="rcCodigoWrap_' + i + '"><input id="rcCodigo_' + i + '" value="' + v(it.codigo) + '" style="' + inpBase + 'cursor:pointer" placeholder="🔍 Código SAP" readonly onclick="App.modules.reclamos._openCodigoSearch(' + i + ')"></td>'
                 + '<td style="' + tdBase + '"><input id="rcDesc_' + i + '" value="' + v(it.descripcion) + '" style="' + inpBase + 'background:#f8fafc" placeholder="Descripción" readonly></td>'
                 + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.ancho)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
                 + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.alto)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
