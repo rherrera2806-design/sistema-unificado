@@ -1,7 +1,7 @@
 {
-    "name": "VitroFlow - Sistema Unificado",
+    "name": "VitroFlow",
     "short_name": "VitroFlow",
-    "description": "Sistema Unificado de Mantención + Inventario",
+    "description": "Sistema de Produccion VitroFlow",
     "start_url": "/",
     "display": "standalone",
     "display_override": ["standalone", "fullscreen"],

@@ -41,14 +41,18 @@ const getOrdenes = async () => {
 };
 
 const buscarFamilia = async (codigo) => {
-    const codInfo = await query('SELECT familia FROM produccion_codigos WHERE codigo = $1', [codigo]);
-    if (!codInfo.rows.length || !codInfo.rows[0].familia) return null;
-    const nombreFam = codInfo.rows[0].familia;
-    const famRes = await query(
-        'SELECT * FROM familias_producto WHERE UPPER(nombre_familia) = UPPER($1) OR UPPER(codigo_familia) = UPPER($1)',
-        [nombreFam]
-    );
-    return famRes.rows.length > 0 ? famRes.rows[0] : null;
+    const codInfo = await query('SELECT familia, grupo FROM produccion_codigos WHERE codigo = $1', [codigo]);
+    if (!codInfo.rows.length) return null;
+    const row = codInfo.rows[0];
+    const candidatos = [row.familia, row.grupo].filter(Boolean);
+    for (const candidato of candidatos) {
+        const famRes = await query(
+            'SELECT * FROM familias_producto WHERE UPPER(nombre_familia) = UPPER($1) OR UPPER(codigo_familia) = UPPER($1)',
+            [candidato]
+        );
+        if (famRes.rows.length > 0) return famRes.rows[0];
+    }
+    return null;
 };
 
 const getEstacionesBase = async (familia, perforaciones, pintado, codigoSap) => {
@@ -89,6 +93,25 @@ const getEstacionesBase = async (familia, perforaciones, pintado, codigoSap) => 
             WHERE feb.familia_id = $1 ORDER BY e.orden_secuencia_defecto
         `, [familia.id]);
         ids = febRes.rows.map(r => r.estacion_id);
+    }
+
+    if (ids.length === 0 && codigoSap) {
+        const bomFamRes = await query(
+            `SELECT DISTINCT r.familia_id FROM recetas_bom r
+             WHERE r.codigo_sap_padre = $1 AND r.familia_id IS NOT NULL`,
+            [String(codigoSap).trim()]
+        );
+        for (const row of bomFamRes.rows) {
+            const bomEstRes = await query(`
+                SELECT feb.estacion_id FROM familia_estaciones_base feb
+                JOIN estaciones_maestras e ON feb.estacion_id = e.id
+                WHERE feb.familia_id = $1 ORDER BY e.orden_secuencia_defecto
+            `, [row.familia_id]);
+            if (bomEstRes.rows.length > 0) {
+                ids = bomEstRes.rows.map(r => r.estacion_id);
+                break;
+            }
+        }
     }
 
     if (ids.length === 0) {

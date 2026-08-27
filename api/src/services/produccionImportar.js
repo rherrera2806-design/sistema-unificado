@@ -147,22 +147,30 @@ const buscarFamiliaParaFila = async (r, maestros) => {
     }
 
     const codFam = await query('SELECT familia, grupo FROM produccion_codigos WHERE codigo = $1', [r.codigo]);
-    if (codFam.rows.length && (codFam.rows[0].familia || codFam.rows[0].grupo)) {
-        const famName = codFam.rows[0].familia || codFam.rows[0].grupo;
-        return familias.find(f => f.nombre_familia.toLowerCase() === famName.toLowerCase()) || null;
+    if (codFam.rows.length) {
+        const row = codFam.rows[0];
+        const candidatos = [row.familia, row.grupo].filter(Boolean);
+        for (const candidato of candidatos) {
+            const match = familias.find(f => f.nombre_familia.toLowerCase() === candidato.toLowerCase());
+            if (match) return match;
+        }
     }
 
     if (r.codigo_padre) {
         const codPadreFam = await query('SELECT familia, grupo FROM produccion_codigos WHERE codigo = $1', [r.codigo_padre]);
-        if (codPadreFam.rows.length && (codPadreFam.rows[0].familia || codPadreFam.rows[0].grupo)) {
-            const famName = codPadreFam.rows[0].familia || codPadreFam.rows[0].grupo;
-            return familias.find(f => f.nombre_familia.toLowerCase() === famName.toLowerCase()) || null;
+        if (codPadreFam.rows.length) {
+            const row = codPadreFam.rows[0];
+            const candidatos = [row.familia, row.grupo].filter(Boolean);
+            for (const candidato of candidatos) {
+                const match = familias.find(f => f.nombre_familia.toLowerCase() === candidato.toLowerCase());
+                if (match) return match;
+            }
         }
     }
     return null;
 };
 
-const calcularEstaciones = (r, familia, maestros) => {
+const calcularEstaciones = async (r, familia, maestros) => {
     const { estacionesMaestras, estacionMap, reglaMap, familiaEstacionesMap, recetaBomMap, recetaProcesosMap, ordenToEstacionId } = maestros;
 
     const codigoKey = String(r.codigo || '').trim();
@@ -181,10 +189,53 @@ const calcularEstaciones = (r, familia, maestros) => {
                     : maestros.familias.find(f => f.id === famId);
             }
         }
+
         if (familiaParaRuta && familiaEstacionesMap[familiaParaRuta.id]) {
             estacionesFinales = [...familiaEstacionesMap[familiaParaRuta.id]];
         } else {
-            estacionesFinales = [estacionMap['Corte']?.id, estacionMap['Pulido']?.id, estacionMap['Templado']?.id].filter(Boolean);
+            let foundFromBom = false;
+            if (codigoKey && recetaBomMap[codigoKey] && recetaBomMap[codigoKey].length > 0) {
+                for (const bom of recetaBomMap[codigoKey]) {
+                    if (bom.familia_id && familiaEstacionesMap[bom.familia_id]) {
+                        estacionesFinales = [...familiaEstacionesMap[bom.familia_id]];
+                        foundFromBom = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!foundFromBom) {
+                let buscarFamilias = [];
+                if (familiaParaRuta) buscarFamilias.push(familiaParaRuta.id);
+                if (codigoKey && recetaBomMap[codigoKey]) {
+                    for (const bom of recetaBomMap[codigoKey]) {
+                        if (bom.familia_id && !buscarFamilias.includes(bom.familia_id)) {
+                            buscarFamilias.push(bom.familia_id);
+                        }
+                    }
+                }
+
+                for (const famId of buscarFamilias) {
+                    try {
+                        const dbRes = await query(`
+                            SELECT array_agg(feb.estacion_id ORDER BY em.orden_secuencia_defecto) as estacion_ids
+                            FROM familia_estaciones_base feb
+                            JOIN estaciones_maestras em ON feb.estacion_id = em.id
+                            WHERE feb.familia_id = $1
+                        `, [famId]);
+                        if (dbRes.rows.length && dbRes.rows[0].estacion_ids && dbRes.rows[0].estacion_ids.length > 0) {
+                            familiaEstacionesMap[famId] = dbRes.rows[0].estacion_ids;
+                            estacionesFinales = [...dbRes.rows[0].estacion_ids];
+                            foundFromBom = true;
+                            break;
+                        }
+                    } catch (e) { /* silencioso */ }
+                }
+            }
+
+            if (estacionesFinales.length === 0) {
+                estacionesFinales = [estacionMap['Corte']?.id, estacionMap['Pulido']?.id, estacionMap['Templado']?.id].filter(Boolean);
+            }
         }
     }
 
@@ -279,7 +330,7 @@ const importarOrdenes = async (rows) => {
             }
 
             const familia = await buscarFamiliaParaFila(r, maestros);
-            const { estaciones: estacionesFinales, mecanizadoOperaciones } = calcularEstaciones(r, familia, maestros);
+            const { estaciones: estacionesFinales, mecanizadoOperaciones } = await calcularEstaciones(r, familia, maestros);
 
             await explosionBOM(r, recetaBomMap, materiaPrimaMap, materiasPrimas, familia, estacionesFinales, m2, resultados, mecanizadoOperaciones, maestros.ordenToEstacionId);
         } catch (eRow) {

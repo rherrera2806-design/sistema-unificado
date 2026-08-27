@@ -432,8 +432,11 @@ App.registerModule('produccion', {
             const estadoEstilo = { PENDIENTE: 'background:#fef9c3;color:#854d0e', EN_PROCESO: 'background:#dbeafe;color:#1e40af', TERMINADO: 'background:#dcfce7;color:#166534', MERMADO: 'background:#fee2e2;color:#991b1b' };
             const estIdsActuales = pasos.map(p => p.estacion_id);
             const estDisponibles = todasEstaciones.filter(e => e.activa && !estIdsActuales.includes(e.id));
+            const padInfo = orden?.codigo_padre ? ` | <strong>Padre:</strong> ${orden.codigo_padre}${orden?.nombre_codigo_padre ? ' (' + orden.nombre_codigo_padre + ')' : ''}` : '';
+            const famInfo = orden?.familia_nombre ? ` | <strong>Familia:</strong> ${orden.familia_nombre}` : '';
+            const grupoInfo = orden?.grupo ? ` | <strong>Grupo:</strong> ${orden.grupo}` : '';
             body.innerHTML = `
-                <div style="margin-bottom:12px"><strong>Pedido:</strong> ${orden?.pedido_sap_id || '-'} | <strong>Codigo:</strong> ${orden?.codigo_producto} | <strong>${orden?.ancho}x${orden?.alto}mm</strong></div>
+                <div style="margin-bottom:12px"><strong>Pedido:</strong> ${orden?.pedido_sap_id || '-'} | <strong>Codigo:</strong> ${orden?.codigo_producto} | <strong>${orden?.ancho}x${orden?.alto}mm</strong>${padInfo}${famInfo}${grupoInfo}</div>
                 ${pasos.length === 0 ? '<div style="color:var(--text-light);text-align:center;padding:20px">Sin pasos definidos</div>' :
                 `<table><thead><tr><th>#</th><th>Estacion</th><th>Estado</th><th>Inicio</th><th>Fin</th><th></th></tr></thead><tbody>${pasos.map(p => {
                     return `<tr>
