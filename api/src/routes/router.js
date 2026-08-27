@@ -12,6 +12,7 @@ router.use(require('./produccionConfig'));
 router.use(require('./produccionCatalogos'));
 router.use(require('./produccionPlanificacion'));
 router.use(require('./produccionReportes'));
+router.use(require('./produccionProgEstacion'));
 router.use(require('./taller'));
 router.use(require('./adminUsuarios'));
 router.use(require('./r2Storage'));

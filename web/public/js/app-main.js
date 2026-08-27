@@ -680,7 +680,7 @@ const SIDEBAR_SECTIONS = {
     inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial'],
     mantencion: ['bitacora', 'calendar', 'components', 'corrective', 'dashboard', 'history', 'machines', 'machineTypes', 'notas', 'preventive', 'proveedores', 'reports'],
     pedidos: ['pedidos'],
-    produccion: ['prod_config', 'prod_notas', 'prod_planificacion', 'prod_ordenes', 'prod_reportes', 'taller'],
+    produccion: ['prod_config', 'prod_notas', 'prod_planificacion', 'prod_ordenes', 'prod_reportes', 'prod_prog_estacion', 'taller'],
     reclamos: ['reclamos']
 };
 
@@ -767,6 +767,7 @@ function renderSidebar() {
             { id: 'prod_planificacion', label: 'Planificacion', icon: SVG.calendar },
             { id: 'prod_ordenes', label: 'Produccion', icon: SVG.box },
             { id: 'prod_reportes', label: 'Reporte Fechas', icon: SVG.chart },
+            { id: 'prod_prog_estacion', label: 'Prog. por Estacion', icon: SVG.calendar },
             { id: 'taller', label: 'Taller', icon: SVG.home, external: '/taller/' }
         ]},
         { key: 'reclamos', label: 'RECLAMOS', items: [
