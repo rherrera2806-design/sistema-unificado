@@ -208,7 +208,7 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td style="font-size:11px"><strong>${this.esc(p.codigo_ref)}</strong>${p.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
                         html += `<td>${p.ancho}×${p.alto}</td>`;
                         html += `<td>${grp.hijos.length} MP</td>`;
-                        const totalM2Grupo = grp.hijos.reduce((s, h) => s + (h.m2_asignados || h.m2), 0);
+                        const totalM2Grupo = grp.hijos[0] ? (grp.hijos[0].m2_asignados || grp.hijos[0].m2) : 0;
                         const totalKgGrupo = grp.hijos.reduce((s, h) => s + h.kg, 0);
                         html += `<td><strong>${totalM2Grupo.toFixed(2)}</strong></td>`;
                         html += `<td><strong>${totalKgGrupo.toFixed(1)}</strong></td>`;
