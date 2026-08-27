@@ -322,6 +322,13 @@ router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
     try {
         const search = req.query.search || '';
         const limit = parseInt(req.query.limit) || 100;
+
+        // Verificar que la tabla exista
+        const tableCheck = await pool.query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='produccion_codigos')`);
+        if (!tableCheck.rows[0].exists) {
+            return res.json([]);
+        }
+
         let sql = 'SELECT codigo, descripcion, grupo, espesor, ancho, alto FROM produccion_codigos';
         const params = [];
         if (search) {
@@ -333,7 +340,8 @@ router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
         const result = await pool.query(sql, params);
         res.json(result.rows);
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error('reclamos/codigos error:', e.message);
+        res.json([]);
     }
 });
 

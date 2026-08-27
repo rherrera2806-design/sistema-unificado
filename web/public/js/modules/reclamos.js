@@ -665,9 +665,18 @@ const Reclamos = {
 
         if (!this._codigosCache) {
             try {
-                const resp = await authFetch('/api/reclamos/codigos').then(r => r.json());
-                this._codigosCache = Array.isArray(resp) ? resp : [];
-            } catch(e) { this._codigosCache = []; }
+                const resp = await authFetch('/api/reclamos/codigos');
+                if (!resp.ok) {
+                    console.error('_searchCodigo API error:', resp.status);
+                    this._codigosCache = [];
+                } else {
+                    const data = await resp.json();
+                    this._codigosCache = Array.isArray(data) ? data : [];
+                }
+            } catch(e) {
+                console.error('_searchCodigo fetch error:', e);
+                this._codigosCache = [];
+            }
         }
 
         const q = query.toLowerCase().trim();
