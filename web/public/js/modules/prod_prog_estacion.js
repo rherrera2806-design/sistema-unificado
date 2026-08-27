@@ -179,19 +179,20 @@ App.registerModule('prod_prog_estacion', {
                     html += `<div>${dia.total_ordenes} ord · ${dia.total_m2.toFixed(1)} m² · ${dia.total_kg.toFixed(0)} kg</div>`;
                     html += `</div>`;
                     html += `<div style="overflow-x:auto"><table class="ppe-table"><thead><tr>`;
-                    html += `<th>Pedido</th><th>Cliente</th><th>Codigo</th><th>Ref/Padre</th><th>Dim</th><th>Cant</th><th>M²</th><th>Kg</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
+                    html += `<th>Pedido</th><th>Item</th><th>Codigo</th><th>Ref/Padre</th><th>Dim</th><th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
                     html += `</tr></thead><tbody>`;
                     for (const o of dia.ordenes) {
                         const estadoClass = `ppe-estado-${o.estado}`;
                         html += `<tr>`;
                         html += `<td><strong>${this.esc(o.pedido || '-')}</strong></td>`;
-                        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(o.cliente || '-')}</td>`;
+                        html += `<td>${o.item || '-'}</td>`;
                         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
                         html += `<td style="font-size:11px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
                         html += `<td>${o.ancho}×${o.alto}</td>`;
                         html += `<td>${o.cantidad || 1}</td>`;
                         html += `<td><strong>${(o.m2_asignados || o.m2).toFixed(2)}</strong></td>`;
                         html += `<td><strong>${o.kg.toFixed(1)}</strong></td>`;
+                        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(o.cliente || '-')}</td>`;
                         html += `<td><span class="ppe-badge ${estadoClass}">${o.estado}</span></td>`;
                         html += `<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(o.ruta)}">${this.esc(o.ruta)}</td>`;
                         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></td>`;
@@ -231,11 +232,11 @@ App.registerModule('prod_prog_estacion', {
 
     exportarExcel() {
         if (!this.datos || !this.datos.estaciones || !this.datos.estaciones.length) return;
-        let csv = 'Estacion;Fecha;Pedido;Cliente;Codigo;Ref/Padre;Ancho;Alto;Cant;M2;Kg;Estado;Ruta;Grupo\n';
+        let csv = 'Estacion;Fecha;Pedido;Item;Codigo;Ref/Padre;Ancho;Alto;Cant;M2;Kg;Cliente;Estado;Ruta;Grupo\n';
         for (const est of this.datos.estaciones) {
             for (const dia of (est.fechas || [])) {
                 for (const o of dia.ordenes) {
-                    csv += [est.nombre, dia.fecha, o.pedido, o.cliente, o.codigo, o.codigo_ref, o.ancho, o.alto, o.cantidad, (o.m2_asignados || o.m2).toFixed(2), o.kg.toFixed(1), o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
+                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.codigo, o.codigo_ref, o.ancho, o.alto, o.cantidad, (o.m2_asignados || o.m2).toFixed(2), o.kg.toFixed(1), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
                 }
             }
         }
