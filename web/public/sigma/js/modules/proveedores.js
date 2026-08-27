@@ -87,7 +87,7 @@ App.registerModule('proveedores', {
                                         <td style="padding:8px 12px;text-align:center"><span style="background:${p.estado === 'Activo' ? '#dcfce7;color:#166534' : '#fee2e2;color:#dc2626'};padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${p.estado}</span></td>
                                         <td style="padding:8px 12px;text-align:center">
                                             <div style="display:flex;gap:4px;justify-content:center">
-                                                ${App.canUpdate('proveedores') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.proveedores.showForm(${p.id})" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+                                                ${App.canEdit('proveedores') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.proveedores.showForm(${p.id})" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
                                                 ${App.canDelete('proveedores') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.proveedores.delete(${p.id})" title="Eliminar" style="color:#ef4444"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
                                             </div>
                                         </td>
@@ -111,7 +111,7 @@ App.registerModule('proveedores', {
                                     ${p.email ? `<div style="font-size:10px;color:#64748b;margin-bottom:2px">${escapeHtml(p.email)}</div>` : ''}
                                     ${p.persona_contacto ? `<div style="font-size:10px;color:#64748b">Contacto: ${escapeHtml(p.persona_contacto)}</div>` : ''}
                                     <div style="display:flex;gap:4px;margin-top:8px">
-                                        ${App.canUpdate('proveedores') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.proveedores.showForm(${p.id})" style="flex:1;font-size:11px;padding:6px">Editar</button>` : ''}
+                                        ${App.canEdit('proveedores') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.proveedores.showForm(${p.id})" style="flex:1;font-size:11px;padding:6px">Editar</button>` : ''}
                                         ${App.canDelete('proveedores') ? `<button class="btn btn-sm btn-outline" onclick="App.modules.proveedores.delete(${p.id})" style="flex:1;font-size:11px;padding:6px;color:#ef4444;border-color:#fecaca">Eliminar</button>` : ''}
                                     </div>
                                 </div>
