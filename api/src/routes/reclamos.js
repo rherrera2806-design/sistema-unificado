@@ -1,11 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const { query } = require('../config/database');
 const { crudPerms } = require('../middleware/permisos');
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/vitroflow'
-});
 
 const MOD = 'reclamos';
 const perms = crudPerms(MOD);
@@ -14,7 +10,7 @@ const perms = crudPerms(MOD);
 async function ensureColumns() {
     try {
         // Asegurar tabla matriz_responsables_motivos
-        await pool.query(`
+        await query(`
             CREATE TABLE IF NOT EXISTS matriz_responsables_motivos (
                 id SERIAL PRIMARY KEY,
                 responsable VARCHAR(100) NOT NULL,
@@ -22,25 +18,25 @@ async function ensureColumns() {
                 activo BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT NOW()
             )`);
-        await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_resp_motivo_unique
+        await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_resp_motivo_unique
             ON matriz_responsables_motivos(responsable, motivo) WHERE activo = TRUE`);
 
-        const cols = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='reclamos_devoluciones'`);
+        const cols = await query(`SELECT column_name FROM information_schema.columns WHERE table_name='reclamos_devoluciones'`);
         const existing = cols.rows.map(r => r.column_name);
         if (!existing.includes('items')) {
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
         }
         if (!existing.includes('fecha_revision')) {
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_revision TIMESTAMP`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_revision VARCHAR(200) DEFAULT ''`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_proceso TIMESTAMP`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_proceso VARCHAR(200) DEFAULT ''`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_revision TIMESTAMP`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_revision VARCHAR(200) DEFAULT ''`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_proceso TIMESTAMP`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_proceso VARCHAR(200) DEFAULT ''`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
         }
-        const histCheck = await pool.query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')`);
+        const histCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')`);
         if (!histCheck.rows[0].exists) {
-            await pool.query(`CREATE TABLE IF NOT EXISTS reclamos_historial (
+            await query(`CREATE TABLE IF NOT EXISTS reclamos_historial (
                 id SERIAL PRIMARY KEY, reclamo_id INTEGER NOT NULL REFERENCES reclamos_devoluciones(id) ON DELETE CASCADE,
                 accion VARCHAR(100) NOT NULL, estado_antes VARCHAR(30), estado_despues VARCHAR(30),
                 responsable VARCHAR(200) DEFAULT '', observacion TEXT DEFAULT '', created_at TIMESTAMP DEFAULT NOW()
@@ -54,7 +50,7 @@ async function ensureColumns() {
 // ═══════════════════════════════════════════════════════
 router.get('/api/reclamos/setup', async (req, res) => {
     try {
-        await pool.query(`
+        await query(`
             CREATE TABLE IF NOT EXISTS matriz_responsables_motivos (
                 id SERIAL PRIMARY KEY,
                 responsable VARCHAR(100) NOT NULL,
@@ -120,37 +116,37 @@ router.get('/api/reclamos/setup', async (req, res) => {
         `);
 
         // Agregar columnas de workflow si no existen
-        const cols = await pool.query(`
+        const cols = await query(`
             SELECT column_name FROM information_schema.columns WHERE table_name='reclamos_devoluciones'
         `);
         const existing = cols.rows.map(r => r.column_name);
 
         if (!existing.includes('items')) {
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
         }
         if (!existing.includes('fecha_revision')) {
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_revision TIMESTAMP`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_revision VARCHAR(200) DEFAULT ''`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_proceso TIMESTAMP`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_proceso VARCHAR(200) DEFAULT ''`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
-            await pool.query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_revision TIMESTAMP`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_revision VARCHAR(200) DEFAULT ''`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_proceso TIMESTAMP`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_proceso VARCHAR(200) DEFAULT ''`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
         }
 
         // Migrar fecha_ingreso de DATE a TIMESTAMP si es necesario
-        const colType = await pool.query(`
+        const colType = await query(`
             SELECT data_type FROM information_schema.columns WHERE table_name='reclamos_devoluciones' AND column_name='fecha_ingreso'
         `);
         if (colType.rows[0] && colType.rows[0].data_type === 'date') {
-            await pool.query(`ALTER TABLE reclamos_devoluciones ALTER COLUMN fecha_ingreso TYPE TIMESTAMP USING fecha_ingreso::timestamp`);
+            await query(`ALTER TABLE reclamos_devoluciones ALTER COLUMN fecha_ingreso TYPE TIMESTAMP USING fecha_ingreso::timestamp`);
         }
 
         // Crear tabla historial si no existe
-        const histCheck = await pool.query(`
+        const histCheck = await query(`
             SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')
         `);
         if (!histCheck.rows[0].exists) {
-            await pool.query(`
+            await query(`
                 CREATE TABLE IF NOT EXISTS reclamos_historial (
                     id SERIAL PRIMARY KEY,
                     reclamo_id INTEGER NOT NULL REFERENCES reclamos_devoluciones(id) ON DELETE CASCADE,
@@ -206,7 +202,7 @@ router.get('/api/reclamos', perms.view, async (req, res) => {
         if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
         sql += ' ORDER BY numero_reclamo DESC';
 
-        const result = await pool.query(sql, params);
+        const result = await query(sql, params);
         // Parsear items JSONB
         const rows = result.rows.map(r => {
             if (typeof r.items === 'string') {
@@ -224,7 +220,7 @@ router.get('/api/reclamos', perms.view, async (req, res) => {
 router.get('/api/reclamos/dashboard/stats', perms.view, async (req, res) => {
     try {
         await ensureColumns();
-        const result = await pool.query(`
+        const result = await query(`
             SELECT 
                 COUNT(*) as total,
                 COUNT(*) FILTER (WHERE estado = 'PENDIENTE') as pendientes,
@@ -249,7 +245,7 @@ router.get('/api/reclamos/dashboard/stats', perms.view, async (req, res) => {
 router.get('/api/reclamos/responsables/lista', perms.view, async (req, res) => {
     try {
         await ensureColumns();
-        const result = await pool.query(
+        const result = await query(
             "SELECT DISTINCT responsable FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable"
         );
         res.json(result.rows.map(r => r.responsable));
@@ -262,7 +258,7 @@ router.get('/api/reclamos/responsables/lista', perms.view, async (req, res) => {
 router.get('/api/reclamos/motivos/:responsable', perms.view, async (req, res) => {
     try {
         await ensureColumns();
-        const result = await pool.query(
+        const result = await query(
             "SELECT id, motivo FROM matriz_responsables_motivos WHERE responsable = $1 AND activo = TRUE ORDER BY motivo",
             [req.params.responsable]
         );
@@ -276,7 +272,7 @@ router.get('/api/reclamos/motivos/:responsable', perms.view, async (req, res) =>
 router.get('/api/reclamos/matriz', perms.view, async (req, res) => {
     try {
         await ensureColumns();
-        const result = await pool.query(
+        const result = await query(
             "SELECT * FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable, motivo"
         );
         res.json(result.rows);
@@ -291,7 +287,7 @@ router.post('/api/reclamos/matriz', perms.create, async (req, res) => {
         await ensureColumns();
         const { responsable, motivo } = req.body;
         if (!responsable || !motivo) return res.status(400).json({ error: 'Responsable y motivo requeridos' });
-        const result = await pool.query(
+        const result = await query(
             'INSERT INTO matriz_responsables_motivos (responsable, motivo) VALUES ($1, $2) RETURNING *',
             [responsable.toUpperCase().trim(), motivo.toUpperCase().trim()]
         );
@@ -306,7 +302,7 @@ router.post('/api/reclamos/matriz', perms.create, async (req, res) => {
 router.delete('/api/reclamos/matriz/:id', perms.delete, async (req, res) => {
     try {
         await ensureColumns();
-        const result = await pool.query(
+        const result = await query(
             'UPDATE matriz_responsables_motivos SET activo = FALSE WHERE id = $1 RETURNING id',
             [req.params.id]
         );
@@ -324,7 +320,7 @@ router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
         const limit = parseInt(req.query.limit) || 100;
 
         // Verificar que la tabla exista
-        const tableCheck = await pool.query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='produccion_codigos')`);
+        const tableCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='produccion_codigos')`);
         if (!tableCheck.rows[0].exists) {
             return res.json([]);
         }
@@ -337,7 +333,7 @@ router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
         }
         sql += ' ORDER BY codigo LIMIT $' + (params.length + 1);
         params.push(limit);
-        const result = await pool.query(sql, params);
+        const result = await query(sql, params);
         res.json(result.rows);
     } catch (e) {
         console.error('reclamos/codigos error:', e.message);
@@ -352,7 +348,7 @@ router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
 // Obtener uno por ID
 router.get('/api/reclamos/:id', perms.view, async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM reclamos_devoluciones WHERE id = $1', [req.params.id]);
+        const result = await query('SELECT * FROM reclamos_devoluciones WHERE id = $1', [req.params.id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
         res.json(result.rows[0]);
     } catch (e) {
@@ -368,7 +364,7 @@ router.post('/api/reclamos', perms.create, async (req, res) => {
         const user = req.headers['x-user-email'] || '';
         const userName = req.headers['x-user-name'] || user;
         const items = Array.isArray(d.items) ? d.items : [];
-        const result = await pool.query(
+        const result = await query(
             `INSERT INTO reclamos_devoluciones (
                 responsable_ingreso, cliente, numero_orden, items,
                 descripcion, detalle_reclamo, fotos, estado
@@ -384,7 +380,7 @@ router.post('/api/reclamos', perms.create, async (req, res) => {
         );
         // Registrar en historial
         const reclamo = result.rows[0];
-        await pool.query(
+        await query(
             'INSERT INTO reclamos_historial (reclamo_id, accion, estado_despues, responsable) VALUES ($1, $2, $3, $4)',
             [reclamo.id, 'Creación', 'PENDIENTE', userName || user]
         ).catch(() => {});
@@ -400,7 +396,7 @@ router.put('/api/reclamos/:id', perms.update, async (req, res) => {
         await ensureColumns();
         const d = req.body;
         const items = Array.isArray(d.items) ? d.items : undefined;
-        const result = await pool.query(
+        const result = await query(
             `UPDATE reclamos_devoluciones SET
                 fecha_ingreso = COALESCE($1, fecha_ingreso),
                 responsable_ingreso = COALESCE($2, responsable_ingreso),
@@ -435,7 +431,7 @@ router.put('/api/reclamos/:id', perms.update, async (req, res) => {
 // Eliminar reclamo
 router.delete('/api/reclamos/:id', perms.delete, async (req, res) => {
     try {
-        const result = await pool.query('DELETE FROM reclamos_devoluciones WHERE id = $1 RETURNING id', [req.params.id]);
+        const result = await query('DELETE FROM reclamos_devoluciones WHERE id = $1 RETURNING id', [req.params.id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
         res.json({ ok: true });
     } catch (e) {
@@ -452,7 +448,7 @@ router.put('/api/reclamos/:id/estado', perms.update, async (req, res) => {
         const userName = req.headers['x-user-name'] || user;
 
         // Obtener estado actual
-        const before = await pool.query('SELECT estado FROM reclamos_devoluciones WHERE id = $1', [req.params.id]);
+        const before = await query('SELECT estado FROM reclamos_devoluciones WHERE id = $1', [req.params.id]);
         if (before.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
         const estadoAntes = before.rows[0].estado;
 
@@ -476,10 +472,10 @@ router.put('/api/reclamos/:id/estado', perms.update, async (req, res) => {
         sql += ` WHERE id = $${idx} RETURNING *`;
         params.push(req.params.id);
 
-        const result = await pool.query(sql, params);
+        const result = await query(sql, params);
 
         // Registrar en historial
-        await pool.query(
+        await query(
             'INSERT INTO reclamos_historial (reclamo_id, accion, estado_antes, estado_despues, responsable, observacion) VALUES ($1, $2, $3, $4, $5, $6)',
             [req.params.id, `Cambio a ${estado}`, estadoAntes, estado, userName || user, observacion || '']
         );
@@ -494,7 +490,7 @@ router.put('/api/reclamos/:id/estado', perms.update, async (req, res) => {
 router.get('/api/reclamos/:id/historial', perms.view, async (req, res) => {
     try {
         await ensureColumns();
-        const result = await pool.query(
+        const result = await query(
             'SELECT * FROM reclamos_historial WHERE reclamo_id = $1 ORDER BY created_at ASC',
             [req.params.id]
         );
