@@ -111,7 +111,7 @@ App.registerModule('prod_prog_estacion', {
         sel.innerHTML = '<option value="">Todas las estaciones</option>';
         for (const e of this.datos.todas_estaciones || []) {
             const cb = e.cuello_botella ? ' [CB]' : '';
-            sel.innerHTML += `<option value="${e.id}" ${String(e.id) === String(val) ? 'selected' : ''}>${e.orden}° ${e.nombre_estacion}${cb} (cap: ${e.cap_max} m²)</option>`;
+            sel.innerHTML += `<option value="${e.id}" ${String(e.id) === String(val) ? 'selected' : ''}>${e.orden_secuencia_defecto || '?'}° ${e.nombre_estacion}${cb} (cap: ${e.cap_max} m²)</option>`;
         }
     },
 
@@ -181,23 +181,62 @@ App.registerModule('prod_prog_estacion', {
                     html += `<div style="overflow-x:auto"><table class="ppe-table"><thead><tr>`;
                     html += `<th>Pedido</th><th>Item</th><th>Codigo</th><th>Ref/Padre</th><th>Dim</th><th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
                     html += `</tr></thead><tbody>`;
+
+                    const groups = {};
+                    const sinGrupo = [];
                     for (const o of dia.ordenes) {
-                        const estadoClass = `ppe-estado-${o.estado}`;
-                        html += `<tr>`;
-                        html += `<td><strong>${this.esc(o.pedido || '-')}</strong></td>`;
-                        html += `<td>${o.item || '-'}</td>`;
-                        html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
-                        html += `<td style="font-size:11px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
-                        html += `<td>${o.ancho}×${o.alto}</td>`;
-                        html += `<td>${o.cantidad || 1}</td>`;
-                        html += `<td><strong>${(o.m2_asignados || o.m2).toFixed(2)}</strong></td>`;
-                        html += `<td><strong>${o.kg.toFixed(1)}</strong></td>`;
-                        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(o.cliente || '-')}</td>`;
-                        html += `<td><span class="ppe-badge ${estadoClass}">${o.estado}</span></td>`;
-                        html += `<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(o.ruta)}">${this.esc(o.ruta)}</td>`;
-                        html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></td>`;
-                        html += `</tr>`;
+                        if (o.es_compuesto && o.codigo_ref) {
+                            const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
+                            if (!groups[key]) groups[key] = { padre: o, hijos: [] };
+                            groups[key].hijos.push(o);
+                        } else {
+                            sinGrupo.push(o);
+                        }
                     }
+
+                    for (const o of sinGrupo) {
+                        const estadoClass = `ppe-estado-${o.estado}`;
+                        html += this._renderFila(o, estadoClass, false);
+                    }
+
+                    for (const [key, grp] of Object.entries(groups)) {
+                        const p = grp.padre;
+                        html += `<tr style="background:#f0f9ff;border-bottom:2px solid #bae6fd">`;
+                        html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
+                        html += `<td>${p.item || '-'}</td>`;
+                        html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong> <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#0ea5e9;color:white">PADRE</span></td>`;
+                        html += `<td style="font-size:11px"><strong>${this.esc(p.codigo_ref)}</strong>${p.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
+                        html += `<td>${p.ancho}×${p.alto}</td>`;
+                        html += `<td>${grp.hijos.length} MP</td>`;
+                        const totalM2Grupo = grp.hijos.reduce((s, h) => s + (h.m2_asignados || h.m2), 0);
+                        const totalKgGrupo = grp.hijos.reduce((s, h) => s + h.kg, 0);
+                        html += `<td><strong>${totalM2Grupo.toFixed(2)}</strong></td>`;
+                        html += `<td><strong>${totalKgGrupo.toFixed(1)}</strong></td>`;
+                        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(p.cliente || '-')}</td>`;
+                        html += `<td><span class="ppe-badge ppe-estado-${p.estado}">${p.estado}</span></td>`;
+                        html += `<td style="font-size:11px">${this.esc(p.ruta)}</td>`;
+                        html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></td>`;
+                        html += `</tr>`;
+
+                        for (const h of grp.hijos) {
+                            const estadoClass = `ppe-estado-${h.estado}`;
+                            html += `<tr style="background:#faf5ff">`;
+                            html += `<td style="padding-left:24px"><span style="color:#7c3aed">└</span> ${this.esc(h.pedido || '-')}</td>`;
+                            html += `<td>${h.item || '-'}</td>`;
+                            html += `<td><strong>${this.esc(h.codigo)}</strong> <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span></td>`;
+                            html += `<td style="font-size:11px;color:#94a3b8">${this.esc(h.codigo_ref)}</td>`;
+                            html += `<td>${h.ancho}×${h.alto}</td>`;
+                            html += `<td>${h.cantidad || 1}</td>`;
+                            html += `<td><strong>${(h.m2_asignados || h.m2).toFixed(2)}</strong></td>`;
+                            html += `<td><strong>${h.kg.toFixed(1)}</strong></td>`;
+                            html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(h.cliente || '-')}</td>`;
+                            html += `<td><span class="ppe-badge ${estadoClass}">${h.estado}</span></td>`;
+                            html += `<td style="font-size:11px">${this.esc(h.ruta)}</td>`;
+                            html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(h.grupo || '-')}</span></td>`;
+                            html += `</tr>`;
+                        }
+                    }
+
                     html += `</tbody></table></div>`;
                     html += `<div class="ppe-totales"><div>M²: <span>${dia.total_m2.toFixed(2)}</span></div><div>Kg: <span>${dia.total_kg.toFixed(1)}</span></div><div>Ordenes: <span>${dia.total_ordenes}</span></div></div>`;
                 }
@@ -229,6 +268,24 @@ App.registerModule('prod_prog_estacion', {
     },
 
     esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; },
+
+    _renderFila(o, estadoClass, esHijo) {
+        let html = '<tr>';
+        html += `<td><strong>${this.esc(o.pedido || '-')}</strong></td>`;
+        html += `<td>${o.item || '-'}</td>`;
+        html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
+        html += `<td style="font-size:11px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
+        html += `<td>${o.ancho}×${o.alto}</td>`;
+        html += `<td>${o.cantidad || 1}</td>`;
+        html += `<td><strong>${(o.m2_asignados || o.m2).toFixed(2)}</strong></td>`;
+        html += `<td><strong>${o.kg.toFixed(1)}</strong></td>`;
+        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(o.cliente || '-')}</td>`;
+        html += `<td><span class="ppe-badge ${estadoClass}">${o.estado}</span></td>`;
+        html += `<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(o.ruta)}">${this.esc(o.ruta)}</td>`;
+        html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></td>`;
+        html += '</tr>';
+        return html;
+    },
 
     exportarExcel() {
         if (!this.datos || !this.datos.estaciones || !this.datos.estaciones.length) return;

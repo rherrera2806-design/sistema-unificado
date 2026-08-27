@@ -282,14 +282,104 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // 7. PROCESAR PENDIENTES
+  // 7. PRE-PROCESAR BOM SIBLINGS (Armado conjunto)
   // ═══════════════════════════════════════════════════════════════
   const asignados = [];
   const noAsignados = [];
+  const bomGroups = {};
+  const bomProcessedIds = new Set();
+  for (const o of pendRes.rows) {
+    if (o.es_compuesto && o.bom_padre_id) {
+      if (!bomGroups[o.bom_padre_id]) bomGroups[o.bom_padre_id] = [];
+      bomGroups[o.bom_padre_id].push(o);
+    }
+  }
+
+  for (const [bomPadreId, siblings] of Object.entries(bomGroups)) {
+    if (siblings.length < 2) continue;
+
+    const totalM2Grupo = siblings.reduce((s, o) => s + (Number(o.metros_cuadrados) || 0), 0);
+    const totalKgGrupo = siblings.reduce((s, o) => s + (Number(o.kilos) || 0), 0);
+    const grupo = padreGrupoMap[bomPadreId] || siblings[0].grupo;
+
+    if (!grupo || totalM2Grupo <= 0) continue;
+
+    // Obtener ruta del primer hermano para encontrar Armado
+    const rutaRes = await query(
+      'SELECT estacion_id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia',
+      [siblings[0].id]
+    );
+    const route = rutaRes.rows.map(r => r.estacion_id);
+    if (route.length === 0) continue;
+
+    // Buscar estación Armado en la ruta
+    const armadoEstId = route.find(id => estMap[id] && estMap[id].nombre === 'Armado');
+    if (!armadoEstId) continue;
+
+    // Buscar día donde Armado tenga capacidad para el total del grupo
+    let drumFechaGrupo = null;
+    for (let i = 0; i < dias; i++) {
+      const d = new Date(fechaMinima + 'T00:00:00');
+      d.setDate(d.getDate() + i);
+      const fs = fmt(d);
+      if (!esLaboral(fs)) continue;
+      if (cabeEnDia(armadoEstId, fs, totalM2Grupo)) {
+        drumFechaGrupo = fs;
+        break;
+      }
+    }
+
+    if (!drumFechaGrupo) continue;
+
+    // Asignar TODOS los hermanos en el mismo día de Armado
+    agregarCarga(drumFechaGrupo, armadoEstId, totalM2Grupo);
+
+    // Para cada hermano: Corte puede ser antes, Armado es el día común
+    for (const sib of siblings) {
+      const sibRoute = route;
+      const sibM2 = Number(sib.metros_cuadrados) || 0;
+      const sibKg = Number(sib.kilos) || 0;
+      const sibCantidad = Number(sib.cantidad) || 1;
+
+      // Backward desde Armado para estaciones previas (Corte)
+      const armadoIdx = sibRoute.indexOf(armadoEstId);
+      const backward = armadoIdx > 0 ? backwardRope(sibRoute, armadoIdx, drumFechaGrupo, sibM2, fechaMinima) : [];
+
+      const estFechas = {};
+      estFechas[armadoEstId] = drumFechaGrupo;
+      for (const a of backward) if (a.fecha) {
+        estFechas[a.estId] = a.fecha;
+        agregarCarga(a.fecha, a.estId, sibM2);
+      }
+
+      const fechas = Object.values(estFechas);
+      const fechaPrimera = fechas.sort()[0];
+      const fechaUltima = fechas.sort().pop();
+
+      await query(`UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO' WHERE id = $3`, [fechaPrimera, fechaUltima, sib.id]);
+      for (const estId of sibRoute) {
+        if (estFechas[estId]) {
+          await query(`UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE orden_produccion_id = $3 AND estacion_id = $4`, [estFechas[estId], sibM2, sib.id, estId]);
+        }
+      }
+
+      if (!cargaGrupoMap[fechaPrimera]) cargaGrupoMap[fechaPrimera] = {};
+      cargaGrupoMap[fechaPrimera][grupo] = (cargaGrupoMap[fechaPrimera][grupo] || 0) + sibKg;
+
+      bomProcessedIds.add(sib.id);
+      asignados.push({ orden_id: sib.id, fecha: fechaPrimera, fecha_entrega: fechaUltima, grupo, kg: sibKg, unidades: sibCantidad, nota: 'BOM grupo (' + siblings.length + ' hermanos)' });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 8. PROCESAR PENDIENTES RESTANTES
+  // ═══════════════════════════════════════════════════════════════
   const splitLetters = {};
 
   for (let idx = 0; idx < pendRes.rows.length; idx++) {
     const o = pendRes.rows[idx];
+    if (bomProcessedIds.has(o.id)) continue;
+
     const kg = Number(o.kilos) || 0;
     const m2 = Number(o.metros_cuadrados) || 0;
     const cantidad = Number(o.cantidad) || 1;
