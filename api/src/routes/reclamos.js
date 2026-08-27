@@ -317,7 +317,6 @@ router.delete('/api/reclamos/matriz/:id', perms.delete, async (req, res) => {
 router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
     try {
         const search = req.query.search || '';
-        const limit = parseInt(req.query.limit) || 100;
 
         // Verificar que la tabla exista
         const tableCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='produccion_codigos')`);
@@ -330,9 +329,10 @@ router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
         if (search) {
             sql += ' WHERE codigo ILIKE $1 OR descripcion ILIKE $1 OR grupo ILIKE $1';
             params.push('%' + search + '%');
+            sql += ' ORDER BY codigo LIMIT 50';
+        } else {
+            sql += ' ORDER BY codigo';
         }
-        sql += ' ORDER BY codigo LIMIT $' + (params.length + 1);
-        params.push(limit);
         const result = await query(sql, params);
         res.json(result.rows);
     } catch (e) {
