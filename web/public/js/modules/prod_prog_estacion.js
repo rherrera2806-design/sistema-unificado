@@ -231,7 +231,7 @@ App.registerModule('prod_prog_estacion', {
                             html += `<td></td>`;
                             html += `<td><strong>${h.kg.toFixed(1)}</strong></td>`;
                             html += `<td></td>`;
-                            html += `<td><span class="ppe-badge ${estadoClass}">${h.estado}</span></td>`;
+                            html += `<td></td>`;
                             html += `<td></td>`;
                             html += `<td></td>`;
                             html += `</tr>`;
