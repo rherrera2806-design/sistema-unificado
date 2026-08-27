@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../config/dbPool');
+const { query } = require('../config/database');
 
 router.get('/api/maintenance/fix-cantidades-bom', async (req, res) => {
     try {
