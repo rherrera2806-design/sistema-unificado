@@ -645,8 +645,11 @@ App.modules.planificacion = {
             return { bg: `rgba(${r},${g},${b},0.85)`, border: `rgba(${r},${g},${b},1)` };
         });
 
+        const fechasConData = data.fechas.filter(f => data.familias.some(fam => (data.datos[fam][f] || 0) > 0));
+        if (fechasConData.length === 0) { div.innerHTML = ''; return; }
+
         const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
-        const labels = data.fechas.map(f => {
+        const labels = fechasConData.map(f => {
             const d = new Date(f + 'T12:00:00');
             const nombreDia = diasSemana[d.getDay()];
             const dia = d.getDate();
@@ -656,18 +659,18 @@ App.modules.planificacion = {
 
         const datasets = data.familias.map((fam, i) => ({
             label: fam,
-            data: data.fechas.map(f => data.datos[fam][f] || 0),
+            data: fechasConData.map(f => data.datos[fam][f] || 0),
             backgroundColor: colores[i % colores.length].bg,
             borderColor: colores[i % colores.length].border,
             borderWidth: 1,
             borderRadius: 2
         }));
 
-        const capacidades = data.fechas.map(f => data.capacidad_por_dia[f] || 0);
+        const capacidades = fechasConData.map(f => data.capacidad_por_dia[f] || 0);
         const capacidadPromedio = capacidades.reduce((a, b) => a + b, 0) / capacidades.length;
         datasets.push({
             label: 'Capacidad Produccion',
-            data: data.fechas.map(() => Math.round(capacidadPromedio * 100) / 100),
+            data: fechasConData.map(() => Math.round(capacidadPromedio * 100) / 100),
             type: 'line',
             borderColor: 'rgba(239,68,68,1)',
             borderWidth: 2,
