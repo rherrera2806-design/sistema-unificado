@@ -325,7 +325,7 @@ router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
             return res.json([]);
         }
 
-        let sql = 'SELECT codigo, descripcion, grupo, espesor, ancho, alto FROM produccion_codigos';
+        let sql = 'SELECT * FROM produccion_codigos';
         const params = [];
         if (search) {
             sql += ' WHERE codigo ILIKE $1 OR descripcion ILIKE $1 OR grupo ILIKE $1';
