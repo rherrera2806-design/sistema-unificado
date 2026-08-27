@@ -454,13 +454,16 @@ App.modules.planificacion = {
     async cargarDatos() {
         const inicio = this.fmtDate(this.semanaInicio);
         const fin = this.fmtDate(this.semanaFin);
+        const chartFin = new Date(this.semanaInicio);
+        chartFin.setDate(chartFin.getDate() + 30);
+        const chartFinStr = this.fmtDate(chartFin);
         try {
             const [cargaGrupoRes, pendRes, cargaEstRes, grupoChartRes, grupoFinalesRes] = await Promise.all([
                 fetch(`/api/produccion/planificacion-grupo/semana?inicio=${inicio}&fin=${fin}`),
                 fetch('/api/produccion/planificacion/pendientes'),
                 fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`),
-                fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${fin}`),
-                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${fin}`)
+                fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${chartFinStr}`),
+                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${chartFinStr}`)
             ]);
             if (pendRes.ok) this.pendientes = await pendRes.json();
             else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
@@ -763,8 +766,7 @@ App.modules.planificacion = {
         this.semanaInicio.setDate(this.semanaInicio.getDate() + delta * 15);
         this.semanaFin = new Date(this.semanaInicio);
         this.semanaFin.setDate(this.semanaFin.getDate() + 14);
-        this._dataLoaded = false;
-        this.cargarDatos();
+        this.cargarEstaciones();
     },
 
     async cargarEstaciones() {
