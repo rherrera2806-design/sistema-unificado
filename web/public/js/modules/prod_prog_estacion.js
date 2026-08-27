@@ -220,19 +220,20 @@ App.registerModule('prod_prog_estacion', {
 
                         for (const h of grp.hijos) {
                             const estadoClass = `ppe-estado-${h.estado}`;
+                            const mpInfo = h.mp_nombre ? `${this.esc(h.mp_nombre)}${h.mp_espesor ? ' ' + h.mp_espesor + 'mm' : ''}` : '';
                             html += `<tr style="background:#faf5ff">`;
                             html += `<td style="padding-left:24px"><span style="color:#7c3aed">└</span> ${this.esc(h.pedido || '-')}</td>`;
                             html += `<td>${h.item || '-'}</td>`;
                             html += `<td><strong>${this.esc(h.codigo)}</strong> <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span></td>`;
-                            html += `<td style="font-size:11px;color:#94a3b8">${this.esc(h.codigo_ref)}</td>`;
-                            html += `<td>${h.ancho}×${h.alto}</td>`;
+                            html += `<td style="font-size:11px;color:#7c3aed;font-weight:600">${mpInfo || this.esc(h.codigo_ref)}</td>`;
+                            html += `<td></td>`;
                             html += `<td>${h.cantidad || 1}</td>`;
-                            html += `<td><strong>${(h.m2_asignados || h.m2).toFixed(2)}</strong></td>`;
+                            html += `<td></td>`;
                             html += `<td><strong>${h.kg.toFixed(1)}</strong></td>`;
-                            html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(h.cliente || '-')}</td>`;
+                            html += `<td></td>`;
                             html += `<td><span class="ppe-badge ${estadoClass}">${h.estado}</span></td>`;
-                            html += `<td style="font-size:11px">${this.esc(h.ruta)}</td>`;
-                            html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(h.grupo || '-')}</span></td>`;
+                            html += `<td></td>`;
+                            html += `<td></td>`;
                             html += `</tr>`;
                         }
                     }

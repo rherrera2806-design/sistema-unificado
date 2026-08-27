@@ -68,6 +68,8 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             em.cap_max,
             em.cuello_botella,
             fp.nombre_familia,
+            mp.nombre as mp_nombre,
+            mp.espesor_mm as mp_espesor,
             ARRAY(
                 SELECT em2.nombre_estacion
                 FROM cola_produccion_pasos cp2
@@ -79,6 +81,7 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
         JOIN produccion_ordenes o ON cp.orden_produccion_id = o.id
         JOIN estaciones_maestras em ON cp.estacion_id = em.id
         LEFT JOIN familias_producto fp ON o.familia_id = fp.id
+        LEFT JOIN materias_primas mp ON mp.codigo_mp = o.codigo_producto
         ${whereClause}
         ORDER BY em.orden_secuencia_defecto, cp.fecha_programada, o.pedido_sap_id
     `, params);
@@ -134,6 +137,8 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             familia: r.nombre_familia,
             tipo_venta: r.tipo_venta,
             ruta: Array.isArray(r.ruta_completa) ? r.ruta_completa.join(' → ') : '',
+            mp_nombre: r.mp_nombre || null,
+            mp_espesor: r.mp_espesor || null,
             hora_inicio: r.hora_inicio,
             hora_fin: r.hora_fin
         };
