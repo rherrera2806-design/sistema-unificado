@@ -663,11 +663,11 @@ const Reclamos = {
         const resultsEl = document.getElementById('rcCodigoResults_' + idx);
         if (!resultsEl) return;
 
-        if (this._codigosCache === undefined) {
+        if (!this._codigosCache) {
             try {
                 const resp = await authFetch('/api/reclamos/codigos');
                 const data = await resp.json();
-                console.log('/api/reclamos/codigos response:', resp.status, Array.isArray(data) ? data.length + ' items' : data);
+                console.log('/api/reclamos/codigos:', resp.status, Array.isArray(data) ? data.length + ' items' : data);
                 this._codigosCache = Array.isArray(data) ? data : [];
             } catch(e) {
                 console.error('_searchCodigo error:', e);
@@ -675,8 +675,8 @@ const Reclamos = {
             }
         }
 
-        const q = query.toLowerCase().trim();
-        let results = this._codigosCache;
+        const q = (query || '').toLowerCase().trim();
+        let results = this._codigosCache || [];
         if (q) {
             results = results.filter(c =>
                 (c.codigo || '').toLowerCase().includes(q) ||
