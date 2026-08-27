@@ -317,6 +317,26 @@ router.delete('/api/reclamos/matriz/:id', perms.delete, async (req, res) => {
     }
 });
 
+// Buscar códigos de producción (para autocomplete en items)
+router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
+    try {
+        const search = req.query.search || '';
+        const limit = parseInt(req.query.limit) || 100;
+        let sql = 'SELECT codigo, descripcion, grupo, espesor, ancho, alto FROM produccion_codigos';
+        const params = [];
+        if (search) {
+            sql += ' WHERE codigo ILIKE $1 OR descripcion ILIKE $1 OR grupo ILIKE $1';
+            params.push('%' + search + '%');
+        }
+        sql += ' ORDER BY codigo LIMIT $' + (params.length + 1);
+        params.push(limit);
+        const result = await pool.query(sql, params);
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ═══════════════════════════════════════════════════════
 // RECLAMOS - CRUD (después de rutas nombradas)
 // ═══════════════════════════════════════════════════════

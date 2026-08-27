@@ -665,7 +665,7 @@ const Reclamos = {
 
         if (!this._codigosCache) {
             try {
-                const resp = await authFetch('/api/produccion/codigos').then(r => r.json());
+                const resp = await authFetch('/api/reclamos/codigos').then(r => r.json());
                 this._codigosCache = Array.isArray(resp) ? resp : [];
             } catch(e) { this._codigosCache = []; }
         }
