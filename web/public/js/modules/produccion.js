@@ -411,11 +411,18 @@ App.registerModule('produccion', {
 
     showImportResult(result) {
         const hayErrores = result.errores && result.errores.length > 0;
+
+        const errBom = (result.errores || []).filter(e => e.error && e.error.includes('receta BOM'));
+        const errDim = (result.errores || []).filter(e => e.error && e.error.includes('dimensiones'));
+        const errTipo = (result.errores || []).filter(e => e.error && e.error.includes('invalid input'));
+        const errOtros = (result.errores || []).filter(e => e.error && !e.error.includes('receta BOM') && !e.error.includes('dimensiones') && !e.error.includes('invalid input'));
+
         const errUnicos = {};
         (result.errores || []).forEach(e => {
-            const key = e.codigo || e.fila || 'desc';
-            if (!errUnicos[key]) errUnicos[key] = { ...e, count: 0 };
+            const key = e.error || 'desc';
+            if (!errUnicos[key]) errUnicos[key] = { ...e, count: 0, codigos: [] };
             errUnicos[key].count++;
+            if (e.codigo && !errUnicos[key].codigos.includes(e.codigo)) errUnicos[key].codigos.push(e.codigo);
         });
         const errLista = Object.values(errUnicos);
 
@@ -426,13 +433,28 @@ App.registerModule('produccion', {
         let errRows = '';
         if (errLista.length) {
             errLista.forEach(e => {
+                const codigos = e.codigos.length > 0 ? e.codigos.slice(0, 5).join(', ') + (e.codigos.length > 5 ? ` +${e.codigos.length - 5} mas` : '-') : '-';
                 const repeatBadge = e.count > 1 ? `<span style="background:#fee2e2;color:#991b1b;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px">${e.count}x</span>` : '';
                 errRows += `<tr>
-                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#1e293b">${e.codigo || '-'}</td>
-                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#64748b">${e.pedido || '-'}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#1e293b;font-size:11px">${codigos}</td>
                     <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#ef4444;font-size:12px">${e.error}${repeatBadge}</td>
                 </tr>`;
             });
+        }
+
+        let errTitle = 'Errores encontrados';
+        let errSolution = '';
+        if (errBom.length > 0 && errTipo.length === 0 && errDim.length === 0) {
+            errTitle = 'Códigos sin receta BOM configurada';
+            errSolution = `<strong>Solución:</strong> Ve a <strong>Configuración → Recetas BOM</strong> y crea la receta para cada código. Define la materia prima, cantidad y dimensiones antes de volver a importar.`;
+        } else if (errTipo.length > 0) {
+            errTitle = 'Errores de formato en los datos';
+            errSolution = `<strong>Solución:</strong> Revisa el archivo SAP. Algunos valores no son compatibles con la base de datos (ej: números decimales donde se espera entero). Verifica las columnas de item, cantidad y dimensiones.`;
+        } else if (errDim.length > 0) {
+            errTitle = 'Códigos sin dimensiones';
+            errSolution = `<strong>Solución:</strong> Ve a <strong>Configuración → Recetas BOM</strong> y define el ancho y alto para cada código listado.`;
+        } else {
+            errSolution = `<strong>Solución:</strong> Revisa los errores listados y corrige los datos en el archivo SAP o en la configuración del sistema.`;
         }
 
         overlay.innerHTML = `
@@ -468,20 +490,19 @@ App.registerModule('produccion', {
                 <div style="margin-bottom:8px">
                     <div style="font-size:13px;font-weight:700;color:#991b1b;margin-bottom:8px;display:flex;align-items:center;gap:6px">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
-                        Códigos sin receta BOM configurada
+                        ${errTitle}
                     </div>
                     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
                         <table style="width:100%;border-collapse:collapse;font-size:12px">
                             <thead><tr style="background:#f8fafc">
-                                <th style="padding:8px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0">Código</th>
-                                <th style="padding:8px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0">Pedido</th>
+                                <th style="padding:8px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0">Códigos</th>
                                 <th style="padding:8px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0">Detalle del error</th>
                             </tr></thead>
                             <tbody>${errRows}</tbody>
                         </table>
                     </div>
                     <div style="margin-top:10px;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:12px;color:#9a3412">
-                        <strong>Solución:</strong> Ve a <strong>Configuración → Recetas BOM</strong> y crea la receta para cada código listado arriba. Define la materia prima, cantidad y dimensiones antes de volver a importar.
+                        ${errSolution}
                     </div>
                 </div>
                 ` : `
