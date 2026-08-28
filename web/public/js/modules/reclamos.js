@@ -173,6 +173,7 @@ const Reclamos = {
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Subido por</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Estado</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Resolución</th>';
+        html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Fecha Respuesta</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Duración</th>';
         html += '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Acciones</th>';
         html += '</tr></thead><tbody>';
@@ -188,6 +189,7 @@ const Reclamos = {
             html += '<td style="padding:12px 14px"><span style="font-size:12px;color:#475569">' + (r.responsable_ingreso || '-') + '</span></td>';
             html += '<td style="padding:12px 14px"><span class="rc-badge ' + badge + '">' + r.estado + '</span></td>';
             html += '<td style="padding:12px 14px"><span style="font-weight:600;color:' + resColor + ';font-size:12px">' + (r.resolucion || '-') + '</span></td>';
+            html += '<td style="padding:12px 14px;color:#475569;font-size:12px">' + (r.fecha_fin ? this.fmtDateTime(r.fecha_fin) : '-') + '</td>';
             html += '<td style="padding:12px 14px;font-size:12px;color:#475569">' + this.calcDuracion(r) + '</td>';
             html += '<td style="padding:12px 14px;text-align:center;white-space:nowrap">';
             html += '<button onclick="App.modules.reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
