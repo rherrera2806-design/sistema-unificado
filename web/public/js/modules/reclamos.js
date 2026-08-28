@@ -170,7 +170,7 @@ const Reclamos = {
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Fecha</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Cliente</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">OV</th>';
-        html += '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Items</th>';
+        html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Subido por</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Estado</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Resolución</th>';
         html += '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Acciones</th>';
@@ -179,17 +179,12 @@ const Reclamos = {
         data.forEach(r => {
             const badge = r.estado === 'PENDIENTE' ? 'rc-badge-pendiente' : r.estado === 'EN REVISION' ? 'rc-badge-revision' : 'rc-badge-finalizado';
             const resColor = r.resolucion === 'Rechazada' ? '#ef4444' : r.resolucion ? '#22c55e' : '#94a3b8';
-            const items = Array.isArray(r.items) ? r.items : [];
-            const itemsCount = items.length;
-            const itemsResumen = itemsCount > 0
-                ? (itemsCount === 1 ? (items[0].codigo || items[0].descripcion || '1 item') : itemsCount + ' items')
-                : '-';
             html += '<tr style="border-bottom:1px solid #f1f5f9">';
             html += '<td style="padding:12px 14px"><strong style="color:#7c3aed;font-size:14px">#' + (r.numero_reclamo || '-') + '</strong></td>';
             html += '<td style="padding:12px 14px;color:#475569;font-size:12px">' + this.fmtDate(r.fecha_ingreso) + '</td>';
             html += '<td style="padding:12px 14px"><strong style="color:#1e293b">' + (r.cliente || '-') + '</strong></td>';
             html += '<td style="padding:12px 14px;color:#475569">' + (r.numero_orden || '-') + '</td>';
-            html += '<td style="padding:12px 14px;text-align:center"><span style="background:#f1f5f9;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;color:#475569">' + itemsResumen + '</span></td>';
+            html += '<td style="padding:12px 14px"><span style="font-size:12px;color:#475569">' + (r.responsable_ingreso || '-') + '</span></td>';
             html += '<td style="padding:12px 14px"><span class="rc-badge ' + badge + '">' + r.estado + '</span></td>';
             html += '<td style="padding:12px 14px"><span style="font-weight:600;color:' + resColor + ';font-size:12px">' + (r.resolucion || '-') + '</span></td>';
             html += '<td style="padding:12px 14px;text-align:center;white-space:nowrap">';
@@ -423,6 +418,13 @@ const Reclamos = {
 
         // Renderizar items existentes
         this.renderItems();
+
+        // Renderizar fotos existentes
+        let fotosInit = [];
+        try { fotosInit = JSON.parse(document.getElementById('rcFotosData').value || '[]'); } catch(e) {}
+        if (fotosInit.length > 0) {
+            this.renderFotosPreview(fotosInit);
+        }
 
         // Cerrar dropdown de código al hacer click fuera
         document.addEventListener('click', (e) => {
