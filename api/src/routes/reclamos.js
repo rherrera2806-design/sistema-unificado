@@ -63,20 +63,17 @@ async function ensureColumns() {
                 `);
             }
         }
-        // Migrar correo_electronico para registros existentes
-        if (!_migrated) {
-            const emailCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='reclamos_devoluciones' AND column_name='correo_electronico')`);
-            if (emailCheck.rows[0].exists) {
-                await query(`
-                    UPDATE reclamos_devoluciones r
-                    SET correo_electronico = u.email
-                    FROM usuarios u
-                    WHERE r.responsable_ingreso = u.nombre
-                      AND (r.correo_electronico IS NULL OR r.correo_electronico = '')
-                      AND u.email IS NOT NULL
-                      AND u.email != ''
-                `);
-            }
+        // Migrar correo_electronico para registros existentes (se ejecuta hasta que todos tengan email)
+        if (existing.includes('correo_electronico')) {
+            await query(`
+                UPDATE reclamos_devoluciones r
+                SET correo_electronico = u.email
+                FROM usuarios u
+                WHERE r.responsable_ingreso = u.nombre
+                  AND (r.correo_electronico IS NULL OR r.correo_electronico = '')
+                  AND u.email IS NOT NULL
+                  AND u.email != ''
+            `);
         }
     } catch(e) { console.error('ensureColumns error:', e.message); }
 }
