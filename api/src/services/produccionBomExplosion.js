@@ -27,6 +27,7 @@ const explosionBOM = async (r, recetaBomMap, materiaPrimaMap, materiasPrimas, fa
         const reglasExtras = buildReglasExtras(r);
 
         const espesorMM = Number(mp.espesor_mm) || Number(comp.espesor) || 6;
+        const kilosHijo = Math.round(m2 * espesorMM * 2.5 * 100) / 100;
 
         const result = await query(
             `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
@@ -37,7 +38,7 @@ const explosionBOM = async (r, recetaBomMap, materiaPrimaMap, materiasPrimas, fa
             [r.pedido, r.cliente, mp.codigo_mp, mp.nombre || r.descripcion, r.ancho, r.alto, m2,
              comp.id, r.tipo_venta, r.item, Math.round(Number(comp.cantidad) || 1), familia?.id || null, r.codigo,
              costo_hh, costo_energia, costo_mp_total, costo_total, r.precio_unitario, margen,
-             r.nota, r.posicion, r.orden_compra, r.tipo_entrega, Number(r.kilos || 0),
+             r.nota, r.posicion, r.orden_compra, r.tipo_entrega, kilosHijo,
              r.fecha_creacion || new Date().toISOString(), mecanizadoOperaciones || null,
              JSON.stringify(reglasExtras), espesorMM]
         );

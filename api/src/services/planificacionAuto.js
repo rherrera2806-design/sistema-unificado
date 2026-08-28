@@ -309,7 +309,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     if (siblings.length < 2) continue;
 
     const totalM2Grupo = siblings[0] ? (Number(siblings[0].metros_cuadrados) || 0) : 0;
-    const totalKgGrupo = siblings[0] ? (Number(siblings[0].kilos) || 0) : 0;
+    const totalKgGrupo = siblings.reduce((s, o) => s + (Number(o.kilos) || 0), 0);
     const grupo = padreGrupoMap[bomPadreId] || siblings[0].grupo;
 
     if (!grupo || totalM2Grupo <= 0) continue;
