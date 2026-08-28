@@ -1352,20 +1352,24 @@ const Reclamos = {
         if (!r) return;
 
         try {
-            const subject = encodeURIComponent('Informe de Reclamo N° ' + (r.numero_reclamo || id) + ' — ' + (r.cliente || ''));
-            const body = encodeURIComponent(
-                'Estimado(a),\n\n' +
-                'Adjunto informe de reclamo N° ' + (r.numero_reclamo || id) + ' correspondiente al cliente ' + (r.cliente || '-') + '.\n\n' +
-                'Folio: #' + (r.numero_reclamo || id) + '\n' +
-                'N° OV: ' + (r.numero_orden || '-') + '\n' +
-                'Resolución: ' + (r.resolucion || 'Pendiente') + '\n\n' +
-                'Quedo atento a cualquier consulta.\n\n' +
-                'Saludos cordiales,\n' +
-                (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || '')
-            );
+            const asunto = 'Informe de Reclamo N° ' + (r.numero_reclamo || id) + ' — ' + (r.cliente || '');
+            const cuerpo = 'Estimado(a),\n\n'
+                + 'Adjunto informe de reclamo N° ' + (r.numero_reclamo || id) + ' correspondiente al cliente ' + (r.cliente || '-') + '.\n\n'
+                + 'Folio: #' + (r.numero_reclamo || id) + '\n'
+                + 'N° OV: ' + (r.numero_orden || '-') + '\n'
+                + 'Resolución: ' + (r.resolucion || 'Pendiente') + '\n\n'
+                + 'Quedo atento a cualquier consulta.\n\n'
+                + 'Saludos cordiales,\n'
+                + (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || '');
 
-            window.open('mailto:?subject=' + subject + '&body=' + body, '_blank');
-            App.toast('Se abrió el cliente de correo.', 'info');
+            const link = document.createElement('a');
+            link.href = 'mailto:?subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            App.toast('Se abrió el cliente de correo. Adjunte el PDF generado.', 'info');
         } catch(e) {
             App.toast('Error al abrir correo: ' + e.message, 'error');
             console.error('enviarEmail error:', e);
