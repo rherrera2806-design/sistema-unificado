@@ -498,7 +498,6 @@ App.registerModule('produccion', {
         </div>`;
 
         document.body.appendChild(overlay);
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     },
 
     async verPasos(ordenId) {
