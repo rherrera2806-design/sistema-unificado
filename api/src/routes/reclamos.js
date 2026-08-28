@@ -504,6 +504,22 @@ router.put('/api/reclamos/:id/estado', perms.update, async (req, res) => {
     }
 });
 
+// Registrar envío por mail
+router.post('/api/reclamos/:id/enviar-mail', perms.update, async (req, res) => {
+    try {
+        await ensureColumns();
+        const user = req.headers['x-user-email'] || '';
+        const userName = req.headers['x-user-name'] || user;
+        await query(
+            'INSERT INTO reclamos_historial (reclamo_id, accion, responsable, observacion) VALUES ($1, $2, $3, $4)',
+            [req.params.id, 'Envío por mail', userName || user, 'Informe enviado por correo electrónico']
+        );
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Historial de un reclamo
 router.get('/api/reclamos/:id/historial', perms.view, async (req, res) => {
     try {

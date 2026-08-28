@@ -1370,6 +1370,7 @@ const Reclamos = {
 
             window.location.href = 'mailto:' + emailUser + '?cc=' + encodeURIComponent(ccEmails) + '&subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
 
+            authFetch('/api/reclamos/' + id + '/enviar-mail', { method: 'POST' }).catch(() => {});
             App.toast('Correo abierto. Adjunte el PDF desde Descargas.', 'info');
         } catch(e) {
             App.toast('Error al abrir correo: ' + e.message, 'error');
