@@ -188,12 +188,6 @@ const Reclamos = {
             html += '<td style="padding:12px 14px"><span class="rc-badge ' + badge + '">' + r.estado + '</span></td>';
             html += '<td style="padding:12px 14px"><span style="font-weight:600;color:' + resColor + ';font-size:12px">' + (r.resolucion || '-') + '</span></td>';
             html += '<td style="padding:12px 14px;text-align:center;white-space:nowrap">';
-            // Botones de workflow rápido según estado
-            if (r.estado === 'PENDIENTE') {
-                html += '<button onclick="App.modules.reclamos.cambiarEstado(' + r.id + ',\'EN REVISION\')" class="btn btn-sm" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;margin-right:4px" title="Iniciar Revisión">🔍 Revisar</button>';
-            } else if (r.estado === 'EN REVISION') {
-                html += '<button onclick="App.modules.reclamos.cambiarEstado(' + r.id + ',\'FINALIZADO\')" class="btn btn-sm" style="background:#f0fdf4;color:#22c55e;border:1px solid #bbf7d0;margin-right:4px" title="Finalizar">✅ Fin</button>';
-            }
             html += '<button onclick="App.modules.reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
             html += '<button onclick="App.modules.reclamos.showHistorial(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Historial"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>';
             if (r.estado === 'FINALIZADO') {
@@ -1119,7 +1113,7 @@ const Reclamos = {
             if (typeof window.jspdf === 'undefined') {
                 await new Promise((resolve, reject) => {
                     const s = document.createElement('script');
-                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+                    s.src = '/js/libs/jspdf.umd.min.js';
                     s.onload = resolve;
                     s.onerror = () => reject(new Error('No se pudo cargar jsPDF'));
                     document.head.appendChild(s);
