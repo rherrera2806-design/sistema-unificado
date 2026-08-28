@@ -1308,7 +1308,7 @@ const Reclamos = {
             'Resolución: ' + (r.resolucion || 'Pendiente') + '\n\n' +
             'Quedo atento a cualquier consulta.\n\n' +
             'Saludos cordiales,\n' +
-            (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || ''])
+            (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || '')
         );
 
         window.open('mailto:?subject=' + subject + '&body=' + body, '_blank');
