@@ -65,6 +65,7 @@ async function ensureColumns() {
         }
         // Migrar correo_electronico para registros existentes (se ejecuta hasta que todos tengan email)
         if (existing.includes('correo_electronico')) {
+            // 1) Mapear por nombre en usuarios
             await query(`
                 UPDATE reclamos_devoluciones r
                 SET correo_electronico = u.email
@@ -73,6 +74,13 @@ async function ensureColumns() {
                   AND (r.correo_electronico IS NULL OR r.correo_electronico = '')
                   AND u.email IS NOT NULL
                   AND u.email != ''
+            `);
+            // 2) Si responsable_ingreso aún tiene un email directo, usarlo
+            await query(`
+                UPDATE reclamos_devoluciones
+                SET correo_electronico = responsable_ingreso
+                WHERE (correo_electronico IS NULL OR correo_electronico = '')
+                  AND responsable_ingreso LIKE '%@%'
             `);
         }
     } catch(e) { console.error('ensureColumns error:', e.message); }
