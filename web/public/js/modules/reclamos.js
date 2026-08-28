@@ -1377,8 +1377,12 @@ const Reclamos = {
                 </body></html>
             `);
 
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const emailUser = user.email || '';
+            const ccEmails = 'fdiaz@templaglass.cl,adiaz@templaglass.cl,rherrera@templaglass.cl,lvallejos@templaglass.cl,rgonzalez@templaglass.cl,bodega@templaglass.cl,despacho@templaglass.cl,aosorio@templaglass.cl,conta01@templaglass.cl,dvillaroel@templaglass.cl';
+
             const link = document.createElement('a');
-            link.href = 'mailto:?subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
+            link.href = 'mailto:' + encodeURIComponent(emailUser) + '?cc=' + encodeURIComponent(ccEmails) + '&subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
             link.target = '_blank';
             document.body.appendChild(link);
             link.click();
