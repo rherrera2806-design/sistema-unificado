@@ -7,6 +7,7 @@ const MOD = 'reclamos';
 const perms = crudPerms(MOD);
 
 // Auto-migración: asegurar columnas existen
+let _migrated = false;
 async function ensureColumns() {
     try {
         // Asegurar tabla matriz_responsables_motivos
@@ -43,18 +44,21 @@ async function ensureColumns() {
             )`);
         }
 
-        // Migrar emails a nombres en responsable_ingreso
-        const tableCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='usuarios')`);
-        if (tableCheck.rows[0].exists) {
-            await query(`
-                UPDATE reclamos_devoluciones r
-                SET responsable_ingreso = u.nombre
-                FROM usuarios u
-                WHERE r.responsable_ingreso = u.email
-                  AND r.responsable_ingreso LIKE '%@%'
-                  AND u.nombre IS NOT NULL
-                  AND u.nombre != ''
-            `);
+        // Migrar emails a nombres una sola vez
+        if (!_migrated) {
+            _migrated = true;
+            const tableCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='usuarios')`);
+            if (tableCheck.rows[0].exists) {
+                await query(`
+                    UPDATE reclamos_devoluciones r
+                    SET responsable_ingreso = u.nombre
+                    FROM usuarios u
+                    WHERE r.responsable_ingreso = u.email
+                      AND r.responsable_ingreso LIKE '%@%'
+                      AND u.nombre IS NOT NULL
+                      AND u.nombre != ''
+                `);
+            }
         }
     } catch(e) { console.error('ensureColumns error:', e.message); }
 }
