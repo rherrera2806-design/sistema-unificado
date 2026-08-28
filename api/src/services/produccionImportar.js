@@ -279,6 +279,47 @@ const importarOrdenes = async (rows) => {
     const { merged, mergeOrder } = mergearFilas(rows);
     const { recetaBomMap, materiaPrimaMap, materiasPrimas } = maestros;
 
+    const errores = [];
+
+    for (const key of mergeOrder) {
+        const r = merged[key];
+        const tieneBOM = recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0;
+
+        if (!tieneBOM) {
+            errores.push({
+                fila: key,
+                codigo: r.codigo,
+                pedido: r.pedido,
+                error: `Código "${r.codigo}" no tiene receta BOM configurada. Configure la receta en Configuración → Recetas BOM antes de importar.`
+            });
+            continue;
+        }
+
+        let ancho = r.ancho;
+        let alto = r.alto;
+        if (!ancho || !alto) {
+            const receta = recetaBomMap[r.codigo].find(rc => rc.ancho && rc.alto) || recetaBomMap[r.codigo][0];
+            if (!ancho && receta.ancho) ancho = Number(receta.ancho);
+            if (!alto && receta.alto) alto = Number(receta.alto);
+        }
+        r.ancho = ancho || 0;
+        r.alto = alto || 0;
+
+        if (!r.ancho || !r.alto) {
+            errores.push({
+                fila: key,
+                codigo: r.codigo,
+                pedido: r.pedido,
+                error: `Código "${r.codigo}" tiene receta BOM pero sin dimensiones (ancho/alto). Defina dimensiones en la receta.`
+            });
+        }
+    }
+
+    if (errores.length > 0) {
+        console.log('[PROD] Importacion bloqueada por errores:', errores.length);
+        return { importadas: 0, errores, pasos_creados: 0, fusiones: rows.length - mergeOrder.length, costos_calculados: 0 };
+    }
+
     const resultados = { importadas: 0, errores: [], pasos_creados: 0, fusiones: rows.length - mergeOrder.length, costos_calculados: 0 };
 
     for (const key of mergeOrder) {
@@ -286,35 +327,7 @@ const importarOrdenes = async (rows) => {
             const r = merged[key];
             const tieneBOM = recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0;
 
-            if (!tieneBOM) {
-                resultados.errores.push({
-                    fila: key,
-                    codigo: r.codigo,
-                    pedido: r.pedido,
-                    error: `Código "${r.codigo}" no tiene receta BOM configurada. Configure la receta antes de importar.`
-                });
-                continue;
-            }
-
-            let ancho = r.ancho;
-            let alto = r.alto;
-            if (!ancho || !alto) {
-                const receta = recetaBomMap[r.codigo].find(rc => rc.ancho && rc.alto) || recetaBomMap[r.codigo][0];
-                if (!ancho && receta.ancho) ancho = Number(receta.ancho);
-                if (!alto && receta.alto) alto = Number(receta.alto);
-            }
-            r.ancho = ancho || 0;
-            r.alto = alto || 0;
-
-            if (!r.ancho || !r.alto) {
-                resultados.errores.push({
-                    fila: key,
-                    codigo: r.codigo,
-                    pedido: r.pedido,
-                    error: `Código "${r.codigo}" tiene receta BOM pero sin dimensiones (ancho/alto). Defina dimensiones en la receta.`
-                });
-                continue;
-            }
+            if (!tieneBOM) continue;
 
             const m2 = ((r.ancho / 1000) * (r.alto / 1000)) * r.cantidad;
 
