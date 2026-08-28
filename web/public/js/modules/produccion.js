@@ -397,17 +397,7 @@ App.registerModule('produccion', {
             const result = await res.json();
             console.log('[IMPORT] Resultado:', JSON.stringify(result).substring(0, 500));
             if (res.ok) {
-                let msg = `Importadas: ${result.importadas} ordenes, ${result.pasos_creados} pasos.`;
-                if (result.fusiones > 0) msg += `\nFusiones: ${result.fusiones} filas combinadas.`;
-                if (result.costos_calculados > 0) msg += `\nCostos calculados: ${result.costos_calculados}.`;
-                if (result.errores && result.errores.length) {
-                    msg += `\n\nERRORES (${result.errores.length}):`;
-                    result.errores.slice(0, 10).forEach(e => {
-                        msg += `\n• [${e.codigo || e.fila}] ${e.error}`;
-                    });
-                    if (result.errores.length > 10) msg += `\n... y ${result.errores.length - 10} mas`;
-                }
-                App.toast(msg, result.errores?.length ? 'warn' : 'success');
+                this.showImportResult(result);
                 this.hideImportModal();
                 await this.load();
             } else {
@@ -417,6 +407,98 @@ App.registerModule('produccion', {
 
         btn.textContent = 'Importar';
         btn.disabled = false;
+    },
+
+    showImportResult(result) {
+        const hayErrores = result.errores && result.errores.length > 0;
+        const errUnicos = {};
+        (result.errores || []).forEach(e => {
+            const key = e.codigo || e.fila || 'desc';
+            if (!errUnicos[key]) errUnicos[key] = { ...e, count: 0 };
+            errUnicos[key].count++;
+        });
+        const errLista = Object.values(errUnicos);
+
+        const overlay = document.createElement('div');
+        overlay.id = 'importResultModal';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px)';
+
+        let errRows = '';
+        if (errLista.length) {
+            errLista.forEach(e => {
+                const repeatBadge = e.count > 1 ? `<span style="background:#fee2e2;color:#991b1b;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px">${e.count}x</span>` : '';
+                errRows += `<tr>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#1e293b">${e.codigo || '-'}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#64748b">${e.pedido || '-'}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#ef4444;font-size:12px">${e.error}${repeatBadge}</td>
+                </tr>`;
+            });
+        }
+
+        overlay.innerHTML = `
+        <div style="background:white;border-radius:16px;max-width:640px;width:95%;max-height:85vh;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.3);display:flex;flex-direction:column">
+            <div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#f8fafc,#f1f5f9)">
+                <div>
+                    <div style="font-size:18px;font-weight:800;color:#0f172a">Resultado de Importación</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:2px">Resumen del procesamiento del archivo SAP</div>
+                </div>
+                <button onclick="document.getElementById('importResultModal').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#94a3b8;padding:4px 8px;border-radius:6px" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">✕</button>
+            </div>
+            <div style="padding:20px 24px;overflow-y:auto;flex:1">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+                    <div style="background:#f0fdf4;border-radius:10px;padding:14px;text-align:center;border:1px solid #bbf7d0">
+                        <div style="font-size:22px;font-weight:800;color:#16a34a">${result.importadas || 0}</div>
+                        <div style="font-size:11px;color:#166534;font-weight:600">Importadas</div>
+                    </div>
+                    <div style="background:#eff6ff;border-radius:10px;padding:14px;text-align:center;border:1px solid #bfdbfe">
+                        <div style="font-size:22px;font-weight:800;color:#2563eb">${result.pasos_creados || 0}</div>
+                        <div style="font-size:11px;color:#1e40af;font-weight:600">Pasos</div>
+                    </div>
+                    <div style="background:#fefce8;border-radius:10px;padding:14px;text-align:center;border:1px solid #fde68a">
+                        <div style="font-size:22px;font-weight:800;color:#ca8a04">${result.costos_calculados || 0}</div>
+                        <div style="font-size:11px;color:#854d0e;font-weight:600">Costos</div>
+                    </div>
+                    <div style="background:${hayErrores ? '#fef2f2' : '#f0fdf4'};border-radius:10px;padding:14px;text-align:center;border:1px solid ${hayErrores ? '#fecaca' : '#bbf7d0'}">
+                        <div style="font-size:22px;font-weight:800;color:${hayErrores ? '#dc2626' : '#16a34a'}">${(result.errores || []).length}</div>
+                        <div style="font-size:11px;color:${hayErrores ? '#991b1b' : '#166534'};font-weight:600">Errores</div>
+                    </div>
+                </div>
+                ${result.fusiones > 0 ? `<div style="background:#f8fafc;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#475569;border:1px solid #e2e8f0">🔗 <strong>${result.fusiones}</strong> filas duplicadas se fusionaron automáticamente</div>` : ''}
+                ${hayErrores ? `
+                <div style="margin-bottom:8px">
+                    <div style="font-size:13px;font-weight:700;color:#991b1b;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                        Códigos sin receta BOM configurada
+                    </div>
+                    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+                        <table style="width:100%;border-collapse:collapse;font-size:12px">
+                            <thead><tr style="background:#f8fafc">
+                                <th style="padding:8px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0">Código</th>
+                                <th style="padding:8px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0">Pedido</th>
+                                <th style="padding:8px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0">Detalle del error</th>
+                            </tr></thead>
+                            <tbody>${errRows}</tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:10px;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:12px;color:#9a3412">
+                        <strong>Solución:</strong> Ve a <strong>Configuración → Recetas BOM</strong> y crea la receta para cada código listado arriba. Define la materia prima, cantidad y dimensiones antes de volver a importar.
+                    </div>
+                </div>
+                ` : `
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center">
+                    <div style="font-size:28px;margin-bottom:6px">✓</div>
+                    <div style="font-size:14px;font-weight:700;color:#166534">Importación exitosa</div>
+                    <div style="font-size:12px;color:#16a34a;margin-top:4px">Todas las órdenes se procesaron correctamente</div>
+                </div>
+                `}
+            </div>
+            <div style="padding:14px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;background:#f8fafc">
+                <button onclick="document.getElementById('importResultModal').remove()" style="background:#3b82f6;color:white;border:none;padding:8px 20px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Cerrar</button>
+            </div>
+        </div>`;
+
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     },
 
     async verPasos(ordenId) {
