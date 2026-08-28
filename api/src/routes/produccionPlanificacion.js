@@ -85,6 +85,29 @@ router.get('/api/produccion/planificacion/carga-estaciones', canView, async (req
     } catch (e) { next(e); }
 });
 
+router.get('/api/produccion/planificacion/detalle-grupo-dia', canView, async (req, res, next) => {
+    const { grupo, fecha } = req.query;
+    if (!grupo || !fecha) return res.status(400).json({ error: 'grupo y fecha requeridos' });
+    try {
+        const result = await query(`
+            SELECT o.id, o.pedido_sap_id, o.item_numero, o.codigo_producto, o.descripcion, o.ancho, o.alto,
+                   o.metros_cuadrados, o.kilos, o.cantidad, o.grupo, o.codigo_padre, o.es_compuesto,
+                   o.estado_programacion,
+                   (SELECT string_agg(em.nombre_estacion || ' (' || to_char(cp.fecha_programada,'DD/MM') || ')', ' → ' ORDER BY cp.orden_secuencia)
+                    FROM cola_produccion_pasos cp JOIN estaciones_maestras em ON cp.estacion_id = em.id
+                    WHERE cp.orden_produccion_id = o.id AND cp.fecha_programada IS NOT NULL) as ruta
+            FROM produccion_ordenes o
+            WHERE o.grupo ILIKE $1
+              AND EXISTS (
+                  SELECT 1 FROM cola_produccion_pasos cp2
+                  WHERE cp2.orden_produccion_id = o.id AND cp2.fecha_programada = $2
+              )
+            ORDER BY o.pedido_sap_id, o.item_numero
+        `, [grupo, fecha]);
+        res.json(result.rows);
+    } catch (e) { next(e); }
+});
+
 router.get('/api/produccion/planificacion/pendientes', canView, async (req, res, next) => {
     try { res.json(await planificacion.getPendientes()); }
     catch (e) { next(e); }

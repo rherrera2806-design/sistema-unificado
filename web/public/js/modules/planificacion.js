@@ -163,6 +163,67 @@ App.modules.planificacion = {
         el.innerHTML = html;
     },
 
+    async detalleGrupoDia(grupo, fecha) {
+        const el = document.getElementById('planDetalleGrupoDia');
+        if (!el) return;
+        el.style.display = 'block';
+        el.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;background:var(--card-bg);border-radius:12px;border:1px solid var(--border)">Cargando detalle...</div>';
+        try {
+            const res = await fetch(`/api/produccion/planificacion/detalle-grupo-dia?grupo=${encodeURIComponent(grupo)}&fecha=${fecha}`);
+            if (!res.ok) throw new Error('Error ' + res.status);
+            const ordenes = await res.json();
+            const d = new Date(fecha + 'T12:00:00');
+            const dias = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+            const fechaLabel = dias[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1);
+            const totalM2 = ordenes.reduce((s, o) => s + (Number(o.metros_cuadrados) || 0), 0);
+            const totalKg = ordenes.reduce((s, o) => s + (Number(o.kilos) || 0), 0);
+
+            let rows = '';
+            ordenes.forEach(o => {
+                const esCompuesto = o.es_compuesto;
+                rows += `<tr style="border-bottom:1px solid #f1f5f9">
+                    <td style="padding:6px 10px;font-weight:600">${o.pedido_sap_id}</td>
+                    <td style="padding:6px 10px">${o.item_numero}</td>
+                    <td style="padding:6px 10px">${o.codigo_producto}${esCompuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span>' : ''}</td>
+                    <td style="padding:6px 10px;color:#64748b;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.descripcion || '-'}</td>
+                    <td style="padding:6px 10px">${o.ancho}×${o.alto}</td>
+                    <td style="padding:6px 10px;text-align:right">${(Number(o.metros_cuadrados)||0).toFixed(2)}</td>
+                    <td style="padding:6px 10px;text-align:right">${(Number(o.kilos)||0).toFixed(1)}</td>
+                    <td style="padding:6px 10px;font-size:11px;color:#7c3aed">${o.ruta || '-'}</td>
+                </tr>`;
+            });
+
+            el.innerHTML = `
+                <div style="background:var(--card-bg);border-radius:12px;border:1px solid var(--border);padding:16px;margin-top:16px">
+                    <div style="display:flex;justify-between;align-items:center;margin-bottom:12px">
+                        <div>
+                            <span style="font-size:14px;font-weight:700;color:#0f172a">${grupo} — ${fechaLabel}</span>
+                            <span style="font-size:12px;color:#64748b;margin-left:12px">${ordenes.length} ordenes · ${totalM2.toFixed(1)} m² · ${totalKg.toFixed(0)} kg</span>
+                        </div>
+                        <button onclick="document.getElementById('planDetalleGrupoDia').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:#94a3b8;padding:2px 6px">✕</button>
+                    </div>
+                    <div style="overflow-x:auto;max-height:300px;overflow-y:auto">
+                        <table style="width:100%;border-collapse:collapse;font-size:12px">
+                            <thead><tr style="background:#f8fafc;position:sticky;top:0">
+                                <th style="padding:6px 10px;text-align:left">Pedido</th>
+                                <th style="padding:6px 10px;text-align:left">Item</th>
+                                <th style="padding:6px 10px;text-align:left">Codigo</th>
+                                <th style="padding:6px 10px;text-align:left">Descripcion</th>
+                                <th style="padding:6px 10px;text-align:left">Dim</th>
+                                <th style="padding:6px 10px;text-align:right">M²</th>
+                                <th style="padding:6px 10px;text-align:right">Kg</th>
+                                <th style="padding:6px 10px;text-align:left">Ruta</th>
+                            </tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+            el.scrollIntoView({ behavior: 'smooth' });
+        } catch(e) {
+            el.innerHTML = `<div style="padding:16px;background:#fee2e2;border-radius:12px;color:#991b1b;font-size:13px">Error: ${e.message}</div>`;
+        }
+    },
+
     cambiarFechaGrupo(delta) {
         if (delta === undefined) {
             this.fechaGrupo = document.getElementById('planGrupoFecha').value;
@@ -442,6 +503,9 @@ App.modules.planificacion = {
                 </div>
             </div>
 
+            <!-- DETALLE GRUPO + DIA (click en chart) -->
+            <div id="planDetalleGrupoDia" style="display:none"></div>
+
             <div class="modal-overlay" id="planAsignarModal">
                 <div class="modal" style="max-width:500px">
                     <div class="modal-header"><h3>Asignar Fecha de Entrega</h3><button class="modal-close" title="Cerrar" onclick="App.modules.planificacion.cerrarModal()">&times;</button></div>
@@ -719,6 +783,14 @@ App.modules.planificacion = {
                 responsive: true,
                 maintainAspectRatio: false,
                 layout: { padding: { left: 100 } },
+                onClick: (evt, elements, chart) => {
+                    if (!elements.length) return;
+                    const el = elements[0];
+                    const fam = chart.data.datasets[el.datasetIndex].label;
+                    if (fam === 'Capacidad Produccion') return;
+                    const fecha = fechasConData[el.index];
+                    this.detalleGrupoDia(fam, fecha);
+                },
                 plugins: {
                     legend: { display: false },
                     datalabels: {
