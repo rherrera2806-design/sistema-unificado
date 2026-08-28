@@ -344,6 +344,8 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
     // Asignar TODOS los hermanos en el mismo día de Armado
     agregarCarga(drumFechaGrupo, armadoEstId, totalM2Grupo);
+    if (!cargaGrupoMap[drumFechaGrupo]) cargaGrupoMap[drumFechaGrupo] = {};
+    cargaGrupoMap[drumFechaGrupo][grupo] = (cargaGrupoMap[drumFechaGrupo][grupo] || 0) + totalKgGrupo;
 
     // Para cada hermano: Corte puede ser antes, Armado es el día común
     for (const sib of siblings) {
