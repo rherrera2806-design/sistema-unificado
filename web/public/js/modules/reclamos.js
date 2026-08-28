@@ -167,12 +167,13 @@ const Reclamos = {
         // Tabla desktop
         let html = '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden"><div style="overflow-x:auto"><div class="sigma-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Folio</th>';
-        html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Fecha</th>';
+        html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Fecha Ingreso</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Cliente</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">OV</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Subido por</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Estado</th>';
         html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Resolución</th>';
+        html += '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Duración</th>';
         html += '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase">Acciones</th>';
         html += '</tr></thead><tbody>';
 
@@ -181,12 +182,13 @@ const Reclamos = {
             const resColor = r.resolucion === 'Rechazada' ? '#ef4444' : r.resolucion ? '#22c55e' : '#94a3b8';
             html += '<tr style="border-bottom:1px solid #f1f5f9">';
             html += '<td style="padding:12px 14px"><strong style="color:#7c3aed;font-size:14px">#' + (r.numero_reclamo || '-') + '</strong></td>';
-            html += '<td style="padding:12px 14px;color:#475569;font-size:12px">' + this.fmtDate(r.fecha_ingreso) + '</td>';
+            html += '<td style="padding:12px 14px;color:#475569;font-size:12px">' + this.fmtDateTime(r.fecha_ingreso) + '</td>';
             html += '<td style="padding:12px 14px"><strong style="color:#1e293b">' + (r.cliente || '-') + '</strong></td>';
             html += '<td style="padding:12px 14px;color:#475569">' + (r.numero_orden || '-') + '</td>';
             html += '<td style="padding:12px 14px"><span style="font-size:12px;color:#475569">' + (r.responsable_ingreso || '-') + '</span></td>';
             html += '<td style="padding:12px 14px"><span class="rc-badge ' + badge + '">' + r.estado + '</span></td>';
             html += '<td style="padding:12px 14px"><span style="font-weight:600;color:' + resColor + ';font-size:12px">' + (r.resolucion || '-') + '</span></td>';
+            html += '<td style="padding:12px 14px;font-size:12px;color:#475569">' + this.calcDuracion(r) + '</td>';
             html += '<td style="padding:12px 14px;text-align:center;white-space:nowrap">';
             html += '<button onclick="App.modules.reclamos.showForm(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
             html += '<button onclick="App.modules.reclamos.showHistorial(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Historial"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>';
@@ -1366,6 +1368,20 @@ const Reclamos = {
             App.toast('Error al abrir correo: ' + e.message, 'error');
             console.error('enviarEmail error:', e);
         }
+    },
+
+    calcDuracion(r) {
+        if (r.estado !== 'FINALIZADO' || !r.fecha_fin) return '-';
+        const inicio = new Date(r.fecha_ingreso);
+        const fin = new Date(r.fecha_fin);
+        const diff = fin - inicio;
+        if (isNaN(diff) || diff < 0) return '-';
+        const dias = Math.floor(diff / 86400000);
+        const horas = Math.floor((diff % 86400000) / 3600000);
+        const mins = Math.floor((diff % 3600000) / 60000);
+        if (dias > 0) return dias + 'd ' + horas + 'h ' + mins + 'm';
+        if (horas > 0) return horas + 'h ' + mins + 'm';
+        return mins + 'm';
     },
 
     fmtDate(d) {
