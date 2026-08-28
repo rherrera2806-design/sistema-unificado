@@ -1352,6 +1352,10 @@ const Reclamos = {
         if (!r) return;
 
         try {
+            const doc = await this.generarPDF(id);
+            if (!doc) return;
+
+            const pdfB64 = doc.output('datauristring');
             const asunto = 'Informe de Reclamo N° ' + (r.numero_reclamo || id) + ' — ' + (r.cliente || '');
             const cuerpo = 'Estimado(a),\n\n'
                 + 'Adjunto informe de reclamo N° ' + (r.numero_reclamo || id) + ' correspondiente al cliente ' + (r.cliente || '-') + '.\n\n'
@@ -1362,6 +1366,17 @@ const Reclamos = {
                 + 'Saludos cordiales,\n'
                 + (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || '');
 
+            const outlookWindow = window.open('', '_blank');
+            outlookWindow.document.write(`
+                <html><head><title>Abriendo Outlook...</title></head>
+                <body style="font-family:Segoe UI,sans-serif;padding:40px;text-align:center">
+                    <h3>Preparando correo...</h3>
+                    <p>El PDF se generó: <strong>Informe_Reclamo_${r.numero_reclamo || id}.pdf</strong></p>
+                    <p>Se abrirá Outlook en un momento.</p>
+                    <p style="color:#666;font-size:13px;margin-top:20px">Si Outlook no se abre, arrastra el PDF desde tu carpeta de descargas al correo.</p>
+                </body></html>
+            `);
+
             const link = document.createElement('a');
             link.href = 'mailto:?subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
             link.target = '_blank';
@@ -1369,9 +1384,9 @@ const Reclamos = {
             link.click();
             document.body.removeChild(link);
 
-            App.toast('Se abrió el cliente de correo. Adjunte el PDF generado.', 'info');
+            App.toast('PDF generado. Adjúntalo al correo que se abrió.', 'info');
         } catch(e) {
-            App.toast('Error al abrir correo: ' + e.message, 'error');
+            App.toast('Error al preparar correo: ' + e.message, 'error');
             console.error('enviarEmail error:', e);
         }
     },
