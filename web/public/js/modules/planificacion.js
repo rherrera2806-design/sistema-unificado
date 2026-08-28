@@ -14,6 +14,7 @@ App.modules.planificacion = {
     chartModo: 'inicio',
     _chartInstance: null,
     semanaEstaciones: null,
+    diasEstaciones: 15,
 
     fmtDate(d) {
         return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -380,7 +381,7 @@ App.modules.planificacion = {
             <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
 <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Planificacion</h2>
-<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Carga por grupo (kg) + calendario por estacion (m2) - 15 dias corridos</p></div>
+<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Carga por grupo (kg) + calendario por estacion (m2)</p></div>
 </div></div>
 
 <style>
@@ -426,9 +427,11 @@ App.modules.planificacion = {
                 <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#fffbeb,#fff)">
                     <div>
                         <h3 style="margin:0;font-size:16px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg> Carga por Estaciones</h3>
-                        <div style="font-size:12px;color:var(--text-light)">Ocupacion de m2 por estacion y dia - 15 dias corridos</div>
+                        <div style="font-size:12px;color:var(--text-light)">Ocupacion de m2 por estacion y dia - <span id="planDiasLabel">${this.diasEstaciones}</span> dias corridos</div>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center">
+                        <label style="font-size:12px;color:var(--text-light)">Dias:</label>
+                        <input type="number" min="1" max="60" value="${this.diasEstaciones}" onchange="App.modules.planificacion.cambiarDiasEstaciones(this.value)" style="width:56px;padding:4px 6px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;text-align:center">
                         <label style="font-size:12px;color:var(--text-light)">Periodo:</label>
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarSemanaEstaciones(-1)">◀</button>
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarSemanaEstaciones(1)">▶</button>
@@ -762,16 +765,24 @@ App.modules.planificacion = {
     },
 
     // ── CARGA POR ESTACIONES ──
+    cambiarDiasEstaciones(valor) {
+        const n = parseInt(valor);
+        if (!n || n < 1 || n > 60) return;
+        this.diasEstaciones = n;
+        const lbl = document.getElementById('planDiasLabel');
+        if (lbl) lbl.textContent = n;
+        this.cargarEstaciones();
+    },
+
     cambiarSemanaEstaciones(delta) {
-        this.semanaInicio.setDate(this.semanaInicio.getDate() + delta * 15);
-        this.semanaFin = new Date(this.semanaInicio);
-        this.semanaFin.setDate(this.semanaFin.getDate() + 14);
+        this.semanaInicio.setDate(this.semanaInicio.getDate() + delta * this.diasEstaciones);
         this.cargarEstaciones();
     },
 
     async cargarEstaciones() {
         const inicio = this.fmtDate(this.semanaInicio);
-        const finD = new Date(this.semanaFin);
+        const finD = new Date(this.semanaInicio);
+        finD.setDate(finD.getDate() + this.diasEstaciones - 1);
         const fin = this.fmtDate(finD);
 
         try {
@@ -792,9 +803,9 @@ App.modules.planificacion = {
             return;
         }
 
-        // Generar 15 dias corridos desde semanaInicio, filtrando solo dias laborales
+        // Generar dias corridos desde semanaInicio, filtrando solo dias laborales
         const todosDias = [];
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < this.diasEstaciones; i++) {
             const d = new Date(this.semanaInicio);
             d.setDate(d.getDate() + i);
             const fs = this.fmtDate(d);
