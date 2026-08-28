@@ -167,6 +167,16 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   }
 
   /**
+   * ¿Cabe el consumo del grupo en kg ese día?
+   */
+  function cabeGrupoEnDia(fecha, grupo, consumoKg) {
+    const cap = capGrupoMap[grupo];
+    if (!cap || cap <= 0) return true;
+    const actual = cargaGrupoMap[fecha] ? (cargaGrupoMap[fecha][grupo] || 0) : 0;
+    return (actual + consumoKg) <= cap;
+  }
+
+  /**
    * Agregar consumo al mapa de carga (actualiza en memoria)
    */
   function agregarCarga(fecha, estId, consumoM2) {
@@ -323,7 +333,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
       d.setDate(d.getDate() + i);
       const fs = fmt(d);
       if (!esLaboral(fs)) continue;
-      if (cabeEnDia(armadoEstId, fs, totalM2Grupo)) {
+      if (cabeEnDia(armadoEstId, fs, totalM2Grupo) && cabeGrupoEnDia(fs, grupo, totalKgGrupo)) {
         drumFechaGrupo = fs;
         break;
       }
@@ -421,6 +431,9 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
       // ¿El cuello tiene capacidad este día?
       if (!cabeEnDia(drumEstId, drumFecha, consumoM2)) continue;
+
+      // ¿El grupo tiene capacidad de kg este día?
+      if (!cabeGrupoEnDia(drumFecha, grupo, kg)) continue;
 
       const maxEnCuello = drumMaxDia(route, drumFecha);
       if (consumoM2 > maxEnCuello && maxEnCuello > 0) {
