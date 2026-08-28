@@ -1277,11 +1277,11 @@ const Reclamos = {
         const yStart = y;
         addMiniField('Responsable', r.responsable_falla, mx, yStart + colW);
         addMiniField('Motivo', r.motivo, mx, yStart + colW);
+        const yAfterLeft = y;
         y = yStart;
         addMiniField('Resolución', r.resolucion, midX + 5, yStart + colW);
-        const yAfterRes = y;
-        y = Math.max(y, yAfterRes);
-        y += 2;
+        const yAfterRight = y;
+        y = Math.max(yAfterLeft, yAfterRight) + 4;
 
         // ── OBSERVACIONES ──
         if (r.observacion_analisis) {
