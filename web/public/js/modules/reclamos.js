@@ -321,8 +321,8 @@ const Reclamos = {
                                     <input type="text" id="rcCliente" value="${r.cliente || ''}" required placeholder="Nombre del cliente" ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>
                                 </div>
                                 <div>
-                                    <label>N° Orden de Venta (OV)</label>
-                                    <input type="text" id="rcOrden" value="${r.numero_orden || ''}" placeholder="Ej: OV-12345" ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>
+                                    <label>N° Orden de Venta (OV) *</label>
+                                    <input type="text" id="rcOrden" value="${r.numero_orden || ''}" required placeholder="Ej: OV-12345" ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>
                                 </div>
                                 <div></div>
                             </div>
@@ -330,7 +330,7 @@ const Reclamos = {
                             <!-- TABLA DE ITEMS -->
                             <div style="margin-top:14px">
                                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                                    <label style="margin:0;font-size:12px;font-weight:700;color:#1e293b">Items del Reclamo</label>
+                                    <label style="margin:0;font-size:12px;font-weight:700;color:#1e293b">Items del Reclamo *</label>
                                     ${canCreate ? '<button type="button" onclick="App.modules.reclamos.addItem()" class="btn btn-accent" style="padding:5px 12px;font-size:11px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar Item</button>' : ''}
                                 </div>
                                 <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px">
@@ -820,6 +820,22 @@ const Reclamos = {
 
         // Sincronizar todos los items desde la tabla
         const items = this._getItems();
+
+        // Validar campos obligatorios solo al crear
+        if (!this._editingId) {
+            const cliente = document.getElementById('rcCliente').value.trim();
+            const ov = document.getElementById('rcOrden').value.trim();
+            const detalle = document.getElementById('rcDetalle').value.trim();
+            const errores = [];
+            if (!cliente) errores.push('Cliente');
+            if (!ov) errores.push('N° Orden de Venta');
+            if (!detalle) errores.push('Detalle del Reclamo');
+            if (items.length === 0) errores.push('Al menos 1 Item');
+            if (errores.length > 0) {
+                App.toast('Campos obligatorios: ' + errores.join(', '), 'error');
+                return;
+            }
+        }
 
         const data = {
             cliente: document.getElementById('rcCliente').value,
