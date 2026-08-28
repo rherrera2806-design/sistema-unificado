@@ -1115,17 +1115,24 @@ const Reclamos = {
         const r = this._data.find(x => x.id === id);
         if (!r) return;
 
-        if (typeof window.jspdf === 'undefined') {
-            await new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
-                s.onload = resolve;
-                s.onerror = reject;
-                document.head.appendChild(s);
-            });
+        try {
+            if (typeof window.jspdf === 'undefined') {
+                await new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+                    s.onload = resolve;
+                    s.onerror = () => reject(new Error('No se pudo cargar jsPDF'));
+                    document.head.appendChild(s);
+                    setTimeout(() => reject(new Error('Timeout cargando jsPDF')), 8000);
+                });
+            }
+        } catch(e) {
+            App.toast('Error: ' + e.message, 'error');
+            return null;
         }
 
-        const { jsPDF } = window.jspdf;
+        try {
+            const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         const pw = doc.internal.pageSize.getWidth();
         const ph = doc.internal.pageSize.getHeight();
@@ -1335,29 +1342,36 @@ const Reclamos = {
         doc.save('Informe_Reclamo_' + (r.numero_reclamo || id) + '.pdf');
         App.toast('Informe PDF generado');
         return doc;
+        } catch(e) {
+            App.toast('Error al generar PDF: ' + e.message, 'error');
+            console.error('generarPDF error:', e);
+            return null;
+        }
     },
 
     async enviarEmail(id) {
         const r = this._data.find(x => x.id === id);
         if (!r) return;
 
-        const doc = await this.generarPDF(id);
-        if (!doc) return;
+        try {
+            const subject = encodeURIComponent('Informe de Reclamo N° ' + (r.numero_reclamo || id) + ' — ' + (r.cliente || ''));
+            const body = encodeURIComponent(
+                'Estimado(a),\n\n' +
+                'Adjunto informe de reclamo N° ' + (r.numero_reclamo || id) + ' correspondiente al cliente ' + (r.cliente || '-') + '.\n\n' +
+                'Folio: #' + (r.numero_reclamo || id) + '\n' +
+                'N° OV: ' + (r.numero_orden || '-') + '\n' +
+                'Resolución: ' + (r.resolucion || 'Pendiente') + '\n\n' +
+                'Quedo atento a cualquier consulta.\n\n' +
+                'Saludos cordiales,\n' +
+                (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || '')
+            );
 
-        const subject = encodeURIComponent('Informe de Reclamo N° ' + (r.numero_reclamo || id) + ' — ' + (r.cliente || ''));
-        const body = encodeURIComponent(
-            'Estimado(a),\n\n' +
-            'Adjunto informe de reclamo N° ' + (r.numero_reclamo || id) + ' correspondiente al cliente ' + (r.cliente || '-') + '.\n\n' +
-            'Folio: #' + (r.numero_reclamo || id) + '\n' +
-            'N° OV: ' + (r.numero_orden || '-') + '\n' +
-            'Resolución: ' + (r.resolucion || 'Pendiente') + '\n\n' +
-            'Quedo atento a cualquier consulta.\n\n' +
-            'Saludos cordiales,\n' +
-            (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || '')
-        );
-
-        window.open('mailto:?subject=' + subject + '&body=' + body, '_blank');
-        App.toast('Se abrió Outlook. Adjunte el PDF generado.', 'info');
+            window.open('mailto:?subject=' + subject + '&body=' + body, '_blank');
+            App.toast('Se abrió el cliente de correo.', 'info');
+        } catch(e) {
+            App.toast('Error al abrir correo: ' + e.message, 'error');
+            console.error('enviarEmail error:', e);
+        }
     },
 
     fmtDate(d) {
