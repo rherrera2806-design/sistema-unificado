@@ -280,6 +280,20 @@ const Reclamos = {
             '<option value="' + v + '"' + (r.resolucion === v ? ' selected' : '') + '>' + (v || 'Seleccionar...') + '</option>'
         ).join('');
 
+        // Auto-cambiar estado a EN REVISION al editar si esta PENDIENTE
+        if (id && r.estado === 'PENDIENTE') {
+            try {
+                await authFetch('/api/reclamos/' + id + '/estado', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado: 'EN REVISION' })
+                });
+                r.estado = 'EN REVISION';
+                const idx = this._data.findIndex(x => x.id === id);
+                if (idx >= 0) this._data[idx].estado = 'EN REVISION';
+            } catch(e) {}
+        }
+
 
         container.innerHTML = `
             <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden">
@@ -849,6 +863,21 @@ const Reclamos = {
             observacion_analisis: document.getElementById('rcObservacion').value,
             resolucion: document.getElementById('rcResolucion').value
         };
+
+        // Auto-finalizar si se selecciona resolución
+        const resolucion = data.resolucion;
+        if (resolucion && this._editingId) {
+            const actual = this._data.find(x => x.id === this._editingId);
+            if (actual && actual.estado !== 'FINALIZADO') {
+                try {
+                    await authFetch('/api/reclamos/' + this._editingId + '/estado', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ estado: 'FINALIZADO' })
+                    });
+                } catch(e) {}
+            }
+        }
 
         try {
             if (this._editingId) {
