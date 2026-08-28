@@ -198,6 +198,7 @@ const Reclamos = {
             html += '<button onclick="App.modules.reclamos.showHistorial(' + r.id + ')" class="btn btn-sm btn-outline" style="margin-right:4px" title="Historial"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>';
             if (r.estado === 'FINALIZADO') {
                 html += '<button onclick="App.modules.reclamos.generarPDF(' + r.id + ')" class="btn btn-sm" style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;margin-right:4px" title="Generar Informe PDF"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> PDF</button>';
+                html += '<button onclick="App.modules.reclamos.enviarEmail(' + r.id + ')" class="btn btn-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;margin-right:4px" title="Enviar por Email"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Mail</button>';
             }
             html += '<button onclick="App.modules.reclamos.eliminar(' + r.id + ')" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
             html += '</td></tr>';
@@ -228,6 +229,7 @@ const Reclamos = {
             html += '<button onclick="App.modules.reclamos.showHistorial(' + r.id + ')" class="btn btn-sm btn-outline" style="flex:1">Historial</button>';
             if (r.estado === 'FINALIZADO') {
                 html += '<button onclick="App.modules.reclamos.generarPDF(' + r.id + ')" class="btn btn-sm" style="flex:1;background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe">PDF</button>';
+                html += '<button onclick="App.modules.reclamos.enviarEmail(' + r.id + ')" class="btn btn-sm" style="flex:1;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0">Mail</button>';
             }
             html += '<button onclick="App.modules.reclamos.eliminar(' + r.id + ')" class="btn btn-sm btn-danger">Eliminar</button>';
             html += '</div></div>';
@@ -1081,115 +1083,236 @@ const Reclamos = {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         const pw = doc.internal.pageSize.getWidth();
-        let y = 15;
+        const ph = doc.internal.pageSize.getHeight();
+        const mx = 15;
+        let y = 0;
 
-        doc.setFontSize(18);
+        // ── ENCABEZADO CON BORDE INFERIOR ──
+        doc.setFillColor(30, 58, 95);
+        doc.rect(0, 0, pw, 32, 'F');
+        doc.setTextColor(255);
+        doc.setFontSize(20);
         doc.setFont('helvetica', 'bold');
-        doc.text('INFORME DE RECLAMO', pw / 2, y, { align: 'center' });
-        y += 8;
-        doc.setFontSize(11);
+        doc.text('TEMPLAGLASS', mx, 15);
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100);
-        doc.text('Folio #' + (r.numero_reclamo || id), pw / 2, y, { align: 'center' });
-        y += 4;
-        doc.text('Estado: ' + (r.estado || ''), pw / 2, y, { align: 'center' });
-        y += 10;
+        doc.text('Soluciones en Vidrio Templado', mx, 21);
+        doc.setFontSize(18);
+        doc.text('INFORME DE RECLAMO', pw - mx, 15, { align: 'right' });
+        doc.setFontSize(10);
+        doc.text('Folio N° ' + (r.numero_reclamo || id), pw - mx, 21, { align: 'right' });
+        y = 38;
 
-        doc.setDrawColor(200);
-        doc.line(15, y, pw - 15, y);
+        // ── LÍNEA SEPARADORA ──
+        doc.setDrawColor(30, 58, 95);
+        doc.setLineWidth(0.5);
+        doc.line(mx, y, pw - mx, y);
         y += 8;
 
+        // ── FECHA Y ESTADO ──
+        doc.setTextColor(100);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Fecha de emisión: ' + new Date().toLocaleDateString('es-CL', { year: 'numeric', month: 'long', day: 'numeric' }), mx, y);
+        doc.setFont('helvetica', 'bold');
+        const estadoColor = r.estado === 'FINALIZADO' ? [5, 150, 105] : r.estado === 'EN REVISION' ? [30, 64, 175] : [146, 64, 14];
+        doc.setTextColor(...estadoColor);
+        doc.text('Estado: ' + (r.estado || ''), pw - mx, y, { align: 'right' });
+        y += 8;
+
+        // ── DATOS DEL CLIENTE ──
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(mx, y, pw - mx * 2, 28, 2, 2, 'F');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 95);
+        doc.text('DATOS DEL CLIENTE', mx + 4, y + 6);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60);
+        doc.setFontSize(9);
+        doc.text('Cliente:', mx + 4, y + 13);
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor(0);
-        doc.setFontSize(10);
+        doc.text(String(r.cliente || '-'), mx + 28, y + 13);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60);
+        doc.text('N° OV:', mx + 4, y + 20);
+        doc.text(String(r.numero_orden || '-'), mx + 28, y + 20);
+        doc.text('Fecha Ingreso:', pw / 2, y + 13);
+        doc.text(this.fmtDateTime(r.fecha_ingreso), pw / 2 + 30, y + 13);
+        doc.text('Registrado por:', pw / 2, y + 20);
+        doc.text(String(r.responsable_ingreso || '-'), pw / 2 + 30, y + 20);
+        y += 34;
+
+        // ── DESCRIPCIÓN DEL RECLAMO ──
         doc.setFont('helvetica', 'bold');
-        doc.text('DATOS GENERALES', 15, y);
-        y += 6;
+        doc.setFontSize(9);
+        doc.setTextColor(30, 58, 95);
+        doc.text('DESCRIPCIÓN DEL RECLAMO', mx, y);
+        y += 5;
+        doc.setDrawColor(30, 58, 95);
+        doc.setLineWidth(0.3);
+        doc.line(mx, y, pw - mx, y);
+        y += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(60);
+        const detLines = doc.splitTextToSize(r.detalle_reclamo || 'Sin detalle', pw - mx * 2);
+        doc.text(detLines, mx, y);
+        y += detLines.length * 4 + 6;
 
-        const addField = (label, val) => {
-            doc.setFont('helvetica', 'bold');
-            doc.text(label + ':', 15, y);
-            doc.setFont('helvetica', 'normal');
-            doc.text(String(val || '-'), 55, y);
-            y += 5;
-        };
-
-        addField('Cliente', r.cliente);
-        addField('N° Orden de Venta', r.numero_orden);
-        addField('Fecha Ingreso', this.fmtDateTime(r.fecha_ingreso));
-        addField('Subido por', r.responsable_ingreso);
-        y += 3;
-
+        // ── ITEMS ──
         doc.setFont('helvetica', 'bold');
-        doc.text('ITEMS DEL RECLAMO', 15, y);
-        y += 6;
+        doc.setFontSize(9);
+        doc.setTextColor(30, 58, 95);
+        doc.text('ITEMS AFECTADOS', mx, y);
+        y += 5;
+        doc.line(mx, y, pw - mx, y);
+        y += 5;
 
         const items = Array.isArray(r.items) ? r.items : [];
         if (items.length > 0) {
             const cols = ['#', 'Código', 'Descripción', 'Ancho', 'Alto', 'Espesor', 'm²', 'Kg'];
             const widths = [10, 25, 55, 20, 20, 20, 18, 18];
-            let x = 15;
-            doc.setFontSize(8);
+
+            doc.setFillColor(30, 58, 95);
+            doc.rect(mx, y - 4, pw - mx * 2, 7, 'F');
+            doc.setTextColor(255);
+            doc.setFontSize(7);
             doc.setFont('helvetica', 'bold');
-            cols.forEach((c, i) => {
-                doc.text(c, x, y);
-                x += widths[i];
-            });
-            y += 4;
+            let x = mx + 1;
+            cols.forEach((c, i) => { doc.text(c, x, y); x += widths[i]; });
+            y += 5;
+
+            doc.setTextColor(40);
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
+            doc.setFontSize(7);
             items.forEach((it, i) => {
-                x = 15;
+                if (i % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(mx, y - 4, pw - mx * 2, 5, 'F'); }
+                x = mx + 1;
                 const row = [String(i + 1), it.codigo || '', it.descripcion || '', String(it.ancho || ''), String(it.alto || ''), String(it.espesor || ''), String(it.m2 || ''), String(it.kg || '')];
-                row.forEach((v, j) => {
-                    doc.text(v.substring(0, 30), x, y);
-                    x += widths[j];
-                });
-                y += 4;
+                row.forEach((v, j) => { doc.text(v.substring(0, 30), x, y); x += widths[j]; });
+                y += 5;
             });
         } else {
             doc.setFont('helvetica', 'italic');
-            doc.text('Sin items registrados', 15, y);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text('Sin items registrados', mx, y);
             y += 5;
         }
-        y += 3;
+        y += 6;
 
+        // ── ANÁLISIS Y RESOLUCIÓN (columnas) ──
+        const midX = pw / 2;
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.text('DETALLE DEL RECLAMO', 15, y);
-        y += 5;
-        doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        const detalleLines = doc.splitTextToSize(r.detalle_reclamo || '-', pw - 30);
-        doc.text(detalleLines, 15, y);
-        y += detalleLines.length * 4 + 4;
+        doc.setTextColor(30, 58, 95);
+        doc.text('ANÁLISIS TÉCNICO', mx, y);
+        doc.text('RESOLUCIÓN', midX + 5, y);
+        y += 5;
+        doc.line(mx, y, pw - mx, y);
+        y += 5;
 
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.text('RESOLUCIÓN', 15, y);
-        y += 5;
+        const colW = (pw - mx * 2 - 10) / 2;
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        addField('Responsable de Falla', r.responsable_falla);
-        addField('Motivo', r.motivo);
-        addField('Resolución', r.resolucion);
+        doc.setFontSize(8);
+        doc.setTextColor(60);
+
+        const addMiniField = (label, val, baseX, maxY) => {
+            doc.setFont('helvetica', 'bold');
+            doc.text(label + ':', baseX, y);
+            doc.setFont('helvetica', 'normal');
+            const valLines = doc.splitTextToSize(String(val || '-'), colW - 25);
+            doc.text(valLines, baseX + 25, y);
+            y += valLines.length * 3.5 + 1;
+        };
+
+        const yStart = y;
+        addMiniField('Responsable', r.responsable_falla, mx, yStart + colW);
+        addMiniField('Motivo', r.motivo, mx, yStart + colW);
+        y = yStart;
+        addMiniField('Resolución', r.resolucion, midX + 5, yStart + colW);
+        const yAfterRes = y;
+        y = Math.max(y, yAfterRes);
         y += 2;
 
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.text('ANÁLISIS TÉCNICO', 15, y);
-        y += 5;
+        // ── OBSERVACIONES ──
+        if (r.observacion_analisis) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(30, 58, 95);
+            doc.text('OBSERVACIONES / ACCIONES CORRECTIVAS', mx, y);
+            y += 5;
+            doc.line(mx, y, pw - mx, y);
+            y += 5;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(60);
+            const obsLines = doc.splitTextToSize(r.observacion_analisis, pw - mx * 2);
+            doc.text(obsLines, mx, y);
+            y += obsLines.length * 3.5 + 6;
+        }
+
+        // ── FOTOS ──
+        const fotos = Array.isArray(r.fotos) ? r.fotos : [];
+        if (fotos.length > 0 && y < ph - 60) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(30, 58, 95);
+            doc.text('EVIDENCIA FOTOGRÁFICA (' + fotos.length + ' foto(s))', mx, y);
+            y += 5;
+            doc.line(mx, y, pw - mx, y);
+            y += 5;
+
+            const photoW = 40;
+            const photoH = 30;
+            let px = mx;
+            for (let i = 0; i < fotos.length && y + photoH < ph - 20; i++) {
+                if (px + photoW > pw - mx) { px = mx; y += photoH + 4; }
+                try { doc.addImage(fotos[i], 'JPEG', px, y, photoW, photoH); } catch(e) {}
+                px += photoW + 5;
+            }
+            y += photoH + 8;
+        }
+
+        // ── PIE DE PÁGINA ──
+        doc.setDrawColor(30, 58, 95);
+        doc.setLineWidth(0.3);
+        doc.line(mx, ph - 18, pw - mx, ph - 18);
+        doc.setFontSize(7);
+        doc.setTextColor(130);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        const obsLines = doc.splitTextToSize(r.observacion_analisis || '-', pw - 30);
-        doc.text(obsLines, 15, y);
-        y += obsLines.length * 4 + 6;
+        doc.text('Templaglass — Soluciones en Vidrio Templado', mx, ph - 13);
+        doc.text('Documento generado automáticamente el ' + new Date().toLocaleString('es-CL'), pw - mx, ph - 13, { align: 'right' });
+        doc.text('Página 1', pw / 2, ph - 8, { align: 'center' });
 
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text('Generado: ' + new Date().toLocaleString('es-CL'), 15, doc.internal.pageSize.getHeight() - 10);
+        doc.save('Informe_Reclamo_' + (r.numero_reclamo || id) + '.pdf');
+        App.toast('Informe PDF generado');
+        return doc;
+    },
 
-        doc.save('Reclamo_' + (r.numero_reclamo || id) + '.pdf');
-        App.toast('PDF generado');
+    async enviarEmail(id) {
+        const r = this._data.find(x => x.id === id);
+        if (!r) return;
+
+        const doc = await this.generarPDF(id);
+        if (!doc) return;
+
+        const subject = encodeURIComponent('Informe de Reclamo N° ' + (r.numero_reclamo || id) + ' — ' + (r.cliente || ''));
+        const body = encodeURIComponent(
+            'Estimado(a),\n\n' +
+            'Adjunto informe de reclamo N° ' + (r.numero_reclamo || id) + ' correspondiente al cliente ' + (r.cliente || '-') + '.\n\n' +
+            'Folio: #' + (r.numero_reclamo || id) + '\n' +
+            'N° OV: ' + (r.numero_orden || '-') + '\n' +
+            'Resolución: ' + (r.resolucion || 'Pendiente') + '\n\n' +
+            'Quedo atento a cualquier consulta.\n\n' +
+            'Saludos cordiales,\n' +
+            (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || ''])
+        );
+
+        window.open('mailto:?subject=' + subject + '&body=' + body, '_blank');
+        App.toast('Se abrió Outlook. Adjunte el PDF generado.', 'info');
     },
 
     fmtDate(d) {

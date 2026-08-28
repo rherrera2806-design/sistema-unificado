@@ -42,6 +42,20 @@ async function ensureColumns() {
                 responsable VARCHAR(200) DEFAULT '', observacion TEXT DEFAULT '', created_at TIMESTAMP DEFAULT NOW()
             )`);
         }
+
+        // Migrar emails a nombres en responsable_ingreso
+        const tableCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='usuarios')`);
+        if (tableCheck.rows[0].exists) {
+            await query(`
+                UPDATE reclamos_devoluciones r
+                SET responsable_ingreso = u.nombre
+                FROM usuarios u
+                WHERE r.responsable_ingreso = u.email
+                  AND r.responsable_ingreso LIKE '%@%'
+                  AND u.nombre IS NOT NULL
+                  AND u.nombre != ''
+            `);
+        }
     } catch(e) { console.error('ensureColumns error:', e.message); }
 }
 
