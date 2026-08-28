@@ -326,14 +326,15 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     const armadoEstId = route.find(id => estMap[id] && estMap[id].nombre === 'Armado');
     if (!armadoEstId) continue;
 
-    // Buscar día donde Armado tenga capacidad para el total del grupo
+    // Buscar día donde Armado tenga capacidad para el total del grupo (acumulando)
     let drumFechaGrupo = null;
     for (let i = 0; i < dias; i++) {
       const d = new Date(fechaMinima + 'T00:00:00');
       d.setDate(d.getDate() + i);
       const fs = fmt(d);
       if (!esLaboral(fs)) continue;
-      if (cabeEnDia(armadoEstId, fs, totalM2Grupo) && cabeGrupoEnDia(fs, grupo, totalKgGrupo)) {
+      const actualArmado = cargaMap[fs + '|' + armadoEstId] || 0;
+      if ((actualArmado + totalM2Grupo) <= (estMap[armadoEstId]?.cap || Infinity) && cabeGrupoEnDia(fs, grupo, totalKgGrupo)) {
         drumFechaGrupo = fs;
         break;
       }
