@@ -35,7 +35,7 @@ const explosionBOM = async (r, recetaBomMap, materiaPrimaMap, materiasPrimas, fa
              nota, posicion, orden_compra, tipo_entrega, kilos, created_at, mecanizado_operaciones, reglas_extras_json, espesor_mm)
              VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28) RETURNING id`,
             [r.pedido, r.cliente, mp.codigo_mp, mp.nombre || r.descripcion, r.ancho, r.alto, m2,
-             comp.id, r.tipo_venta, r.item, comp.cantidad || 1, familia?.id || null, r.codigo,
+             comp.id, r.tipo_venta, r.item, CAST(comp.cantidad AS INTEGER), familia?.id || null, r.codigo,
              costo_hh, costo_energia, costo_mp_total, costo_total, r.precio_unitario, margen,
              r.nota, r.posicion, r.orden_compra, r.tipo_entrega, Number(r.kilos || 0),
              r.fecha_creacion || new Date().toISOString(), mecanizadoOperaciones || null,
