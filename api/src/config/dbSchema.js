@@ -365,7 +365,7 @@ async function initDB() {
     await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS grupo VARCHAR(100)`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS espesor_mm INTEGER DEFAULT 6`);
+    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS espesor_mm NUMERIC(5,2) DEFAULT 6`);
     await query(`
         UPDATE produccion_ordenes o
         SET espesor_mm = COALESCE(
@@ -373,6 +373,7 @@ async function initDB() {
         )
         WHERE (o.espesor_mm IS NULL OR o.espesor_mm = 0)
     `);
+    await query(`ALTER TABLE produccion_ordenes ALTER COLUMN espesor_mm TYPE NUMERIC(5,2) USING espesor_mm::NUMERIC`);
     await query(`CREATE TABLE IF NOT EXISTS produccion_capacidad_grupo (
         id SERIAL PRIMARY KEY, grupo VARCHAR(100) UNIQUE NOT NULL,
         capacidad_kg_dia DECIMAL(10,2) DEFAULT 0, activo BOOLEAN DEFAULT TRUE,

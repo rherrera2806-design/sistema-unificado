@@ -89,7 +89,7 @@ const mergearFilas = (rows) => {
         const row = rows[i];
         const codigo = String(row['codigo'] || row['Codigo'] || row['CODIGO'] || row['ItemCode'] || '').trim();
         const pedido = String(row['pedido'] || row['Pedido'] || row['PEDIDO'] || row['DocEntry'] || '').trim();
-        const item = Math.round(Number(row['item'] || row['Item'] || row['ITEM'] || i + 1));
+        const item = Number(row['item'] || row['Item'] || row['ITEM'] || i + 1);
         const key = `${pedido}|${item}|${codigo}`;
         const ancho = Number(row['anho'] || row['ancho'] || row['Ancho'] || row['ANHO'] || row['ANCHO'] || row['Width'] || row['width'] || row['Largo'] || row['largo'] || 0);
         const alto = Number(row['alto'] || row['Alto'] || row['ALTO'] || row['Height'] || row['height'] || row['Profundidad'] || row['profundidad'] || 0);
