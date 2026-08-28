@@ -56,7 +56,7 @@ router.get('/api/taller/mermas', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.post('/api/taller/backfill-familia', canUpdate, async (req, res, next) => {
+router.post('/api/taller/backfill-familia', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
         const result = await query(`
@@ -71,7 +71,7 @@ router.post('/api/taller/backfill-familia', canUpdate, async (req, res, next) =>
     } catch (e) { next(e); }
 });
 
-router.post('/api/taller/backfill-espesor', canUpdate, async (req, res, next) => {
+router.post('/api/taller/backfill-espesor', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
         const result = await query(`
@@ -85,7 +85,7 @@ router.post('/api/taller/backfill-espesor', canUpdate, async (req, res, next) =>
     } catch (e) { next(e); }
 });
 
-router.post('/api/taller/backfill-pasos-termopanel', canUpdate, async (req, res, next) => {
+router.post('/api/taller/backfill-pasos-termopanel', async (req, res, next) => {
     try {
         const { query } = require('../config/database');
 
