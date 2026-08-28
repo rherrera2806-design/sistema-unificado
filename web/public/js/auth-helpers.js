@@ -35,7 +35,8 @@ function getAuthHeaders() {
     return {
         'Content-Type': 'application/json',
         'X-User-Permisos': (u.permisos || []).join(','),
-        'X-User-Email': u.email || ''
+        'X-User-Email': u.email || '',
+        'X-User-Name': u.nombre || u.email || ''
     };
 }
 
