@@ -1109,7 +1109,7 @@ const Reclamos = {
         App.showModal(bodyHtml, { title: 'Historial del Reclamo #' + id });
     },
 
-    async generarPDF(id) {
+    async generarPDF(id, soloCrear) {
         const r = this._data.find(x => x.id === id);
         if (!r) return;
 
@@ -1337,8 +1337,10 @@ const Reclamos = {
         doc.text('Documento generado automáticamente el ' + new Date().toLocaleString('es-CL'), pw - mx, ph - 13, { align: 'right' });
         doc.text('Página 1', pw / 2, ph - 8, { align: 'center' });
 
-        doc.save('Informe_Reclamo_' + (r.numero_reclamo || id) + '.pdf');
-        App.toast('Informe PDF generado');
+        if (!soloCrear) {
+            doc.save('Informe_Reclamo_' + (r.numero_reclamo || id) + '.pdf');
+            App.toast('Informe PDF generado');
+        }
         return doc;
         } catch(e) {
             App.toast('Error al generar PDF: ' + e.message, 'error');
@@ -1352,10 +1354,6 @@ const Reclamos = {
         if (!r) return;
 
         try {
-            const doc = await this.generarPDF(id);
-            if (!doc) return;
-
-            const pdfB64 = doc.output('datauristring');
             const asunto = 'Informe de Reclamo N° ' + (r.numero_reclamo || id) + ' — ' + (r.cliente || '');
             const cuerpo = 'Estimado(a),\n\n'
                 + 'Adjunto informe de reclamo N° ' + (r.numero_reclamo || id) + ' correspondiente al cliente ' + (r.cliente || '-') + '.\n\n'
@@ -1366,31 +1364,15 @@ const Reclamos = {
                 + 'Saludos cordiales,\n'
                 + (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || '');
 
-            const outlookWindow = window.open('', '_blank');
-            outlookWindow.document.write(`
-                <html><head><title>Abriendo Outlook...</title></head>
-                <body style="font-family:Segoe UI,sans-serif;padding:40px;text-align:center">
-                    <h3>Preparando correo...</h3>
-                    <p>El PDF se generó: <strong>Informe_Reclamo_${r.numero_reclamo || id}.pdf</strong></p>
-                    <p>Se abrirá Outlook en un momento.</p>
-                    <p style="color:#666;font-size:13px;margin-top:20px">Si Outlook no se abre, arrastra el PDF desde tu carpeta de descargas al correo.</p>
-                </body></html>
-            `);
-
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const emailUser = user.email || '';
             const ccEmails = 'fdiaz@templaglass.cl,adiaz@templaglass.cl,rherrera@templaglass.cl,lvallejos@templaglass.cl,rgonzalez@templaglass.cl,bodega@templaglass.cl,despacho@templaglass.cl,aosorio@templaglass.cl,conta01@templaglass.cl,dvillaroel@templaglass.cl';
 
-            const link = document.createElement('a');
-            link.href = 'mailto:' + encodeURIComponent(emailUser) + '?cc=' + encodeURIComponent(ccEmails) + '&subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
-            link.target = '_blank';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            window.location.href = 'mailto:' + emailUser + '?cc=' + encodeURIComponent(ccEmails) + '&subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
 
-            App.toast('PDF generado. Adjúntalo al correo que se abrió.', 'info');
+            App.toast('Correo abierto. Adjunte el PDF desde Descargas.', 'info');
         } catch(e) {
-            App.toast('Error al preparar correo: ' + e.message, 'error');
+            App.toast('Error al abrir correo: ' + e.message, 'error');
             console.error('enviarEmail error:', e);
         }
     },
