@@ -37,6 +37,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             o.cliente,
             o.codigo_producto,
             COALESCE(o.descripcion, pc.descripcion) as detalle_sap,
+            COALESCE(pc_padre.descripcion, '') as descripcion_padre,
             o.ancho,
             o.alto,
             o.metros_cuadrados as m2,
@@ -92,6 +93,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         FROM produccion_ordenes o
         LEFT JOIN familias_producto f ON o.familia_id = f.id
         LEFT JOIN produccion_codigos pc ON o.codigo_producto = pc.codigo
+        LEFT JOIN produccion_codigos pc_padre ON o.codigo_padre = pc_padre.codigo
         ${where}
         ORDER BY o.fecha_entrega_pactada, o.grupo, o.pedido_sap_id, o.item_numero
     `, params);
@@ -117,6 +119,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             cliente: r.cliente,
             codigo: r.codigo_producto,
             detalle_sap: r.detalle_sap || r.descripcion_completa || '',
+            descripcion_padre: r.descripcion_padre || '',
             ancho: r.ancho,
             alto: r.alto,
             m2: Number(r.m2) || 0,
