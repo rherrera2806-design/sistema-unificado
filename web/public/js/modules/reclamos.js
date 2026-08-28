@@ -501,8 +501,22 @@ const Reclamos = {
         const preview = document.getElementById('rcFotosPreview');
         if (!preview) return;
         preview.innerHTML = fotos.map((f, i) =>
-            '<img src="' + f + '" class="rc-foto-thumb" onclick="App.modules.reclamos.removeFoto(' + i + ')" title="Click para eliminar">'
+            '<div style="position:relative;display:inline-block">'
+            + '<img src="' + f + '" class="rc-foto-thumb" onclick="App.modules.reclamos.verFoto(' + i + ')" title="Click para ver">'
+            + '<button type="button" onclick="event.stopPropagation();App.modules.reclamos.removeFoto(' + i + ')" style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:#ef4444;color:white;border:2px solid white;font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.3)" title="Eliminar foto">&times;</button>'
+            + '</div>'
         ).join('');
+    },
+
+    verFoto(idx) {
+        let fotos = [];
+        try { fotos = JSON.parse(document.getElementById('rcFotosData').value || '[]'); } catch(e) {}
+        const src = fotos[idx];
+        if (!src) return;
+        App.showModal(
+            '<div style="text-align:center"><img src="' + src + '" style="max-width:100%;max-height:70vh;border-radius:8px"></div>',
+            { title: 'Foto ' + (idx + 1) + ' de ' + fotos.length }
+        );
     },
 
     removeFoto(idx) {
