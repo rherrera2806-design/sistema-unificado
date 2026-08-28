@@ -2,31 +2,24 @@ const express = require('express');
 const router = express.Router();
 const taller = require('../services/taller');
 const { autoAsignarPendientes } = require('../services/planificacionAuto');
-const { requireAnyPerm } = require('../middleware/permisos');
 
-const MOD = 'taller';
-const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
-const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
-const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
-const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
-
-router.get('/api/taller/estaciones', canView, async (req, res, next) => {
+router.get('/api/taller/estaciones', async (req, res, next) => {
     try { res.json(await taller.getEstacionesConCarga()); }
     catch (e) { next(e); }
 });
 
-router.get('/api/taller/colaxestacion/:id', canView, async (req, res, next) => {
+router.get('/api/taller/colaxestacion/:id', async (req, res, next) => {
     try { res.json(await taller.getColaPorEstacion(req.params.id)); }
     catch (e) { next(e); }
 });
 
-router.post('/api/taller/iniciar', canUpdate, async (req, res, next) => {
+router.post('/api/taller/iniciar', async (req, res, next) => {
     if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
     try { await taller.iniciarPaso(req.body.paso_id); res.json({ ok: true }); }
     catch (e) { next(e); }
 });
 
-router.post('/api/taller/finalizar', canUpdate, async (req, res, next) => {
+router.post('/api/taller/finalizar', async (req, res, next) => {
     if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
     try {
         const result = await taller.finalizarPaso(req.body.paso_id);
@@ -35,7 +28,7 @@ router.post('/api/taller/finalizar', canUpdate, async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.post('/api/taller/merma', canCreate, async (req, res, next) => {
+router.post('/api/taller/merma', async (req, res, next) => {
     if (!req.body.paso_id || !req.body.causa) return res.status(400).json({ error: 'paso_id y causa requeridos' });
     try {
         const userEmail = req.headers['x-user-email'] || req.body.operario || 'Operario';
@@ -56,7 +49,7 @@ router.post('/api/taller/merma', canCreate, async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/taller/mermas', canView, async (req, res, next) => {
+router.get('/api/taller/mermas', async (req, res, next) => {
     try {
         const hoy = req.query.fecha || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
         res.json(await taller.getMermas(hoy));
