@@ -1364,8 +1364,7 @@ const Reclamos = {
                 + 'Saludos cordiales,\n'
                 + (JSON.parse(localStorage.getItem('unified_user') || '{}').nombre || '');
 
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const emailUser = user.email || '';
+            const emailUser = r.correo_electronico || JSON.parse(localStorage.getItem('unified_user') || '{}').email || '';
             const ccEmails = 'fdiaz@templaglass.cl,adiaz@templaglass.cl,rherrera@templaglass.cl,lvallejos@templaglass.cl,rgonzalez@templaglass.cl,bodega@templaglass.cl,despacho@templaglass.cl,aosorio@templaglass.cl,conta01@templaglass.cl,dvillaroel@templaglass.cl';
 
             window.location.href = 'mailto:' + emailUser + '?cc=' + encodeURIComponent(ccEmails) + '&subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);

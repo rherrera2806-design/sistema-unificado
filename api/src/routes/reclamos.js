@@ -35,6 +35,9 @@ async function ensureColumns() {
             await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
             await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
         }
+        if (!existing.includes('correo_electronico')) {
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN correo_electronico VARCHAR(255) DEFAULT ''`);
+        }
         const histCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')`);
         if (!histCheck.rows[0].exists) {
             await query(`CREATE TABLE IF NOT EXISTS reclamos_historial (
@@ -57,6 +60,21 @@ async function ensureColumns() {
                       AND r.responsable_ingreso LIKE '%@%'
                       AND u.nombre IS NOT NULL
                       AND u.nombre != ''
+                `);
+            }
+        }
+        // Migrar correo_electronico para registros existentes
+        if (!_migrated) {
+            const emailCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='reclamos_devoluciones' AND column_name='correo_electronico')`);
+            if (emailCheck.rows[0].exists) {
+                await query(`
+                    UPDATE reclamos_devoluciones r
+                    SET correo_electronico = u.email
+                    FROM usuarios u
+                    WHERE r.responsable_ingreso = u.nombre
+                      AND (r.correo_electronico IS NULL OR r.correo_electronico = '')
+                      AND u.email IS NOT NULL
+                      AND u.email != ''
                 `);
             }
         }
@@ -384,14 +402,14 @@ router.post('/api/reclamos', perms.create, async (req, res) => {
         const items = Array.isArray(d.items) ? d.items : [];
         const result = await query(
             `INSERT INTO reclamos_devoluciones (
-                responsable_ingreso, cliente, numero_orden, items,
+                responsable_ingreso, correo_electronico, cliente, numero_orden, items,
                 descripcion, detalle_reclamo, fotos, estado
             ) VALUES (
-                $1, $2, $3, $4,
-                $5, $6, $7, 'PENDIENTE'
+                $1, $2, $3, $4, $5,
+                $6, $7, $8, 'PENDIENTE'
             ) RETURNING *`,
             [
-                userName || user, d.cliente || '', d.numero_orden || '',
+                userName || user, user, d.cliente || '', d.numero_orden || '',
                 JSON.stringify(items), d.descripcion || '', d.detalle_reclamo || '',
                 JSON.stringify(d.fotos || [])
             ]
