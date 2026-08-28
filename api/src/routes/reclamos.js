@@ -173,6 +173,28 @@ router.get('/api/reclamos/setup', async (req, res) => {
             await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
             await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
         }
+        if (!existing.includes('correo_electronico')) {
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN correo_electronico VARCHAR(255) DEFAULT ''`);
+        }
+
+        // Migrar correo_electronico para registros existentes
+        if (existing.includes('correo_electronico')) {
+            await query(`
+                UPDATE reclamos_devoluciones r
+                SET correo_electronico = u.email
+                FROM usuarios u
+                WHERE r.responsable_ingreso = u.nombre
+                  AND (r.correo_electronico IS NULL OR r.correo_electronico = '')
+                  AND u.email IS NOT NULL
+                  AND u.email != ''
+            `);
+            await query(`
+                UPDATE reclamos_devoluciones
+                SET correo_electronico = responsable_ingreso
+                WHERE (correo_electronico IS NULL OR correo_electronico = '')
+                  AND responsable_ingreso LIKE '%@%'
+            `);
+        }
 
         // Migrar fecha_ingreso de DATE a TIMESTAMP si es necesario
         const colType = await query(`
