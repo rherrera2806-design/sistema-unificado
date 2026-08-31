@@ -273,6 +273,8 @@ const Reclamos = {
 
         const container = document.getElementById('rc-form-container');
         container.style.display = 'block';
+        const listEl = document.getElementById('rc-list-container');
+        if (listEl) listEl.style.display = 'none';
 
         // Cargar responsables si no están
         if (this._responsables.length === 0) {
@@ -358,16 +360,18 @@ const Reclamos = {
                                         <thead>
                                             <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                                                 <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:30px">#</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:80px">Item</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:100px">Código</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:220px">Descripción</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Ancho</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Alto</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Espesor</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">m²</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Kg</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:80px">V. Unitario</th>
-                                                <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:40px"></th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Item</th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:90px">Código</th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:160px">Descripción</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:50px">Cant.</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Ancho</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Alto</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:55px">Espesor</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:55px">m²</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:55px">Kg</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">V. Unitario</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Costo Total</th>
+                                                <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:30px"></th>
                                             </tr>
                                         </thead>
                                         <tbody id="rcItemsBody"></tbody>
@@ -477,6 +481,8 @@ const Reclamos = {
             container.style.display = 'none';
             container.innerHTML = '';
         }
+        const listEl = document.getElementById('rc-list-container');
+        if (listEl) listEl.style.display = '';
         this._editingId = null;
     },
 
@@ -565,7 +571,7 @@ const Reclamos = {
     _lookupTimers: {},
 
     _itemDefaults() {
-        return { item: '', codigo: '', descripcion: '', ancho: 0, alto: 0, espesor: 0, m2: 0, kg: 0, valor_unitario: 0 };
+        return { item: '', codigo: '', descripcion: '', cantidad: 1, ancho: 0, alto: 0, espesor: 0, m2: 0, kg: 0, valor_unitario: 0 };
     },
 
     _getItems() {
@@ -613,6 +619,7 @@ const Reclamos = {
         items[idx].item = get('rcItem_' + idx);
         items[idx].codigo = get('rcCodigo_' + idx);
         items[idx].descripcion = get('rcDesc_' + idx);
+        items[idx].cantidad = this._parse(get('rcCantidad_' + idx)) || 1;
         items[idx].ancho = this._parse(get('rcAncho_' + idx));
         items[idx].alto = this._parse(get('rcAlto_' + idx));
         items[idx].espesor = this._parse(get('rcEspesor_' + idx));
@@ -629,16 +636,25 @@ const Reclamos = {
         const ancho = this._parse(document.getElementById('rcAncho_' + idx)?.value);
         const alto = this._parse(document.getElementById('rcAlto_' + idx)?.value);
         const espesor = this._parse(document.getElementById('rcEspesor_' + idx)?.value);
+        const cantidad = this._parse(document.getElementById('rcCantidad_' + idx)?.value) || 1;
         it.ancho = ancho;
         it.alto = alto;
         it.espesor = espesor;
-        it.m2 = ancho && alto ? parseFloat(((ancho * alto) / 1000000).toFixed(4)) : 0;
-        it.kg = it.m2 && espesor ? parseFloat((it.m2 * espesor * 2.5).toFixed(2)) : 0;
+        it.cantidad = cantidad;
+        const m2Unit = ancho && alto ? parseFloat(((ancho * alto) / 1000000).toFixed(4)) : 0;
+        const kgUnit = m2Unit && espesor ? parseFloat((m2Unit * espesor * 2.5).toFixed(2)) : 0;
+        it.m2 = parseFloat((m2Unit * cantidad).toFixed(4));
+        it.kg = parseFloat((kgUnit * cantidad).toFixed(2));
         this._setItems(items);
         const m2El = document.getElementById('rcM2_' + idx);
         const kgEl = document.getElementById('rcKg_' + idx);
+        const ctEl = document.getElementById('rcCostoTotal_' + idx);
         if (m2El) m2El.value = it.m2 || '';
         if (kgEl) kgEl.value = it.kg || '';
+        if (ctEl) {
+            const total = (it.valor_unitario || 0) * cantidad;
+            ctEl.value = total ? this._fmtCLP(total) : '';
+        }
     },
 
     _onCodigoInput(idx) {
@@ -768,6 +784,11 @@ const Reclamos = {
             this._setItems(items);
         }
         input.value = raw ? this._fmtCLP(raw) : '';
+        const ctEl = document.getElementById('rcCostoTotal_' + idx);
+        if (ctEl) {
+            const total = raw * (items[idx]?.cantidad || 1);
+            ctEl.value = total ? this._fmtCLP(total) : '';
+        }
     },
 
     _onValorInput(idx) {
@@ -789,6 +810,11 @@ const Reclamos = {
         setVal('rcAlto_' + idx, it.alto);
         setVal('rcM2_' + idx, it.m2 || '');
         setVal('rcKg_' + idx, it.kg || '');
+        const ctEl = document.getElementById('rcCostoTotal_' + idx);
+        if (ctEl) {
+            const total = (it.valor_unitario || 0) * (it.cantidad || 1);
+            ctEl.value = total ? this._fmtCLP(total) : '';
+        }
     },
 
     renderItems() {
@@ -801,7 +827,7 @@ const Reclamos = {
         const inpBase = 'width:100%;box-sizing:border-box;padding:6px 8px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;font-family:inherit;';
 
         if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="padding:16px;text-align:center;color:#94a3b8;font-size:12px">Sin items. Haz clic en "Agregar Item" para comenzar.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="padding:16px;text-align:center;color:#94a3b8;font-size:12px">Sin items. Haz clic en "Agregar Item" para comenzar.</td></tr>';
             return;
         }
 
@@ -817,17 +843,20 @@ const Reclamos = {
             const onValorIn = 'App.modules.reclamos._onValorInput(' + i + ')';
             const onValorBl = 'App.modules.reclamos._onValorBlur(' + i + ')';
             const onDimBl = 'App.modules.reclamos._onDimBlur(' + i + ')';
+            const costoTotal = (it.valor_unitario || 0) * (it.cantidad || 1);
             return '<tr style="border-bottom:1px solid #f1f5f9">'
                 + '<td style="' + tdBase + 'text-align:center;padding:6px 4px;font-weight:700;color:#7c3aed;font-size:12px">' + (i + 1) + '</td>'
                 + '<td style="' + tdBase + '"><input id="rcItem_' + i + '" value="' + v(it.item) + '" style="' + inpBase + '" placeholder="#" oninput="' + onSync + '" ' + roInp + '></td>'
                 + '<td style="' + tdBase + '"><input id="rcCodigo_' + i + '" value="' + v(it.codigo) + '" style="' + inpBase + 'cursor:pointer" placeholder="🔍 Código SAP" readonly onclick="App.modules.reclamos._openCodigoSearch(' + i + ')"></td>'
                 + '<td style="' + tdBase + '"><input id="rcDesc_' + i + '" value="' + v(it.descripcion) + '" style="' + inpBase + 'background:#f8fafc" placeholder="Descripción" readonly></td>'
+                + '<td style="' + tdBase + '"><input id="rcCantidad_' + i + '" type="text" inputmode="numeric" value="' + v(it.cantidad || 1) + '" style="' + inpBase + 'text-align:right" placeholder="1" oninput="' + onCalc + '" ' + roInp + '></td>'
                 + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.ancho)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
                 + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="text" inputmode="numeric" value="' + v(this._fmt(it.alto)) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
                 + '<td style="' + tdBase + '"><input id="rcEspesor_' + i + '" type="text" inputmode="decimal" value="' + v(it.espesor || '') + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
                 + '<td style="' + tdBase + '"><input id="rcM2_' + i + '" type="text" value="' + v(it.m2 || '') + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
                 + '<td style="' + tdBase + '"><input id="rcKg_' + i + '" type="text" value="' + v(it.kg || '') + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
                 + '<td style="' + tdBase + '"><input id="rcValor_' + i + '" type="text" inputmode="numeric" value="' + v(it.valor_unitario ? this._fmtCLP(it.valor_unitario) : '') + '" style="' + inpBase + 'text-align:right" placeholder="$0" oninput="' + onValorIn + '" onblur="' + onValorBl + '" ' + roInp + '></td>'
+                + '<td style="' + tdBase + '"><input id="rcCostoTotal_' + i + '" type="text" value="' + v(costoTotal ? this._fmtCLP(costoTotal) : '') + '" style="' + inpBase + 'text-align:right;background:#f0fdf4;font-weight:600;color:#16a34a" readonly placeholder="$0"></td>'
                 + (canCreate ? '<td style="padding:4px 6px;text-align:center"><button type="button" onclick="App.modules.reclamos.removeItem(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>' : '<td></td>')
                 + '</tr>';
         }).join('');
