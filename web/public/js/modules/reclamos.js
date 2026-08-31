@@ -360,17 +360,17 @@ const Reclamos = {
                                         <thead>
                                             <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
                                                 <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:30px">#</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Item</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:90px">Código</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:160px">Descripción</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:50px">Cant.</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Ancho</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Alto</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:55px">Espesor</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:55px">m²</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:55px">Kg</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">V. Unitario</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Costo Total</th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:50px">Item</th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Código</th>
+                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b">Descripción</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">Cant.</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:48px">Ancho</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">Alto</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">Espesor</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">m²</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">Kg</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">V. Unit.</th>
+                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Costo Total</th>
                                                 <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:30px"></th>
                                             </tr>
                                         </thead>
