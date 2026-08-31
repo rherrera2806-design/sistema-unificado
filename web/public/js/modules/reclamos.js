@@ -1259,13 +1259,13 @@ const Reclamos = {
 
         const items = Array.isArray(r.items) ? r.items : [];
         if (items.length > 0) {
-            const cols = ['#', 'Código', 'Descripción', 'Ancho', 'Alto', 'Espesor', 'm²', 'Kg'];
-            const widths = [10, 25, 55, 20, 20, 20, 18, 18];
+            const cols = ['#', 'Código', 'Descripción', 'Cant.', 'Ancho', 'Alto', 'Espesor', 'm²', 'Kg', 'V.Unit.', 'Costo Total'];
+            const widths = [8, 22, 48, 12, 16, 16, 16, 15, 15, 18, 22];
 
             doc.setFillColor(30, 58, 95);
             doc.rect(mx, y - 4, pw - mx * 2, 7, 'F');
             doc.setTextColor(255);
-            doc.setFontSize(7);
+            doc.setFontSize(6.5);
             doc.setFont('helvetica', 'bold');
             let x = mx + 1;
             cols.forEach((c, i) => { doc.text(c, x, y); x += widths[i]; });
@@ -1273,14 +1273,29 @@ const Reclamos = {
 
             doc.setTextColor(40);
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7);
+            doc.setFontSize(6.5);
+            let totalGeneral = 0;
             items.forEach((it, i) => {
                 if (i % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(mx, y - 4, pw - mx * 2, 5, 'F'); }
                 x = mx + 1;
-                const row = [String(i + 1), it.codigo || '', it.descripcion || '', String(it.ancho || ''), String(it.alto || ''), String(it.espesor || ''), String(it.m2 || ''), String(it.kg || '')];
+                const costoTotal = (it.valor_unitario || 0) * (it.cantidad || 1);
+                totalGeneral += costoTotal;
+                const row = [String(i + 1), it.codigo || '', it.descripcion || '', String(it.cantidad || 1), String(it.ancho || ''), String(it.alto || ''), String(it.espesor || ''), String(it.m2 || ''), String(it.kg || ''), it.valor_unitario ? '$' + Number(it.valor_unitario).toLocaleString('es-CL') : '', costoTotal ? '$' + Number(costoTotal).toLocaleString('es-CL') : ''];
                 row.forEach((v, j) => { doc.text(v.substring(0, 30), x, y); x += widths[j]; });
                 y += 5;
             });
+            if (totalGeneral > 0) {
+                y += 1;
+                doc.setDrawColor(30, 58, 95);
+                doc.setLineWidth(0.3);
+                doc.line(mx, y - 1, pw - mx, y - 1);
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(7);
+                doc.setTextColor(30, 58, 95);
+                doc.text('COSTO TOTAL RECLAMO:', pw - mx - 60, y + 2);
+                doc.text('$' + Number(totalGeneral).toLocaleString('es-CL'), pw - mx, y + 2, { align: 'right' });
+                y += 5;
+            }
         } else {
             doc.setFont('helvetica', 'italic');
             doc.setFontSize(8);
