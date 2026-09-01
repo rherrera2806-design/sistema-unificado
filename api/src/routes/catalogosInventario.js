@@ -125,6 +125,11 @@ router.get('/api/inv/alertas', canViewInv, async (req, res, next) => {
     catch (e) { next(e); }
 });
 
+router.get('/api/inv/analytics', canViewInv, async (req, res, next) => {
+    try { res.json(await inventarioService.getAnalyticsInventario(req.query.meses || 6)); }
+    catch (e) { next(e); }
+});
+
 router.get('/api/inv/run-migration', canViewInv, async (req, res) => {
     try {
         const { query } = require('../config/database');

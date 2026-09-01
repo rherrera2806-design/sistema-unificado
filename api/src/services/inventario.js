@@ -182,4 +182,101 @@ async function getEstadisticasPorTipo() {
     }));
 }
 
-module.exports = { getMovimientos, crearMovimiento, editarMovimiento, eliminarMovimiento, limpiarMovimientos, getInventario, getStockPorDimension, getEstadisticas, getEstadisticasPorTipo };
+async function getAnalyticsInventario(meses = 6) {
+    const mesesNum = parseInt(meses) || 6;
+    const fechaDesde = new Date();
+    fechaDesde.setMonth(fechaDesde.getMonth() - mesesNum);
+    const fechaStr = fechaDesde.toISOString().split('T')[0];
+
+    const [rankingSalida, consumoMensual, planchasPorMes, stockActual, topDimensiones] = await Promise.all([
+        // Ranking de MP con más salidas
+        query(`
+            SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm,
+                COUNT(*) FILTER (WHERE m.tipo_movimiento = 'salida') as total_salidas,
+                COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as m2_salidos,
+                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as planchas_salidas
+            FROM movimientos m
+            JOIN materias_primas mp ON m.materia_prima_id = mp.id
+            WHERE m.fecha_hora >= $1
+            GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm
+            ORDER BY m2_salidos DESC
+        `, [fechaStr]),
+
+        // Consumo mensual por material
+        query(`
+            SELECT mp.codigo_mp, mp.nombre,
+                TO_CHAR(m.fecha_hora, 'YYYY-MM') as mes,
+                COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as m2_consumidos,
+                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as planchas_consumidas,
+                COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'entrada'), 0) as m2_entradas
+            FROM movimientos m
+            JOIN materias_primas mp ON m.materia_prima_id = mp.id
+            WHERE m.fecha_hora >= $1
+            GROUP BY mp.codigo_mp, mp.nombre, TO_CHAR(m.fecha_hora, 'YYYY-MM')
+            ORDER BY mp.nombre, mes
+        `, [fechaStr]),
+
+        // Planchas cortadas por mes (todas las salidas)
+        query(`
+            SELECT TO_CHAR(m.fecha_hora, 'YYYY-MM') as mes,
+                COUNT(*) as total_movimientos,
+                COALESCE(SUM(m.cantidad_planchas), 0) as total_planchas,
+                COALESCE(SUM(m.metros_cuadrados), 0) as total_m2
+            FROM movimientos m
+            WHERE m.tipo_movimiento = 'salida' AND m.fecha_hora >= $1
+            GROUP BY TO_CHAR(m.fecha_hora, 'YYYY-MM')
+            ORDER BY mes
+        `, [fechaStr]),
+
+        // Stock actual por material
+        query(`
+            SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual,
+                COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'entrada'), 0) as m2_entradas,
+                COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa'), 0) as m2_salidas,
+                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'entrada'), 0) as entradas,
+                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa'), 0) as salidas
+            FROM movimientos m
+            JOIN materias_primas mp ON m.materia_prima_id = mp.id
+            GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual
+            HAVING COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'entrada'), 0) > 0
+            ORDER BY mp.nombre
+        `),
+
+        // Top dimensiones más cortadas
+        query(`
+            SELECT m.ancho, m.alto,
+                mp.nombre as tipo_cristal,
+                COUNT(*) as veces_cortada,
+                COALESCE(SUM(m.cantidad_planchas), 0) as total_planchas,
+                COALESCE(SUM(m.metros_cuadrados), 0) as total_m2
+            FROM movimientos m
+            JOIN materias_primas mp ON m.materia_prima_id = mp.id
+            WHERE m.tipo_movimiento = 'salida' AND m.fecha_hora >= $1
+            GROUP BY m.ancho, m.alto, mp.nombre
+            ORDER BY total_m2 DESC
+            LIMIT 10
+        `, [fechaStr])
+    ]);
+
+    // Calcular autonomía por material
+    const stockConAutonomia = stockActual.rows.map(r => {
+        const stock = Number(r.entradas) - Number(r.salidas);
+        const cpm = Number(r.consumo_promedio_mensual) || 0;
+        const autonomiaMeses = cpm > 0 ? stock / cpm : 0;
+        return {
+            ...r, stock,
+            autonomia_meses: Math.round(autonomiaMeses * 10) / 10,
+            autonomia_dias: Math.round(autonomiaMeses * 21)
+        };
+    });
+
+    return {
+        rankingSalida: rankingSalida.rows,
+        consumoMensual: consumoMensual.rows,
+        planchasPorMes: planchasPorMes.rows,
+        stockActual: stockConAutonomia,
+        topDimensiones: topDimensiones.rows
+    };
+}
+
+module.exports = { getMovimientos, crearMovimiento, editarMovimiento, eliminarMovimiento, limpiarMovimientos, getInventario, getStockPorDimension, getEstadisticas, getEstadisticasPorTipo, getAnalyticsInventario };
