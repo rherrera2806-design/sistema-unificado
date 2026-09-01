@@ -110,7 +110,11 @@ App.registerModule('pedidos', {
                 + '<div style="display:flex;align-items:center;gap:8px">'
                 + '<div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
                 + '<span style="font-size:13px;font-weight:700;color:#0f172a">Pedidos <span id="pedCountLabel" style="color:#94a3b8;font-weight:400;font-size:12px"></span></span></div>'
-                + '<button onclick="App.modules.pedidos.toggleGrafico()" id="pedBtnGrafico" class="btn btn-info" style="padding:6px 12px;font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Grafico</button></div>'
+                + '<div style="display:flex;gap:6px">'
+                + '<button onclick="App.modules.pedidos.toggleDashboard()" id="pedBtnDashboard" class="btn btn-accent" style="padding:6px 12px;font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Dashboard</button>'
+                + '<button onclick="App.modules.pedidos.toggleGrafico()" id="pedBtnGrafico" class="btn btn-info" style="padding:6px 12px;font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Gráfico</button>'
+                + '</div></div>'
+                + '<div id="pedDashboardContainer" style="display:none;padding:16px;border-bottom:1px solid #f1f5f9"></div>'
                 + '<div id="pedGraficoContainer" style="display:none;padding:16px;border-bottom:1px solid #f1f5f9"></div>'
                 + '<div class="m-card-body" style="padding:0">'
                 + '<div class="m-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px">'
@@ -657,19 +661,190 @@ App.registerModule('pedidos', {
         } catch(e) { alert('Error al cargar historial: ' + e.message); }
     },
 
-    toggleGrafico() {
+    toggleDashboard() {
+        const dc = document.getElementById('pedDashboardContainer');
         const gc = document.getElementById('pedGraficoContainer');
         const tc = document.querySelector('.m-table-wrap');
+        const btn = document.getElementById('pedBtnDashboard');
+        const btnG = document.getElementById('pedBtnGrafico');
+        if (dc.style.display === 'none') {
+            dc.style.display = 'block';
+            gc.style.display = 'none';
+            if (tc) tc.style.display = 'none';
+            btn.style.opacity = '1';
+            btnG.style.opacity = '0.6';
+            this.renderDashboard();
+        } else {
+            dc.style.display = 'none';
+            if (tc) tc.style.display = 'block';
+            btn.style.opacity = '0.6';
+        }
+    },
+
+    renderDashboard() {
+        const dc = document.getElementById('pedDashboardContainer');
+        if (!dc) return;
+
+        const filterMes = document.getElementById('pedFilterMes')?.value;
+        const filterAnio = document.getElementById('pedFilterAnio')?.value;
+        const now = new Date();
+        const mes = filterMes ? parseInt(filterMes) - 1 : now.getMonth();
+        const anio = filterAnio ? parseInt(filterAnio) : now.getFullYear();
+        const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+        const pedidosMes = this.allPedidos.filter(p => {
+            const f = new Date(p.fecha_subida);
+            return f.getMonth() === mes && f.getFullYear() === anio;
+        });
+
+        const total = pedidosMes.length;
+        const aprobados = pedidosMes.filter(p => p.estado === 'aprobado').length;
+        const pendientes = pedidosMes.filter(p => p.estado === 'pendiente').length;
+        const rechazados = pedidosMes.filter(p => p.estado === 'rechazado').length;
+
+        const coloresTipo = { Normal: '#3b82f6', Express: '#f59e0b', 'Vta. Region': '#8b5cf6', Reposicion: '#ef4444', Urgencia: '#f97316' };
+
+        // 1. Pedidos por vendedor
+        const porVendedor = {};
+        pedidosMes.forEach(p => {
+            const v = p.vendedor_nombre || p.vendedor || 'Sin vendedor';
+            if (!porVendedor[v]) porVendedor[v] = { total: 0, aprobados: 0, pendientes: 0, rechazados: 0 };
+            porVendedor[v].total++;
+            if (p.estado === 'aprobado') porVendedor[v].aprobados++;
+            else if (p.estado === 'pendiente') porVendedor[v].pendientes++;
+            else if (p.estado === 'rechazado') porVendedor[v].rechazados++;
+        });
+        const vendedores = Object.entries(porVendedor).sort((a, b) => b[1].total - a[1].total);
+        const maxVen = vendedores.length > 0 ? vendedores[0][1].total : 1;
+
+        // 2. Ranking por tipo
+        const porTipo = {};
+        pedidosMes.forEach(p => {
+            const t = p.tipo_ov || 'Normal';
+            porTipo[t] = (porTipo[t] || 0) + 1;
+        });
+        const tipos = Object.entries(porTipo).sort((a, b) => b[1] - a[1]);
+        const maxTipo = tipos.length > 0 ? tipos[0][1] : 1;
+
+        // 3. Ranking de vendedores (top 10)
+        const topVendedores = vendedores.slice(0, 10);
+        const maxTop = topVendedores.length > 0 ? topVendedores[0][1].total : 1;
+
+        let html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
+            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Dashboard de Pedidos</h3>'
+            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">' + monthNames[mes] + ' ' + anio + ' — ' + total + ' pedido(s)</p></div></div>'
+
+            // Resumen
+            + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">'
+            + '<div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#3b82f6">' + total + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Total</div></div>'
+            + '<div style="background:linear-gradient(135deg,#fefce8,#fef3c7);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#ca8a04">' + pendientes + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Pendientes</div></div>'
+            + '<div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#16a34a">' + aprobados + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Aprobados</div></div>'
+            + '<div style="background:linear-gradient(135deg,#fef2f2,#fee2e2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#dc2626">' + rechazados + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Rechazados</div></div>'
+            + '</div>'
+
+            // Pedidos por vendedor + Ranking por tipo (2 columnas)
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
+
+            // Pedidos por vendedor
+            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">'
+            + '<div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg> Pedidos por Vendedor</div>'
+            + '<div style="padding:12px;max-height:300px;overflow-y:auto">';
+        if (vendedores.length === 0) {
+            html += '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px">Sin pedidos este mes</div>';
+        } else {
+            vendedores.forEach(([nombre, data], i) => {
+                const pct = Math.round((data.total / maxVen) * 100);
+                html += '<div style="margin-bottom:10px">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+                    + '<span style="font-size:11px;font-weight:600;color:#0f172a">' + (i + 1) + '. ' + escapeHtml(nombre) + '</span>'
+                    + '<span style="font-size:11px;font-weight:700;color:#3b82f6">' + data.total + '</span></div>'
+                    + '<div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;display:flex">'
+                    + '<div style="width:' + Math.round((data.aprobados / data.total) * pct) + '%;background:#22c55e;height:100%"></div>'
+                    + '<div style="width:' + Math.round((data.pendientes / data.total) * pct) + '%;background:#f59e0b;height:100%"></div>'
+                    + '<div style="width:' + Math.round((data.rechazados / data.total) * pct) + '%;background:#ef4444;height:100%"></div>'
+                    + '</div>'
+                    + '<div style="display:flex;gap:8px;margin-top:2px;font-size:9px;color:#94a3b8">'
+                    + '<span style="color:#22c55e">●' + data.aprobados + '</span>'
+                    + '<span style="color:#f59e0b">●' + data.pendientes + '</span>'
+                    + '<span style="color:#ef4444">●' + data.rechazados + '</span></div>'
+                    + '</div>';
+            });
+        }
+        html += '</div></div>'
+
+            // Ranking por tipo
+            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">'
+            + '<div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Ranking por Tipo</div>'
+            + '<div style="padding:14px">';
+        if (tipos.length === 0) {
+            html += '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px">Sin pedidos este mes</div>';
+        } else {
+            tipos.forEach(([tipo, count], i) => {
+                const pct = Math.round((count / maxTipo) * 100);
+                const color = coloresTipo[tipo] || '#64748b';
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+                html += '<div style="margin-bottom:12px">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+                    + '<span style="font-size:12px;font-weight:600;color:#0f172a">' + medal + ' ' + tipo + '</span>'
+                    + '<span style="font-size:12px;font-weight:700;color:' + color + '">' + count + ' <span style="font-weight:400;color:#94a3b8;font-size:10px">(' + Math.round((count / total) * 100) + '%)</span></span></div>'
+                    + '<div style="height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden">'
+                    + '<div style="width:' + pct + '%;background:' + color + ';height:100%;border-radius:5px;transition:width 0.5s ease"></div></div></div>';
+            });
+        }
+        html += '</div></div></div>'
+
+            // Ranking de vendedores (top 10) - tabla horizontal
+            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">'
+            + '<div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg> Top Vendedores — ' + monthNames[mes] + '</div>'
+            + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
+            + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b">#</th>'
+            + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b">Vendedor</th>'
+            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">Total</th>'
+            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">Aprobados</th>'
+            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">Pendientes</th>'
+            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">Rechazados</th>'
+            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">% Aprob.</th>'
+            + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:120px">Distribución</th>'
+            + '</tr></thead><tbody>';
+        topVendedores.forEach(([nombre, data], i) => {
+            const pctAprob = data.total > 0 ? Math.round((data.aprobados / data.total) * 100) : 0;
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+            html += '<tr style="border-bottom:1px solid #f1f5f9">'
+                + '<td style="padding:8px 12px;font-weight:700;color:' + (i < 3 ? '#f59e0b' : '#64748b') + '">' + medal + '</td>'
+                + '<td style="padding:8px 12px;font-weight:600;color:#0f172a">' + escapeHtml(nombre) + '</td>'
+                + '<td style="padding:8px 12px;text-align:center;font-weight:700;color:#3b82f6">' + data.total + '</td>'
+                + '<td style="padding:8px 12px;text-align:center;color:#22c55e">' + data.aprobados + '</td>'
+                + '<td style="padding:8px 12px;text-align:center;color:#f59e0b">' + data.pendientes + '</td>'
+                + '<td style="padding:8px 12px;text-align:center;color:#ef4444">' + data.rechazados + '</td>'
+                + '<td style="padding:8px 12px;text-align:center;font-weight:600;color:' + (pctAprob >= 80 ? '#22c55e' : pctAprob >= 50 ? '#f59e0b' : '#ef4444') + '">' + pctAprob + '%</td>'
+                + '<td style="padding:8px 12px"><div style="display:flex;height:8px;border-radius:4px;overflow:hidden;background:#f1f5f9">'
+                + '<div style="width:' + Math.round((data.aprobados / data.total) * 100) + '%;background:#22c55e"></div>'
+                + '<div style="width:' + Math.round((data.pendientes / data.total) * 100) + '%;background:#f59e0b"></div>'
+                + '<div style="width:' + Math.round((data.rechazados / data.total) * 100) + '%;background:#ef4444"></div>'
+                + '</div></td></tr>';
+        });
+        html += '</tbody></table></div></div>';
+
+        dc.innerHTML = html;
+    },
+
+    toggleGrafico() {
+        const gc = document.getElementById('pedGraficoContainer');
+        const dc = document.getElementById('pedDashboardContainer');
+        const tc = document.querySelector('.m-table-wrap');
         const btn = document.getElementById('pedBtnGrafico');
+        const btnD = document.getElementById('pedBtnDashboard');
         if (gc.style.display === 'none') {
             gc.style.display = 'block';
-            tc.style.display = 'none';
-            btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg> Ir a Lista';
+            dc.style.display = 'none';
+            if (tc) tc.style.display = 'none';
+            btn.style.opacity = '1';
+            btnD.style.opacity = '0.6';
             this.renderGrafico();
         } else {
             gc.style.display = 'none';
-            tc.style.display = 'block';
-            btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Grafico';
+            if (tc) tc.style.display = 'block';
+            btn.style.opacity = '0.6';
         }
     },
 
