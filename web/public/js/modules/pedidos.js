@@ -675,9 +675,11 @@ App.registerModule('pedidos', {
 
     renderGrafico() {
         const gc = document.getElementById('pedGraficoContainer');
+        const filterMes = document.getElementById('pedFilterMes')?.value;
+        const filterAnio = document.getElementById('pedFilterAnio')?.value;
         const now = new Date();
-        const mes = now.getMonth();
-        const anio = now.getFullYear();
+        const mes = filterMes ? parseInt(filterMes) - 1 : now.getMonth();
+        const anio = filterAnio ? parseInt(filterAnio) : now.getFullYear();
         const diasEnMes = new Date(anio, mes + 1, 0).getDate();
         const colores = { Normal: '#3b82f6', Express: '#fde047', 'Vta. Region': '#9333ea', Reposicion: '#dc2626', Urgencia: '#f97316' };
         const tipos = ['Normal', 'Express', 'Vta. Region', 'Reposicion', 'Urgencia'];
