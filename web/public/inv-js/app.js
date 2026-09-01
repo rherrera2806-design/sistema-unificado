@@ -3,6 +3,7 @@ const App = {
     userRole: null,
 
     pages: {
+        dashboard: { icon: '📊', label: 'Dashboard', render: () => InvDashboard.render() },
         inventario: { icon: '📦', label: 'Inventario', render: () => InvInventario.render() },
         movimientos: { icon: '📋', label: 'Movimientos', render: () => InvMovimientos.render() },
         historial: { icon: '🕐', label: 'Historial', render: () => InvHistorial.render() },
@@ -11,7 +12,7 @@ const App = {
 
     init() {
         this.renderSidebar();
-        this.navigate('inventario');
+        this.navigate('dashboard');
         const user = this.getParentUser();
         if (user) {
             document.getElementById('headerUser').textContent = user.nombre;
