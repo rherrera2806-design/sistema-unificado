@@ -335,6 +335,8 @@ App.registerModule('pedidos', {
         const lbl = document.getElementById('pedCountLabel');
         if (lbl) lbl.textContent = '(' + filtered.length + ')';
         this.renderTable(filtered);
+        const dc = document.getElementById('pedDashboardContainer');
+        if (dc && dc.style.display !== 'none') this.renderDashboard();
         const gc = document.getElementById('pedGraficoContainer');
         if (gc && gc.style.display !== 'none') this.renderGrafico();
     },
