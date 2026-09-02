@@ -1027,7 +1027,7 @@ App.registerModule('prod_config', {
                             </tr>`).join('')}</tbody>
                         </table>
                     </div>
-                    <div class="m-cards-mobile">${this._reglas.map(r => `
+                    <div class="m-cards-mobile" style="display:none;padding:12px">${this._reglas.map(r => `
                         <div class="m-card-header m-table-row">
                             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%">
                                 <div style="flex:1">
