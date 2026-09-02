@@ -185,7 +185,7 @@ const InvDashboard = {
                                         + meses.map((m, i) => {
                                             const cpmVal = cpm || 0;
                                             if (cpmVal <= 0) return '<td style="padding:6px 4px;text-align:center;border-left:1px solid var(--gray-100)"><div style="width:100%;height:22px;border-radius:3px"></div></td>';
-                                            const stockInicioMes = i === 0 ? stockRem : stockRem - (cpmVal * (i - 1));
+                                            const stockInicioMes = stockRem - (cpmVal * i);
                                             const stockFinMes = stockInicioMes - cpmVal;
                                             let bgStyle = '';
                                             if (stockInicioMes <= 0) bgStyle = '';
