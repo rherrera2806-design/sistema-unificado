@@ -1,5 +1,6 @@
 const InvDashboard = {
     selectedMes: null,
+    _filtAuto: 0,
 
     async render() {
         const page = document.querySelector('.page.active');
@@ -150,7 +151,19 @@ const InvDashboard = {
                 </div>
 
                 <div class="card" style="overflow:hidden;margin-bottom:16px">
-                    <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Proyección de Stock por Material</div>
+                    <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800);display:flex;justify-content:space-between;align-items:center">
+                        <span>Proyección de Stock por Material</span>
+                        <div style="display:flex;gap:4px;align-items:center;font-size:10px;font-weight:600">
+                            <span style="color:var(--gray-400);margin-right:4px">Filtrar ≤</span>
+                            <button onclick="InvDashboard.filtAuto(0)" class="inv-filt-btn" data-val="0" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===0?'var(--primary)':'white'};color:${this._filtAuto===0?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">Todos</button>
+                            <button onclick="InvDashboard.filtAuto(1)" class="inv-filt-btn" data-val="1" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===1?'var(--danger)':'white'};color:${this._filtAuto===1?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;1 mes</button>
+                            <button onclick="InvDashboard.filtAuto(2)" class="inv-filt-btn" data-val="2" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===2?'var(--danger)':'white'};color:${this._filtAuto===2?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;2 meses</button>
+                            <button onclick="InvDashboard.filtAuto(3)" class="inv-filt-btn" data-val="3" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===3?'var(--warning)':'white'};color:${this._filtAuto===3?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;3 meses</button>
+                            <button onclick="InvDashboard.filtAuto(4)" class="inv-filt-btn" data-val="4" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===4?'var(--warning)':'white'};color:${this._filtAuto===4?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;4 meses</button>
+                            <button onclick="InvDashboard.filtAuto(5)" class="inv-filt-btn" data-val="5" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===5?'var(--success)':'white'};color:${this._filtAuto===5?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;5 meses</button>
+                            <button onclick="InvDashboard.filtAuto(6)" class="inv-filt-btn" data-val="6" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===6?'var(--success)':'white'};color:${this._filtAuto===6?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;6 meses</button>
+                        </div>
+                    </div>
                     <div style="padding:0;overflow-x:auto">
                         ${stock.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
                         (() => {
@@ -160,7 +173,10 @@ const InvDashboard = {
                                 const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
                                 meses.push({ key: d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'), label: monthNames[d.getMonth()+1], anio: String(d.getFullYear()).slice(2) });
                             }
-                            const sorted = stock.filter(s => s.stock > 0 || s.consumo_promedio > 0).sort((a,b) => (a.nombre || '').localeCompare(b.nombre || '') || (Number(b.espesor_mm) || 0) - (Number(a.espesor_mm) || 0));
+                            const maxAuto = this._filtAuto || 0;
+                            let filtered = stock.filter(s => s.stock > 0 || s.consumo_promedio > 0);
+                            if (maxAuto > 0) filtered = filtered.filter(s => (s.autonomia_meses || 0) < maxAuto);
+                            const sorted = filtered.sort((a,b) => (a.nombre || '').localeCompare(b.nombre || '') || (Number(b.espesor_mm) || 0) - (Number(a.espesor_mm) || 0));
                             return '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
                                 + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);position:sticky;left:0;background:white;z-index:1;min-width:60px">SAP</th>'
                                 + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);min-width:100px">Material</th>'
@@ -217,6 +233,12 @@ const InvDashboard = {
 
     clearFilter() {
         this.selectedMes = null;
+        const page = document.querySelector('.page.active');
+        this._renderContent(page);
+    },
+
+    filtAuto(val) {
+        this._filtAuto = val;
         const page = document.querySelector('.page.active');
         this._renderContent(page);
     }
