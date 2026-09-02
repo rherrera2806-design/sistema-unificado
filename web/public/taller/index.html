@@ -294,11 +294,58 @@ async function loadEstaciones() {
     } catch(e) { document.getElementById('stationGrid').innerHTML = '<div style="color:#ef4444;text-align:center">Error cargando estaciones</div>'; }
 }
 
-function seleccionarEstacion(id, nombre) {
-    estacionActual = { id, nombre };
+async function seleccionarEstacion(id, nombre) {
+    try {
+        const r = await fetch(`/api/taller/maquinas/${id}`);
+        const maquinas = await r.json();
+        if (maquinas.length === 0) {
+            estacionActual = { id, nombre, maquinaId: null, maquinaNombre: null };
+            mostrarCola(nombre);
+            return;
+        }
+        if (maquinas.length === 1) {
+            estacionActual = { id, nombre, maquinaId: maquinas[0].id, maquinaNombre: maquinas[0].nombre };
+            mostrarCola(nombre);
+            return;
+        }
+        const overlay = document.createElement('div');
+        overlay.id = 'maquinaModal';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999';
+        overlay.innerHTML = `
+            <div style="background:white;border-radius:16px;padding:28px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+                <h3 style="margin:0 0 6px;font-size:18px;color:#1e293b">Selecciona una maquina</h3>
+                <p style="margin:0 0 18px;font-size:13px;color:#64748b">Estacion: <strong>${escapeHtml(nombre)}</strong></p>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                    ${maquinas.map(m => `
+                        <button onclick="seleccionarMaquina(${id}, '${escapeHtml(nombre).replace(/'/g,"\\'")}', ${m.id}, '${escapeHtml(m.nombre).replace(/'/g,"\\'")}')"
+                            style="padding:14px 18px;border:2px solid #e2e8f0;border-radius:10px;background:white;cursor:pointer;text-align:left;font-size:14px;transition:all 0.15s;display:flex;align-items:center;gap:12px"
+                            onmouseover="this.style.borderColor='#3b82f6';this.style.background='#eff6ff'"
+                            onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+                            <span style="width:36px;height:36px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:16px">&#9881;</span>
+                            <div><strong>${escapeHtml(m.nombre)}</strong><br><span style="color:#64748b;font-size:11px">${escapeHtml(m.codigo)}</span></div>
+                        </button>
+                    `).join('')}
+                </div>
+                <button onclick="document.getElementById('maquinaModal').remove()" style="margin-top:14px;padding:10px 16px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;cursor:pointer;font-size:13px;color:#64748b;width:100%">Cancelar</button>
+            </div>`;
+        document.body.appendChild(overlay);
+    } catch(e) {
+        estacionActual = { id, nombre, maquinaId: null, maquinaNombre: null };
+        mostrarCola(nombre);
+    }
+}
+
+function seleccionarMaquina(estacionId, estacionNombre, maquinaId, maquinaNombre) {
+    document.getElementById('maquinaModal').remove();
+    estacionActual = { id: estacionId, nombre: estacionNombre, maquinaId, maquinaNombre };
+    mostrarCola(estacionNombre);
+}
+
+function mostrarCola(nombre) {
     document.getElementById('selectorScreen').style.display = 'none';
     document.getElementById('queueScreen').style.display = 'flex';
-    document.getElementById('stationName').textContent = nombre;
+    const subtitle = estacionActual.maquinaNombre ? `${nombre} — ${estacionActual.maquinaNombre}` : nombre;
+    document.getElementById('stationName').textContent = subtitle;
     cargarCola();
     refreshInterval = setInterval(cargarCola, 10000);
 }
@@ -308,6 +355,8 @@ function volver() {
     estacionActual = null;
     document.getElementById('queueScreen').style.display = 'none';
     document.getElementById('selectorScreen').style.display = 'flex';
+    const stName = document.getElementById('stationName');
+    if (stName) stName.textContent = '';
 }
 
 function updateClock() {
@@ -442,45 +491,11 @@ window.addEventListener('resize', function() {
 updateSearchVisibility();
 
 async function iniciarPaso(pasoId) {
-    if (!estacionActual) { showToast('Selecciona una estacion primero', true); return; }
-    try {
-        const rMaquinas = await fetch(`/api/taller/maquinas/${estacionActual.id}`);
-        const maquinas = await rMaquinas.json();
-        if (maquinas.length === 0) {
-            await doIniciar(pasoId, null);
-            return;
-        }
-        if (maquinas.length === 1) {
-            await doIniciar(pasoId, maquinas[0].id);
-            return;
-        }
-        const overlay = document.createElement('div');
-        overlay.id = 'maquinaModal';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999';
-        overlay.innerHTML = `
-            <div style="background:white;border-radius:12px;padding:24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
-                <h3 style="margin:0 0 16px;font-size:16px;color:#1e293b">Selecciona una maquina</h3>
-                <div style="display:flex;flex-direction:column;gap:8px">
-                    ${maquinas.map(m => `
-                        <button onclick="doIniciar(${pasoId}, ${m.id}); document.getElementById('maquinaModal').remove()"
-                            style="padding:12px 16px;border:2px solid #e2e8f0;border-radius:8px;background:white;cursor:pointer;text-align:left;font-size:14px;transition:all 0.15s"
-                            onmouseover="this.style.borderColor='#3b82f6';this.style.background='#eff6ff'"
-                            onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-                            <strong>${escapeHtml(m.nombre)}</strong> <span style="color:#64748b;font-size:12px">(${escapeHtml(m.codigo)})</span>
-                        </button>
-                    `).join('')}
-                </div>
-                <button onclick="document.getElementById('maquinaModal').remove()" style="margin-top:12px;padding:8px 16px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;cursor:pointer;font-size:12px;color:#64748b;width:100%">Cancelar</button>
-            </div>`;
-        document.body.appendChild(overlay);
-    } catch(e) { showToast('Error de conexion', true); }
-}
-
-async function doIniciar(pasoId, maquinaId) {
+    if (!estacionActual || !estacionActual.maquinaId) { showToast('Selecciona una maquina primero', true); return; }
     try {
         const r = await fetch('/api/taller/iniciar', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ paso_id: pasoId, maquina_id: maquinaId })
+            body: JSON.stringify({ paso_id: pasoId, maquina_id: estacionActual.maquinaId })
         });
         const d = await r.json();
         if (d.ok) { showToast('Iniciado correctamente'); cargarCola(); }
