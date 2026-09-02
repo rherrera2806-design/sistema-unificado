@@ -534,13 +534,12 @@ function actualizarBulkBar() {
 }
 
 async function iniciarMarcados() {
-    if (!estacionActual || !estacionActual.maquinaId) { showToast('Selecciona una maquina primero', true); return; }
     const ids = [...seleccionados].filter(id => { const p = colaActual.find(x => x.id === id); return p && p.estado === 'PENDIENTE'; });
     if (ids.length === 0) return;
     let ok = 0, err = 0;
     for (const id of ids) {
         try {
-            const r = await fetch('/api/taller/iniciar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paso_id: id, maquina_id: estacionActual.maquinaId }) });
+            const r = await fetch('/api/taller/iniciar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paso_id: id, maquina_id: estacionActual ? estacionActual.maquinaId : null }) });
             const d = await r.json();
             if (d.ok) ok++; else err++;
         } catch(e) { err++; }
@@ -599,11 +598,11 @@ window.addEventListener('resize', function() {
 updateSearchVisibility();
 
 async function iniciarPaso(pasoId) {
-    if (!estacionActual || !estacionActual.maquinaId) { showToast('Selecciona una maquina primero', true); return; }
+    const maqId = estacionActual ? estacionActual.maquinaId : null;
     try {
         const r = await fetch('/api/taller/iniciar', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ paso_id: pasoId, maquina_id: estacionActual.maquinaId })
+            body: JSON.stringify({ paso_id: pasoId, maquina_id: maqId })
         });
         const d = await r.json();
         if (d.ok) { showToast('Iniciado correctamente'); cargarCola(); }
