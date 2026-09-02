@@ -701,6 +701,7 @@ function hasSection(section) {
 }
 function canSeeItem(item, section) {
     if (isAdmin()) return true;
+    if (item === 'inv_dashboard') return hasPerm('inv_dashboard');
     return hasPerm(item) || hasPerm(section) || hasPerm(section + '.editar') || hasPerm(section + '.eliminar') || hasPerm(section + '.agregar');
 }
 function canCreate(item, section) {
