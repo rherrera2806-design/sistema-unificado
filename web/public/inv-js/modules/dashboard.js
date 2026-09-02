@@ -174,7 +174,6 @@ const InvDashboard = {
                                     const stockRem = s.stock;
                                     const cpm = s.consumo_promedio || 0;
                                     const auto = s.autonomia_meses || 0;
-                                    if (s.codigo_mp === '949') console.log('SAP 949:', { stockRem, cpm, auto, raw: s });
                                     const autoColor = s.stock <= 0 ? 'var(--danger)' : auto < 2 ? 'var(--danger)' : auto < 4 ? 'var(--warning)' : 'var(--success)';
                                     return '<tr style="border-bottom:1px solid var(--gray-100)">'
                                         + '<td style="padding:6px 10px;color:var(--gray-600);position:sticky;left:0;background:white;z-index:1">' + (s.codigo_mp || '') + '</td>'
