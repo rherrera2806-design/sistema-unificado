@@ -34,7 +34,7 @@ const InvDashboard = {
         }
 
         page.innerHTML = `
-            <div style="max-width:1200px">
+                <div style="width:100%">
                 <div style="background:linear-gradient(135deg,#1e293b,#334155);border-radius:12px;padding:24px;margin-bottom:20px;color:white;display:flex;justify-content:space-between;align-items:center">
                     <div>
                         <h2 style="margin:0;font-size:18px;font-weight:800">Dashboard Inventario</h2>
@@ -78,11 +78,11 @@ const InvDashboard = {
                         ${rankingFiltrado.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
                         '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
                         + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">#</th>'
-                        + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Material</th>'
-                        + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Esp.</th>'
-                        + '<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500)">m2</th>'
-                        + '<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500)">Planchas</th>'
-                        + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);width:40%">Tendencia</th>'
+                                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Material</th>'
+                                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Esp.</th>'
+                                + '<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500)">m2</th>'
+                                + '<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500)">Planchas</th>'
+                                + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Tendencia</th>'
                         + '</tr></thead><tbody>'
                         + rankingFiltrado.map((r, i) => {
                             const maxM2 = Number(rankingFiltrado[0].m2_salidos) || 1;
