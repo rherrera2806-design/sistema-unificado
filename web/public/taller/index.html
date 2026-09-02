@@ -218,8 +218,7 @@
     <div id="bulkBar" style="display:none;padding:0 12px 8px">
         <div style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap">
             <span id="bulkCount" style="font-size:12px;color:#64748b;font-weight:600">0 seleccionados</span>
-            <button id="btnBulkIniciar" class="btn btn-iniciar" style="padding:8px 14px;font-size:12px;display:none" onclick="iniciarMarcados()">&#9654;&#65039; Iniciar marcados</button>
-            <button id="btnBulkFinalizar" class="btn btn-finalizar" style="padding:8px 14px;font-size:12px;display:none" onclick="finalizarMarcados()">&#9989; Finalizar marcados</button>
+            <button id="btnBulkProcesar" class="btn btn-finalizar" style="padding:8px 14px;font-size:12px" onclick="procesarMarcados()">&#9989; Procesar marcados</button>
             <button class="btn" style="padding:8px 14px;font-size:12px;background:#f1f5f9;color:#64748b" onclick="limpiarSeleccion()">Limpiar</button>
         </div>
     </div>
@@ -520,48 +519,65 @@ function limpiarSeleccion() {
 function actualizarBulkBar() {
     const bar = document.getElementById('bulkBar');
     const count = document.getElementById('bulkCount');
-    const btnIniciar = document.getElementById('btnBulkIniciar');
-    const btnFinalizar = document.getElementById('btnBulkFinalizar');
     if (!bar) return;
     const n = seleccionados.size;
     if (n === 0) { bar.style.display = 'none'; return; }
     bar.style.display = 'block';
     count.textContent = n + ' seleccionado' + (n > 1 ? 's' : '');
-    const hayPendientes = [...seleccionados].some(id => { const p = colaActual.find(x => x.id === id); return p && p.estado === 'PENDIENTE'; });
-    const hayProceso = [...seleccionados].some(id => { const p = colaActual.find(x => x.id === id); return p && p.estado === 'EN_PROCESO'; });
-    btnIniciar.style.display = hayPendientes ? 'inline-flex' : 'none';
-    btnFinalizar.style.display = hayProceso ? 'inline-flex' : 'none';
 }
 
-async function iniciarMarcados() {
-    const ids = [...seleccionados].filter(id => { const p = colaActual.find(x => x.id === id); return p && p.estado === 'PENDIENTE'; });
+async function procesarMarcados() {
+    const ids = [...seleccionados];
     if (ids.length === 0) return;
+    const pedidos = ids.map(id => colaActual.find(p => p.id === id)).filter(p => p && (p.estado === 'PENDIENTE' || p.estado === 'EN_PROCESO'));
+    if (pedidos.length === 0) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'procesarModal';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;overflow-y:auto;padding:20px 0';
+    overlay.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:24px;max-width:500px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:80vh;overflow-y:auto">
+            <h3 style="margin:0 0 16px;font-size:16px;color:#1e293b">Procesar ${pedidos.length} pedido(s)</h3>
+            <div style="display:flex;flex-direction:column;gap:12px">
+                ${pedidos.map(p => `
+                    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px">
+                        <div style="font-weight:700;font-size:13px;color:#1e293b">${escapeHtml(p.pedido_sap_id || '-')} | ${escapeHtml(p.cliente || '-')}</div>
+                        <div style="font-size:11px;color:#64748b;margin-bottom:8px">${escapeHtml(p.codigo_producto || '')} ${escapeHtml(p.descripcion || '')}</div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <label style="font-size:12px;color:#475569;white-space:nowrap">Cantidad:</label>
+                            <input type="number" id="procQty_${p.id}" value="${p.cantidad || 1}" min="1" max="${p.cantidad || 1}" style="width:80px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;text-align:center">
+                            <span style="font-size:11px;color:#94a3b8">de ${p.cantidad || 1}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            <div style="display:flex;gap:8px;margin-top:16px">
+                <button onclick="document.getElementById('procesarModal').remove()" style="flex:1;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;cursor:pointer;font-size:13px;color:#64748b">Cancelar</button>
+                <button onclick="confirmarProcesar()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#22c55e;cursor:pointer;font-size:13px;color:white;font-weight:700">Procesar</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+}
+
+async function confirmarProcesar() {
+    const ids = [...seleccionados];
+    const pedidos = ids.map(id => colaActual.find(p => p.id === id)).filter(p => p && (p.estado === 'PENDIENTE' || p.estado === 'EN_PROCESO'));
+    document.getElementById('procesarModal').remove();
     let ok = 0, err = 0;
-    for (const id of ids) {
+    for (const p of pedidos) {
+        const qtyInput = document.getElementById('procQty_' + p.id);
+        const cantidad = qtyInput ? parseInt(qtyInput.value) || p.cantidad : p.cantidad;
         try {
-            const r = await fetch('/api/taller/iniciar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paso_id: id, maquina_id: estacionActual ? estacionActual.maquinaId : null }) });
+            const r = await fetch('/api/taller/procesar', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ paso_id: p.id, cantidad, maquina_id: estacionActual ? estacionActual.maquinaId : null })
+            });
             const d = await r.json();
             if (d.ok) ok++; else err++;
         } catch(e) { err++; }
     }
     seleccionados.clear();
-    showToast(`${ok} iniciado(s)` + (err ? `, ${err} error(es)` : ''));
-    cargarCola();
-}
-
-async function finalizarMarcados() {
-    const ids = [...seleccionados].filter(id => { const p = colaActual.find(x => x.id === id); return p && p.estado === 'EN_PROCESO'; });
-    if (ids.length === 0) return;
-    let ok = 0, err = 0;
-    for (const id of ids) {
-        try {
-            const r = await fetch('/api/taller/finalizar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paso_id: id }) });
-            const d = await r.json();
-            if (d.ok) ok++; else err++;
-        } catch(e) { err++; }
-    }
-    seleccionados.clear();
-    showToast(`${ok} finalizado(s)` + (err ? `, ${err} error(es)` : ''));
+    showToast(`${ok} procesado(s)` + (err ? `, ${err} error(es)` : ''));
     cargarCola();
 }
 

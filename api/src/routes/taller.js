@@ -54,6 +54,15 @@ router.post('/api/taller/merma', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.post('/api/taller/procesar', async (req, res, next) => {
+    if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
+    try {
+        const result = await taller.procesarPaso(req.body.paso_id, req.body.cantidad, req.body.maquina_id);
+        if (!result) return res.status(404).json({ error: 'Paso no encontrado' });
+        res.json({ ok: true, ...result });
+    } catch (e) { next(e); }
+});
+
 router.get('/api/taller/mermas', async (req, res, next) => {
     try {
         const hoy = req.query.fecha || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
