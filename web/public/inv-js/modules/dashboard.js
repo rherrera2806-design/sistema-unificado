@@ -184,8 +184,12 @@ const InvDashboard = {
                                         + '<td style="padding:6px 10px;text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:' + autoColor + '15;color:' + autoColor + '">' + (auto > 0 ? auto.toFixed(1) : '-') + '</span></td>'
                                         + meses.map((m, i) => {
                                             const stockEnMes = stockRem - (cpm * i);
-                                            const fillColor = stockEnMes <= 0 ? 'var(--danger)' : stockEnMes <= cpm ? 'var(--warning)' : 'transparent';
-                                            const bgStyle = stockEnMes <= 0 ? 'background:repeating-linear-gradient(45deg,rgba(239,68,68,0.15),rgba(239,68,68,0.15) 3px,transparent 3px,transparent 6px)' : stockEnMes <= cpm ? 'background:repeating-linear-gradient(45deg,rgba(245,158,11,0.12),rgba(245,158,11,0.12) 3px,transparent 3px,transparent 6px)' : '';
+                                            const stockAnterior = i === 0 ? stockRem : stockRem - (cpm * (i - 1));
+                                            const cubierto = stockAnterior > 0;
+                                            const critico = cubierto && stockEnMes > 0 && stockEnMes <= cpm;
+                                            let bgStyle = '';
+                                            if (cubierto && !critico) bgStyle = 'background:repeating-linear-gradient(45deg,rgba(34,197,94,0.18),rgba(34,197,94,0.18) 3px,transparent 3px,transparent 6px)';
+                                            else if (critico) bgStyle = 'background:repeating-linear-gradient(45deg,rgba(245,158,11,0.2),rgba(245,158,11,0.2) 3px,transparent 3px,transparent 6px)';
                                             return '<td style="padding:6px 4px;text-align:center;border-left:1px solid var(--gray-100)"><div style="width:100%;height:22px;border-radius:3px;' + bgStyle + '"></div></td>';
                                         }).join('')
                                         + '</tr>';
