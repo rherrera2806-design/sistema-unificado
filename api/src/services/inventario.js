@@ -253,9 +253,9 @@ async function getAnalyticsInventario(meses = 6, mesFilter = null) {
         query(`
             SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual,
                 COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'entrada'), 0) as m2_entradas,
-                COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa'), 0) as m2_salidas,
+                COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as m2_salidas,
                 COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'entrada'), 0) as entradas,
-                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa'), 0) as salidas
+                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as salidas
             FROM movimientos m
             JOIN materias_primas mp ON m.materia_prima_id = mp.id
             GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual
