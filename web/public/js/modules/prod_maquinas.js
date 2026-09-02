@@ -50,7 +50,7 @@ App.registerModule('prod_maquinas', {
                     <div class="m-card-body" style="padding:0">
                         <div class="m-table-wrap">
                             <table style="font-size:12px"><thead><tr>
-                                <th>Codigo</th><th>Nombre</th><th>Tipo Proceso</th><th>N° Op</th><th>Estado</th><th>Capacidad m²/dia</th><th>Acciones</th>
+                                <th>Codigo</th><th>Nombre</th><th>Tipo Proceso</th><th>Estacion</th><th>N° Op</th><th>Estado</th><th>Capacidad m²/dia</th><th>Acciones</th>
                             </tr></thead><tbody id="mqTable">
                                 <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                             </tbody></table>
@@ -129,7 +129,7 @@ App.registerModule('prod_maquinas', {
         const cardsMobile = document.getElementById('mqCardsMobile');
         
         if (!this.maquinas.length) { 
-            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">No hay maquinas registradas</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b">No hay maquinas registradas</td></tr>';
             if (cardsMobile) cardsMobile.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b">No hay maquinas registradas</div>';
             return; 
         }
@@ -147,6 +147,7 @@ App.registerModule('prod_maquinas', {
                 <td style="${td}"><strong>${m.codigo}</strong></td>
                 <td style="${td}">${m.nombre}</td>
                 <td style="${td}">${m.tipo_proceso || '-'}</td>
+                <td style="${td}">${m.estacion_nombre || '-'}</td>
                 <td style="${td}">${m.num_operacion || '-'}</td>
                 <td style="${td}">${estadoBadge(m.estado)}</td>
                 <td style="${td}"><strong>${Number(m.cap_max).toFixed(1)}</strong></td>
