@@ -160,7 +160,7 @@ const InvDashboard = {
                                 const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
                                 meses.push({ key: d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'), label: monthNames[d.getMonth()+1], anio: String(d.getFullYear()).slice(2) });
                             }
-                            const sorted = stock.filter(s => s.stock > 0 || s.consumo_promedio > 0).sort((a,b) => (a.autonomia_meses || 0) - (b.autonomia_meses || 0));
+                            const sorted = stock.filter(s => s.stock > 0 || s.consumo_promedio > 0).sort((a,b) => (a.nombre || '').localeCompare(b.nombre || '') || (Number(b.espesor_mm) || 0) - (Number(a.espesor_mm) || 0));
                             return '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
                                 + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);position:sticky;left:0;background:white;z-index:1;min-width:60px">SAP</th>'
                                 + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);min-width:100px">Material</th>'
