@@ -67,6 +67,7 @@ App.registerModule('prod_maquinas', {
                         <div class="form-group"><label>Nombre *</label><input class="form-control" id="mqNombre" placeholder="Ej: Cortadora CNC"></div>
                         <div class="form-group"><label>Codigo *</label><input class="form-control" id="mqCodigo" placeholder="Ej: COR-01"></div>
                         <div class="form-group"><label>Tipo Proceso</label><input class="form-control" id="mqTipoProceso" placeholder="Ej: Corte, Pulido"></div>
+                        <div class="form-group"><label>Estacion</label><select class="form-control" id="mqEstacion"><option value="">Sin estacion</option></select></div>
                         <div class="form-group"><label>N° Operacion</label><input class="form-control" id="mqNumOp" type="number" min="0"></div>
                         <div class="form-group"><label>Capacidad Maxima m²/dia</label><input class="form-control" id="mqCapacidadInput" type="number" step="0.01" value="50"></div>
                         <div class="form-group"><label>Estado</label>
@@ -85,6 +86,18 @@ App.registerModule('prod_maquinas', {
             </div>
         `;
         await this.load();
+        this.loadEstaciones();
+    },
+
+    async loadEstaciones() {
+        try {
+            const res = await fetch('/api/produccion/estaciones');
+            const estaciones = await res.json();
+            const sel = document.getElementById('mqEstacion');
+            if (sel) {
+                sel.innerHTML = '<option value="">Sin estacion</option>' + estaciones.map(e => `<option value="${e.id}">${e.nombre_estacion}</option>`).join('');
+            }
+        } catch(e) {}
     },
 
     async load() {
@@ -184,6 +197,7 @@ App.registerModule('prod_maquinas', {
         document.getElementById('mqNumOp').value = '';
         document.getElementById('mqCapacidadInput').value = '50';
         document.getElementById('mqEstado').value = 'ACTIVA';
+        document.getElementById('mqEstacion').value = '';
         document.getElementById('mqCreateModal').classList.add('show');
     },
 
@@ -198,6 +212,7 @@ App.registerModule('prod_maquinas', {
         document.getElementById('mqNumOp').value = m.num_operacion || '';
         document.getElementById('mqCapacidadInput').value = m.cap_max;
         document.getElementById('mqEstado').value = m.estado;
+        document.getElementById('mqEstacion').value = m.estacion_id || '';
         document.getElementById('mqCreateModal').classList.add('show');
     },
 
@@ -210,11 +225,12 @@ App.registerModule('prod_maquinas', {
         const num_operacion = Number(document.getElementById('mqNumOp').value) || null;
         const capacidad = Number(document.getElementById('mqCapacidadInput').value) || 0;
         const estado = document.getElementById('mqEstado').value;
+        const estacion_id = document.getElementById('mqEstacion').value || null;
         if (!nombre || !codigo) { alert('Nombre y codigo requeridos'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
-            const data = { nombre, codigo, cap_max: capacidad, estado, tipo_proceso, num_operacion };
+            const data = { nombre, codigo, cap_max: capacidad, estado, tipo_proceso, num_operacion, estacion_id };
             if (this.editingId) {
                 await fetch(`/api/produccion/maquinas/${this.editingId}`, { method: 'PUT', headers, body: JSON.stringify(data) });
             } else {

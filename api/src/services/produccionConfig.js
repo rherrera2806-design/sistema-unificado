@@ -6,14 +6,19 @@ const { query } = require('../config/database');
 // ============ MÁQUINAS ============
 
 const getMaquinas = async () => {
-    const result = await query('SELECT * FROM produccion_maquinas ORDER BY num_operacion ASC NULLS LAST, nombre ASC');
+    const result = await query(`
+        SELECT m.*, e.nombre_estacion as estacion_nombre
+        FROM produccion_maquinas m
+        LEFT JOIN estaciones_maestras e ON m.estacion_id = e.id
+        ORDER BY m.num_operacion ASC NULLS LAST, m.nombre ASC
+    `);
     return result.rows;
 };
 
-const crearMaquina = async ({ nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion }) => {
+const crearMaquina = async ({ nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion, estacion_id }) => {
     const result = await query(
-        'INSERT INTO produccion_maquinas (nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA', tipo_proceso || null, num_operacion || null]
+        'INSERT INTO produccion_maquinas (nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion, estacion_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA', tipo_proceso || null, num_operacion || null, estacion_id || null]
     );
     return result.rows[0];
 };
@@ -36,10 +41,10 @@ const importarMaquinas = async (maquinas) => {
     return { inserted, skipped, errors, total: maquinas.length };
 };
 
-const editarMaquina = async (id, { nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion }) => {
+const editarMaquina = async (id, { nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion, estacion_id }) => {
     await query(
-        'UPDATE produccion_maquinas SET nombre=$1, codigo=$2, capacidad_max_m2_dia=$3, estado=$4, tipo_proceso=$5, num_operacion=$6 WHERE id=$7',
-        [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA', tipo_proceso || null, num_operacion || null, id]
+        'UPDATE produccion_maquinas SET nombre=$1, codigo=$2, capacidad_max_m2_dia=$3, estado=$4, tipo_proceso=$5, num_operacion=$6, estacion_id=$7 WHERE id=$8',
+        [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA', tipo_proceso || null, num_operacion || null, estacion_id || null, id]
     );
 };
 
