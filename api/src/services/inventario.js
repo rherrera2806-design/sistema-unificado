@@ -219,7 +219,7 @@ async function getAnalyticsInventario(meses = 6, mesFilter = null) {
         rankingParams = [fechaStr];
     }
 
-    const [rankingSalida, consumoMensual, planchasPorMes, stockActual, topDimensiones, consumoPromedio] = await Promise.all([
+    const [rankingSalida, consumoMensual, planchasPorMes, stockActual, topDimensiones] = await Promise.all([
         // Ranking de MP con más salidas
         query(rankingQuery, rankingParams),
 
@@ -249,31 +249,19 @@ async function getAnalyticsInventario(meses = 6, mesFilter = null) {
             ORDER BY mes
         `, [fechaStr]),
 
-        // Stock actual por material + consumo promedio real
+        // Stock actual por material
         query(`
-            SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm,
+            SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual,
                 COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'entrada'), 0) as m2_entradas,
                 COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa'), 0) as m2_salidas,
                 COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'entrada'), 0) as entradas,
                 COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa'), 0) as salidas
             FROM movimientos m
             JOIN materias_primas mp ON m.materia_prima_id = mp.id
-            GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm
+            GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual
             HAVING COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'entrada'), 0) > 0
             ORDER BY mp.nombre
         `),
-
-        // Consumo promedio mensual por material (últimos 6 meses)
-        query(`
-            SELECT mp.codigo_mp,
-                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) / GREATEST(
-                    COUNT(DISTINCT TO_CHAR(m.fecha_hora, 'YYYY-MM')) FILTER (WHERE m.tipo_movimiento = 'salida'), 1
-                ) as consumo_promedio
-            FROM movimientos m
-            JOIN materias_primas mp ON m.materia_prima_id = mp.id
-            WHERE m.fecha_hora >= $1
-            GROUP BY mp.codigo_mp
-        `, [fechaStr]),
 
         // Top dimensiones más cortadas
         query(`
@@ -292,12 +280,9 @@ async function getAnalyticsInventario(meses = 6, mesFilter = null) {
     ]);
 
     // Calcular autonomía por material
-    const consumoMap = {};
-    consumoPromedio.rows.forEach(c => { consumoMap[c.codigo_mp] = Number(c.consumo_promedio) || 0; });
-
     const stockConAutonomia = stockActual.rows.map(r => {
         const stock = Number(r.entradas) - Number(r.salidas);
-        const cpm = consumoMap[r.codigo_mp] || 0;
+        const cpm = Number(r.consumo_promedio_mensual) || 0;
         const autonomiaMeses = cpm > 0 ? stock / cpm : 0;
         return {
             ...r, stock,
