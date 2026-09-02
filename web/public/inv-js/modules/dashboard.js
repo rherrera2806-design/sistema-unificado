@@ -150,20 +150,48 @@ const InvDashboard = {
                 </div>
 
                 <div class="card" style="overflow:hidden;margin-bottom:16px">
-                    <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Stock Actual con Autonomía</div>
-                    <div style="padding:16px;max-height:350px;overflow-y:auto">
+                    <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Proyección de Stock por Material</div>
+                    <div style="padding:0;overflow-x:auto">
                         ${stock.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
-                        stock.sort((a,b) => (a.autonomia_meses || 0) - (b.autonomia_meses || 0)).map(s => {
-                            const stockVal = s.stock || 0;
-                            const auto = s.autonomia_meses || 0;
-                            const color = stockVal <= 0 ? 'var(--danger)' : auto < 2 ? 'var(--warning)' : 'var(--success)';
-                            const label = stockVal <= 0 ? 'SIN STOCK' : auto < 1 ? '< 1 mes' : auto + ' meses';
-                            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100)">'
-                                + '<div><div style="font-size:12px;font-weight:600;color:var(--gray-800)">' + (s.nombre || s.codigo_mp) + ' ' + (s.espesor_mm || '') + 'mm</div>'
-                                + '<div style="font-size:10px;color:var(--gray-400)">CPM: ' + (s.consumo_promedio_mensual || 0) + '</div></div>'
-                                + '<div style="text-align:right"><div style="font-size:13px;font-weight:700;color:' + color + '">' + stockVal + ' planchas</div>'
-                                + '<span class="badge" style="background:' + color + '20;color:' + color + ';font-size:9px">' + label + '</span></div></div>';
-                        }).join('')}
+                        (() => {
+                            const now = new Date();
+                            const meses = [];
+                            for (let i = 0; i < 6; i++) {
+                                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                                meses.push({ key: d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'), label: monthNames[d.getMonth()+1], anio: String(d.getFullYear()).slice(2) });
+                            }
+                            const sorted = stock.filter(s => s.stock > 0 || s.consumo_promedio > 0).sort((a,b) => (a.autonomia_meses || 0) - (b.autonomia_meses || 0));
+                            return '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
+                                + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);position:sticky;left:0;background:white;z-index:1;min-width:60px">SAP</th>'
+                                + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);min-width:100px">Material</th>'
+                                + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);min-width:40px">Esp.</th>'
+                                + '<th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500);min-width:50px">Stock</th>'
+                                + '<th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">Cons. Prom.</th>'
+                                + '<th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">Auton. (mes)</th>'
+                                + meses.map(m => '<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:44px">' + m.label + '<br><span style="font-weight:400;color:var(--gray-400)">' + m.anio + '</span></th>').join('')
+                                + '</tr></thead><tbody>'
+                                + sorted.map(s => {
+                                    const stockRem = s.stock;
+                                    const cpm = s.consumo_promedio || 0;
+                                    const auto = s.autonomia_meses || 0;
+                                    const autoColor = s.stock <= 0 ? 'var(--danger)' : auto < 2 ? 'var(--danger)' : auto < 4 ? 'var(--warning)' : 'var(--success)';
+                                    return '<tr style="border-bottom:1px solid var(--gray-100)">'
+                                        + '<td style="padding:6px 10px;color:var(--gray-600);position:sticky;left:0;background:white;z-index:1">' + (s.codigo_mp || '') + '</td>'
+                                        + '<td style="padding:6px 10px;font-weight:600;color:var(--gray-800);position:sticky;left:60px;background:white;z-index:1">' + (s.nombre || '') + '</td>'
+                                        + '<td style="padding:6px 10px;color:var(--gray-600)">' + (s.espesor_mm || '') + '</td>'
+                                        + '<td style="padding:6px 10px;text-align:right;font-weight:700;color:var(--gray-800)">' + Math.round(stockRem) + '</td>'
+                                        + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + Math.round(cpm) + '</td>'
+                                        + '<td style="padding:6px 10px;text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:' + autoColor + '15;color:' + autoColor + '">' + (auto > 0 ? auto.toFixed(1) : '-') + '</span></td>'
+                                        + meses.map((m, i) => {
+                                            const stockEnMes = stockRem - (cpm * i);
+                                            const fillColor = stockEnMes <= 0 ? 'var(--danger)' : stockEnMes <= cpm ? 'var(--warning)' : 'transparent';
+                                            const bgStyle = stockEnMes <= 0 ? 'background:repeating-linear-gradient(45deg,rgba(239,68,68,0.15),rgba(239,68,68,0.15) 3px,transparent 3px,transparent 6px)' : stockEnMes <= cpm ? 'background:repeating-linear-gradient(45deg,rgba(245,158,11,0.12),rgba(245,158,11,0.12) 3px,transparent 3px,transparent 6px)' : '';
+                                            return '<td style="padding:6px 4px;text-align:center;border-left:1px solid var(--gray-100)"><div style="width:100%;height:22px;border-radius:3px;' + bgStyle + '"></div></td>';
+                                        }).join('')
+                                        + '</tr>';
+                                }).join('')
+                                + '</tbody></table>';
+                        })()}
                     </div>
                 </div>
 
