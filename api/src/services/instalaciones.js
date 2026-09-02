@@ -16,7 +16,10 @@ const getInstalaciones = async () => {
 
 const getCalendario = async (inicio, fin) => {
     const result = await query(
-        'SELECT * FROM instalaciones WHERE fecha_programada >= $1::date AND fecha_programada <= $2::date ORDER BY fecha_programada, hora_programada',
+        `SELECT * FROM instalaciones 
+         WHERE (fecha_programada + (COALESCE(duracion_dias, 1) - 1)) >= $1::date 
+         AND fecha_programada <= $2::date 
+         ORDER BY fecha_programada, hora_programada`,
         [inicio, fin]
     );
     return result.rows;
@@ -38,11 +41,12 @@ const getInstalacion = async (id) => {
 };
 
 const crearInstalacion = async (data, userEmail) => {
-    const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas, tipo } = data;
+    const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas, tipo, duracion_dias } = data;
+    const dias = Math.max(1, parseInt(duracion_dias) || 1);
     const result = await query(
-        `INSERT INTO instalaciones (cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas, estado, creado_por, tipo)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PROGRAMADA', $10, $11) RETURNING *`,
-        [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', vendedor || '', numero_orden || '', notas_previas || '', userEmail, tipo || 'INSTALACION']
+        `INSERT INTO instalaciones (cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas, estado, creado_por, tipo, duracion_dias)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PROGRAMADA', $10, $11, $12) RETURNING *`,
+        [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', vendedor || '', numero_orden || '', notas_previas || '', userEmail, tipo || 'INSTALACION', dias]
     );
     const inst = result.rows[0];
     await logHistorial(inst.id, 'CREADA', 'Instalación programada', userEmail);
@@ -50,10 +54,11 @@ const crearInstalacion = async (data, userEmail) => {
 };
 
 const editarInstalacion = async (id, data, userEmail) => {
-    const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas, tipo } = data;
+    const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas, tipo, duracion_dias } = data;
+    const dias = Math.max(1, parseInt(duracion_dias) || 1);
     await query(
-        `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, vendedor=$7, numero_orden=$8, notas_previas=$9, tipo=$10 WHERE id=$11`,
-        [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor || '', numero_orden || '', notas_previas, tipo || 'INSTALACION', id]
+        `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, vendedor=$7, numero_orden=$8, notas_previas=$9, tipo=$10, duracion_dias=$11 WHERE id=$12`,
+        [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor || '', numero_orden || '', notas_previas, tipo || 'INSTALACION', dias, id]
     );
     await logHistorial(id, 'EDITADA', 'Datos actualizados', userEmail);
 };

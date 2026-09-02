@@ -156,7 +156,16 @@ App.registerModule('instalaciones', {
         for (let i = 0; i < startOffset; i++) html += '<div class="inst-cal-day inst-cal-day-empty" style="background:#fafbfc"></div>';
         for (let d = 1; d <= daysInMonth; d++) {
             const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-            const instDia = this.instalaciones.filter(inst => inst.fecha_programada && inst.fecha_programada.substring(0, 10) === fs);
+            const instDia = this.instalaciones.filter(inst => {
+                if (!inst.fecha_programada) return false;
+                const inicio = inst.fecha_programada.substring(0, 10);
+                const dias = inst.duracion_dias || 1;
+                const fechaInicio = new Date(inicio);
+                const fechaFin = new Date(fechaInicio);
+                fechaFin.setDate(fechaFin.getDate() + dias - 1);
+                const fechaActual = new Date(fs);
+                return fechaActual >= fechaInicio && fechaActual <= fechaFin;
+            });
             const esHoy = fs === hoyStr;
             const dt = new Date(year, month, d);
             const esFinde = dt.getDay() === 0 || dt.getDay() === 6;
@@ -170,8 +179,14 @@ App.registerModule('instalaciones', {
             for (const inst of instDia) {
                 const color = estadoColor(inst.estado);
                 const bg = estadoBg(inst.estado);
+                const dias = inst.duracion_dias || 1;
+                const inicio = inst.fecha_programada.substring(0, 10);
+                const fechaInicio = new Date(inicio);
+                const fechaActual = new Date(fs);
+                const diaActual = Math.floor((fechaActual - fechaInicio) / 86400000) + 1;
+                const durLabel = dias > 1 ? `<span style="font-size:9px;opacity:0.7;margin-left:3px">(${diaActual}/${dias})</span>` : '';
                 html += `<div class="inst-event" onclick="App.modules.inst_detalle.abrir(${inst.id})" style="border-left-color:${color};background:${bg}" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
-                    <div class="inst-event-type" style="color:${color}">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')}</div>
+                    <div class="inst-event-type" style="color:${color}">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')}${durLabel}</div>
                     <div class="inst-event-time" style="color:${color}">${inst.hora_programada || '09:00'}${inst.numero_orden ? ' · ' + escapeHtml(inst.numero_orden) : ''}</div>
                     <div class="inst-event-client">${escapeHtml(inst.cliente)}</div>
                 </div>`;
@@ -230,7 +245,10 @@ App.registerModule('instalaciones', {
                 <div class="form-group"><label>Fecha Programada *</label><input type="date" class="form-control" id="instFecha" value="${inst ? inst.fecha_programada.substring(0, 10) : hoy}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
                 <div class="form-group"><label>Hora</label><input type="time" class="form-control" id="instHora" value="${inst ? inst.hora_programada : '09:00'}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             </div>
-            <div class="form-group"><label>Notas Previas</label><textarea class="form-control" id="instNotas" rows="2" placeholder="Notas o instrucciones previas" style="text-transform:capitalize" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">${inst ? escapeHtml(inst.notas_previas) : ''}</textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group"><label>Duracion (dias)</label><input type="number" class="form-control" id="instDuracion" min="1" max="30" value="${inst ? (inst.duracion_dias || 1) : 1}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Notas Previas</label><textarea class="form-control" id="instNotas" rows="2" placeholder="Notas o instrucciones previas" style="text-transform:capitalize" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">${inst ? escapeHtml(inst.notas_previas) : ''}</textarea></div>
+            </div>
         `, { title: inst ? 'Editar Registro' : 'Nuevo Registro' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
@@ -250,7 +268,8 @@ App.registerModule('instalaciones', {
             vendedor: capitalize(document.getElementById('instVendedor').value.trim()),
             numero_orden: document.getElementById('instNumeroOrden').value.trim().toUpperCase(),
             notas_previas: capitalize(document.getElementById('instNotas').value.trim()),
-            tipo: document.getElementById('instTipo').value
+            tipo: document.getElementById('instTipo').value,
+            duracion_dias: parseInt(document.getElementById('instDuracion').value) || 1
         };
         if (!data.cliente || !data.direccion || !data.fecha_programada) { App.showAlert('Cliente, direccion y fecha requeridos', 'danger'); return; }
         const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
