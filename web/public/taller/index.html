@@ -562,15 +562,18 @@ async function procesarMarcados() {
 async function confirmarProcesar() {
     const ids = [...seleccionados];
     const pedidos = ids.map(id => colaActual.find(p => p.id === id)).filter(p => p && (p.estado === 'PENDIENTE' || p.estado === 'EN_PROCESO'));
+    const cantidades = {};
+    for (const p of pedidos) {
+        const qtyInput = document.getElementById('procQty_' + p.id);
+        cantidades[p.id] = qtyInput ? parseInt(qtyInput.value) || p.cantidad : p.cantidad;
+    }
     document.getElementById('procesarModal').remove();
     let ok = 0, err = 0;
     for (const p of pedidos) {
-        const qtyInput = document.getElementById('procQty_' + p.id);
-        const cantidad = qtyInput ? parseInt(qtyInput.value) || p.cantidad : p.cantidad;
         try {
             const r = await fetch('/api/taller/procesar', {
                 method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ paso_id: p.id, cantidad, maquina_id: estacionActual ? estacionActual.maquinaId : null })
+                body: JSON.stringify({ paso_id: p.id, cantidad: cantidades[p.id], maquina_id: estacionActual ? estacionActual.maquinaId : null })
             });
             const d = await r.json();
             if (d.ok) ok++; else err++;
