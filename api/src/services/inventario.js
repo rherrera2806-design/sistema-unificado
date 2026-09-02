@@ -204,7 +204,7 @@ async function getAnalyticsInventario(meses = 6) {
 
         // Consumo mensual por material
         query(`
-            SELECT mp.codigo_mp, mp.nombre,
+            SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm,
                 TO_CHAR(m.fecha_hora, 'YYYY-MM') as mes,
                 COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as m2_consumidos,
                 COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as planchas_consumidas,
@@ -212,7 +212,7 @@ async function getAnalyticsInventario(meses = 6) {
             FROM movimientos m
             JOIN materias_primas mp ON m.materia_prima_id = mp.id
             WHERE m.fecha_hora >= $1
-            GROUP BY mp.codigo_mp, mp.nombre, TO_CHAR(m.fecha_hora, 'YYYY-MM')
+            GROUP BY mp.codigo_mp, mp.nombre, mp.espesor_mm, TO_CHAR(m.fecha_hora, 'YYYY-MM')
             ORDER BY mp.nombre, mes
         `, [fechaStr]),
 

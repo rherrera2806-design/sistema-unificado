@@ -91,7 +91,9 @@ const InvDashboard = {
                                     const allMeses = [...new Set(consumo.map(c => c.mes))].sort();
                                     const rows = Object.entries(porMp).map(([key, data]) => {
                                         const total = Object.values(data.meses).reduce((s, v) => s + v, 0);
-                                        return { nombre: data.nombre, espesor: data.espesor, meses: data.meses, total };
+                                        const numMeses = Object.keys(data.meses).length || 1;
+                                        const promedio = total / numMeses;
+                                        return { nombre: data.nombre, espesor: data.espesor, meses: data.meses, total, promedio };
                                     });
                                     rows.sort((a, b) => a.nombre.localeCompare(b.nombre) || (a.espesor || '').localeCompare(b.espesor || ''));
                                     const maxVal = Math.max(...rows.flatMap(r => Object.values(r.meses)), 1);
@@ -103,6 +105,7 @@ const InvDashboard = {
                                             return '<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:52px">' + monthNames[parseInt(parts[1])] + '<br><span style="font-weight:400;color:var(--gray-400)">' + parts[0].slice(2) + '</span></th>';
                                         }).join('')
                                         + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">TOTAL</th>'
+                                        + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">PROM.</th>'
                                         + '</tr></thead><tbody>'
                                         + rows.map(r => '<tr style="border-bottom:1px solid var(--gray-100)">'
                                             + '<td style="padding:6px 12px;font-weight:600;color:var(--gray-800);position:sticky;left:0;background:white;z-index:1">' + (r.nombre || '-') + '</td>'
@@ -115,6 +118,7 @@ const InvDashboard = {
                                                     + '<span style="position:relative;font-weight:600;color:' + (val > 0 ? 'var(--gray-800)' : 'var(--gray-300)') + '">' + (val > 0 ? val.toFixed(1) : '-') + '</span></td>';
                                             }).join('')
                                             + '<td style="padding:6px 12px;text-align:center;font-weight:700;color:var(--primary);background:var(--gray-50)">' + r.total.toFixed(1) + '</td>'
+                                            + '<td style="padding:6px 12px;text-align:center;font-weight:600;color:var(--gray-600);background:var(--gray-50)">' + r.promedio.toFixed(1) + '</td>'
                                             + '</tr>').join('')
                                         + '</tbody></table>';
                                 })()}
