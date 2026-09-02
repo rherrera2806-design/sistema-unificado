@@ -10,7 +10,7 @@ const getMaquinas = async () => {
         SELECT m.id, m.nombre, m.codigo, m.estado, m.estacion_id, e.nombre_estacion as estacion_nombre
         FROM produccion_maquinas m
         LEFT JOIN estaciones_maestras e ON m.estacion_id = e.id
-        ORDER BY m.nombre ASC
+        ORDER BY e.nombre_estacion ASC NULLS LAST, m.nombre ASC
     `);
     return result.rows;
 };
