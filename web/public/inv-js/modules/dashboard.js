@@ -2,6 +2,8 @@ const InvDashboard = {
     selectedMes: null,
     _filtAuto: 0,
 
+    fmtKg(v) { return Math.round(v || 0).toLocaleString('es-CL'); },
+
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400)">Cargando dashboard...</div>';
@@ -67,7 +69,7 @@ const InvDashboard = {
                                 + '<td style="padding:8px 12px;text-align:center;' + (isSel ? 'color:rgba(255,255,255,0.8)' : 'color:var(--gray-500)') + '">' + p.total_movimientos + '</td>'
                                 + '<td style="padding:8px 12px;text-align:center;font-weight:700;' + (isSel ? 'color:white' : 'color:var(--primary)') + '">' + p.total_planchas + '</td>'
                                 + '<td style="padding:8px 12px;text-align:center;' + (isSel ? 'color:rgba(255,255,255,0.8)' : 'color:var(--gray-600)') + '">' + Number(p.total_m2).toFixed(2) + '</td>'
-                                + '<td style="padding:8px 12px;text-align:center;font-weight:600;' + (isSel ? 'color:white' : 'color:var(--gray-600)') + '">' + Math.round(p.total_kg || 0) + '</td>'
+                                + '<td style="padding:8px 12px;text-align:center;font-weight:600;' + (isSel ? 'color:white' : 'color:var(--gray-600)') + '">' + InvDashboard.fmtKg(p.total_kg) + '</td>'
                                 + '<td style="padding:8px 12px"><div style="height:8px;background:' + (isSel ? 'rgba(255,255,255,0.2)' : 'var(--gray-100)') + ';border-radius:4px;overflow:hidden;width:180px"><div style="width:' + pct + '%;background:' + (isSel ? 'white' : 'var(--primary)') + ';height:100%;border-radius:4px"></div></div></td>'
                                 + '</tr>';
                         }).join('')
@@ -97,7 +99,7 @@ const InvDashboard = {
                                 + '<td style="padding:8px 12px;font-weight:600;color:var(--gray-800)">' + (r.nombre || r.codigo_mp) + '</td>'
                                 + '<td style="padding:8px 12px;color:var(--gray-600)">' + (r.espesor_mm || '') + '</td>'
                                 + '<td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--danger)">' + Number(r.m2_salidos).toFixed(2) + '</td>'
-                                + '<td style="padding:8px 12px;text-align:right;font-weight:600;color:var(--gray-600)">' + Math.round(r.kg_salidos || 0) + '</td>'
+                                + '<td style="padding:8px 12px;text-align:right;font-weight:600;color:var(--gray-600)">' + InvDashboard.fmtKg(r.kg_salidos) + '</td>'
                                 + '<td style="padding:8px 12px;text-align:right;font-weight:600;color:var(--gray-600)">' + r.planchas_salidas + '</td>'
                                 + '<td style="padding:8px 12px"><div style="height:8px;background:var(--gray-100);border-radius:4px;overflow:hidden;width:100%"><div style="width:' + pct + '%;background:var(--danger);height:100%;border-radius:4px"></div></div></td>'
                                 + '</tr>';
@@ -201,7 +203,7 @@ const InvDashboard = {
                                         + '<td style="padding:6px 10px;font-weight:600;color:var(--gray-800);position:sticky;left:60px;background:white;z-index:1">' + (s.nombre || '') + '</td>'
                                         + '<td style="padding:6px 10px;color:var(--gray-600)">' + (s.espesor_mm || '') + '</td>'
                                         + '<td style="padding:6px 10px;text-align:right;font-weight:700;color:var(--gray-800)">' + Math.round(stockRem) + '</td>'
-                                        + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + Math.round(s.kg_stock || 0) + '</td>'
+                                        + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + InvDashboard.fmtKg(s.kg_stock) + '</td>'
                                         + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + Math.round(cpm) + '</td>'
                                         + '<td style="padding:6px 10px;text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:' + autoColor + '15;color:' + autoColor + '">' + (auto > 0 ? auto.toFixed(1) : '-') + '</span></td>'
                                         + meses.map((m, i) => {
