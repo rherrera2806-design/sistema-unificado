@@ -368,7 +368,7 @@ function renderCola() {
             actions = `<button class="btn btn-finalizar" onclick="finalizarPaso(${p.id})">&#9989; Finalizar</button>
                        <button class="btn btn-merma" onclick="abrirMerma(${p.id}, '${escapeHtml(p.descripcion || p.codigo_producto)}', ${p.cantidad || 1})">&#9888;&#65039; Merma</button>`;
         }
-        const timeInfo = p.hora_inicio ? `<div class="order-time">Inicio: ${fmtTime(p.hora_inicio)}${p.hora_fin ? ' | Fin: ' + fmtTime(p.hora_fin) : ''}</div>` : '';
+        const timeInfo = p.hora_inicio ? `<div class="order-time">Inicio: ${fmtTime(p.hora_inicio)}${p.hora_fin ? ' | Fin: ' + fmtTime(p.hora_fin) : ''}${p.maquina_nombre ? ' | <strong>' + escapeHtml(p.maquina_nombre) + '</strong>' : ''}</div>` : '';
         const esperandoBanner = esperando && p.estacion_anterior_nombre
             ? `<div class="esperando-banner"><span class="ew-icon">&#9203;</span><span class="ew-text">Esperando que ${escapeHtml(p.estacion_anterior_nombre)} finalice</span></div>`
             : '';
@@ -442,10 +442,45 @@ window.addEventListener('resize', function() {
 updateSearchVisibility();
 
 async function iniciarPaso(pasoId) {
+    if (!estacionActual) { showToast('Selecciona una estacion primero', true); return; }
+    try {
+        const rMaquinas = await fetch(`/api/taller/maquinas/${estacionActual.id}`);
+        const maquinas = await rMaquinas.json();
+        if (maquinas.length === 0) {
+            await doIniciar(pasoId, null);
+            return;
+        }
+        if (maquinas.length === 1) {
+            await doIniciar(pasoId, maquinas[0].id);
+            return;
+        }
+        const overlay = document.createElement('div');
+        overlay.id = 'maquinaModal';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999';
+        overlay.innerHTML = `
+            <div style="background:white;border-radius:12px;padding:24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+                <h3 style="margin:0 0 16px;font-size:16px;color:#1e293b">Selecciona una maquina</h3>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                    ${maquinas.map(m => `
+                        <button onclick="doIniciar(${pasoId}, ${m.id}); document.getElementById('maquinaModal').remove()"
+                            style="padding:12px 16px;border:2px solid #e2e8f0;border-radius:8px;background:white;cursor:pointer;text-align:left;font-size:14px;transition:all 0.15s"
+                            onmouseover="this.style.borderColor='#3b82f6';this.style.background='#eff6ff'"
+                            onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+                            <strong>${escapeHtml(m.nombre)}</strong> <span style="color:#64748b;font-size:12px">(${escapeHtml(m.codigo)})</span>
+                        </button>
+                    `).join('')}
+                </div>
+                <button onclick="document.getElementById('maquinaModal').remove()" style="margin-top:12px;padding:8px 16px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;cursor:pointer;font-size:12px;color:#64748b;width:100%">Cancelar</button>
+            </div>`;
+        document.body.appendChild(overlay);
+    } catch(e) { showToast('Error de conexion', true); }
+}
+
+async function doIniciar(pasoId, maquinaId) {
     try {
         const r = await fetch('/api/taller/iniciar', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ paso_id: pasoId })
+            body: JSON.stringify({ paso_id: pasoId, maquina_id: maquinaId })
         });
         const d = await r.json();
         if (d.ok) { showToast('Iniciado correctamente'); cargarCola(); }

@@ -29,13 +29,25 @@ async function getEstacionesConCarga() {
     return result.rows;
 }
 
+async function getMaquinasPorEstacion(estacionId) {
+    const result = await query(
+        `SELECT id, nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso
+         FROM produccion_maquinas
+         WHERE estacion_id = $1 AND estado = 'ACTIVA'
+         ORDER BY nombre`,
+        [estacionId]
+    );
+    return result.rows;
+}
+
 async function getColaPorEstacion(estacionId) {
     const result = await query(`
-        SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados, p.fecha_programada,
+        SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados, p.fecha_programada, p.maquina_id,
                o.id as orden_id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion,
                o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
                o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
                f.nombre_familia,
+               mq.nombre as maquina_nombre,
                nes.nombre_estacion as proxima_estacion,
                CASE WHEN p.orden_secuencia = 1 THEN TRUE
                     ELSE EXISTS(
@@ -49,6 +61,7 @@ async function getColaPorEstacion(estacionId) {
         FROM cola_produccion_pasos p
         JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
         LEFT JOIN familias_producto f ON o.familia_id = f.id
+        LEFT JOIN produccion_maquinas mq ON p.maquina_id = mq.id
         LEFT JOIN cola_produccion_pasos nes_paso ON nes_paso.orden_produccion_id = o.id
             AND nes_paso.orden_secuencia = p.orden_secuencia + 1
         LEFT JOIN estaciones_maestras nes ON nes_paso.estacion_id = nes.id
@@ -71,10 +84,17 @@ async function getColaPorEstacion(estacionId) {
     return result.rows;
 }
 
-async function iniciarPaso(pasoId) {
+async function iniciarPaso(pasoId, maquinaId) {
+    const sets = ["estado = 'EN_PROCESO'", "hora_inicio = COALESCE(hora_inicio, NOW())"];
+    const params = [];
+    if (maquinaId) {
+        sets.push("maquina_id = $2");
+        params.push(maquinaId);
+    }
+    params.push(pasoId);
     await query(
-        `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()) WHERE id = $1 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
-        [pasoId]
+        `UPDATE cola_produccion_pasos SET ${sets.join(', ')} WHERE id = $1 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
+        params
     );
 }
 
@@ -201,6 +221,7 @@ async function getMermas(fecha) {
 module.exports = {
     getEstacionesConCarga,
     getColaPorEstacion,
+    getMaquinasPorEstacion,
     iniciarPaso,
     finalizarPaso,
     registrarMerma,

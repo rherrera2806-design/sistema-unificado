@@ -209,6 +209,8 @@ async function initDB() {
     )`);
     await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS tipo_proceso VARCHAR(50)`);
     await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS num_operacion INTEGER`);
+    await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS estacion_id INTEGER REFERENCES estaciones_maestras(id)`);
+    await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS maquina_id INTEGER REFERENCES produccion_maquinas(id)`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_venta VARCHAR(30) DEFAULT 'Normal'`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS pintado BOOLEAN DEFAULT FALSE`);
     await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS perforaciones INTEGER DEFAULT 0`);

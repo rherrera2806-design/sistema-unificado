@@ -8,6 +8,11 @@ router.get('/api/taller/estaciones', async (req, res, next) => {
     catch (e) { next(e); }
 });
 
+router.get('/api/taller/maquinas/:estacionId', async (req, res, next) => {
+    try { res.json(await taller.getMaquinasPorEstacion(req.params.estacionId)); }
+    catch (e) { next(e); }
+});
+
 router.get('/api/taller/colaxestacion/:id', async (req, res, next) => {
     try { res.json(await taller.getColaPorEstacion(req.params.id)); }
     catch (e) { next(e); }
@@ -15,7 +20,7 @@ router.get('/api/taller/colaxestacion/:id', async (req, res, next) => {
 
 router.post('/api/taller/iniciar', async (req, res, next) => {
     if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
-    try { await taller.iniciarPaso(req.body.paso_id); res.json({ ok: true }); }
+    try { await taller.iniciarPaso(req.body.paso_id, req.body.maquina_id); res.json({ ok: true }); }
     catch (e) { next(e); }
 });
 
