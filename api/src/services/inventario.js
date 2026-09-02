@@ -197,7 +197,8 @@ async function getAnalyticsInventario(meses = 6, mesFilter = null) {
             SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm,
                 COUNT(*) FILTER (WHERE m.tipo_movimiento = 'salida') as total_salidas,
                 COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as m2_salidos,
-                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as planchas_salidas
+                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as planchas_salidas,
+                COALESCE(ROUND(SUM(m.metros_cuadrados * mp.espesor_mm * 2.5) FILTER (WHERE m.tipo_movimiento = 'salida'), 0), 0) as kg_salidos
             FROM movimientos m
             JOIN materias_primas mp ON m.materia_prima_id = mp.id
             WHERE m.fecha_hora >= $1 AND m.fecha_hora <= $2
@@ -210,7 +211,8 @@ async function getAnalyticsInventario(meses = 6, mesFilter = null) {
             SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm,
                 COUNT(*) FILTER (WHERE m.tipo_movimiento = 'salida') as total_salidas,
                 COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as m2_salidos,
-                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as planchas_salidas
+                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as planchas_salidas,
+                COALESCE(ROUND(SUM(m.metros_cuadrados * mp.espesor_mm * 2.5) FILTER (WHERE m.tipo_movimiento = 'salida'), 0), 0) as kg_salidos
             FROM movimientos m
             JOIN materias_primas mp ON m.materia_prima_id = mp.id
             WHERE m.fecha_hora >= $1
@@ -242,8 +244,10 @@ async function getAnalyticsInventario(meses = 6, mesFilter = null) {
             SELECT TO_CHAR(m.fecha_hora, 'YYYY-MM') as mes,
                 COUNT(*) as total_movimientos,
                 COALESCE(SUM(m.cantidad_planchas), 0) as total_planchas,
-                COALESCE(SUM(m.metros_cuadrados), 0) as total_m2
+                COALESCE(SUM(m.metros_cuadrados), 0) as total_m2,
+                COALESCE(ROUND(SUM(m.metros_cuadrados * mp.espesor_mm * 2.5), 0), 0) as total_kg
             FROM movimientos m
+            JOIN materias_primas mp ON m.materia_prima_id = mp.id
             WHERE m.tipo_movimiento = 'salida' AND m.fecha_hora >= $1
             GROUP BY TO_CHAR(m.fecha_hora, 'YYYY-MM')
             ORDER BY mes
