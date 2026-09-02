@@ -156,7 +156,7 @@ const InvDashboard = {
                         (() => {
                             const now = new Date();
                             const meses = [];
-                            for (let i = 0; i < 6; i++) {
+                            for (let i = 0; i < 12; i++) {
                                 const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
                                 meses.push({ key: d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'), label: monthNames[d.getMonth()+1], anio: String(d.getFullYear()).slice(2) });
                             }
