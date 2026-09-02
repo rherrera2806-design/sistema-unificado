@@ -7,18 +7,18 @@ const { query } = require('../config/database');
 
 const getMaquinas = async () => {
     const result = await query(`
-        SELECT m.*, e.nombre_estacion as estacion_nombre
+        SELECT m.id, m.nombre, m.codigo, m.estado, m.estacion_id, e.nombre_estacion as estacion_nombre
         FROM produccion_maquinas m
         LEFT JOIN estaciones_maestras e ON m.estacion_id = e.id
-        ORDER BY m.num_operacion ASC NULLS LAST, m.nombre ASC
+        ORDER BY m.nombre ASC
     `);
     return result.rows;
 };
 
-const crearMaquina = async ({ nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion, estacion_id }) => {
+const crearMaquina = async ({ nombre, codigo, estado, estacion_id }) => {
     const result = await query(
-        'INSERT INTO produccion_maquinas (nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion, estacion_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA', tipo_proceso || null, num_operacion || null, estacion_id || null]
+        'INSERT INTO produccion_maquinas (nombre, codigo, estado, estacion_id) VALUES ($1, $2, $3, $4) RETURNING *',
+        [nombre, codigo, estado || 'ACTIVA', estacion_id || null]
     );
     return result.rows[0];
 };
@@ -41,10 +41,10 @@ const importarMaquinas = async (maquinas) => {
     return { inserted, skipped, errors, total: maquinas.length };
 };
 
-const editarMaquina = async (id, { nombre, codigo, capacidad_max_m2_dia, estado, tipo_proceso, num_operacion, estacion_id }) => {
+const editarMaquina = async (id, { nombre, codigo, estado, estacion_id }) => {
     await query(
-        'UPDATE produccion_maquinas SET nombre=$1, codigo=$2, capacidad_max_m2_dia=$3, estado=$4, tipo_proceso=$5, num_operacion=$6, estacion_id=$7 WHERE id=$8',
-        [nombre, codigo, capacidad_max_m2_dia || 0, estado || 'ACTIVA', tipo_proceso || null, num_operacion || null, estacion_id || null, id]
+        'UPDATE produccion_maquinas SET nombre=$1, codigo=$2, estado=$3, estacion_id=$4 WHERE id=$5',
+        [nombre, codigo, estado || 'ACTIVA', estacion_id || null, id]
     );
 };
 
