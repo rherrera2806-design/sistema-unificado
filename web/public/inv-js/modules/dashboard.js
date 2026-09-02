@@ -86,7 +86,7 @@ const InvDashboard = {
                                     consumo.forEach(c => {
                                         const key = c.codigo_mp + '|' + (c.espesor_mm || '');
                                         if (!porMp[key]) porMp[key] = { nombre: c.nombre, espesor: c.espesor_mm, meses: {} };
-                                        porMp[key].meses[c.mes] = Number(c.m2_consumidos);
+                                        porMp[key].meses[c.mes] = Number(c.planchas_consumidas);
                                     });
                                     const allMeses = [...new Set(consumo.map(c => c.mes))].sort();
                                     const rows = Object.entries(porMp).map(([key, data]) => {
