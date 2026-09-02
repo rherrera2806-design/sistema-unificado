@@ -91,7 +91,7 @@ const InvDashboard = {
                             return '<tr style="border-bottom:1px solid var(--gray-100)">'
                                 + '<td style="padding:8px 12px;font-weight:700;color:' + (i < 3 ? 'var(--warning)' : 'var(--gray-400)') + '">' + medal + '</td>'
                                 + '<td style="padding:8px 12px;font-weight:600;color:var(--gray-800)">' + (r.nombre || r.codigo_mp) + '</td>'
-                                + '<td style="padding:8px 12px;color:var(--gray-600)">' + (r.espesor_mm || '') + 'mm</td>'
+                                + '<td style="padding:8px 12px;color:var(--gray-600)">' + (r.espesor_mm || '') + '</td>'
                                 + '<td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--danger)">' + Number(r.m2_salidos).toFixed(2) + '</td>'
                                 + '<td style="padding:8px 12px;text-align:right;font-weight:600;color:var(--gray-600)">' + r.planchas_salidas + '</td>'
                                 + '<td style="padding:8px 12px"><div style="height:8px;background:var(--gray-100);border-radius:4px;overflow:hidden;width:100%"><div style="width:' + pct + '%;background:var(--danger);height:100%;border-radius:4px"></div></div></td>'
@@ -133,7 +133,7 @@ const InvDashboard = {
                                     + '</tr></thead><tbody>'
                                     + rows.map(r => '<tr style="border-bottom:1px solid var(--gray-100)">'
                                         + '<td style="padding:6px 12px;font-weight:600;color:var(--gray-800);position:sticky;left:0;background:white;z-index:1">' + (r.nombre || '-') + '</td>'
-                                        + '<td style="padding:6px 8px;color:var(--gray-600)">' + (r.espesor || '-') + 'mm</td>'
+                                        + '<td style="padding:6px 8px;color:var(--gray-600)">' + (r.espesor || '-') + '</td>'
                                         + allMeses.map(m => {
                                             const val = r.meses[m] || 0;
                                                 return '<td style="padding:6px;text-align:center;position:relative">'
