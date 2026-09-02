@@ -13,26 +13,6 @@ App.registerModule('prod_maquinas', {
                 <div class="m-hero" style="padding:10px 14px">
                     <div style="position:relative;z-index:1">
                         <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Maquinas de Produccion</h2>
-                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Capacidad de produccion por maquina (m2/dia)</p>
-                    </div>
-                </div>
-
-                <div class="m-stats">
-                    <div class="m-card m-stat-card" style="border-left:4px solid #3b82f6">
-                        <div class="m-stat-value" id="mqTotal" style="color:#3b82f6">0</div>
-                        <div class="m-stat-label">Total</div>
-                    </div>
-                    <div class="m-card m-stat-card" style="border-left:4px solid #22c55e">
-                        <div class="m-stat-value" id="mqActivas" style="color:#22c55e">0</div>
-                        <div class="m-stat-label">Activas</div>
-                    </div>
-                    <div class="m-card m-stat-card" style="border-left:4px solid #f59e0b">
-                        <div class="m-stat-value" id="mqMantencion" style="color:#f59e0b">0</div>
-                        <div class="m-stat-label">Mantencion</div>
-                    </div>
-                    <div class="m-card m-stat-card" style="border-left:4px solid #8b5cf6">
-                        <div class="m-stat-value" id="mqCapacidad" style="color:#8b5cf6">0</div>
-                        <div class="m-stat-label">Con Estacion</div>
                     </div>
                 </div>
 
@@ -103,22 +83,8 @@ App.registerModule('prod_maquinas', {
             const headers = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const res = await fetch('/api/produccion/maquinas', { headers });
             this.maquinas = await res.json();
-            this.maquinas.sort((a, b) => a.nombre.localeCompare(b.nombre));
-            this.renderStats();
             this.renderTable();
         } catch(e) { console.error('Error loading maquinas:', e); }
-    },
-
-    renderStats() {
-        const total = this.maquinas.length;
-        const activas = this.maquinas.filter(m => m.estado === 'ACTIVA').length;
-        const mantencion = this.maquinas.filter(m => m.estado === 'MANTENCION').length;
-        const conEstacion = this.maquinas.filter(m => m.estacion_id).length;
-        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-        set('mqTotal', total);
-        set('mqActivas', activas);
-        set('mqMantencion', mantencion);
-        set('mqCapacidad', conEstacion);
     },
 
     renderTable() {
