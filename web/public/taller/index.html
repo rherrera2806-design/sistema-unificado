@@ -166,8 +166,29 @@
 </head>
 <body class="bg-grad">
 
+<!-- ═══ SELECCION DE MODO ═══ -->
+<div id="modeScreen" class="selector-screen">
+    <div style="margin-bottom:12px;display:flex;justify-content:center">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.2" style="filter:drop-shadow(0 2px 8px rgba(245,158,11,0.3))"><path d="M2 20h20"/><path d="M5 20V8l7-5 7 5v12"/><path d="M9 20v-6h6v6"/><path d="M9 12h.01M15 12h.01"/></svg>
+    </div>
+    <div class="selector-title">TALLER DE PRODUCCION</div>
+    <div class="selector-sub">Selecciona el modo de trabajo</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:500px;width:100%;margin-top:16px">
+        <div class="station-card" onclick="seleccionarModo('auto')" style="cursor:pointer;padding:24px 16px;text-align:center">
+            <div style="font-size:32px;margin-bottom:8px">&#9881;</div>
+            <div style="font-weight:800;font-size:15px;color:#1e293b;margin-bottom:6px">Automatizado</div>
+            <div style="font-size:11px;color:#64748b;line-height:1.4">Iniciar y finalizar de a uno por pedido</div>
+        </div>
+        <div class="station-card" onclick="seleccionarModo('manual')" style="cursor:pointer;padding:24px 16px;text-align:center">
+            <div style="font-size:32px;margin-bottom:8px">&#9745;</div>
+            <div style="font-weight:800;font-size:15px;color:#1e293b;margin-bottom:6px">Manual</div>
+            <div style="font-size:11px;color:#64748b;line-height:1.4">Seleccionar varios pedidos e iniciar/finalizar en lote</div>
+        </div>
+    </div>
+</div>
+
 <!-- ═══ SELECTOR DE ESTACION ═══ -->
-<div id="selectorScreen" class="selector-screen">
+<div id="selectorScreen" class="selector-screen" style="display:none">
     <div style="margin-bottom:12px;display:flex;justify-content:center">
         <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.2" style="filter:drop-shadow(0 2px 8px rgba(245,158,11,0.3))"><path d="M2 20h20"/><path d="M5 20V8l7-5 7 5v12"/><path d="M9 20v-6h6v6"/><path d="M9 12h.01M15 12h.01"/></svg>
     </div>
@@ -193,6 +214,14 @@
         <div class="stat proceso"><div class="num" id="statProc">0</div><div class="label">En Proceso</div></div>
         <div class="stat terminado"><div class="num" id="statTerm">0</div><div class="label">Terminados</div></div>
         <div class="stat mermado"><div class="num" id="statMerm">0</div><div class="label">Mermas</div></div>
+    </div>
+    <div id="bulkBar" style="display:none;padding:0 12px 8px">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap">
+            <span id="bulkCount" style="font-size:12px;color:#64748b;font-weight:600">0 seleccionados</span>
+            <button id="btnBulkIniciar" class="btn btn-iniciar" style="padding:8px 14px;font-size:12px;display:none" onclick="iniciarMarcados()">&#9654;&#65039; Iniciar marcados</button>
+            <button id="btnBulkFinalizar" class="btn btn-finalizar" style="padding:8px 14px;font-size:12px;display:none" onclick="finalizarMarcados()">&#9989; Finalizar marcados</button>
+            <button class="btn" style="padding:8px 14px;font-size:12px;background:#f1f5f9;color:#64748b" onclick="limpiarSeleccion()">Limpiar</button>
+        </div>
     </div>
     <div id="queueList" class="queue-list"></div>
 </div>
@@ -233,6 +262,14 @@ let estacionActual = null;
 let colaActual = [];
 let mermaPasoId = null;
 let refreshInterval = null;
+let modoTaller = null;
+let seleccionados = new Set();
+
+function seleccionarModo(modo) {
+    modoTaller = modo;
+    document.getElementById('modeScreen').style.display = 'none';
+    document.getElementById('selectorScreen').style.display = 'flex';
+}
 
 function fmtTime(t) {
     if (!t) return '-';
@@ -353,8 +390,10 @@ function mostrarCola(nombre) {
 function volver() {
     if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
     estacionActual = null;
+    seleccionados.clear();
     document.getElementById('queueScreen').style.display = 'none';
-    document.getElementById('selectorScreen').style.display = 'flex';
+    document.getElementById('selectorScreen').style.display = 'none';
+    document.getElementById('modeScreen').style.display = 'flex';
     const stName = document.getElementById('stationName');
     if (stName) stName.textContent = '';
 }
@@ -406,23 +445,32 @@ function renderCola() {
         const disponible = p.paso_anterior_terminado === true || p.paso_anterior_terminado === 'true';
         const esperando = p.estado === 'PENDIENTE' && !disponible;
         const cardClass = `order-card estado-${p.estado}${esReposicion ? ' reposicion' : ''}${esperando ? ' esperando' : ''}`;
+        const esManual = modoTaller === 'manual';
+        const puedeCheck = esManual && ((p.estado === 'PENDIENTE' && disponible) || p.estado === 'EN_PROCESO');
+        const checked = seleccionados.has(p.id);
         let actions = '';
         if (p.estado === 'PENDIENTE') {
             if (disponible) {
-                actions = `<button class="btn btn-iniciar" onclick="iniciarPaso(${p.id})">&#9654;&#65039; Iniciar</button>`;
+                actions = esManual ? '' : `<button class="btn btn-iniciar" onclick="iniciarPaso(${p.id})">&#9654;&#65039; Iniciar</button>`;
             } else {
-                actions = `<button class="btn btn-iniciar" disabled>&#9654;&#65039; Iniciar</button>`;
+                actions = esManual ? '' : `<button class="btn btn-iniciar" disabled>&#9654;&#65039; Iniciar</button>`;
             }
         } else if (p.estado === 'EN_PROCESO') {
-            actions = `<button class="btn btn-finalizar" onclick="finalizarPaso(${p.id})">&#9989; Finalizar</button>
-                       <button class="btn btn-merma" onclick="abrirMerma(${p.id}, '${escapeHtml(p.descripcion || p.codigo_producto)}', ${p.cantidad || 1})">&#9888;&#65039; Merma</button>`;
+            actions = esManual
+                ? `<button class="btn btn-merma" onclick="abrirMerma(${p.id}, '${escapeHtml(p.descripcion || p.codigo_producto)}', ${p.cantidad || 1})">&#9888;&#65039; Merma</button>`
+                : `<button class="btn btn-finalizar" onclick="finalizarPaso(${p.id})">&#9989; Finalizar</button>
+                   <button class="btn btn-merma" onclick="abrirMerma(${p.id}, '${escapeHtml(p.descripcion || p.codigo_producto)}', ${p.cantidad || 1})">&#9888;&#65039; Merma</button>`;
         }
         const timeInfo = p.hora_inicio ? `<div class="order-time">Inicio: ${fmtTime(p.hora_inicio)}${p.hora_fin ? ' | Fin: ' + fmtTime(p.hora_fin) : ''}${p.maquina_nombre ? ' | <strong>' + escapeHtml(p.maquina_nombre) + '</strong>' : ''}</div>` : '';
         const esperandoBanner = esperando && p.estacion_anterior_nombre
             ? `<div class="esperando-banner"><span class="ew-icon">&#9203;</span><span class="ew-text">Esperando que ${escapeHtml(p.estacion_anterior_nombre)} finalice</span></div>`
             : '';
+        const checkHtml = puedeCheck
+            ? `<label style="position:absolute;top:10px;right:10px;cursor:pointer;z-index:2"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleSeleccion(${p.id}, this.checked)" style="width:18px;height:18px;accent-color:#3b82f6"></label>`
+            : '';
         return `
-        <div class="${cardClass}">
+        <div class="${cardClass}" style="position:relative">
+            ${checkHtml}
             <div class="order-top">
                 <div>
                     <div class="order-pedido">Pedido: ${escapeHtml(p.pedido_sap_id || '-')} | Item ${p.item_numero || '-'}</div>
@@ -457,6 +505,66 @@ function renderCola() {
 function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function filtrarCola() { renderCola(); }
+
+function toggleSeleccion(id, checked) {
+    if (checked) seleccionados.add(id); else seleccionados.delete(id);
+    actualizarBulkBar();
+}
+
+function limpiarSeleccion() {
+    seleccionados.clear();
+    renderCola();
+    actualizarBulkBar();
+}
+
+function actualizarBulkBar() {
+    const bar = document.getElementById('bulkBar');
+    const count = document.getElementById('bulkCount');
+    const btnIniciar = document.getElementById('btnBulkIniciar');
+    const btnFinalizar = document.getElementById('btnBulkFinalizar');
+    if (!bar) return;
+    const n = seleccionados.size;
+    if (n === 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'block';
+    count.textContent = n + ' seleccionado' + (n > 1 ? 's' : '');
+    const hayPendientes = [...seleccionados].some(id => { const p = colaActual.find(x => x.id === id); return p && p.estado === 'PENDIENTE'; });
+    const hayProceso = [...seleccionados].some(id => { const p = colaActual.find(x => x.id === id); return p && p.estado === 'EN_PROCESO'; });
+    btnIniciar.style.display = hayPendientes ? 'inline-flex' : 'none';
+    btnFinalizar.style.display = hayProceso ? 'inline-flex' : 'none';
+}
+
+async function iniciarMarcados() {
+    if (!estacionActual || !estacionActual.maquinaId) { showToast('Selecciona una maquina primero', true); return; }
+    const ids = [...seleccionados].filter(id => { const p = colaActual.find(x => x.id === id); return p && p.estado === 'PENDIENTE'; });
+    if (ids.length === 0) return;
+    let ok = 0, err = 0;
+    for (const id of ids) {
+        try {
+            const r = await fetch('/api/taller/iniciar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paso_id: id, maquina_id: estacionActual.maquinaId }) });
+            const d = await r.json();
+            if (d.ok) ok++; else err++;
+        } catch(e) { err++; }
+    }
+    seleccionados.clear();
+    showToast(`${ok} iniciado(s)` + (err ? `, ${err} error(es)` : ''));
+    cargarCola();
+}
+
+async function finalizarMarcados() {
+    const ids = [...seleccionados].filter(id => { const p = colaActual.find(x => x.id === id); return p && p.estado === 'EN_PROCESO'; });
+    if (ids.length === 0) return;
+    let ok = 0, err = 0;
+    for (const id of ids) {
+        try {
+            const r = await fetch('/api/taller/finalizar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ paso_id: id }) });
+            const d = await r.json();
+            if (d.ok) ok++; else err++;
+        } catch(e) { err++; }
+    }
+    seleccionados.clear();
+    showToast(`${ok} finalizado(s)` + (err ? `, ${err} error(es)` : ''));
+    cargarCola();
+}
 
 function toggleSearch() {
     const wrap = document.getElementById('searchWrap');
