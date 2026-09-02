@@ -85,17 +85,17 @@ async function getColaPorEstacion(estacionId) {
 }
 
 async function iniciarPaso(pasoId, maquinaId) {
-    const sets = ["estado = 'EN_PROCESO'", "hora_inicio = COALESCE(hora_inicio, NOW())"];
-    const params = [];
     if (maquinaId) {
-        sets.push("maquina_id = $2");
-        params.push(maquinaId);
+        await query(
+            `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()), maquina_id = $1 WHERE id = $2 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
+            [maquinaId, pasoId]
+        );
+    } else {
+        await query(
+            `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()) WHERE id = $1 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
+            [pasoId]
+        );
     }
-    params.push(pasoId);
-    await query(
-        `UPDATE cola_produccion_pasos SET ${sets.join(', ')} WHERE id = $1 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
-        params
-    );
 }
 
 async function finalizarPaso(pasoId) {
