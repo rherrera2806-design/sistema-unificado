@@ -182,6 +182,7 @@ const InvDashboard = {
                                 + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);min-width:100px">Material</th>'
                                 + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);min-width:40px">Esp.</th>'
                                 + '<th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500);min-width:50px">Stock</th>'
+                                + '<th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500);min-width:50px">Kg</th>'
                                 + '<th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">Cons. Prom.</th>'
                                 + '<th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">Auton. (mes)</th>'
                                 + meses.map(m => '<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:44px">' + m.label + '<br><span style="font-weight:400;color:var(--gray-400)">' + m.anio + '</span></th>').join('')
@@ -196,6 +197,7 @@ const InvDashboard = {
                                         + '<td style="padding:6px 10px;font-weight:600;color:var(--gray-800);position:sticky;left:60px;background:white;z-index:1">' + (s.nombre || '') + '</td>'
                                         + '<td style="padding:6px 10px;color:var(--gray-600)">' + (s.espesor_mm || '') + '</td>'
                                         + '<td style="padding:6px 10px;text-align:right;font-weight:700;color:var(--gray-800)">' + Math.round(stockRem) + '</td>'
+                                        + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + Math.round(s.kg_stock || 0) + '</td>'
                                         + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + Math.round(cpm) + '</td>'
                                         + '<td style="padding:6px 10px;text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:' + autoColor + '15;color:' + autoColor + '">' + (auto > 0 ? auto.toFixed(1) : '-') + '</span></td>'
                                         + meses.map((m, i) => {
