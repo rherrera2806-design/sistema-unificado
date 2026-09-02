@@ -126,7 +126,7 @@ router.get('/api/inv/alertas', canViewInv, async (req, res, next) => {
 });
 
 router.get('/api/inv/analytics', canViewInv, async (req, res, next) => {
-    try { res.json(await inventarioService.getAnalyticsInventario(req.query.meses || 6)); }
+    try { res.json(await inventarioService.getAnalyticsInventario(req.query.meses || 6, req.query.mes || null)); }
     catch (e) { next(e); }
 });
 

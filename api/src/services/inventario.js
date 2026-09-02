@@ -182,15 +182,31 @@ async function getEstadisticasPorTipo() {
     }));
 }
 
-async function getAnalyticsInventario(meses = 6) {
+async function getAnalyticsInventario(meses = 6, mesFilter = null) {
     const mesesNum = parseInt(meses) || 6;
     const fechaDesde = new Date();
     fechaDesde.setMonth(fechaDesde.getMonth() - mesesNum);
     const fechaStr = fechaDesde.toISOString().split('T')[0];
 
-    const [rankingSalida, consumoMensual, planchasPorMes, stockActual, topDimensiones] = await Promise.all([
-        // Ranking de MP con más salidas
-        query(`
+    let rankingQuery, rankingParams;
+    if (mesFilter) {
+        const [anio, mesNum] = mesFilter.split('-');
+        const fechaMesInicio = anio + '-' + mesNum + '-01';
+        const fechaMesFin = new Date(parseInt(anio), parseInt(mesNum), 0).toISOString().split('T')[0];
+        rankingQuery = `
+            SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm,
+                COUNT(*) FILTER (WHERE m.tipo_movimiento = 'salida') as total_salidas,
+                COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as m2_salidos,
+                COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as planchas_salidas
+            FROM movimientos m
+            JOIN materias_primas mp ON m.materia_prima_id = mp.id
+            WHERE m.fecha_hora >= $1 AND m.fecha_hora <= $2
+            GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm
+            HAVING SUM(CASE WHEN m.tipo_movimiento = 'salida' THEN m.metros_cuadrados ELSE 0 END) > 0
+            ORDER BY m2_salidos DESC`;
+        rankingParams = [fechaMesInicio, fechaMesFin + ' 23:59:59'];
+    } else {
+        rankingQuery = `
             SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm,
                 COUNT(*) FILTER (WHERE m.tipo_movimiento = 'salida') as total_salidas,
                 COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento = 'salida'), 0) as m2_salidos,
@@ -199,8 +215,13 @@ async function getAnalyticsInventario(meses = 6) {
             JOIN materias_primas mp ON m.materia_prima_id = mp.id
             WHERE m.fecha_hora >= $1
             GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm
-            ORDER BY m2_salidos DESC
-        `, [fechaStr]),
+            ORDER BY m2_salidos DESC`;
+        rankingParams = [fechaStr];
+    }
+
+    const [rankingSalida, consumoMensual, planchasPorMes, stockActual, topDimensiones] = await Promise.all([
+        // Ranking de MP con más salidas
+        query(rankingQuery, rankingParams),
 
         // Consumo mensual por material
         query(`
