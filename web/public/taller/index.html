@@ -448,7 +448,7 @@
                     const carga = e.pendientes + e.en_proceso;
                     const cargaColor = carga > 10 ? 'var(--danger)' : carga > 5 ? 'var(--warning)' : 'var(--success)';
                     html += `
-                        <div class="station-card" onclick="loadCola(${e.id}, '${e.nombre_estacion}')">
+                        <div class="station-card" onclick="showMaquinaModal(${e.id}, '${e.nombre_estacion}')">
                             <div class="station-header">
                                 <div class="station-name">${e.nombre_estacion}</div>
                                 <div class="station-badge" style="background:${cargaColor}20;color:${cargaColor}">${carga} en cola</div>
@@ -477,20 +477,112 @@
             }
         }
 
-        async function loadCola(estacionId, estacionNombre) {
+        async function showMaquinaModal(estacionId, estacionNombre) {
+            const modal = document.getElementById('pasoModal');
+            document.getElementById('pasoModalTitle').textContent = 'Seleccionar Máquina';
+            document.getElementById('pasoModalBody').innerHTML = '<div class="loading">Cargando máquinas...</div>';
+            modal.classList.add('active');
+
+            try {
+                const res = await fetch(`${API}/maquinas/${estacionId}`, { headers: getHeaders() });
+                const maquinas = await res.json();
+
+                if (maquinas.length === 0) {
+                    document.getElementById('pasoModalBody').innerHTML = `
+                        <div style="text-align:center;padding:20px">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:12px">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                <line x1="9" y1="9" x2="15" y2="15"/>
+                            </svg>
+                            <p style="color:var(--text-muted);margin-bottom:16px">No hay máquinas configuradas para esta estación</p>
+                            <div style="display:flex;gap:10px;justify-content:center">
+                                <button class="btn btn-outline" onclick="closePasoModal()">Cancelar</button>
+                                <button class="btn btn-primary" onclick="closePasoModal(); loadCola(${estacionId}, '${estacionNombre}', null)">Continuar sin máquina</button>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('pasoModalBody').innerHTML = `
+                    <div style="margin-bottom:16px">
+                        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Selecciona la máquina que vas a usar en <strong>${estacionNombre}</strong></p>
+                        <div id="maquinasList" style="display:flex;flex-direction:column;gap:8px">
+                            ${maquinas.map(m => `
+                                <div class="maquina-option" data-id="${m.id}" data-nombre="${m.nombre}" onclick="selectMaquina(this)" style="
+                                    background:var(--bg);
+                                    border:2px solid var(--border);
+                                    border-radius:12px;
+                                    padding:14px;
+                                    cursor:pointer;
+                                    transition:all 0.2s;
+                                ">
+                                    <div style="display:flex;justify-content:space-between;align-items:center">
+                                        <div>
+                                            <div style="font-weight:700;font-size:14px">${m.nombre}</div>
+                                            <div style="font-size:12px;color:var(--text-muted)">${m.codigo || 'Sin código'}</div>
+                                        </div>
+                                        <div style="text-align:right">
+                                            <div style="font-size:11px;padding:3px 8px;border-radius:10px;background:${m.estado === 'ACTIVA' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'};color:${m.estado === 'ACTIVA' ? 'var(--success)' : 'var(--danger)'}">${m.estado}</div>
+                                            ${m.capacidad_max_m2_dia ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">${m.capacidad_max_m2_dia} m²/día</div>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+                        <button class="btn btn-outline" onclick="closePasoModal()">Cancelar</button>
+                        <button class="btn btn-primary" id="btnConfirmMaquina" onclick="confirmMaquina(${estacionId}, '${estacionNombre}')" disabled style="opacity:0.5">Continuar</button>
+                    </div>
+                `;
+            } catch (err) {
+                document.getElementById('pasoModalBody').innerHTML = `
+                    <div style="text-align:center;padding:20px">
+                        <p style="color:var(--danger)">Error al cargar máquinas</p>
+                        <button class="btn btn-outline" onclick="closePasoModal()" style="margin-top:12px">Cerrar</button>
+                    </div>
+                `;
+            }
+        }
+
+        let selectedMaquina = null;
+
+        function selectMaquina(element) {
+            document.querySelectorAll('.maquina-option').forEach(el => {
+                el.style.borderColor = 'var(--border)';
+                el.style.background = 'var(--bg)';
+            });
+            element.style.borderColor = 'var(--primary)';
+            element.style.background = 'rgba(59,130,246,0.1)';
+            
+            selectedMaquina = {
+                id: Number(element.dataset.id),
+                nombre: element.dataset.nombre
+            };
+
+            const btn = document.getElementById('btnConfirmMaquina');
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+
+        function confirmMaquina(estacionId, estacionNombre) {
+            if (!selectedMaquina) return;
+            closePasoModal();
+            loadCola(estacionId, estacionNombre, selectedMaquina);
+            selectedMaquina = null;
+        }
+
+        async function loadCola(estacionId, estacionNombre, maquina) {
             currentView = 'cola';
-            currentEstacion = { id: estacionId, nombre: estacionNombre };
+            currentEstacion = { id: estacionId, nombre: estacionNombre, maquina: maquina };
             const app = document.getElementById('app');
             app.innerHTML = '<div class="loading">Cargando cola de trabajo...</div>';
 
             try {
-                const [colaRes, maquinasRes] = await Promise.all([
-                    fetch(`${API}/colaxestacion/${estacionId}`, { headers: getHeaders() }),
-                    fetch(`${API}/maquinas/${estacionId}`, { headers: getHeaders() })
-                ]);
-                const cola = await colaRes.json();
-                const maquinas = await maquinasRes.json();
-                currentEstacion.maquinas = maquinas;
+                const res = await fetch(`${API}/colaxestacion/${estacionId}`, { headers: getHeaders() });
+                const cola = await res.json();
 
                 let html = `
                     <div style="margin-bottom:16px">
@@ -503,15 +595,18 @@
                     </div>
                 `;
 
-                // Selector de máquina
-                if (maquinas.length > 0) {
+                // Mostrar máquina seleccionada
+                if (maquina) {
                     html += `
-                        <div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid var(--border)">
-                            <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:8px">MÁQUINA ASIGNADA</label>
-                            <select id="maquinaSelect" class="form-control" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
-                                <option value="">Sin máquina específica</option>
-                                ${maquinas.map(m => `<option value="${m.id}">${m.codigo} - ${m.nombre} (${m.estado})</option>`).join('')}
-                            </select>
+                        <div style="background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(139,92,246,0.1));border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                            </svg>
+                            <div>
+                                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Máquina asignada</div>
+                                <div style="font-size:14px;font-weight:700;color:var(--primary)">${maquina.nombre}</div>
+                            </div>
+                            <button onclick="loadEstaciones()" style="margin-left:auto;background:rgba(239,68,68,0.1);border:none;color:var(--danger);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer">Cambiar</button>
                         </div>
                     `;
                 }
@@ -618,20 +713,20 @@
 
         async function iniciarPaso(pasoId) {
             try {
-                const maquinaId = document.getElementById('maquinaSelect')?.value || null;
+                const maquinaId = currentEstacion.maquina?.id || null;
                 const res = await fetch(`${API}/iniciar`, {
                     method: 'POST',
                     headers: getHeaders(),
                     body: JSON.stringify({ 
                         paso_id: pasoId, 
-                        maquina_id: maquinaId ? Number(maquinaId) : null,
+                        maquina_id: maquinaId,
                         operario_nombre: currentUser.nombre || currentUser.email 
                     })
                 });
                 const data = await res.json();
                 if (data.ok) {
                     showToast('Paso iniciado', 'success');
-                    loadCola(currentEstacion.id, currentEstacion.nombre);
+                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
                 } else {
                     showToast(data.error || 'Error al iniciar', 'error');
                 }
@@ -650,7 +745,7 @@
                 const data = await res.json();
                 if (data.ok) {
                     showToast('Paso pausado', 'warning');
-                    loadCola(currentEstacion.id, currentEstacion.nombre);
+                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
                 } else {
                     showToast(data.error || 'Error al pausar', 'error');
                 }
@@ -669,7 +764,7 @@
                 const data = await res.json();
                 if (data.ok) {
                     showToast('Paso reanudado', 'success');
-                    loadCola(currentEstacion.id, currentEstacion.nombre);
+                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
                 } else {
                     showToast(data.error || 'Error al reanudar', 'error');
                 }
@@ -689,7 +784,7 @@
                 if (data.ok) {
                     showToast('Paso finalizado', 'success');
                     closePasoModal();
-                    loadCola(currentEstacion.id, currentEstacion.nombre);
+                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
                 } else {
                     showToast(data.error || 'Error al finalizar', 'error');
                 }
@@ -700,21 +795,21 @@
 
         async function procesarPaso(pasoId, cantidad) {
             try {
-                const maquinaId = document.getElementById('maquinaSelect')?.value || null;
+                const maquinaId = currentEstacion.maquina?.id || null;
                 const res = await fetch(`${API}/procesar`, {
                     method: 'POST',
                     headers: getHeaders(),
                     body: JSON.stringify({ 
                         paso_id: pasoId, 
                         cantidad: Number(cantidad),
-                        maquina_id: maquinaId ? Number(maquinaId) : null
+                        maquina_id: maquinaId
                     })
                 });
                 const data = await res.json();
                 if (data.ok) {
                     showToast(`Procesadas: ${data.cantidadProcesar}`, 'success');
                     closePasoModal();
-                    loadCola(currentEstacion.id, currentEstacion.nombre);
+                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
                 } else {
                     showToast(data.error || 'Error al procesar', 'error');
                 }
@@ -734,7 +829,7 @@
                 if (data.ok) {
                     showToast(data.mensaje || 'Merma registrada', 'warning');
                     closePasoModal();
-                    loadCola(currentEstacion.id, currentEstacion.nombre);
+                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
                 } else {
                     showToast(data.error || 'Error al registrar merma', 'error');
                 }
