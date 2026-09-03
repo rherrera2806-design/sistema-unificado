@@ -443,29 +443,18 @@
                 <div style="margin-bottom:16px">
                     <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">¿En qué turno vas a trabajar en <strong>${estacionNombre}</strong>?</p>
                     <div style="display:flex;flex-direction:column;gap:10px">
-                        <div class="turno-option" data-turno="mañana" onclick="selectTurno(this)" style="background:${sugerencias === 'mañana' ? 'rgba(59,130,246,0.15)' : 'var(--bg)'};border:2px solid ${sugerencias === 'mañana' ? 'var(--primary)' : 'var(--border)'};border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s">
+                        <div class="turno-option" data-turno="dia" onclick="selectTurno(this)" style="background:${sugerencias === 'dia' ? 'rgba(59,130,246,0.15)' : 'var(--bg)'};border:2px solid ${sugerencias === 'dia' ? 'var(--primary)' : 'var(--border)'};border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s">
                             <div style="display:flex;justify-content:space-between;align-items:center">
                                 <div>
-                                    <div style="font-weight:700;font-size:15px">🌅 Mañana</div>
-                                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px">06:00 - 14:00</div>
+                                    <div style="font-weight:700;font-size:15px">☀️ Día</div>
                                 </div>
-                                ${sugerencias === 'mañana' ? '<span style="font-size:10px;padding:3px 8px;border-radius:10px;background:var(--primary);color:white;font-weight:700">Sugerido</span>' : ''}
-                            </div>
-                        </div>
-                        <div class="turno-option" data-turno="tarde" onclick="selectTurno(this)" style="background:${sugerencias === 'tarde' ? 'rgba(59,130,246,0.15)' : 'var(--bg)'};border:2px solid ${sugerencias === 'tarde' ? 'var(--primary)' : 'var(--border)'};border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s">
-                            <div style="display:flex;justify-content:space-between;align-items:center">
-                                <div>
-                                    <div style="font-weight:700;font-size:15px">☀️ Tarde</div>
-                                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px">14:00 - 22:00</div>
-                                </div>
-                                ${sugerencias === 'tarde' ? '<span style="font-size:10px;padding:3px 8px;border-radius:10px;background:var(--primary);color:white;font-weight:700">Sugerido</span>' : ''}
+                                ${sugerencias === 'dia' ? '<span style="font-size:10px;padding:3px 8px;border-radius:10px;background:var(--primary);color:white;font-weight:700">Sugerido</span>' : ''}
                             </div>
                         </div>
                         <div class="turno-option" data-turno="noche" onclick="selectTurno(this)" style="background:${sugerencias === 'noche' ? 'rgba(59,130,246,0.15)' : 'var(--bg)'};border:2px solid ${sugerencias === 'noche' ? 'var(--primary)' : 'var(--border)'};border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s">
                             <div style="display:flex;justify-content:space-between;align-items:center">
                                 <div>
                                     <div style="font-weight:700;font-size:15px">🌙 Noche</div>
-                                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px">22:00 - 06:00</div>
                                 </div>
                                 ${sugerencias === 'noche' ? '<span style="font-size:10px;padding:3px 8px;border-radius:10px;background:var(--primary);color:white;font-weight:700">Sugerido</span>' : ''}
                             </div>
@@ -482,8 +471,7 @@
 
         function getTurnoSugerido() {
             const hora = new Date().getHours();
-            if (hora >= 6 && hora < 14) return 'mañana';
-            if (hora >= 14 && hora < 22) return 'tarde';
+            if (hora >= 6 && hora < 22) return 'dia';
             return 'noche';
         }
 
@@ -707,7 +695,7 @@
             `;
 
             if (maquina) {
-                const turnoIcono = turnoSeleccionado === 'mañana' ? '🌅' : turnoSeleccionado === 'tarde' ? '☀️' : '🌙';
+                const turnoIcono = turnoSeleccionado === 'dia' ? '☀️' : '🌙';
                 html += `
                     <div style="background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(139,92,246,0.1));border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
