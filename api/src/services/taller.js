@@ -64,6 +64,7 @@ async function getColaPorEstacion(estacionId) {
                o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
                f.nombre_familia,
                mq.nombre as maquina_nombre,
+               est_actual.nombre_estacion as estacion_actual,
                nes.nombre_estacion as proxima_estacion,
                CASE WHEN p.orden_secuencia = 1 THEN TRUE
                     ELSE EXISTS(
@@ -78,6 +79,7 @@ async function getColaPorEstacion(estacionId) {
         JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
         LEFT JOIN familias_producto f ON o.familia_id = f.id
         LEFT JOIN produccion_maquinas mq ON p.maquina_id = mq.id
+        LEFT JOIN estaciones_maestras est_actual ON p.estacion_id = est_actual.id
         LEFT JOIN cola_produccion_pasos nes_paso ON nes_paso.orden_produccion_id = o.id
             AND nes_paso.orden_secuencia = p.orden_secuencia + 1
         LEFT JOIN estaciones_maestras nes ON nes_paso.estacion_id = nes.id
