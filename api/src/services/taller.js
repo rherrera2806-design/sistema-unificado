@@ -105,7 +105,25 @@ async function getColaPorEstacion(estacionId) {
     return result.rows;
 }
 
-async function iniciarPaso(pasoId, maquinaId, operarioEmail, operarioNombre) {
+async function registrarTurnoSiNoExiste(operarioEmail, operarioNombre, turno) {
+    if (!operarioEmail || !turno) return;
+    try {
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        const existe = await query(
+            `SELECT id FROM taller_turnos WHERE fecha = $1 AND turno = $2 AND operario_email = $3`,
+            [hoy, turno, operarioEmail]
+        );
+        if (existe.rows.length === 0) {
+            await query(
+                `INSERT INTO taller_turnos (fecha, turno, operario_email, operario_nombre, hora_inicio)
+                 VALUES ($1, $2, $3, $4, NOW())`,
+                [hoy, turno, operarioEmail, operarioNombre]
+            );
+        }
+    } catch (_) { }
+}
+
+async function iniciarPaso(pasoId, maquinaId, operarioEmail, operarioNombre, turno) {
     const updates = [`estado = 'EN_PROCESO'`, `hora_inicio = COALESCE(hora_inicio, NOW())`];
     const params = [];
     let idx = 1;
@@ -122,10 +140,12 @@ async function iniciarPaso(pasoId, maquinaId, operarioEmail, operarioNombre) {
     try {
         await query(
             `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_nuevos, usuario_email, usuario_nombre)
-             VALUES ('paso', $1, 'iniciar', jsonb_build_object('maquina_id', $2), $3, $4)`,
-            [pasoId, maquinaId, operarioEmail, operarioNombre]
+             VALUES ('paso', $1, 'iniciar', jsonb_build_object('maquina_id', $2, 'turno', $5), $3, $4)`,
+            [pasoId, maquinaId, operarioEmail, operarioNombre, turno]
         );
     } catch (_) { }
+
+    await registrarTurnoSiNoExiste(operarioEmail, operarioNombre, turno);
 }
 
 async function pausarPaso(pasoId, operarioEmail, operarioNombre) {
@@ -368,7 +388,7 @@ async function procesarPaso(pasoId, cantidad, maquinaId, operarioEmail, operario
     return { cantidadProcesar, cantidadRestante };
 }
 
-async function iniciarPasosPorOrden(ordenId, pedidoSapId, estacionId, maquinaId, operarioEmail, operarioNombre) {
+async function iniciarPasosPorOrden(ordenId, pedidoSapId, estacionId, maquinaId, operarioEmail, operarioNombre, turno) {
     const params = [];
     let sql = `SELECT id, orden_produccion_id, orden_secuencia FROM cola_produccion_pasos WHERE estado = 'PENDIENTE'`;
     const where = [];
@@ -389,7 +409,7 @@ async function iniciarPasosPorOrden(ordenId, pedidoSapId, estacionId, maquinaId,
     let count = 0;
     for (const row of result.rows) {
         try {
-            await iniciarPaso(row.id, maquinaId, operarioEmail, operarioNombre);
+            await iniciarPaso(row.id, maquinaId, operarioEmail, operarioNombre, turno);
             count++;
         } catch (_) { }
     }
