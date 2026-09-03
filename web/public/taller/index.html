@@ -604,6 +604,9 @@
             const app = document.getElementById('app');
             const maquina = currentEstacion.maquina;
             const estacionNombre = currentEstacion.nombre;
+            const searchEl = document.getElementById('searchPedido');
+            const searchFocus = searchEl && document.activeElement === searchEl;
+            const cursorPos = searchEl ? searchEl.selectionStart : null;
 
             let html = `
                 <div style="margin-bottom:16px">
@@ -672,26 +675,26 @@
                     const prioridadClass = `priority-${item.nivel_prioridad || 1}`;
                     const prioridadLabel = ['', 'Normal', 'Express', 'Urgencia', 'Reposicion'][item.nivel_prioridad || 1];
 
-                        html += `
-                            <div class="queue-item ${isEnProceso ? 'en-proceso' : ''}">
-                                <div class="item-header">
-                                    <div style="display:flex;flex-direction:column;gap:4px">
-                                        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
-                                            <span style="font-size:13px;font-weight:600"><span style="color:var(--text-muted);font-weight:500">Pedido:</span> <strong>${item.pedido_sap_id || '-'}</strong></span>
-                                            <span style="font-size:13px;font-weight:600"><span style="color:var(--text-muted);font-weight:500">Item:</span> <strong>${item.item_numero != null ? item.item_numero : '-'}</strong></span>
-                                        </div>
-                                        <div style="font-size:12px;color:var(--text-muted)">${item.cliente || 'Sin cliente'}</div>
+                    html += `
+                        <div class="queue-item ${isEnProceso ? 'en-proceso' : ''}">
+                            <div class="item-header">
+                                <div style="display:flex;flex-direction:column;gap:4px">
+                                    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+                                        <span style="font-size:13px;font-weight:600"><span style="color:var(--text-muted);font-weight:500">Pedido:</span> <strong>${item.pedido_sap_id || '-'}</strong></span>
+                                        <span style="font-size:13px;font-weight:600"><span style="color:var(--text-muted);font-weight:500">Item:</span> <strong>${item.item_numero != null ? item.item_numero : '-'}</strong></span>
                                     </div>
-                                    <div style="display:flex;gap:6px;align-items:center">
-                                        <span class="priority-badge ${prioridadClass}">${prioridadLabel}</span>
-                                        <span class="status-badge status-${item.estado.toLowerCase().replace('_', '-')}">${item.estado}</span>
-                                    </div>
+                                    <div style="font-size:12px;color:var(--text-muted)">${item.cliente || 'Sin cliente'}</div>
                                 </div>
-                                <div style="font-size:15px;font-weight:700;margin:8px 0 4px;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline">
-                                    <span>${item.codigo_producto || '-'}</span>
-                                    <span style="font-size:13px;font-weight:500;color:var(--text-muted)">${item.descripcion || ''}${item.espesor_mm ? ' • ' + item.espesor_mm + 'mm' : ''}</span>
+                                <div style="display:flex;gap:6px;align-items:center">
+                                    <span class="priority-badge ${prioridadClass}">${prioridadLabel}</span>
+                                    <span class="status-badge status-${item.estado.toLowerCase().replace('_', '-')}">${item.estado}</span>
                                 </div>
-                                <div class="item-details">
+                            </div>
+                            <div style="font-size:15px;font-weight:700;margin:8px 0 4px;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline">
+                                <span>${item.codigo_producto || '-'}</span>
+                                <span style="font-size:13px;font-weight:500;color:var(--text-muted)">${item.descripcion || ''}${item.espesor_mm ? ' • ' + item.espesor_mm + 'mm' : ''}</span>
+                            </div>
+                            <div class="item-details">
                                 <div class="detail">
                                     <span class="detail-label">Cantidad:</span>
                                     <span class="detail-value">${item.cantidad || 1}</span>
@@ -745,6 +748,14 @@
             }
 
             app.innerHTML = html;
+
+            if (searchFocus) {
+                const newSearch = document.getElementById('searchPedido');
+                if (newSearch) {
+                    newSearch.focus();
+                    if (cursorPos !== null) newSearch.setSelectionRange(cursorPos, cursorPos);
+                }
+            }
         }
 
         async function iniciarTodas(ordenId) {
