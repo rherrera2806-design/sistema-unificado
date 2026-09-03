@@ -574,130 +574,195 @@
             selectedMaquina = null;
         }
 
+        let colaActual = [];
+        let filtroPedido = '';
+
         async function loadCola(estacionId, estacionNombre, maquina) {
             currentView = 'cola';
             currentEstacion = { id: estacionId, nombre: estacionNombre, maquina: maquina };
+            colaActual = [];
+            filtroPedido = '';
+            renderCola();
+            cargarCola();
+        }
+
+        async function cargarCola() {
             const app = document.getElementById('app');
-            app.innerHTML = '<div class="loading">Cargando cola de trabajo...</div>';
-
+            if (colaActual.length === 0) {
+                app.innerHTML = '<div class="loading">Cargando cola de trabajo...</div>';
+            }
             try {
-                const res = await fetch(`${API}/colaxestacion/${estacionId}`, { headers: getHeaders() });
-                const cola = await res.json();
-
-                let html = `
-                    <div style="margin-bottom:16px">
-                        <button class="back-btn" onclick="loadEstaciones()">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                            Volver
-                        </button>
-                        <h2 style="font-size:16px;font-weight:700;color:var(--text);margin-top:8px">${estacionNombre}</h2>
-                        <p style="font-size:12px;color:var(--text-muted)">${cola.length} trabajos en cola</p>
-                    </div>
-                `;
-
-                // Mostrar máquina seleccionada
-                if (maquina) {
-                    html += `
-                        <div style="background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(139,92,246,0.1));border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
-                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                            </svg>
-                            <div>
-                                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Máquina asignada</div>
-                                <div style="font-size:14px;font-weight:700;color:var(--primary)">${maquina.nombre}</div>
-                            </div>
-                            <button onclick="loadEstaciones()" style="margin-left:auto;background:rgba(239,68,68,0.1);border:none;color:var(--danger);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer">Cambiar</button>
-                        </div>
-                    `;
-                }
-
-                if (cola.length === 0) {
-                    html += `
-                        <div class="empty-state">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                            <p>No hay trabajos en esta estación</p>
-                        </div>
-                    `;
-                } else {
-                    cola.forEach(item => {
-                        const isEnProceso = item.estado === 'EN_PROCESO';
-                        const prioridadClass = `priority-${item.nivel_prioridad || 1}`;
-                        const prioridadLabel = ['', 'Normal', 'Express', 'Urgencia', 'Reposicion'][item.nivel_prioridad || 1];
-
-                        html += `
-                            <div class="queue-item ${isEnProceso ? 'en-proceso' : ''}">
-                                <div class="item-header">
-                                    <div>
-                                        <div class="item-title">${item.codigo_producto}</div>
-                                        <div class="item-subtitle">${item.cliente || 'Sin cliente'}</div>
-                                    </div>
-                                    <div style="display:flex;gap:6px;align-items:center">
-                                        <span class="priority-badge ${prioridadClass}">${prioridadLabel}</span>
-                                        <span class="status-badge status-${item.estado.toLowerCase().replace('_', '-')}">${item.estado}</span>
-                                    </div>
-                                </div>
-                                <div class="item-details">
-                                    <div class="detail">
-                                        <span class="detail-label">Pedido:</span>
-                                        <span class="detail-value">${item.pedido_sap_id || '-'}</span>
-                                    </div>
-                                    <div class="detail">
-                                        <span class="detail-label">Cantidad:</span>
-                                        <span class="detail-value">${item.cantidad || 1}</span>
-                                    </div>
-                                    <div class="detail">
-                                        <span class="detail-label">Dimensiones:</span>
-                                        <span class="detail-value">${item.ancho}x${item.alto}mm</span>
-                                    </div>
-                                    <div class="detail">
-                                        <span class="detail-label">Kilos:</span>
-                                        <span class="detail-value">${item.kilos ? Math.round(item.kilos) : '-'}</span>
-                                    </div>
-                                </div>
-                                <div class="item-actions">
-                                    ${isEnProceso ? `
-                                        <button class="btn btn-warning btn-sm" onclick="pausarPaso(${item.id})">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                                            Pausar
-                                        </button>
-                                        <button class="btn btn-success btn-sm" onclick="showFinalizarModal(${item.id})">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                                            Finalizar
-                                        </button>
-                                        <button class="btn btn-outline btn-sm" onclick="showInspeccionModal(${item.id}, ${item.orden_id})">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                                            Inspeccionar
-                                        </button>
-                                    ` : item.estado === 'PAUSADO' ? `
-                                        <button class="btn btn-primary btn-sm" onclick="reanudarPaso(${item.id})">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                                            Reanudar
-                                        </button>
-                                    ` : `
-                                        <button class="btn btn-primary btn-sm" onclick="iniciarPaso(${item.id})">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                                            Iniciar
-                                        </button>
-                                        <button class="btn btn-outline btn-sm" onclick="showProcesarModal(${item.id}, ${item.cantidad || 1})">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-                                            Procesar
-                                        </button>
-                                    `}
-                                    <button class="btn btn-danger btn-sm" onclick="showMermaModal(${item.id})">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                                        Merma
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-
-                app.innerHTML = html;
+                const res = await fetch(`${API}/colaxestacion/${currentEstacion.id}`, { headers: getHeaders() });
+                colaActual = await res.json();
+                renderCola();
             } catch (err) {
                 app.innerHTML = '<div class="empty-state"><p>Error al cargar cola</p></div>';
+            }
+        }
+
+        function renderCola() {
+            const app = document.getElementById('app');
+            const maquina = currentEstacion.maquina;
+            const estacionNombre = currentEstacion.nombre;
+
+            let html = `
+                <div style="margin-bottom:16px">
+                    <button class="back-btn" onclick="loadEstaciones()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Volver
+                    </button>
+                    <h2 style="font-size:16px;font-weight:700;color:var(--text);margin-top:8px">${estacionNombre}</h2>
+                    <p style="font-size:12px;color:var(--text-muted)">${colaActual.length} trabajos en cola</p>
+                </div>
+            `;
+
+            if (maquina) {
+                html += `
+                    <div style="background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(139,92,246,0.1));border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                        </svg>
+                        <div>
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Máquina asignada</div>
+                            <div style="font-size:14px;font-weight:700;color:var(--primary)">${maquina.nombre}</div>
+                        </div>
+                        <button onclick="loadEstaciones()" style="margin-left:auto;background:rgba(239,68,68,0.1);border:none;color:var(--danger);padding:6px 10px;border-radius:8px;font-size:11px;cursor:pointer">Cambiar</button>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div style="margin-bottom:14px;position:relative">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="searchPedido" placeholder="Buscar por pedido..." value="${filtroPedido}" oninput="filtroPedido = this.value; renderCola()" style="width:100%;padding:12px 12px 12px 38px;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none;background:var(--card)">
+                </div>
+            `;
+
+            const colaFiltrada = filtroPedido
+                ? colaActual.filter(it => String(it.pedido_sap_id || '').toLowerCase().includes(filtroPedido.toLowerCase()))
+                : colaActual;
+
+            if (filtroPedido && colaFiltrada.length > 0) {
+                const ordenId = colaFiltrada[0].orden_id;
+                const todosPendientes = colaFiltrada.every(it => it.estado === 'PENDIENTE');
+                if (todosPendientes) {
+                    html += `
+                        <button class="btn btn-success btn-block" onclick="iniciarTodas(${ordenId})" style="margin-bottom:14px">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Iniciar todas (${colaFiltrada.length})
+                        </button>
+                    `;
+                }
+            }
+
+            if (colaFiltrada.length === 0) {
+                html += `
+                    <div class="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <p>${filtroPedido ? 'No hay coincidencias para ese pedido' : 'No hay trabajos en esta estación'}</p>
+                    </div>
+                `;
+            } else {
+                colaFiltrada.forEach(item => {
+                    const isEnProceso = item.estado === 'EN_PROCESO';
+                    const prioridadClass = `priority-${item.nivel_prioridad || 1}`;
+                    const prioridadLabel = ['', 'Normal', 'Express', 'Urgencia', 'Reposicion'][item.nivel_prioridad || 1];
+
+                    html += `
+                        <div class="queue-item ${isEnProceso ? 'en-proceso' : ''}">
+                            <div class="item-header">
+                                <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+                                    <span style="font-size:13px;font-weight:600"><span style="color:var(--text-muted);font-weight:500">Pedido:</span> <strong>${item.pedido_sap_id || '-'}</strong></span>
+                                    <span style="font-size:13px;font-weight:600"><span style="color:var(--text-muted);font-weight:500">Item:</span> <strong>${item.item_numero != null ? item.item_numero : '-'}</strong></span>
+                                </div>
+                                <div style="display:flex;gap:6px;align-items:center">
+                                    <span class="priority-badge ${prioridadClass}">${prioridadLabel}</span>
+                                    <span class="status-badge status-${item.estado.toLowerCase().replace('_', '-')}">${item.estado}</span>
+                                </div>
+                            </div>
+                            <div style="font-size:15px;font-weight:700;margin:8px 0 4px">${item.codigo_producto || '-'}</div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">${item.cliente || 'Sin cliente'}</div>
+                            <div class="item-details">
+                                <div class="detail">
+                                    <span class="detail-label">Cantidad:</span>
+                                    <span class="detail-value">${item.cantidad || 1}</span>
+                                </div>
+                                <div class="detail">
+                                    <span class="detail-label">Dimensiones:</span>
+                                    <span class="detail-value">${item.ancho}x${item.alto}mm</span>
+                                </div>
+                                <div class="detail">
+                                    <span class="detail-label">Kilos:</span>
+                                    <span class="detail-value">${item.kilos ? Math.round(item.kilos) : '-'}</span>
+                                </div>
+                            </div>
+                            <div class="item-actions">
+                                ${isEnProceso ? `
+                                    <button class="btn btn-warning btn-sm" onclick="pausarPaso(${item.id})">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                                        Pausar
+                                    </button>
+                                    <button class="btn btn-success btn-sm" onclick="showFinalizarModal(${item.id})">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Finalizar
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="showInspeccionModal(${item.id}, ${item.orden_id})">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                        Inspeccionar
+                                    </button>
+                                ` : item.estado === 'PAUSADO' ? `
+                                    <button class="btn btn-primary btn-sm" onclick="reanudarPaso(${item.id})">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                        Reanudar
+                                    </button>
+                                ` : `
+                                    <button class="btn btn-primary btn-sm" onclick="iniciarPaso(${item.id})">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                        Iniciar
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="showProcesarModal(${item.id}, ${item.cantidad || 1})">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                                        Procesar
+                                    </button>
+                                `}
+                                <button class="btn btn-danger btn-sm" onclick="showMermaModal(${item.id})">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                    Merma
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            app.innerHTML = html;
+        }
+
+        async function iniciarTodas(ordenId) {
+            try {
+                const maquinaId = currentEstacion.maquina?.id || null;
+                const res = await fetch(`${API}/iniciar-pedido`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        orden_id: ordenId,
+                        maquina_id: maquinaId,
+                        operario_nombre: currentUser.nombre || currentUser.email
+                    })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    showToast(`${data.iniciados} pasos iniciados`, 'success');
+                    cargarCola();
+                } else {
+                    showToast(data.error || 'Error al iniciar', 'error');
+                }
+            } catch (err) {
+                showToast('Error de conexión', 'error');
             }
         }
 
@@ -726,7 +791,7 @@
                 const data = await res.json();
                 if (data.ok) {
                     showToast('Paso iniciado', 'success');
-                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
+                    cargarCola();
                 } else {
                     showToast(data.error || 'Error al iniciar', 'error');
                 }
@@ -745,7 +810,7 @@
                 const data = await res.json();
                 if (data.ok) {
                     showToast('Paso pausado', 'warning');
-                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
+                    cargarCola();
                 } else {
                     showToast(data.error || 'Error al pausar', 'error');
                 }
@@ -764,7 +829,7 @@
                 const data = await res.json();
                 if (data.ok) {
                     showToast('Paso reanudado', 'success');
-                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
+                    cargarCola();
                 } else {
                     showToast(data.error || 'Error al reanudar', 'error');
                 }
@@ -784,7 +849,7 @@
                 if (data.ok) {
                     showToast('Paso finalizado', 'success');
                     closePasoModal();
-                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
+                    cargarCola();
                 } else {
                     showToast(data.error || 'Error al finalizar', 'error');
                 }
@@ -809,7 +874,7 @@
                 if (data.ok) {
                     showToast(`Procesadas: ${data.cantidadProcesar}`, 'success');
                     closePasoModal();
-                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
+                    cargarCola();
                 } else {
                     showToast(data.error || 'Error al procesar', 'error');
                 }
@@ -829,7 +894,7 @@
                 if (data.ok) {
                     showToast(data.mensaje || 'Merma registrada', 'warning');
                     closePasoModal();
-                    loadCola(currentEstacion.id, currentEstacion.nombre, currentEstacion.maquina);
+                    cargarCola();
                 } else {
                     showToast(data.error || 'Error al registrar merma', 'error');
                 }
@@ -1002,3 +1067,4 @@
     </script>
 </body>
 </html>
+

@@ -40,6 +40,14 @@ router.post('/api/taller/iniciar', canUpdate, asyncHandler(async (req, res) => {
     res.json({ ok: true });
 }));
 
+router.post('/api/taller/iniciar-pedido', canUpdate, asyncHandler(async (req, res) => {
+    if (!req.body.orden_id) return res.status(400).json({ error: 'orden_id requerido' });
+    const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
+    const operarioNombre = req.body.operario_nombre || operarioEmail;
+    const iniciados = await taller.iniciarPasosPorOrden(req.body.orden_id, req.body.maquina_id, operarioEmail, operarioNombre);
+    res.json({ ok: true, iniciados });
+}));
+
 router.post('/api/taller/pausar', canUpdate, asyncHandler(async (req, res) => {
     if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
     const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';

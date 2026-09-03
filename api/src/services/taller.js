@@ -363,11 +363,27 @@ async function procesarPaso(pasoId, cantidad, maquinaId, operarioEmail, operario
     return { cantidadProcesar, cantidadRestante };
 }
 
+async function iniciarPasosPorOrden(ordenId, maquinaId, operarioEmail, operarioNombre) {
+    const result = await query(
+        `SELECT id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND estado = 'PENDIENTE' ORDER BY orden_secuencia ASC`,
+        [ordenId]
+    );
+    let count = 0;
+    for (const row of result.rows) {
+        try {
+            await iniciarPaso(row.id, maquinaId, operarioEmail, operarioNombre);
+            count++;
+        } catch (_) { }
+    }
+    return count;
+}
+
 module.exports = {
     getEstacionesConCarga,
     getColaPorEstacion,
     getMaquinasPorEstacion,
     iniciarPaso,
+    iniciarPasosPorOrden,
     finalizarPaso,
     procesarPaso,
     registrarMerma,
