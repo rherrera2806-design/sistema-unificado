@@ -687,7 +687,10 @@
                                         <span class="status-badge status-${item.estado.toLowerCase().replace('_', '-')}">${item.estado}</span>
                                     </div>
                                 </div>
-                                <div style="font-size:15px;font-weight:700;margin:8px 0 10px">${item.codigo_producto || '-'}</div>
+                                <div style="font-size:15px;font-weight:700;margin:8px 0 4px;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline">
+                                    <span>${item.codigo_producto || '-'}</span>
+                                    <span style="font-size:13px;font-weight:500;color:var(--text-muted)">${item.descripcion || ''}${item.espesor_mm ? ' • ' + item.espesor_mm + 'mm' : ''}</span>
+                                </div>
                                 <div class="item-details">
                                 <div class="detail">
                                     <span class="detail-label">Cantidad:</span>
