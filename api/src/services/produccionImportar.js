@@ -170,108 +170,197 @@ const buscarFamiliaParaFila = async (r, maestros) => {
     return null;
 };
 
-const calcularEstaciones = async (r, familia, maestros) => {
-    const { estacionesMaestras, estacionMap, reglaMap, familiaEstacionesMap, recetaBomMap, recetaProcesosMap, ordenToEstacionId } = maestros;
+// ============ SUB-FUNCIONES PARA calcularEstaciones ============
 
-    const codigoKey = String(r.codigo || '').trim();
-    let estacionesFinales = [];
+/**
+ * Busca estaciones por ruta custom en recetaBomMap.
+ */
+const buscarRutaCustom = (codigoKey, recetaProcesosMap) => {
+    if (codigoKey && Array.isArray(recetaProcesosMap[codigoKey]) && recetaProcesosMap[codigoKey].length > 0) {
+        return [...recetaProcesosMap[codigoKey]];
+    }
+    return null;
+};
 
-    const tieneRutaCustom = codigoKey && Array.isArray(recetaProcesosMap[codigoKey]) && recetaProcesosMap[codigoKey].length > 0;
-    if (tieneRutaCustom) {
-        estacionesFinales = [...recetaProcesosMap[codigoKey]];
-    } else {
-        let familiaParaRuta = familia;
-        if (!familiaParaRuta && codigoKey && recetaBomMap[codigoKey] && recetaBomMap[codigoKey].length > 0) {
-            const famId = recetaBomMap[codigoKey][0].familia_id;
-            if (famId) {
-                familiaParaRuta = (familiaMap && Object.keys(familiaMap).length > 0)
-                    ? Object.values(familiaMap).find(f => f.id === famId)
-                    : maestros.familias.find(f => f.id === famId);
-            }
-        }
+/**
+ * Busca estaciones por familia directa.
+ */
+const buscarPorFamilia = (familia, familiaEstacionesMap) => {
+    if (familia && familiaEstacionesMap[familia.id]) {
+        return [...familiaEstacionesMap[familia.id]];
+    }
+    return null;
+};
 
-        if (familiaParaRuta && familiaEstacionesMap[familiaParaRuta.id]) {
-            estacionesFinales = [...familiaEstacionesMap[familiaParaRuta.id]];
-        } else {
-            let foundFromBom = false;
-            if (codigoKey && recetaBomMap[codigoKey] && recetaBomMap[codigoKey].length > 0) {
-                for (const bom of recetaBomMap[codigoKey]) {
-                    if (bom.familia_id && familiaEstacionesMap[bom.familia_id]) {
-                        estacionesFinales = [...familiaEstacionesMap[bom.familia_id]];
-                        foundFromBom = true;
-                        break;
-                    }
-                }
-            }
+/**
+ * Busca familia desde recetaBomMap si no se proporcionó.
+ */
+const buscarFamiliaDesdeBom = (codigoKey, familia, recetaBomMap, familiaMap, maestros) => {
+    if (familia) return familia;
+    if (!codigoKey || !recetaBomMap[codigoKey] || recetaBomMap[codigoKey].length === 0) return null;
+    
+    const famId = recetaBomMap[codigoKey][0].familia_id;
+    if (!famId) return null;
+    
+    return (familiaMap && Object.keys(familiaMap).length > 0)
+        ? Object.values(familiaMap).find(f => f.id === famId)
+        : maestros.familias.find(f => f.id === famId);
+};
 
-            if (!foundFromBom) {
-                let buscarFamilias = [];
-                if (familiaParaRuta) buscarFamilias.push(familiaParaRuta.id);
-                if (codigoKey && recetaBomMap[codigoKey]) {
-                    for (const bom of recetaBomMap[codigoKey]) {
-                        if (bom.familia_id && !buscarFamilias.includes(bom.familia_id)) {
-                            buscarFamilias.push(bom.familia_id);
-                        }
-                    }
-                }
-
-                for (const famId of buscarFamilias) {
-                    try {
-                        const dbRes = await query(`
-                            SELECT array_agg(feb.estacion_id ORDER BY em.orden_secuencia_defecto) as estacion_ids
-                            FROM familia_estaciones_base feb
-                            JOIN estaciones_maestras em ON feb.estacion_id = em.id
-                            WHERE feb.familia_id = $1
-                        `, [famId]);
-                        if (dbRes.rows.length && dbRes.rows[0].estacion_ids && dbRes.rows[0].estacion_ids.length > 0) {
-                            familiaEstacionesMap[famId] = dbRes.rows[0].estacion_ids;
-                            estacionesFinales = [...dbRes.rows[0].estacion_ids];
-                            foundFromBom = true;
-                            break;
-                        }
-                    } catch (e) { /* silencioso */ }
-                }
-            }
-
-            if (estacionesFinales.length === 0) {
-                estacionesFinales = [estacionMap['Corte']?.id, estacionMap['Pulido']?.id, estacionMap['Templado']?.id].filter(Boolean);
-            }
+/**
+ * Busca estaciones desde BOM directamente.
+ */
+const buscarEstacionesDesdeBom = (codigoKey, recetaBomMap, familiaEstacionesMap) => {
+    if (!codigoKey || !recetaBomMap[codigoKey] || recetaBomMap[codigoKey].length === 0) return null;
+    
+    for (const bom of recetaBomMap[codigoKey]) {
+        if (bom.familia_id && familiaEstacionesMap[bom.familia_id]) {
+            return [...familiaEstacionesMap[bom.familia_id]];
         }
     }
+    return null;
+};
 
-    estacionesFinales = estacionesFinales.map(v => {
-        if (estacionesMaestras.find(e => e.id === v)) return v;
-        if (ordenToEstacionId[v]) return ordenToEstacionId[v];
-        return v;
-    });
+/**
+ * Busca estaciones consultando la base de datos por familia.
+ */
+const buscarEstacionesEnDB = async (familiaIds, familiaEstacionesMap) => {
+    for (const famId of familiaIds) {
+        try {
+            const dbRes = await query(`
+                SELECT array_agg(feb.estacion_id ORDER BY em.orden_secuencia_defecto) as estacion_ids
+                FROM familia_estaciones_base feb
+                JOIN estaciones_maestras em ON feb.estacion_id = em.id
+                WHERE feb.familia_id = $1
+            `, [famId]);
+            if (dbRes.rows.length && dbRes.rows[0].estacion_ids && dbRes.rows[0].estacion_ids.length > 0) {
+                familiaEstacionesMap[famId] = dbRes.rows[0].estacion_ids;
+                return [...dbRes.rows[0].estacion_ids];
+            }
+        } catch (e) { /* silencioso */ }
+    }
+    return null;
+};
 
+/**
+ * Obtiene estaciones por defecto (Corte -> Pulido -> Templado).
+ */
+const getDefaultEstaciones = (estacionMap) => {
+    return [estacionMap['Corte']?.id, estacionMap['Pulido']?.id, estacionMap['Templado']?.id].filter(Boolean);
+};
+
+/**
+ * Aplica reglas extras (radio, pulido, ventana, pintado, etc.) a las estaciones.
+ */
+const aplicarReglasExtras = (r, estaciones, reglaMap) => {
     const flagsMap = { radio: 'radio', pulido: 'pulido', ventana: 'ventana', pintado: 'pintado', pintado_car: 'pintado_car' };
     for (const [flag, nombre] of Object.entries(flagsMap)) {
         if (r[flag] && reglaMap[nombre]) {
             const estId = reglaMap[nombre].estacion_id;
-            if (!estacionesFinales.includes(estId)) estacionesFinales.push(estId);
+            if (!estaciones.includes(estId)) estaciones.push(estId);
         }
     }
+    return estaciones;
+};
 
+/**
+ * Procesa operaciones de mecanizado (perforado, destaje, sacado).
+ */
+const procesarMecanizado = (r, estaciones, reglaMap) => {
     const ops = [];
     if (r.perforado) ops.push('Perforado');
     if (r.destaje) ops.push('Destaje');
     if (r.sacado) ops.push('Sacado');
     if (ops.length === 0 && r.mecanizado) ops.push('Mecanizado');
+    
     const mecanizadoOperaciones = ops.length > 0 ? 'Operaciones: ' + ops.join(', ') : null;
     const tieneMecanizado = ops.length > 0 || r.mecanizado;
+    
     if (tieneMecanizado && reglaMap['mecanizado']) {
         const estId = reglaMap['mecanizado'].estacion_id;
-        if (!estacionesFinales.includes(estId)) estacionesFinales.push(estId);
+        if (!estaciones.includes(estId)) estaciones.push(estId);
     }
+    
+    return { estaciones, mecanizadoOperaciones };
+};
 
-    estacionesFinales.sort((a, b) => {
+/**
+ * Ordena estaciones por secuencia.
+ */
+const ordenarEstaciones = (estaciones, estacionesMaestras) => {
+    return estaciones.sort((a, b) => {
         const ea = estacionesMaestras.find(e => e.id === a);
         const eb = estacionesMaestras.find(e => e.id === b);
         return (ea?.orden_secuencia_defecto || 99) - (eb?.orden_secuencia_defecto || 99);
     });
+};
 
-    return { estaciones: estacionesFinales, mecanizadoOperaciones };
+/**
+ * Convierte IDs de orden a IDs de estación.
+ */
+const convertirOrdenAEstacion = (estaciones, estacionesMaestras, ordenToEstacionId) => {
+    return estaciones.map(v => {
+        if (estacionesMaestras.find(e => e.id === v)) return v;
+        if (ordenToEstacionId[v]) return ordenToEstacionId[v];
+        return v;
+    });
+};
+
+// ============ FUNCIÓN PRINCIPAL SIMPLIFICADA ============
+
+const calcularEstaciones = async (r, familia, maestros) => {
+    const { estacionesMaestras, estacionMap, reglaMap, familiaEstacionesMap, recetaBomMap, recetaProcesosMap, ordenToEstacionId } = maestros;
+    const codigoKey = String(r.codigo || '').trim();
+
+    // 1. Buscar ruta custom
+    let estacionesFinales = buscarRutaCustom(codigoKey, recetaProcesosMap);
+    if (estacionesFinales) {
+        return { estaciones: ordenarEstaciones(estacionesFinales, estacionesMaestras), mecanizadoOperaciones: null };
+    }
+
+    // 2. Buscar familia desde BOM si no se proporcionó
+    const familiaParaRuta = buscarFamiliaDesdeBom(codigoKey, familia, recetaBomMap, maestros.familiaMap, maestros);
+
+    // 3. Buscar por familia directa
+    estacionesFinales = buscarPorFamilia(familiaParaRuta, familiaEstacionesMap);
+
+    // 4. Buscar desde BOM
+    if (!estacionesFinales) {
+        estacionesFinales = buscarEstacionesDesdeBom(codigoKey, recetaBomMap, familiaEstacionesMap);
+    }
+
+    // 5. Buscar en base de datos
+    if (!estacionesFinales) {
+        const buscarFamilias = [];
+        if (familiaParaRuta) buscarFamilias.push(familiaParaRuta.id);
+        if (codigoKey && recetaBomMap[codigoKey]) {
+            for (const bom of recetaBomMap[codigoKey]) {
+                if (bom.familia_id && !buscarFamilias.includes(bom.familia_id)) {
+                    buscarFamilias.push(bom.familia_id);
+                }
+            }
+        }
+        estacionesFinales = await buscarEstacionesEnDB(buscarFamilias, familiaEstacionesMap);
+    }
+
+    // 6. Default: Corte -> Pulido -> Templado
+    if (!estacionesFinales || estacionesFinales.length === 0) {
+        estacionesFinales = getDefaultEstaciones(estacionMap);
+    }
+
+    // 7. Convertir orden a estación
+    estacionesFinales = convertirOrdenAEstacion(estacionesFinales, estacionesMaestras, ordenToEstacionId);
+
+    // 8. Aplicar reglas extras
+    estacionesFinales = aplicarReglasExtras(r, estacionesFinales, reglaMap);
+
+    // 9. Procesar mecanizado
+    const { estaciones, mecanizadoOperaciones } = procesarMecanizado(r, estacionesFinales, reglaMap);
+
+    // 10. Ordenar
+    const estacionesOrdenadas = ordenarEstaciones(estaciones, estacionesMaestras);
+
+    return { estaciones: estacionesOrdenadas, mecanizadoOperaciones };
 };
 
 const importarOrdenes = async (rows) => {
