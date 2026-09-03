@@ -70,7 +70,7 @@ app.get('/{*path}', (req, res) => {
 
 app.use((err, req, res, next) => {
     logger.error('Unhandled error:', { message: err.message, stack: err.stack, path: req.path });
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({ error: err.message || 'Error interno del servidor' });
 });
 
 const server = app.listen(PORT, () => {
