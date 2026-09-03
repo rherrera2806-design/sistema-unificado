@@ -1269,8 +1269,8 @@ const Reclamos = {
 
         const items = Array.isArray(r.items) ? r.items : [];
         if (items.length > 0) {
-            const cols = ['#', 'Código', 'Descripción', 'Cant.', 'Ancho', 'Alto', 'Espesor', 'm²', 'Kg', 'V.Unit.', 'Costo Total'];
-            const widths = [8, 22, 48, 12, 16, 16, 16, 15, 15, 18, 22];
+            const cols = ['Item', 'Código', 'Descripción', 'Cant.', 'Ancho', 'Alto', 'Espesor', 'm²', 'Kg', 'V.Unit.', 'Costo Total'];
+            const widths = [12, 18, 38, 10, 14, 14, 14, 13, 13, 16, 18];
 
             doc.setFillColor(30, 58, 95);
             doc.rect(mx, y - 4, pw - mx * 2, 7, 'F');
@@ -1290,7 +1290,7 @@ const Reclamos = {
                 x = mx + 1;
                 const costoTotal = (it.valor_unitario || 0) * (it.cantidad || 1);
                 totalGeneral += costoTotal;
-                const row = [String(i + 1), it.codigo || '', it.descripcion || '', String(it.cantidad || 1), String(it.ancho || ''), String(it.alto || ''), String(it.espesor || ''), String(it.m2 || ''), String(it.kg || ''), it.valor_unitario ? '$' + Number(it.valor_unitario).toLocaleString('es-CL') : '', costoTotal ? '$' + Number(costoTotal).toLocaleString('es-CL') : ''];
+                const row = [it.item || String(i + 1), it.codigo || '', it.descripcion || '', String(it.cantidad || 1), String(it.ancho || ''), String(it.alto || ''), String(it.espesor || ''), String(it.m2 || ''), String(it.kg || ''), it.valor_unitario ? '$' + Number(it.valor_unitario).toLocaleString('es-CL') : '', costoTotal ? '$' + Number(costoTotal).toLocaleString('es-CL') : ''];
                 row.forEach((v, j) => { doc.text(v.substring(0, 30), x, y); x += widths[j]; });
                 y += 5;
             });
@@ -1302,8 +1302,10 @@ const Reclamos = {
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(7);
                 doc.setTextColor(30, 58, 95);
-                doc.text('COSTO TOTAL RECLAMO:', pw - mx - 60, y + 2);
-                doc.text('$' + Number(totalGeneral).toLocaleString('es-CL'), pw - mx, y + 2, { align: 'right' });
+                const totalText = '$' + Number(totalGeneral).toLocaleString('es-CL');
+                const totalLabelW = doc.getTextWidth('COSTO TOTAL RECLAMO: ');
+                doc.text('COSTO TOTAL RECLAMO:', pw - mx - totalLabelW - doc.getTextWidth(totalText) - 2, y + 2);
+                doc.text(totalText, pw - mx, y + 2, { align: 'right' });
                 y += 5;
             }
         } else {
