@@ -697,6 +697,107 @@ async function runMigrations() {
     } catch (e) {
         console.error('Migration warning (ancho_alto):', e.message);
     }
+    // ── Migración: Mejoras al Módulo Taller (operario, inspecciones, historial) ──
+    try {
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS operario_email VARCHAR(200)`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS operario_nombre VARCHAR(200)`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS pausado_en TIMESTAMP`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS tiempo_pausado_segundos INTEGER DEFAULT 0`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS locked_by VARCHAR(200)`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_pasos_operario ON cola_produccion_pasos(operario_email)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_pasos_locked ON cola_produccion_pasos(locked_by, locked_at)`);
+    } catch (e) {
+        console.error('Migration warning (taller-pasos):', e.message);
+    }
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS inspecciones_calidad (
+            id SERIAL PRIMARY KEY,
+            paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE CASCADE,
+            orden_produccion_id INTEGER REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+            estacion_id INTEGER REFERENCES estaciones_maestras(id),
+            tipo_inspeccion VARCHAR(50) NOT NULL,
+            resultado VARCHAR(20) NOT NULL,
+            defectos JSONB DEFAULT '[]',
+            cantidad_inspeccionada INTEGER DEFAULT 0,
+            cantidad_defectuosa INTEGER DEFAULT 0,
+            inspector_email VARCHAR(200) NOT NULL,
+            inspector_nombre VARCHAR(200),
+            observaciones TEXT,
+            imagenes JSONB DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_paso ON inspecciones_calidad(paso_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_orden ON inspecciones_calidad(orden_produccion_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_fecha ON inspecciones_calidad(created_at)`);
+    } catch (e) {
+        console.error('Migration warning (inspecciones_calidad):', e.message);
+    }
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS taller_historial (
+            id SERIAL PRIMARY KEY,
+            entidad_tipo VARCHAR(50) NOT NULL,
+            entidad_id INTEGER NOT NULL,
+            accion VARCHAR(50) NOT NULL,
+            datos_anteriores JSONB,
+            datos_nuevos JSONB,
+            usuario_email VARCHAR(200),
+            usuario_nombre VARCHAR(200),
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_historial_entidad ON taller_historial(entidad_tipo, entidad_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_historial_fecha ON taller_historial(created_at)`);
+    } catch (e) {
+        console.error('Migration warning (taller_historial):', e.message);
+    }
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS tipos_defecto (
+            id SERIAL PRIMARY KEY,
+            codigo VARCHAR(20) UNIQUE NOT NULL,
+            nombre VARCHAR(100) NOT NULL,
+            categoria VARCHAR(50),
+            severidad_default VARCHAR(20) DEFAULT 'menor',
+            requiere_foto BOOLEAN DEFAULT false,
+            activo BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`INSERT INTO tipos_defecto (codigo, nombre, categoria, severidad_default, requiere_foto) VALUES
+            ('RAY','Rayón','cosmetico','menor',false),
+            ('BUR','Burbuja','cosmetico','menor',true),
+            ('RAJ','Rajadura','estructural','critico',true),
+            ('QUE','Quiebre','estructural','critico',true),
+            ('DIM','Fuera de dimensión','dimensional','mayor',false),
+            ('DES','Desalineación','dimensional','mayor',false),
+            ('PIN','Defecto de pintado','cosmetico','menor',true),
+            ('PER','Perforación incorrecta','dimensional','mayor',false),
+            ('TEM','Defecto de templado','estructural','critico',true),
+            ('LAM','Defecto de laminado','estructural','critico',true),
+            ('SUC','Suciedad/Contaminación','cosmetico','menor',false),
+            ('BOR','Borde irregular','cosmetico','menor',true)
+        ON CONFLICT (codigo) DO NOTHING`);
+    } catch (e) {
+        console.error('Migration warning (tipos_defecto):', e.message);
+    }
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS taller_turnos (
+            id SERIAL PRIMARY KEY,
+            fecha DATE NOT NULL,
+            turno VARCHAR(20) NOT NULL,
+            operario_email VARCHAR(200) NOT NULL,
+            operario_nombre VARCHAR(200),
+            estacion_id INTEGER REFERENCES estaciones_maestras(id),
+            hora_inicio TIMESTAMP,
+            hora_fin TIMESTAMP,
+            ordenes_completadas INTEGER DEFAULT 0,
+            m2_producidos DECIMAL(10,2) DEFAULT 0,
+            mermas_generadas INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON taller_turnos(fecha, turno)`);
+    } catch (e) {
+        console.error('Migration warning (taller_turnos):', e.message);
+    }
 }
 
 async function resetSequences() {
@@ -704,7 +805,8 @@ async function resetSequences() {
                     'spare_parts', 'preventive_maintenance', 'corrective_maintenance',
                     'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
                     'pedido_historial', 'catalogo_tipos_cristal', 'catalogo_espesores',
-                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos', 'prod_notas'];
+                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos', 'prod_notas',
+                    'inspecciones_calidad', 'taller_historial', 'tipos_defecto', 'taller_turnos'];
     for (const table of tables) {
         try {
             await query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 1))`);
