@@ -576,12 +576,26 @@
 
         let colaActual = [];
         let filtroPedido = '';
+        let filtroEspesor = '';
+        let searchTimer = null;
+
+        function onSearchInput(value) {
+            filtroPedido = value;
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => renderCola(), 250);
+        }
+
+        function onEspesorChange(value) {
+            filtroEspesor = value;
+            renderCola();
+        }
 
         async function loadCola(estacionId, estacionNombre, maquina) {
             currentView = 'cola';
             currentEstacion = { id: estacionId, nombre: estacionNombre, maquina: maquina };
             colaActual = [];
             filtroPedido = '';
+            filtroEspesor = '';
             renderCola();
             cargarCola();
         }
@@ -635,17 +649,32 @@
             }
 
             html += `
-                <div style="margin-bottom:14px;position:relative">
+                <div style="margin-bottom:10px;position:relative">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none">
                         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
-                    <input type="text" id="searchPedido" placeholder="Buscar por pedido..." value="${filtroPedido}" oninput="filtroPedido = this.value; renderCola()" style="width:100%;padding:12px 12px 12px 38px;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none;background:var(--card)">
+                    <input type="text" id="searchPedido" placeholder="Buscar por pedido..." value="${filtroPedido}" oninput="onSearchInput(this.value)" style="width:100%;padding:12px 12px 12px 38px;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none;background:var(--card)">
                 </div>
             `;
 
-            const colaFiltrada = filtroPedido
-                ? colaActual.filter(it => String(it.pedido_sap_id || '').toLowerCase().includes(filtroPedido.toLowerCase()))
-                : colaActual;
+            const espesoresDisponibles = [...new Set(colaActual.map(it => it.espesor_mm).filter(e => e != null))].sort((a, b) => a - b);
+            if (espesoresDisponibles.length > 0) {
+                html += `
+                    <div style="margin-bottom:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                        <span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Espesor:</span>
+                        <button onclick="onEspesorChange('')" style="padding:5px 12px;border-radius:16px;border:1px solid ${!filtroEspesor ? 'var(--primary)' : 'var(--border)'};background:${!filtroEspesor ? 'var(--primary)' : 'transparent'};color:${!filtroEspesor ? 'white' : 'var(--text)'};font-size:12px;font-weight:600;cursor:pointer">Todos</button>
+                        ${espesoresDisponibles.map(e => `
+                            <button onclick="onEspesorChange('${e}')" style="padding:5px 12px;border-radius:16px;border:1px solid ${filtroEspesor == e ? 'var(--primary)' : 'var(--border)'};background:${filtroEspesor == e ? 'var(--primary)' : 'transparent'};color:${filtroEspesor == e ? 'white' : 'var(--text)'};font-size:12px;font-weight:600;cursor:pointer">${e}mm</button>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            const colaFiltrada = colaActual.filter(it => {
+                if (filtroPedido && !String(it.pedido_sap_id || '').toLowerCase().includes(filtroPedido.toLowerCase())) return false;
+                if (filtroEspesor && String(it.espesor_mm) !== String(filtroEspesor)) return false;
+                return true;
+            });
 
             if (filtroPedido && colaFiltrada.length > 0) {
                 const ordenId = colaFiltrada[0].orden_id;
@@ -770,11 +799,13 @@
         async function iniciarTodas(ordenId) {
             try {
                 const maquinaId = currentEstacion.maquina?.id || null;
+                const estacionId = currentEstacion.id;
                 const res = await fetch(`${API}/iniciar-pedido`, {
                     method: 'POST',
                     headers: getHeaders(),
                     body: JSON.stringify({
                         orden_id: ordenId,
+                        estacion_id: estacionId,
                         maquina_id: maquinaId,
                         operario_nombre: currentUser.nombre || currentUser.email
                     })

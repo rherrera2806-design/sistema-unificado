@@ -368,11 +368,12 @@ async function procesarPaso(pasoId, cantidad, maquinaId, operarioEmail, operario
     return { cantidadProcesar, cantidadRestante };
 }
 
-async function iniciarPasosPorOrden(ordenId, maquinaId, operarioEmail, operarioNombre) {
-    const result = await query(
-        `SELECT id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND estado = 'PENDIENTE' ORDER BY orden_secuencia ASC`,
-        [ordenId]
-    );
+async function iniciarPasosPorOrden(ordenId, estacionId, maquinaId, operarioEmail, operarioNombre) {
+    const params = [ordenId];
+    let sql = `SELECT id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND estado = 'PENDIENTE'`;
+    if (estacionId) { sql += ` AND estacion_id = $2`; params.push(estacionId); }
+    sql += ` ORDER BY orden_secuencia ASC`;
+    const result = await query(sql, params);
     let count = 0;
     for (const row of result.rows) {
         try {
