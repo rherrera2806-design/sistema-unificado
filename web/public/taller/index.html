@@ -484,8 +484,13 @@
             app.innerHTML = '<div class="loading">Cargando cola de trabajo...</div>';
 
             try {
-                const res = await fetch(`${API}/colaxestacion/${estacionId}`, { headers: getHeaders() });
-                const cola = await res.json();
+                const [colaRes, maquinasRes] = await Promise.all([
+                    fetch(`${API}/colaxestacion/${estacionId}`, { headers: getHeaders() }),
+                    fetch(`${API}/maquinas/${estacionId}`, { headers: getHeaders() })
+                ]);
+                const cola = await colaRes.json();
+                const maquinas = await maquinasRes.json();
+                currentEstacion.maquinas = maquinas;
 
                 let html = `
                     <div style="margin-bottom:16px">
@@ -497,6 +502,19 @@
                         <p style="font-size:12px;color:var(--text-muted)">${cola.length} trabajos en cola</p>
                     </div>
                 `;
+
+                // Selector de máquina
+                if (maquinas.length > 0) {
+                    html += `
+                        <div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid var(--border)">
+                            <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:8px">MÁQUINA ASIGNADA</label>
+                            <select id="maquinaSelect" class="form-control" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px">
+                                <option value="">Sin máquina específica</option>
+                                ${maquinas.map(m => `<option value="${m.id}">${m.codigo} - ${m.nombre} (${m.estado})</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                }
 
                 if (cola.length === 0) {
                     html += `
@@ -600,10 +618,15 @@
 
         async function iniciarPaso(pasoId) {
             try {
+                const maquinaId = document.getElementById('maquinaSelect')?.value || null;
                 const res = await fetch(`${API}/iniciar`, {
                     method: 'POST',
                     headers: getHeaders(),
-                    body: JSON.stringify({ paso_id: pasoId, operario_nombre: currentUser.nombre || currentUser.email })
+                    body: JSON.stringify({ 
+                        paso_id: pasoId, 
+                        maquina_id: maquinaId ? Number(maquinaId) : null,
+                        operario_nombre: currentUser.nombre || currentUser.email 
+                    })
                 });
                 const data = await res.json();
                 if (data.ok) {
@@ -677,10 +700,15 @@
 
         async function procesarPaso(pasoId, cantidad) {
             try {
+                const maquinaId = document.getElementById('maquinaSelect')?.value || null;
                 const res = await fetch(`${API}/procesar`, {
                     method: 'POST',
                     headers: getHeaders(),
-                    body: JSON.stringify({ paso_id: pasoId, cantidad: cantidad })
+                    body: JSON.stringify({ 
+                        paso_id: pasoId, 
+                        cantidad: Number(cantidad),
+                        maquina_id: maquinaId ? Number(maquinaId) : null
+                    })
                 });
                 const data = await res.json();
                 if (data.ok) {
