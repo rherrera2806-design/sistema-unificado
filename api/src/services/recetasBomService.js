@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { findCol } = require('../utils/excelUtils');
 
 /**
  * Service para gestión de recetas BOM (nueva y antigua).
@@ -123,24 +124,6 @@ const importarRecetasAntiguas = async (parsedRows) => {
 };
 
 // ============ RECETAS BOM - IMPORTAR ============
-
-const findCol = (row, candidates) => {
-    const normalized = s => String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s\u00a0\u200b\u200c\u200d\ufeff\r\n\t]/g, '').trim();
-    for (const c of candidates) {
-        const nc = normalized(c);
-        for (const key of Object.keys(row)) {
-            if (normalized(key) === nc) return key;
-        }
-    }
-    for (const c of candidates) {
-        const nc = normalized(c);
-        for (const key of Object.keys(row)) {
-            const nk = normalized(key);
-            if (nk.includes(nc) || nc.includes(nk)) return key;
-        }
-    }
-    return null;
-};
 
 const findEstacionesCol = (rows) => {
     if (!rows.length) return null;
