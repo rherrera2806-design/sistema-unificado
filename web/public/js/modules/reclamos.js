@@ -880,6 +880,16 @@ const Reclamos = {
             if (!ov) errores.push('N° Orden de Venta');
             if (!detalle) errores.push('Detalle del Reclamo');
             if (items.length === 0) errores.push('Al menos 1 Item');
+            // Validar cada item
+            items.forEach((it, i) => {
+                if (!it.codigo || !it.codigo.trim()) errores.push('Item ' + (i + 1) + ': Código');
+                if (!it.descripcion || !it.descripcion.trim()) errores.push('Item ' + (i + 1) + ': Descripción');
+                if (!it.cantidad || it.cantidad <= 0) errores.push('Item ' + (i + 1) + ': Cantidad');
+                if (!it.ancho || it.ancho <= 0) errores.push('Item ' + (i + 1) + ': Ancho');
+                if (!it.alto || it.alto <= 0) errores.push('Item ' + (i + 1) + ': Alto');
+                if (!it.espesor || it.espesor <= 0) errores.push('Item ' + (i + 1) + ': Espesor');
+                if (!it.valor_unitario || it.valor_unitario <= 0) errores.push('Item ' + (i + 1) + ': V. Unitario');
+            });
             if (errores.length > 0) {
                 App.toast('Campos obligatorios: ' + errores.join(', '), 'error');
                 return;
