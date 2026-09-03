@@ -100,44 +100,117 @@ async function getColaPorEstacion(estacionId) {
     return result.rows;
 }
 
-async function iniciarPaso(pasoId, maquinaId) {
-    if (maquinaId) {
-        await query(
-            `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()), maquina_id = $1 WHERE id = $2 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
-            [maquinaId, pasoId]
+async function iniciarPaso(pasoId, maquinaId, operarioEmail, operarioNombre) {
+    return await transaction(async ({ query: txQuery }) => {
+        const lockResult = await txQuery(
+            `UPDATE cola_produccion_pasos 
+             SET locked_by = $1, locked_at = NOW() 
+             WHERE id = $2 AND (locked_by IS NULL OR locked_at < NOW() - INTERVAL '5 minutes')
+             RETURNING id`,
+            [operarioEmail, pasoId]
         );
-    } else {
-        await query(
-            `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()) WHERE id = $1 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
-            [pasoId]
+        
+        if (lockResult.rows.length === 0) {
+            throw new Error('Paso está siendo trabajado por otro operario');
+        }
+
+        if (maquinaId) {
+            await txQuery(
+                `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()), maquina_id = $1, operario_email = $2, operario_nombre = $3 WHERE id = $4`,
+                [maquinaId, operarioEmail, operarioNombre, pasoId]
+            );
+        } else {
+            await txQuery(
+                `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()), operario_email = $1, operario_nombre = $2 WHERE id = $3`,
+                [operarioEmail, operarioNombre, pasoId]
+            );
+        }
+
+        await txQuery(
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_nuevos, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'iniciar', jsonb_build_object('maquina_id', $2), $3, $4)`,
+            [pasoId, maquinaId, operarioEmail, operarioNombre]
         );
-    }
+    });
 }
 
-async function finalizarPaso(pasoId) {
-    const pasoResult = await query('SELECT * FROM cola_produccion_pasos WHERE id = $1', [pasoId]);
-    if (pasoResult.rows.length === 0) return null;
-    const p = pasoResult.rows[0];
+async function pausarPaso(pasoId, operarioEmail, operarioNombre) {
+    return await transaction(async ({ query: txQuery }) => {
+        const paso = await txQuery(
+            `SELECT hora_inicio FROM cola_produccion_pasos WHERE id = $1 AND estado = 'EN_PROCESO'`,
+            [pasoId]
+        );
+        if (paso.rows.length === 0) throw new Error('Paso no está en proceso');
 
-    await query(
-        `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW() WHERE id = $1`,
-        [pasoId]
-    );
+        await txQuery(
+            `UPDATE cola_produccion_pasos SET estado = 'PAUSADO', pausado_en = NOW() WHERE id = $1`,
+            [pasoId]
+        );
 
-    const siguiente = await query(`
-        SELECT cp.id, cp.estacion_id, em.nombre_estacion
-        FROM cola_produccion_pasos cp
-        JOIN estaciones_maestras em ON cp.estacion_id = em.id
-        WHERE cp.orden_produccion_id = $1 AND cp.orden_secuencia = $2 AND cp.estado = 'PENDIENTE'
-        LIMIT 1
-    `, [p.orden_produccion_id, p.orden_secuencia + 1]);
+        await txQuery(
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'pausar', $2, $3)`,
+            [pasoId, operarioEmail, operarioNombre]
+        );
+    });
+}
 
-    return {
-        siguienteHabilitado: siguiente.rows.length > 0,
-        siguientePasoId: siguiente.rows[0]?.id || null,
-        siguienteEstacionId: siguiente.rows[0]?.estacion_id || null,
-        siguienteEstacionNombre: siguiente.rows[0]?.nombre_estacion || null
-    };
+async function reanudarPaso(pasoId, operarioEmail, operarioNombre) {
+    return await transaction(async ({ query: txQuery }) => {
+        const paso = await txQuery(
+            `SELECT pausado_en FROM cola_produccion_pasos WHERE id = $1 AND estado = 'PAUSADO'`,
+            [pasoId]
+        );
+        if (paso.rows.length === 0) throw new Error('Paso no está pausado');
+
+        const pausadoEn = new Date(paso.rows[0].pausado_en);
+        const tiempoPausado = Math.floor((Date.now() - pausadoEn.getTime()) / 1000);
+
+        await txQuery(
+            `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', pausado_en = NULL, tiempo_pausado_segundos = tiempo_pausado_segundos + $1 WHERE id = $2`,
+            [tiempoPausado, pasoId]
+        );
+
+        await txQuery(
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_nuevos, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'reanudar', jsonb_build_object('tiempo_pausado_segundos', $2), $3, $4)`,
+            [pasoId, tiempoPausado, operarioEmail, operarioNombre]
+        );
+    });
+}
+
+async function finalizarPaso(pasoId, operarioEmail, operarioNombre) {
+    return await transaction(async ({ query: txQuery }) => {
+        const pasoResult = await txQuery('SELECT * FROM cola_produccion_pasos WHERE id = $1', [pasoId]);
+        if (pasoResult.rows.length === 0) return null;
+        const p = pasoResult.rows[0];
+
+        await txQuery(
+            `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW(), locked_by = NULL, locked_at = NULL WHERE id = $1`,
+            [pasoId]
+        );
+
+        await txQuery(
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_anteriores, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'finalizar', $2, $3, $4)`,
+            [pasoId, JSON.stringify(p), operarioEmail, operarioNombre]
+        );
+
+        const siguiente = await txQuery(`
+            SELECT cp.id, cp.estacion_id, em.nombre_estacion
+            FROM cola_produccion_pasos cp
+            JOIN estaciones_maestras em ON cp.estacion_id = em.id
+            WHERE cp.orden_produccion_id = $1 AND cp.orden_secuencia = $2 AND cp.estado = 'PENDIENTE'
+            LIMIT 1
+        `, [p.orden_produccion_id, p.orden_secuencia + 1]);
+
+        return {
+            siguienteHabilitado: siguiente.rows.length > 0,
+            siguientePasoId: siguiente.rows[0]?.id || null,
+            siguienteEstacionId: siguiente.rows[0]?.estacion_id || null,
+            siguienteEstacionNombre: siguiente.rows[0]?.nombre_estacion || null
+        };
+    });
 }
 
 async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail }) {
@@ -232,7 +305,7 @@ async function getMermas(fecha) {
     return result.rows;
 }
 
-async function procesarPaso(pasoId, cantidad, maquinaId) {
+async function procesarPaso(pasoId, cantidad, maquinaId, operarioEmail, operarioNombre) {
     return await transaction(async ({ query: txQuery }) => {
         const pasoResult = await txQuery(
             `SELECT p.*, o.cantidad as cantidad_total, o.metros_cuadrados, o.kilos, o.ancho, o.alto,
@@ -283,18 +356,24 @@ async function procesarPaso(pasoId, cantidad, maquinaId) {
 
         if (maquinaId) {
             await txQuery(
-                `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()), maquina_id = $1 WHERE id = $2`,
-                [maquinaId, pasoId]
+                `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()), maquina_id = $1, operario_email = $2, operario_nombre = $3 WHERE id = $4`,
+                [maquinaId, operarioEmail, operarioNombre, pasoId]
             );
         } else {
             await txQuery(
-                `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()) WHERE id = $1`,
-                [pasoId]
+                `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()), operario_email = $1, operario_nombre = $2 WHERE id = $3`,
+                [operarioEmail, operarioNombre, pasoId]
             );
         }
         await txQuery(
             `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW() WHERE id = $1`,
             [pasoId]
+        );
+
+        await txQuery(
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_nuevos, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'procesar', jsonb_build_object('cantidad', $2, 'maquina_id', $3), $4, $5)`,
+            [pasoId, cantidadProcesar, maquinaId, operarioEmail, operarioNombre]
         );
 
         return { cantidadProcesar, cantidadRestante };

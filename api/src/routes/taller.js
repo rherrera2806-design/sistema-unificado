@@ -11,6 +11,8 @@ const canView = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.
 const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
 const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
 
+// ============ CONSULTAS ============
+
 router.get('/api/taller/estaciones', canView, asyncHandler(async (req, res) => {
     res.json(await taller.getEstacionesConCarga());
 }));
@@ -23,15 +25,51 @@ router.get('/api/taller/colaxestacion/:id', canView, asyncHandler(async (req, re
     res.json(await taller.getColaPorEstacion(req.params.id));
 }));
 
+router.get('/api/taller/mermas', canView, asyncHandler(async (req, res) => {
+    const hoy = req.query.fecha || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+    res.json(await taller.getMermas(hoy));
+}));
+
+// ============ ACCIONES DE OPERARIO ============
+
 router.post('/api/taller/iniciar', canUpdate, asyncHandler(async (req, res) => {
     if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
-    await taller.iniciarPaso(req.body.paso_id, req.body.maquina_id);
+    const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
+    const operarioNombre = req.body.operario_nombre || operarioEmail;
+    await taller.iniciarPaso(req.body.paso_id, req.body.maquina_id, operarioEmail, operarioNombre);
+    res.json({ ok: true });
+}));
+
+router.post('/api/taller/pausar', canUpdate, asyncHandler(async (req, res) => {
+    if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
+    const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
+    const operarioNombre = req.body.operario_nombre || operarioEmail;
+    await taller.pausarPaso(req.body.paso_id, operarioEmail, operarioNombre);
+    res.json({ ok: true });
+}));
+
+router.post('/api/taller/reanudar', canUpdate, asyncHandler(async (req, res) => {
+    if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
+    const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
+    const operarioNombre = req.body.operario_nombre || operarioEmail;
+    await taller.reanudarPaso(req.body.paso_id, operarioEmail, operarioNombre);
     res.json({ ok: true });
 }));
 
 router.post('/api/taller/finalizar', canUpdate, asyncHandler(async (req, res) => {
     if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
-    const result = await taller.finalizarPaso(req.body.paso_id);
+    const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
+    const operarioNombre = req.body.operario_nombre || operarioEmail;
+    const result = await taller.finalizarPaso(req.body.paso_id, operarioEmail, operarioNombre);
+    if (!result) return res.status(404).json({ error: 'Paso no encontrado' });
+    res.json({ ok: true, ...result });
+}));
+
+router.post('/api/taller/procesar', canUpdate, asyncHandler(async (req, res) => {
+    if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
+    const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
+    const operarioNombre = req.body.operario_nombre || operarioEmail;
+    const result = await taller.procesarPaso(req.body.paso_id, req.body.cantidad, req.body.maquina_id, operarioEmail, operarioNombre);
     if (!result) return res.status(404).json({ error: 'Paso no encontrado' });
     res.json({ ok: true, ...result });
 }));
@@ -55,17 +93,7 @@ router.post('/api/taller/merma', canCreate, asyncHandler(async (req, res) => {
     res.json({ ok: true, ...result, mensaje: msg + (autoAsignados > 0 ? ` Auto-asignada: ${autoAsignados} orden(es).` : '') });
 }));
 
-router.post('/api/taller/procesar', canUpdate, asyncHandler(async (req, res) => {
-    if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
-    const result = await taller.procesarPaso(req.body.paso_id, req.body.cantidad, req.body.maquina_id);
-    if (!result) return res.status(404).json({ error: 'Paso no encontrado' });
-    res.json({ ok: true, ...result });
-}));
-
-router.get('/api/taller/mermas', canView, asyncHandler(async (req, res) => {
-    const hoy = req.query.fecha || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
-    res.json(await taller.getMermas(hoy));
-}));
+// ============ BACKFILLS ============
 
 router.post('/api/taller/backfill-familia', canUpdate, asyncHandler(async (req, res) => {
     const actualizadas = await backfills.backfillFamilia();
