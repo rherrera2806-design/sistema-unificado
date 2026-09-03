@@ -677,13 +677,22 @@
             });
 
             if (filtroPedido && colaFiltrada.length > 0) {
-                const todosPendientes = colaFiltrada.every(it => it.estado === 'PENDIENTE');
+                const pedidoSapId = colaFiltrada[0].pedido_sap_id;
+                const todosPendientes = colaFiltrada.length > 0 && colaFiltrada.every(it => it.estado === 'PENDIENTE');
+                const todosEnProceso = colaFiltrada.length > 0 && colaFiltrada.every(it => it.estado === 'EN_PROCESO');
                 if (todosPendientes) {
-                    const pedidoSapId = colaFiltrada[0].pedido_sap_id;
                     html += `
-                        <button class="btn btn-success btn-block" onclick="iniciarPedido('${pedidoSapId}')" style="margin-bottom:14px">
+                        <button class="btn btn-success btn-block" onclick="iniciarPedido('${pedidoSapId}')" style="margin-bottom:10px">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                             Iniciar todas (${colaFiltrada.length})
+                        </button>
+                    `;
+                }
+                if (todosEnProceso) {
+                    html += `
+                        <button class="btn btn-success btn-block" onclick="finalizarPedido('${pedidoSapId}')" style="margin-bottom:14px">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                            Finalizar todas (${colaFiltrada.length})
                         </button>
                     `;
                 }
@@ -816,6 +825,30 @@
                     cargarCola();
                 } else {
                     showToast(data.error || 'Error al iniciar', 'error');
+                }
+            } catch (err) {
+                showToast('Error de conexión', 'error');
+            }
+        }
+
+        async function finalizarPedido(pedidoSapId) {
+            try {
+                const estacionId = currentEstacion.id;
+                const res = await fetch(`${API}/finalizar-pedido`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        pedido_sap_id: pedidoSapId,
+                        estacion_id: estacionId,
+                        operario_nombre: currentUser.nombre || currentUser.email
+                    })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    showToast(`${data.finalizados} pasos finalizados`, 'success');
+                    cargarCola();
+                } else {
+                    showToast(data.error || 'Error al finalizar', 'error');
                 }
             } catch (err) {
                 showToast('Error de conexión', 'error');

@@ -55,6 +55,14 @@ router.post('/api/taller/iniciar-pedido', canUpdate, asyncHandler(async (req, re
     res.json({ ok: true, iniciados });
 }));
 
+router.post('/api/taller/finalizar-pedido', canUpdate, asyncHandler(async (req, res) => {
+    if (!req.body.pedido_sap_id) return res.status(400).json({ error: 'pedido_sap_id requerido' });
+    const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
+    const operarioNombre = req.body.operario_nombre || operarioEmail;
+    const finalizados = await taller.finalizarPasosPorPedido(req.body.pedido_sap_id, req.body.estacion_id, operarioEmail, operarioNombre);
+    res.json({ ok: true, finalizados });
+}));
+
 router.post('/api/taller/pausar', canUpdate, asyncHandler(async (req, res) => {
     if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
     const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';

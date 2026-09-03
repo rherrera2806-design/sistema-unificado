@@ -396,6 +396,23 @@ async function iniciarPasosPorOrden(ordenId, pedidoSapId, estacionId, maquinaId,
     return count;
 }
 
+async function finalizarPasosPorPedido(pedidoSapId, estacionId, operarioEmail, operarioNombre) {
+    if (!pedidoSapId) return 0;
+    const params = [pedidoSapId];
+    let sql = `SELECT id FROM cola_produccion_pasos WHERE estado = 'EN_PROCESO' AND orden_produccion_id IN (SELECT id FROM produccion_ordenes WHERE pedido_sap_id = $1)`;
+    if (estacionId) { params.push(estacionId); sql += ` AND estacion_id = $2`; }
+    sql += ` ORDER BY orden_produccion_id ASC, orden_secuencia ASC`;
+    const result = await query(sql, params);
+    let count = 0;
+    for (const row of result.rows) {
+        try {
+            await finalizarPaso(row.id, operarioEmail, operarioNombre);
+            count++;
+        } catch (_) { }
+    }
+    return count;
+}
+
 module.exports = {
     getEstacionesConCarga,
     getColaPorEstacion,
@@ -403,6 +420,7 @@ module.exports = {
     iniciarPaso,
     iniciarPasosPorOrden,
     finalizarPaso,
+    finalizarPasosPorPedido,
     procesarPaso,
     registrarMerma,
     getMermas
