@@ -549,6 +549,7 @@ async function initDB() {
         'prod_notas','prod_notas.agregar','prod_notas.editar','prod_notas.eliminar',
         'prod_config','prod_config.agregar','prod_config.editar','prod_config.eliminar',
         'taller','taller.agregar','taller.editar','taller.eliminar',
+        'bodega','bodega.agregar','bodega.editar','bodega.eliminar',
         'costeo','costeo.agregar','costeo.editar','costeo.eliminar',
         'usuarios'
     ];
@@ -798,6 +799,56 @@ async function runMigrations() {
     } catch (e) {
         console.error('Migration warning (taller_turnos):', e.message);
     }
+    // ── Módulo Bodega: carros de producto terminado, pre-entrega, entregas ──
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS bodega_carros (
+            id SERIAL PRIMARY KEY,
+            codigo VARCHAR(30) UNIQUE NOT NULL,
+            tipo VARCHAR(50) DEFAULT 'carro',
+            capacidad_items INTEGER DEFAULT 50,
+            activo BOOLEAN DEFAULT true,
+            observaciones TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`CREATE TABLE IF NOT EXISTS bodega_carros_items (
+            id SERIAL PRIMARY KEY,
+            carro_id INTEGER REFERENCES bodega_carros(id) ON DELETE CASCADE,
+            orden_produccion_id INTEGER REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+            paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE CASCADE,
+            armador_email VARCHAR(200),
+            armador_nombre VARCHAR(200),
+            armado_at TIMESTAMP DEFAULT NOW(),
+            entregado_at TIMESTAMP,
+            entregado_por_email VARCHAR(200),
+            observaciones TEXT
+        )`);
+        await query(`CREATE TABLE IF NOT EXISTS bodega_entregas (
+            id SERIAL PRIMARY KEY,
+            carro_id INTEGER REFERENCES bodega_carros(id),
+            numero_documento VARCHAR(50) UNIQUE NOT NULL,
+            generado_at TIMESTAMP DEFAULT NOW(),
+            generado_por_email VARCHAR(200),
+            generado_por_nombre VARCHAR(200),
+            recibido_at TIMESTAMP,
+            recibido_por_email VARCHAR(200),
+            recibido_por_nombre VARCHAR(200),
+            total_items INTEGER DEFAULT 0,
+            total_kilos DECIMAL(10,2) DEFAULT 0,
+            total_m2 DECIMAL(10,2) DEFAULT 0,
+            observaciones TEXT
+        )`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_carro ON bodega_carros_items(carro_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_orden ON bodega_carros_items(orden_produccion_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_entregado ON bodega_carros_items(entregado_at)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_entregas_carro ON bodega_entregas(carro_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_entregas_recibido ON bodega_entregas(recibido_at)`);
+        // Carros iniciales (catálogo)
+        for (const codigo of ['C-001', 'C-002', 'C-003', 'A-001', 'A-002']) {
+            await query(`INSERT INTO bodega_carros (codigo, tipo) VALUES ($1, $2) ON CONFLICT (codigo) DO NOTHING`, [codigo, codigo.startsWith('A-') ? 'atril' : 'carro']);
+        }
+    } catch (e) {
+        console.error('Migration warning (bodega):', e.message);
+    }
 }
 
 async function resetSequences() {
@@ -806,7 +857,8 @@ async function resetSequences() {
                     'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
                     'pedido_historial', 'catalogo_tipos_cristal', 'catalogo_espesores',
                     'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos', 'prod_notas',
-                    'inspecciones_calidad', 'taller_historial', 'tipos_defecto', 'taller_turnos'];
+                    'inspecciones_calidad', 'taller_historial', 'tipos_defecto', 'taller_turnos',
+                    'bodega_carros', 'bodega_carros_items', 'bodega_entregas'];
     for (const table of tables) {
         try {
             await query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 1))`);

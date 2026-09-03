@@ -139,7 +139,7 @@ App.registerModule('usuarios', {
             reclamos: [{id:'reclamos',l:'Reclamos'}],
             mantencion: [{id:'dashboard',l:'Dash'},{id:'machineTypes',l:'Areas'},{id:'machines',l:'Maq'},{id:'components',l:'Comp'},{id:'preventive',l:'Prev'},{id:'corrective',l:'Correc'},{id:'calendar',l:'Cal'},{id:'notas',l:'Notas'},{id:'reports',l:'Rep'},{id:'history',l:'Hist'},{id:'bitacora',l:'Bitac'},{id:'proveedores',l:'Prov'}],
             pedidos: [{id:'pedidos',l:'Pedidos'}],
-            produccion: [{id:'prod_ordenes',l:'Prod'},{id:'prod_planificacion',l:'Plan'},{id:'prod_reportes',l:'Reportes'},{id:'prod_prog_estacion',l:'Prog.Estacion'},{id:'prod_notas',l:'Pend'},{id:'prod_config',l:'Config'},{id:'taller',l:'Taller'}]
+            produccion: [{id:'prod_ordenes',l:'Prod'},{id:'prod_planificacion',l:'Plan'},{id:'prod_reportes',l:'Reportes'},{id:'prod_prog_estacion',l:'Prog.Estacion'},{id:'prod_notas',l:'Pend'},{id:'prod_config',l:'Config'},{id:'taller',l:'Taller'},{id:'bodega',l:'Bodega'}]
         };
         function permCell(up) {
             let h = '<div style="display:flex;flex-wrap:wrap;gap:3px">';
@@ -267,7 +267,8 @@ App.registerModule('usuarios', {
                 { id: 'prod_reportes', label: 'Reporte Fechas' },
                 { id: 'prod_notas', label: 'Mis Pendientes' },
                 { id: 'prod_config', label: 'Configuracion' },
-                { id: 'taller', label: 'Taller' }
+                { id: 'taller', label: 'Taller' },
+                { id: 'bodega', label: 'Bodega' }
             ]},
             { key: 'costeo', label: 'COSTEO', subs: [
                 { id: 'costeo', label: 'Costeo' }
