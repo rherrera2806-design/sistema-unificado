@@ -248,5 +248,6 @@ module.exports = {
     getPasos,
     actualizarPaso,
     eliminarPaso,
-    agregarPaso
+    agregarPaso,
+    query
 };

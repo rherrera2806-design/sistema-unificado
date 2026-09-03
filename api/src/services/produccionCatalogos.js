@@ -104,6 +104,12 @@ const eliminarRecetaBom = async (id) => {
     await query('DELETE FROM recetas_bom WHERE id = $1', [id]);
 };
 
+const eliminarTodasRecetasBom = async () => {
+    const count = await query('SELECT COUNT(*) as total FROM recetas_bom');
+    await query('DELETE FROM recetas_bom');
+    return Number(count.rows[0].total);
+};
+
 // ============ RECETAS BOM (ANTIGUA) ============
 
 const getRecetasAntiguas = async () => {
@@ -447,7 +453,7 @@ const eliminarVendedor = async (id) => {
 
 module.exports = {
     getMateriasPrimas, crearMateriaPrima, editarMateriaPrima, eliminarMateriaPrima,
-    getRecetasBom, crearRecetaBom, actualizarRecetaBom, eliminarRecetaBom,
+    getRecetasBom, crearRecetaBom, actualizarRecetaBom, eliminarRecetaBom, eliminarTodasRecetasBom,
     previewRecetasBom, importarRecetasBom,
     getRecetasAntiguas, crearRecetaAntigua, eliminarRecetaAntigua, eliminarTodasRecetasAntiguas, importarRecetasAntiguas,
     getReglasExtras, crearReglaExtra, editarReglaExtra, eliminarReglaExtra,

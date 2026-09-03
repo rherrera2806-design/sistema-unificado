@@ -5,8 +5,10 @@ const planificacionGrupo = require('../services/planificacionGrupo');
 const { autoAsignarPendientes } = require('../services/planificacionAuto');
 const { reprogramarPendientes } = require('../services/reprogramarService');
 const { importarOrdenes } = require('../services/produccionImportar');
-const { query } = require('../config/database');
+const planificacionService = require('../services/produccionPlanificacionService');
 const { requireAnyPerm } = require('../middleware/permisos');
+const { asyncHandler } = require('../middleware/asyncHandler');
+const { parseExcelSimple } = require('../utils/excelUtils');
 
 const MOD = 'prod_planificacion';
 const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
@@ -14,20 +16,15 @@ const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
 const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
 const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
 
-router.post('/api/produccion/importar', canCreate, async (req, res, next) => {
+router.post('/api/produccion/importar', canCreate, asyncHandler(async (req, res) => {
     let rows = req.body.rows;
     if (!rows && req.body.excel_data) {
-        try {
-            const XLSX = require('xlsx');
-            const buffer = Buffer.from(req.body.excel_data, 'base64');
-            const workbook = XLSX.read(buffer, { type: 'buffer' });
-            rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-        } catch (e) { return res.status(400).json({ error: 'Error al parsear Excel: ' + e.message }); }
+        rows = parseExcelSimple(req.body.excel_data);
     }
     if (!Array.isArray(rows) || !rows.length) return res.status(400).json({ error: 'El archivo Excel esta vacio' });
     console.log('[PROD] Importando', rows.length, 'filas desde', req.body.file_name || 'excel');
     res.json(await importarOrdenes(rows));
-});
+}));
 
 router.get('/api/produccion/importar/template', canView, (req, res) => {
     const XLSX = require('xlsx');
@@ -43,223 +40,154 @@ router.get('/api/produccion/importar/template', canView, (req, res) => {
     res.send(buf);
 });
 
-router.get('/api/produccion/calendario', canView, async (req, res, next) => {
-    try { res.json(await planificacion.getCalendario()); }
-    catch (e) { next(e); }
-});
+router.get('/api/produccion/calendario', canView, asyncHandler(async (req, res) => { res.json(await planificacion.getCalendario()); }));
 
-router.post('/api/produccion/calendario', canCreate, async (req, res, next) => {
+router.post('/api/produccion/calendario', canCreate, asyncHandler(async (req, res) => {
     if (!req.body.fecha) return res.status(400).json({ error: 'fecha requerida' });
-    try { await planificacion.marcarDia(req.body); res.json({ ok: true }); }
-    catch (e) { next(e); }
-});
+    await planificacion.marcarDia(req.body);
+    res.json({ ok: true });
+}));
 
-router.delete('/api/produccion/calendario/:id', canDelete, async (req, res, next) => {
-    try { await planificacion.eliminarDia(Number(req.params.id)); res.json({ ok: true }); }
-    catch (e) { next(e); }
-});
+router.delete('/api/produccion/calendario/:id', canDelete, asyncHandler(async (req, res) => {
+    await planificacion.eliminarDia(Number(req.params.id));
+    res.json({ ok: true });
+}));
 
-router.get('/api/produccion/planificacion/carga-semanal', canView, async (req, res, next) => {
+router.get('/api/produccion/planificacion/carga-semanal', canView, asyncHandler(async (req, res) => {
     if (!req.query.inicio || !req.query.fin) return res.status(400).json({ error: 'Fechas inicio y fin requeridas' });
-    try { res.json(await planificacion.getCargaSemanal(req.query.inicio, req.query.fin)); }
-    catch (e) { res.status(500).json({ error: String(e.message || e) }); }
-});
+    res.json(await planificacion.getCargaSemanal(req.query.inicio, req.query.fin));
+}));
 
-router.get('/api/produccion/planificacion/carga-por-grupo', canView, async (req, res, next) => {
+router.get('/api/produccion/planificacion/carga-por-grupo', canView, asyncHandler(async (req, res) => {
     if (!req.query.inicio || !req.query.fin) return res.status(400).json({ error: 'Fechas inicio y fin requeridas' });
-    try { res.json(await planificacion.getCargaPorGrupo(req.query.inicio, req.query.fin)); }
-    catch (e) { next(e); }
-});
+    res.json(await planificacion.getCargaPorGrupo(req.query.inicio, req.query.fin));
+}));
 
-router.get('/api/produccion/planificacion/carga-por-grupo-finales', canView, async (req, res, next) => {
+router.get('/api/produccion/planificacion/carga-por-grupo-finales', canView, asyncHandler(async (req, res) => {
     if (!req.query.inicio || !req.query.fin) return res.status(400).json({ error: 'Fechas inicio y fin requeridas' });
-    try { res.json(await planificacion.getCargaPorGrupoFinales(req.query.inicio, req.query.fin)); }
-    catch (e) { next(e); }
-});
+    res.json(await planificacion.getCargaPorGrupoFinales(req.query.inicio, req.query.fin));
+}));
 
-router.get('/api/produccion/planificacion/carga-estaciones', canView, async (req, res, next) => {
-    try {
-        const inicio = req.query.inicio || new Date().toISOString().split('T')[0];
-        const fin = req.query.fin || inicio;
-        res.json(await planificacion.getCargaEstaciones(inicio, fin));
-    } catch (e) { next(e); }
-});
+router.get('/api/produccion/planificacion/carga-estaciones', canView, asyncHandler(async (req, res) => {
+    const inicio = req.query.inicio || new Date().toISOString().split('T')[0];
+    const fin = req.query.fin || inicio;
+    res.json(await planificacion.getCargaEstaciones(inicio, fin));
+}));
 
-router.get('/api/produccion/planificacion/detalle-grupo-dia', canView, async (req, res, next) => {
+router.get('/api/produccion/planificacion/detalle-grupo-dia', canView, asyncHandler(async (req, res) => {
     const { grupo, fecha } = req.query;
     if (!grupo || !fecha) return res.status(400).json({ error: 'grupo y fecha requeridos' });
-    try {
-        const result = await query(`
-            SELECT o.id, o.pedido_sap_id, o.item_numero, o.codigo_producto, o.descripcion, o.ancho, o.alto,
-                   o.metros_cuadrados, o.kilos, o.cantidad, o.grupo, o.codigo_padre, o.es_compuesto,
-                   o.estado_programacion,
-                   (SELECT string_agg(em.nombre_estacion || ' (' || to_char(cp.fecha_programada,'DD/MM') || ')', ' → ' ORDER BY cp.orden_secuencia)
-                    FROM cola_produccion_pasos cp JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                    WHERE cp.orden_produccion_id = o.id AND cp.fecha_programada IS NOT NULL) as ruta
-            FROM produccion_ordenes o
-            WHERE o.grupo ILIKE $1
-              AND EXISTS (
-                  SELECT 1 FROM cola_produccion_pasos cp2
-                  WHERE cp2.orden_produccion_id = o.id AND cp2.fecha_programada = $2
-              )
-            ORDER BY o.pedido_sap_id, o.item_numero
-        `, [grupo, fecha]);
-        res.json(result.rows);
-    } catch (e) { next(e); }
-});
+    res.json(await planificacionService.getDetalleGrupoDia(grupo, fecha));
+}));
 
-router.get('/api/produccion/planificacion/pendientes', canView, async (req, res, next) => {
-    try { res.json(await planificacion.getPendientes()); }
-    catch (e) { next(e); }
-});
+router.get('/api/produccion/planificacion/pendientes', canView, asyncHandler(async (req, res) => { res.json(await planificacion.getPendientes()); }));
 
-router.post('/api/produccion/planificacion/programar', canCreate, async (req, res, next) => {
+router.post('/api/produccion/planificacion/programar', canCreate, asyncHandler(async (req, res) => {
     if (!req.body.orden_id) return res.status(400).json({ error: 'orden_id requerido' });
-    try {
-        const result = await planificacion.programarOrden(req.body.orden_id, req.body.fecha_entrega_propuesta);
-        res.json({ ok: true, mensaje: `Orden programada${result.fechaFinal ? '. Entrega: ' + result.fechaFinal : ''}`, asignaciones: result.asignaciones });
-    } catch (e) { res.status(400).json({ error: e.message }); }
-});
+    const result = await planificacion.programarOrden(req.body.orden_id, req.body.fecha_entrega_propuesta);
+    res.json({ ok: true, mensaje: `Orden programada${result.fechaFinal ? '. Entrega: ' + result.fechaFinal : ''}`, asignaciones: result.asignaciones });
+}));
 
-router.get('/api/produccion/capacidad-grupo/all', canView, async (req, res, next) => {
-    try { res.json(await planificacion.getAllCapacidadGrupo()); }
-    catch (e) { next(e); }
-});
+router.get('/api/produccion/capacidad-grupo/all', canView, asyncHandler(async (req, res) => { res.json(await planificacion.getAllCapacidadGrupo()); }));
 
-router.get('/api/produccion/capacidad-grupo', canView, async (req, res, next) => {
-    try { res.json(await planificacion.getCapacidadGrupo()); }
-    catch (e) { next(e); }
-});
+router.get('/api/produccion/capacidad-grupo', canView, asyncHandler(async (req, res) => { res.json(await planificacion.getCapacidadGrupo()); }));
 
-router.post('/api/produccion/capacidad-grupo', canCreate, async (req, res, next) => {
-    try {
-        const { query } = require('../config/database');
-        const { grupo, capacidad_kg_dia, color, activo } = req.body;
-        if (!grupo) return res.status(400).json({ error: 'Nombre requerido' });
-        const result = await query(
-            'INSERT INTO produccion_capacidad_grupo (grupo, capacidad_kg_dia, color, activo) VALUES ($1, $2, $3, $4) RETURNING *',
-            [grupo.trim(), Number(capacidad_kg_dia) || 0, color || '#3b82f6', activo !== false]
-        );
-        res.json(result.rows[0]);
-    } catch (e) { next(e); }
-});
+router.post('/api/produccion/capacidad-grupo', canCreate, asyncHandler(async (req, res) => {
+    const { grupo, capacidad_kg_dia, color, activo } = req.body;
+    if (!grupo) return res.status(400).json({ error: 'Nombre requerido' });
+    res.json(await planificacionService.crearCapacidadGrupo({ grupo, capacidad_kg_dia, color, activo }));
+}));
 
-router.put('/api/produccion/capacidad-grupo/:id', canUpdate, async (req, res, next) => {
-    try { res.json(await planificacion.actualizarCapacidadGrupo(Number(req.params.id), req.body)); }
-    catch (e) { res.status(e.message === 'Sin campos' ? 400 : 500).json({ error: e.message }); }
-});
+router.put('/api/produccion/capacidad-grupo/:id', canUpdate, asyncHandler(async (req, res) => {
+    res.json(await planificacion.actualizarCapacidadGrupo(Number(req.params.id), req.body));
+}));
 
-router.delete('/api/produccion/capacidad-grupo/:id', canDelete, async (req, res, next) => {
-    try {
-        const { query } = require('../config/database');
-        await query('DELETE FROM produccion_capacidad_grupo WHERE id = $1', [Number(req.params.id)]);
-        res.json({ ok: true });
-    } catch (e) { next(e); }
-});
+router.delete('/api/produccion/capacidad-grupo/:id', canDelete, asyncHandler(async (req, res) => {
+    await planificacionService.eliminarCapacidadGrupo(Number(req.params.id));
+    res.json({ ok: true });
+}));
 
-router.get('/api/produccion/planificacion-grupo/semana', canView, async (req, res, next) => {
+router.get('/api/produccion/planificacion-grupo/semana', canView, asyncHandler(async (req, res) => {
     const { inicio, fin } = req.query;
     if (!inicio || !fin) return res.status(400).json({ error: 'inicio y fin requeridos' });
-    try { res.json(await planificacionGrupo.getSemanaGrupo(inicio, fin)); }
-    catch (e) { next(e); }
-});
+    res.json(await planificacionGrupo.getSemanaGrupo(inicio, fin));
+}));
 
-router.get('/api/produccion/planificacion-grupo/semana-finales', canView, async (req, res, next) => {
+router.get('/api/produccion/planificacion-grupo/semana-finales', canView, asyncHandler(async (req, res) => {
     const { inicio, fin } = req.query;
     if (!inicio || !fin) return res.status(400).json({ error: 'inicio y fin requeridos' });
-    try { res.json(await planificacionGrupo.getSemanaGrupoFinales(inicio, fin)); }
-    catch (e) { next(e); }
-});
+    res.json(await planificacionGrupo.getSemanaGrupoFinales(inicio, fin));
+}));
 
-router.get('/api/produccion/planificacion-grupo', canView, async (req, res, next) => {
-    try { res.json(await planificacionGrupo.getDiaGrupo(req.query.fecha)); }
-    catch (e) { next(e); }
-});
+router.get('/api/produccion/planificacion-grupo', canView, asyncHandler(async (req, res) => { res.json(await planificacionGrupo.getDiaGrupo(req.query.fecha)); }));
 
-router.post('/api/produccion/planificacion-grupo/asignar', canCreate, async (req, res, next) => {
+router.post('/api/produccion/planificacion-grupo/asignar', canCreate, asyncHandler(async (req, res) => {
     if (!req.body.orden_id) return res.status(400).json({ error: 'orden_id requerido' });
-    try { await planificacionGrupo.asignarOrdenFecha(req.body.orden_id, req.body.fecha); res.json({ ok: true }); }
-    catch (e) { next(e); }
-});
+    await planificacionGrupo.asignarOrdenFecha(req.body.orden_id, req.body.fecha);
+    res.json({ ok: true });
+}));
 
-router.post('/api/produccion/planificacion-grupo/auto-asignar', canCreate, async (req, res, next) => {
-    try {
-        const dias = Number(req.body.dias) || 14;
-        const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
-        res.json(await autoAsignarPendientes({ dias, inicio }));
-    } catch (e) { next(e); }
-});
+router.post('/api/produccion/planificacion-grupo/auto-asignar', canCreate, asyncHandler(async (req, res) => {
+    const dias = Number(req.body.dias) || 14;
+    const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
+    res.json(await autoAsignarPendientes({ dias, inicio }));
+}));
 
-router.get('/api/produccion/notas', canView, async (req, res, next) => {
+router.get('/api/produccion/notas', canView, asyncHandler(async (req, res) => {
     const userEmail = req.headers['x-user-email'];
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
-    try { res.json((await query('SELECT * FROM prod_notas WHERE usuario_email = $1 ORDER BY fecha_creacion DESC', [userEmail])).rows); }
-    catch (e) { next(e); }
-});
+    res.json(await planificacionService.getNotas(userEmail));
+}));
 
-router.post('/api/produccion/notas', canCreate, async (req, res, next) => {
+router.post('/api/produccion/notas', canCreate, asyncHandler(async (req, res) => {
     const userEmail = req.headers['x-user-email'];
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     if (!req.body.nota || !req.body.nota.trim()) return res.status(400).json({ error: 'Nota requerida' });
-    try {
-        const result = await query("INSERT INTO prod_notas (usuario_email, nota, estado) VALUES ($1, $2, 'pendiente') RETURNING *", [userEmail, req.body.nota.trim()]);
-        res.json(result.rows[0]);
-    } catch (e) { next(e); }
-});
+    res.json(await planificacionService.crearNota(userEmail, req.body.nota));
+}));
 
-router.put('/api/produccion/notas/:id', canUpdate, async (req, res, next) => {
+router.put('/api/produccion/notas/:id', canUpdate, asyncHandler(async (req, res) => {
     const userEmail = req.headers['x-user-email'];
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
-    try {
-        const result = req.body.estado === 'realizado'
-            ? await query('UPDATE prod_notas SET estado = $1, fecha_completado = CURRENT_TIMESTAMP WHERE id = $2 AND usuario_email = $3 RETURNING *', [req.body.estado, Number(req.params.id), userEmail])
-            : await query('UPDATE prod_notas SET estado = $1, fecha_completado = NULL WHERE id = $2 AND usuario_email = $3 RETURNING *', [req.body.estado, Number(req.params.id), userEmail]);
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Nota no encontrada' });
-        res.json(result.rows[0]);
-    } catch (e) { next(e); }
-});
+    const result = await planificacionService.actualizarNota(Number(req.params.id), userEmail, req.body.estado);
+    if (!result) return res.status(404).json({ error: 'Nota no encontrada' });
+    res.json(result);
+}));
 
-router.delete('/api/produccion/notas/:id', canDelete, async (req, res, next) => {
+router.delete('/api/produccion/notas/:id', canDelete, asyncHandler(async (req, res) => {
     const userEmail = req.headers['x-user-email'];
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
-    try { await query('DELETE FROM prod_notas WHERE id = $1 AND usuario_email = $2', [Number(req.params.id), userEmail]); res.json({ ok: true }); }
-    catch (e) { next(e); }
-});
+    await planificacionService.eliminarNota(Number(req.params.id), userEmail);
+    res.json({ ok: true });
+}));
 
 // ═══════════════════════════════════════════════════════════════
 // CAMBIO DE PRIORIDAD — PATCH /api/produccion/ordenes/:id/prioridad
 // ═══════════════════════════════════════════════════════════════
-router.patch('/api/produccion/ordenes/:id/prioridad', canUpdate, async (req, res, next) => {
+router.patch('/api/produccion/ordenes/:id/prioridad', canUpdate, asyncHandler(async (req, res) => {
     const { nivel_prioridad } = req.body;
     const nivel = Number(nivel_prioridad);
     if (![1, 2, 3, 4].includes(nivel)) return res.status(400).json({ error: 'nivel_prioridad debe ser 1 (Normal), 2 (Express), 3 (Urgencia) o 4 (Reposición)' });
-    try {
-        await query('UPDATE produccion_ordenes SET nivel_prioridad = $1, needs_reprogramming = TRUE WHERE id = $2', [nivel, Number(req.params.id)]);
-        res.json({ ok: true, nivel_prioridad: nivel });
-    } catch (e) { next(e); }
-});
+    await planificacionService.cambiarPrioridad(Number(req.params.id), nivel);
+    res.json({ ok: true, nivel_prioridad: nivel });
+}));
 
 // ═══════════════════════════════════════════════════════════════
 // REPROGRAMAR PENDIENTES — POST /api/produccion/reprogramar
 // Paso A: Liberar PROGRAMADO → PENDIENTE (sin tocar EN PROCESO/MERMADO/TERMINADO)
 // Paso B: Re-ejecutar auto-asignar con Priority Queue 4→1
 // ═══════════════════════════════════════════════════════════════
-router.post('/api/produccion/reprogramar', canCreate, async (req, res, next) => {
-    try {
-        const dias = Number(req.body.dias) || 21;
-        const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
-        res.json(await reprogramarPendientes({ dias, inicio }));
-    } catch (e) { next(e); }
-});
+router.post('/api/produccion/reprogramar', canCreate, asyncHandler(async (req, res) => {
+    const dias = Number(req.body.dias) || 21;
+    const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
+    res.json(await reprogramarPendientes({ dias, inicio }));
+}));
 
 // ═══════════════════════════════════════════════════════════════
 // VERIFICAR SI HAY CAMBIOS PENDIENTES DE REPROGRAMACIÓN
 // ═══════════════════════════════════════════════════════════════
-router.get('/api/produccion/reprogramar/pendientes', canView, async (req, res, next) => {
-    try {
-        const result = await query('SELECT COUNT(*) as count FROM produccion_ordenes WHERE needs_reprogramming = TRUE');
-        res.json({ pendientes: Number(result.rows[0].count) > 0, count: Number(result.rows[0].count) });
-    } catch (e) { next(e); }
-});
+router.get('/api/produccion/reprogramar/pendientes', canView, asyncHandler(async (req, res) => {
+    res.json(await planificacionService.getReprogramarPendientes());
+}));
 
 module.exports = router;
