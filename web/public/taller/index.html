@@ -677,11 +677,11 @@
             });
 
             if (filtroPedido && colaFiltrada.length > 0) {
-                const ordenId = colaFiltrada[0].orden_id;
                 const todosPendientes = colaFiltrada.every(it => it.estado === 'PENDIENTE');
                 if (todosPendientes) {
+                    const pedidoSapId = colaFiltrada[0].pedido_sap_id;
                     html += `
-                        <button class="btn btn-success btn-block" onclick="iniciarTodas(${ordenId})" style="margin-bottom:14px">
+                        <button class="btn btn-success btn-block" onclick="iniciarPedido('${pedidoSapId}')" style="margin-bottom:14px">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                             Iniciar todas (${colaFiltrada.length})
                         </button>
@@ -796,7 +796,7 @@
             }
         }
 
-        async function iniciarTodas(ordenId) {
+        async function iniciarPedido(pedidoSapId) {
             try {
                 const maquinaId = currentEstacion.maquina?.id || null;
                 const estacionId = currentEstacion.id;
@@ -804,7 +804,7 @@
                     method: 'POST',
                     headers: getHeaders(),
                     body: JSON.stringify({
-                        orden_id: ordenId,
+                        pedido_sap_id: pedidoSapId,
                         estacion_id: estacionId,
                         maquina_id: maquinaId,
                         operario_nombre: currentUser.nombre || currentUser.email

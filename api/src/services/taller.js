@@ -368,11 +368,23 @@ async function procesarPaso(pasoId, cantidad, maquinaId, operarioEmail, operario
     return { cantidadProcesar, cantidadRestante };
 }
 
-async function iniciarPasosPorOrden(ordenId, estacionId, maquinaId, operarioEmail, operarioNombre) {
-    const params = [ordenId];
-    let sql = `SELECT id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND estado = 'PENDIENTE'`;
-    if (estacionId) { sql += ` AND estacion_id = $2`; params.push(estacionId); }
-    sql += ` ORDER BY orden_secuencia ASC`;
+async function iniciarPasosPorOrden(ordenId, pedidoSapId, estacionId, maquinaId, operarioEmail, operarioNombre) {
+    const params = [];
+    let sql = `SELECT id, orden_produccion_id, orden_secuencia FROM cola_produccion_pasos WHERE estado = 'PENDIENTE'`;
+    const where = [];
+    if (ordenId) {
+        params.push(ordenId);
+        where.push(`orden_produccion_id = $${params.length}`);
+    } else if (pedidoSapId) {
+        params.push(pedidoSapId);
+        where.push(`orden_produccion_id IN (SELECT id FROM produccion_ordenes WHERE pedido_sap_id = $${params.length})`);
+    }
+    if (estacionId) {
+        params.push(estacionId);
+        where.push(`estacion_id = $${params.length}`);
+    }
+    if (where.length) sql += ` AND ${where.join(' AND ')}`;
+    sql += ` ORDER BY orden_produccion_id ASC, orden_secuencia ASC`;
     const result = await query(sql, params);
     let count = 0;
     for (const row of result.rows) {
