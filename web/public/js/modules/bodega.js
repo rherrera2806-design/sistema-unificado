@@ -1,7 +1,29 @@
 App.registerModule('bodega', {
+    _vista: 'listos',
+    _carros: [],
+    _itemsListos: [],
+    _carrosPreEntrega: [],
+    _entregas: [],
+    _historial: [],
+    _seleccionados: new Set(),
+    _filtroPedido: '',
+    _filtroEspesor: '',
+    _searchTimer: null,
+
     _esc(s) {
         if (s == null) return '';
         return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    },
+
+    _onSearchInput(value) {
+        this._filtroPedido = value;
+        clearTimeout(this._searchTimer);
+        this._searchTimer = setTimeout(() => this._renderListos(document.getElementById('bodegaContent')), 250);
+    },
+
+    _onEspesorChange(value) {
+        this._filtroEspesor = value;
+        this._renderListos(document.getElementById('bodegaContent'));
     },
 
     _vista: 'listos', // listos | pre-entrega | entregas | historial | carros
@@ -100,6 +122,8 @@ App.registerModule('bodega', {
     async switchView(v) {
         this._vista = v;
         this._seleccionados.clear();
+        this._filtroPedido = '';
+        this._filtroEspesor = '';
         await this.render();
     },
 
@@ -119,20 +143,43 @@ App.registerModule('bodega', {
     },
 
     async _renderListos(target) {
-        const r = await fetch('/api/bodega/items-listos', { headers: this._h() });
-        this._itemsListos = await r.json();
+        if (!this._itemsListos.length) {
+            const r = await fetch('/api/bodega/items-listos', { headers: this._h() });
+            this._itemsListos = await r.json();
+        }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const permisos = user.permisos || [];
         const isAdmin = user.rol === 'admin' || permisos.includes('usuarios');
         const canAdd = isAdmin || permisos.includes('bodega.agregar') || permisos.includes('bodega');
 
-        if (this._itemsListos.length === 0) {
-            target.innerHTML = '<div class="empty-state"><p>No hay items listos para bodega</p><p style="font-size:12px">Los items aparecen aquí cuando se finaliza la última estación de su flujo de producción</p></div>';
-            return;
-        }
+        const itemsFiltrados = this._itemsListos.filter(it => {
+            if (this._filtroPedido && !String(it.pedido_sap_id || '').toLowerCase().includes(this._filtroPedido.toLowerCase())) return false;
+            if (this._filtroEspesor && String(it.espesor_mm) !== String(this._filtroEspesor)) return false;
+            return true;
+        });
 
         const selCount = this._seleccionados.size;
+
+        const espesoresDisponibles = [...new Set(this._itemsListos.map(it => it.espesor_mm).filter(e => e != null))].sort((a, b) => a - b);
+
         target.innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+                <div style="position:relative">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none">
+                        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="bodSearchPedido" placeholder="Buscar por pedido..." value="${this._esc(this._filtroPedido)}" oninput="App.modules.bodega._onSearchInput(this.value)" style="width:100%;padding:10px 12px 10px 38px;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none">
+                </div>
+                ${espesoresDisponibles.length > 0 ? `
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                    <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Espesor:</span>
+                    <button onclick="App.modules.bodega._onEspesorChange('')" style="padding:4px 10px;border-radius:14px;border:1px solid ${!this._filtroEspesor ? '#3b82f6' : '#e2e8f0'};background:${!this._filtroEspesor ? '#3b82f6' : 'transparent'};color:${!this._filtroEspesor ? 'white' : '#0f172a'};font-size:12px;font-weight:600;cursor:pointer">Todos</button>
+                    ${espesoresDisponibles.map(e => `
+                        <button onclick="App.modules.bodega._onEspesorChange('${e}')" style="padding:4px 10px;border-radius:14px;border:1px solid ${this._filtroEspesor == e ? '#3b82f6' : '#e2e8f0'};background:${this._filtroEspesor == e ? '#3b82f6' : 'transparent'};color:${this._filtroEspesor == e ? 'white' : '#0f172a'};font-size:12px;font-weight:600;cursor:pointer">${e}mm</button>
+                    `).join('')}
+                </div>
+                ` : ''}
+            </div>
             ${canAdd && selCount > 0 ? `
                 <div style="background:linear-gradient(135deg,#3b82f615,#8b5cf615);border:1px solid #3b82f640;border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
                     <strong>${selCount} items seleccionados</strong>
@@ -141,7 +188,8 @@ App.registerModule('bodega', {
                 </div>
             ` : ''}
             <div style="display:flex;flex-direction:column;gap:8px">
-                ${this._itemsListos.map(it => `
+                ${itemsFiltrados.length === 0 ? '<div class="empty-state"><p>No hay coincidencias</p></div>' : ''}
+                ${itemsFiltrados.map(it => `
                     <div style="background:white;border:1px solid ${this._seleccionados.has(it.paso_id) ? '#3b82f6' : '#e2e8f0'};border-radius:10px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer" onclick="App.modules.bodega.toggleItem(${it.paso_id})">
                         ${canAdd ? `<input type="checkbox" ${this._seleccionados.has(it.paso_id) ? 'checked' : ''} onclick="event.stopPropagation(); App.modules.bodega.toggleItem(${it.paso_id})">` : ''}
                         <div style="flex:1;min-width:0">
