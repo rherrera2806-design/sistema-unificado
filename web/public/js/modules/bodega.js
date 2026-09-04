@@ -632,14 +632,20 @@ App.registerModule('bodega', {
                 headers: this._h(),
                 body: JSON.stringify({ usuario_nombre: user.nombre || user.email })
             });
-            const data = await r.json();
+            const text = await r.text();
+            console.log('[recibirEntrega] response:', r.status, text);
+            let data;
+            try { data = JSON.parse(text); } catch { data = { error: text }; }
             if (data.ok) {
                 this.closeEntrega();
                 await this.render();
             } else {
-                alert(data.error || 'Error');
+                alert('Error: ' + (data.error || data.message || 'Desconocido') + ' (HTTP ' + r.status + ')');
             }
-        } catch (e) { alert('Error'); }
+        } catch (e) {
+            console.error('[recibirEntrega] error:', e);
+            alert('Error de conexión: ' + e.message);
+        }
     },
 
     closeEntrega() {
