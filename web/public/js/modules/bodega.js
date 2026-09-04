@@ -430,24 +430,35 @@ App.registerModule('bodega', {
                 return;
             }
 
-            body.innerHTML = `
-                <p style="margin-bottom:14px;color:#64748b;font-size:13px">Selecciona el carro físico donde vas a apilar los <strong>${this._seleccionados.size}</strong> items seleccionados.</p>
-                <div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">
-                    ${carrosLibres.map(c => `
-                        <div class="carro-option" data-id="${c.id}" data-codigo="${this._esc(c.codigo)}" onclick="App.modules.bodega.selectCarro(this)" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;padding:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-                            <div>
-                                <div style="font-weight:700">${this._esc(c.codigo)}</div>
-                                <div style="font-size:11px;color:#64748b">${this._esc(c.tipo || '')} - capacidad ${c.capacidad_items || 50}</div>
-                            </div>
-                            <span style="font-size:11px;color:#16a34a;font-weight:700">Libre</span>
+            console.log('[V3] carrosLibres details:', JSON.stringify(carrosLibres));
+
+            try {
+                const htmlContent = carrosLibres.map(c => `
+                    <div class="carro-option" data-id="${c.id}" data-codigo="${this._esc(c.codigo)}" onclick="App.modules.bodega.selectCarro(this)" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;padding:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+                        <div>
+                            <div style="font-weight:700">${this._esc(c.codigo)}</div>
+                            <div style="font-size:11px;color:#64748b">${this._esc(c.tipo || '')} - capacidad ${c.capacidad_items || 50}</div>
                         </div>
-                    `).join('')}
-                </div>
-                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
-                    <button class="btn btn-outline" onclick="App.modules.bodega.closeAsignar()">Cancelar</button>
-                    <button class="btn btn-primary" id="btnAsignar" disabled style="opacity:0.5" onclick="App.modules.bodega.confirmarAsignar()">Asignar ${this._seleccionados.size} items</button>
-                </div>
-            `;
+                        <span style="font-size:11px;color:#16a34a;font-weight:700">Libre</span>
+                    </div>
+                `).join('');
+                console.log('[V3] htmlContent length:', htmlContent.length, 'first 200:', htmlContent.substring(0, 200));
+
+                body.innerHTML = `
+                    <p style="margin-bottom:14px;color:#64748b;font-size:13px">Selecciona el carro físico donde vas a apilar los <strong>${this._seleccionados.size}</strong> items seleccionados.</p>
+                    <div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">
+                        ${htmlContent}
+                    </div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                        <button class="btn btn-outline" onclick="App.modules.bodega.closeAsignar()">Cancelar</button>
+                        <button class="btn btn-primary" id="btnAsignar" disabled style="opacity:0.5" onclick="App.modules.bodega.confirmarAsignar()">Asignar ${this._seleccionados.size} items</button>
+                    </div>
+                `;
+                console.log('[V3] body.innerHTML set OK');
+            } catch (innerErr) {
+                console.error('[V3] error en render:', innerErr);
+                body.innerHTML = `<div style="padding:20px;color:red">Error render: ${innerErr.message}</div>`;
+            }
         } catch (e) {
             console.error('[V3] error:', e);
             body.innerHTML = `<div style="padding:20px;text-align:center;color:#ef4444">Error: ${e.message}</div>`;
