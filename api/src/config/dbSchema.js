@@ -810,6 +810,11 @@ async function runMigrations() {
             observaciones TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         )`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS tipo VARCHAR(50) DEFAULT 'carro'`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS capacidad_items INTEGER DEFAULT 50`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS observaciones TEXT`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()`);
         await query(`CREATE TABLE IF NOT EXISTS bodega_carros_items (
             id SERIAL PRIMARY KEY,
             carro_id INTEGER REFERENCES bodega_carros(id) ON DELETE CASCADE,
@@ -822,6 +827,12 @@ async function runMigrations() {
             entregado_por_email VARCHAR(200),
             observaciones TEXT
         )`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armador_email VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armador_nombre VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armado_at TIMESTAMP DEFAULT NOW()`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS entregado_at TIMESTAMP`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS entregado_por_email VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS observaciones TEXT`);
         await query(`CREATE TABLE IF NOT EXISTS bodega_entregas (
             id SERIAL PRIMARY KEY,
             carro_id INTEGER REFERENCES bodega_carros(id),
@@ -837,6 +848,15 @@ async function runMigrations() {
             total_m2 DECIMAL(10,2) DEFAULT 0,
             observaciones TEXT
         )`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS generado_por_email VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS generado_por_nombre VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_at TIMESTAMP`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_por_email VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_por_nombre VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_items INTEGER DEFAULT 0`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_kilos DECIMAL(10,2) DEFAULT 0`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_m2 DECIMAL(10,2) DEFAULT 0`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS observaciones TEXT`);
         await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_carro ON bodega_carros_items(carro_id)`);
         await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_orden ON bodega_carros_items(orden_produccion_id)`);
         await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_entregado ON bodega_carros_items(entregado_at)`);

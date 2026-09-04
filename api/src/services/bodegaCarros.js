@@ -5,7 +5,12 @@ const { transaction } = require('../config/dbPool');
 
 const getCarros = async () => {
     const result = await query(
-        `SELECT c.*,
+        `SELECT c.id, c.codigo,
+                COALESCE(c.tipo, 'carro') as tipo,
+                COALESCE(c.capacidad_items, 50) as capacidad_items,
+                COALESCE(c.activo, true) as activo,
+                c.observaciones,
+                c.created_at,
                 (SELECT COUNT(*) FROM bodega_carros_items WHERE carro_id = c.id) as total_items_asignados,
                 (SELECT COUNT(*) FROM bodega_carros_items WHERE carro_id = c.id AND entregado_at IS NULL) as items_en_carros
          FROM bodega_carros c
