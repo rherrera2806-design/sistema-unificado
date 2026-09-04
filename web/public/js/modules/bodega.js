@@ -411,18 +411,22 @@ App.registerModule('bodega', {
         else { console.error('Modal bodAsignarModal no existe en el DOM'); alert('Error: modal no encontrado'); return; }
 
         try {
-            const r = await fetch('/api/bodega/carros', { headers: this._h() });
+            const r = await fetch('/api/bodega/carros?t=' + Date.now(), { headers: this._h() });
             if (!r.ok) throw new Error('HTTP ' + r.status);
             const carros = await r.json();
-            console.log('Carros recibidos:', carros);
-            const carrosLibres = carros.filter(c => c.activo && c.items_en_carros == 0);
+            console.log('[showAsignar v2]', carros.length, 'carros:', carros);
+            const carrosLibres = carros.filter(c => (c.activo === true || c.activo === undefined) && (Number(c.items_en_carros) || 0) === 0);
+            console.log('[showAsignar v2] carrosLibres:', carrosLibres.length);
 
             body.innerHTML = `
                 <p style="margin-bottom:14px;color:#64748b;font-size:13px">Selecciona el carro físico donde vas a apilar los <strong>${this._seleccionados.size}</strong> items seleccionados.</p>
                 <div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">
-                    ${carrosLibres.length === 0 ? '<p style="color:#94a3b8;text-align:center;padding:20px">No hay carros libres. Crea uno nuevo desde la sección Carros.</p>' : ''}
+                    ${carrosLibres.length === 0 ? `
+                        <p style="color:#94a3b8;text-align:center;padding:20px">No hay carros libres. Crea uno nuevo desde la sección Carros.</p>
+                        <p style="color:#ef4444;font-size:11px;text-align:center">Debug: llegaron ${carros.length} carros, pero el filtro dejó la lista vacía. Revisá la consola.</p>
+                    ` : ''}
                     ${carrosLibres.map(c => `
-                        <div class="carro-option" data-id="${c.id}" onclick="App.modules.bodega.selectCarro(this)" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;padding:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+                        <div class="carro-option" data-id="${c.id}" data-codigo="${this._esc(c.codigo)}" onclick="App.modules.bodega.selectCarro(this)" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;padding:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
                             <div>
                                 <div style="font-weight:700">${this._esc(c.codigo)}</div>
                                 <div style="font-size:11px;color:#64748b">${this._esc(c.tipo)} - capacidad ${c.capacidad_items}</div>
