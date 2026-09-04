@@ -401,31 +401,43 @@ App.registerModule('bodega', {
     },
 
     async showAsignar() {
-        const r = await fetch('/api/bodega/carros', { headers: this._h() });
-        const carros = await r.json();
-        const carrosLibres = carros.filter(c => c.activo && c.items_en_carros == 0);
-
+        // Mostrar modal inmediatamente para feedback visual
         const body = document.getElementById('bodAsignarBody');
-        body.innerHTML = `
-            <p style="margin-bottom:14px;color:#64748b;font-size:13px">Selecciona el carro físico donde vas a apilar los <strong>${this._seleccionados.size}</strong> items seleccionados.</p>
-            <div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">
-                ${carrosLibres.length === 0 ? '<p style="color:#94a3b8;text-align:center;padding:20px">No hay carros libres. Crea uno nuevo desde la sección Carros.</p>' : ''}
-                ${carrosLibres.map(c => `
-                    <div class="carro-option" data-id="${c.id}" onclick="App.modules.bodega.selectCarro(this)" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;padding:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-                        <div>
-                            <div style="font-weight:700">${c.codigo}</div>
-                            <div style="font-size:11px;color:#64748b">${c.tipo} - capacidad ${c.capacidad_items}</div>
+        body.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">Cargando carros...</div>';
+        const modal = document.getElementById('bodAsignarModal');
+        if (modal) modal.classList.add('active');
+        else { console.error('Modal bodAsignarModal no existe en el DOM'); alert('Error: modal no encontrado'); return; }
+
+        try {
+            const r = await fetch('/api/bodega/carros', { headers: this._h() });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const carros = await r.json();
+            console.log('Carros recibidos:', carros);
+            const carrosLibres = carros.filter(c => c.activo && c.items_en_carros == 0);
+
+            body.innerHTML = `
+                <p style="margin-bottom:14px;color:#64748b;font-size:13px">Selecciona el carro físico donde vas a apilar los <strong>${this._seleccionados.size}</strong> items seleccionados.</p>
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">
+                    ${carrosLibres.length === 0 ? '<p style="color:#94a3b8;text-align:center;padding:20px">No hay carros libres. Crea uno nuevo desde la sección Carros.</p>' : ''}
+                    ${carrosLibres.map(c => `
+                        <div class="carro-option" data-id="${c.id}" onclick="App.modules.bodega.selectCarro(this)" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;padding:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+                            <div>
+                                <div style="font-weight:700">${this._esc(c.codigo)}</div>
+                                <div style="font-size:11px;color:#64748b">${this._esc(c.tipo)} - capacidad ${c.capacidad_items}</div>
+                            </div>
+                            <span style="font-size:11px;color:#16a34a;font-weight:700">Libre</span>
                         </div>
-                        <span style="font-size:11px;color:#16a34a;font-weight:700">Libre</span>
-                    </div>
-                `).join('')}
-            </div>
-            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
-                <button class="btn btn-outline" onclick="App.modules.bodega.closeAsignar()">Cancelar</button>
-                <button class="btn btn-primary" id="btnAsignar" disabled style="opacity:0.5" onclick="App.modules.bodega.confirmarAsignar()">Asignar ${this._seleccionados.size} items</button>
-            </div>
-        `;
-        document.getElementById('bodAsignarModal').classList.add('active');
+                    `).join('')}
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                    <button class="btn btn-outline" onclick="App.modules.bodega.closeAsignar()">Cancelar</button>
+                    <button class="btn btn-primary" id="btnAsignar" disabled style="opacity:0.5" onclick="App.modules.bodega.confirmarAsignar()">Asignar ${this._seleccionados.size} items</button>
+                </div>
+            `;
+        } catch (e) {
+            console.error('showAsignar error:', e);
+            body.innerHTML = `<div style="padding:20px;text-align:center;color:#ef4444">Error: ${e.message}<br><br>Verificá que tengas permisos para esta acción y que la BD tenga la tabla bodega_carros.</div>`;
+        }
     },
 
     _carroSeleccionado: null,
