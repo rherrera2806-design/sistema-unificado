@@ -16,7 +16,7 @@ router.get('/api/bodega/carros', canView, asyncHandler(async (req, res) => {
     res.json(await bodega.getCarros());
 }));
 
-router.get('/api/bodega/debug-tabla', canView, asyncHandler(async (req, res) => {
+router.get('/api/bodega/debug-tabla', asyncHandler(async (req, res) => {
     const { query } = require('../config/database');
     const cols = await query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'bodega_carros' ORDER BY ordinal_position`);
     const rows = await query(`SELECT * FROM bodega_carros LIMIT 5`);
