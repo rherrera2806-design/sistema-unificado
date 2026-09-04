@@ -242,7 +242,8 @@ const getEntregaDetalle = async (entregaId) => {
         FROM bodega_carros_items bi
         JOIN produccion_ordenes o ON bi.orden_produccion_id = o.id
         LEFT JOIN familias_producto f ON o.familia_id = f.id
-        LEFT JOIN estaciones_maestras em ON bi.estacion_id = em.id
+        LEFT JOIN cola_produccion_pasos cp ON bi.paso_id = cp.id
+        LEFT JOIN estaciones_maestras em ON cp.estacion_id = em.id
         WHERE bi.carro_id = $1
         ORDER BY o.pedido_sap_id ASC, o.item_numero ASC
     `, [entrega.carro_id]);

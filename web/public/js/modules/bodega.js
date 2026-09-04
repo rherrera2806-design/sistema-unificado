@@ -556,10 +556,17 @@ App.registerModule('bodega', {
     },
 
     async verEntrega(entregaId) {
-        const r = await fetch(`/api/bodega/entregas/${entregaId}`, { headers: this._h() });
-        const ent = await r.json();
-        const totalKilos = ent.items.reduce((a, i) => a + Number(i.kilos || 0), 0);
-        const totalCant = ent.items.reduce((a, i) => a + Number(i.cantidad || 0), 0);
+        try {
+            const r = await fetch(`/api/bodega/entregas/${entregaId}`, { headers: this._h() });
+            if (!r.ok) {
+                const errData = await r.json().catch(() => ({}));
+                alert('Error al cargar entrega: ' + (errData.error || r.status));
+                return;
+            }
+            const ent = await r.json();
+            if (!ent || !ent.items) { alert('Entrega sin items'); return; }
+            const totalKilos = ent.items.reduce((a, i) => a + Number(i.kilos || 0), 0);
+            const totalCant = ent.items.reduce((a, i) => a + Number(i.cantidad || 0), 0);
 
         document.getElementById('bodEntregaTitle').textContent = `Entrega ${ent.numero_documento}`;
         document.getElementById('bodEntregaBody').innerHTML = `
