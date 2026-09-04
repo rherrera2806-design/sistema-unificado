@@ -407,7 +407,7 @@ App.registerModule('bodega', {
         const body = document.getElementById('bodAsignarBody');
         body.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">Cargando carros...</div>';
         const modal = document.getElementById('bodAsignarModal');
-        if (modal) modal.classList.add('active');
+        if (modal) modal.classList.add('show');
         else { console.error('Modal bodAsignarModal no existe en el DOM'); alert('Error: modal no encontrado'); return; }
 
         try {
@@ -503,7 +503,7 @@ App.registerModule('bodega', {
     },
 
     closeAsignar() {
-        document.getElementById('bodAsignarModal').classList.remove('active');
+        document.getElementById('bodAsignarModal').classList.remove('show');
     },
 
     async verItemsCarro(carroId) {
@@ -531,7 +531,7 @@ App.registerModule('bodega', {
                 <button class="btn btn-outline" onclick="App.modules.bodega.closeEntrega()">Cerrar</button>
             </div>
         `;
-        document.getElementById('bodEntregaModal').classList.add('active');
+        document.getElementById('bodEntregaModal').classList.add('show');
     },
 
     showGenerarEntrega(carroId) {
@@ -548,7 +548,7 @@ App.registerModule('bodega', {
                 <button class="btn btn-success" onclick="App.modules.bodega.confirmarGenerarEntrega(${carroId})">Generar ${carro ? carro.codigo : ''}</button>
             </div>
         `;
-        document.getElementById('bodEntregaModal').classList.add('active');
+        document.getElementById('bodEntregaModal').classList.add('show');
     },
 
     async confirmarGenerarEntrega(carroId) {
@@ -627,7 +627,7 @@ App.registerModule('bodega', {
                 ${!ent.recibido_at ? `<button class="btn btn-success" onclick="App.modules.bodega.recibirEntrega(${ent.id})">Marcar Recibido</button>` : ''}
             </div>
         `;
-        document.getElementById('bodEntregaModal').classList.add('active');
+        document.getElementById('bodEntregaModal').classList.add('show');
     },
 
     async recibirEntrega(entregaId) {
@@ -650,7 +650,7 @@ App.registerModule('bodega', {
     },
 
     closeEntrega() {
-        document.getElementById('bodEntregaModal').classList.remove('active');
+        document.getElementById('bodEntregaModal').classList.remove('show');
     },
 
     showNuevoCarro() {
@@ -700,7 +700,7 @@ App.registerModule('bodega', {
                 <button class="btn btn-primary" onclick="App.modules.bodega.guardarCarro()">Guardar</button>
             </div>
         `;
-        document.getElementById('bodCarroModal').classList.add('active');
+        document.getElementById('bodCarroModal').classList.add('show');
     },
 
     async guardarCarro() {
@@ -741,7 +741,7 @@ App.registerModule('bodega', {
     },
 
     closeCarroModal() {
-        document.getElementById('bodCarroModal').classList.remove('active');
+        document.getElementById('bodCarroModal').classList.remove('show');
         this._editingCarro = null;
     },
 
@@ -754,3 +754,4 @@ App.registerModule('bodega', {
         };
     }
 });
+
