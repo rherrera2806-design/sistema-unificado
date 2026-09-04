@@ -145,7 +145,9 @@ App.registerModule('bodega', {
     async _renderListos(target) {
         if (!this._itemsListos.length) {
             const r = await fetch('/api/bodega/items-listos', { headers: this._h() });
-            this._itemsListos = await r.json();
+            const data = await r.json();
+            this._itemsListos = Array.isArray(data) ? data : [];
+            if (!Array.isArray(data)) console.warn('items-listos no devolvió array:', data);
         }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const permisos = user.permisos || [];

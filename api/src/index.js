@@ -12,14 +12,19 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://vitroflow.up.ra
 
 let dbReady = false;
 let dbError = null;
-
-initDB().then(() => {
-    dbReady = true;
-    logger.info('Base de datos: PostgreSQL conectada');
-}).catch(e => {
-    dbError = e.message;
-    logger.error('Error DB:', { message: e.message, stack: e.stack });
-});
+let dbInitPromise = null;
+const startDbInit = () => {
+    if (dbInitPromise) return dbInitPromise;
+    dbInitPromise = initDB().then(() => {
+        dbReady = true;
+        logger.info('Base de datos: PostgreSQL conectada');
+    }).catch(e => {
+        dbError = e.message;
+        logger.error('Error DB:', { message: e.message, stack: e.stack });
+    });
+    return dbInitPromise;
+};
+startDbInit();
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
@@ -50,11 +55,15 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
     if (req.path === '/api/health') return next();
-    if (!dbReady && !dbError) return res.status(503).json({ error: 'Base de datos inicializando...' });
-    if (dbError) return res.status(500).json({ error: dbError });
-    next();
+    try {
+        await dbInitPromise;
+        if (dbError) return res.status(503).json({ error: 'Base de datos no disponible: ' + dbError });
+        next();
+    } catch (e) {
+        res.status(503).json({ error: 'Base de datos no disponible: ' + e.message });
+    }
 });
 
 app.get('/api/health', (req, res) => {
