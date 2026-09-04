@@ -20,7 +20,14 @@ router.get('/api/bodega/debug-tabla', canView, asyncHandler(async (req, res) => 
     const { query } = require('../config/database');
     const cols = await query(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'bodega_carros' ORDER BY ordinal_position`);
     const rows = await query(`SELECT * FROM bodega_carros LIMIT 5`);
-    res.json({ columnas: cols.rows, filas: rows.rows });
+    const allCarros = await query(`SELECT id, codigo, tipo, capacidad_items, activo FROM bodega_carros ORDER BY codigo`);
+    res.json({
+        timestamp: new Date().toISOString(),
+        server_version: 'DEBUG-v2',
+        columnas_tabla: cols.rows,
+        primeras_5_filas_completas: rows.rows,
+        todos_los_carros: allCarros.rows
+    });
 }));
 
 router.post('/api/bodega/carros', canCreate, asyncHandler(async (req, res) => {
