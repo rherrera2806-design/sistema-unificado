@@ -185,7 +185,7 @@ App.registerModule('bodega', {
             ${canAdd && selCount > 0 ? `
                 <div style="background:linear-gradient(135deg,#3b82f615,#8b5cf615);border:1px solid #3b82f640;border-radius:12px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
                     <strong>${selCount} items seleccionados</strong>
-                    <button class="btn btn-primary btn-sm" onclick="App.modules.bodega.showAsignar()" style="margin-left:auto">Asignar a Carro</button>
+                    <button class="btn btn-primary btn-sm" onclick="App.modules.bodega.showAsignarV3()" style="margin-left:auto">Asignar a Carro</button>
                     <button class="btn btn-outline btn-sm" onclick="App.modules.bodega.toggleSeleccionarTodo()">Limpiar selección</button>
                 </div>
             ` : ''}
@@ -402,7 +402,7 @@ App.registerModule('bodega', {
         this._renderListos(document.getElementById('bodegaContent'));
     },
 
-    async showAsignar() {
+    async showAsignarV3() {
         // Mostrar modal inmediatamente para feedback visual
         const body = document.getElementById('bodAsignarBody');
         body.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">Cargando carros...</div>';
@@ -411,25 +411,33 @@ App.registerModule('bodega', {
         else { console.error('Modal bodAsignarModal no existe en el DOM'); alert('Error: modal no encontrado'); return; }
 
         try {
-            const r = await fetch('/api/bodega/carros?t=' + Date.now(), { headers: this._h() });
+            const r = await fetch('/api/bodega/carros?cache=' + Date.now(), { headers: this._h() });
             if (!r.ok) throw new Error('HTTP ' + r.status);
-            const carros = await r.json();
-            console.log('[showAsignar v2]', carros.length, 'carros:', carros);
-            const carrosLibres = carros.filter(c => (c.activo === true || c.activo === undefined) && (Number(c.items_en_carros) || 0) === 0);
-            console.log('[showAsignar v2] carrosLibres:', carrosLibres.length);
+            const text = await r.text();
+            console.log('[V3] raw response:', text.substring(0, 500));
+            const carros = JSON.parse(text);
+            console.log('[V3] parsed:', carros.length, 'carros:', carros);
+
+            const carrosLibres = carros.filter(c => c.codigo && (c.activo === true || c.activo === undefined) && (Number(c.items_en_carros) || 0) === 0);
+            console.log('[V3] carrosLibres:', carrosLibres.length);
+
+            if (carrosLibres.length === 0) {
+                body.innerHTML = `
+                    <p style="color:#94a3b8;text-align:center;padding:20px">No hay carros libres. Crea uno nuevo desde la sección Carros.</p>
+                    <p style="color:#ef4444;font-size:11px;text-align:center">Debug V3: total=${carros.length}, libres=${carrosLibres.length}</p>
+                    <p style="color:#94a3b8;font-size:10px;text-align:center;word-break:break-all">${text.substring(0, 300)}</p>
+                `;
+                return;
+            }
 
             body.innerHTML = `
                 <p style="margin-bottom:14px;color:#64748b;font-size:13px">Selecciona el carro físico donde vas a apilar los <strong>${this._seleccionados.size}</strong> items seleccionados.</p>
                 <div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto">
-                    ${carrosLibres.length === 0 ? `
-                        <p style="color:#94a3b8;text-align:center;padding:20px">No hay carros libres. Crea uno nuevo desde la sección Carros.</p>
-                        <p style="color:#ef4444;font-size:11px;text-align:center">Debug: llegaron ${carros.length} carros, pero el filtro dejó la lista vacía. Revisá la consola.</p>
-                    ` : ''}
                     ${carrosLibres.map(c => `
                         <div class="carro-option" data-id="${c.id}" data-codigo="${this._esc(c.codigo)}" onclick="App.modules.bodega.selectCarro(this)" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;padding:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
                             <div>
                                 <div style="font-weight:700">${this._esc(c.codigo)}</div>
-                                <div style="font-size:11px;color:#64748b">${this._esc(c.tipo)} - capacidad ${c.capacidad_items}</div>
+                                <div style="font-size:11px;color:#64748b">${this._esc(c.tipo || '')} - capacidad ${c.capacidad_items || 50}</div>
                             </div>
                             <span style="font-size:11px;color:#16a34a;font-weight:700">Libre</span>
                         </div>
@@ -441,8 +449,8 @@ App.registerModule('bodega', {
                 </div>
             `;
         } catch (e) {
-            console.error('showAsignar error:', e);
-            body.innerHTML = `<div style="padding:20px;text-align:center;color:#ef4444">Error: ${e.message}<br><br>Verificá que tengas permisos para esta acción y que la BD tenga la tabla bodega_carros.</div>`;
+            console.error('[V3] error:', e);
+            body.innerHTML = `<div style="padding:20px;text-align:center;color:#ef4444">Error: ${e.message}</div>`;
         }
     },
 
