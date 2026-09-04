@@ -1,4 +1,9 @@
 App.registerModule('bodega', {
+    _esc(s) {
+        if (s == null) return '';
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    },
+
     _vista: 'listos', // listos | pre-entrega | entregas | historial | carros
     _carros: [],
     _itemsListos: [],
@@ -140,19 +145,21 @@ App.registerModule('bodega', {
                     <div style="background:white;border:1px solid ${this._seleccionados.has(it.paso_id) ? '#3b82f6' : '#e2e8f0'};border-radius:10px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer" onclick="App.modules.bodega.toggleItem(${it.paso_id})">
                         ${canAdd ? `<input type="checkbox" ${this._seleccionados.has(it.paso_id) ? 'checked' : ''} onclick="event.stopPropagation(); App.modules.bodega.toggleItem(${it.paso_id})">` : ''}
                         <div style="flex:1;min-width:0">
-                            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:13px">
-                                <strong>${it.codigo_producto || '-'}</strong>
-                                ${it.descripcion ? `<span style="color:#64748b">${it.descripcion}</span>` : ''}
+                            <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;font-size:13px;font-weight:600">
+                                <span><span style="color:#64748b;font-weight:500">Pedido:</span> <strong>${this._esc(it.pedido_sap_id) || '-'}</strong></span>
+                                <span><span style="color:#64748b;font-weight:500">Item:</span> <strong>${it.item_numero != null ? it.item_numero : '-'}</strong></span>
+                            </div>
+                            <div style="font-size:11px;color:#64748b;margin-top:2px">${this._esc(it.cliente) || ''}</div>
+                            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:baseline;margin-top:6px">
+                                <strong style="font-size:14px">${this._esc(it.codigo_producto) || '-'}</strong>
+                                ${it.descripcion ? `<span style="font-size:12px;color:#64748b">${this._esc(it.descripcion)}</span>` : ''}
                                 ${it.espesor_mm ? `<span style="padding:2px 6px;background:#f1f5f9;border-radius:8px;font-size:11px">${it.espesor_mm}mm</span>` : ''}
                             </div>
-                            <div style="display:flex;gap:10px;font-size:12px;color:#64748b;margin-top:4px;flex-wrap:wrap">
-                                <span><b>Pedido:</b> ${it.pedido_sap_id || '-'}</span>
-                                <span><b>Item:</b> ${it.item_numero != null ? it.item_numero : '-'}</span>
-                                <span><b>Cliente:</b> ${it.cliente || '-'}</span>
+                            <div style="display:flex;gap:10px;font-size:12px;color:#64748b;margin-top:6px;flex-wrap:wrap">
                                 <span><b>Dimensiones:</b> ${it.ancho}x${it.alto}mm</span>
                                 <span><b>Cant:</b> ${it.cantidad || 1}</span>
                                 <span><b>Kilos:</b> ${it.kilos ? Math.round(it.kilos) : '-'}</span>
-                                <span style="color:#16a34a"><b>${it.ultima_estacion || ''}</b></span>
+                                ${it.ultima_estacion ? `<span style="color:#16a34a"><b>${this._esc(it.ultima_estacion)}</b></span>` : ''}
                             </div>
                         </div>
                     </div>
