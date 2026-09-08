@@ -803,7 +803,7 @@ function renderSidebar() {
     // Cerrar sesion (siempre al fondo)
     html += `<div style="flex:1"></div>`;
     html += `<div style="padding:8px 12px 16px;border-top:1px solid rgba(255,255,255,0.06)">`;
-    html += `<div class="nav-item" onclick="doLogout()" style="opacity:0.5;justify-content:center">
+    html += `<div class="nav-item" onclick="doLogout()" data-tooltip="Cerrar Sesion" style="opacity:0.5;justify-content:center">
         <span class="nav-icon">${SVG.logOut}</span><span class="nav-text">Cerrar Sesion</span></div>`;
     html += `</div>`;
 
@@ -869,7 +869,7 @@ function toggleSection(section) {
 }
 
 function navI(id, label, icon) {
-    return `<div class="nav-item" data-page="${id}" data-tooltip="${label}"><span class="nav-icon">${icon}</span> ${label}</div>`;
+    return `<div class="nav-item" data-page="${id}" data-tooltip="${label}"><span class="nav-icon">${icon}</span><span class="nav-text">${label}</span></div>`;
 }
 
 const SVG = {
