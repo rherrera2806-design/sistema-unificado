@@ -782,11 +782,11 @@ function renderSidebar() {
 
     sections.forEach(section => {
         if (!hasSection(section.key)) return;
-        html += `<div class="nav-section" onclick="toggleSection('${section.key}')"><span>${section.label}</span><span class="toggle-icon">▼</span></div>`;
+        html += `<div class="nav-section" tabindex="0" role="button" onclick="toggleSection('${section.key}')"><span>${section.label}</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-${section.key}">`;
         section.items.forEach(item => {
             if (item.external) {
-                html += `<div class="nav-item" data-tooltip="${item.label}" onclick="window.open('${item.external}','_blank')"><span class="nav-icon">${item.icon}</span><span class="nav-text">${item.label}</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
+                html += `<div class="nav-item" data-tooltip="${item.label}" tabindex="0" role="link" onclick="window.open('${item.external}','_blank')"><span class="nav-icon">${item.icon}</span><span class="nav-text">${item.label}</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
             } else if (canSeeItem(item.id, section.key)) {
                 html += navI(item.id, item.label, item.icon);
             }
@@ -796,7 +796,7 @@ function renderSidebar() {
 
     // Admin section (solo admins)
     if (isAdmin()) {
-        html += `<div class="nav-section" onclick="toggleSection('admin')"><span>ADMINISTRACION</span><span class="toggle-icon">▼</span></div>`;
+        html += `<div class="nav-section" tabindex="0" role="button" onclick="toggleSection('admin')"><span>ADMINISTRACION</span><span class="toggle-icon">▼</span></div>`;
         html += `<div class="nav-section-group" id="section-admin">`;
         html += navI('usuarios', 'Usuarios', SVG.users);
         html += `</div>`;
@@ -805,7 +805,7 @@ function renderSidebar() {
     // Cerrar sesion (siempre al fondo)
     html += `<div style="flex:1"></div>`;
     html += `<div style="padding:8px 12px 16px;border-top:1px solid rgba(255,255,255,0.06)">`;
-    html += `<div class="nav-item" onclick="doLogout()" data-tooltip="Cerrar Sesion" style="opacity:0.5;justify-content:center">
+    html += `<div class="nav-item" onclick="doLogout()" data-tooltip="Cerrar Sesion" tabindex="0" role="button" style="opacity:0.5;justify-content:center">
         <span class="nav-icon">${SVG.logOut}</span><span class="nav-text">Cerrar Sesion</span></div>`;
     html += `</div>`;
 
@@ -867,11 +867,29 @@ function toggleSection(section) {
         group.classList.add('collapsed');
         sectionEl.classList.add('collapsed');
     }
-    try { localStorage.setItem('sidebar_collapsed', JSON.stringify({ [section]: !isCollapsed })); } catch(e) {}
+    try {
+        const raw = JSON.parse(localStorage.getItem('sidebar_sections') || '{}');
+        raw[section] = !isCollapsed;
+        localStorage.setItem('sidebar_sections', JSON.stringify(raw));
+    } catch(e) {}
+}
+
+function restoreSectionStates() {
+    try {
+        const raw = JSON.parse(localStorage.getItem('sidebar_sections') || '{}');
+        Object.keys(raw).forEach(key => {
+            if (!raw[key]) return;
+            const group = document.getElementById('section-' + key);
+            if (!group) return;
+            group.classList.add('collapsed');
+            const sectionEl = group.previousElementSibling;
+            if (sectionEl) sectionEl.classList.add('collapsed');
+        });
+    } catch(e) {}
 }
 
 function navI(id, label, icon) {
-    return `<div class="nav-item" data-page="${id}" data-tooltip="${label}"><span class="nav-icon">${icon}</span><span class="nav-text">${label}</span></div>`;
+    return `<div class="nav-item" data-page="${id}" data-tooltip="${label}" tabindex="0" role="link"><span class="nav-icon">${icon}</span><span class="nav-text">${label}</span></div>`;
 }
 
 const SVG = {
@@ -946,8 +964,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('sidebarAvatar').textContent = (user.nombre || 'U').charAt(0).toUpperCase();
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     renderSidebar();
+    restoreSectionStates();
     const sidebarTooltip = document.getElementById('sidebarTooltip');
     const sidebarNavEl = document.getElementById('sidebarNav');
+    sidebarNavEl.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const target = e.target.closest('.nav-item, .nav-section');
+        if (target) { e.preventDefault(); target.click(); }
+    });
     sidebarNavEl.addEventListener('mouseover', (e) => {
         const item = e.target.closest('.nav-item');
         if (!item || !document.getElementById('sidebar').classList.contains('collapsed')) { sidebarTooltip.classList.remove('show'); return; }
