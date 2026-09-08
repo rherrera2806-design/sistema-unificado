@@ -783,7 +783,7 @@ function renderSidebar() {
         html += `<div class="nav-section-group" id="section-${section.key}">`;
         section.items.forEach(item => {
             if (item.external) {
-                html += `<div class="nav-item" onclick="window.open('${item.external}','_blank')"><span class="nav-icon">${item.icon}</span><span class="nav-text">${item.label}</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
+                html += `<div class="nav-item" data-tooltip="${item.label}" onclick="window.open('${item.external}','_blank')"><span class="nav-icon">${item.icon}</span><span class="nav-text">${item.label}</span><span class="nav-badge" style="background:#f59e0b;color:#000;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:auto">OPEN</span></div>`;
             } else if (canSeeItem(item.id, section.key)) {
                 html += navI(item.id, item.label, item.icon);
             }
@@ -868,7 +868,7 @@ function toggleSection(section) {
 }
 
 function navI(id, label, icon) {
-    return `<div class="nav-item" data-page="${id}"><span class="nav-icon">${icon}</span> ${label}</div>`;
+    return `<div class="nav-item" data-page="${id}" data-tooltip="${label}"><span class="nav-icon">${icon}</span> ${label}</div>`;
 }
 
 const SVG = {
@@ -938,6 +938,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!user) { window.location.href = '/'; return; }
     document.getElementById('userName').textContent = user.nombre || user.email || 'Usuario';
     document.getElementById('userAvatar').textContent = (user.nombre || 'U').charAt(0).toUpperCase();
+    document.getElementById('sidebarUserName').textContent = user.nombre || user.email || 'Usuario';
+    document.getElementById('sidebarUserRole').textContent = user.rol || 'Operador';
+    document.getElementById('sidebarAvatar').textContent = (user.nombre || 'U').charAt(0).toUpperCase();
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     renderSidebar();
     // Restaurar estado del sidebar colapsado
