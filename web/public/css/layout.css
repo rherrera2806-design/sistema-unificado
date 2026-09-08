@@ -39,7 +39,7 @@
     overflow: hidden;
 }
 .sidebar.collapsed .sidebar-title,
-.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .nav-text,
 .sidebar.collapsed .nav-section span,
 .sidebar.collapsed .nav-section .toggle-icon,
 .sidebar.collapsed .nav-section::after,
