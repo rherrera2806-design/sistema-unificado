@@ -313,18 +313,12 @@
     font-size: 0.625rem;
 }
 
-/* ── Tooltips (collapsed mode) ── */
-.sidebar.collapsed .nav-item {
-    position: relative;
-}
-.sidebar.collapsed .nav-item::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: calc(100% + 8px);
-    top: 50%;
+/* ── Tooltip (collapsed mode, fixed para no ser recortado) ── */
+.sidebar-tooltip {
+    position: fixed;
     transform: translateY(-50%);
     background: var(--gray-800);
-    color: white;
+    color: #fff;
     font-size: 0.6875rem;
     font-weight: 500;
     padding: 4px 10px;
@@ -333,12 +327,10 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s;
-    z-index: 9999;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 10000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
-.sidebar.collapsed .nav-item:hover::after {
-    opacity: 1;
-}
+.sidebar-tooltip.show { opacity: 1; }
 
 /* ── Header ── */
 .header {

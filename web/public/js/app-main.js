@@ -299,6 +299,8 @@ const App = {
         const layout = document.querySelector('.app-layout');
         sidebar.classList.toggle('collapsed');
         layout.classList.toggle('sidebar-collapsed');
+        const tt = document.getElementById('sidebarTooltip');
+        if (tt) tt.classList.remove('show');
         const icon = document.querySelector('#sidebarCollapseBtn svg polyline');
         if (sidebar.classList.contains('collapsed')) {
             if (icon) icon.setAttribute('points', '9 18 15 12 9 6');
@@ -944,6 +946,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('sidebarAvatar').textContent = (user.nombre || 'U').charAt(0).toUpperCase();
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     renderSidebar();
+    const sidebarTooltip = document.getElementById('sidebarTooltip');
+    const sidebarNavEl = document.getElementById('sidebarNav');
+    sidebarNavEl.addEventListener('mouseover', (e) => {
+        const item = e.target.closest('.nav-item');
+        if (!item || !document.getElementById('sidebar').classList.contains('collapsed')) { sidebarTooltip.classList.remove('show'); return; }
+        const label = item.getAttribute('data-tooltip');
+        if (!label) { sidebarTooltip.classList.remove('show'); return; }
+        const rect = item.getBoundingClientRect();
+        sidebarTooltip.textContent = label;
+        sidebarTooltip.style.top = (rect.top + rect.height / 2) + 'px';
+        sidebarTooltip.style.left = (rect.right + 10) + 'px';
+        sidebarTooltip.classList.add('show');
+    });
+    sidebarNavEl.addEventListener('mouseout', (e) => {
+        if (e.target.closest('.nav-item')) sidebarTooltip.classList.remove('show');
+    });
     // Restaurar estado del sidebar colapsado
     try {
         if (localStorage.getItem('sidebar_collapsed') === 'true') {
