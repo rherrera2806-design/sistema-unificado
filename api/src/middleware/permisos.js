@@ -168,6 +168,19 @@ function crudPerms(modulo) {
     };
 }
 
+/**
+ * Middleware que verifica que el usuario sea administrador.
+ * Reemplaza las funciones checkAdmin() duplicadas en los routes.
+ */
+function requireAdmin(req, res, next) {
+    const user = getUserFromReq(req);
+    if (user.rol === 'admin' || user.permisos.includes('usuarios')) {
+        req.user = user;
+        return next();
+    }
+    return res.status(403).json({ error: 'Solo administradores' });
+}
+
 module.exports = {
     getPermisosFromReq,
     getEmailFromReq,
@@ -175,5 +188,6 @@ module.exports = {
     requireAnyPerm,
     requirePerm,
     requireAuth,
+    requireAdmin,
     crudPerms,
 };

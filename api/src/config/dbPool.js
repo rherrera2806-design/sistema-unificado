@@ -12,4 +12,26 @@ const pool = new Pool({
 
 const query = async (text, params = []) => pool.query(text, params);
 
-module.exports = { pool, query };
+/**
+ * Ejecuta múltiples queries en una transacción.
+ * Si alguna falla, hace rollback de todas.
+ * @param {Function} callback - Función que recibe { query } y ejecuta las queries
+ * @returns {*} Resultado de la última query
+ */
+const transaction = async (callback) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const txQuery = (text, params = []) => client.query(text, params);
+        const result = await callback({ query: txQuery });
+        await client.query('COMMIT');
+        return result;
+    } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+    } finally {
+        client.release();
+    }
+};
+
+module.exports = { pool, query, transaction };

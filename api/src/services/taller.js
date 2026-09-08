@@ -1,4 +1,20 @@
 const { query } = require('../config/database');
+const { transaction } = require('../config/dbPool');
+
+/**
+ * Calcula m2 y kilos proporcionales a una cantidad.
+ * Función compartida para eliminar duplicación entre procesarPaso y registrarMerma.
+ */
+const calcularProporcion = (cantidadTotal, cantidad, metrosCuadrados, kilos, ancho, alto) => {
+    const m2Total = Number(metrosCuadrados) || ((Number(ancho) * Number(alto)) / 1000000) * cantidadTotal;
+    const kilosTotal = Number(kilos) || 0;
+    const m2Unit = cantidadTotal > 0 ? m2Total / cantidadTotal : 0;
+    const kilosUnit = cantidadTotal > 0 ? kilosTotal / cantidadTotal : 0;
+    return {
+        m2: m2Unit * cantidad,
+        kilos: kilosUnit * cantidad
+    };
+};
 
 async function getEstacionesConCarga() {
     const result = await query(`
@@ -48,6 +64,7 @@ async function getColaPorEstacion(estacionId) {
                o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
                f.nombre_familia,
                mq.nombre as maquina_nombre,
+               est_actual.nombre_estacion as estacion_actual,
                nes.nombre_estacion as proxima_estacion,
                CASE WHEN p.orden_secuencia = 1 THEN TRUE
                     ELSE EXISTS(
@@ -62,6 +79,7 @@ async function getColaPorEstacion(estacionId) {
         JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
         LEFT JOIN familias_producto f ON o.familia_id = f.id
         LEFT JOIN produccion_maquinas mq ON p.maquina_id = mq.id
+        LEFT JOIN estaciones_maestras est_actual ON p.estacion_id = est_actual.id
         LEFT JOIN cola_produccion_pasos nes_paso ON nes_paso.orden_produccion_id = o.id
             AND nes_paso.orden_secuencia = p.orden_secuencia + 1
         LEFT JOIN estaciones_maestras nes ON nes_paso.estacion_id = nes.id
@@ -78,35 +96,120 @@ async function getColaPorEstacion(estacionId) {
                   AND prev.estado = 'TERMINADO'
             ) AND p.orden_secuencia > 1 THEN 1 ELSE 0 END,
             COALESCE(o.nivel_prioridad, 1) DESC,
+            COALESCE(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[^0-9]', '', 'g'), ''), '0')::BIGINT ASC,
+            COALESCE(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[0-9]', '', 'g'), ''), '') ASC,
+            COALESCE(o.item_numero, 0) ASC,
             p.fecha_programada ASC NULLS LAST,
             p.orden_secuencia ASC, o.id ASC
     `, [estacionId]);
     return result.rows;
 }
 
-async function iniciarPaso(pasoId, maquinaId) {
-    if (maquinaId) {
-        await query(
-            `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()), maquina_id = $1 WHERE id = $2 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
-            [maquinaId, pasoId]
+async function registrarTurnoSiNoExiste(operarioEmail, operarioNombre, turno) {
+    if (!operarioEmail || !turno) return;
+    try {
+        const hoy = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+        const existe = await query(
+            `SELECT id FROM taller_turnos WHERE fecha = $1 AND turno = $2 AND operario_email = $3`,
+            [hoy, turno, operarioEmail]
         );
-    } else {
-        await query(
-            `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()) WHERE id = $1 AND estado IN ('PENDIENTE', 'EN_PROCESO')`,
-            [pasoId]
-        );
-    }
+        if (existe.rows.length === 0) {
+            await query(
+                `INSERT INTO taller_turnos (fecha, turno, operario_email, operario_nombre, hora_inicio)
+                 VALUES ($1, $2, $3, $4, NOW())`,
+                [hoy, turno, operarioEmail, operarioNombre]
+            );
+        }
+    } catch (_) { }
 }
 
-async function finalizarPaso(pasoId) {
+async function iniciarPaso(pasoId, maquinaId, operarioEmail, operarioNombre, turno) {
+    const updates = [`estado = 'EN_PROCESO'`, `hora_inicio = COALESCE(hora_inicio, NOW())`];
+    const params = [];
+    let idx = 1;
+
+    if (maquinaId) { updates.push(`maquina_id = $${idx++}`); params.push(maquinaId); }
+    updates.push(`operario_email = $${idx++}`); params.push(operarioEmail);
+    updates.push(`operario_nombre = $${idx++}`); params.push(operarioNombre);
+    updates.push(`locked_by = $${idx++}`); params.push(operarioEmail);
+    updates.push(`locked_at = NOW()`);
+    params.push(pasoId);
+
+    await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx}`, params);
+
+    try {
+        await query(
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_nuevos, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'iniciar', jsonb_build_object('maquina_id', $2, 'turno', $5), $3, $4)`,
+            [pasoId, maquinaId, operarioEmail, operarioNombre, turno]
+        );
+    } catch (_) { }
+
+    await registrarTurnoSiNoExiste(operarioEmail, operarioNombre, turno);
+}
+
+async function pausarPaso(pasoId, operarioEmail, operarioNombre) {
+    const paso = await query(
+        `SELECT hora_inicio FROM cola_produccion_pasos WHERE id = $1 AND estado = 'EN_PROCESO'`,
+        [pasoId]
+    );
+    if (paso.rows.length === 0) throw new Error('Paso no está en proceso');
+
+    await query(
+        `UPDATE cola_produccion_pasos SET estado = 'PAUSADO', pausado_en = NOW() WHERE id = $1`,
+        [pasoId]
+    );
+
+    try {
+        await query(
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'pausar', $2, $3)`,
+            [pasoId, operarioEmail, operarioNombre]
+        );
+    } catch (_) { }
+}
+
+async function reanudarPaso(pasoId, operarioEmail, operarioNombre) {
+    const paso = await query(
+        `SELECT pausado_en FROM cola_produccion_pasos WHERE id = $1 AND estado = 'PAUSADO'`,
+        [pasoId]
+    );
+    if (paso.rows.length === 0) throw new Error('Paso no está pausado');
+
+    const pausadoEn = new Date(paso.rows[0].pausado_en);
+    const tiempoPausado = Math.floor((Date.now() - pausadoEn.getTime()) / 1000);
+
+    await query(
+        `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', pausado_en = NULL, tiempo_pausado_segundos = tiempo_pausado_segundos + $1 WHERE id = $2`,
+        [tiempoPausado, pasoId]
+    );
+
+    try {
+        await query(
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_nuevos, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'reanudar', jsonb_build_object('tiempo_pausado_segundos', $2), $3, $4)`,
+            [pasoId, tiempoPausado, operarioEmail, operarioNombre]
+        );
+    } catch (_) { }
+}
+
+async function finalizarPaso(pasoId, operarioEmail, operarioNombre) {
     const pasoResult = await query('SELECT * FROM cola_produccion_pasos WHERE id = $1', [pasoId]);
     if (pasoResult.rows.length === 0) return null;
     const p = pasoResult.rows[0];
 
     await query(
-        `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW() WHERE id = $1`,
+        `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW(), locked_by = NULL, locked_at = NULL WHERE id = $1`,
         [pasoId]
     );
+
+    try {
+        await query(
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_anteriores, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'finalizar', $2, $3, $4)`,
+            [pasoId, JSON.stringify(p), operarioEmail, operarioNombre]
+        );
+    } catch (_) { }
 
     const siguiente = await query(`
         SELECT cp.id, cp.estacion_id, em.nombre_estacion
@@ -125,85 +228,83 @@ async function finalizarPaso(pasoId) {
 }
 
 async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail }) {
-    const pasoResult = await query(
-        `SELECT p.*, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, o.cantidad, o.familia_id, o.kilos, o.espesor_mm, o.pedido_sap_id, o.grupo, o.metros_cuadrados, o.costo_materia_prima, o.nota, o.pintado, o.perforaciones, o.tipo_venta, o.posicion, o.orden_compra, o.tipo_entrega, o.item_numero, o.codigo_padre, o.mecanizado_operaciones
-         FROM cola_produccion_pasos p
-         JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
-         WHERE p.id = $1`,
-        [paso_id]
-    );
-    if (pasoResult.rows.length === 0) return null;
-    const p = pasoResult.rows[0];
-
-    const cantidadOriginal = Number(p.cantidad) || 1;
-    const cantidadMermada = Number(cantidad) || 1;
-    const cantidadRestante = Math.max(0, cantidadOriginal - cantidadMermada);
-    const totalM2 = Number(p.m2_asignados) || Number(p.metros_cuadrados) || ((Number(p.ancho) * Number(p.alto)) / 1000000) * cantidadOriginal;
-    const totalKilos = Number(p.kilos) || 0;
-    const m2Proporcion = cantidadOriginal > 0 ? (totalM2 / cantidadOriginal) : 0;
-    const kilosProporcion = cantidadOriginal > 0 ? (totalKilos / cantidadOriginal) : 0;
-    const m2Mermados = m2Proporcion * cantidadMermada;
-    const kilosMermados = kilosProporcion * cantidadMermada;
-    const costoMP = p.costo_materia_prima || 0;
-
-    const mermaResult = await query(
-        `INSERT INTO mermas (orden_produccion_id, paso_id, estacion_id, causa, cantidad, observacion, m2_mermados, costo_materia_prima, creado_por)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-        [p.orden_produccion_id, paso_id, p.estacion_id, causa, cantidadMermada, observacion || '', m2Mermados, costoMP, userEmail]
-    );
-    const mermaId = mermaResult.rows[0].id;
-
-    const nuevaOrdenResult = await query(
-        `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, cantidad, familia_id, espesor_mm, kilos, estado_programacion, es_reposicion, merma_original_id, pintado, perforaciones, tipo_venta, nota, posicion, orden_compra, tipo_entrega, grupo, item_numero, codigo_padre, mecanizado_operaciones, nivel_prioridad)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,4) RETURNING id`,
-        [p.pedido_sap_id, p.cliente, p.codigo_producto, '[REPOSICION] ' + (p.descripcion || ''), p.ancho, p.alto, m2Mermados, cantidadMermada, p.familia_id, p.espesor_mm, kilosMermados, mermaId, p.pintado, p.perforaciones, p.tipo_venta, (p.nota || '') + ' | Merma: ' + causa + (observacion ? ' - ' + observacion : ''), p.posicion, p.orden_compra, p.tipo_entrega, p.grupo, p.item_numero, p.codigo_padre, p.mecanizado_operaciones]
-    );
-    const nuevaOrdenId = nuevaOrdenResult.rows[0].id;
-
-    const pasosOriginales = await query(
-        `SELECT cp.estacion_id, cp.orden_secuencia FROM cola_produccion_pasos cp WHERE cp.orden_produccion_id = $1 ORDER BY cp.orden_secuencia ASC`,
-        [p.orden_produccion_id]
-    );
-
-    if (pasosOriginales.rows.length > 0) {
-        for (const paso of pasosOriginales.rows) {
-            await query(
-                `INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados)
-                 VALUES ($1,$2,$3,'PENDIENTE',null,$4)`,
-                [nuevaOrdenId, paso.estacion_id, paso.orden_secuencia, m2Mermados]
-            );
-        }
-    } else {
-        const baseEstaciones = await query(
-            `SELECT estacion_id FROM familia_estaciones_base WHERE familia_id = $1 ORDER BY (SELECT orden_secuencia_defecto FROM estaciones_maestras WHERE id = estacion_id)`,
-            [p.familia_id]
-        );
-        for (let i = 0; i < baseEstaciones.rows.length; i++) {
-            await query(
-                `INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados)
-                 VALUES ($1,$2,$3,'PENDIENTE',null,$4)`,
-                [nuevaOrdenId, baseEstaciones.rows[i].estacion_id, i + 1, m2Mermados]
-            );
-        }
-    }
-
-    if (cantidadRestante > 0) {
-        await query(
-            `UPDATE produccion_ordenes SET cantidad = $1, metros_cuadrados = $2, kilos = $3 WHERE id = $4`,
-            [cantidadRestante, m2Proporcion * cantidadRestante, kilosProporcion * cantidadRestante, p.orden_produccion_id]
-        );
-        await query(
-            `UPDATE cola_produccion_pasos SET m2_asignados = $1 WHERE id = $2`,
-            [m2Proporcion * cantidadRestante, paso_id]
-        );
-    } else {
-        await query(
-            `UPDATE cola_produccion_pasos SET estado = 'MERMADO', hora_fin = NOW() WHERE id = $1`,
+    return await transaction(async ({ query: txQuery }) => {
+        const pasoResult = await txQuery(
+            `SELECT p.*, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, o.cantidad, o.familia_id, o.kilos, o.espesor_mm, o.pedido_sap_id, o.grupo, o.metros_cuadrados, o.costo_materia_prima, o.nota, o.pintado, o.perforaciones, o.tipo_venta, o.posicion, o.orden_compra, o.tipo_entrega, o.item_numero, o.codigo_padre, o.mecanizado_operaciones
+             FROM cola_produccion_pasos p
+             JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+             WHERE p.id = $1`,
             [paso_id]
         );
-    }
+        if (pasoResult.rows.length === 0) return null;
+        const p = pasoResult.rows[0];
 
-    return { mermaId, nuevaOrdenId, cantidadRestante };
+        const cantidadOriginal = Number(p.cantidad) || 1;
+        const cantidadMermada = Number(cantidad) || 1;
+        const cantidadRestante = Math.max(0, cantidadOriginal - cantidadMermada);
+        const proporcion = calcularProporcion(cantidadOriginal, cantidadMermada, p.metros_cuadrados, p.kilos, p.ancho, p.alto);
+        const proporcionRestante = calcularProporcion(cantidadOriginal, cantidadRestante, p.metros_cuadrados, p.kilos, p.ancho, p.alto);
+        const costoMP = p.costo_materia_prima || 0;
+
+        const mermaResult = await txQuery(
+            `INSERT INTO mermas (orden_produccion_id, paso_id, estacion_id, causa, cantidad, observacion, m2_mermados, costo_materia_prima, creado_por)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+            [p.orden_produccion_id, paso_id, p.estacion_id, causa, cantidadMermada, observacion || '', proporcion.m2, costoMP, userEmail]
+        );
+        const mermaId = mermaResult.rows[0].id;
+
+        const nuevaOrdenResult = await txQuery(
+            `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, cantidad, familia_id, espesor_mm, kilos, estado_programacion, es_reposicion, merma_original_id, pintado, perforaciones, tipo_venta, nota, posicion, orden_compra, tipo_entrega, grupo, item_numero, codigo_padre, mecanizado_operaciones, nivel_prioridad)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',TRUE,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,4) RETURNING id`,
+            [p.pedido_sap_id, p.cliente, p.codigo_producto, '[REPOSICION] ' + (p.descripcion || ''), p.ancho, p.alto, proporcion.m2, cantidadMermada, p.familia_id, p.espesor_mm, proporcion.kilos, mermaId, p.pintado, p.perforaciones, p.tipo_venta, (p.nota || '') + ' | Merma: ' + causa + (observacion ? ' - ' + observacion : ''), p.posicion, p.orden_compra, p.tipo_entrega, p.grupo, p.item_numero, p.codigo_padre, p.mecanizado_operaciones]
+        );
+        const nuevaOrdenId = nuevaOrdenResult.rows[0].id;
+
+        const pasosOriginales = await txQuery(
+            `SELECT cp.estacion_id, cp.orden_secuencia FROM cola_produccion_pasos cp WHERE cp.orden_produccion_id = $1 ORDER BY cp.orden_secuencia ASC`,
+            [p.orden_produccion_id]
+        );
+
+        if (pasosOriginales.rows.length > 0) {
+            for (const paso of pasosOriginales.rows) {
+                await txQuery(
+                    `INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados)
+                     VALUES ($1,$2,$3,'PENDIENTE',null,$4)`,
+                    [nuevaOrdenId, paso.estacion_id, paso.orden_secuencia, proporcion.m2]
+                );
+            }
+        } else {
+            const baseEstaciones = await txQuery(
+                `SELECT estacion_id FROM familia_estaciones_base WHERE familia_id = $1 ORDER BY (SELECT orden_secuencia_defecto FROM estaciones_maestras WHERE id = estacion_id)`,
+                [p.familia_id]
+            );
+            for (let i = 0; i < baseEstaciones.rows.length; i++) {
+                await txQuery(
+                    `INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, fecha_programada, m2_asignados)
+                     VALUES ($1,$2,$3,'PENDIENTE',null,$4)`,
+                    [nuevaOrdenId, baseEstaciones.rows[i].estacion_id, i + 1, proporcion.m2]
+                );
+            }
+        }
+
+        if (cantidadRestante > 0) {
+            await txQuery(
+                `UPDATE produccion_ordenes SET cantidad = $1, metros_cuadrados = $2, kilos = $3 WHERE id = $4`,
+                [cantidadRestante, proporcionRestante.m2, proporcionRestante.kilos, p.orden_produccion_id]
+            );
+            await txQuery(
+                `UPDATE cola_produccion_pasos SET m2_asignados = $1 WHERE id = $2`,
+                [proporcionRestante.m2, paso_id]
+            );
+        } else {
+            await txQuery(
+                `UPDATE cola_produccion_pasos SET estado = 'MERMADO', hora_fin = NOW() WHERE id = $1`,
+                [paso_id]
+            );
+        }
+
+        return { mermaId, nuevaOrdenId, cantidadRestante };
+    });
 }
 
 async function getMermas(fecha) {
@@ -218,7 +319,7 @@ async function getMermas(fecha) {
     return result.rows;
 }
 
-async function procesarPaso(pasoId, cantidad, maquinaId) {
+async function procesarPaso(pasoId, cantidad, maquinaId, operarioEmail, operarioNombre) {
     const pasoResult = await query(
         `SELECT p.*, o.cantidad as cantidad_total, o.metros_cuadrados, o.kilos, o.ancho, o.alto,
                 o.pedido_sap_id, o.cliente, o.codigo_producto, o.descripcion, o.familia_id,
@@ -238,20 +339,18 @@ async function procesarPaso(pasoId, cantidad, maquinaId) {
     const cantidadRestante = cantidadTotal - cantidadProcesar;
 
     if (cantidadRestante > 0) {
-        const m2Total = Number(p.metros_cuadrados) || ((Number(p.ancho) * Number(p.alto)) / 1000000) * cantidadTotal;
-        const kilosTotal = Number(p.kilos) || 0;
-        const m2Unit = cantidadTotal > 0 ? m2Total / cantidadTotal : 0;
-        const kilosUnit = cantidadTotal > 0 ? kilosTotal / cantidadTotal : 0;
+        const proporcionProcesar = calcularProporcion(cantidadTotal, cantidadProcesar, p.metros_cuadrados, p.kilos, p.ancho, p.alto);
+        const proporcionRestante = calcularProporcion(cantidadTotal, cantidadRestante, p.metros_cuadrados, p.kilos, p.ancho, p.alto);
 
         await query(
             `UPDATE produccion_ordenes SET cantidad = $1, metros_cuadrados = $2, kilos = $3 WHERE id = $4`,
-            [cantidadProcesar, m2Unit * cantidadProcesar, kilosUnit * cantidadProcesar, p.orden_produccion_id]
+            [cantidadProcesar, proporcionProcesar.m2, proporcionProcesar.kilos, p.orden_produccion_id]
         );
 
         const nuevaOrdenResult = await query(
             `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, cantidad, familia_id, espesor_mm, kilos, estado_programacion, grupo, nota, pintado, perforaciones, tipo_venta, posicion, orden_compra, tipo_entrega, item_numero, codigo_padre, mecanizado_operaciones, nivel_prioridad)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'PENDIENTE',$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,1) RETURNING id`,
-            [p.pedido_sap_id, p.cliente, p.codigo_producto, p.descripcion, p.ancho, p.alto, m2Unit * cantidadRestante, cantidadRestante, p.familia_id, p.espesor_mm, kilosUnit * cantidadRestante, p.grupo, p.nota, p.pintado, p.perforaciones, p.tipo_venta, p.posicion, p.orden_compra, p.tipo_entrega, p.item_numero, p.codigo_padre, p.mecanizado_operaciones]
+            [p.pedido_sap_id, p.cliente, p.codigo_producto, p.descripcion, p.ancho, p.alto, proporcionRestante.m2, cantidadRestante, p.familia_id, p.espesor_mm, proporcionRestante.kilos, p.grupo, p.nota, p.pintado, p.perforaciones, p.tipo_venta, p.posicion, p.orden_compra, p.tipo_entrega, p.item_numero, p.codigo_padre, p.mecanizado_operaciones]
         );
         const nuevaOrdenId = nuevaOrdenResult.rows[0].id;
 
@@ -263,28 +362,75 @@ async function procesarPaso(pasoId, cantidad, maquinaId) {
             await query(
                 `INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, m2_asignados)
                  VALUES ($1,$2,$3,'PENDIENTE',$4)`,
-                [nuevaOrdenId, paso.estacion_id, paso.orden_secuencia, m2Unit * cantidadRestante]
+                [nuevaOrdenId, paso.estacion_id, paso.orden_secuencia, proporcionRestante.m2]
             );
         }
     }
 
-    if (maquinaId) {
+    const updates = [`estado = 'EN_PROCESO'`, `hora_inicio = COALESCE(hora_inicio, NOW())`];
+    const params = [];
+    let idx = 1;
+    if (maquinaId) { updates.push(`maquina_id = $${idx++}`); params.push(maquinaId); }
+    updates.push(`operario_email = $${idx++}`); params.push(operarioEmail);
+    updates.push(`operario_nombre = $${idx++}`); params.push(operarioNombre);
+    params.push(pasoId);
+    await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx}`, params);
+    await query(`UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW() WHERE id = $1`, [pasoId]);
+
+    try {
         await query(
-            `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()), maquina_id = $1 WHERE id = $2`,
-            [maquinaId, pasoId]
+            `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_nuevos, usuario_email, usuario_nombre)
+             VALUES ('paso', $1, 'procesar', jsonb_build_object('cantidad', $2, 'maquina_id', $3), $4, $5)`,
+            [pasoId, cantidadProcesar, maquinaId, operarioEmail, operarioNombre]
         );
-    } else {
-        await query(
-            `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', hora_inicio = COALESCE(hora_inicio, NOW()) WHERE id = $1`,
-            [pasoId]
-        );
-    }
-    await query(
-        `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW() WHERE id = $1`,
-        [pasoId]
-    );
+    } catch (_) { }
 
     return { cantidadProcesar, cantidadRestante };
+}
+
+async function iniciarPasosPorOrden(ordenId, pedidoSapId, estacionId, maquinaId, operarioEmail, operarioNombre, turno) {
+    const params = [];
+    let sql = `SELECT id, orden_produccion_id, orden_secuencia FROM cola_produccion_pasos WHERE estado = 'PENDIENTE'`;
+    const where = [];
+    if (ordenId) {
+        params.push(ordenId);
+        where.push(`orden_produccion_id = $${params.length}`);
+    } else if (pedidoSapId) {
+        params.push(pedidoSapId);
+        where.push(`orden_produccion_id IN (SELECT id FROM produccion_ordenes WHERE pedido_sap_id = $${params.length})`);
+    }
+    if (estacionId) {
+        params.push(estacionId);
+        where.push(`estacion_id = $${params.length}`);
+    }
+    if (where.length) sql += ` AND ${where.join(' AND ')}`;
+    sql += ` ORDER BY orden_produccion_id ASC, orden_secuencia ASC`;
+    const result = await query(sql, params);
+    let count = 0;
+    for (const row of result.rows) {
+        try {
+            await iniciarPaso(row.id, maquinaId, operarioEmail, operarioNombre, turno);
+            count++;
+        } catch (_) { }
+    }
+    return count;
+}
+
+async function finalizarPasosPorPedido(pedidoSapId, estacionId, operarioEmail, operarioNombre) {
+    if (!pedidoSapId) return 0;
+    const params = [pedidoSapId];
+    let sql = `SELECT id FROM cola_produccion_pasos WHERE estado = 'EN_PROCESO' AND orden_produccion_id IN (SELECT id FROM produccion_ordenes WHERE pedido_sap_id = $1)`;
+    if (estacionId) { params.push(estacionId); sql += ` AND estacion_id = $2`; }
+    sql += ` ORDER BY orden_produccion_id ASC, orden_secuencia ASC`;
+    const result = await query(sql, params);
+    let count = 0;
+    for (const row of result.rows) {
+        try {
+            await finalizarPaso(row.id, operarioEmail, operarioNombre);
+            count++;
+        } catch (_) { }
+    }
+    return count;
 }
 
 module.exports = {
@@ -292,7 +438,9 @@ module.exports = {
     getColaPorEstacion,
     getMaquinasPorEstacion,
     iniciarPaso,
+    iniciarPasosPorOrden,
     finalizarPaso,
+    finalizarPasosPorPedido,
     procesarPaso,
     registrarMerma,
     getMermas

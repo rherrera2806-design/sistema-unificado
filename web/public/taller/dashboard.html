@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Taller - Métricas en Tiempo Real</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #3b82f6;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --purple: #8b5cf6;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --card-light: #334155;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(34,197,94,0.2);
+            color: var(--success);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .header .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .container {
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .kpi-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+        .kpi-card.blue::before { background: var(--primary); }
+        .kpi-card.green::before { background: var(--success); }
+        .kpi-card.yellow::before { background: var(--warning); }
+        .kpi-card.red::before { background: var(--danger); }
+        .kpi-card.purple::before { background: var(--purple); }
+        .kpi-card .kpi-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+        .kpi-card.blue .kpi-icon { background: rgba(59,130,246,0.2); }
+        .kpi-card.green .kpi-icon { background: rgba(34,197,94,0.2); }
+        .kpi-card.yellow .kpi-icon { background: rgba(245,158,11,0.2); }
+        .kpi-card.red .kpi-icon { background: rgba(239,68,68,0.2); }
+        .kpi-card.purple .kpi-icon { background: rgba(139,92,246,0.2); }
+        .kpi-card .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .kpi-card .kpi-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .kpi-card .kpi-change {
+            font-size: 11px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .kpi-card .kpi-change.up { color: var(--success); }
+        .kpi-card .kpi-change.down { color: var(--danger); }
+        .section {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chart-container {
+            height: 300px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding: 20px 0;
+        }
+        .chart-bar {
+            flex: 1;
+            border-radius: 8px 8px 0 0;
+            position: relative;
+            min-height: 20px;
+            transition: all 0.3s;
+        }
+        .chart-bar:hover {
+            opacity: 0.8;
+        }
+        .chart-bar .bar-label {
+            position: absolute;
+            bottom: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .chart-bar .bar-value {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .oee-gauge {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .oee-gauge svg {
+            transform: rotate(-90deg);
+        }
+        .oee-gauge .gauge-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .oee-gauge .gauge-number {
+            font-size: 36px;
+            font-weight: 800;
+        }
+        .oee-gauge .gauge-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-success { background: rgba(34,197,94,0.2); color: var(--success); }
+        .badge-warning { background: rgba(245,158,11,0.2); color: var(--warning); }
+        .badge-danger { background: rgba(239,68,68,0.2); color: var(--danger); }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+        .station-oee {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--card-light);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        .station-oee .station-name {
+            flex: 1;
+            font-weight: 600;
+        }
+        .station-oee .oee-bar {
+            width: 100px;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .station-oee .oee-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+        .station-oee .oee-value {
+            font-weight: 700;
+            width: 50px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+            Dashboard Taller
+        </h1>
+        <div class="live-badge">
+            <div class="live-dot"></div>
+            En vivo
+        </div>
+    </div>
+
+    <div class="container" id="app">
+        <div class="loading">Cargando métricas...</div>
+    </div>
+
+    <script>
+        const API = '/api/taller/metricas';
+        let refreshInterval = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+            refreshInterval = setInterval(loadDashboard, 30000); // Actualizar cada 30 segundos
+        });
+
+        async function loadDashboard() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const hace30dias = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+
+            try {
+                const [generales, oee, leadTime, mermas, operarios, calidad] = await Promise.all([
+                    fetch(`${API}/generales?fecha=${hoy}`).then(r => r.json()),
+                    fetch(`${API}/oee?inicio=${hace30dias}&fin=${hoy}`).then(r => r.json()),
+                    fetch(`${API}/lead-time?inicio=${hace30dias}&fin=${hoy}`).then(r => r.json()),
+                    fetch(`${API}/mermas?inicio=${hace30dias}&fin=${hoy}`).then(r => r.json()),
+                    fetch(`${API}/operarios?inicio=${hace30dias}&fin=${hoy}`).then(r => r.json()),
+                    fetch(`${API}/calidad?inicio=${hace30dias}&fin=${hoy}`).then(r => r.json())
+                ]);
+
+                renderDashboard(generales, oee, leadTime, mermas, operarios, calidad);
+            } catch (err) {
+                console.error('Error loading dashboard:', err);
+            }
+        }
+
+        function renderDashboard(generales, oee, leadTime, mermas, operarios, calidad) {
+            const app = document.getElementById('app');
+            
+            const oeePromedio = oee.length > 0 
+                ? (oee.reduce((sum, e) => sum + Number(e.oee_promedio || 0), 0) / oee.length).toFixed(1)
+                : 0;
+
+            const tasaMerma = generales.ordenes_completadas_hoy > 0
+                ? ((generales.mermas_hoy / generales.ordenes_completadas_hoy) * 100).toFixed(1)
+                : 0;
+
+            app.innerHTML = `
+                <!-- KPIs Principales -->
+                <div class="kpi-grid">
+                    <div class="kpi-card blue">
+                        <div class="kpi-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="3" y1="9" x2="21" y2="9"/>
+                                <line x1="9" y1="21" x2="9" y2="9"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-value">${generales.ordenes_en_proceso || 0}</div>
+                        <div class="kpi-label">En Proceso</div>
+                    </div>
+                    <div class="kpi-card green">
+                        <div class="kpi-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-value">${generales.ordenes_completadas_hoy || 0}</div>
+                        <div class="kpi-label">Completadas Hoy</div>
+                    </div>
+                    <div class="kpi-card yellow">
+                        <div class="kpi-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2">
+                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-value">${generales.m2_producidos_hoy ? Math.round(generales.m2_producidos_hoy) : 0}</div>
+                        <div class="kpi-label">m² Producidos</div>
+                    </div>
+                    <div class="kpi-card purple">
+                        <div class="kpi-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-value">${oeePromedio}%</div>
+                        <div class="kpi-label">OEE Promedio</div>
+                    </div>
+                    <div class="kpi-card red">
+                        <div class="kpi-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                <line x1="9" y1="9" x2="15" y2="15"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-value">${generales.mermas_hoy || 0}</div>
+                        <div class="kpi-label">Mermas Hoy</div>
+                        <div class="kpi-change ${tasaMerma > 5 ? 'down' : 'up'}">
+                            ${tasaMerma}% tasa
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <!-- OEE por Estación -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                                    <path d="M18 20V10"/>
+                                    <path d="M12 20V4"/>
+                                    <path d="M6 20v-6"/>
+                                </svg>
+                                OEE por Estación
+                            </div>
+                        </div>
+                        ${oee.map(e => `
+                            <div class="station-oee">
+                                <div class="station-name">${e.nombre_estacion}</div>
+                                <div class="oee-bar">
+                                    <div class="oee-fill" style="width:${Math.min(100, Number(e.oee_promedio || 0))}%;background:${getOeeColor(Number(e.oee_promedio || 0))}"></div>
+                                </div>
+                                <div class="oee-value" style="color:${getOeeColor(Number(e.oee_promedio || 0))}">${e.oee_promedio || 0}%</div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- Calidad -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2">
+                                    <path d="M9 11l3 3L22 4"/>
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                                </svg>
+                                Calidad (30 días)
+                            </div>
+                        </div>
+                        <div style="text-align:center;padding:20px">
+                            <div style="font-size:48px;font-weight:800;color:${calidad.tasa_aprobacion >= 95 ? 'var(--success)' : calidad.tasa_aprobacion >= 90 ? 'var(--warning)' : 'var(--danger)'}">
+                                ${calidad.tasa_aprobacion || 0}%
+                            </div>
+                            <div style="color:var(--text-muted);margin-top:4px">Tasa de Aprobación</div>
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px">
+                                <div>
+                                    <div style="font-size:20px;font-weight:700;color:var(--success)">${calidad.aprobados || 0}</div>
+                                    <div style="font-size:11px;color:var(--text-muted)">Aprobados</div>
+                                </div>
+                                <div>
+                                    <div style="font-size:20px;font-weight:700;color:var(--warning)">${calidad.condicionales || 0}</div>
+                                    <div style="font-size:11px;color:var(--text-muted)">Condicionales</div>
+                                </div>
+                                <div>
+                                    <div style="font-size:20px;font-weight:700;color:var(--danger)">${calidad.rechazados || 0}</div>
+                                    <div style="font-size:11px;color:var(--text-muted)">Rechazados</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lead Time -->
+                <div class="section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            Lead Time por Producto
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Familia</th>
+                                    <th>Órdenes</th>
+                                    <th>Promedio</th>
+                                    <th>Mínimo</th>
+                                    <th>Máximo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${leadTime.slice(0, 10).map(lt => `
+                                    <tr>
+                                        <td><strong>${lt.codigo_producto}</strong> ${lt.descripcion || ''}</td>
+                                        <td>${lt.nombre_familia || '-'}</td>
+                                        <td>${lt.total_ordenes}</td>
+                                        <td><strong>${lt.lead_time_promedio_horas}h</strong></td>
+                                        <td>${lt.lead_time_minimo_horas}h</td>
+                                        <td>${lt.lead_time_maximo_horas}h</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Top Operarios -->
+                <div class="section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            Top Operarios (30 días)
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Operario</th>
+                                    <th>Pasos</th>
+                                    <th>Horas</th>
+                                    <th>m² Producidos</th>
+                                    <th>m²/Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${operarios.slice(0, 10).map((op, i) => `
+                                    <tr>
+                                        <td>
+                                            <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${i < 3 ? 'var(--warning)' : 'var(--card-light)'};color:${i < 3 ? 'white' : 'var(--text)'};font-size:11px;font-weight:700;margin-right:8px">${i + 1}</span>
+                                            ${op.operario_nombre || op.operario_email}
+                                        </td>
+                                        <td>${op.pasos_completados}</td>
+                                        <td>${Number(op.horas_trabajadas || 0).toFixed(1)}h</td>
+                                        <td><strong>${Math.round(op.m2_producidos || 0)}</strong></td>
+                                        <td>${op.m2_por_hora || 0}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Mermas por Causa -->
+                <div class="section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                <line x1="9" y1="9" x2="15" y2="15"/>
+                            </svg>
+                            Mermas por Causa (30 días)
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Estación</th>
+                                    <th>Causa</th>
+                                    <th>Cantidad</th>
+                                    <th>m²</th>
+                                    <th>Costo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${mermas.slice(0, 10).map(m => `
+                                    <tr>
+                                        <td>${m.nombre_estacion || '-'}</td>
+                                        <td>${m.causa}</td>
+                                        <td><strong>${m.total_mermas}</strong></td>
+                                        <td>${Number(m.m2_mermados || 0).toFixed(2)}</td>
+                                        <td>$${Number(m.costo_total || 0).toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getOeeColor(oee) {
+            if (oee >= 85) return 'var(--success)';
+            if (oee >= 60) return 'var(--warning)';
+            return 'var(--danger)';
+        }
+    </script>
+</body>
+</html>

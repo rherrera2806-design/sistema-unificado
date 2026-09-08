@@ -549,6 +549,7 @@ async function initDB() {
         'prod_notas','prod_notas.agregar','prod_notas.editar','prod_notas.eliminar',
         'prod_config','prod_config.agregar','prod_config.editar','prod_config.eliminar',
         'taller','taller.agregar','taller.editar','taller.eliminar',
+        'bodega','bodega.agregar','bodega.editar','bodega.eliminar',
         'costeo','costeo.agregar','costeo.editar','costeo.eliminar',
         'usuarios'
     ];
@@ -697,6 +698,177 @@ async function runMigrations() {
     } catch (e) {
         console.error('Migration warning (ancho_alto):', e.message);
     }
+    // ── Migración: Mejoras al Módulo Taller (operario, inspecciones, historial) ──
+    try {
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS operario_email VARCHAR(200)`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS operario_nombre VARCHAR(200)`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS pausado_en TIMESTAMP`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS tiempo_pausado_segundos INTEGER DEFAULT 0`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS locked_by VARCHAR(200)`);
+        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_pasos_operario ON cola_produccion_pasos(operario_email)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_pasos_locked ON cola_produccion_pasos(locked_by, locked_at)`);
+    } catch (e) {
+        console.error('Migration warning (taller-pasos):', e.message);
+    }
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS inspecciones_calidad (
+            id SERIAL PRIMARY KEY,
+            paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE CASCADE,
+            orden_produccion_id INTEGER REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+            estacion_id INTEGER REFERENCES estaciones_maestras(id),
+            tipo_inspeccion VARCHAR(50) NOT NULL,
+            resultado VARCHAR(20) NOT NULL,
+            defectos JSONB DEFAULT '[]',
+            cantidad_inspeccionada INTEGER DEFAULT 0,
+            cantidad_defectuosa INTEGER DEFAULT 0,
+            inspector_email VARCHAR(200) NOT NULL,
+            inspector_nombre VARCHAR(200),
+            observaciones TEXT,
+            imagenes JSONB DEFAULT '[]',
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_paso ON inspecciones_calidad(paso_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_orden ON inspecciones_calidad(orden_produccion_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_fecha ON inspecciones_calidad(created_at)`);
+    } catch (e) {
+        console.error('Migration warning (inspecciones_calidad):', e.message);
+    }
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS taller_historial (
+            id SERIAL PRIMARY KEY,
+            entidad_tipo VARCHAR(50) NOT NULL,
+            entidad_id INTEGER NOT NULL,
+            accion VARCHAR(50) NOT NULL,
+            datos_anteriores JSONB,
+            datos_nuevos JSONB,
+            usuario_email VARCHAR(200),
+            usuario_nombre VARCHAR(200),
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_historial_entidad ON taller_historial(entidad_tipo, entidad_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_historial_fecha ON taller_historial(created_at)`);
+    } catch (e) {
+        console.error('Migration warning (taller_historial):', e.message);
+    }
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS tipos_defecto (
+            id SERIAL PRIMARY KEY,
+            codigo VARCHAR(20) UNIQUE NOT NULL,
+            nombre VARCHAR(100) NOT NULL,
+            categoria VARCHAR(50),
+            severidad_default VARCHAR(20) DEFAULT 'menor',
+            requiere_foto BOOLEAN DEFAULT false,
+            activo BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`INSERT INTO tipos_defecto (codigo, nombre, categoria, severidad_default, requiere_foto) VALUES
+            ('RAY','Rayón','cosmetico','menor',false),
+            ('BUR','Burbuja','cosmetico','menor',true),
+            ('RAJ','Rajadura','estructural','critico',true),
+            ('QUE','Quiebre','estructural','critico',true),
+            ('DIM','Fuera de dimensión','dimensional','mayor',false),
+            ('DES','Desalineación','dimensional','mayor',false),
+            ('PIN','Defecto de pintado','cosmetico','menor',true),
+            ('PER','Perforación incorrecta','dimensional','mayor',false),
+            ('TEM','Defecto de templado','estructural','critico',true),
+            ('LAM','Defecto de laminado','estructural','critico',true),
+            ('SUC','Suciedad/Contaminación','cosmetico','menor',false),
+            ('BOR','Borde irregular','cosmetico','menor',true)
+        ON CONFLICT (codigo) DO NOTHING`);
+    } catch (e) {
+        console.error('Migration warning (tipos_defecto):', e.message);
+    }
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS taller_turnos (
+            id SERIAL PRIMARY KEY,
+            fecha DATE NOT NULL,
+            turno VARCHAR(20) NOT NULL,
+            operario_email VARCHAR(200) NOT NULL,
+            operario_nombre VARCHAR(200),
+            estacion_id INTEGER REFERENCES estaciones_maestras(id),
+            hora_inicio TIMESTAMP,
+            hora_fin TIMESTAMP,
+            ordenes_completadas INTEGER DEFAULT 0,
+            m2_producidos DECIMAL(10,2) DEFAULT 0,
+            mermas_generadas INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON taller_turnos(fecha, turno)`);
+    } catch (e) {
+        console.error('Migration warning (taller_turnos):', e.message);
+    }
+    // ── Módulo Bodega: carros de producto terminado, pre-entrega, entregas ──
+    try {
+        await query(`CREATE TABLE IF NOT EXISTS bodega_carros (
+            id SERIAL PRIMARY KEY,
+            codigo VARCHAR(30) UNIQUE NOT NULL,
+            tipo VARCHAR(50) DEFAULT 'carro',
+            capacidad_items INTEGER DEFAULT 50,
+            activo BOOLEAN DEFAULT true,
+            observaciones TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS tipo VARCHAR(50) DEFAULT 'carro'`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS capacidad_items INTEGER DEFAULT 50`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS observaciones TEXT`);
+        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()`);
+        await query(`CREATE TABLE IF NOT EXISTS bodega_carros_items (
+            id SERIAL PRIMARY KEY,
+            carro_id INTEGER REFERENCES bodega_carros(id) ON DELETE CASCADE,
+            orden_produccion_id INTEGER REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+            paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE CASCADE,
+            armador_email VARCHAR(200),
+            armador_nombre VARCHAR(200),
+            armado_at TIMESTAMP DEFAULT NOW(),
+            entregado_at TIMESTAMP,
+            entregado_por_email VARCHAR(200),
+            observaciones TEXT
+        )`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armador_email VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armador_nombre VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armado_at TIMESTAMP DEFAULT NOW()`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS entregado_at TIMESTAMP`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS entregado_por_email VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS observaciones TEXT`);
+        await query(`CREATE TABLE IF NOT EXISTS bodega_entregas (
+            id SERIAL PRIMARY KEY,
+            carro_id INTEGER REFERENCES bodega_carros(id),
+            numero_documento VARCHAR(50) UNIQUE NOT NULL,
+            generado_at TIMESTAMP DEFAULT NOW(),
+            generado_por_email VARCHAR(200),
+            generado_por_nombre VARCHAR(200),
+            recibido_at TIMESTAMP,
+            recibido_por_email VARCHAR(200),
+            recibido_por_nombre VARCHAR(200),
+            total_items INTEGER DEFAULT 0,
+            total_kilos DECIMAL(10,2) DEFAULT 0,
+            total_m2 DECIMAL(10,2) DEFAULT 0,
+            observaciones TEXT
+        )`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS generado_por_email VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS generado_por_nombre VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_at TIMESTAMP`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_por_email VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_por_nombre VARCHAR(200)`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_items INTEGER DEFAULT 0`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_kilos DECIMAL(10,2) DEFAULT 0`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_m2 DECIMAL(10,2) DEFAULT 0`);
+        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS observaciones TEXT`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_carro ON bodega_carros_items(carro_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_orden ON bodega_carros_items(orden_produccion_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_entregado ON bodega_carros_items(entregado_at)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_entregas_carro ON bodega_entregas(carro_id)`);
+        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_entregas_recibido ON bodega_entregas(recibido_at)`);
+        // Carros iniciales (catálogo)
+        for (const codigo of ['C-001', 'C-002', 'C-003', 'A-001', 'A-002']) {
+            await query(`INSERT INTO bodega_carros (codigo, tipo) VALUES ($1, $2) ON CONFLICT (codigo) DO NOTHING`, [codigo, codigo.startsWith('A-') ? 'atril' : 'carro']);
+        }
+    } catch (e) {
+        console.error('Migration warning (bodega):', e.message);
+    }
 }
 
 async function resetSequences() {
@@ -704,7 +876,9 @@ async function resetSequences() {
                     'spare_parts', 'preventive_maintenance', 'corrective_maintenance',
                     'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
                     'pedido_historial', 'catalogo_tipos_cristal', 'catalogo_espesores',
-                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos', 'prod_notas'];
+                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos', 'prod_notas',
+                    'inspecciones_calidad', 'taller_historial', 'tipos_defecto', 'taller_turnos',
+                    'bodega_carros', 'bodega_carros_items', 'bodega_entregas'];
     for (const table of tables) {
         try {
             await query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 1))`);

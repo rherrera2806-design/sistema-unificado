@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { findCol } = require('../utils/excelUtils');
 
 // Configuración de producción: máquinas, códigos SAP, estaciones,
 // familias, materias primas, recetas BOM y reglas de procesos extras
@@ -97,16 +98,6 @@ const eliminarTodosCodigos = async () => {
     return result.rowCount;
 };
 const previewCodigos = (rows) => {
-    const findCol = (row, candidates) => {
-        for (const c of candidates) { if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== '') return String(row[c]).trim(); }
-        const keys = Object.keys(row);
-        for (const c of candidates) {
-            const found = keys.find(k => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
-            if (found && row[found]) return String(row[found]).trim();
-        }
-        return '';
-    };
-
     const columnasDetectadas = rows.length > 0 ? Object.keys(rows[0]) : [];
     let conCodigo = 0, sinCodigo = 0, duplicados = 0;
     const seen = new Set();
@@ -132,16 +123,6 @@ const previewCodigos = (rows) => {
 
 const importarCodigos = async (rows) => {
     const resultados = { importados: 0, errores: [] };
-
-    const findCol = (row, candidates) => {
-        for (const c of candidates) { if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== '') return String(row[c]).trim(); }
-        const keys = Object.keys(row);
-        for (const c of candidates) {
-            const found = keys.find(k => k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
-            if (found && row[found]) return String(row[found]).trim();
-        }
-        return '';
-    };
 
     const BATCH = 200;
     const bulk = [];
