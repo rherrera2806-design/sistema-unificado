@@ -146,6 +146,16 @@ const InvDashboard = {
             ${trendHtml}${sparkHtml}</div>`;
     },
 
+    kpiCardGlass(label, value, suffix, sparkHtml, trendPct, trendColor, delay) {
+        const trendHtml = trendPct !== null && trendPct !== undefined
+            ? `<div style="font-size:11px;font-weight:600;margin-top:6px;color:${trendColor}">${trendPct > 0 ? '↑' : trendPct < 0 ? '↓' : '→'} ${Math.abs(trendPct)}% vs mes ant.</div>`
+            : '';
+        return `<div class="inv-kpi" style="animation-delay:${delay}ms">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">${label}</div>
+            <div style="font-size:36px;font-weight:900;color:white;line-height:1">${value}<span style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.4);margin-left:4px">${suffix}</span></div>
+            ${trendHtml}${sparkHtml}</div>`;
+    },
+
     rankingCard(r, i, maxPl) {
         const pct = maxPl > 0 ? Math.round((Number(r.planchas_salidas) / maxPl) * 100) : 0;
         const configs = [
@@ -295,21 +305,39 @@ const InvDashboard = {
                 <div style="width:100%">
                 <style>
                     @keyframes kpiUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
+                    .inv-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#334155 100%);border-radius:20px;padding:32px;margin-bottom:20px;color:white}
+                    .inv-hero::before{content:'';position:absolute;top:-50%;right:-20%;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(245,158,11,0.12) 0%,transparent 70%);pointer-events:none}
+                    .inv-hero::after{content:'';position:absolute;bottom:-30%;left:10%;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.08) 0%,transparent 70%);pointer-events:none}
+                    .inv-kpi{flex:1;min-width:170px;background:rgba(255,255,255,0.07);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:20px;animation:kpiUp 0.5s ease both;transition:transform 0.2s,box-shadow 0.2s}
+                    .inv-kpi:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2)}
+                    .inv-table{width:100%;border-collapse:collapse;font-size:12px}
+                    .inv-table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.04em;border-bottom:2px solid var(--gray-200)}
+                    .inv-table td{padding:10px 14px;border-bottom:1px solid var(--gray-100);transition:background 0.15s}
+                    .inv-table tbody tr:hover{background:var(--gray-50)}
+                    .inv-table tbody tr.selected{background:var(--primary);color:white}
+                    .inv-table tbody tr.selected td{color:white}
+                    .inv-alert{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:12px;font-size:12px;font-weight:600;animation:kpiUp 0.4s ease both}
+                    .inv-alert.danger{background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fecaca;color:#991b1b}
+                    .inv-alert.warning{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fde68a;color:#92400e}
+                    .inv-heatmap-legend{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10px;color:var(--gray-500)}
+                    .inv-heatmap-legend span{width:18px;height:12px;border-radius:2px;display:inline-block}
                 </style>
 
-                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#334155 100%);border-radius:16px;padding:28px;margin-bottom:20px;color:white">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+                <div class="inv-hero">
+                    <div style="position:relative;z-index:1">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
                         <div>
-                            <h2 style="margin:0;font-size:20px;font-weight:800;letter-spacing:-0.02em">Dashboard Inventario</h2>
-                            <p style="margin:4px 0 0;font-size:12px;opacity:0.5">${sel ? 'Filtrado: ' + sel : 'Analisis de materia prima — Ultimos 6 meses'}</p>
+                            <h2 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-0.03em">Dashboard Inventario</h2>
+                            <p style="margin:4px 0 0;font-size:12px;opacity:0.4">${sel ? 'Filtrado: ' + sel : 'Analisis de materia prima — Ultimos 6 meses'}</p>
                         </div>
-                        ${sel ? '<button onclick="InvDashboard.clearFilter()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer">✕ Limpiar filtro</button>' : ''}
+                        ${sel ? '<button onclick="InvDashboard.clearFilter()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:white;padding:8px 16px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;backdrop-filter:blur(8px);transition:background 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.15)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.08)\'">✕ Limpiar filtro</button>' : ''}
                     </div>
                     <div style="display:flex;gap:16px;flex-wrap:wrap">
-                        ${this.kpiCard('Planchas este mes', this.fmtNum(lastP), '', this.sparkline(planchasArr, 'var(--primary)', 120, 32), pctP, pctP >= 0 ? '#4ade80' : '#f87171', 0)}
-                        ${this.kpiCard('Stock planchas', this.fmtNum(totalPlStock), 'pl.', '', null, '', 80)}
-                        ${this.kpiCard('Kg en stock', this.fmtKg(totalKgStock), 'kg', this.sparkline(kgArr, '#8b5cf6', 120, 32), null, '', 160)}
-                        ${this.kpiCard('Autonomia prom.', avgAuto, 'meses', '', null, '', 240)}
+                        ${this.kpiCardGlass('Planchas este mes', this.fmtNum(lastP), '', this.sparkline(planchasArr, '#f59e0b', 120, 32), pctP, pctP >= 0 ? '#4ade80' : '#f87171', 0)}
+                        ${this.kpiCardGlass('Stock planchas', this.fmtNum(totalPlStock), 'pl.', '', null, '', 80)}
+                        ${this.kpiCardGlass('Kg en stock', this.fmtKg(totalKgStock), 'kg', this.sparkline(kgArr, '#8b5cf6', 120, 32), null, '', 160)}
+                        ${this.kpiCardGlass('Autonomia prom.', avgAuto, 'meses', '', null, '', 240)}
+                    </div>
                     </div>
                 </div>
 
@@ -317,13 +345,13 @@ const InvDashboard = {
                     <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Planchas Cortadas por Mes <span style="font-weight:400;font-size:11px;color:var(--gray-400)">(clic para filtrar todo el dashboard)</span></div>
                     <div style="padding:16px;overflow-x:auto">
                         ${planchasMes.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
-                        '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
-                        + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Mes</th>'
-                        + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500)">Mov.</th>'
-                        + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500)">Planchas</th>'
-                        + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500)">m2</th>'
-                        + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500)">Kg</th>'
-                        + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Tendencia</th>'
+                        '<table class="inv-table"><thead><tr>'
+                        + '<th>Mes</th>'
+                        + '<th style="text-align:center">Mov.</th>'
+                        + '<th style="text-align:center">Planchas</th>'
+                        + '<th style="text-align:center">m2</th>'
+                        + '<th style="text-align:center">Kg</th>'
+                        + '<th>Tendencia</th>'
                         + '</tr></thead><tbody>'
                         + sorted.map(p => {
                             const maxPl = Math.max(...sorted.map(x => Number(x.total_planchas)));
@@ -331,22 +359,23 @@ const InvDashboard = {
                             const parts = p.mes.split('-');
                             const mesLabel = monthNames[parseInt(parts[1])] + ' ' + parts[0];
                             const isSel = sel === p.mes;
-                            return '<tr onclick="InvDashboard.filterByMes(\'' + p.mes + '\')" style="border-bottom:1px solid var(--gray-100);cursor:pointer;' + (isSel ? 'background:var(--primary);color:white' : '') + '" onmouseover="if(!this.style.background.includes(\'var(--primary)\'))this.style.background=\'var(--gray-50)\'" onmouseout="if(!this.style.background.includes(\'var(--primary)\'))this.style.background=\'\'">'
-                                + '<td style="padding:8px 12px;font-weight:600;' + (isSel ? 'color:white' : 'color:var(--gray-800)') + '">' + mesLabel + '</td>'
-                                + '<td style="padding:8px 12px;text-align:center;' + (isSel ? 'color:rgba(255,255,255,0.8)' : 'color:var(--gray-500)') + '">' + p.total_movimientos + '</td>'
-                                + '<td style="padding:8px 12px;text-align:center;font-weight:700;' + (isSel ? 'color:white' : 'color:var(--primary)') + '">' + p.total_planchas + '</td>'
-                                + '<td style="padding:8px 12px;text-align:center;' + (isSel ? 'color:rgba(255,255,255,0.8)' : 'color:var(--gray-600)') + '">' + Number(p.total_m2).toFixed(2) + '</td>'
-                                + '<td style="padding:8px 12px;text-align:center;font-weight:600;' + (isSel ? 'color:white' : 'color:var(--gray-600)') + '">' + InvDashboard.fmtKg(p.total_kg) + '</td>'
-                                + '<td style="padding:8px 12px"><div style="height:8px;background:' + (isSel ? 'rgba(255,255,255,0.2)' : 'var(--gray-100)') + ';border-radius:4px;overflow:hidden;width:180px"><div style="width:' + pct + '%;background:' + (isSel ? 'white' : 'var(--primary)') + ';height:100%;border-radius:4px"></div></div></td>'
+                            return '<tr onclick="InvDashboard.filterByMes(\'' + p.mes + '\')" style="cursor:pointer' + (isSel ? ' selected' : '') + '">'
+                                + '<td style="font-weight:600' + (isSel ? '' : ';color:var(--gray-800)') + '">' + mesLabel + '</td>'
+                                + '<td style="text-align:center;color:' + (isSel ? 'inherit' : 'var(--gray-500)') + '">' + p.total_movimientos + '</td>'
+                                + '<td style="text-align:center;font-weight:700' + (isSel ? '' : ';color:var(--primary)') + '">' + p.total_planchas + '</td>'
+                                + '<td style="text-align:center">' + Number(p.total_m2).toFixed(2) + '</td>'
+                                + '<td style="text-align:center;font-weight:600">' + InvDashboard.fmtKg(p.total_kg) + '</td>'
+                                + '<td><div style="height:8px;background:' + (isSel ? 'rgba(255,255,255,0.25)' : 'var(--gray-100)') + ';border-radius:4px;overflow:hidden;width:180px"><div style="width:' + pct + '%;background:' + (isSel ? 'white' : 'var(--primary)') + ';height:100%;border-radius:4px"></div></div></td>'
                                 + '</tr>';
                         }).join('')
                         + '</tbody></table>'}
                     </div>
                 </div>
 
-                ${alertas.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-                    ${alertas.slice(0, 4).map(a => `<div style="flex:1;min-width:250px;padding:10px 14px;border-radius:8px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:8px;${a.tipo === 'danger' ? 'background:#fef2f2;border:1px solid #fecaca;color:#b91c1c' : 'background:#fffbeb;border:1px solid #fde68a;color:#b45309'}">
-                        ${a.tipo === 'danger' ? '🔴' : '🟡'} ${a.msg}
+                ${alertas.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+                    ${alertas.slice(0, 4).map((a, i) => `<div class="inv-alert ${a.tipo}" style="animation-delay:${i * 60}ms">
+                        <span style="font-size:16px">${a.tipo === 'danger' ? '🔴' : '🟡'}</span>
+                        <span>${a.msg}</span>
                     </div>`).join('')}
                 </div>` : ''}
 
@@ -372,6 +401,14 @@ const InvDashboard = {
                     <div class="card" style="overflow:hidden">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Espesor × Mes</div>
                         <div style="padding:16px">${this.heatmap(heatCells, heatRows, heatCols, 400, 180)}</div>
+                        <div class="inv-heatmap-legend" style="padding:0 16px 14px">
+                            <span style="font-weight:600;color:var(--gray-600)">Leyenda:</span>
+                            <span style="background:#f0fdf4"></span> Bajo
+                            <span style="background:#86efac"></span> Medio
+                            <span style="background:#22c55e"></span> Alto
+                            <span style="background:#15803d"></span> Muy alto
+                            <span style="background:#14532d"></span> Max
+                        </div>
                     </div>
                 </div>
 
@@ -386,27 +423,27 @@ const InvDashboard = {
                     <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">${rankingTitle}</div>
                     <div style="padding:0;overflow-x:auto">
                         ${rankingFiltrado.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
-                        '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
-                        + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">#</th>'
-                        + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Material</th>'
-                        + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Esp.</th>'
-                        + '<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500)">m2</th>'
-                        + '<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500)">Kg</th>'
-                        + '<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500)">Planchas</th>'
-                        + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500)">Tendencia</th>'
+                        '<table class="inv-table"><thead><tr>'
+                        + '<th>#</th>'
+                        + '<th>Material</th>'
+                        + '<th>Esp.</th>'
+                        + '<th style="text-align:right">m2</th>'
+                        + '<th style="text-align:right">Kg</th>'
+                        + '<th style="text-align:right">Planchas</th>'
+                        + '<th>Tendencia</th>'
                         + '</tr></thead><tbody>'
                         + rankingFiltrado.map((r, i) => {
                             const maxM2 = Number(rankingFiltrado[0].m2_salidos) || 1;
                             const pct = Math.round((Number(r.m2_salidos) / maxM2) * 100);
                             const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-                            return '<tr style="border-bottom:1px solid var(--gray-100)">'
-                                + '<td style="padding:8px 12px;font-weight:700;color:' + (i < 3 ? 'var(--warning)' : 'var(--gray-400)') + '">' + medal + '</td>'
-                                + '<td style="padding:8px 12px;font-weight:600;color:var(--gray-800)">' + (r.nombre || r.codigo_mp) + '</td>'
-                                + '<td style="padding:8px 12px;color:var(--gray-600)">' + (r.espesor_mm || '') + '</td>'
-                                + '<td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--danger)">' + Number(r.m2_salidos).toFixed(2) + '</td>'
-                                + '<td style="padding:8px 12px;text-align:right;font-weight:600;color:var(--gray-600)">' + InvDashboard.fmtKg(r.kg_salidos) + '</td>'
-                                + '<td style="padding:8px 12px;text-align:right;font-weight:600;color:var(--gray-600)">' + r.planchas_salidas + '</td>'
-                                + '<td style="padding:8px 12px"><div style="height:8px;background:var(--gray-100);border-radius:4px;overflow:hidden;width:100%"><div style="width:' + pct + '%;background:var(--danger);height:100%;border-radius:4px"></div></div></td>'
+                            return '<tr>'
+                                + '<td style="font-weight:700;color:' + (i < 3 ? 'var(--warning)' : 'var(--gray-400)') + '">' + medal + '</td>'
+                                + '<td style="font-weight:600;color:var(--gray-800)">' + (r.nombre || r.codigo_mp) + '</td>'
+                                + '<td>' + (r.espesor_mm || '') + '</td>'
+                                + '<td style="text-align:right;font-weight:700;color:var(--danger)">' + Number(r.m2_salidos).toFixed(2) + '</td>'
+                                + '<td style="text-align:right;font-weight:600">' + InvDashboard.fmtKg(r.kg_salidos) + '</td>'
+                                + '<td style="text-align:right;font-weight:600">' + r.planchas_salidas + '</td>'
+                                + '<td><div style="height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden;width:100%"><div style="width:' + pct + '%;background:var(--danger);height:100%;border-radius:3px"></div></div></td>'
                                 + '</tr>';
                         }).join('')
                         + '</tbody></table>'}
