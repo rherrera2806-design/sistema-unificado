@@ -222,15 +222,18 @@ const InvDashboard = {
             .sort((a, b) => b.value - a.value)
             .slice(0, 10);
 
-        // ── Donut chart: top 5 materiales por planchas en stock ──
+        // ── Donut chart: top 5 materiales por planchas consumidas ──
         const donutColors = ['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444','#94a3b8'];
-        const stockConPlanchas = stock.map(s => {
-            const planchasStock = (Number(s.entradas) || 0) - (Number(s.salidas) || 0);
-            return { ...s, planchas_stock: Math.max(0, planchasStock) };
-        }).filter(s => s.planchas_stock > 0).sort((a, b) => b.planchas_stock - a.planchas_stock);
-        const top5 = stockConPlanchas.slice(0, 5);
-        const otrosPlanchas = stockConPlanchas.slice(5).reduce((s, r) => s + r.planchas_stock, 0);
-        const donutItems = top5.map((s, i) => ({ label: s.nombre + (s.espesor_mm ? ' ' + s.espesor_mm + 'mm' : ''), value: s.planchas_stock, color: donutColors[i] }));
+        const consumoPorMat = {};
+        consumo.forEach(c => {
+            const key = (c.nombre || c.codigo_mp) + '|' + (c.espesor_mm || '');
+            if (!consumoPorMat[key]) consumoPorMat[key] = { nombre: c.nombre || c.codigo_mp, espesor: c.espesor_mm, planchas: 0 };
+            consumoPorMat[key].planchas += Number(c.planchas_consumidas) || 0;
+        });
+        const consumoSorted = Object.values(consumoPorMat).filter(m => m.planchas > 0).sort((a, b) => b.planchas - a.planchas);
+        const top5 = consumoSorted.slice(0, 5);
+        const otrosPlanchas = consumoSorted.slice(5).reduce((s, r) => s + r.planchas, 0);
+        const donutItems = top5.map((s, i) => ({ label: s.nombre + (s.espesor ? ' ' + s.espesor + 'mm' : ''), value: s.planchas, color: donutColors[i] }));
         if (otrosPlanchas > 0) donutItems.push({ label: 'Otros', value: otrosPlanchas, color: donutColors[5] });
 
         // ── Heatmap data: planchas por espesor × mes ──
@@ -343,7 +346,7 @@ const InvDashboard = {
                         <div style="padding:16px">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 600, 220, 'pl.')}</div>
                     </div>
                     <div class="card" style="overflow:hidden">
-                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Stock por Material (Planchas)</div>
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
                         <div style="padding:16px">${this.donutChart(donutItems, 260, 200)}</div>
                         <div style="padding:0 16px 14px;display:flex;flex-wrap:wrap;gap:6px">
                             ${donutItems.map(d => `<span style="font-size:9px;color:var(--gray-500);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
