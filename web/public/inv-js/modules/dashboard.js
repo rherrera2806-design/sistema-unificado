@@ -132,15 +132,15 @@ const InvDashboard = {
             const bg = d.v > 0 ? colors[ci] : 'var(--gray-50)';
             const textColor = ci >= 3 ? 'white' : 'var(--gray-700)';
             cells += `<rect class="inv-heatmap-rect" x="${x}" y="${y}" width="${cellW - 1}" height="${cellH - 1}" rx="3" fill="${bg}" style="animation:heatFade 0.4s ease ${(d.row * colLabels.length + d.col) * 30}ms both;transform-origin:${x + cellW/2}px ${y + cellH/2}px"/>`;
-            if (d.v > 0) cells += `<text x="${x + cellW / 2}" y="${y + cellH / 2 + 4}" text-anchor="middle" fill="${textColor}" font-size="10" font-weight="700" style="pointer-events:none">${Math.round(d.v)}</text>`;
+            if (d.v > 0) cells += `<text x="${x + cellW / 2}" y="${y + cellH / 2 + 4}" text-anchor="middle" fill="${textColor}" font-size="12" font-weight="700" style="pointer-events:none">${Math.round(d.v)}</text>`;
         });
         let labels = '';
         rowLabels.forEach((label, i) => {
             const short = label.length > 18 ? label.substring(0, 16) + '...' : label;
-            labels += `<text x="${pad.l - 6}" y="${pad.t + i * cellH + cellH / 2 + 4}" text-anchor="end" fill="var(--gray-600)" font-size="10">${short}</text>`;
+            labels += `<text x="${pad.l - 6}" y="${pad.t + i * cellH + cellH / 2 + 4}" text-anchor="end" fill="var(--gray-600)" font-size="12">${short}</text>`;
         });
         colLabels.forEach((label, i) => {
-            labels += `<text x="${pad.l + i * cellW + cellW / 2}" y="${pad.t - 8}" text-anchor="middle" fill="var(--gray-500)" font-size="10">${label}</text>`;
+            labels += `<text x="${pad.l + i * cellW + cellW / 2}" y="${pad.t - 8}" text-anchor="middle" fill="var(--gray-500)" font-size="12">${label}</text>`;
         });
         return `<svg width="100%" viewBox="0 0 ${svgW} ${pad.t + rowLabels.length * cellH + pad.b}" style="display:block">${labels}${cells}</svg>`;
     },
