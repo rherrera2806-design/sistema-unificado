@@ -54,22 +54,23 @@ const InvDashboard = {
     hBarChart(items, color, w, h) {
         if (!items.length) return '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>';
         const max = Math.max(...items.map(i => i.value)) || 1;
-        const barH = Math.min(45, (h - 10) / items.length - 4);
-        const labelW = 140;
-        const barW = w - labelW - 70;
+        const barH = Math.min(45, (h - 10) / items.length - 6);
+        const labelW = 130;
+        const barW = w - labelW - 80;
+        const svgH = items.length * (barH + 6) + 10;
         let defs = '';
         items.forEach((item, i) => {
             defs += `<linearGradient id="barGrad${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${item.color}" stop-opacity="0.9"/><stop offset="100%" stop-color="${item.color}" stop-opacity="0.5"/></linearGradient>`;
         });
-        return '<svg width="100%" viewBox="0 0 ' + w + ' ' + (items.length * (barH + 6) + 10) + '" style="display:block">'
+        return '<svg width="100%" viewBox="0 0 ' + w + ' ' + svgH + '" style="display:block;min-width:' + w + 'px">'
             + '<defs>' + defs + '</defs>'
             + items.map((item, i) => {
                 const y = i * (barH + 6) + 5;
                 const bw = (item.value / max) * barW;
-                const shortLabel = item.label.length > 18 ? item.label.substring(0, 16) + '...' : item.label;
+                const shortLabel = item.label.length > 16 ? item.label.substring(0, 14) + '...' : item.label;
                 return `<text x="${labelW - 8}" y="${y + barH / 2 + 4}" text-anchor="end" fill="var(--gray-700)" font-size="12" font-weight="600">${shortLabel}</text>
-                    <rect class="inv-bar-rect" x="${labelW}" y="${y}" width="${bw}" height="${barH}" rx="4" fill="url(#barGrad${i})" opacity="0.85" style="animation:barGrow 0.8s ease ${i * 50}ms both"/>
-                    <text x="${labelW + bw + 6}" y="${y + barH / 2 + 4}" fill="var(--gray-600)" font-size="12" font-weight="600">${this.fmtNum(item.value)} ${item.unit || ''}</text>`;
+                    <rect class="inv-bar-rect" x="${labelW}" y="${y}" width="${bw}" height="${barH}" rx="6" fill="url(#barGrad${i})" opacity="0.85" style="animation:barGrow 0.8s ease ${i * 50}ms both"/>
+                    <text x="${labelW + bw + 8}" y="${y + barH / 2 + 4}" fill="var(--gray-600)" font-size="12" font-weight="600">${this.fmtNum(item.value)} ${item.unit || ''}</text>`;
             }).join('') + '</svg>';
     },
 
@@ -346,6 +347,20 @@ const InvDashboard = {
                     .inv-alert.warning{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fde68a;color:#92400e}
                     .inv-heatmap-legend{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:var(--gray-600);flex-wrap:wrap}
                     .inv-heatmap-legend span{width:22px;height:14px;border-radius:3px;display:inline-block}
+                    @media(max-width:768px){
+                        .inv-hero{padding:20px!important;border-radius:14px!important}
+                        .inv-hero h2{font-size:16px!important}
+                        .inv-kpis{flex-direction:column!important}
+                        .inv-kpi{min-width:100%!important;padding:14px!important}
+                        .inv-kpi div:last-child{font-size:12px!important}
+                        .inv-dash-grid-3{grid-template-columns:1fr!important}
+                        .inv-dash-grid-2{grid-template-columns:1fr!important}
+                        .inv-table{font-size:11px!important}
+                        .inv-table th,.inv-table td{padding:8px 6px!important}
+                        .inv-ranking-cards{flex-direction:column!important}
+                        .inv-ranking-cards>div{min-width:100%!important}
+                        .inv-alert{font-size:11px!important;padding:10px 12px!important}
+                    }
                 </style>
 
                 <div class="inv-hero">
@@ -357,7 +372,7 @@ const InvDashboard = {
                         </div>
                         ${sel ? '<button onclick="InvDashboard.clearFilter()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:white;padding:8px 16px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer;backdrop-filter:blur(8px);transition:background 0.15s" onmouseover="this.style.background=\'rgba(255,255,255,0.15)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.08)\'">✕ Limpiar filtro</button>' : ''}
                     </div>
-                    <div style="display:flex;gap:16px;flex-wrap:wrap">
+                    <div class="inv-kpis" style="display:flex;gap:16px;flex-wrap:wrap">
                         ${this.kpiCardGlass('Planchas este mes', this.fmtNum(lastP), '', this.sparkline(planchasArr, '#f59e0b', 120, 32), pctP, pctP >= 0 ? '#4ade80' : '#f87171', 0)}
                         ${this.kpiCardGlass('Stock planchas', this.fmtNum(totalPlStock), 'pl.', '', null, '', 80)}
                         ${this.kpiCardGlass('Kg en stock', this.fmtKg(totalKgStock), 'kg', this.sparkline(kgArr, '#8b5cf6', 120, 32), null, '', 160)}
@@ -404,7 +419,7 @@ const InvDashboard = {
                     </div>`).join('')}
                 </div>` : ''}
 
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+                <div class="inv-dash-grid-3" style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
                     <div class="card" style="grid-column:1/3;overflow:hidden">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual de Planchas</div>
                         <div style="padding:16px">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 600, 220, 'pl.')}</div>
@@ -418,10 +433,10 @@ const InvDashboard = {
                     </div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <div class="inv-dash-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
                     <div class="card" style="overflow:hidden">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material</div>
-                        <div style="padding:16px;overflow-y:auto;max-height:700px">${this.hBarChart(barItems, '#3b82f6', 500, 700)}</div>
+                        <div style="padding:16px;overflow-x:auto;overflow-y:auto;max-height:700px">${this.hBarChart(barItems, '#3b82f6', 500, 700)}</div>
                     </div>
                     <div class="card" style="overflow:hidden">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Material × Mes</div>
@@ -439,7 +454,7 @@ const InvDashboard = {
 
                 <div style="margin-bottom:16px">
                     <div style="font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:12px">Top 5 Materiales por Planchas Cortadas</div>
-                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                    <div class="inv-ranking-cards" style="display:flex;gap:12px;flex-wrap:wrap">
                         ${rankingTop5.map((r, i) => this.rankingCard(r, i, maxPlRank)).join('')}
                     </div>
                 </div>
