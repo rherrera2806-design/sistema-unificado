@@ -147,18 +147,23 @@ const InvDashboard = {
     },
 
     rankingCard(r, i, maxPl) {
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-        const medalColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#cd7f32' : 'var(--gray-300)';
         const pct = maxPl > 0 ? Math.round((Number(r.planchas_salidas) / maxPl) * 100) : 0;
-        return `<div style="flex:1;min-width:160px;background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid var(--gray-200);position:relative;animation:kpiUp 0.5s ease ${i * 60}ms both">
-            <div style="position:absolute;top:10px;right:12px;font-size:20px">${medal}</div>
-            <div style="font-size:11px;font-weight:600;color:${medalColor};margin-bottom:4px">#${i + 1}</div>
-            <div style="font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.nombre || r.codigo_mp}</div>
-            <div style="font-size:10px;color:var(--gray-400);margin-bottom:8px">Esp: ${r.espesor_mm || '-'}</div>
-            <div style="display:flex;gap:12px;margin-bottom:8px">
-                <div><div style="font-size:22px;font-weight:800;color:var(--primary)">${this.fmtNum(r.planchas_salidas)}</div><div style="font-size:9px;color:var(--gray-400)">Planchas</div></div>
-            </div>
-            <div style="height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden"><div style="width:${pct}%;background:${medalColor};height:100%;border-radius:3px"></div></div>
+        const configs = [
+            { medal: '🥇', bg: 'linear-gradient(135deg,#fef3c7,#fde68a)', accent: '#b45309', bar: '#f59e0b', border: '#fcd34d' },
+            { medal: '🥈', bg: 'linear-gradient(135deg,#f1f5f9,#e2e8f0)', accent: '#475569', bar: '#94a3b8', border: '#cbd5e1' },
+            { medal: '🥉', bg: 'linear-gradient(135deg,#fef2e8,#fed7aa)', accent: '#9a3412', bar: '#ea580c', border: '#fdba74' },
+            { medal: '4', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', accent: '#64748b', bar: '#3b82f6', border: '#e2e8f0' },
+            { medal: '5', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', accent: '#64748b', bar: '#3b82f6', border: '#e2e8f0' }
+        ];
+        const c = configs[i] || configs[4];
+        return `<div style="flex:1;min-width:180px;background:${c.bg};border-radius:14px;padding:20px;border:1.5px solid ${c.border};position:relative;overflow:hidden;animation:kpiUp 0.5s ease ${i * 60}ms both">
+            <div style="position:absolute;top:12px;right:14px;font-size:28px;opacity:0.7;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1))">${c.medal}</div>
+            <div style="font-size:10px;font-weight:700;color:${c.accent};text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;margin-bottom:12px">#${i + 1} Top Material</div>
+            <div style="font-size:14px;font-weight:800;color:${c.accent};margin-bottom:2px;line-height:1.2">${r.nombre || r.codigo_mp}</div>
+            <div style="font-size:11px;color:${c.accent};opacity:0.6;margin-bottom:14px">Espesor: ${r.espesor_mm || '-'} mm</div>
+            <div style="font-size:36px;font-weight:900;color:${c.accent};line-height:1;margin-bottom:4px">${this.fmtNum(r.planchas_salidas)}</div>
+            <div style="font-size:10px;font-weight:600;color:${c.accent};opacity:0.5;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em">planchas cortadas</div>
+            <div style="height:5px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden"><div style="width:${pct}%;background:${c.bar};height:100%;border-radius:3px;transition:width 0.6s ease"></div></div>
         </div>`;
     },
 
