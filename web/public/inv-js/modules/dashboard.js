@@ -53,13 +53,14 @@ const InvDashboard = {
         if (!items.length) return '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>';
         const max = Math.max(...items.map(i => i.value)) || 1;
         const barH = Math.min(28, (h - 10) / items.length - 4);
-        const labelW = 100;
+        const labelW = 120;
         const barW = w - labelW - 70;
         return '<svg width="100%" viewBox="0 0 ' + w + ' ' + (items.length * (barH + 6) + 10) + '" style="display:block">'
             + items.map((item, i) => {
                 const y = i * (barH + 6) + 5;
                 const bw = (item.value / max) * barW;
-                return `<text x="${labelW - 8}" y="${y + barH / 2 + 4}" text-anchor="end" fill="var(--gray-700)" font-size="11" font-weight="600">${item.label}</text>
+                const shortLabel = item.label.length > 18 ? item.label.substring(0, 16) + '...' : item.label;
+                return `<text x="${labelW - 8}" y="${y + barH / 2 + 4}" text-anchor="end" fill="var(--gray-700)" font-size="11" font-weight="600">${shortLabel}</text>
                     <rect x="${labelW}" y="${y}" width="${bw}" height="${barH}" rx="4" fill="${item.color || color}" opacity="0.85"/>
                     <text x="${labelW + bw + 6}" y="${y + barH / 2 + 4}" fill="var(--gray-600)" font-size="10" font-weight="600">${this.fmtNum(item.value)} ${item.unit || ''}</text>`;
             }).join('') + '</svg>';
