@@ -67,8 +67,8 @@ const InvDashboard = {
 
     donutChart(items, w, h) {
         if (!items.length) return '';
-        const total = items.reduce((s, i) => s + i.value, 0);
-        if (total <= 0) return '';
+        const totalPlanchas = items.reduce((s, i) => s + i.value, 0);
+        if (totalPlanchas <= 0) return '';
         const cx = w / 2;
         const cy = h / 2;
         const r = Math.min(w, h) / 2 - 20;
@@ -76,7 +76,7 @@ const InvDashboard = {
         let angle = -90;
         let paths = '';
         items.forEach(item => {
-            const pct = item.value / total;
+            const pct = item.value / totalPlanchas;
             const sweep = pct * 360;
             const startRad = (angle * Math.PI) / 180;
             const endRad = ((angle + sweep) * Math.PI) / 180;
@@ -93,8 +93,8 @@ const InvDashboard = {
             angle += sweep;
         });
         return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block;margin:0 auto">${paths}
-            <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="var(--gray-800)" font-size="20" font-weight="800">${this.fmtKg(total)}</text>
-            <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--gray-400)" font-size="10">Kg total</text></svg>`;
+            <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="var(--gray-800)" font-size="20" font-weight="800">${this.fmtNum(totalPlanchas)}</text>
+            <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--gray-400)" font-size="10">Planchas</text></svg>`;
     },
 
     heatmap(data, rowLabels, colLabels, w, h) {
@@ -137,18 +137,17 @@ const InvDashboard = {
             ${trendHtml}${sparkHtml}</div>`;
     },
 
-    rankingCard(r, i, maxM2) {
+    rankingCard(r, i, maxPl) {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
         const medalColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#cd7f32' : 'var(--gray-300)';
-        const pct = maxM2 > 0 ? Math.round((Number(r.m2_salidos) / maxM2) * 100) : 0;
+        const pct = maxPl > 0 ? Math.round((Number(r.planchas_salidas) / maxPl) * 100) : 0;
         return `<div style="flex:1;min-width:160px;background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid var(--gray-200);position:relative;animation:kpiUp 0.5s ease ${i * 60}ms both">
             <div style="position:absolute;top:10px;right:12px;font-size:20px">${medal}</div>
             <div style="font-size:11px;font-weight:600;color:${medalColor};margin-bottom:4px">#${i + 1}</div>
             <div style="font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.nombre || r.codigo_mp}</div>
             <div style="font-size:10px;color:var(--gray-400);margin-bottom:8px">Esp: ${r.espesor_mm || '-'}</div>
             <div style="display:flex;gap:12px;margin-bottom:8px">
-                <div><div style="font-size:18px;font-weight:800;color:var(--danger)">${Number(r.m2_salidos).toFixed(1)}</div><div style="font-size:9px;color:var(--gray-400)">m²</div></div>
-                <div><div style="font-size:18px;font-weight:800;color:var(--gray-700)">${this.fmtKg(r.kg_salidos)}</div><div style="font-size:9px;color:var(--gray-400)">Kg</div></div>
+                <div><div style="font-size:22px;font-weight:800;color:var(--primary)">${this.fmtNum(r.planchas_salidas)}</div><div style="font-size:9px;color:var(--gray-400)">Planchas</div></div>
             </div>
             <div style="height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden"><div style="width:${pct}%;background:${medalColor};height:100%;border-radius:3px"></div></div>
         </div>`;
@@ -196,30 +195,33 @@ const InvDashboard = {
             ? (stockWithAuto.reduce((s, r) => s + r.autonomia_meses, 0) / stockWithAuto.length).toFixed(1) : 0;
         const autoColor = avgAuto >= 4 ? 'var(--success)' : avgAuto >= 2 ? 'var(--warning)' : 'var(--danger)';
 
-        // ── Line chart data ──
+        // ── Line chart data: planchas por mes ──
         const lineLabels = sorted.map(p => { const parts = p.mes.split('-'); return monthNames[parseInt(parts[1])]; });
 
-        // ── Bar chart: consumo por espesor ──
-        const porEspesor = {};
+        // ── Bar chart: planchas por material (nombre + espesor) ──
+        const porMaterial = {};
         consumo.forEach(c => {
-            const esp = c.espesor_mm || 'Otro';
-            if (!porEspesor[esp]) porEspesor[esp] = 0;
-            porEspesor[esp] += Number(c.m2_consumidos) || 0;
+            const key = (c.nombre || c.codigo_mp) + '|' + (c.espesor_mm || '');
+            if (!porMaterial[key]) porMaterial[key] = { nombre: c.nombre || c.codigo_mp, espesor: c.espesor_mm, planchas: 0 };
+            porMaterial[key].planchas += Number(c.planchas_consumidas) || 0;
         });
-        const espesorColors = ['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444','#06b6d4','#ec4899','#f97316'];
-        const barItems = Object.entries(porEspesor)
-            .map(([k, v], i) => ({ label: k + 'mm', value: Math.round(v), color: espesorColors[i % espesorColors.length], unit: 'm²' }))
+        const matColors = ['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444','#06b6d4','#ec4899','#f97316'];
+        const barItems = Object.values(porMaterial)
+            .map((m, i) => ({ label: m.nombre + (m.espesor ? ' ' + m.espesor + 'mm' : ''), value: m.planchas, color: matColors[i % matColors.length], unit: 'pl.' }))
             .sort((a, b) => b.value - a.value);
 
-        // ── Donut chart: top 5 materiales por kg stock ──
+        // ── Donut chart: top 5 materiales por planchas en stock ──
         const donutColors = ['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444','#94a3b8'];
-        const stockSorted = [...stock].filter(s => Number(s.kg_stock) > 0).sort((a, b) => Number(b.kg_stock) - Number(a.kg_stock));
-        const top5 = stockSorted.slice(0, 5);
-        const otrosKg = stockSorted.slice(5).reduce((s, r) => s + Number(r.kg_stock), 0);
-        const donutItems = top5.map((s, i) => ({ label: s.nombre, value: Number(s.kg_stock), color: donutColors[i] }));
-        if (otrosKg > 0) donutItems.push({ label: 'Otros', value: otrosKg, color: donutColors[5] });
+        const stockConPlanchas = stock.map(s => {
+            const planchasStock = (Number(s.entradas) || 0) - (Number(s.salidas) || 0);
+            return { ...s, planchas_stock: Math.max(0, planchasStock) };
+        }).filter(s => s.planchas_stock > 0).sort((a, b) => b.planchas_stock - a.planchas_stock);
+        const top5 = stockConPlanchas.slice(0, 5);
+        const otrosPlanchas = stockConPlanchas.slice(5).reduce((s, r) => s + r.planchas_stock, 0);
+        const donutItems = top5.map((s, i) => ({ label: s.nombre + (s.espesor_mm ? ' ' + s.espesor_mm + 'mm' : ''), value: s.planchas_stock, color: donutColors[i] }));
+        if (otrosPlanchas > 0) donutItems.push({ label: 'Otros', value: otrosPlanchas, color: donutColors[5] });
 
-        // ── Heatmap data: consumo por espesor × mes ──
+        // ── Heatmap data: planchas por espesor × mes ──
         const heatData = {};
         const heatEspesores = new Set();
         const heatMeses = new Set();
@@ -228,7 +230,7 @@ const InvDashboard = {
             heatEspesores.add(esp);
             heatMeses.add(c.mes);
             const key = esp + '|' + c.mes;
-            heatData[key] = (heatData[key] || 0) + (Number(c.m2_consumidos) || 0);
+            heatData[key] = (heatData[key] || 0) + (Number(c.planchas_consumidas) || 0);
         });
         const heatCols = [...heatMeses].sort().map(m => { const parts = m.split('-'); return monthNames[parseInt(parts[1])]; });
         const heatRows = [...heatEspesores].sort();
@@ -241,19 +243,20 @@ const InvDashboard = {
             });
         });
 
-        // ── Alertas ──
+        // ── Alertas con espesor ──
         const alertas = [];
         stock.forEach(s => {
             const auto = s.autonomia_meses || 0;
             const nombre = s.nombre || s.codigo_mp;
-            if (s.stock > 0 && auto < 2) alertas.push({ tipo: 'danger', msg: `Stock bajo: ${nombre} — ${auto.toFixed(1)} meses de autonomia` });
-            else if (s.stock > 0 && auto < 4) alertas.push({ tipo: 'warning', msg: `Stock medio: ${nombre} — ${auto.toFixed(1)} meses de autonomia` });
+            const esp = s.espesor_mm ? ' ' + s.espesor_mm + 'mm' : '';
+            if (s.stock > 0 && auto < 2) alertas.push({ tipo: 'danger', msg: `Stock bajo: ${nombre}${esp} — ${auto.toFixed(1)} meses de autonomia` });
+            else if (s.stock > 0 && auto < 4) alertas.push({ tipo: 'warning', msg: `Stock medio: ${nombre}${esp} — ${auto.toFixed(1)} meses de autonomia` });
         });
         if (pctP !== null && pctP < -10) alertas.push({ tipo: 'warning', msg: `Planchas en baja: ${pctP}% vs mes anterior` });
 
-        // ── Ranking top 5 ──
-        const rankingTop5 = [...ranking].sort((a, b) => Number(b.m2_salidos) - Number(a.m2_salidos)).slice(0, 5);
-        const maxM2Rank = Number(rankingTop5[0]?.m2_salidos) || 1;
+        // ── Ranking top 5 por planchas ──
+        const rankingTop5 = [...ranking].sort((a, b) => Number(b.planchas_salidas) - Number(a.planchas_salidas)).slice(0, 5);
+        const maxPlRank = Number(rankingTop5[0]?.planchas_salidas) || 1;
 
         // ── Filtered ranking for table ──
         let rankingFiltrado = ranking;
@@ -281,7 +284,7 @@ const InvDashboard = {
                         ${this.kpiCard('Planchas este mes', this.fmtNum(lastP), '', this.sparkline(planchasArr, 'var(--primary)', 120, 32), pctP, pctP >= 0 ? '#4ade80' : '#f87171', 0)}
                         ${this.kpiCard('Kg en stock', this.fmtKg(totalKgStock), 'kg', this.sparkline(kgArr, '#8b5cf6', 120, 32), null, '', 80)}
                         ${this.kpiCard('Autonomia prom.', avgAuto, 'meses', '', null, '', 160)}
-                        ${this.kpiCard('m² consumidos', this.fmtNum(lastM2), 'm²', this.sparkline(m2Arr, '#f59e0b', 120, 32), pctM2, pctM2 >= 0 ? '#4ade80' : '#f87171', 240)}
+                        ${this.kpiCard('Planchas consumidas', this.fmtNum(lastP), 'pl.', this.sparkline(planchasArr, '#f59e0b', 120, 32), pctP, pctP >= 0 ? '#4ade80' : '#f87171', 240)}
                     </div>
                 </div>
 
@@ -293,11 +296,11 @@ const InvDashboard = {
 
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
                     <div class="card" style="grid-column:1/3;overflow:hidden">
-                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual de m²</div>
-                        <div style="padding:16px">${this.lineChart(m2Arr, lineLabels, '#3b82f6', 600, 220, 'm²')}</div>
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual de Planchas</div>
+                        <div style="padding:16px">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 600, 220, 'pl.')}</div>
                     </div>
                     <div class="card" style="overflow:hidden">
-                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Stock por Material (Kg)</div>
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Stock por Material (Planchas)</div>
                         <div style="padding:16px">${this.donutChart(donutItems, 260, 200)}</div>
                         <div style="padding:0 16px 14px;display:flex;flex-wrap:wrap;gap:6px">
                             ${donutItems.map(d => `<span style="font-size:9px;color:var(--gray-500);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
@@ -307,19 +310,19 @@ const InvDashboard = {
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
                     <div class="card" style="overflow:hidden">
-                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Espesor</div>
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material</div>
                         <div style="padding:16px">${this.hBarChart(barItems, '#3b82f6', 400, 200)}</div>
                     </div>
                     <div class="card" style="overflow:hidden">
-                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Consumo m² por Espesor × Mes</div>
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Espesor × Mes</div>
                         <div style="padding:16px">${this.heatmap(heatCells, heatRows, heatCols, 400, 180)}</div>
                     </div>
                 </div>
 
                 <div style="margin-bottom:16px">
-                    <div style="font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:12px">Top 5 Materiales por Consumo</div>
+                    <div style="font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:12px">Top 5 Materiales por Planchas Cortadas</div>
                     <div style="display:flex;gap:12px;flex-wrap:wrap">
-                        ${rankingTop5.map((r, i) => this.rankingCard(r, i, maxM2Rank)).join('')}
+                        ${rankingTop5.map((r, i) => this.rankingCard(r, i, maxPlRank)).join('')}
                     </div>
                 </div>
 
