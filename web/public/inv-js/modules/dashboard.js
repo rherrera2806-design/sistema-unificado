@@ -119,7 +119,7 @@ const InvDashboard = {
         const cw = w - pad.l - pad.r;
         const ch = h - pad.t - pad.b;
         const cellW = Math.max(40, cw / colLabels.length);
-        const cellH = Math.min(22, ch / rowLabels.length);
+        const cellH = Math.min(28, ch / rowLabels.length);
         const svgW = pad.l + colLabels.length * cellW + pad.r;
         const max = Math.max(...data.map(d => d.v), 1);
         const colors = ['#f0fdf4', '#86efac', '#22c55e', '#15803d', '#14532d'];
@@ -425,7 +425,7 @@ const InvDashboard = {
                     </div>
                     <div class="card" style="overflow:hidden">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Material × Mes</div>
-                        <div style="padding:16px;overflow-x:auto">${this.heatmap(heatCells, heatRows, heatCols, 700, 220)}</div>
+                        <div style="padding:16px;overflow-x:auto">${this.heatmap(heatCells, heatRows, heatCols, 700, 300)}</div>
                         <div class="inv-heatmap-legend" style="padding:4px 16px 14px">
                             <strong style="color:var(--gray-700)">Escala:</strong>
                             <span style="background:#f0fdf4"></span> Bajo
