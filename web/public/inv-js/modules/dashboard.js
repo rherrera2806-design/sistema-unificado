@@ -339,8 +339,8 @@ const InvDashboard = {
                     .inv-alert{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:12px;font-size:12px;font-weight:600;animation:kpiUp 0.4s ease both}
                     .inv-alert.danger{background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fecaca;color:#991b1b}
                     .inv-alert.warning{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fde68a;color:#92400e}
-                    .inv-heatmap-legend{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10px;color:var(--gray-500)}
-                    .inv-heatmap-legend span{width:18px;height:12px;border-radius:2px;display:inline-block}
+                    .inv-heatmap-legend{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:var(--gray-600);flex-wrap:wrap}
+                    .inv-heatmap-legend span{width:22px;height:14px;border-radius:3px;display:inline-block}
                 </style>
 
                 <div class="inv-hero">
@@ -408,7 +408,7 @@ const InvDashboard = {
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
                         <div style="padding:16px">${this.donutChart(donutItems, 260, 200)}</div>
                         <div style="padding:0 16px 14px;display:flex;flex-wrap:wrap;gap:6px">
-                            ${donutItems.map(d => `<span style="font-size:11px;color:var(--gray-600);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
+                            ${donutItems.map(d => `<span style="font-size:12px;color:var(--gray-700);display:flex;align-items:center;gap:6px;font-weight:500"><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -422,7 +422,7 @@ const InvDashboard = {
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Espesor × Mes</div>
                         <div style="padding:16px">${this.heatmap(heatCells, heatRows, heatCols, 400, 180)}</div>
                         <div class="inv-heatmap-legend" style="padding:0 16px 14px">
-                            <span style="font-weight:600;color:var(--gray-600)">Leyenda:</span>
+                            <span style="font-weight:700;color:var(--gray-700)">Escala:</span>
                             <span style="background:#f0fdf4"></span> Bajo
                             <span style="background:#86efac"></span> Medio
                             <span style="background:#22c55e"></span> Alto
