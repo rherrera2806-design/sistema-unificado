@@ -119,7 +119,7 @@ const InvDashboard = {
         const cw = w - pad.l - pad.r;
         const ch = h - pad.t - pad.b;
         const cellW = Math.max(40, cw / colLabels.length);
-        const cellH = Math.min(28, ch / rowLabels.length);
+        const cellH = Math.min(34, ch / rowLabels.length);
         const svgW = pad.l + colLabels.length * cellW + pad.r;
         const max = Math.max(...data.map(d => d.v), 1);
         const colors = ['#f0fdf4', '#86efac', '#22c55e', '#15803d', '#14532d'];
