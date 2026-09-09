@@ -265,21 +265,22 @@ const InvDashboard = {
         const donutItems = top5.map(([key, s]) => ({ label: s.nombre + (s.espesor ? ' ' + s.espesor + 'mm' : ''), value: s.planchas, color: getColor(key) }));
         if (otrosPlanchas > 0) donutItems.push({ label: 'Otros', value: otrosPlanchas, color: '#94a3b8' });
 
-        // ── Heatmap data: planchas por material+espesor × mes ──
+        // ── Heatmap data: planchas por material+espesor × mes (top 10) ──
         const heatData = {};
-        const heatKeys = new Set();
+        const heatTotals = {};
         const heatMeses = new Set();
         consumo.forEach(c => {
             const nombre = c.nombre || c.codigo_mp || 'Otro';
             const esp = c.espesor_mm ? c.espesor_mm + 'mm' : '';
             const key = nombre + (esp ? ' ' + esp : '');
-            heatKeys.add(key);
             heatMeses.add(c.mes);
             const dataKey = key + '|' + c.mes;
-            heatData[dataKey] = (heatData[dataKey] || 0) + (Number(c.planchas_consumidas) || 0);
+            const val = Number(c.planchas_consumidas) || 0;
+            heatData[dataKey] = (heatData[dataKey] || 0) + val;
+            heatTotals[key] = (heatTotals[key] || 0) + val;
         });
         const heatCols = [...heatMeses].sort().map(m => { const parts = m.split('-'); return monthNames[parseInt(parts[1])]; });
-        const heatRows = [...heatKeys].sort();
+        const heatRows = Object.entries(heatTotals).sort(([,a],[,b]) => b - a).slice(0, 10).map(([k]) => k);
         const heatColsRaw = [...heatMeses].sort();
         const heatCells = [];
         heatRows.forEach((row, ri) => {
