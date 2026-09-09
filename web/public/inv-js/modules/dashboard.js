@@ -115,7 +115,7 @@ const InvDashboard = {
 
     heatmap(data, rowLabels, colLabels, w, h) {
         if (!data.length || !rowLabels.length || !colLabels.length) return '';
-        const pad = { t: 25, l: 80, r: 10, b: 10 };
+        const pad = { t: 25, l: 140, r: 10, b: 10 };
         const cw = w - pad.l - pad.r;
         const ch = h - pad.t - pad.b;
         const cellW = cw / colLabels.length;
@@ -135,7 +135,8 @@ const InvDashboard = {
         });
         let labels = '';
         rowLabels.forEach((label, i) => {
-            labels += `<text x="${pad.l - 6}" y="${pad.t + i * cellH + cellH / 2 + 4}" text-anchor="end" fill="var(--gray-600)" font-size="10">${label}</text>`;
+            const short = label.length > 18 ? label.substring(0, 16) + '...' : label;
+            labels += `<text x="${pad.l - 6}" y="${pad.t + i * cellH + cellH / 2 + 4}" text-anchor="end" fill="var(--gray-600)" font-size="10">${short}</text>`;
         });
         colLabels.forEach((label, i) => {
             labels += `<text x="${pad.l + i * cellW + cellW / 2}" y="${pad.t - 8}" text-anchor="middle" fill="var(--gray-500)" font-size="10">${label}</text>`;
@@ -263,19 +264,21 @@ const InvDashboard = {
         const donutItems = top5.map(([key, s]) => ({ label: s.nombre + (s.espesor ? ' ' + s.espesor + 'mm' : ''), value: s.planchas, color: getColor(key) }));
         if (otrosPlanchas > 0) donutItems.push({ label: 'Otros', value: otrosPlanchas, color: '#94a3b8' });
 
-        // ── Heatmap data: planchas por espesor × mes ──
+        // ── Heatmap data: planchas por material+espesor × mes ──
         const heatData = {};
-        const heatEspesores = new Set();
+        const heatKeys = new Set();
         const heatMeses = new Set();
         consumo.forEach(c => {
-            const esp = (c.espesor_mm || 'Otro') + 'mm';
-            heatEspesores.add(esp);
+            const nombre = c.nombre || c.codigo_mp || 'Otro';
+            const esp = c.espesor_mm ? c.espesor_mm + 'mm' : '';
+            const key = nombre + (esp ? ' ' + esp : '');
+            heatKeys.add(key);
             heatMeses.add(c.mes);
-            const key = esp + '|' + c.mes;
-            heatData[key] = (heatData[key] || 0) + (Number(c.planchas_consumidas) || 0);
+            const dataKey = key + '|' + c.mes;
+            heatData[dataKey] = (heatData[dataKey] || 0) + (Number(c.planchas_consumidas) || 0);
         });
         const heatCols = [...heatMeses].sort().map(m => { const parts = m.split('-'); return monthNames[parseInt(parts[1])]; });
-        const heatRows = [...heatEspesores].sort();
+        const heatRows = [...heatKeys].sort();
         const heatColsRaw = [...heatMeses].sort();
         const heatCells = [];
         heatRows.forEach((row, ri) => {
@@ -419,10 +422,10 @@ const InvDashboard = {
                         <div style="padding:16px">${this.hBarChart(barItems, '#3b82f6', 400, 200)}</div>
                     </div>
                     <div class="card" style="overflow:hidden">
-                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Espesor × Mes</div>
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Material × Mes</div>
                         <div style="padding:16px">${this.heatmap(heatCells, heatRows, heatCols, 400, 180)}</div>
-                        <div class="inv-heatmap-legend" style="padding:0 16px 14px">
-                            <span style="font-weight:700;color:var(--gray-700)">Escala:</span>
+                        <div class="inv-heatmap-legend" style="padding:4px 16px 14px">
+                            <strong style="color:var(--gray-700)">Escala:</strong>
                             <span style="background:#f0fdf4"></span> Bajo
                             <span style="background:#86efac"></span> Medio
                             <span style="background:#22c55e"></span> Alto
