@@ -118,8 +118,9 @@ const InvDashboard = {
         const pad = { t: 25, l: 140, r: 10, b: 10 };
         const cw = w - pad.l - pad.r;
         const ch = h - pad.t - pad.b;
-        const cellW = cw / colLabels.length;
-        const cellH = Math.min(24, ch / rowLabels.length);
+        const cellW = Math.max(40, cw / colLabels.length);
+        const cellH = Math.min(22, ch / rowLabels.length);
+        const svgW = pad.l + colLabels.length * cellW + pad.r;
         const max = Math.max(...data.map(d => d.v), 1);
         const colors = ['#f0fdf4', '#86efac', '#22c55e', '#15803d', '#14532d'];
         let cells = '';
@@ -141,7 +142,7 @@ const InvDashboard = {
         colLabels.forEach((label, i) => {
             labels += `<text x="${pad.l + i * cellW + cellW / 2}" y="${pad.t - 8}" text-anchor="middle" fill="var(--gray-500)" font-size="10">${label}</text>`;
         });
-        return `<svg width="100%" viewBox="0 0 ${w} ${pad.t + rowLabels.length * cellH + pad.b}" style="display:block">${labels}${cells}</svg>`;
+        return `<svg width="100%" viewBox="0 0 ${svgW} ${pad.t + rowLabels.length * cellH + pad.b}" style="display:block">${labels}${cells}</svg>`;
     },
 
     kpiCard(label, value, suffix, sparkHtml, trendPct, trendColor, delay) {
@@ -423,7 +424,7 @@ const InvDashboard = {
                     </div>
                     <div class="card" style="overflow:hidden">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Material × Mes</div>
-                        <div style="padding:16px">${this.heatmap(heatCells, heatRows, heatCols, 400, 180)}</div>
+                        <div style="padding:16px;overflow-x:auto">${this.heatmap(heatCells, heatRows, heatCols, 700, 220)}</div>
                         <div class="inv-heatmap-legend" style="padding:4px 16px 14px">
                             <strong style="color:var(--gray-700)">Escala:</strong>
                             <span style="background:#f0fdf4"></span> Bajo
