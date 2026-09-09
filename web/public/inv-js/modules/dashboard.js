@@ -43,9 +43,11 @@ const InvDashboard = {
             xLabels += `<circle cx="${x}" cy="${(pad.t + ch - (v / max) * ch).toFixed(1)}" r="4" fill="${color}" stroke="white" stroke-width="2"/>`;
             xLabels += `<text x="${x}" y="${(pad.t + ch - (v / max) * ch - 10).toFixed(1)}" text-anchor="middle" fill="var(--gray-700)" font-size="10" font-weight="600">${this.fmtNum(v)}</text>`;
         });
+        const lineLen = pts.length * 50;
         return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block">
-            ${grid}<polygon points="${area}" fill="${color}" opacity="0.1"/>
-            <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs><linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.25"/><stop offset="100%" stop-color="${color}" stop-opacity="0.02"/></linearGradient></defs>
+            ${grid}<polygon points="${area}" fill="url(#lineAreaGrad)"/>
+            <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${lineLen}" stroke-dashoffset="${lineLen}" style="animation:lineDraw 1.2s ease 0.3s forwards"/>
             ${xLabels}</svg>`;
     },
 
@@ -55,13 +57,18 @@ const InvDashboard = {
         const barH = Math.min(28, (h - 10) / items.length - 4);
         const labelW = 120;
         const barW = w - labelW - 70;
+        let defs = '';
+        items.forEach((item, i) => {
+            defs += `<linearGradient id="barGrad${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${item.color}" stop-opacity="0.9"/><stop offset="100%" stop-color="${item.color}" stop-opacity="0.5"/></linearGradient>`;
+        });
         return '<svg width="100%" viewBox="0 0 ' + w + ' ' + (items.length * (barH + 6) + 10) + '" style="display:block">'
+            + '<defs>' + defs + '</defs>'
             + items.map((item, i) => {
                 const y = i * (barH + 6) + 5;
                 const bw = (item.value / max) * barW;
                 const shortLabel = item.label.length > 18 ? item.label.substring(0, 16) + '...' : item.label;
                 return `<text x="${labelW - 8}" y="${y + barH / 2 + 4}" text-anchor="end" fill="var(--gray-700)" font-size="11" font-weight="600">${shortLabel}</text>
-                    <rect x="${labelW}" y="${y}" width="${bw}" height="${barH}" rx="4" fill="${item.color || color}" opacity="0.85"/>
+                    <rect class="inv-bar-rect" x="${labelW}" y="${y}" width="${bw}" height="${barH}" rx="4" fill="url(#barGrad${i})" opacity="0.85" style="animation:barGrow 0.8s ease ${i * 50}ms both"/>
                     <text x="${labelW + bw + 6}" y="${y + barH / 2 + 4}" fill="var(--gray-600)" font-size="10" font-weight="600">${this.fmtNum(item.value)} ${item.unit || ''}</text>`;
             }).join('') + '</svg>';
     },
@@ -92,18 +99,18 @@ const InvDashboard = {
             const ix2 = cx + inner * Math.cos(startRad);
             const iy2 = cy + inner * Math.sin(startRad);
             const large = sweep > 180 ? 1 : 0;
-            paths += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} L${ix1.toFixed(1)},${iy1.toFixed(1)} A${inner},${inner} 0 ${large},0 ${ix2.toFixed(1)},${iy2.toFixed(1)} Z" fill="${item.color}" opacity="0.9"/>`;
+            paths += `<path class="inv-donut-slice" d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} L${ix1.toFixed(1)},${iy1.toFixed(1)} A${inner},${inner} 0 ${large},0 ${ix2.toFixed(1)},${iy2.toFixed(1)} Z" fill="${item.color}" opacity="0.9" style="transform-origin:${cx}px ${cy}px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.15))"/>`;
             if (sweep > 18) {
                 const midRad = ((angle + sweep / 2) * Math.PI) / 180;
                 const lx = cx + labelR * Math.cos(midRad);
                 const ly = cy + labelR * Math.sin(midRad);
-                labels += `<text x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="middle" fill="white" font-size="10" font-weight="700">${Math.round(pct * 100)}%</text>`;
+                labels += `<text x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="middle" fill="white" font-size="11" font-weight="700" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);pointer-events:none">${Math.round(pct * 100)}%</text>`;
             }
             angle += sweep;
         });
-        return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block;margin:0 auto">${paths}${labels}
-            <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="var(--gray-800)" font-size="20" font-weight="800">${this.fmtNum(totalPlanchas)}</text>
-            <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--gray-400)" font-size="10">Planchas</text></svg>`;
+        return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block;margin:0 auto;animation:donutSpin 0.8s ease-out"><g>${paths}</g>${labels}
+            <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="var(--gray-800)" font-size="22" font-weight="900">${this.fmtNum(totalPlanchas)}</text>
+            <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--gray-400)" font-size="10" font-weight="600">Planchas</text></svg>`;
     },
 
     heatmap(data, rowLabels, colLabels, w, h) {
@@ -123,8 +130,8 @@ const InvDashboard = {
             const ci = Math.min(Math.floor(intensity * (colors.length - 1)), colors.length - 1);
             const bg = d.v > 0 ? colors[ci] : 'var(--gray-50)';
             const textColor = ci >= 3 ? 'white' : 'var(--gray-700)';
-            cells += `<rect x="${x}" y="${y}" width="${cellW - 1}" height="${cellH - 1}" rx="3" fill="${bg}"/>`;
-            if (d.v > 0) cells += `<text x="${x + cellW / 2}" y="${y + cellH / 2 + 4}" text-anchor="middle" fill="${textColor}" font-size="10" font-weight="600">${Math.round(d.v)}</text>`;
+            cells += `<rect class="inv-heatmap-rect" x="${x}" y="${y}" width="${cellW - 1}" height="${cellH - 1}" rx="3" fill="${bg}" style="animation:heatFade 0.4s ease ${(d.row * colLabels.length + d.col) * 30}ms both;transform-origin:${x + cellW/2}px ${y + cellH/2}px"/>`;
+            if (d.v > 0) cells += `<text x="${x + cellW / 2}" y="${y + cellH / 2 + 4}" text-anchor="middle" fill="${textColor}" font-size="10" font-weight="700" style="pointer-events:none">${Math.round(d.v)}</text>`;
         });
         let labels = '';
         rowLabels.forEach((label, i) => {
@@ -305,6 +312,18 @@ const InvDashboard = {
                 <div style="width:100%">
                 <style>
                     @keyframes kpiUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
+                    @keyframes donutSpin { from { transform:rotate(-90deg) } to { transform:rotate(0deg) } }
+                    @keyframes barGrow { from { width:0 } }
+                    @keyframes lineDraw { from { stroke-dashoffset:2000 } to { stroke-dashoffset:0 } }
+                    @keyframes fadeRow { from { opacity:0; transform:translateX(-8px) } to { opacity:1; transform:translateX(0) } }
+                    @keyframes heatFade { from { opacity:0; transform:scale(0.8) } to { opacity:1; transform:scale(1) } }
+                    .inv-donut-slice{transition:transform 0.2s,opacity 0.2s;cursor:pointer}
+                    .inv-donut-slice:hover{transform:scale(1.04);opacity:1!important}
+                    .inv-bar-rect{transition:opacity 0.15s;cursor:pointer}
+                    .inv-bar-rect:hover{opacity:1!important}
+                    .inv-table tbody tr{animation:fadeRow 0.3s ease both}
+                    .inv-heatmap-rect{transition:opacity 0.15s;cursor:pointer}
+                    .inv-heatmap-rect:hover{opacity:0.8!important}
                     .inv-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#0f172a 0%,#1e293b 40%,#334155 100%);border-radius:20px;padding:32px;margin-bottom:20px;color:white}
                     .inv-hero::before{content:'';position:absolute;top:-50%;right:-20%;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(245,158,11,0.12) 0%,transparent 70%);pointer-events:none}
                     .inv-hero::after{content:'';position:absolute;bottom:-30%;left:10%;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.08) 0%,transparent 70%);pointer-events:none}
@@ -359,7 +378,7 @@ const InvDashboard = {
                             const parts = p.mes.split('-');
                             const mesLabel = monthNames[parseInt(parts[1])] + ' ' + parts[0];
                             const isSel = sel === p.mes;
-                            return '<tr onclick="InvDashboard.filterByMes(\'' + p.mes + '\')" style="cursor:pointer' + (isSel ? ' selected' : '') + '">'
+                            return '<tr onclick="InvDashboard.filterByMes(\'' + p.mes + '\')" style="cursor:pointer;animation-delay:' + (sorted.indexOf(p) * 40) + 'ms' + (isSel ? ';background:var(--primary);color:white' : '') + '">'
                                 + '<td style="font-weight:600' + (isSel ? '' : ';color:var(--gray-800)') + '">' + mesLabel + '</td>'
                                 + '<td style="text-align:center;color:' + (isSel ? 'inherit' : 'var(--gray-500)') + '">' + p.total_movimientos + '</td>'
                                 + '<td style="text-align:center;font-weight:700' + (isSel ? '' : ';color:var(--primary)') + '">' + p.total_planchas + '</td>'
