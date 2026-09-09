@@ -201,6 +201,7 @@ const InvDashboard = {
         const pctP = prevP > 0 ? Math.round(((lastP - prevP) / prevP) * 100) : null;
         const pctM2 = prevM2 > 0 ? Math.round(((lastM2 - prevM2) / prevM2) * 100) : null;
         const totalPlStock = stock.reduce((s, r) => s + Math.max(0, (Number(r.entradas) || 0) - (Number(r.salidas) || 0)), 0);
+        const totalKgStock = stock.reduce((s, r) => s + (Number(r.kg_stock) || 0), 0);
         const stockWithAuto = stock.filter(r => r.autonomia_meses > 0);
         const avgAuto = stockWithAuto.length > 0
             ? (stockWithAuto.reduce((s, r) => s + r.autonomia_meses, 0) / stockWithAuto.length).toFixed(1) : 0;
