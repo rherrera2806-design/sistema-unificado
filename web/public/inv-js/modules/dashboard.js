@@ -73,8 +73,10 @@ const InvDashboard = {
         const cy = h / 2;
         const r = Math.min(w, h) / 2 - 20;
         const inner = r * 0.55;
+        const labelR = (r + inner) / 2;
         let angle = -90;
         let paths = '';
+        let labels = '';
         items.forEach(item => {
             const pct = item.value / totalPlanchas;
             const sweep = pct * 360;
@@ -90,9 +92,15 @@ const InvDashboard = {
             const iy2 = cy + inner * Math.sin(startRad);
             const large = sweep > 180 ? 1 : 0;
             paths += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} L${ix1.toFixed(1)},${iy1.toFixed(1)} A${inner},${inner} 0 ${large},0 ${ix2.toFixed(1)},${iy2.toFixed(1)} Z" fill="${item.color}" opacity="0.9"/>`;
+            if (sweep > 18) {
+                const midRad = ((angle + sweep / 2) * Math.PI) / 180;
+                const lx = cx + labelR * Math.cos(midRad);
+                const ly = cy + labelR * Math.sin(midRad);
+                labels += `<text x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="middle" fill="white" font-size="10" font-weight="700">${Math.round(pct * 100)}%</text>`;
+            }
             angle += sweep;
         });
-        return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block;margin:0 auto">${paths}
+        return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block;margin:0 auto">${paths}${labels}
             <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="var(--gray-800)" font-size="20" font-weight="800">${this.fmtNum(totalPlanchas)}</text>
             <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--gray-400)" font-size="10">Planchas</text></svg>`;
     },
