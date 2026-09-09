@@ -280,7 +280,7 @@ const InvDashboard = {
             heatTotals[key] = (heatTotals[key] || 0) + val;
         });
         const heatCols = [...heatMeses].sort().map(m => { const parts = m.split('-'); return monthNames[parseInt(parts[1])]; });
-        const heatRows = Object.entries(heatTotals).sort(([,a],[,b]) => b - a).slice(0, 10).map(([k]) => k);
+        const heatRows = Object.entries(heatTotals).sort(([,a],[,b]) => b - a).slice(0, 15).map(([k]) => k);
         const heatColsRaw = [...heatMeses].sort();
         const heatCells = [];
         heatRows.forEach((row, ri) => {
