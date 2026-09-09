@@ -10,28 +10,147 @@ const InvDashboard = {
         const min = Math.min(...data, 0);
         const range = max - min || 1;
         const step = w / (data.length - 1);
-        const points = data.map((v, i) => {
-            const x = i * step;
-            const y = h - ((v - min) / range) * (h - 4) - 2;
-            return x.toFixed(1) + ',' + y.toFixed(1);
-        }).join(' ');
-        const areaPoints = '0,' + h + ' ' + points + ' ' + w + ',' + h;
+        const pts = data.map((v, i) => (i * step).toFixed(1) + ',' + (h - ((v - min) / range) * (h - 4) - 2).toFixed(1));
+        const area = '0,' + h + ' ' + pts.join(' ') + ' ' + w + ',' + h;
+        const last = pts[pts.length - 1].split(',');
         return `<svg width="${w}" height="${h}" style="display:block;margin-top:6px">
-            <polygon points="${areaPoints}" fill="${color}" opacity="0.15"/>
-            <polyline points="${points}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="${(data.length-1)*step}" cy="${h - ((data[data.length-1]-min)/range)*(h-4) - 2}" r="3" fill="${color}"/>
-        </svg>`;
+            <polygon points="${area}" fill="${color}" opacity="0.15"/>
+            <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="${last[0]}" cy="${last[1]}" r="3" fill="${color}"/></svg>`;
+    },
+
+    lineChart(data, labels, color, w, h, unit) {
+        if (!data || data.length < 2) return '<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:12px">Sin datos</div>';
+        const pad = { t: 20, r: 20, b: 35, l: 50 };
+        const cw = w - pad.l - pad.r;
+        const ch = h - pad.t - pad.b;
+        const max = Math.max(...data) * 1.1 || 1;
+        const step = cw / (data.length - 1);
+        const pts = data.map((v, i) => (pad.l + i * step).toFixed(1) + ',' + (pad.t + ch - (v / max) * ch).toFixed(1));
+        const area = pad.l + ',' + (pad.t + ch) + ' ' + pts.join(' ') + ' ' + (pad.l + cw) + ',' + (pad.t + ch);
+        const yTicks = 5;
+        let grid = '';
+        for (let i = 0; i <= yTicks; i++) {
+            const y = pad.t + (ch / yTicks) * i;
+            const val = Math.round(max - (max / yTicks) * i);
+            grid += `<line x1="${pad.l}" y1="${y}" x2="${pad.l + cw}" y2="${y}" stroke="var(--gray-100)" stroke-width="1"/>`;
+            grid += `<text x="${pad.l - 8}" y="${y + 4}" text-anchor="end" fill="var(--gray-400)" font-size="10">${this.fmtNum(val)}</text>`;
+        }
+        let xLabels = '';
+        data.forEach((v, i) => {
+            const x = pad.l + i * step;
+            xLabels += `<text x="${x}" y="${pad.t + ch + 18}" text-anchor="middle" fill="var(--gray-500)" font-size="10">${labels[i]}</text>`;
+            xLabels += `<circle cx="${x}" cy="${(pad.t + ch - (v / max) * ch).toFixed(1)}" r="4" fill="${color}" stroke="white" stroke-width="2"/>`;
+            xLabels += `<text x="${x}" y="${(pad.t + ch - (v / max) * ch - 10).toFixed(1)}" text-anchor="middle" fill="var(--gray-700)" font-size="10" font-weight="600">${this.fmtNum(v)}</text>`;
+        });
+        return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block">
+            ${grid}<polygon points="${area}" fill="${color}" opacity="0.1"/>
+            <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            ${xLabels}</svg>`;
+    },
+
+    hBarChart(items, color, w, h) {
+        if (!items.length) return '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>';
+        const max = Math.max(...items.map(i => i.value)) || 1;
+        const barH = Math.min(28, (h - 10) / items.length - 4);
+        const labelW = 100;
+        const barW = w - labelW - 70;
+        return '<svg width="100%" viewBox="0 0 ' + w + ' ' + (items.length * (barH + 6) + 10) + '" style="display:block">'
+            + items.map((item, i) => {
+                const y = i * (barH + 6) + 5;
+                const bw = (item.value / max) * barW;
+                return `<text x="${labelW - 8}" y="${y + barH / 2 + 4}" text-anchor="end" fill="var(--gray-700)" font-size="11" font-weight="600">${item.label}</text>
+                    <rect x="${labelW}" y="${y}" width="${bw}" height="${barH}" rx="4" fill="${item.color || color}" opacity="0.85"/>
+                    <text x="${labelW + bw + 6}" y="${y + barH / 2 + 4}" fill="var(--gray-600)" font-size="10" font-weight="600">${this.fmtNum(item.value)} ${item.unit || ''}</text>`;
+            }).join('') + '</svg>';
+    },
+
+    donutChart(items, w, h) {
+        if (!items.length) return '';
+        const total = items.reduce((s, i) => s + i.value, 0);
+        if (total <= 0) return '';
+        const cx = w / 2;
+        const cy = h / 2;
+        const r = Math.min(w, h) / 2 - 20;
+        const inner = r * 0.55;
+        let angle = -90;
+        let paths = '';
+        items.forEach(item => {
+            const pct = item.value / total;
+            const sweep = pct * 360;
+            const startRad = (angle * Math.PI) / 180;
+            const endRad = ((angle + sweep) * Math.PI) / 180;
+            const x1 = cx + r * Math.cos(startRad);
+            const y1 = cy + r * Math.sin(startRad);
+            const x2 = cx + r * Math.cos(endRad);
+            const y2 = cy + r * Math.sin(endRad);
+            const ix1 = cx + inner * Math.cos(endRad);
+            const iy1 = cy + inner * Math.sin(endRad);
+            const ix2 = cx + inner * Math.cos(startRad);
+            const iy2 = cy + inner * Math.sin(startRad);
+            const large = sweep > 180 ? 1 : 0;
+            paths += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} L${ix1.toFixed(1)},${iy1.toFixed(1)} A${inner},${inner} 0 ${large},0 ${ix2.toFixed(1)},${iy2.toFixed(1)} Z" fill="${item.color}" opacity="0.9"/>`;
+            angle += sweep;
+        });
+        return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block;margin:0 auto">${paths}
+            <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="var(--gray-800)" font-size="20" font-weight="800">${this.fmtKg(total)}</text>
+            <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--gray-400)" font-size="10">Kg total</text></svg>`;
+    },
+
+    heatmap(data, rowLabels, colLabels, w, h) {
+        if (!data.length || !rowLabels.length || !colLabels.length) return '';
+        const pad = { t: 25, l: 80, r: 10, b: 10 };
+        const cw = w - pad.l - pad.r;
+        const ch = h - pad.t - pad.b;
+        const cellW = cw / colLabels.length;
+        const cellH = Math.min(24, ch / rowLabels.length);
+        const max = Math.max(...data.map(d => d.v), 1);
+        const colors = ['#f0fdf4', '#86efac', '#22c55e', '#15803d', '#14532d'];
+        let cells = '';
+        data.forEach(d => {
+            const x = pad.l + d.col * cellW;
+            const y = pad.t + d.row * cellH;
+            const intensity = d.v / max;
+            const ci = Math.min(Math.floor(intensity * (colors.length - 1)), colors.length - 1);
+            const bg = d.v > 0 ? colors[ci] : 'var(--gray-50)';
+            const textColor = ci >= 3 ? 'white' : 'var(--gray-700)';
+            cells += `<rect x="${x}" y="${y}" width="${cellW - 1}" height="${cellH - 1}" rx="3" fill="${bg}"/>`;
+            if (d.v > 0) cells += `<text x="${x + cellW / 2}" y="${y + cellH / 2 + 4}" text-anchor="middle" fill="${textColor}" font-size="10" font-weight="600">${Math.round(d.v)}</text>`;
+        });
+        let labels = '';
+        rowLabels.forEach((label, i) => {
+            labels += `<text x="${pad.l - 6}" y="${pad.t + i * cellH + cellH / 2 + 4}" text-anchor="end" fill="var(--gray-600)" font-size="10">${label}</text>`;
+        });
+        colLabels.forEach((label, i) => {
+            labels += `<text x="${pad.l + i * cellW + cellW / 2}" y="${pad.t - 8}" text-anchor="middle" fill="var(--gray-500)" font-size="10">${label}</text>`;
+        });
+        return `<svg width="100%" viewBox="0 0 ${w} ${pad.t + rowLabels.length * cellH + pad.b}" style="display:block">${labels}${cells}</svg>`;
     },
 
     kpiCard(label, value, suffix, sparkHtml, trendPct, trendColor, delay) {
-        const trendHtml = trendPct !== null
+        const trendHtml = trendPct !== null && trendPct !== undefined
             ? `<div style="font-size:11px;font-weight:600;margin-top:4px;color:${trendColor}">${trendPct > 0 ? '↑' : trendPct < 0 ? '↓' : '→'} ${Math.abs(trendPct)}% vs mes ant.</div>`
             : '';
-        return `<div style="flex:1;min-width:180px;background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid var(--gray-200);animation:kpiUp 0.5s ease ${delay}ms both">
+        return `<div style="flex:1;min-width:170px;background:white;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid var(--gray-200);animation:kpiUp 0.5s ease ${delay}ms both">
             <div style="font-size:11px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">${label}</div>
             <div style="font-size:32px;font-weight:800;color:var(--gray-900);line-height:1">${value}<span style="font-size:14px;font-weight:600;color:var(--gray-400);margin-left:4px">${suffix}</span></div>
-            ${trendHtml}
-            ${sparkHtml}
+            ${trendHtml}${sparkHtml}</div>`;
+    },
+
+    rankingCard(r, i, maxM2) {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+        const medalColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#cd7f32' : 'var(--gray-300)';
+        const pct = maxM2 > 0 ? Math.round((Number(r.m2_salidos) / maxM2) * 100) : 0;
+        return `<div style="flex:1;min-width:160px;background:white;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid var(--gray-200);position:relative;animation:kpiUp 0.5s ease ${i * 60}ms both">
+            <div style="position:absolute;top:10px;right:12px;font-size:20px">${medal}</div>
+            <div style="font-size:11px;font-weight:600;color:${medalColor};margin-bottom:4px">#${i + 1}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.nombre || r.codigo_mp}</div>
+            <div style="font-size:10px;color:var(--gray-400);margin-bottom:8px">Esp: ${r.espesor_mm || '-'}</div>
+            <div style="display:flex;gap:12px;margin-bottom:8px">
+                <div><div style="font-size:18px;font-weight:800;color:var(--danger)">${Number(r.m2_salidos).toFixed(1)}</div><div style="font-size:9px;color:var(--gray-400)">m²</div></div>
+                <div><div style="font-size:18px;font-weight:800;color:var(--gray-700)">${this.fmtKg(r.kg_salidos)}</div><div style="font-size:9px;color:var(--gray-400)">Kg</div></div>
+            </div>
+            <div style="height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden"><div style="width:${pct}%;background:${medalColor};height:100%;border-radius:3px"></div></div>
         </div>`;
     },
 
@@ -45,6 +164,7 @@ const InvDashboard = {
             window._invDashRanking = a.rankingSalida || [];
             window._invDashPlanchasMes = a.planchasPorMes || [];
             window._invDashStock = a.stockActual || [];
+            window._invDashConsumo = a.consumoMensual || [];
             window._invDashHdrs = hdrs;
             this.selectedMes = null;
             this._renderContent(page);
@@ -55,6 +175,7 @@ const InvDashboard = {
         const ranking = window._invDashRanking || [];
         const planchasMes = window._invDashPlanchasMes || [];
         const stock = window._invDashStock || [];
+        const consumo = window._invDashConsumo || [];
         const monthNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
         const sel = this.selectedMes;
 
@@ -69,18 +190,72 @@ const InvDashboard = {
         const prevM2 = m2Arr[m2Arr.length - 2] || 0;
         const pctP = prevP > 0 ? Math.round(((lastP - prevP) / prevP) * 100) : null;
         const pctM2 = prevM2 > 0 ? Math.round(((lastM2 - prevM2) / prevM2) * 100) : null;
-
         const totalKgStock = stock.reduce((s, r) => s + (Number(r.kg_stock) || 0), 0);
         const stockWithAuto = stock.filter(r => r.autonomia_meses > 0);
         const avgAuto = stockWithAuto.length > 0
-            ? (stockWithAuto.reduce((s, r) => s + r.autonomia_meses, 0) / stockWithAuto.length).toFixed(1)
-            : 0;
+            ? (stockWithAuto.reduce((s, r) => s + r.autonomia_meses, 0) / stockWithAuto.length).toFixed(1) : 0;
         const autoColor = avgAuto >= 4 ? 'var(--success)' : avgAuto >= 2 ? 'var(--warning)' : 'var(--danger)';
 
-        const sparkP = this.sparkline(planchasArr, 'var(--primary)', 120, 32);
-        const sparkKg = this.sparkline(kgArr, '#8b5cf6', 120, 32);
-        const sparkM2 = this.sparkline(m2Arr, '#f59e0b', 120, 32);
+        // ── Line chart data ──
+        const lineLabels = sorted.map(p => { const parts = p.mes.split('-'); return monthNames[parseInt(parts[1])]; });
 
+        // ── Bar chart: consumo por espesor ──
+        const porEspesor = {};
+        consumo.forEach(c => {
+            const esp = c.espesor_mm || 'Otro';
+            if (!porEspesor[esp]) porEspesor[esp] = 0;
+            porEspesor[esp] += Number(c.m2_consumidos) || 0;
+        });
+        const espesorColors = ['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444','#06b6d4','#ec4899','#f97316'];
+        const barItems = Object.entries(porEspesor)
+            .map(([k, v], i) => ({ label: k + 'mm', value: Math.round(v), color: espesorColors[i % espesorColors.length], unit: 'm²' }))
+            .sort((a, b) => b.value - a.value);
+
+        // ── Donut chart: top 5 materiales por kg stock ──
+        const donutColors = ['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444','#94a3b8'];
+        const stockSorted = [...stock].filter(s => Number(s.kg_stock) > 0).sort((a, b) => Number(b.kg_stock) - Number(a.kg_stock));
+        const top5 = stockSorted.slice(0, 5);
+        const otrosKg = stockSorted.slice(5).reduce((s, r) => s + Number(r.kg_stock), 0);
+        const donutItems = top5.map((s, i) => ({ label: s.nombre, value: Number(s.kg_stock), color: donutColors[i] }));
+        if (otrosKg > 0) donutItems.push({ label: 'Otros', value: otrosKg, color: donutColors[5] });
+
+        // ── Heatmap data: consumo por espesor × mes ──
+        const heatData = {};
+        const heatEspesores = new Set();
+        const heatMeses = new Set();
+        consumo.forEach(c => {
+            const esp = (c.espesor_mm || 'Otro') + 'mm';
+            heatEspesores.add(esp);
+            heatMeses.add(c.mes);
+            const key = esp + '|' + c.mes;
+            heatData[key] = (heatData[key] || 0) + (Number(c.m2_consumidos) || 0);
+        });
+        const heatCols = [...heatMeses].sort().map(m => { const parts = m.split('-'); return monthNames[parseInt(parts[1])]; });
+        const heatRows = [...heatEspesores].sort();
+        const heatColsRaw = [...heatMeses].sort();
+        const heatCells = [];
+        heatRows.forEach((row, ri) => {
+            heatColsRaw.forEach((col, ci) => {
+                const v = heatData[row + '|' + col] || 0;
+                if (v > 0) heatCells.push({ row: ri, col: ci, v });
+            });
+        });
+
+        // ── Alertas ──
+        const alertas = [];
+        stock.forEach(s => {
+            const auto = s.autonomia_meses || 0;
+            const nombre = s.nombre || s.codigo_mp;
+            if (s.stock > 0 && auto < 2) alertas.push({ tipo: 'danger', msg: `Stock bajo: ${nombre} — ${auto.toFixed(1)} meses de autonomia` });
+            else if (s.stock > 0 && auto < 4) alertas.push({ tipo: 'warning', msg: `Stock medio: ${nombre} — ${auto.toFixed(1)} meses de autonomia` });
+        });
+        if (pctP !== null && pctP < -10) alertas.push({ tipo: 'warning', msg: `Planchas en baja: ${pctP}% vs mes anterior` });
+
+        // ── Ranking top 5 ──
+        const rankingTop5 = [...ranking].sort((a, b) => Number(b.m2_salidos) - Number(a.m2_salidos)).slice(0, 5);
+        const maxM2Rank = Number(rankingTop5[0]?.m2_salidos) || 1;
+
+        // ── Filtered ranking for table ──
         let rankingFiltrado = ranking;
         let rankingTitle = 'Ranking MP + Salida (6 meses)';
         if (sel) {
@@ -100,13 +275,51 @@ const InvDashboard = {
                             <h2 style="margin:0;font-size:20px;font-weight:800;letter-spacing:-0.02em">Dashboard Inventario</h2>
                             <p style="margin:4px 0 0;font-size:12px;opacity:0.5">Analisis de materia prima — Ultimos 6 meses</p>
                         </div>
-                        ${sel ? '<button onclick="InvDashboard.clearFilter()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;backdrop-filter:blur(4px)">✕ Limpiar filtro</button>' : ''}
+                        ${sel ? '<button onclick="InvDashboard.clearFilter()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer">✕ Limpiar filtro</button>' : ''}
                     </div>
                     <div style="display:flex;gap:16px;flex-wrap:wrap">
-                        ${this.kpiCard('Planchas este mes', this.fmtNum(lastP), '', sparkP, pctP, pctP >= 0 ? '#4ade80' : '#f87171', 0)}
-                        ${this.kpiCard('Kg en stock', this.fmtKg(totalKgStock), 'kg', sparkKg, null, '', 80)}
+                        ${this.kpiCard('Planchas este mes', this.fmtNum(lastP), '', this.sparkline(planchasArr, 'var(--primary)', 120, 32), pctP, pctP >= 0 ? '#4ade80' : '#f87171', 0)}
+                        ${this.kpiCard('Kg en stock', this.fmtKg(totalKgStock), 'kg', this.sparkline(kgArr, '#8b5cf6', 120, 32), null, '', 80)}
                         ${this.kpiCard('Autonomia prom.', avgAuto, 'meses', '', null, '', 160)}
-                        ${this.kpiCard('m² consumidos', this.fmtNum(lastM2), 'm²', sparkM2, pctM2, pctM2 >= 0 ? '#4ade80' : '#f87171', 240)}
+                        ${this.kpiCard('m² consumidos', this.fmtNum(lastM2), 'm²', this.sparkline(m2Arr, '#f59e0b', 120, 32), pctM2, pctM2 >= 0 ? '#4ade80' : '#f87171', 240)}
+                    </div>
+                </div>
+
+                ${alertas.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+                    ${alertas.slice(0, 4).map(a => `<div style="flex:1;min-width:250px;padding:10px 14px;border-radius:8px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:8px;${a.tipo === 'danger' ? 'background:#fef2f2;border:1px solid #fecaca;color:#b91c1c' : 'background:#fffbeb;border:1px solid #fde68a;color:#b45309'}">
+                        ${a.tipo === 'danger' ? '🔴' : '🟡'} ${a.msg}
+                    </div>`).join('')}
+                </div>` : ''}
+
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+                    <div class="card" style="grid-column:1/3;overflow:hidden">
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual de m²</div>
+                        <div style="padding:16px">${this.lineChart(m2Arr, lineLabels, '#3b82f6', 600, 220, 'm²')}</div>
+                    </div>
+                    <div class="card" style="overflow:hidden">
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Stock por Material (Kg)</div>
+                        <div style="padding:16px">${this.donutChart(donutItems, 260, 200)}</div>
+                        <div style="padding:0 16px 14px;display:flex;flex-wrap:wrap;gap:6px">
+                            ${donutItems.map(d => `<span style="font-size:9px;color:var(--gray-500);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                    <div class="card" style="overflow:hidden">
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Espesor</div>
+                        <div style="padding:16px">${this.hBarChart(barItems, '#3b82f6', 400, 200)}</div>
+                    </div>
+                    <div class="card" style="overflow:hidden">
+                        <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Consumo m² por Espesor × Mes</div>
+                        <div style="padding:16px">${this.heatmap(heatCells, heatRows, heatCols, 400, 180)}</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:16px">
+                    <div style="font-size:13px;font-weight:700;color:var(--gray-800);margin-bottom:12px">Top 5 Materiales por Consumo</div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        ${rankingTop5.map((r, i) => this.rankingCard(r, i, maxM2Rank)).join('')}
                     </div>
                 </div>
 
