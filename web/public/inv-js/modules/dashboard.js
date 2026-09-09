@@ -354,7 +354,7 @@ const InvDashboard = {
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
                         <div style="padding:16px">${this.donutChart(donutItems, 260, 200)}</div>
                         <div style="padding:0 16px 14px;display:flex;flex-wrap:wrap;gap:6px">
-                            ${donutItems.map(d => `<span style="font-size:9px;color:var(--gray-500);display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
+                            ${donutItems.map(d => `<span style="font-size:11px;color:var(--gray-600);display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
                         </div>
                     </div>
                 </div>
