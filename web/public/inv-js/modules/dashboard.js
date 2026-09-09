@@ -200,7 +200,7 @@ const InvDashboard = {
         const prevM2 = m2Arr[m2Arr.length - 2] || 0;
         const pctP = prevP > 0 ? Math.round(((lastP - prevP) / prevP) * 100) : null;
         const pctM2 = prevM2 > 0 ? Math.round(((lastM2 - prevM2) / prevM2) * 100) : null;
-        const totalKgStock = stock.reduce((s, r) => s + (Number(r.kg_stock) || 0), 0);
+        const totalPlStock = stock.reduce((s, r) => s + Math.max(0, (Number(r.entradas) || 0) - (Number(r.salidas) || 0)), 0);
         const stockWithAuto = stock.filter(r => r.autonomia_meses > 0);
         const avgAuto = stockWithAuto.length > 0
             ? (stockWithAuto.reduce((s, r) => s + r.autonomia_meses, 0) / stockWithAuto.length).toFixed(1) : 0;
@@ -297,9 +297,9 @@ const InvDashboard = {
                     </div>
                     <div style="display:flex;gap:16px;flex-wrap:wrap">
                         ${this.kpiCard('Planchas este mes', this.fmtNum(lastP), '', this.sparkline(planchasArr, 'var(--primary)', 120, 32), pctP, pctP >= 0 ? '#4ade80' : '#f87171', 0)}
-                        ${this.kpiCard('Kg en stock', this.fmtKg(totalKgStock), 'kg', this.sparkline(kgArr, '#8b5cf6', 120, 32), null, '', 80)}
-                        ${this.kpiCard('Autonomia prom.', avgAuto, 'meses', '', null, '', 160)}
-                        ${this.kpiCard('Planchas consumidas', this.fmtNum(lastP), 'pl.', this.sparkline(planchasArr, '#f59e0b', 120, 32), pctP, pctP >= 0 ? '#4ade80' : '#f87171', 240)}
+                        ${this.kpiCard('Stock planchas', this.fmtNum(totalPlStock), 'pl.', '', null, '', 80)}
+                        ${this.kpiCard('Kg en stock', this.fmtKg(totalKgStock), 'kg', this.sparkline(kgArr, '#8b5cf6', 120, 32), null, '', 160)}
+                        ${this.kpiCard('Autonomia prom.', avgAuto, 'meses', '', null, '', 240)}
                     </div>
                 </div>
 
