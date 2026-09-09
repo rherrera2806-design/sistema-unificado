@@ -210,6 +210,12 @@ const InvDashboard = {
         // ── Line chart data: planchas por mes ──
         const lineLabels = sorted.map(p => { const parts = p.mes.split('-'); return monthNames[parseInt(parts[1])]; });
 
+        // ── Shared color map by material+espesor ──
+        const palette = ['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444','#06b6d4','#ec4899','#f97316','#14b8a6','#6366f1'];
+        const colorMap = {};
+        let colorIdx = 0;
+        const getColor = (key) => { if (!colorMap[key]) { colorMap[key] = palette[colorIdx % palette.length]; colorIdx++; } return colorMap[key]; };
+
         // ── Bar chart: planchas por material (nombre + espesor) ──
         const porMaterial = {};
         consumo.forEach(c => {
@@ -217,25 +223,23 @@ const InvDashboard = {
             if (!porMaterial[key]) porMaterial[key] = { nombre: c.nombre || c.codigo_mp, espesor: c.espesor_mm, planchas: 0 };
             porMaterial[key].planchas += Number(c.planchas_consumidas) || 0;
         });
-        const matColors = ['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444','#06b6d4','#ec4899','#f97316'];
-        const barItems = Object.values(porMaterial)
-            .map((m, i) => ({ label: m.nombre + (m.espesor ? ' ' + m.espesor + 'mm' : ''), value: m.planchas, color: matColors[i % matColors.length], unit: 'pl.' }))
+        const barItems = Object.entries(porMaterial)
+            .map(([key, m]) => ({ key, label: m.nombre + (m.espesor ? ' ' + m.espesor + 'mm' : ''), value: m.planchas, color: getColor(key), unit: 'pl.' }))
             .sort((a, b) => b.value - a.value)
             .slice(0, 10);
 
         // ── Donut chart: top 5 materiales por planchas consumidas ──
-        const donutColors = ['#3b82f6','#8b5cf6','#f59e0b','#22c55e','#ef4444','#94a3b8'];
         const consumoPorMat = {};
         consumo.forEach(c => {
             const key = (c.nombre || c.codigo_mp) + '|' + (c.espesor_mm || '');
             if (!consumoPorMat[key]) consumoPorMat[key] = { nombre: c.nombre || c.codigo_mp, espesor: c.espesor_mm, planchas: 0 };
             consumoPorMat[key].planchas += Number(c.planchas_consumidas) || 0;
         });
-        const consumoSorted = Object.values(consumoPorMat).filter(m => m.planchas > 0).sort((a, b) => b.planchas - a.planchas);
+        const consumoSorted = Object.entries(consumoPorMat).filter(([, m]) => m.planchas > 0).sort(([, a], [, b]) => b.planchas - a.planchas);
         const top5 = consumoSorted.slice(0, 5);
-        const otrosPlanchas = consumoSorted.slice(5).reduce((s, r) => s + r.planchas, 0);
-        const donutItems = top5.map((s, i) => ({ label: s.nombre + (s.espesor ? ' ' + s.espesor + 'mm' : ''), value: s.planchas, color: donutColors[i] }));
-        if (otrosPlanchas > 0) donutItems.push({ label: 'Otros', value: otrosPlanchas, color: donutColors[5] });
+        const otrosPlanchas = consumoSorted.slice(5).reduce((s, [, r]) => s + r.planchas, 0);
+        const donutItems = top5.map(([key, s]) => ({ label: s.nombre + (s.espesor ? ' ' + s.espesor + 'mm' : ''), value: s.planchas, color: getColor(key) }));
+        if (otrosPlanchas > 0) donutItems.push({ label: 'Otros', value: otrosPlanchas, color: '#94a3b8' });
 
         // ── Heatmap data: planchas por espesor × mes ──
         const heatData = {};
