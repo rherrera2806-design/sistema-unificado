@@ -330,11 +330,12 @@ const InvDashboard = {
                     .inv-kpi{flex:1;min-width:170px;background:rgba(255,255,255,0.07);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:20px;animation:kpiUp 0.5s ease both;transition:transform 0.2s,box-shadow 0.2s}
                     .inv-kpi:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2)}
                     .inv-table{width:100%;border-collapse:collapse;font-size:12px}
-                    .inv-table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.04em;border-bottom:2px solid var(--gray-200)}
-                    .inv-table td{padding:10px 14px;border-bottom:1px solid var(--gray-100);transition:background 0.15s}
-                    .inv-table tbody tr:hover{background:var(--gray-50)}
-                    .inv-table tbody tr.selected{background:var(--primary);color:white}
-                    .inv-table tbody tr.selected td{color:white}
+                    .inv-table thead th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.04em;border-bottom:2px solid var(--gray-200);background:white;position:sticky;top:0;z-index:2}
+                    .inv-table td{padding:10px 14px;border-bottom:1px solid var(--gray-100);transition:all 0.15s}
+                    .inv-table tbody tr:nth-child(even){background:var(--gray-50)}
+                    .inv-table tbody tr:hover{background:#eff6ff!important}
+                    .inv-table tbody tr.selected{background:var(--primary)!important;color:white;border-left:4px solid var(--primary-dark,#1e40af);box-shadow:inset 0 0 0 1px rgba(37,99,235,0.2)}
+                    .inv-table tbody tr.selected td{color:white;border-color:rgba(255,255,255,0.15)}
                     .inv-alert{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:12px;font-size:12px;font-weight:600;animation:kpiUp 0.4s ease both}
                     .inv-alert.danger{background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fecaca;color:#991b1b}
                     .inv-alert.warning{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fde68a;color:#92400e}
@@ -362,29 +363,29 @@ const InvDashboard = {
 
                 <div class="card" style="margin-bottom:16px;overflow:hidden">
                     <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Planchas Cortadas por Mes <span style="font-weight:400;font-size:11px;color:var(--gray-400)">(clic para filtrar todo el dashboard)</span></div>
-                    <div style="padding:16px;overflow-x:auto">
+                    <div style="padding:0;overflow-x:auto;max-height:400px;overflow-y:auto">
                         ${planchasMes.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
                         '<table class="inv-table"><thead><tr>'
-                        + '<th>Mes</th>'
-                        + '<th style="text-align:center">Mov.</th>'
-                        + '<th style="text-align:center">Planchas</th>'
-                        + '<th style="text-align:center">m2</th>'
-                        + '<th style="text-align:center">Kg</th>'
-                        + '<th>Tendencia</th>'
+                        + '<th style="padding:12px 14px">Mes</th>'
+                        + '<th style="padding:12px 14px;text-align:center">Mov.</th>'
+                        + '<th style="padding:12px 14px;text-align:center">Planchas</th>'
+                        + '<th style="padding:12px 14px;text-align:center">m2</th>'
+                        + '<th style="padding:12px 14px;text-align:center">Kg</th>'
+                        + '<th style="padding:12px 14px">Tendencia</th>'
                         + '</tr></thead><tbody>'
-                        + sorted.map(p => {
+                        + sorted.map((p, ri) => {
                             const maxPl = Math.max(...sorted.map(x => Number(x.total_planchas)));
                             const pct = maxPl > 0 ? Math.round((Number(p.total_planchas) / maxPl) * 100) : 0;
                             const parts = p.mes.split('-');
                             const mesLabel = monthNames[parseInt(parts[1])] + ' ' + parts[0];
                             const isSel = sel === p.mes;
-                            return '<tr onclick="InvDashboard.filterByMes(\'' + p.mes + '\')" style="cursor:pointer;animation-delay:' + (sorted.indexOf(p) * 40) + 'ms' + (isSel ? ';background:var(--primary);color:white' : '') + '">'
+                            return '<tr onclick="InvDashboard.filterByMes(\'' + p.mes + '\')" style="cursor:pointer;animation-delay:' + (ri * 40) + 'ms' + (isSel ? ';background:var(--primary)!important;color:white;border-left:4px solid var(--primary-dark,#1e40af)' : '') + '">'
                                 + '<td style="font-weight:600' + (isSel ? '' : ';color:var(--gray-800)') + '">' + mesLabel + '</td>'
                                 + '<td style="text-align:center;color:' + (isSel ? 'inherit' : 'var(--gray-500)') + '">' + p.total_movimientos + '</td>'
                                 + '<td style="text-align:center;font-weight:700' + (isSel ? '' : ';color:var(--primary)') + '">' + p.total_planchas + '</td>'
                                 + '<td style="text-align:center">' + Number(p.total_m2).toFixed(2) + '</td>'
                                 + '<td style="text-align:center;font-weight:600">' + InvDashboard.fmtKg(p.total_kg) + '</td>'
-                                + '<td><div style="height:8px;background:' + (isSel ? 'rgba(255,255,255,0.25)' : 'var(--gray-100)') + ';border-radius:4px;overflow:hidden;width:180px"><div style="width:' + pct + '%;background:' + (isSel ? 'white' : 'var(--primary)') + ';height:100%;border-radius:4px"></div></div></td>'
+                                + '<td><div style="height:8px;background:' + (isSel ? 'rgba(255,255,255,0.25)' : 'var(--gray-100)') + ';border-radius:4px;overflow:hidden;width:180px"><div style="width:' + pct + '%;background:' + (isSel ? 'white' : 'var(--primary)') + ';height:100%;border-radius:4px;animation:barGrow 0.6s ease ' + (ri * 60) + 'ms both"></div></div></td>'
                                 + '</tr>';
                         }).join('')
                         + '</tbody></table>'}
@@ -440,29 +441,29 @@ const InvDashboard = {
 
                 <div class="card" style="overflow:hidden;margin-bottom:16px">
                     <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">${rankingTitle}</div>
-                    <div style="padding:0;overflow-x:auto">
+                    <div style="padding:0;overflow-x:auto;max-height:500px;overflow-y:auto">
                         ${rankingFiltrado.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
                         '<table class="inv-table"><thead><tr>'
-                        + '<th>#</th>'
-                        + '<th>Material</th>'
-                        + '<th>Esp.</th>'
-                        + '<th style="text-align:right">m2</th>'
-                        + '<th style="text-align:right">Kg</th>'
-                        + '<th style="text-align:right">Planchas</th>'
-                        + '<th>Tendencia</th>'
+                        + '<th style="padding:12px 14px">#</th>'
+                        + '<th style="padding:12px 14px">Material</th>'
+                        + '<th style="padding:12px 14px">Esp.</th>'
+                        + '<th style="padding:12px 14px;text-align:right">m2</th>'
+                        + '<th style="padding:12px 14px;text-align:right">Kg</th>'
+                        + '<th style="padding:12px 14px;text-align:right">Planchas</th>'
+                        + '<th style="padding:12px 14px">Tendencia</th>'
                         + '</tr></thead><tbody>'
                         + rankingFiltrado.map((r, i) => {
                             const maxM2 = Number(rankingFiltrado[0].m2_salidos) || 1;
                             const pct = Math.round((Number(r.m2_salidos) / maxM2) * 100);
                             const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-                            return '<tr>'
+                            return '<tr style="animation-delay:' + (i * 40) + 'ms">'
                                 + '<td style="font-weight:700;color:' + (i < 3 ? 'var(--warning)' : 'var(--gray-400)') + '">' + medal + '</td>'
                                 + '<td style="font-weight:600;color:var(--gray-800)">' + (r.nombre || r.codigo_mp) + '</td>'
                                 + '<td>' + (r.espesor_mm || '') + '</td>'
                                 + '<td style="text-align:right;font-weight:700;color:var(--danger)">' + Number(r.m2_salidos).toFixed(2) + '</td>'
                                 + '<td style="text-align:right;font-weight:600">' + InvDashboard.fmtKg(r.kg_salidos) + '</td>'
                                 + '<td style="text-align:right;font-weight:600">' + r.planchas_salidas + '</td>'
-                                + '<td><div style="height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden;width:100%"><div style="width:' + pct + '%;background:var(--danger);height:100%;border-radius:3px"></div></div></td>'
+                                + '<td><div style="height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden;width:100%"><div style="width:' + pct + '%;background:var(--danger);height:100%;border-radius:3px;animation:barGrow 0.6s ease ' + (i * 60) + 'ms both"></div></div></td>'
                                 + '</tr>';
                         }).join('')
                         + '</tbody></table>'}
