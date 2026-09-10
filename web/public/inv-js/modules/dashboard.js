@@ -106,13 +106,13 @@ const InvDashboard = {
                 const midRad = ((angle + sweep / 2) * Math.PI) / 180;
                 const lx = cx + labelR * Math.cos(midRad);
                 const ly = cy + labelR * Math.sin(midRad);
-                labels += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" fill="white" font-size="6" font-weight="700" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);pointer-events:none">${Math.round(pct * 100)}%</text>`;
+                labels += `<text x="${lx.toFixed(1)}" y="${(ly + 2).toFixed(1)}" text-anchor="middle" fill="white" font-size="5" font-weight="700" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);pointer-events:none">${Math.round(pct * 100)}%</text>`;
             }
             angle += sweep;
         });
         return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block;margin:0 auto;animation:donutSpin 0.8s ease-out"><g>${paths}</g>${labels}
-            <text x="${cx}" y="${cy - 3}" text-anchor="middle" fill="var(--gray-800)" font-size="10" font-weight="900">${this.fmtNum(totalPlanchas)}</text>
-            <text x="${cx}" y="${cy + 7}" text-anchor="middle" fill="var(--gray-400)" font-size="6" font-weight="600">Planchas</text></svg>`;
+            <text x="${cx}" y="${cy - 2}" text-anchor="middle" fill="var(--gray-800)" font-size="7" font-weight="900">${this.fmtNum(totalPlanchas)}</text>
+            <text x="${cx}" y="${cy + 5}" text-anchor="middle" fill="var(--gray-400)" font-size="5" font-weight="600">Planchas</text></svg>`;
     },
 
     heatmap(data, rowLabels, colLabels, w, h) {
