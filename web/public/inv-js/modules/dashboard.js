@@ -353,8 +353,8 @@ const InvDashboard = {
                     @media(max-width:768px){
                         .inv-hero{padding:20px!important;border-radius:14px!important}
                         .inv-hero h2{font-size:16px!important}
-                        .inv-kpis{flex-direction:column!important}
-                        .inv-kpi{min-width:100%!important;padding:14px!important}
+                        .inv-kpis{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
+                        .inv-kpi{min-width:100%!important;padding:10px!important}
                         .inv-kpi div:last-child{font-size:12px!important}
                         .inv-dash-grid-3{grid-template-columns:1fr!important;gap:10px!important}
                         .inv-dash-grid-2{grid-template-columns:1fr!important;gap:10px!important}
@@ -363,8 +363,8 @@ const InvDashboard = {
                         .inv-dash-grid-3 .card>div:nth-child(2),.inv-dash-grid-2 .card>div:nth-child(2){padding:8px 10px!important}
                         .inv-table{font-size:10px!important}
                         .inv-table th,.inv-table td{padding:6px 4px!important}
-                        .inv-ranking-cards{flex-direction:column!important}
-                        .inv-ranking-cards>div{min-width:100%!important}
+                        .inv-ranking-cards{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
+                        .inv-ranking-cards>div{min-width:100%!important;padding:12px!important}
                         .inv-alert{font-size:11px!important;padding:10px 12px!important}
                         .inv-heatmap-legend{font-size:10px!important;gap:6px!important}
                         .inv-heatmap-legend span{width:16px;height:10px!important}
