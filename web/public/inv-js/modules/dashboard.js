@@ -21,7 +21,7 @@ const InvDashboard = {
 
     lineChart(data, labels, color, w, h, unit) {
         if (!data || data.length < 2) return '<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:12px">Sin datos</div>';
-        const pad = { t: 20, r: 20, b: 35, l: 50 };
+        const pad = { t: 15, r: 15, b: 25, l: 40 };
         const cw = w - pad.l - pad.r;
         const ch = h - pad.t - pad.b;
         const max = Math.max(...data) * 1.1 || 1;
@@ -34,20 +34,20 @@ const InvDashboard = {
             const y = pad.t + (ch / yTicks) * i;
             const val = Math.round(max - (max / yTicks) * i);
             grid += `<line x1="${pad.l}" y1="${y}" x2="${pad.l + cw}" y2="${y}" stroke="var(--gray-100)" stroke-width="1"/>`;
-            grid += `<text x="${pad.l - 8}" y="${y + 4}" text-anchor="end" fill="var(--gray-400)" font-size="10">${this.fmtNum(val)}</text>`;
+            grid += `<text x="${pad.l - 6}" y="${y + 3}" text-anchor="end" fill="var(--gray-400)" font-size="8">${this.fmtNum(val)}</text>`;
         }
         let xLabels = '';
         data.forEach((v, i) => {
             const x = pad.l + i * step;
-            xLabels += `<text x="${x}" y="${pad.t + ch + 18}" text-anchor="middle" fill="var(--gray-500)" font-size="10">${labels[i]}</text>`;
-            xLabels += `<circle cx="${x}" cy="${(pad.t + ch - (v / max) * ch).toFixed(1)}" r="4" fill="${color}" stroke="white" stroke-width="2"/>`;
-            xLabels += `<text x="${x}" y="${(pad.t + ch - (v / max) * ch - 10).toFixed(1)}" text-anchor="middle" fill="var(--gray-700)" font-size="10" font-weight="600">${this.fmtNum(v)}</text>`;
+            xLabels += `<text x="${x}" y="${pad.t + ch + 14}" text-anchor="middle" fill="var(--gray-500)" font-size="8">${labels[i]}</text>`;
+            xLabels += `<circle cx="${x}" cy="${(pad.t + ch - (v / max) * ch).toFixed(1)}" r="3" fill="${color}" stroke="white" stroke-width="1.5"/>`;
+            xLabels += `<text x="${x}" y="${(pad.t + ch - (v / max) * ch - 8).toFixed(1)}" text-anchor="middle" fill="var(--gray-700)" font-size="8" font-weight="500">${this.fmtNum(v)}</text>`;
         });
         const lineLen = pts.length * 50;
         return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block">
             <defs><linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.25"/><stop offset="100%" stop-color="${color}" stop-opacity="0.02"/></linearGradient></defs>
             ${grid}<polygon points="${area}" fill="url(#lineAreaGrad)"/>
-            <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${lineLen}" stroke-dashoffset="${lineLen}" style="animation:lineDraw 1.2s ease 0.3s forwards"/>
+            <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${lineLen}" stroke-dashoffset="${lineLen}" style="animation:lineDraw 1.2s ease 0.3s forwards"/>
             ${xLabels}</svg>`;
     },
 
@@ -81,7 +81,7 @@ const InvDashboard = {
         if (totalPlanchas <= 0) return '';
         const cx = w / 2;
         const cy = h / 2;
-        const r = Math.min(w, h) / 2 - 20;
+        const r = Math.min(w, h) / 2 - 15;
         const inner = r * 0.55;
         const labelR = (r + inner) / 2;
         let angle = -90;
@@ -106,13 +106,13 @@ const InvDashboard = {
                 const midRad = ((angle + sweep / 2) * Math.PI) / 180;
                 const lx = cx + labelR * Math.cos(midRad);
                 const ly = cy + labelR * Math.sin(midRad);
-                labels += `<text x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="middle" fill="white" font-size="11" font-weight="700" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);pointer-events:none">${Math.round(pct * 100)}%</text>`;
+                labels += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" fill="white" font-size="9" font-weight="700" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);pointer-events:none">${Math.round(pct * 100)}%</text>`;
             }
             angle += sweep;
         });
         return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block;margin:0 auto;animation:donutSpin 0.8s ease-out"><g>${paths}</g>${labels}
-            <text x="${cx}" y="${cy - 6}" text-anchor="middle" fill="var(--gray-800)" font-size="22" font-weight="900">${this.fmtNum(totalPlanchas)}</text>
-            <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="var(--gray-400)" font-size="10" font-weight="600">Planchas</text></svg>`;
+            <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--gray-800)" font-size="16" font-weight="900">${this.fmtNum(totalPlanchas)}</text>
+            <text x="${cx}" y="${cy + 10}" text-anchor="middle" fill="var(--gray-400)" font-size="8" font-weight="600">Planchas</text></svg>`;
     },
 
     heatmap(data, rowLabels, colLabels, w, h) {
@@ -427,7 +427,7 @@ const InvDashboard = {
                     </div>
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
-                        <div style="padding:16px;overflow-x:auto;flex:1">${this.donutChart(donutItems, 220, 220)}</div>
+                        <div style="padding:16px;overflow-x:auto;flex:1">${this.donutChart(donutItems, 180, 180)}</div>
                         <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:4px">
                             ${donutItems.map(d => `<span style="font-size:10px;color:var(--gray-700);display:flex;align-items:center;gap:4px;font-weight:500"><span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
                         </div>
