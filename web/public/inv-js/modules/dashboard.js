@@ -425,7 +425,7 @@ const InvDashboard = {
                 <div class="inv-dash-grid-3" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch">
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual de Planchas</div>
-                        <div style="padding:16px;overflow-x:auto;flex:1">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 400, 280, 'pl.')}</div>
+                        <div style="padding:16px 10px 16px 10px;overflow-x:auto;flex:1">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 400, 280, 'pl.')}</div>
                     </div>
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
