@@ -165,7 +165,7 @@ const InvDashboard = {
             : '';
         return `<div class="inv-kpi" style="animation-delay:${delay}ms">
             <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">${label}</div>
-            <div style="font-size:36px;font-weight:900;color:white;line-height:1">${value}<span style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.4);margin-left:4px">${suffix}</span></div>
+            <div class="kpi-val" style="font-size:36px;font-weight:900;color:white;line-height:1">${value}<span style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.4);margin-left:4px">${suffix}</span></div>
             ${trendHtml}${sparkHtml}</div>`;
     },
 
@@ -355,16 +355,20 @@ const InvDashboard = {
                         .inv-hero h2{font-size:16px!important}
                         .inv-kpis{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
                         .inv-kpi{min-width:100%!important;padding:10px!important}
-                        .inv-kpi div:last-child{font-size:12px!important}
                         .inv-dash-grid-3{grid-template-columns:1fr!important;gap:10px!important}
                         .inv-dash-grid-2{grid-template-columns:1fr!important;gap:10px!important}
                         .inv-dash-grid-3 .card,.inv-dash-grid-2 .card{min-height:auto!important;padding:0!important}
                         .inv-dash-grid-3 .card>div:first-child,.inv-dash-grid-2 .card>div:first-child{padding:10px 12px!important;font-size:11px!important}
                         .inv-dash-grid-3 .card>div:nth-child(2),.inv-dash-grid-2 .card>div:nth-child(2){padding:8px 10px!important}
-                        .inv-table{font-size:10px!important}
-                        .inv-table th,.inv-table td{padding:6px 4px!important}
+                        .inv-table{font-size:9px!important;margin-left:-4px}
+                        .inv-table th,.inv-table td{padding:5px 2px!important;white-space:nowrap}
+                        .inv-table th:last-child,.inv-table td:last-child{display:none}
                         .inv-ranking-cards{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
                         .inv-ranking-cards>div{min-width:100%!important;padding:12px!important}
+                        .inv-ranking-cards>div div[style*="font-size:10px"]{font-size:14px!important}
+                        .inv-ranking-cards>div div[style*="font-size:11px"]{font-size:14px!important}
+                        .inv-ranking-cards>div div[style*="font-size:14px"]{font-size:14px!important}
+                        .inv-ranking-cards>div div[style*="font-size:28px"]{font-size:22px!important}
                         .inv-alert{font-size:11px!important;padding:10px 12px!important}
                         .inv-heatmap-legend{font-size:10px!important;gap:6px!important}
                         .inv-heatmap-legend span{width:16px;height:10px!important}
@@ -470,7 +474,7 @@ const InvDashboard = {
 
                 <div class="card" style="overflow:hidden;margin-bottom:16px">
                     <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">${rankingTitle}</div>
-                    <div style="padding:0;overflow-x:auto;max-height:500px;overflow-y:auto">
+                    <div style="padding:0;overflow-x:auto;max-height:500px;overflow-y:auto;margin-left:-8px">
                         ${rankingFiltrado.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
                         '<table class="inv-table"><thead><tr>'
                         + '<th style="padding:12px 14px">#</th>'
