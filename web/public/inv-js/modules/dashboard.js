@@ -57,7 +57,8 @@ const InvDashboard = {
         const barH = Math.min(18, (h - 10) / items.length - 3);
         const labelW = 105;
         const barW = w - labelW - 55;
-        const svgH = items.length * (barH + 3) + 6;
+        const padTop = 20;
+        const svgH = padTop + items.length * (barH + 3) + 6;
         let defs = '';
         items.forEach((item, i) => {
             defs += `<linearGradient id="barGrad${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${item.color}" stop-opacity="0.9"/><stop offset="100%" stop-color="${item.color}" stop-opacity="0.5"/></linearGradient>`;
@@ -65,7 +66,7 @@ const InvDashboard = {
         return '<svg width="100%" viewBox="0 0 ' + w + ' ' + svgH + '" style="display:block;min-width:' + w + 'px">'
             + '<defs>' + defs + '</defs>'
             + items.map((item, i) => {
-                const y = i * (barH + 3) + 3;
+                const y = padTop + i * (barH + 3);
                 const bw = (item.value / max) * barW;
                 const shortLabel = item.label.length > 15 ? item.label.substring(0, 13) + '...' : item.label;
                 return `<text x="${labelW - 4}" y="${y + barH / 2 + 3}" text-anchor="end" fill="var(--gray-700)" font-size="9" font-weight="500">${shortLabel}</text>
