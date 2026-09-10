@@ -437,7 +437,7 @@ const InvDashboard = {
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material</div>
                         <div style="padding:16px;overflow-x:auto;flex:1">${this.hBarChart(barItems, '#3b82f6', 500, 340)}</div>
-                        <div style="height:22px"></div>
+                        <div style="height:14px"></div>
                     </div>
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Material × Mes</div>
