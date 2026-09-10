@@ -441,7 +441,7 @@ const InvDashboard = {
                     </div>
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
-                        <div style="padding:16px;overflow-x:auto;flex:1;display:flex;align-items:center;justify-content:center"><div style="width:340px;height:340px">${this.donutChart(donutItems, 340, 340)}</div></div>
+                        <div style="padding:16px;overflow-x:auto;flex:1;display:flex;align-items:center;justify-content:center"><div style="width:310px;height:310px">${this.donutChart(donutItems, 310, 310)}</div></div>
                         <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:4px">
                             ${donutItems.map(d => `<span style="font-size:12px;color:var(--gray-700);display:flex;align-items:center;gap:4px;font-weight:500"><span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
                         </div>
