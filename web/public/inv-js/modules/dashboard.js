@@ -251,7 +251,7 @@ const InvDashboard = {
         const barItems = Object.entries(porMaterial)
             .map(([key, m]) => ({ key, label: m.nombre + (m.espesor ? ' ' + m.espesor + 'mm' : ''), value: m.planchas, color: getColor(key), unit: 'pl.' }))
             .sort((a, b) => b.value - a.value)
-            .slice(0, 15);
+            .slice(0, 10);
 
         // ── Donut chart: top 5 materiales por planchas consumidas ──
         const consumoPorMat = {};
@@ -281,7 +281,7 @@ const InvDashboard = {
             heatTotals[key] = (heatTotals[key] || 0) + val;
         });
         const heatCols = [...heatMeses].sort().map(m => { const parts = m.split('-'); return monthNames[parseInt(parts[1])]; });
-        const heatRows = Object.entries(heatTotals).sort(([,a],[,b]) => b - a).slice(0, 15).map(([k]) => k);
+        const heatRows = Object.entries(heatTotals).sort(([,a],[,b]) => b - a).slice(0, 10).map(([k]) => k);
         const heatColsRaw = [...heatMeses].sort();
         const heatCells = [];
         heatRows.forEach((row, ri) => {
@@ -436,11 +436,11 @@ const InvDashboard = {
                 <div class="inv-dash-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch">
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material</div>
-                        <div style="padding:16px;overflow-x:auto;flex:1;display:flex;align-items:center">${this.hBarChart(barItems, '#3b82f6', 500, 380)}</div>
+                        <div style="padding:16px;overflow-x:auto;flex:1">${this.hBarChart(barItems, '#3b82f6', 500, 340)}</div>
                     </div>
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Material × Mes</div>
-                        <div style="padding:16px;overflow-x:auto;flex:1">${this.heatmap(heatCells, heatRows, heatCols, 700, 380)}</div>
+                        <div style="padding:16px;overflow-x:auto;flex:1">${this.heatmap(heatCells, heatRows, heatCols, 700, 340)}</div>
                         <div class="inv-heatmap-legend" style="padding:4px 16px 14px">
                             <strong style="color:var(--gray-700)">Escala:</strong>
                             <span style="background:#f0fdf4"></span> Bajo
