@@ -179,7 +179,7 @@ const InvDashboard = {
             { medal: '5', bg: 'linear-gradient(135deg,#f8fafc,#f1f5f9)', accent: '#64748b', bar: '#3b82f6', border: '#e2e8f0' }
         ];
         const c = configs[i] || configs[4];
-        return `<div style="flex:1;min-width:180px;background:${c.bg};border-radius:14px;padding:20px;border:1.5px solid ${c.border};position:relative;overflow:hidden;animation:kpiUp 0.5s ease ${i * 60}ms both">
+        return `<div class="inv-rank-card" style="flex:1;min-width:180px;background:${c.bg};border-radius:14px;padding:20px;border:1.5px solid ${c.border};position:relative;overflow:hidden;animation:kpiUp 0.5s ease ${i * 60}ms both">
             <div style="position:absolute;top:12px;right:14px;font-size:28px;opacity:0.7;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1))">${c.medal}</div>
             <div style="font-size:10px;font-weight:700;color:${c.accent};text-transform:uppercase;letter-spacing:0.08em;opacity:0.7;margin-bottom:12px">#${i + 1} Top Material</div>
             <div style="font-size:14px;font-weight:800;color:${c.accent};margin-bottom:2px;line-height:1.2">${r.nombre || r.codigo_mp}</div>
@@ -363,12 +363,15 @@ const InvDashboard = {
                         .inv-table{font-size:9px!important;margin-left:-4px}
                         .inv-table th,.inv-table td{padding:5px 2px!important;white-space:nowrap}
                         .inv-table th:last-child,.inv-table td:last-child{display:none}
-                        .inv-ranking-cards{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
-                        .inv-ranking-cards>div{min-width:100%!important;padding:12px!important}
-                        .inv-ranking-cards>div div[style*="font-size:10px"]{font-size:14px!important}
-                        .inv-ranking-cards>div div[style*="font-size:11px"]{font-size:14px!important}
-                        .inv-ranking-cards>div div[style*="font-size:14px"]{font-size:14px!important}
-                        .inv-ranking-cards>div div[style*="font-size:28px"]{font-size:22px!important}
+                        .inv-ranking-cards{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}
+                        .inv-ranking-cards>div{min-width:100%!important;padding:10px!important;border-radius:10px!important}
+                        .inv-rank-card{padding:10px!important;border-radius:10px!important}
+                        .inv-rank-card>div:first-child{font-size:20px!important;top:8px!important;right:10px!important}
+                        .inv-rank-card>div:nth-child(2){font-size:9px!important;margin-bottom:4px!important}
+                        .inv-rank-card>div:nth-child(3){font-size:12px!important;margin-bottom:1px!important}
+                        .inv-rank-card>div:nth-child(4){font-size:9px!important;margin-bottom:6px!important}
+                        .inv-rank-card>div:nth-child(5){font-size:22px!important;margin-bottom:2px!important}
+                        .inv-rank-card>div:nth-child(6){font-size:8px!important;margin-bottom:6px!important}
                         .inv-alert{font-size:11px!important;padding:10px 12px!important}
                         .inv-heatmap-legend{font-size:10px!important;gap:6px!important}
                         .inv-heatmap-legend span{width:16px;height:10px!important}
@@ -438,9 +441,9 @@ const InvDashboard = {
                     </div>
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
-                        <div style="padding:16px;overflow-x:auto;flex:1;display:flex;align-items:center;justify-content:center"><div style="width:360px;height:360px">${this.donutChart(donutItems, 360, 360)}</div></div>
+                        <div style="padding:16px;overflow-x:auto;flex:1;display:flex;align-items:center;justify-content:center"><div style="width:340px;height:340px">${this.donutChart(donutItems, 340, 340)}</div></div>
                         <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:4px">
-                            ${donutItems.map(d => `<span style="font-size:10px;color:var(--gray-700);display:flex;align-items:center;gap:4px;font-weight:500"><span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
+                            ${donutItems.map(d => `<span style="font-size:12px;color:var(--gray-700);display:flex;align-items:center;gap:4px;font-weight:500"><span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
                         </div>
                     </div>
                 </div>
