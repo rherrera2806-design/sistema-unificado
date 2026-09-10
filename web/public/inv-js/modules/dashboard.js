@@ -489,7 +489,7 @@ const InvDashboard = {
                                 + '<td style="font-weight:700;color:' + (i < 3 ? 'var(--warning)' : 'var(--gray-400)') + '">' + medal + '</td>'
                                 + '<td style="font-weight:600;color:var(--gray-800)">' + (r.nombre || r.codigo_mp) + '</td>'
                                 + '<td>' + (r.espesor_mm || '') + '</td>'
-                                + '<td style="text-align:right;font-weight:700;color:var(--danger)">' + Number(r.m2_salidos).toFixed(2) + '</td>'
+                                + '<td style="text-align:right;font-weight:700;color:var(--danger)">' + Math.round(r.m2_salidos) + '</td>'
                                 + '<td style="text-align:right;font-weight:600">' + InvDashboard.fmtKg(r.kg_salidos) + '</td>'
                                 + '<td style="text-align:right;font-weight:600">' + r.planchas_salidas + '</td>'
                                 + '<td><div style="height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden;width:100%"><div style="width:' + pct + '%;background:var(--danger);height:100%;border-radius:3px;animation:barGrow 0.6s ease ' + (i * 60) + 'ms both"></div></div></td>'
