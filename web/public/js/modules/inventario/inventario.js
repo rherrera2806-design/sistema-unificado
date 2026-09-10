@@ -9,20 +9,36 @@ const InvInventario = {
             const items = await api.inv().getInventario();
             this.allItems = items;
             page.innerHTML = `
+                <style>
+                    .inv-filter-btn{padding:5px 12px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white!important;color:#64748b!important;cursor:pointer;transition:all 0.15s}
+                    .inv-filter-btn:hover{border-color:#93c5fd;color:#3b82f6!important;background:#eff6ff!important}
+                    .inv-filter-btn.active{background:linear-gradient(135deg,#1e40af,#2563eb)!important;color:white!important;border-color:#1e40af!important;box-shadow:0 2px 8px rgba(30,64,175,0.3)}
+                    @media(max-width:768px){
+                        .inv-actions .btn{height:40px;min-height:40px;flex:1;font-size:12px}
+                        .inv-filters-wrap{flex-direction:column}
+                        .inv-filters-wrap>div{width:100%}
+                    }
+                </style>
                 <div class="m-page">
-                    <div class="m-hero">
+                    <div class="m-hero" style="padding:10px 14px">
                         <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-                        <div class="m-hero-inner">
-                            <div class="m-hero-title">
-                                <h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Inventario</h2>
-                                <p style="margin:4px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p>
+                        <div style="position:relative;z-index:1">
+                            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+                                <div>
+                                    <h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Inventario</h2>
+                                    <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p>
+                                </div>
+                                <div class="inv-actions" style="display:flex;gap:6px">
+                                    <button onclick="InvInventario.exportarExcel()" class="btn btn-sm" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:5px 12px;font-size:11px;border-radius:8px">Exportar</button>
+                                    <button onclick="window.print()" class="btn btn-sm" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:5px 12px;font-size:11px;border-radius:8px">Imprimir</button>
+                                </div>
                             </div>
-                            <div class="m-filters" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                            <div class="inv-filters-wrap" style="display:flex;gap:8px;margin-top:8px;align-items:center">
                                 <div style="position:relative;flex:1;min-width:0">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                    <input type="text" id="invSearch" placeholder="Buscar por codigo, tipo o espesor..." oninput="InvInventario.buscar(this.value)" style="width:100%;padding:7px 10px 7px 30px;font-size:12px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;box-sizing:border-box;outline:none;background:rgba(255,255,255,0.1);color:white" onfocus="this.style.borderColor='rgba(255,255,255,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.2)'">
+                                    <input type="text" id="invSearch" placeholder="Buscar por codigo, tipo o espesor..." oninput="InvInventario.buscar(this.value)" style="width:100%;padding:10px 12px 10px 30px;font-size:13px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;box-sizing:border-box;outline:none;background:rgba(255,255,255,0.1);color:white" onfocus="this.style.borderColor='rgba(255,255,255,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.2)'">
                                 </div>
-                                <div style="display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:4px 8px">
+                                <div style="display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:5px 10px">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                     <span style="font-size:10px;color:rgba(255,255,255,0.7);white-space:nowrap">Auton. ≥</span>
                                     <input type="number" id="invAutonomiaFilter" placeholder="meses" min="0" step="0.5" style="width:50px;padding:3px 4px;font-size:11px;border:none;background:transparent;color:white;outline:none;text-align:center" oninput="InvInventario.filtrarAutonomia(this.value)">
@@ -31,16 +47,11 @@ const InvInventario = {
                         </div>
                     </div>
 
-                    <div class="m-actions">
-                        <button onclick="InvInventario.exportarExcel()" class="btn btn-success btn-sm">Exportar Excel</button>
-                        <button onclick="window.print()" class="btn btn-outline btn-sm">Imprimir</button>
-                    </div>
-
-                    <div class="m-card">
-                        <div class="m-card-header">
-                            <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">Inventario Actual <span id="invCountLabel" style="color:var(--gray-500);font-weight:400;font-size:13px">(${items.length} tipos)</span></h3>
+                    <div class="m-card" style="margin-top:10px">
+                        <div class="m-card-header" style="padding:6px 12px">
+                            <h3 style="margin:0;font-size:12px;font-weight:600;color:#1e293b">Inventario Actual <span id="invCountLabel" style="color:var(--gray-500);font-weight:400;font-size:11px">(${items.length} tipos)</span></h3>
                         </div>
-                        <div class="m-card-body">
+                        <div class="m-card-body" style="padding:8px 12px">
                             <div id="invTableWrap"></div>
                             <div id="invCards" class="m-cards-mobile"></div>
                         </div>
