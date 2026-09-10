@@ -423,13 +423,13 @@ const InvDashboard = {
                 <div class="inv-dash-grid-3" style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
                     <div class="card" style="grid-column:1/3;overflow:hidden">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual de Planchas</div>
-                        <div style="padding:16px">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 600, 220, 'pl.')}</div>
+                        <div style="padding:12px 16px">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 500, 160, 'pl.')}</div>
                     </div>
                     <div class="card" style="overflow:hidden">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
-                        <div style="padding:16px">${this.donutChart(donutItems, 260, 200)}</div>
-                        <div style="padding:0 16px 14px;display:flex;flex-wrap:wrap;gap:6px">
-                            ${donutItems.map(d => `<span style="font-size:12px;color:var(--gray-700);display:flex;align-items:center;gap:6px;font-weight:500"><span style="width:12px;height:12px;border-radius:3px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
+                        <div style="padding:12px 16px">${this.donutChart(donutItems, 200, 150)}</div>
+                        <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:4px">
+                            ${donutItems.map(d => `<span style="font-size:10px;color:var(--gray-700);display:flex;align-items:center;gap:4px;font-weight:500"><span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
                         </div>
                     </div>
                 </div>
