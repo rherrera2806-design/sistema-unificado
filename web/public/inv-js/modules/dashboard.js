@@ -21,7 +21,7 @@ const InvDashboard = {
 
     lineChart(data, labels, color, w, h, unit) {
         if (!data || data.length < 2) return '<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:12px">Sin datos</div>';
-        const pad = { t: 15, r: 15, b: 25, l: 65 };
+        const pad = { t: 15, r: 15, b: 25, l: 80 };
         const cw = w - pad.l - pad.r;
         const ch = h - pad.t - pad.b;
         const max = Math.max(...data) * 1.1 || 1;
@@ -423,7 +423,7 @@ const InvDashboard = {
                 <div class="inv-dash-grid-3" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch">
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual de Planchas</div>
-                        <div style="padding:16px;overflow-x:auto;flex:1">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 500, 340, 'pl.')}</div>
+                        <div style="padding:16px;overflow-x:auto;flex:1">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 400, 280, 'pl.')}</div>
                     </div>
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
