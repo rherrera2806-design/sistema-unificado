@@ -54,10 +54,10 @@ const InvDashboard = {
     hBarChart(items, color, w, h) {
         if (!items.length) return '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>';
         const max = Math.max(...items.map(i => i.value)) || 1;
-        const barH = Math.min(22, (h - 10) / items.length - 3);
-        const labelW = 110;
-        const barW = w - labelW - 60;
-        const svgH = items.length * (barH + 3) + 8;
+        const barH = Math.min(18, (h - 10) / items.length - 3);
+        const labelW = 105;
+        const barW = w - labelW - 55;
+        const svgH = items.length * (barH + 3) + 6;
         let defs = '';
         items.forEach((item, i) => {
             defs += `<linearGradient id="barGrad${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${item.color}" stop-opacity="0.9"/><stop offset="100%" stop-color="${item.color}" stop-opacity="0.5"/></linearGradient>`;
@@ -65,12 +65,12 @@ const InvDashboard = {
         return '<svg width="100%" viewBox="0 0 ' + w + ' ' + svgH + '" style="display:block;min-width:' + w + 'px">'
             + '<defs>' + defs + '</defs>'
             + items.map((item, i) => {
-                const y = i * (barH + 3) + 4;
+                const y = i * (barH + 3) + 3;
                 const bw = (item.value / max) * barW;
-                const shortLabel = item.label.length > 16 ? item.label.substring(0, 14) + '...' : item.label;
-                return `<text x="${labelW - 5}" y="${y + barH / 2 + 3}" text-anchor="end" fill="var(--gray-700)" font-size="10" font-weight="500">${shortLabel}</text>
+                const shortLabel = item.label.length > 15 ? item.label.substring(0, 13) + '...' : item.label;
+                return `<text x="${labelW - 4}" y="${y + barH / 2 + 3}" text-anchor="end" fill="var(--gray-700)" font-size="9" font-weight="500">${shortLabel}</text>
                     <rect class="inv-bar-rect" x="${labelW}" y="${y}" width="${bw}" height="${barH}" rx="3" fill="url(#barGrad${i})" opacity="0.85" style="animation:barGrow 0.8s ease ${i * 50}ms both"/>
-                    <text x="${labelW + bw + 5}" y="${y + barH / 2 + 3}" fill="var(--gray-600)" font-size="10" font-weight="500">${this.fmtNum(item.value)} ${item.unit || ''}</text>`;
+                    <text x="${labelW + bw + 4}" y="${y + barH / 2 + 3}" fill="var(--gray-600)" font-size="9" font-weight="500">${this.fmtNum(item.value)} ${item.unit || ''}</text>`;
             }).join('') + '</svg>';
     },
 
