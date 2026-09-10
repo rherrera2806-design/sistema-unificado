@@ -10,17 +10,28 @@ const InvInventario = {
             this.allItems = items;
             page.innerHTML = `
                 <style>
+                    .inv-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+                    .inv-stat{background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;border-left:4px solid var(--gray-300);display:flex;flex-direction:column;align-items:center;text-align:center}
+                    .inv-stat-value{font-size:18px;font-weight:800}
+                    .inv-stat-label{font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase}
                     .inv-filter-btn{padding:5px 12px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white!important;color:#64748b!important;cursor:pointer;transition:all 0.15s}
                     .inv-filter-btn:hover{border-color:#93c5fd;color:#3b82f6!important;background:#eff6ff!important}
                     .inv-filter-btn.active{background:linear-gradient(135deg,#1e40af,#2563eb)!important;color:white!important;border-color:#1e40af!important;box-shadow:0 2px 8px rgba(30,64,175,0.3)}
                     @media(max-width:768px){
+                        .inv-stats{grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+                        .inv-stat{padding:8px 10px}
+                        .inv-stat-value{font-size:16px}
+                        .inv-stat-label{font-size:8px}
                         .inv-actions .btn{height:40px;min-height:40px;flex:1;font-size:12px}
                         .inv-filters-wrap{flex-direction:column}
                         .inv-filters-wrap>div{width:100%}
+                        .m-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}
+                        .m-card-header{padding:8px 12px!important}
+                        .m-card-body{padding:10px 12px!important}
                     }
                 </style>
                 <div class="m-page">
-                    <div class="m-hero" style="padding:10px 14px">
+                    <div class="m-hero" style="padding:8px 16px">
                         <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
                         <div style="position:relative;z-index:1">
                             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
@@ -47,18 +58,52 @@ const InvInventario = {
                         </div>
                     </div>
 
-                    <div class="m-card" style="margin-top:10px">
-                        <div class="m-card-header" style="padding:6px 12px">
+                    <div class="inv-stats" id="invStats"></div>
+
+                    <div class="m-card">
+                        <div class="m-card-header">
                             <h3 style="margin:0;font-size:12px;font-weight:600;color:#1e293b">Inventario Actual <span id="invCountLabel" style="color:var(--gray-500);font-weight:400;font-size:11px">(${items.length} tipos)</span></h3>
                         </div>
-                        <div class="m-card-body" style="padding:8px 12px">
+                        <div class="m-card-body">
                             <div id="invTableWrap"></div>
                             <div id="invCards" class="m-cards-mobile"></div>
                         </div>
                     </div>
                 </div>`;
+            this.renderStats(items);
             this.renderTabla(items);
         } catch(err) { page.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`; }
+    },
+
+    renderStats(items) {
+        const statsEl = document.getElementById('invStats');
+        if (!statsEl) return;
+        const totalStock = items.reduce((sum, i) => sum + (i.stock || 0), 0);
+        const stockBajo = items.filter(i => (i.autonomia_meses || 0) < 2 && (i.stock || 0) > 0).length;
+        const sinStock = items.filter(i => (i.stock || 0) <= 0).length;
+        const totalM2 = items.reduce((sum, i) => sum + ((i.m2_entradas || 0) - (i.m2_salidas || 0)), 0);
+        const tipos = items.length;
+        statsEl.innerHTML = `
+            <div class="inv-stat" style="border-left-color:#1e40af">
+                <div class="inv-stat-value" style="color:#1e40af">${tipos}</div>
+                <div class="inv-stat-label">Tipos</div>
+            </div>
+            <div class="inv-stat" style="border-left-color:#22c55e">
+                <div class="inv-stat-value" style="color:#22c55e">${totalStock}</div>
+                <div class="inv-stat-label">Stock Total</div>
+            </div>
+            <div class="inv-stat" style="border-left-color:#f59e0b">
+                <div class="inv-stat-value" style="color:#f59e0b">${stockBajo}</div>
+                <div class="inv-stat-label">Stock Bajo</div>
+            </div>
+            <div class="inv-stat" style="border-left-color:#dc2626">
+                <div class="inv-stat-value" style="color:#dc2626">${sinStock}</div>
+                <div class="inv-stat-label">Sin Stock</div>
+            </div>
+            <div class="inv-stat" style="border-left-color:#8b5cf6">
+                <div class="inv-stat-value" style="color:#8b5cf6">${totalM2.toFixed(1)}</div>
+                <div class="inv-stat-label">m² Total</div>
+            </div>`;
     },
 
     renderRows(items) {
@@ -133,13 +178,13 @@ const InvInventario = {
             const sc = stock > 0 ? '#22c55e' : '#ef4444';
             const autoColor = stock <= 0 ? '#dc2626' : autonomia < 2 ? '#f59e0b' : '#22c55e';
             const autoLabel = stock <= 0 ? 'SIN STOCK' : autonomia < 1 ? '< 1 mes' : autonomia + ' meses';
-            return '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + sc + '">'
-                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-                + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + (i.codigo_mp || '-') + '</span>'
-                + '<span style="font-size:18px;font-weight:800;color:' + sc + '">' + stock + '</span></div>'
-                + '<div style="font-size:14px;color:#475569;margin-bottom:4px;font-weight:500">' + (i.tipo_cristal || '-') + ' ' + (i.espesor || 0) + 'mm</div>'
-                + '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</div>'
-                + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;color:#64748b">'
+            return '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + sc + ';display:flex;flex-direction:column;gap:4px">'
+                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+                + '<span style="font-weight:700;color:#0f172a;font-size:13px">' + (i.codigo_mp || '-') + '</span>'
+                + '<span style="font-size:16px;font-weight:800;color:' + sc + '">' + stock + '</span></div>'
+                + '<div style="font-size:12px;color:#475569;font-weight:500">' + (i.tipo_cristal || '-') + ' ' + (i.espesor || 0) + 'mm</div>'
+                + '<div style="font-size:10px;color:#64748b">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</div>'
+                + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:10px;color:#64748b;margin-top:2px">'
                 + '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
                 + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>'
                 + '<span>m2: <strong>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + '</strong></span>'
