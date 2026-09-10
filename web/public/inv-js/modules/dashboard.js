@@ -21,7 +21,7 @@ const InvDashboard = {
 
     lineChart(data, labels, color, w, h, unit) {
         if (!data || data.length < 2) return '<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:12px">Sin datos</div>';
-        const pad = { t: 15, r: 15, b: 25, l: 120 };
+        const pad = { t: 15, r: 15, b: 25, l: 65 };
         const cw = w - pad.l - pad.r;
         const ch = h - pad.t - pad.b;
         const max = Math.max(...data) * 1.1 || 1;
