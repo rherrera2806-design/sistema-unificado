@@ -423,11 +423,11 @@ const InvDashboard = {
                 <div class="inv-dash-grid-3" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch">
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual de Planchas</div>
-                        <div style="padding:16px;flex:1;display:flex;align-items:center">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 500, 340, 'pl.')}</div>
+                        <div style="padding:16px;overflow-x:auto;flex:1">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 500, 340, 'pl.')}</div>
                     </div>
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
-                        <div style="padding:16px;flex:1;display:flex;align-items:center;justify-content:center">${this.donutChart(donutItems, 220, 220)}</div>
+                        <div style="padding:16px;overflow-x:auto;flex:1">${this.donutChart(donutItems, 220, 220)}</div>
                         <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:4px">
                             ${donutItems.map(d => `<span style="font-size:10px;color:var(--gray-700);display:flex;align-items:center;gap:4px;font-weight:500"><span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
                         </div>
