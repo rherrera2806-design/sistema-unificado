@@ -356,13 +356,18 @@ const InvDashboard = {
                         .inv-kpis{flex-direction:column!important}
                         .inv-kpi{min-width:100%!important;padding:14px!important}
                         .inv-kpi div:last-child{font-size:12px!important}
-                        .inv-dash-grid-3{grid-template-columns:1fr!important}
-                        .inv-dash-grid-2{grid-template-columns:1fr!important}
-                        .inv-table{font-size:11px!important}
-                        .inv-table th,.inv-table td{padding:8px 6px!important}
+                        .inv-dash-grid-3{grid-template-columns:1fr!important;gap:10px!important}
+                        .inv-dash-grid-2{grid-template-columns:1fr!important;gap:10px!important}
+                        .inv-dash-grid-3 .card,.inv-dash-grid-2 .card{min-height:auto!important;padding:0!important}
+                        .inv-dash-grid-3 .card>div:first-child,.inv-dash-grid-2 .card>div:first-child{padding:10px 12px!important;font-size:11px!important}
+                        .inv-dash-grid-3 .card>div:nth-child(2),.inv-dash-grid-2 .card>div:nth-child(2){padding:8px 10px!important}
+                        .inv-table{font-size:10px!important}
+                        .inv-table th,.inv-table td{padding:6px 4px!important}
                         .inv-ranking-cards{flex-direction:column!important}
                         .inv-ranking-cards>div{min-width:100%!important}
                         .inv-alert{font-size:11px!important;padding:10px 12px!important}
+                        .inv-heatmap-legend{font-size:10px!important;gap:6px!important}
+                        .inv-heatmap-legend span{width:16px;height:10px!important}
                     }
                 </style>
 
