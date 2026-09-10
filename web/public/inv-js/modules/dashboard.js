@@ -421,11 +421,11 @@ const InvDashboard = {
                 </div>` : ''}
 
                 <div class="inv-dash-grid-3" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch">
-                    <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
+                    <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual de Planchas</div>
                         <div style="padding:16px;overflow-x:auto;flex:1">${this.lineChart(planchasArr, lineLabels, '#3b82f6', 500, 340, 'pl.')}</div>
                     </div>
-                    <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
+                    <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
                         <div style="padding:16px;overflow-x:auto;flex:1">${this.donutChart(donutItems, 220, 220)}</div>
                         <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:4px">
@@ -435,12 +435,12 @@ const InvDashboard = {
                 </div>
 
                 <div class="inv-dash-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch">
-                    <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
+                    <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material</div>
                         <div style="padding:16px;overflow-x:auto;flex:1">${this.hBarChart(barItems, '#3b82f6', 500, 340)}</div>
                         <div style="height:40px"></div>
                     </div>
-                    <div class="card" style="overflow:hidden;display:flex;flex-direction:column">
+                    <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Heatmap: Planchas por Material × Mes</div>
                         <div style="padding:16px;overflow-x:auto;flex:1">${this.heatmap(heatCells, heatRows, heatCols, 700, 340)}</div>
                         <div class="inv-heatmap-legend" style="padding:4px 16px 14px">
