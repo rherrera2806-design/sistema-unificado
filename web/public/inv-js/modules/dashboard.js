@@ -22,23 +22,25 @@ const InvDashboard = {
     lineChart(data, labels, color, w, h, unit) {
         if (!data || data.length < 2) return '<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:12px">Sin datos</div>';
         const pad = { t: 15, r: 15, b: 25, l: 65 };
-        const cw = w - pad.l - pad.r;
+        const gapY = 20;
+        const chartL = pad.l + gapY;
+        const cw = w - chartL - pad.r;
         const ch = h - pad.t - pad.b;
         const max = Math.max(...data) * 1.1 || 1;
         const step = cw / (data.length - 1);
-        const pts = data.map((v, i) => (pad.l + i * step).toFixed(1) + ',' + (pad.t + ch - (v / max) * ch).toFixed(1));
-        const area = pad.l + ',' + (pad.t + ch) + ' ' + pts.join(' ') + ' ' + (pad.l + cw) + ',' + (pad.t + ch);
+        const pts = data.map((v, i) => (chartL + i * step).toFixed(1) + ',' + (pad.t + ch - (v / max) * ch).toFixed(1));
+        const area = chartL + ',' + (pad.t + ch) + ' ' + pts.join(' ') + ' ' + (chartL + cw) + ',' + (pad.t + ch);
         const yTicks = 5;
         let grid = '';
         for (let i = 0; i <= yTicks; i++) {
             const y = pad.t + (ch / yTicks) * i;
             const val = Math.round(max - (max / yTicks) * i);
-            grid += `<line x1="${pad.l}" y1="${y}" x2="${pad.l + cw}" y2="${y}" stroke="var(--gray-100)" stroke-width="1"/>`;
+            grid += `<line x1="${chartL}" y1="${y}" x2="${chartL + cw}" y2="${y}" stroke="var(--gray-100)" stroke-width="1"/>`;
             grid += `<text x="${pad.l - 6}" y="${y + 3}" text-anchor="end" fill="var(--gray-400)" font-size="8">${this.fmtNum(val)}</text>`;
         }
         let xLabels = '';
         data.forEach((v, i) => {
-            const x = pad.l + i * step;
+            const x = chartL + i * step;
             xLabels += `<text x="${x}" y="${pad.t + ch + 14}" text-anchor="middle" fill="var(--gray-500)" font-size="8">${labels[i]}</text>`;
             xLabels += `<circle cx="${x}" cy="${(pad.t + ch - (v / max) * ch).toFixed(1)}" r="3" fill="${color}" stroke="white" stroke-width="1.5"/>`;
             xLabels += `<text x="${x}" y="${(pad.t + ch - (v / max) * ch - 8).toFixed(1)}" text-anchor="middle" fill="var(--gray-700)" font-size="8" font-weight="500">${this.fmtNum(v)}</text>`;
