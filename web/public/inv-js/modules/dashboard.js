@@ -21,7 +21,7 @@ const InvDashboard = {
 
     lineChart(data, labels, color, w, h, unit) {
         if (!data || data.length < 2) return '<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:12px">Sin datos</div>';
-        const pad = { t: 15, r: 15, b: 25, l: 40 };
+        const pad = { t: 15, r: 15, b: 25, l: 55 };
         const cw = w - pad.l - pad.r;
         const ch = h - pad.t - pad.b;
         const max = Math.max(...data) * 1.1 || 1;
@@ -106,13 +106,13 @@ const InvDashboard = {
                 const midRad = ((angle + sweep / 2) * Math.PI) / 180;
                 const lx = cx + labelR * Math.cos(midRad);
                 const ly = cy + labelR * Math.sin(midRad);
-                labels += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" fill="white" font-size="9" font-weight="700" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);pointer-events:none">${Math.round(pct * 100)}%</text>`;
+                labels += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="middle" fill="white" font-size="6" font-weight="700" style="text-shadow:0 1px 3px rgba(0,0,0,0.3);pointer-events:none">${Math.round(pct * 100)}%</text>`;
             }
             angle += sweep;
         });
         return `<svg width="100%" viewBox="0 0 ${w} ${h}" style="display:block;margin:0 auto;animation:donutSpin 0.8s ease-out"><g>${paths}</g>${labels}
-            <text x="${cx}" y="${cy - 4}" text-anchor="middle" fill="var(--gray-800)" font-size="16" font-weight="900">${this.fmtNum(totalPlanchas)}</text>
-            <text x="${cx}" y="${cy + 10}" text-anchor="middle" fill="var(--gray-400)" font-size="8" font-weight="600">Planchas</text></svg>`;
+            <text x="${cx}" y="${cy - 3}" text-anchor="middle" fill="var(--gray-800)" font-size="10" font-weight="900">${this.fmtNum(totalPlanchas)}</text>
+            <text x="${cx}" y="${cy + 7}" text-anchor="middle" fill="var(--gray-400)" font-size="6" font-weight="600">Planchas</text></svg>`;
     },
 
     heatmap(data, rowLabels, colLabels, w, h) {
@@ -427,7 +427,7 @@ const InvDashboard = {
                     </div>
                     <div class="card" style="overflow:hidden;display:flex;flex-direction:column;min-height:420px">
                         <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo por Material (Planchas)</div>
-                        <div style="padding:16px;overflow-x:auto;flex:1;display:flex;align-items:center;justify-content:center">${this.donutChart(donutItems, 100, 100)}</div>
+                        <div style="padding:16px;overflow-x:auto;flex:1;display:flex;align-items:center;justify-content:center">${this.donutChart(donutItems, 70, 70)}</div>
                         <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:4px">
                             ${donutItems.map(d => `<span style="font-size:10px;color:var(--gray-700);display:flex;align-items:center;gap:4px;font-weight:500"><span style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.color}"></span>${d.label}</span>`).join('')}
                         </div>
