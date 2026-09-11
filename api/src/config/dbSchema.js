@@ -488,23 +488,32 @@ async function initDB() {
     if (Number(diasCount.rows[0].c) === 0) {
         const instResult = await query('SELECT id, fecha_programada, duracion_dias, estado FROM instalaciones');
         for (const inst of instResult.rows) {
-            const duracion = Math.max(1, parseInt(inst.duracion_dias) || 1);
-            const fechaInicio = new Date(inst.fecha_programada + 'T12:00:00');
-            let current = new Date(fechaInicio);
-            let diaNum = 1;
-            let diasCreados = 0;
-            while (diasCreados < duracion) {
-                const dow = current.getDay();
-                if (dow !== 0 && dow !== 6) {
-                    const fecha = current.toISOString().split('T')[0];
-                    await query(
-                        'INSERT INTO instalaciones_dias (instalacion_id, fecha, dia_numero, estado) VALUES ($1, $2, $3, $4)',
-                        [inst.id, fecha, diaNum, inst.estado || 'PROGRAMADA']
-                    );
-                    diaNum++;
-                    diasCreados++;
+            try {
+                const duracion = Math.max(1, parseInt(inst.duracion_dias) || 1);
+                const fechaStr = String(inst.fecha_programada).substring(0, 10);
+                const parts = fechaStr.split('-');
+                const fechaInicio = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                let current = new Date(fechaInicio);
+                let diaNum = 1;
+                let diasCreados = 0;
+                while (diasCreados < duracion) {
+                    const dow = current.getDay();
+                    if (dow !== 0 && dow !== 6) {
+                        const yyyy = current.getFullYear();
+                        const mm = String(current.getMonth() + 1).padStart(2, '0');
+                        const dd = String(current.getDate()).padStart(2, '0');
+                        const fecha = `${yyyy}-${mm}-${dd}`;
+                        await query(
+                            'INSERT INTO instalaciones_dias (instalacion_id, fecha, dia_numero, estado) VALUES ($1, $2, $3, $4)',
+                            [inst.id, fecha, diaNum, inst.estado || 'PROGRAMADA']
+                        );
+                        diaNum++;
+                        diasCreados++;
+                    }
+                    current.setDate(current.getDate() + 1);
                 }
-                current.setDate(current.getDate() + 1);
+            } catch(e) {
+                console.error('[PROD] Error migrando instalación', inst.id, e.message);
             }
         }
         console.log('[PROD] Días de instalaciones migrados:', instResult.rows.length);
