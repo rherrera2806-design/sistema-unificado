@@ -2,6 +2,7 @@ App.registerModule('inst_reporte', {
     reportData: null,
     charts: {},
     anio: new Date().getFullYear(),
+    _chartTimer: null,
 
     async render() {
         const el = document.getElementById('page-inst_reporte');
@@ -65,8 +66,9 @@ App.registerModule('inst_reporte', {
             const res = await fetch(`/api/instalaciones/reporte?anio=${this.anio}`, { headers });
             this.reportData = await res.json();
             this.renderKpis();
-            this.renderCharts();
             this.renderTabla();
+            if (this._chartTimer) clearTimeout(this._chartTimer);
+            this._chartTimer = setTimeout(() => this.renderCharts(), 100);
         } catch (e) { console.error('Error reporte:', e); }
     },
 
@@ -87,6 +89,7 @@ App.registerModule('inst_reporte', {
     },
 
     renderCharts() {
+        if (typeof Chart === 'undefined') { console.warn('Chart.js no disponible'); return; }
         Object.values(this.charts).forEach(c => c.destroy());
         this.charts = {};
 
