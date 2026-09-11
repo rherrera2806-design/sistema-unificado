@@ -160,7 +160,7 @@ router.put('/api/instalaciones/dias/:diaId/estado', canUpdate, async (req, res, 
 router.get('/api/instalaciones/reporte', canView, async (req, res, next) => {
     const anio = parseInt(req.query.anio) || new Date().getFullYear();
     try { res.json(await instalaciones.getReporte(anio)); }
-    catch (e) { next(e); }
+    catch (e) { console.error('[REPORTE ERROR]', e.message, e.stack); res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

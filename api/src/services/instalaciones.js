@@ -250,33 +250,45 @@ const getDia = async (diaId) => {
 };
 
 const getReporte = async (anio) => {
-    const result = await query(
-        `SELECT 
-            EXTRACT(MONTH FROM fecha_programada) as mes,
-            COUNT(*) as total,
-            COUNT(*) FILTER (WHERE estado = 'PROGRAMADA') as programadas,
-            COUNT(*) FILTER (WHERE estado IN ('EN_CAMINO','EN_CURSO')) as en_curso,
-            COUNT(*) FILTER (WHERE estado = 'COMPLETADA') as completadas,
-            COUNT(*) FILTER (WHERE estado = 'CON_NOVEDADES') as novedades,
-            COUNT(*) FILTER (WHERE estado = 'CANCELADA') as canceladas,
-            tecnico,
-            vendedor
-         FROM instalaciones
-         WHERE EXTRACT(YEAR FROM fecha_programada) = $1
-         GROUP BY EXTRACT(MONTH FROM fecha_programada), tecnico, vendedor
-         ORDER BY mes`,
-        [anio]
-    );
+    let result;
+    try {
+        result = await query(
+            `SELECT 
+                EXTRACT(MONTH FROM fecha_programada) as mes,
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE estado = 'PROGRAMADA') as programadas,
+                COUNT(*) FILTER (WHERE estado IN ('EN_CAMINO','EN_CURSO')) as en_curso,
+                COUNT(*) FILTER (WHERE estado = 'COMPLETADA') as completadas,
+                COUNT(*) FILTER (WHERE estado = 'CON_NOVEDADES') as novedades,
+                COUNT(*) FILTER (WHERE estado = 'CANCELADA') as canceladas,
+                tecnico,
+                vendedor
+             FROM instalaciones
+             WHERE EXTRACT(YEAR FROM fecha_programada) = $1
+             GROUP BY EXTRACT(MONTH FROM fecha_programada), tecnico, vendedor
+             ORDER BY mes`,
+            [anio]
+        );
+    } catch(e) {
+        console.error('[REPORTE] Error main query:', e.message);
+        result = { rows: [] };
+    }
 
-    const tipoResult = await query(
-        `SELECT 
-            COALESCE(tipo, 'INSTALACION') as tipo,
-            COUNT(*)::int as total
-         FROM instalaciones
-         WHERE EXTRACT(YEAR FROM fecha_programada) = $1
-         GROUP BY tipo`,
-        [anio]
-    );
+    let tipoResult;
+    try {
+        tipoResult = await query(
+            `SELECT 
+                COALESCE(tipo, 'INSTALACION') as tipo,
+                COUNT(*)::int as total
+             FROM instalaciones
+             WHERE EXTRACT(YEAR FROM fecha_programada) = $1
+             GROUP BY tipo`,
+            [anio]
+        );
+    } catch(tipoErr) {
+        console.error('[REPORTE] Error querying tipo:', tipoErr.message);
+        tipoResult = { rows: [{ tipo: 'INSTALACION', total: result.rows.reduce((s,r) => s + parseInt(r.total), 0) }] };
+    }
 
     const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     
