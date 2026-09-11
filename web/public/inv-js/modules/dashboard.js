@@ -70,7 +70,7 @@ const InvDashboard = {
             + items.map((item, i) => {
                 const y = padTop + i * (barH + 3);
                 const bw = (item.value / max) * barW;
-                const shortLabel = item.label.length > 15 ? item.label.substring(0, 13) + '...' : item.label;
+                const shortLabel = item.label.substring(0, 4);
                 return `<text x="${labelW - 4}" y="${y + barH / 2 + 3}" text-anchor="end" fill="var(--gray-700)" font-size="9" font-weight="500">${shortLabel}</text>
                     <rect class="inv-bar-rect" x="${labelW}" y="${y}" width="${bw}" height="${barH}" rx="3" fill="url(#barGrad${i})" opacity="0.85" style="animation:barGrow 0.8s ease ${i * 50}ms both"/>
                     <text x="${labelW + bw + 4}" y="${y + barH / 2 + 3}" fill="var(--gray-600)" font-size="9" font-weight="500">${this.fmtNum(item.value)} ${item.unit || ''}</text>`;
