@@ -206,7 +206,6 @@ const editarDia = async (diaId, data, userEmail) => {
 };
 
 const eliminarDia = async (diaId, userEmail) => {
-    await query('DELETE FROM instalaciones_fotos WHERE instalacion_dia_id = $1', [diaId]);
     await query('DELETE FROM instalaciones_dias WHERE id = $1', [diaId]);
 };
 

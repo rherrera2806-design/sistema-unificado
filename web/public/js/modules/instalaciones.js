@@ -226,7 +226,9 @@ App.registerModule('instalaciones', {
                 const dias = this.diasMap[inst.id] || [];
                 const diaEncontrado = dias.find(dia => {
                     if (!dia.fecha) return false;
-                    const fechaDia = String(dia.fecha).substring(0, 10);
+                    const fechaDia = dia.fecha instanceof Date
+                        ? dia.fecha.toISOString().substring(0, 10)
+                        : String(dia.fecha).substring(0, 10);
                     return fechaDia === fs;
                 });
                 if (diaEncontrado) {
