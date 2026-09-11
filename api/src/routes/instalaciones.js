@@ -44,6 +44,12 @@ router.get('/api/instalaciones/dashboard', canView, async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.get('/api/instalaciones/reporte', canView, async (req, res, next) => {
+    const anio = parseInt(req.query.anio) || new Date().getFullYear();
+    try { res.json(await instalaciones.getReporte(anio)); }
+    catch (e) { console.error('[REPORTE ERROR]', e.message); res.status(500).json({ error: e.message }); }
+});
+
 router.post('/api/instalaciones', canCreate, async (req, res, next) => {
     const { cliente, direccion, fecha_programada } = req.body;
     if (!cliente || !direccion || !fecha_programada) return res.status(400).json({ error: 'Cliente, dirección y fecha requeridos' });
@@ -155,12 +161,6 @@ router.put('/api/instalaciones/dias/:diaId/estado', canUpdate, async (req, res, 
         await instalaciones.cambiarEstadoDia(Number(req.params.diaId), req.body.estado, getUserEmail(req));
         res.json({ ok: true });
     } catch (e) { res.status(e.message === 'Estado inválido' ? 400 : 500).json({ error: e.message }); }
-});
-
-router.get('/api/instalaciones/reporte', canView, async (req, res, next) => {
-    const anio = parseInt(req.query.anio) || new Date().getFullYear();
-    try { res.json(await instalaciones.getReporte(anio)); }
-    catch (e) { console.error('[REPORTE ERROR]', e.message, e.stack); res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
