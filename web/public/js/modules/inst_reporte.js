@@ -4,7 +4,7 @@ App.registerModule('inst_reporte', {
     anio: new Date().getFullYear(),
 
     async render() {
-        const el = document.getElementById('page-inst-reporte');
+        const el = document.getElementById('page-inst_reporte');
         el.innerHTML = '<style>'
             + '.rep-section{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}'
             + '.rep-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}'
