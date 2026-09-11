@@ -7,6 +7,54 @@ App.registerModule('instalaciones', {
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     },
 
+    getBusinessDays(startDate, count) {
+        const days = [];
+        const current = new Date(startDate);
+        while (days.length < count) {
+            const dow = current.getDay();
+            if (dow !== 0 && dow !== 6) {
+                days.push(new Date(current));
+            }
+            current.setDate(current.getDate() + 1);
+        }
+        return days;
+    },
+
+    updateDiasPreview() {
+        const fechaInput = document.getElementById('instFecha');
+        const duracionInput = document.getElementById('instDuracion');
+        const previewEl = document.getElementById('diasPreview');
+        if (!fechaInput || !duracionInput || !previewEl) return;
+        
+        const duracion = parseInt(duracionInput.value) || 1;
+        if (duracion <= 1) {
+            previewEl.innerHTML = '';
+            return;
+        }
+        
+        const fechaInicio = fechaInput.value;
+        if (!fechaInicio) return;
+        
+        const dias = this.getBusinessDays(new Date(fechaInicio + 'T12:00:00'), duracion);
+        const nombres = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        
+        const items = dias.map((d, i) => {
+            const nombre = nombres[d.getDay()];
+            const dia = d.getDate();
+            const mes = meses[d.getMonth()];
+            return `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#475569">
+                <span style="width:18px;height:18px;border-radius:50%;background:#3b82f6;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">${i + 1}</span>
+                <span>${nombre} ${dia} ${mes}</span>
+            </div>`;
+        }).join('');
+        
+        previewEl.innerHTML = `<div style="margin-top:12px;padding:12px;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px">
+            <div style="font-size:11px;font-weight:600;color:#1e40af;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Se crearán ${dias.length} días laborales:</div>
+            <div style="display:flex;flex-direction:column;gap:6px">${items}</div>
+        </div>`;
+    },
+
     async render() {
         const el = document.getElementById('page-instalaciones');
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
@@ -71,6 +119,18 @@ App.registerModule('instalaciones', {
             const res = await fetch(`/api/instalaciones/calendario?inicio=${firstDay}&fin=${lastDay}`, { headers });
             const data = await res.json();
             this.instalaciones = Array.isArray(data) ? data : [];
+            
+            this.diasMap = {};
+            for (const inst of this.instalaciones) {
+                try {
+                    const diasRes = await fetch(`/api/instalaciones/${inst.id}/dias`, { headers });
+                    const dias = await diasRes.json();
+                    this.diasMap[inst.id] = Array.isArray(dias) ? dias : [];
+                } catch(e) {
+                    this.diasMap[inst.id] = [];
+                }
+            }
+            
             this.renderStats();
             this.renderCalendario();
         } catch(e) { console.error('Error:', e); this.instalaciones = []; }
@@ -156,16 +216,14 @@ App.registerModule('instalaciones', {
         for (let i = 0; i < startOffset; i++) html += '<div class="inst-cal-day inst-cal-day-empty" style="background:#fafbfc"></div>';
         for (let d = 1; d <= daysInMonth; d++) {
             const fs = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-            const instDia = this.instalaciones.filter(inst => {
-                if (!inst.fecha_programada) return false;
-                const inicio = inst.fecha_programada.substring(0, 10);
-                const dias = inst.duracion_dias || 1;
-                const fechaInicio = new Date(inicio);
-                const fechaFin = new Date(fechaInicio);
-                fechaFin.setDate(fechaFin.getDate() + dias - 1);
-                const fechaActual = new Date(fs);
-                return fechaActual >= fechaInicio && fechaActual <= fechaFin;
-            });
+            const instDia = [];
+            for (const inst of this.instalaciones) {
+                const dias = this.diasMap[inst.id] || [];
+                const diaEncontrado = dias.find(dia => dia.fecha && dia.fecha.substring(0, 10) === fs);
+                if (diaEncontrado) {
+                    instDia.push({ inst, dia: diaEncontrado });
+                }
+            }
             const esHoy = fs === hoyStr;
             const dt = new Date(year, month, d);
             const esFinde = dt.getDay() === 0 || dt.getDay() === 6;
@@ -176,15 +234,11 @@ App.registerModule('instalaciones', {
                 <div class="${dayLabelClass}">${nombreDia} ${d}</div>
                 <div style="text-align:right;padding:1px 3px;font-size:11px;${esHoy ? 'background:#3b82f6;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700' : (esFinde ? 'color:#94a3b8' : 'color:#1e293b')}">${d}</div>
             `;
-            for (const inst of instDia) {
-                const color = estadoColor(inst.estado);
-                const bg = estadoBg(inst.estado);
-                const dias = inst.duracion_dias || 1;
-                const inicio = inst.fecha_programada.substring(0, 10);
-                const fechaInicio = new Date(inicio);
-                const fechaActual = new Date(fs);
-                const diaActual = Math.floor((fechaActual - fechaInicio) / 86400000) + 1;
-                const durLabel = dias > 1 ? `<span style="font-size:9px;opacity:0.7;margin-left:3px">(${diaActual}/${dias})</span>` : '';
+            for (const { inst, dia } of instDia) {
+                const color = estadoColor(dia.estado || inst.estado);
+                const bg = estadoBg(dia.estado || inst.estado);
+                const totalDias = (this.diasMap[inst.id] || []).length;
+                const durLabel = totalDias > 1 ? `<span style="font-size:9px;opacity:0.7;margin-left:3px">(${dia.dia_numero}/${totalDias})</span>` : '';
                 html += `<div class="inst-event" onclick="App.modules.inst_detalle.abrir(${inst.id})" style="border-left-color:${color};background:${bg}" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
                     <div class="inst-event-type" style="color:${color}">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')}${durLabel}</div>
                     <div class="inst-event-time" style="color:${color}">${inst.hora_programada || '09:00'}${inst.numero_orden ? ' · ' + escapeHtml(inst.numero_orden) : ''}</div>
@@ -242,13 +296,14 @@ App.registerModule('instalaciones', {
             </div>
             <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="instDescripcion" rows="2" placeholder="Detalle de vidrios o estructuras a instalar" style="text-transform:capitalize" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">${inst ? escapeHtml(inst.descripcion) : ''}</textarea></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div class="form-group"><label>Fecha Programada *</label><input type="date" class="form-control" id="instFecha" value="${inst ? inst.fecha_programada.substring(0, 10) : hoy}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Fecha Programada *</label><input type="date" class="form-control" id="instFecha" value="${inst ? inst.fecha_programada.substring(0, 10) : hoy}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'" oninput="App.modules.instalaciones.updateDiasPreview()"></div>
                 <div class="form-group"><label>Hora</label><input type="time" class="form-control" id="instHora" value="${inst ? inst.hora_programada : '09:00'}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div class="form-group"><label>Duracion (dias)</label><input type="number" class="form-control" id="instDuracion" min="1" max="30" value="${inst ? (inst.duracion_dias || 1) : 1}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'"></div>
+                <div class="form-group"><label>Duracion (dias)</label><input type="number" class="form-control" id="instDuracion" min="1" max="30" value="${inst ? (inst.duracion_dias || 1) : 1}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'" oninput="App.modules.instalaciones.updateDiasPreview()"></div>
                 <div class="form-group"><label>Notas Previas</label><textarea class="form-control" id="instNotas" rows="2" placeholder="Notas o instrucciones previas" style="text-transform:capitalize" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">${inst ? escapeHtml(inst.notas_previas) : ''}</textarea></div>
             </div>
+            <div id="diasPreview"></div>
         `, { title: inst ? 'Editar Registro' : 'Nuevo Registro' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>

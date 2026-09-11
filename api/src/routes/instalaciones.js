@@ -116,4 +116,39 @@ router.delete('/api/instalaciones/:id', canDelete, async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
+router.get('/api/instalaciones/:id/dias', canView, async (req, res, next) => {
+    try {
+        res.json(await instalaciones.getDias(Number(req.params.id)));
+    } catch (e) { next(e); }
+});
+
+router.post('/api/instalaciones/:id/dias', canCreate, async (req, res, next) => {
+    try {
+        const { fecha, duracion } = req.body;
+        const count = await instalaciones.crearDias(Number(req.params.id), fecha, duracion || 1, getUserEmail(req));
+        res.status(201).json({ ok: true, count });
+    } catch (e) { next(e); }
+});
+
+router.put('/api/instalaciones/dias/:diaId', canUpdate, async (req, res, next) => {
+    try {
+        await instalaciones.editarDia(Number(req.params.diaId), req.body, getUserEmail(req));
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
+
+router.delete('/api/instalaciones/dias/:diaId', canDelete, async (req, res, next) => {
+    try {
+        await instalaciones.eliminarDia(Number(req.params.diaId), getUserEmail(req));
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
+
+router.put('/api/instalaciones/dias/:diaId/estado', canUpdate, async (req, res, next) => {
+    try {
+        await instalaciones.cambiarEstadoDia(Number(req.params.diaId), req.body.estado, getUserEmail(req));
+        res.json({ ok: true });
+    } catch (e) { res.status(e.message === 'Estado inválido' ? 400 : 500).json({ error: e.message }); }
+});
+
 module.exports = router;

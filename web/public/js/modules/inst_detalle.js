@@ -2,6 +2,7 @@ App.registerModule('inst_detalle', {
     inst: null,
     historial: [],
     fotos: [],
+    dias: [],
 
     async render() {
         const el = document.getElementById('page-inst_detalle');
@@ -15,14 +16,16 @@ App.registerModule('inst_detalle', {
     async cargarYRenderizar(id) {
         try {
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
-            const [instRes, histRes, fotosRes] = await Promise.all([
+            const [instRes, histRes, fotosRes, diasRes] = await Promise.all([
                 fetch(`/api/instalaciones/${id}`, { headers: hdrs }),
                 fetch(`/api/instalaciones/${id}/historial`, { headers: hdrs }),
-                fetch(`/api/instalaciones/${id}/fotos`, { headers: hdrs })
+                fetch(`/api/instalaciones/${id}/fotos`, { headers: hdrs }),
+                fetch(`/api/instalaciones/${id}/dias`, { headers: hdrs })
             ]);
             this.inst = await instRes.json();
             this.historial = await histRes.json();
             this.fotos = await fotosRes.json();
+            this.dias = await diasRes.json();
             this.renderDetalle();
         } catch(e) { console.error('Error cargando detalle:', e); }
     },
@@ -125,6 +128,44 @@ App.registerModule('inst_detalle', {
             + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:2px">Cerrado por</span><span style="color:#475569">' + escapeHtml(inst.cerrado_por || '-') + '</span></div>'
             + '</div></div>'
 
+            + (this.dias.length > 1 ? (() => {
+                const diasEstado = { 'PROGRAMADA': '#3b82f6', 'EN_CAMINO': '#f59e0b', 'EN_CURSO': '#f59e0b', 'COMPLETADA': '#22c55e', 'CON_NOVEDADES': '#ef4444', 'CANCELADA': '#94a3b8' };
+                const diasBg = { 'PROGRAMADA': '#eff6ff', 'EN_CAMINO': '#fffbeb', 'EN_CURSO': '#fffbeb', 'COMPLETADA': '#f0fdf4', 'CON_NOVEDADES': '#fef2f2', 'CANCELADA': '#f8fafc' };
+                const nombres = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                
+                const timelineItems = this.dias.map(d => {
+                    const fecha = d.fecha ? new Date(d.fecha + 'T12:00:00') : null;
+                    const nombreDia = fecha ? nombres[fecha.getDay()] : '';
+                    const diaNum = fecha ? fecha.getDate() : '';
+                    const mes = fecha ? meses[fecha.getMonth()] : '';
+                    const color = diasEstado[d.estado] || '#3b82f6';
+                    const bg = diasBg[d.estado] || '#eff6ff';
+                    
+                    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${bg};border-radius:8px;border-left:3px solid ${color}">
+                        <div style="width:36px;height:36px;border-radius:8px;background:${color};color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
+                            <span style="font-size:12px;font-weight:800;line-height:1">${diaNum}</span>
+                            <span style="font-size:8px;text-transform:uppercase;opacity:0.8">${mes}</span>
+                        </div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-size:12px;font-weight:600;color:#0f172a">${nombreDia} ${diaNum} ${mes}</div>
+                            <div style="font-size:11px;color:#64748b">Día ${d.dia_numero} de ${this.dias.length}</div>
+                        </div>
+                        <span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:${color}18;color:${color}">${d.estado}</span>
+                        ${canEdit ? `<button onclick="App.modules.inst_detalle.cambiarEstadoDia(${d.id},'EN_CURSO')" title="Iniciar día" style="width:28px;height:28px;border-radius:6px;border:1px solid #e2e8f0;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#f59e0b;transition:all 0.15s" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background='white'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>` : ''}
+                        ${canEdit ? `<button onclick="App.modules.inst_detalle.eliminarDia(${d.id})" title="Eliminar día" style="width:28px;height:28px;border-radius:6px;border:1px solid #fecaca;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#ef4444;transition:all 0.15s" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='white'"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
+                    </div>`;
+                }).join('');
+
+                return `<div class="det-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:detFadeUp 0.5s ease 50ms both;max-width:100%;box-sizing:border-box;overflow:hidden">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #f1f5f9">
+                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                        <h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Días de la Instalación (${this.dias.length})</h3>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px">${timelineItems}</div>
+                </div>`;
+            })() : '')
+
             + '<div class="det-card" style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:detFadeUp 0.5s ease 100ms both;max-width:100%;box-sizing:border-box;overflow:hidden">'
             + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e2e8f0">'
             + '<div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#f0fdf4,#bbf7d0);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>'
@@ -173,6 +214,32 @@ App.registerModule('inst_detalle', {
             });
             App.showAlert('Estado actualizado');
             await this.cargarYRenderizar(id);
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async cambiarEstadoDia(diaId, estado) {
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        try {
+            await fetch(`/api/instalaciones/dias/${diaId}/estado`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ estado })
+            });
+            App.showAlert('Estado del día actualizado');
+            await this.cargarYRenderizar(this.inst.id);
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
+
+    async eliminarDia(diaId) {
+        if (!confirm('¿Eliminar este día? Las fotos de este día se eliminarán.')) return;
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        try {
+            await fetch(`/api/instalaciones/dias/${diaId}`, {
+                method: 'DELETE',
+                headers: { 'X-User-Email': user.email || '' }
+            });
+            App.showAlert('Día eliminado');
+            await this.cargarYRenderizar(this.inst.id);
         } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 

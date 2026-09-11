@@ -9,6 +9,19 @@ const logHistorial = async (instalacionId, accion, detalle, usuario) => {
     );
 };
 
+const getBusinessDays = (startDate, count) => {
+    const days = [];
+    const current = new Date(startDate);
+    while (days.length < count) {
+        const dow = current.getDay();
+        if (dow !== 0 && dow !== 6) {
+            days.push(new Date(current));
+        }
+        current.setDate(current.getDate() + 1);
+    }
+    return days;
+};
+
 const getInstalaciones = async () => {
     const result = await query('SELECT * FROM instalaciones ORDER BY fecha_programada DESC, hora_programada ASC');
     return result.rows;
@@ -49,7 +62,8 @@ const crearInstalacion = async (data, userEmail) => {
         [cliente, direccion, descripcion || '', fecha_programada, hora_programada || '09:00', tecnico || '', vendedor || '', numero_orden || '', notas_previas || '', userEmail, tipo || 'INSTALACION', dias]
     );
     const inst = result.rows[0];
-    await logHistorial(inst.id, 'CREADA', 'Instalación programada', userEmail);
+    await crearDias(inst.id, fecha_programada, dias, userEmail);
+    await logHistorial(inst.id, 'CREADA', 'Instalación programada' + (dias > 1 ? ` (${dias} días)` : ''), userEmail);
     return inst;
 };
 
@@ -163,6 +177,49 @@ const getDashboard = async () => {
     };
 };
 
+const getDias = async (instalacionId) => {
+    const result = await query(
+        'SELECT * FROM instalaciones_dias WHERE instalacion_id = $1 ORDER BY dia_numero',
+        [instalacionId]
+    );
+    return result.rows;
+};
+
+const crearDias = async (instalacionId, fechaInicio, duracion, userEmail) => {
+    const dias = getBusinessDays(new Date(fechaInicio), Math.max(1, duracion));
+    for (let i = 0; i < dias.length; i++) {
+        const fecha = dias[i].toISOString().split('T')[0];
+        await query(
+            'INSERT INTO instalaciones_dias (instalacion_id, fecha, dia_numero, estado) VALUES ($1, $2, $3, $4)',
+            [instalacionId, fecha, i + 1, 'PROGRAMADA']
+        );
+    }
+    return dias.length;
+};
+
+const editarDia = async (diaId, data, userEmail) => {
+    const { estado, notas } = data;
+    await query(
+        'UPDATE instalaciones_dias SET estado = COALESCE($1, estado), notas = COALESCE($2, notas) WHERE id = $3',
+        [estado, notas, diaId]
+    );
+};
+
+const eliminarDia = async (diaId, userEmail) => {
+    await query('DELETE FROM instalaciones_fotos WHERE instalacion_dia_id = $1', [diaId]);
+    await query('DELETE FROM instalaciones_dias WHERE id = $1', [diaId]);
+};
+
+const cambiarEstadoDia = async (diaId, estado, userEmail) => {
+    if (!ESTADOS_VALIDOS.includes(estado)) throw new Error('Estado inválido');
+    await query('UPDATE instalaciones_dias SET estado = $1 WHERE id = $2', [estado, diaId]);
+};
+
+const getDia = async (diaId) => {
+    const result = await query('SELECT * FROM instalaciones_dias WHERE id = $1', [diaId]);
+    return result.rows.length > 0 ? result.rows[0] : null;
+};
+
 module.exports = {
     getInstalaciones,
     getCalendario,
@@ -179,5 +236,11 @@ module.exports = {
     eliminarFoto,
     getHistorial,
     eliminarInstalacion,
-    getDashboard
+    getDashboard,
+    getDias,
+    crearDias,
+    editarDia,
+    eliminarDia,
+    cambiarEstadoDia,
+    getDia
 };

@@ -474,6 +474,15 @@ async function initDB() {
         foto BYTEA, descripcion TEXT DEFAULT '', orden INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    await query(`CREATE TABLE IF NOT EXISTS instalaciones_dias (
+        id SERIAL PRIMARY KEY,
+        instalacion_id INTEGER REFERENCES instalaciones(id) ON DELETE CASCADE,
+        fecha DATE NOT NULL,
+        dia_numero INTEGER NOT NULL,
+        estado VARCHAR(30) DEFAULT 'PROGRAMADA',
+        notas TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
 
     const famCount = await query('SELECT COUNT(*) as c FROM familias_producto');
     if (Number(famCount.rows[0].c) === 0) {
