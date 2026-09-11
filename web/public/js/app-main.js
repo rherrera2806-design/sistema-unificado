@@ -803,13 +803,6 @@ function renderSidebar() {
         html += `</div>`;
     }
 
-    // Cerrar sesion (siempre al fondo)
-    html += `<div style="flex:1"></div>`;
-    html += `<div style="padding:8px 12px 16px;border-top:1px solid rgba(255,255,255,0.06)">`;
-    html += `<div class="nav-item" onclick="doLogout()" data-tooltip="Cerrar Sesion" tabindex="0" role="button" style="opacity:0.5;justify-content:center">
-        <span class="nav-icon">${SVG.logOut}</span><span class="nav-text">Cerrar Sesion</span></div>`;
-    html += `</div>`;
-
     nav.innerHTML = html;
 
     // Bind clicks
