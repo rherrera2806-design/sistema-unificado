@@ -157,4 +157,10 @@ router.put('/api/instalaciones/dias/:diaId/estado', canUpdate, async (req, res, 
     } catch (e) { res.status(e.message === 'Estado inválido' ? 400 : 500).json({ error: e.message }); }
 });
 
+router.get('/api/instalaciones/reporte', canView, async (req, res, next) => {
+    const anio = parseInt(req.query.anio) || new Date().getFullYear();
+    try { res.json(await instalaciones.getReporte(anio)); }
+    catch (e) { next(e); }
+});
+
 module.exports = router;

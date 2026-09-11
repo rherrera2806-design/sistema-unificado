@@ -249,6 +249,76 @@ const getDia = async (diaId) => {
     return result.rows.length > 0 ? result.rows[0] : null;
 };
 
+const getReporte = async (anio) => {
+    const result = await query(
+        `SELECT 
+            EXTRACT(MONTH FROM fecha_programada) as mes,
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE estado = 'PROGRAMADA') as programadas,
+            COUNT(*) FILTER (WHERE estado IN ('EN_CAMINO','EN_CURSO')) as en_curso,
+            COUNT(*) FILTER (WHERE estado = 'COMPLETADA') as completadas,
+            COUNT(*) FILTER (WHERE estado = 'CON_NOVEDADES') as novedades,
+            COUNT(*) FILTER (WHERE estado = 'CANCELADA') as canceladas,
+            COUNT(*) FILTER (WHERE tipo = 'INSTALACION') as tipo_instalacion,
+            COUNT(*) FILTER (WHERE tipo = 'VISITA_TECNICA') as tipo_visita,
+            COUNT(*) FILTER (WHERE tipo = 'POST_VENTA') as tipo_postventa,
+            COALESCE(NULLIF(tecnico,''), 'Sin asignar') as tecnico,
+            COALESCE(NULLIF(vendedor,''), 'Sin asignar') as vendedor
+         FROM instalaciones
+         WHERE EXTRACT(YEAR FROM fecha_programada) = $1
+         GROUP BY EXTRACT(MONTH FROM fecha_programada), tecnico, vendedor
+         ORDER BY mes`,
+        [anio]
+    );
+
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    
+    const porMes = {};
+    const porTecnico = {};
+    const porVendedor = {};
+    const porTipo = { tipo_instalacion: 0, tipo_visita: 0, tipo_postventa: 0 };
+
+    for (const row of result.rows) {
+        const mesIdx = parseInt(row.mes) - 1;
+        if (!porMes[mesIdx]) {
+            porMes[mesIdx] = { total: 0, programadas: 0, en_curso: 0, completadas: 0, novedades: 0, canceladas: 0 };
+        }
+        porMes[mesIdx].total += parseInt(row.total);
+        porMes[mesIdx].programadas += parseInt(row.programadas);
+        porMes[mesIdx].en_curso += parseInt(row.en_curso);
+        porMes[mesIdx].completadas += parseInt(row.completadas);
+        porMes[mesIdx].novedades += parseInt(row.novedades);
+        porMes[mesIdx].canceladas += parseInt(row.canceladas);
+
+        porTipo.tipo_instalacion += parseInt(row.tipo_instalacion);
+        porTipo.tipo_visita += parseInt(row.tipo_visita);
+        porTipo.tipo_postventa += parseInt(row.tipo_postventa);
+
+        const tec = row.tecnico;
+        porTecnico[tec] = (porTecnico[tec] || 0) + parseInt(row.total);
+
+        const vend = row.vendedor;
+        porVendedor[vend] = (porVendedor[vend] || 0) + parseInt(row.total);
+    }
+
+    const tecnicoArr = Object.entries(porTecnico).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total);
+    const vendedorArr = Object.entries(porVendedor).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total);
+
+    const mesesData = meses.map((nombre, i) => ({
+        nombre,
+        ...(porMes[i] || { total: 0, programadas: 0, en_curso: 0, completadas: 0, novedades: 0, canceladas: 0 })
+    }));
+
+    return {
+        anio,
+        meses: mesesData,
+        tecnicos: tecnicoArr,
+        vendedores: vendedorArr,
+        tipos: porTipo,
+        totalGeneral: result.rows.reduce((s, r) => s + parseInt(r.total), 0)
+    };
+};
+
 module.exports = {
     getInstalaciones,
     getCalendario,
@@ -272,5 +342,6 @@ module.exports = {
     editarDia,
     eliminarDia,
     cambiarEstadoDia,
-    getDia
+    getDia,
+    getReporte
 };

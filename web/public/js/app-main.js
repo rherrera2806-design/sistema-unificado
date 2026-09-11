@@ -678,7 +678,7 @@ const SIDEBAR_SECTIONS = {
     asistencia: ['asistencia'],
     atencion: ['turnos_recepcion', 'turnos_bodega', 'turnos_almacen', 'turnos_facturar', 'turnos_qr', 'turnos_reporte'],
     costeo: ['costeo'],
-    instalaciones: ['instalaciones', 'inst_historial'],
+    instalaciones: ['instalaciones', 'inst_historial', 'inst_reporte'],
     inventario: ['inv_dashboard', 'inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_consume'],
     mantencion: ['bitacora', 'calendar', 'components', 'corrective', 'dashboard', 'history', 'machines', 'machineTypes', 'notas', 'preventive', 'proveedores', 'reports'],
     pedidos: ['pedidos'],
@@ -740,7 +740,8 @@ function renderSidebar() {
         ]},
         { key: 'instalaciones', label: 'INSTALACIONES', items: [
             { id: 'instalaciones', label: 'Instalaciones', icon: SVG.tool },
-            { id: 'inst_historial', label: 'Historial', icon: SVG.clock }
+            { id: 'inst_historial', label: 'Historial', icon: SVG.clock },
+            { id: 'inst_reporte', label: 'Reporte', icon: SVG.chart }
         ]},
         { key: 'inventario', label: 'INVENTARIO', items: [
             { id: 'inv_dashboard', label: 'Dashboard', icon: SVG.chart },
