@@ -126,10 +126,15 @@ App.registerModule('instalaciones', {
                     const diasRes = await fetch(`/api/instalaciones/${inst.id}/dias`, { headers });
                     const dias = await diasRes.json();
                     this.diasMap[inst.id] = Array.isArray(dias) ? dias : [];
+                    if (this.diasMap[inst.id].length > 0) {
+                        console.log(`Inst ${inst.id}: ${this.diasMap[inst.id].length} días`);
+                    }
                 } catch(e) {
+                    console.error(`Error cargando días inst ${inst.id}:`, e);
                     this.diasMap[inst.id] = [];
                 }
             }
+            console.log('Total instalaciones:', this.instalaciones.length, 'diasMap keys:', Object.keys(this.diasMap).length);
             
             this.renderStats();
             this.renderCalendario();
@@ -219,7 +224,11 @@ App.registerModule('instalaciones', {
             const instDia = [];
             for (const inst of this.instalaciones) {
                 const dias = this.diasMap[inst.id] || [];
-                const diaEncontrado = dias.find(dia => dia.fecha && dia.fecha.substring(0, 10) === fs);
+                const diaEncontrado = dias.find(dia => {
+                    if (!dia.fecha) return false;
+                    const fechaDia = String(dia.fecha).substring(0, 10);
+                    return fechaDia === fs;
+                });
                 if (diaEncontrado) {
                     instDia.push({ inst, dia: diaEncontrado });
                 }
