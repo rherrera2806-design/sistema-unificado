@@ -485,7 +485,9 @@ async function initDB() {
     )`);
 
     const diasCount = await query('SELECT COUNT(*) as c FROM instalaciones_dias');
-    if (Number(diasCount.rows[0].c) === 0) {
+    const instCount = await query('SELECT COUNT(*) as c FROM instalaciones');
+    if (Number(diasCount.rows[0].c) === 0 || Number(diasCount.rows[0].c) < Number(instCount.rows[0].c)) {
+        await query('DELETE FROM instalaciones_dias');
         const instResult = await query('SELECT id, fecha_programada, duracion_dias, estado FROM instalaciones');
         for (const inst of instResult.rows) {
             try {
