@@ -484,6 +484,32 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    const diasCount = await query('SELECT COUNT(*) as c FROM instalaciones_dias');
+    if (Number(diasCount.rows[0].c) === 0) {
+        const instResult = await query('SELECT id, fecha_programada, duracion_dias, estado FROM instalaciones');
+        for (const inst of instResult.rows) {
+            const duracion = Math.max(1, parseInt(inst.duracion_dias) || 1);
+            const fechaInicio = new Date(inst.fecha_programada + 'T12:00:00');
+            let current = new Date(fechaInicio);
+            let diaNum = 1;
+            let diasCreados = 0;
+            while (diasCreados < duracion) {
+                const dow = current.getDay();
+                if (dow !== 0 && dow !== 6) {
+                    const fecha = current.toISOString().split('T')[0];
+                    await query(
+                        'INSERT INTO instalaciones_dias (instalacion_id, fecha, dia_numero, estado) VALUES ($1, $2, $3, $4)',
+                        [inst.id, fecha, diaNum, inst.estado || 'PROGRAMADA']
+                    );
+                    diaNum++;
+                    diasCreados++;
+                }
+                current.setDate(current.getDate() + 1);
+            }
+        }
+        console.log('[PROD] Días de instalaciones migrados:', instResult.rows.length);
+    }
+
     const famCount = await query('SELECT COUNT(*) as c FROM familias_producto');
     if (Number(famCount.rows[0].c) === 0) {
         const familiasDefault = [
