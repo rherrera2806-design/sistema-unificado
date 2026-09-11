@@ -38,6 +38,36 @@ const getCalendario = async (inicio, fin) => {
     return result.rows;
 };
 
+const getCalendarioConDias = async (inicio, fin) => {
+    const result = await query(
+        `SELECT i.*,
+                d.id as dia_id, d.fecha, d.dia_numero, d.estado as dia_estado, d.notas as dia_notas
+         FROM instalaciones i
+         LEFT JOIN instalaciones_dias d ON d.instalacion_id = i.id
+         WHERE (i.fecha_programada + (COALESCE(i.duracion_dias, 1) - 1)) >= $1::date 
+           AND i.fecha_programada <= $2::date 
+         ORDER BY i.fecha_programada, i.hora_programada, d.dia_numero`,
+        [inicio, fin]
+    );
+    const map = {};
+    for (const row of result.rows) {
+        if (!map[row.id]) {
+            const { dia_id, fecha, dia_numero, dia_estado, dia_notas, ...inst } = row;
+            map[row.id] = { ...inst, dias: [] };
+        }
+        if (row.dia_id) {
+            map[row.id].dias.push({
+                id: row.dia_id,
+                fecha: row.fecha,
+                dia_numero: row.dia_numero,
+                estado: row.dia_estado,
+                notas: row.dia_notas
+            });
+        }
+    }
+    return Object.values(map);
+};
+
 const getTecnicos = async () => {
     const result = await query('SELECT nombre FROM tecnicos WHERE activo = true ORDER BY nombre');
     return result.rows.map(r => r.nombre);
@@ -222,6 +252,7 @@ const getDia = async (diaId) => {
 module.exports = {
     getInstalaciones,
     getCalendario,
+    getCalendarioConDias,
     getTecnicos,
     getVendedores,
     getInstalacion,

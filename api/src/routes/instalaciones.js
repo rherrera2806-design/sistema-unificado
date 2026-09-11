@@ -17,6 +17,12 @@ router.get('/api/instalaciones/calendario', canView, async (req, res, next) => {
     catch (e) { next(e); }
 });
 
+router.get('/api/instalaciones/calendario-completo', canView, async (req, res, next) => {
+    if (!req.query.inicio || !req.query.fin) return res.status(400).json({ error: 'Fechas requeridas' });
+    try { res.json(await instalaciones.getCalendarioConDias(req.query.inicio, req.query.fin)); }
+    catch (e) { next(e); }
+});
+
 router.get('/api/instalaciones/tecnicos', canView, async (req, res, next) => {
     try { res.json(await instalaciones.getTecnicos()); }
     catch (e) { next(e); }

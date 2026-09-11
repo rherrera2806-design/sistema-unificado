@@ -116,23 +116,13 @@ App.registerModule('instalaciones', {
         const lastDay = this.fmtDate(new Date(this.calYear, this.calMonth + 1, 0));
         try {
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
-            const res = await fetch(`/api/instalaciones/calendario?inicio=${firstDay}&fin=${lastDay}`, { headers });
+            const res = await fetch(`/api/instalaciones/calendario-completo?inicio=${firstDay}&fin=${lastDay}`, { headers });
             const data = await res.json();
             this.instalaciones = Array.isArray(data) ? data : [];
             
             this.diasMap = {};
             for (const inst of this.instalaciones) {
-                try {
-                    const diasRes = await fetch(`/api/instalaciones/${inst.id}/dias`, { headers });
-                    const dias = await diasRes.json();
-                    this.diasMap[inst.id] = Array.isArray(dias) ? dias : [];
-                    if (this.diasMap[inst.id].length > 0) {
-                        console.log(`Inst ${inst.id}: ${this.diasMap[inst.id].length} días`);
-                    }
-                } catch(e) {
-                    console.error(`Error cargando días inst ${inst.id}:`, e);
-                    this.diasMap[inst.id] = [];
-                }
+                this.diasMap[inst.id] = inst.dias || [];
             }
             console.log('Total instalaciones:', this.instalaciones.length, 'diasMap keys:', Object.keys(this.diasMap).length);
             
