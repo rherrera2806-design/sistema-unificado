@@ -64,7 +64,8 @@ App.registerModule('inst_reporte', {
         try {
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch(`/api/instalaciones/reporte?anio=${this.anio}`, { headers });
-            this.reportData = await res.json();
+            if (!res.ok) { console.error('API error:', res.status); this.reportData = { meses: Array(12).fill(null).map(() => ({ total:0,programadas:0,en_curso:0,completadas:0,novedades:0,canceladas:0 })), tecnicos: [], vendedores: [], tipos: {tipo_instalacion:0,tipo_visita:0,tipo_postventa:0}, totalGeneral: 0 }; }
+            else { this.reportData = await res.json(); }
             this.renderKpis();
             this.renderTabla();
             if (this._chartTimer) clearTimeout(this._chartTimer);

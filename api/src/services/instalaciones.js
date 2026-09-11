@@ -259,15 +259,22 @@ const getReporte = async (anio) => {
             COUNT(*) FILTER (WHERE estado = 'COMPLETADA') as completadas,
             COUNT(*) FILTER (WHERE estado = 'CON_NOVEDADES') as novedades,
             COUNT(*) FILTER (WHERE estado = 'CANCELADA') as canceladas,
-            COUNT(*) FILTER (WHERE tipo = 'INSTALACION') as tipo_instalacion,
-            COUNT(*) FILTER (WHERE tipo = 'VISITA_TECNICA') as tipo_visita,
-            COUNT(*) FILTER (WHERE tipo = 'POST_VENTA') as tipo_postventa,
-            COALESCE(NULLIF(tecnico,''), 'Sin asignar') as tecnico,
-            COALESCE(NULLIF(vendedor,''), 'Sin asignar') as vendedor
+            tecnico,
+            vendedor
          FROM instalaciones
          WHERE EXTRACT(YEAR FROM fecha_programada) = $1
          GROUP BY EXTRACT(MONTH FROM fecha_programada), tecnico, vendedor
          ORDER BY mes`,
+        [anio]
+    );
+
+    const tipoResult = await query(
+        `SELECT 
+            COALESCE(tipo, 'INSTALACION') as tipo,
+            COUNT(*)::int as total
+         FROM instalaciones
+         WHERE EXTRACT(YEAR FROM fecha_programada) = $1
+         GROUP BY tipo`,
         [anio]
     );
 
@@ -290,15 +297,18 @@ const getReporte = async (anio) => {
         porMes[mesIdx].novedades += parseInt(row.novedades);
         porMes[mesIdx].canceladas += parseInt(row.canceladas);
 
-        porTipo.tipo_instalacion += parseInt(row.tipo_instalacion);
-        porTipo.tipo_visita += parseInt(row.tipo_visita);
-        porTipo.tipo_postventa += parseInt(row.tipo_postventa);
-
-        const tec = row.tecnico;
+        const tec = (row.tecnico || '').trim() || 'Sin asignar';
         porTecnico[tec] = (porTecnico[tec] || 0) + parseInt(row.total);
 
-        const vend = row.vendedor;
+        const vend = (row.vendedor || '').trim() || 'Sin asignar';
         porVendedor[vend] = (porVendedor[vend] || 0) + parseInt(row.total);
+    }
+
+    for (const row of tipoResult.rows) {
+        const tipo = (row.tipo || 'INSTALACION').toUpperCase();
+        if (tipo === 'VISITA_TECNICA') porTipo.tipo_visita += parseInt(row.total);
+        else if (tipo === 'POST_VENTA') porTipo.tipo_postventa += parseInt(row.total);
+        else porTipo.tipo_instalacion += parseInt(row.total);
     }
 
     const tecnicoArr = Object.entries(porTecnico).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total);
