@@ -94,8 +94,9 @@ async function getInventario(filtros = {}) {
         COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'trozo' THEN m.cantidad_planchas ELSE 0 END), 0) as trozos,
         COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.metros_cuadrados ELSE 0 END), 0) as m2_entradas,
         COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.metros_cuadrados ELSE 0 END), 0) as m2_salidas
-        FROM materias_primas mp
-        LEFT JOIN movimientos m ON m.materia_prima_id = mp.id AND m.ancho IS NOT NULL AND m.alto IS NOT NULL`;
+        FROM movimientos m
+        LEFT JOIN materias_primas mp ON m.materia_prima_id = mp.id
+        WHERE m.ancho IS NOT NULL AND m.alto IS NOT NULL`;
     const conditions = [];
     const params = [];
     let idx = 1;
@@ -105,7 +106,6 @@ async function getInventario(filtros = {}) {
     sql += ` GROUP BY mp.codigo_mp, mp.codigo_sap, mp.nombre, mp.espesor_mm, mp.costo_unitario_mp, mp.costo_unitario_importado, mp.consumo_promedio_mensual, m.ancho, m.alto
         HAVING COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad_planchas ELSE 0 END), 0) > 0
            OR COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'salida' AND m.tipo_salida = 'plancha_completa' THEN m.cantidad_planchas ELSE 0 END), 0) > 0
-           OR mp.consumo_promedio_mensual > 0
         ORDER BY mp.nombre, mp.espesor_mm, m.ancho, m.alto`;
     const result = await query(sql, params);
     
