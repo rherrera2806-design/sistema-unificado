@@ -55,6 +55,7 @@ App.registerModule('pedidos_reporte', {
             + '<div class="pr-chart-box"><div class="pr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Tendencia Mensual</div><div style="position:relative;height:280px"><canvas id="prChartTendencia"></canvas></div></div>'
             + '<div class="pr-chart-box"><div class="pr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Top Clientes</div><div style="position:relative;height:280px"><canvas id="prChartCliente"></canvas></div></div>'
             + '</div>'
+            + '<div id="prRankingTipo" style="margin-bottom:16px"></div>'
             + '<div class="pr-section"><div class="pr-chart-title" style="margin-bottom:12px"><svg viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" width="16" height="16"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>Detalle Mensual</div><div id="prTabla" class="pr-table-wrap"></div></div>';
 
         await this.loadData();
@@ -68,6 +69,7 @@ App.registerModule('pedidos_reporte', {
             else { this.reportData = await res.json(); }
             this.renderKpis();
             this.renderTabla();
+            this.renderRankingTipo();
             if (this._chartTimer) clearTimeout(this._chartTimer);
             this._chartTimer = setTimeout(() => this.renderCharts(), 100);
         } catch (e) { console.error('Error reporte pedidos:', e); }
@@ -169,6 +171,33 @@ App.registerModule('pedidos_reporte', {
         document.getElementById('prTabla').innerHTML = '<table class="pr-table">'
             + '<thead><tr><th>Mes</th><th>Total</th><th>Pend.</th><th>Aprobados</th><th>Rechazados</th><th>% Aprobacion</th></tr></thead>'
             + '<tbody>' + rows + '</tbody></table>';
+    },
+
+    renderRankingTipo() {
+        const d = this.reportData;
+        const tipos = d.tipos || [];
+        if (tipos.length === 0) return;
+        const total = d.totalGeneral || 1;
+        const colores = { Normal: '#3b82f6', Urgencia: '#f97316', 'Vta. Region': '#8b5cf6', Express: '#f59e0b', Reposicion: '#ef4444' };
+        const medals = ['🥇','🥈','🥉'];
+
+        let html = '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
+            + '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:14px;display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Ranking por Tipo</div>';
+
+        tipos.forEach((tipo, i) => {
+            const pct = Math.round((tipo.total / total) * 100);
+            const color = colores[tipo.nombre] || '#64748b';
+            const medal = medals[i] || '';
+            html += '<div style="margin-bottom:12px">'
+                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+                + '<span style="font-size:12px;font-weight:600;color:#1e293b">' + medal + ' ' + tipo.nombre + '</span>'
+                + '<span style="font-size:12px;font-weight:700;color:' + color + '">' + tipo.total + ' <span style="font-weight:400;color:#94a3b8;font-size:10px">(' + pct + '%)</span></span></div>'
+                + '<div style="height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden">'
+                + '<div style="width:' + pct + '%;background:' + color + ';height:100%;border-radius:5px;transition:width 0.5s ease"></div></div></div>';
+        });
+
+        html += '</div>';
+        document.getElementById('prRankingTipo').innerHTML = html;
     },
 
     cambiarAnio(dir) {

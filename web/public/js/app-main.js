@@ -681,7 +681,7 @@ const SIDEBAR_SECTIONS = {
     instalaciones: ['instalaciones', 'inst_historial', 'inst_reporte'],
     inventario: ['inv_dashboard', 'inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_consume'],
     mantencion: ['bitacora', 'calendar', 'components', 'corrective', 'dashboard', 'history', 'machines', 'machineTypes', 'notas', 'preventive', 'proveedores', 'reports'],
-    pedidos: ['pedidos', 'pedidos_reporte'],
+    pedidos: ['pedidos', 'pedidos_grafico_mes', 'pedidos_reporte'],
     produccion: ['prod_config', 'prod_notas', 'prod_planificacion', 'prod_ordenes', 'prod_reportes', 'prod_prog_estacion', 'taller', 'bodega'],
     reclamos: ['reclamos', 'reclamos_reporte'],
 };
@@ -766,6 +766,7 @@ function renderSidebar() {
         ]},
         { key: 'pedidos', label: 'PEDIDOS', items: [
             { id: 'pedidos', label: 'Pedidos / Ordenes', icon: SVG.file },
+            { id: 'pedidos_grafico_mes', label: 'Grafico Mes', icon: SVG.chart },
             { id: 'pedidos_reporte', label: 'Reporte', icon: SVG.chart }
         ]},
         { key: 'produccion', label: 'PRODUCCION', items: [
