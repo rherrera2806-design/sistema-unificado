@@ -450,7 +450,7 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
                 SELECT
                     EXTRACT(MONTH FROM fecha_ingreso)::int as mes,
                     COALESCE(SUM(
-                        (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'m2')::numeric, 1)), 0) FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item)
+                        (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1)), 0) FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item)
                     ), 0)::numeric as costo_total
                 FROM reclamos_devoluciones
                 WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
@@ -474,7 +474,7 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
                 SELECT
                     COALESCE(NULLIF(COALESCE(responsable_falla,''), ''), 'Sin asignar') as responsable,
                     COALESCE(SUM(
-                        (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'m2')::numeric, 1)), 0) FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item)
+                        (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1)), 0) FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item)
                     ), 0)::numeric as costo_total
                 FROM reclamos_devoluciones
                 WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
