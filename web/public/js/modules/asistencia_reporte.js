@@ -48,7 +48,9 @@ App.registerModule('asistencia_reporte', {
             + '<div class="ar-chart-box"><div class="ar-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20" fill="#8b5cf6" opacity="0.2"/></svg>Por Tipo de Ausencia</div><div style="position:relative;height:280px;display:flex;justify-content:center"><canvas id="arChartTipo"></canvas></div></div>'
             + '</div>'
             + '<div class="ar-chart-row">'
-            + '<div class="ar-chart-box"><div class="ar-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Todas las Ausencias por Mes</div><div style="position:relative;height:280px"><canvas id="arChartAusencias"></canvas></div></div>'
+            + '<div class="ar-chart-box"><div class="ar-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Ausencias por Mes (sin permisos)</div><div style="position:relative;height:280px"><canvas id="arChartAusencias"></canvas></div></div>'
+            + '<div class="ar-chart-box"><div class="ar-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Permisos por Mes (horas)</div><div style="position:relative;height:280px"><canvas id="arChartPermisos"></canvas></div></div>'
+            + '</div>'
             + '<div class="ar-chart-box"><div class="ar-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>Horas Extras por Mes</div><div style="position:relative;height:280px"><canvas id="arChartHoras"></canvas></div></div>'
             + '</div>'
             + '<div class="ar-chart-row">'
@@ -76,11 +78,11 @@ App.registerModule('asistencia_reporte', {
         const d = this.reportData;
 
         document.getElementById('arKpis').innerHTML = ''
-            + '<div class="ar-kpi kpi-red"><div class="ar-kpi-value">' + d.totalFaltas + '</div><div class="ar-kpi-label">Faltas</div></div>'
-            + '<div class="ar-kpi kpi-blue"><div class="ar-kpi-value">' + d.totalPermisos + '</div><div class="ar-kpi-label">Permisos</div></div>'
-            + '<div class="ar-kpi kpi-amber"><div class="ar-kpi-value">' + d.totalLicencias + '</div><div class="ar-kpi-label">Licencias</div></div>'
-            + '<div class="ar-kpi kpi-green"><div class="ar-kpi-value">' + d.totalVacaciones + '</div><div class="ar-kpi-label">Vacaciones</div></div>'
-            + '<div class="ar-kpi kpi-purple"><div class="ar-kpi-value">' + d.totalHorasExtras + '</div><div class="ar-kpi-label">Horas Extras</div></div>';
+            + '<div class="ar-kpi kpi-red"><div class="ar-kpi-value">' + d.totalFaltas + ' <span style="font-size:12px;font-weight:600">dias</span></div><div class="ar-kpi-label">Faltas</div></div>'
+            + '<div class="ar-kpi kpi-blue"><div class="ar-kpi-value">' + d.totalPermisos + ' <span style="font-size:12px;font-weight:600">dias</span></div><div class="ar-kpi-label">Permisos</div></div>'
+            + '<div class="ar-kpi kpi-amber"><div class="ar-kpi-value">' + d.totalLicencias + ' <span style="font-size:12px;font-weight:600">dias</span></div><div class="ar-kpi-label">Licencias</div></div>'
+            + '<div class="ar-kpi kpi-green"><div class="ar-kpi-value">' + d.totalVacaciones + ' <span style="font-size:12px;font-weight:600">dias</span></div><div class="ar-kpi-label">Vacaciones</div></div>'
+            + '<div class="ar-kpi kpi-purple"><div class="ar-kpi-value">' + d.totalHorasExtras + ' <span style="font-size:12px;font-weight:600">hrs</span></div><div class="ar-kpi-label">Horas Extras</div></div>';
     },
 
     renderCharts() {
@@ -137,7 +139,6 @@ App.registerModule('asistencia_reporte', {
             type: 'bar',
             data: { labels, datasets: [
                 { label: 'Faltas', data: d.meses.map(m => m.faltas), backgroundColor: '#ef4444', borderRadius: 4, borderSkipped: false },
-                { label: 'Permisos', data: d.meses.map(m => m.permisos), backgroundColor: '#3b82f6', borderRadius: 4, borderSkipped: false },
                 { label: 'Licencias', data: d.meses.map(m => m.licencias), backgroundColor: '#f59e0b', borderRadius: 4, borderSkipped: false },
                 { label: 'Vacaciones', data: d.meses.map(m => m.vacaciones), backgroundColor: '#16a34a', borderRadius: 4, borderSkipped: false }
             ] },

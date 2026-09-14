@@ -812,10 +812,10 @@ router.get('/api/asistencia/reporte', canView, async (req, res) => {
             ranking: ranking.rows,
             trabajadores_activos: parseInt(trabajadores.rows[0].total),
             totalFaltas: mesesData.reduce((s, m) => s + m.faltas, 0),
-            totalPermisos: mesesData.reduce((s, m) => s + m.permisos, 0),
+            totalPermisos: Math.round(mesesData.reduce((s, m) => s + m.permisos, 0) * 10) / 10,
             totalLicencias: mesesData.reduce((s, m) => s + m.licencias, 0),
             totalVacaciones: mesesData.reduce((s, m) => s + m.vacaciones, 0),
-            totalHorasExtras: mesesData.reduce((s, m) => s + m.horas_extras, 0)
+            totalHorasExtras: Math.round(mesesData.reduce((s, m) => s + m.horas_extras, 0) * 10) / 10
         });
     } catch (e) {
         console.error('[ASISTENCIA REPORTE ERROR]', e.message);
