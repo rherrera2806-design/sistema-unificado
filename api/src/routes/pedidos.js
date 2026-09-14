@@ -68,17 +68,18 @@ router.get('/api/pedidos/reporte', canView, async (req, res) => {
         const anio = parseInt(req.query.anio) || new Date().getFullYear();
         const result = await query(`
             SELECT
-                EXTRACT(MONTH FROM fecha_subida)::int as mes,
+                EXTRACT(MONTH FROM p.fecha_subida)::int as mes,
                 COUNT(*)::int as total,
-                COUNT(*) FILTER (WHERE estado = 'pendiente')::int as pendientes,
-                COUNT(*) FILTER (WHERE estado = 'aprobado')::int as aprobados,
-                COUNT(*) FILTER (WHERE estado = 'rechazado')::int as rechazados,
-                COALESCE(NULLIF(vendedor,''), 'Sin asignar') as vendedor,
-                COALESCE(NULLIF(cliente,''), 'Sin cliente') as cliente,
-                COALESCE(NULLIF(tipo_ov,''), 'Normal') as tipo_ov
-            FROM pedidos
-            WHERE EXTRACT(YEAR FROM fecha_subida) = $1
-            GROUP BY EXTRACT(MONTH FROM fecha_subida), vendedor, cliente, tipo_ov
+                COUNT(*) FILTER (WHERE p.estado = 'pendiente')::int as pendientes,
+                COUNT(*) FILTER (WHERE p.estado = 'aprobado')::int as aprobados,
+                COUNT(*) FILTER (WHERE p.estado = 'rechazado')::int as rechazados,
+                COALESCE(NULLIF(COALESCE(u.nombre, p.vendedor), ''), 'Sin asignar') as vendedor,
+                COALESCE(NULLIF(p.cliente,''), 'Sin cliente') as cliente,
+                COALESCE(NULLIF(p.tipo_ov,''), 'Normal') as tipo_ov
+            FROM pedidos p
+            LEFT JOIN usuarios u ON u.email = p.vendedor
+            WHERE EXTRACT(YEAR FROM p.fecha_subida) = $1
+            GROUP BY EXTRACT(MONTH FROM p.fecha_subida), u.nombre, p.vendedor, p.cliente, p.tipo_ov
             ORDER BY mes
         `, [anio]);
 
