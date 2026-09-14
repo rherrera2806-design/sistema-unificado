@@ -67,6 +67,26 @@ App.registerModule('pedidos_grafico_mes', {
             borderSkipped: false
         }));
 
+        const totalPlugin = {
+            id: 'totalOnTop',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+                ctx.save();
+                ctx.font = 'bold 11px Inter, sans-serif';
+                ctx.fillStyle = '#0f172a';
+                ctx.textAlign = 'center';
+                meta.data.forEach((bar, i) => {
+                    let total = 0;
+                    chart.data.datasets.forEach(ds => { total += ds.data[i]; });
+                    if (total > 0) {
+                        ctx.fillText(total, bar.x, bar.y - 6);
+                    }
+                });
+                ctx.restore();
+            }
+        };
+
         this.chart = new Chart(document.getElementById('pgmChart'), {
             type: 'bar',
             data: { labels, datasets },
@@ -80,9 +100,10 @@ App.registerModule('pedidos_grafico_mes', {
                 plugins: {
                     legend: { display: true, position: 'top', labels: { padding: 16, usePointStyle: true, pointStyleWidth: 10, font: { size: 11 } } },
                     tooltip: { backgroundColor: '#1e293b', padding: 10, cornerRadius: 8, titleFont: { size: 12 }, bodyFont: { size: 11 } },
-                    datalabels: { display: false }
+                    datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#fff', font: { size: 9, weight: '700' }, textShadowColor: 'rgba(0,0,0,0.3)', textShadowBlur: 2, formatter: (v) => v }
                 }
-            }
+            },
+            plugins: [ChartDataLabels, totalPlugin]
         });
     },
 
