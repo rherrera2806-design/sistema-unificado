@@ -233,8 +233,24 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
             stockData.sparklineKg = sparkRes.rows.map(r => Math.round(Number(r.kg)));
         } catch(e) {}
 
-        // Alertas de autonomía
+        // Alertas de autonomía (simple)
         let alertas = [];
+        try {
+            const alertRes = await query(`
+                SELECT mp.nombre, mp.espesor_mm,
+                    ROUND((COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) / NULLIF(mp.consumo_promedio_mensual, 0), 1) as autonomia_meses
+                FROM materias_primas mp
+                LEFT JOIN movimientos m ON m.materia_prima_id = mp.id
+                WHERE mp.consumo_promedio_mensual > 0
+                GROUP BY mp.id, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual
+                HAVING (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) / NULLIF(mp.consumo_promedio_mensual, 0) <= 6
+                ORDER BY autonomia_meses ASC LIMIT 8
+            `);
+            alertas = alertRes.rows.map(r => {
+                const auto = parseFloat(r.autonomia_meses) || 0;
+                return { nombre: r.nombre, espesor: r.espesor_mm, nivel: auto <= 1.5 ? 'critico' : auto <= 3 ? 'bajo' : 'medio', autonomia: auto };
+            });
+        } catch(e) { console.error('[INV] Alertas:', e.message); }
 
         res.json({
             anio,
