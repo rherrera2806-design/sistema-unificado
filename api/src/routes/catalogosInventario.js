@@ -208,6 +208,18 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
         const tiposFinales = top5;
         if (otrosTotal > 0) tiposFinales.push({ nombre: 'Otros', total: otrosTotal });
 
+        // Datos actuales de stock (como el dashboard)
+        let stockData = { stockPlanchas: 0, kgStock: 0, autonomia: 0, planchasMes: 0 };
+        try {
+            const stockRes = await query(`SELECT COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento='entrada'),0) - COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento='salida' AND tipo_salida='plancha_completa'),0) as stock FROM movimientos`);
+            const kgRes = await query(`SELECT COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN metros_cuadrados*1.25*espesor/1000*2.5 WHEN tipo_movimiento='salida' THEN -metros_cuadrados*1.25*espesor/1000*2.5 ELSE 0 END),0) as kg FROM movimientos`);
+            const mesRes = await query(`SELECT COALESCE(SUM(cantidad_planchas),0) as planchas FROM movimientos WHERE EXTRACT(MONTH FROM fecha_hora)=EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM fecha_hora)=EXTRACT(YEAR FROM CURRENT_DATE) AND tipo_movimiento='salida'`);
+            stockData.stockPlanchas = Number(stockRes.rows[0]?.stock) || 0;
+            stockData.kgStock = Math.round(Number(kgRes.rows[0]?.kg) || 0);
+            stockData.planchasMes = Number(mesRes.rows[0]?.planchas) || 0;
+            stockData.autonomia = stockData.stockPlanchas > 0 && stockData.planchasMes > 0 ? (stockData.stockPlanchas / stockData.planchasMes).toFixed(1) : '0';
+        } catch(e) {}
+
         res.json({
             anio,
             meses: mesesData,
@@ -217,7 +229,11 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
             totalEntradas,
             totalSalidas,
             totalM2Entradas: Math.round(totalM2Entradas),
-            totalM2Salidas: Math.round(totalM2Salidas)
+            totalM2Salidas: Math.round(totalM2Salidas),
+            stockPlanchas: stockData.stockPlanchas,
+            kgStock: stockData.kgStock,
+            autonomia: stockData.autonomia,
+            planchasMes: stockData.planchasMes
         });
     } catch (e) {
         console.error('[INV REPORTE ERROR]', e.message);

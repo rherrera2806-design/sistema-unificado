@@ -75,16 +75,16 @@ App.registerModule('inv_reporte', {
 
     renderKpis() {
         const d = this.reportData;
-        const mesesConActividad = d.meses.filter(m => m.total > 0).length;
+        const mesesConActividad = d.meses.filter(m => m.entradas > 0 || m.salidas > 0).length;
         const promedioMensual = mesesConActividad > 0 ? Math.round(d.totalSalidas / mesesConActividad) : 0;
         const netoM2 = d.totalM2Entradas - d.totalM2Salidas;
 
         document.getElementById('irKpis').innerHTML = ''
-            + '<div class="ir-kpi kpi-green"><div class="ir-kpi-value">' + d.totalM2Entradas.toLocaleString('es-CL') + '</div><div class="ir-kpi-label">M2 Entradas</div></div>'
-            + '<div class="ir-kpi kpi-red"><div class="ir-kpi-value">' + d.totalM2Salidas.toLocaleString('es-CL') + '</div><div class="ir-kpi-label">M2 Salidas</div></div>'
-            + '<div class="ir-kpi kpi-blue"><div class="ir-kpi-value">' + (netoM2 >= 0 ? '+' : '') + netoM2.toLocaleString('es-CL') + '</div><div class="ir-kpi-label">Neto M2</div></div>'
-            + '<div class="ir-kpi kpi-amber"><div class="ir-kpi-value">' + promedioMensual + '</div><div class="ir-kpi-label">Salidas/Mes</div></div>'
-            + '<div class="ir-kpi kpi-purple"><div class="ir-kpi-value">' + d.topMateriales.length + '</div><div class="ir-kpi-label">Materiales</div></div>';
+            + '<div class="ir-kpi kpi-amber"><div class="ir-kpi-value">' + (d.planchasMes || 0).toLocaleString('es-CL') + '</div><div class="ir-kpi-label">Planchas Este Mes</div></div>'
+            + '<div class="ir-kpi kpi-blue"><div class="ir-kpi-value">' + (d.stockPlanchas || 0).toLocaleString('es-CL') + '</div><div class="ir-kpi-label">Stock Planchas</div></div>'
+            + '<div class="ir-kpi kpi-purple"><div class="ir-kpi-value">' + (d.kgStock || 0).toLocaleString('es-CL') + ' <span style="font-size:14px;font-weight:600">kg</span></div><div class="ir-kpi-label">KG en Stock</div></div>'
+            + '<div class="ir-kpi kpi-green"><div class="ir-kpi-value">' + (d.autonomia || 0) + ' <span style="font-size:14px;font-weight:600">meses</span></div><div class="ir-kpi-label">Autonomia Prom.</div></div>'
+            + '<div class="ir-kpi kpi-red"><div class="ir-kpi-value">' + netoM2.toLocaleString('es-CL') + '</div><div class="ir-kpi-label">Neto M2</div></div>';
     },
 
     renderCharts() {
