@@ -162,10 +162,10 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
         `, [anio]);
 
         const topMateriales = await query(`
-            SELECT tipo_cristal, COUNT(*)::int as salidas, COALESCE(SUM(metros_cuadrados), 0)::numeric as m2
+            SELECT tipo_cristal, espesor, COUNT(*)::int as salidas, COALESCE(SUM(metros_cuadrados), 0)::numeric as m2
             FROM movimientos
             WHERE EXTRACT(YEAR FROM fecha_hora) = $1 AND tipo_movimiento = 'salida'
-            GROUP BY tipo_cristal ORDER BY salidas DESC LIMIT 8
+            GROUP BY tipo_cristal, espesor ORDER BY salidas DESC LIMIT 8
         `, [anio]);
 
         const topDimensiones = await query(`
@@ -211,7 +211,7 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
         res.json({
             anio,
             meses: mesesData,
-            topMateriales: topMateriales.rows.map(r => ({ nombre: r.tipo_cristal, total: r.salidas, m2: parseFloat(r.m2) || 0 })),
+            topMateriales: topMateriales.rows.map(r => ({ nombre: (r.tipo_cristal || 'Sin tipo') + ' ' + (r.espesor ? r.espesor + 'mm' : ''), total: r.salidas, m2: parseFloat(r.m2) || 0 })),
             topDimensiones: topDimensiones.rows,
             tipos: tiposFinales,
             totalEntradas,
