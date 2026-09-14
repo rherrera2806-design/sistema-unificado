@@ -55,6 +55,14 @@ App.registerModule('reclamos_reporte', {
             + '<div class="rr-chart-box"><div class="rr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Tendencia Mensual</div><div style="position:relative;height:280px"><canvas id="rrChartTendencia"></canvas></div></div>'
             + '<div class="rr-chart-box"><div class="rr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Por Resolucion</div><div style="position:relative;height:280px;display:flex;justify-content:center"><canvas id="rrChartResolucion"></canvas></div></div>'
             + '</div>'
+            + '<div class="rr-chart-row">'
+            + '<div class="rr-chart-box"><div class="rr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Costo Total por Mes ($)</div><div style="position:relative;height:280px"><canvas id="rrChartCosto"></canvas></div></div>'
+            + '<div class="rr-chart-box"><div class="rr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Top Clientes con Reclamos</div><div style="position:relative;height:280px"><canvas id="rrChartCliente"></canvas></div></div>'
+            + '</div>'
+            + '<div class="rr-chart-row">'
+            + '<div class="rr-chart-box"><div class="rr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Costo por Responsable ($)</div><div style="position:relative;height:280px"><canvas id="rrChartCostoResp"></canvas></div></div>'
+            + '<div class="rr-chart-box"><div class="rr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Reclamos por Dia de Semana</div><div style="position:relative;height:280px"><canvas id="rrChartDia"></canvas></div></div>'
+            + '</div>'
             + '<div class="rr-section"><div class="rr-chart-title" style="margin-bottom:12px"><svg viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" width="16" height="16"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>Detalle Mensual</div><div id="rrTabla" class="rr-table-wrap"></div></div>';
 
         await this.loadData();
@@ -64,7 +72,7 @@ App.registerModule('reclamos_reporte', {
         try {
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch(`/api/reclamos/reporte?anio=${this.anio}`, { headers });
-            if (!res.ok) { console.error('API error:', res.status); this.reportData = { meses: Array(12).fill(null).map(() => ({ total:0,pendientes:0,en_revision:0,en_proceso:0,finalizados:0,fab_nueva:0,reproceso:0,rechazadas:0 })), responsables: [], motivos: [], resoluciones: [], totalGeneral: 0, totalFinalizados: 0 }; }
+            if (!res.ok) { console.error('API error:', res.status); this.reportData = { meses: Array(12).fill(null).map(() => ({ total:0,pendientes:0,en_revision:0,en_proceso:0,finalizados:0,fab_nueva:0,reproceso:0,rechazadas:0,costo:0 })), responsables: [], motivos: [], resoluciones: [], clientes: [], costoPorResponsable: [], diasSemana: [], totalGeneral: 0, totalFinalizados: 0, costoTotal: 0 }; }
             else { this.reportData = await res.json(); }
             this.renderKpis();
             this.renderTabla();
@@ -80,13 +88,15 @@ App.registerModule('reclamos_reporte', {
         const tasaResuelta = d.totalGeneral > 0 ? Math.round((finalizados / d.totalGeneral) * 100) : 0;
         const mesesConActividad = d.meses.filter(m => m.total > 0).length;
         const promedioMensual = mesesConActividad > 0 ? Math.round(d.totalGeneral / mesesConActividad) : 0;
+        const costoTotal = d.costoTotal || 0;
+        const costoFmt = costoTotal >= 1000000 ? '$' + (costoTotal / 1000000).toFixed(1) + 'M' : costoTotal >= 1000 ? '$' + (costoTotal / 1000).toFixed(0) + 'K' : '$' + costoTotal;
 
         document.getElementById('rrKpis').innerHTML = ''
             + '<div class="rr-kpi kpi-orange"><div class="rr-kpi-value">' + d.totalGeneral + '</div><div class="rr-kpi-label">Total ' + this.anio + '</div></div>'
             + '<div class="rr-kpi kpi-green"><div class="rr-kpi-value">' + finalizados + '</div><div class="rr-kpi-label">Finalizados</div></div>'
             + '<div class="rr-kpi kpi-blue"><div class="rr-kpi-value">' + tasaResuelta + '%</div><div class="rr-kpi-label">Tasa Resolucion</div></div>'
-            + '<div class="rr-kpi kpi-purple"><div class="rr-kpi-value">' + promedioMensual + '</div><div class="rr-kpi-label">Promedio Mensual</div></div>'
-            + '<div class="rr-kpi kpi-red"><div class="rr-kpi-value">' + pendientes + '</div><div class="rr-kpi-label">Pendientes</div></div>';
+            + '<div class="rr-kpi kpi-red"><div class="rr-kpi-value">' + costoFmt + '</div><div class="rr-kpi-label">Perdida Total</div></div>'
+            + '<div class="rr-kpi kpi-purple"><div class="rr-kpi-value">' + promedioMensual + '</div><div class="rr-kpi-label">Promedio Mensual</div></div>';
     },
 
     renderCharts() {
@@ -210,6 +220,92 @@ App.registerModule('reclamos_reporte', {
                     legend: { display: true, position: 'bottom', labels: { padding: 10, usePointStyle: true, pointStyleWidth: 8, font: { size: 9 } } },
                     datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#1e293b', font: { size: 11, weight: '700' }, formatter: (v) => v }
                 }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        // Costo por mes
+        this.charts.costo = new Chart(document.getElementById('rrChartCosto'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Costo ($)',
+                    data: d.meses.map(m => m.costo || 0),
+                    backgroundColor: d.meses.map((m, i) => {
+                        const hoy = new Date();
+                        return (i === hoy.getMonth() && this.anio === hoy.getFullYear()) ? '#dc2626' : '#fca5a5';
+                    }),
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                ...defaults,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: (v) => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
+                    x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
+                },
+                plugins: {
+                    ...defaults.plugins,
+                    tooltip: { backgroundColor: '#1e293b', padding: 8, cornerRadius: 6, callbacks: { label: (ctx) => '$' + ctx.raw.toLocaleString('es-CL') } },
+                    datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#dc2626', font: { size: 10, weight: '700' }, formatter: (v) => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : '$'+v }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        // Top clientes
+        const clientes = d.clientes || [];
+        this.charts.cliente = new Chart(document.getElementById('rrChartCliente'), {
+            type: 'bar',
+            data: {
+                labels: clientes.map(c => c.cliente.length > 16 ? c.cliente.substring(0, 16) + '.' : c.cliente),
+                datasets: [{ data: clientes.map(c => c.total), backgroundColor: ['#f97316','#f59e0b','#ef4444','#ec4899','#8b5cf6','#3b82f6','#06b6d4','#16a34a'], borderRadius: 6, borderSkipped: false }]
+            },
+            options: {
+                ...defaults, indexAxis: 'y',
+                scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
+                plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        // Costo por responsable
+        const costoResp = d.costoPorResponsable || [];
+        this.charts.costoResp = new Chart(document.getElementById('rrChartCostoResp'), {
+            type: 'bar',
+            data: {
+                labels: costoResp.map(r => r.nombre.length > 14 ? r.nombre.substring(0, 14) + '.' : r.nombre),
+                datasets: [{ data: costoResp.map(r => r.total), backgroundColor: ['#16a34a','#22c55e','#84cc16','#eab308','#f59e0b','#f97316','#ef4444','#dc2626'], borderRadius: 6, borderSkipped: false }]
+            },
+            options: {
+                ...defaults, indexAxis: 'y',
+                scales: {
+                    x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: (v) => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
+                    y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
+                },
+                plugins: {
+                    ...defaults.plugins,
+                    tooltip: { backgroundColor: '#1e293b', padding: 8, cornerRadius: 6, callbacks: { label: (ctx) => '$' + ctx.raw.toLocaleString('es-CL') } },
+                    datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 }, formatter: (v) => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : '$'+v }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+
+        // Dias de semana
+        const dias = d.diasSemana || [];
+        this.charts.dia = new Chart(document.getElementById('rrChartDia'), {
+            type: 'bar',
+            data: {
+                labels: dias.map(d => d.nombre),
+                datasets: [{ data: dias.map(d => d.total), backgroundColor: ['#94a3b8','#3b82f6','#06b6d4','#8b5cf6','#f59e0b','#f97316','#ef4444'], borderRadius: 6, borderSkipped: false }]
+            },
+            options: {
+                ...defaults,
+                scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
+                plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } }
             },
             plugins: [ChartDataLabels]
         });

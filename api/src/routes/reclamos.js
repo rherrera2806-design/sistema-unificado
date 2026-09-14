@@ -443,13 +443,56 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
             GROUP BY resolucion
         `, [anio]);
 
+        // Costo por mes (desde items JSONB)
+        const costoResult = await query(`
+            SELECT
+                EXTRACT(MONTH FROM fecha_ingreso)::int as mes,
+                COALESCE(SUM(
+                    (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'m2')::numeric, 1)), 0) FROM jsonb_array_elements(items) AS item)
+                ), 0)::numeric as costo_total
+            FROM reclamos_devoluciones
+            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
+            GROUP BY EXTRACT(MONTH FROM fecha_ingreso)
+            ORDER BY mes
+        `, [anio]);
+
+        // Top clientes
+        const clienteResult = await query(`
+            SELECT COALESCE(NULLIF(cliente,''), 'Sin cliente') as cliente, COUNT(*)::int as total
+            FROM reclamos_devoluciones
+            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
+            GROUP BY cliente ORDER BY total DESC LIMIT 8
+        `, [anio]);
+
+        // Costo por responsable
+        const costoRespResult = await query(`
+            SELECT
+                COALESCE(NULLIF(COALESCE(responsable_falla,''), ''), 'Sin asignar') as responsable,
+                COALESCE(SUM(
+                    (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'m2')::numeric, 1)), 0) FROM jsonb_array_elements(items) AS item)
+                ), 0)::numeric as costo_total
+            FROM reclamos_devoluciones
+            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
+            GROUP BY responsable_falla
+            ORDER BY costo_total DESC LIMIT 8
+        `, [anio]);
+
+        // Reclamos por dia de semana (0=Dom, 1=Lun...)
+        const diaSemanaResult = await query(`
+            SELECT EXTRACT(DOW FROM fecha_ingreso)::int as dia, COUNT(*)::int as total
+            FROM reclamos_devoluciones
+            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
+            GROUP BY EXTRACT(DOW FROM fecha_ingreso)
+            ORDER BY dia
+        `, [anio]);
+
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const porMes = {};
         const porResponsable = {};
 
         for (const row of result.rows) {
             const idx = row.mes - 1;
-            if (!porMes[idx]) porMes[idx] = { total:0, pendientes:0, en_revision:0, en_proceso:0, finalizados:0, fab_nueva:0, reproceso:0, rechazadas:0 };
+            if (!porMes[idx]) porMes[idx] = { total:0, pendientes:0, en_revision:0, en_proceso:0, finalizados:0, fab_nueva:0, reproceso:0, rechazadas:0, costo:0 };
             porMes[idx].total += row.total;
             porMes[idx].pendientes += row.pendientes;
             porMes[idx].en_revision += row.en_revision;
@@ -463,13 +506,26 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
             porResponsable[resp] = (porResponsable[resp] || 0) + row.total;
         }
 
+        for (const row of costoResult.rows) {
+            const idx = row.mes - 1;
+            if (porMes[idx]) porMes[idx].costo = parseFloat(row.costo_total) || 0;
+        }
+
         const mesesData = meses.map((nombre, i) => ({
             nombre,
-            ...(porMes[i] || { total:0, pendientes:0, en_revision:0, en_proceso:0, finalizados:0, fab_nueva:0, reproceso:0, rechazadas:0 })
+            ...(porMes[i] || { total:0, pendientes:0, en_revision:0, en_proceso:0, finalizados:0, fab_nueva:0, reproceso:0, rechazadas:0, costo:0 })
         }));
 
         const totalGeneral = result.rows.reduce((s, r) => s + r.total, 0);
         const totalFinalizados = mesesData.reduce((s, m) => s + m.finalizados, 0);
+        const costoTotal = costoResult.rows.reduce((s, r) => s + (parseFloat(r.costo_total) || 0), 0);
+
+        // Mapear dias de semana
+        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+        const diasData = diasSemana.map((nombre, i) => {
+            const found = diaSemanaResult.rows.find(r => r.dia === i);
+            return { nombre, total: found ? found.total : 0 };
+        });
 
         res.json({
             anio,
@@ -477,8 +533,12 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
             responsables: Object.entries(porResponsable).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total),
             motivos: motivoResult.rows,
             resoluciones: resolucionResult.rows,
+            clientes: clienteResult.rows,
+            costoPorResponsable: costoRespResult.rows.map(r => ({ nombre: r.responsable, total: parseFloat(r.costo_total) || 0 })),
+            diasSemana: diasData,
             totalGeneral,
-            totalFinalizados
+            totalFinalizados,
+            costoTotal: Math.round(costoTotal)
         });
     } catch (e) {
         console.error('[RECLAMOS REPORTE ERROR]', e.message);
