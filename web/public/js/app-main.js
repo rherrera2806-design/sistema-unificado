@@ -683,7 +683,7 @@ const SIDEBAR_SECTIONS = {
     mantencion: ['bitacora', 'calendar', 'components', 'corrective', 'dashboard', 'history', 'machines', 'machineTypes', 'notas', 'preventive', 'proveedores', 'reports'],
     pedidos: ['pedidos'],
     produccion: ['prod_config', 'prod_notas', 'prod_planificacion', 'prod_ordenes', 'prod_reportes', 'prod_prog_estacion', 'taller', 'bodega'],
-    reclamos: ['reclamos']
+    reclamos: ['reclamos', 'reclamos_reporte'],
 };
 
 function getUserPerms() {
@@ -778,7 +778,8 @@ function renderSidebar() {
             { id: 'bodega', label: 'Bodega', icon: SVG.package }
         ]},
         { key: 'reclamos', label: 'RECLAMOS', items: [
-            { id: 'reclamos', label: 'Reclamos y Devoluciones', icon: SVG.alert }
+            { id: 'reclamos', label: 'Reclamos y Devoluciones', icon: SVG.alert },
+            { id: 'reclamos_reporte', label: 'Reporte', icon: SVG.chart }
         ]}
     ];
 

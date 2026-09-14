@@ -404,6 +404,88 @@ router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
     }
 });
 
+// Reporte de reclamos por anio
+router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
+    try {
+        await ensureColumns();
+        const anio = parseInt(req.query.anio) || new Date().getFullYear();
+        const result = await query(`
+            SELECT
+                EXTRACT(MONTH FROM fecha_ingreso)::int as mes,
+                COUNT(*)::int as total,
+                COUNT(*) FILTER (WHERE estado = 'PENDIENTE')::int as pendientes,
+                COUNT(*) FILTER (WHERE estado = 'EN REVISION')::int as en_revision,
+                COUNT(*) FILTER (WHERE estado = 'EN PROCESO')::int as en_proceso,
+                COUNT(*) FILTER (WHERE estado = 'FINALIZADO')::int as finalizados,
+                COUNT(*) FILTER (WHERE resolucion = 'Aceptada Fabricacion nueva')::int as fab_nueva,
+                COUNT(*) FILTER (WHERE resolucion = 'Aceptada Reproceso')::int as reproceso,
+                COUNT(*) FILTER (WHERE resolucion = 'Rechazada')::int as rechazadas,
+                COALESCE(NULLIF(COALESCE(responsable_falla,''), ''), 'Sin asignar') as responsable
+            FROM reclamos_devoluciones
+            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
+            GROUP BY EXTRACT(MONTH FROM fecha_ingreso), responsable_falla
+            ORDER BY mes
+        `, [anio]);
+
+        const motivoResult = await query(`
+            SELECT motivo, COUNT(*)::int as total
+            FROM reclamos_devoluciones
+            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1 AND motivo != ''
+            GROUP BY motivo ORDER BY total DESC LIMIT 10
+        `, [anio]);
+
+        const resolucionResult = await query(`
+            SELECT 
+                COALESCE(NULLIF(resolucion,''), 'Sin resolver') as resolucion,
+                COUNT(*)::int as total
+            FROM reclamos_devoluciones
+            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
+            GROUP BY resolucion
+        `, [anio]);
+
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const porMes = {};
+        const porResponsable = {};
+
+        for (const row of result.rows) {
+            const idx = row.mes - 1;
+            if (!porMes[idx]) porMes[idx] = { total:0, pendientes:0, en_revision:0, en_proceso:0, finalizados:0, fab_nueva:0, reproceso:0, rechazadas:0 };
+            porMes[idx].total += row.total;
+            porMes[idx].pendientes += row.pendientes;
+            porMes[idx].en_revision += row.en_revision;
+            porMes[idx].en_proceso += row.en_proceso;
+            porMes[idx].finalizados += row.finalizados;
+            porMes[idx].fab_nueva += row.fab_nueva;
+            porMes[idx].reproceso += row.reproceso;
+            porMes[idx].rechazadas += row.rechazadas;
+
+            const resp = (row.responsable || '').trim() || 'Sin asignar';
+            porResponsable[resp] = (porResponsable[resp] || 0) + row.total;
+        }
+
+        const mesesData = meses.map((nombre, i) => ({
+            nombre,
+            ...(porMes[i] || { total:0, pendientes:0, en_revision:0, en_proceso:0, finalizados:0, fab_nueva:0, reproceso:0, rechazadas:0 })
+        }));
+
+        const totalGeneral = result.rows.reduce((s, r) => s + r.total, 0);
+        const totalFinalizados = mesesData.reduce((s, m) => s + m.finalizados, 0);
+
+        res.json({
+            anio,
+            meses: mesesData,
+            responsables: Object.entries(porResponsable).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total),
+            motivos: motivoResult.rows,
+            resoluciones: resolucionResult.rows,
+            totalGeneral,
+            totalFinalizados
+        });
+    } catch (e) {
+        console.error('[RECLAMOS REPORTE ERROR]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ═══════════════════════════════════════════════════════
 // RECLAMOS - CRUD (después de rutas nombradas)
 // ═══════════════════════════════════════════════════════
