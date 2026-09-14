@@ -38,6 +38,16 @@ async function ensureColumns() {
         if (!existing.includes('correo_electronico')) {
             await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN correo_electronico VARCHAR(255) DEFAULT ''`);
         }
+        if (!existing.includes('costo_total')) {
+            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN costo_total NUMERIC DEFAULT 0`);
+            // Backfill from items JSONB
+            await query(`
+                UPDATE reclamos_devoluciones SET costo_total = COALESCE(
+                    (SELECT SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1))
+                     FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item), 0
+                ) WHERE costo_total = 0 AND items != '[]'::jsonb
+            `);
+        }
         const histCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')`);
         if (!histCheck.rows[0].exists) {
             await query(`CREATE TABLE IF NOT EXISTS reclamos_historial (
@@ -443,19 +453,14 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
             GROUP BY resolucion
         `, [anio]);
 
-        // Costo por mes (desde items JSONB)
+        // Costo por mes (desde columna calculada)
         let costoResult = { rows: [] };
         try {
             costoResult = await query(`
-                SELECT
-                    EXTRACT(MONTH FROM fecha_ingreso)::int as mes,
-                    COALESCE(SUM(
-                        (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1)), 0) FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item)
-                    ), 0)::numeric as costo_total
+                SELECT EXTRACT(MONTH FROM fecha_ingreso)::int as mes, COALESCE(SUM(costo_total), 0)::numeric as costo_total
                 FROM reclamos_devoluciones
                 WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-                GROUP BY EXTRACT(MONTH FROM fecha_ingreso)
-                ORDER BY mes
+                GROUP BY EXTRACT(MONTH FROM fecha_ingreso) ORDER BY mes
             `, [anio]);
         } catch(cErr) { console.error('[RECLAMOS] Error costo query:', cErr.message); }
 
@@ -471,15 +476,11 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
         let costoRespResult = { rows: [] };
         try {
             costoRespResult = await query(`
-                SELECT
-                    COALESCE(NULLIF(COALESCE(responsable_falla,''), ''), 'Sin asignar') as responsable,
-                    COALESCE(SUM(
-                        (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1)), 0) FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item)
-                    ), 0)::numeric as costo_total
+                SELECT COALESCE(NULLIF(COALESCE(responsable_falla,''), ''), 'Sin asignar') as responsable,
+                       COALESCE(SUM(costo_total), 0)::numeric as costo_total
                 FROM reclamos_devoluciones
                 WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-                GROUP BY responsable_falla
-                ORDER BY costo_total DESC LIMIT 8
+                GROUP BY responsable_falla ORDER BY costo_total DESC LIMIT 8
             `, [anio]);
         } catch(cErr) { console.error('[RECLAMOS] Error costo responsable:', cErr.message); }
 
@@ -575,18 +576,19 @@ router.post('/api/reclamos', perms.create, async (req, res) => {
         const user = req.headers['x-user-email'] || '';
         const userName = req.headers['x-user-name'] || user;
         const items = Array.isArray(d.items) ? d.items : [];
+        const costoTotal = items.reduce((sum, it) => sum + (it.valor_unitario || 0) * (it.cantidad || 1), 0);
         const result = await query(
             `INSERT INTO reclamos_devoluciones (
                 responsable_ingreso, correo_electronico, cliente, numero_orden, items,
-                descripcion, detalle_reclamo, fotos, estado
+                descripcion, detalle_reclamo, fotos, estado, costo_total
             ) VALUES (
                 $1, $2, $3, $4, $5,
-                $6, $7, $8, 'PENDIENTE'
+                $6, $7, $8, 'PENDIENTE', $9
             ) RETURNING *`,
             [
                 userName || user, user, d.cliente || '', d.numero_orden || '',
                 JSON.stringify(items), d.descripcion || '', d.detalle_reclamo || '',
-                JSON.stringify(d.fotos || [])
+                JSON.stringify(d.fotos || []), costoTotal
             ]
         );
         // Registrar en historial
@@ -607,6 +609,7 @@ router.put('/api/reclamos/:id', perms.update, async (req, res) => {
         await ensureColumns();
         const d = req.body;
         const items = Array.isArray(d.items) ? d.items : undefined;
+        const costoTotal = items ? items.reduce((sum, it) => sum + (it.valor_unitario || 0) * (it.cantidad || 1), 0) : undefined;
         const result = await query(
             `UPDATE reclamos_devoluciones SET
                 fecha_ingreso = COALESCE($1, fecha_ingreso),
@@ -622,6 +625,7 @@ router.put('/api/reclamos/:id', perms.update, async (req, res) => {
                 motivo = COALESCE($11, motivo),
                 observacion_analisis = COALESCE($12, observacion_analisis),
                 resolucion = COALESCE($13, resolucion),
+                costo_total = COALESCE($15, costo_total),
                 updated_at = NOW()
             WHERE id = $14 RETURNING *`,
             [
@@ -629,7 +633,7 @@ router.put('/api/reclamos/:id', perms.update, async (req, res) => {
                 items !== undefined ? JSON.stringify(items) : null, d.descripcion,
                 d.detalle_reclamo, d.fotos ? JSON.stringify(d.fotos) : null, d.estado,
                 d.responsable_falla, d.motivo, d.observacion_analisis, d.resolucion,
-                req.params.id
+                req.params.id, costoTotal
             ]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
