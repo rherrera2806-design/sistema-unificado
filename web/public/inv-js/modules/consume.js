@@ -103,7 +103,7 @@ const InvConsume = {
                                 meses.push({ key: d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'), label: monthNames[d.getMonth()+1], anio: String(d.getFullYear()).slice(2) });
                             }
                             const maxAuto = this._filtAuto || 0;
-                            let filtered = stock.filter(s => s.stock > 0 || s.consumo_promedio > 0);
+                            let filtered = stock.filter(s => s.consumo_promedio > 0 || s.stock > 0 || Number(s.entradas) > 0);
                             if (maxAuto > 0) filtered = filtered.filter(s => (s.autonomia_meses || 0) < maxAuto);
                             const sorted = filtered.sort((a,b) => (a.nombre || '').localeCompare(b.nombre || '') || (Number(b.espesor_mm) || 0) - (Number(a.espesor_mm) || 0));
                             return '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
