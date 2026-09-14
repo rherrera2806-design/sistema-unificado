@@ -380,9 +380,11 @@ const Reclamos = {
                                 <input type="hidden" id="rcItemsData" value='${JSON.stringify(r.items || [])}'>
                             </div>
 
-                            <div style="margin-top:10px">
-                                <label>Costo Total ($)</label>
-                                <input type="text" id="rcCostoTotal" value="${r.costo_total ? Number(r.costo_total).toLocaleString('es-CL') : ''}" placeholder="Calculado desde items o ingrese manualmente" ${!canCreate ? 'readonly style="background:#f8fafc"' : ''} onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'" oninput="this._userEdited=true">
+                            <div class="rc-form-grid" style="margin-top:10px">
+                                <div style="grid-column:1 / -1">
+                                    <label>Costo Total ($)</label>
+                                    <input type="text" id="rcCostoTotal" value="${r.costo_total ? '$' + Number(r.costo_total).toLocaleString('es-CL') : '$0'}" readonly style="background:#f8fafc;color:#64748b;font-weight:600">
+                                </div>
                             </div>
                             <div style="margin-top:10px">
                                 <label>Detalle del Reclamo *</label>
