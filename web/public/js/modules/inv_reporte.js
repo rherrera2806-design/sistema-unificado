@@ -176,6 +176,8 @@ App.registerModule('inv_reporte', {
         html += '</div>';
         document.getElementById('irAlertas').innerHTML = html;
     },
+
+    renderTabla() {
         const d = this.reportData;
         const mesesCortos = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
         const badge = (v, color) => `<span class="ir-badge" style="background:${color}15;color:${color}">${v}</span>`;
