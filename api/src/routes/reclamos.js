@@ -421,10 +421,24 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
         const anio = parseInt(req.query.anio) || new Date().getFullYear();
 
         // Forzar recálculo de costo_total desde items (en background, no bloquea)
-        query(`UPDATE reclamos_devoluciones SET costo_total = COALESCE(
-            (SELECT SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1))
-             FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item), 0
-        ) WHERE items != '[]'::jsonb`).catch(e => console.error('[RECLAMOS] Backfill cost error:', e.message));
+        (async () => {
+            try {
+                const allRows = await query('SELECT id, items, costo_total FROM reclamos_devoluciones');
+                for (const row of allRows.rows) {
+                    let items = row.items;
+                    if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
+                    if (!Array.isArray(items)) items = [];
+                    const costo = items.reduce((sum, it) => {
+                        const vu = parseFloat(it.valor_unitario) || 0;
+                        const cant = parseFloat(it.cantidad) || 1;
+                        return sum + vu * cant;
+                    }, 0);
+                    if (Math.abs(costo - (parseFloat(row.costo_total) || 0)) > 0.01) {
+                        await query('UPDATE reclamos_devoluciones SET costo_total = $1 WHERE id = $2', [costo, row.id]);
+                    }
+                }
+            } catch(e) { console.error('[RECLAMOS] Backfill cost error:', e.message); }
+        })();
 
         const result = await query(`
             SELECT
