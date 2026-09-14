@@ -123,9 +123,9 @@ App.registerModule('pedidos_reporte', {
 
         const tipos = d.tipos || [];
         this.charts.tipo = new Chart(document.getElementById('prChartTipo'), {
-            type: 'polarArea',
-            data: { labels: tipos.map(t => t.nombre), datasets: [{ data: tipos.map(t => t.total), backgroundColor: ['rgba(59,130,246,0.7)','rgba(139,92,246,0.7)','rgba(245,158,11,0.7)','rgba(239,68,68,0.7)','rgba(22,163,74,0.7)'], borderColor: ['#3b82f6','#8b5cf6','#f59e0b','#ef4444','#16a34a'], borderWidth: 2 }] },
-            options: { ...defaults, scales: { r: { ticks: { display: false }, grid: { color: '#e2e8f0' } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 10, usePointStyle: true, pointStyleWidth: 8, font: { size: 9 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#1e293b', font: { size: 11, weight: '700' }, formatter: (v) => v } } },
+            type: 'doughnut',
+            data: { labels: tipos.map(t => t.nombre), datasets: [{ data: tipos.map(t => t.total), backgroundColor: ['#3b82f6','#f97316','#8b5cf6','#ef4444','#16a34a'], borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }] },
+            options: { ...defaults, cutout: '60%', plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#fff', font: { size: 10, weight: '700' }, formatter: (v, ctx) => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0); return t > 0 ? Math.round((v/t)*100)+'%' : ''; } } } },
             plugins: [ChartDataLabels]
         });
 
