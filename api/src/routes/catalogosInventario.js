@@ -233,17 +233,18 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
             stockData.sparklineKg = sparkRes.rows.map(r => Math.round(Number(r.kg)));
         } catch(e) {}
 
-        // Alertas de autonomía (simple)
+        // Alertas de autonomía (en planchas, igual que Consumo y Autonomía)
         let alertas = [];
         try {
             const alertRes = await query(`
-                SELECT mp.nombre, mp.espesor_mm,
-                    ROUND((COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) / NULLIF(mp.consumo_promedio_mensual, 0), 1) as autonomia_meses
+                SELECT mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual,
+                    (COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) as stock,
+                    ROUND((COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0))::numeric / NULLIF(mp.consumo_promedio_mensual, 0), 1) as autonomia_meses
                 FROM materias_primas mp
                 LEFT JOIN movimientos m ON m.materia_prima_id = mp.id
                 WHERE mp.consumo_promedio_mensual > 0
                 GROUP BY mp.id, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual
-                HAVING (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) / NULLIF(mp.consumo_promedio_mensual, 0) <= 6
+                HAVING (COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.cantidad_planchas) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0))::numeric / NULLIF(mp.consumo_promedio_mensual, 0) <= 6
                 ORDER BY autonomia_meses ASC LIMIT 8
             `);
             alertas = alertRes.rows.map(r => {
