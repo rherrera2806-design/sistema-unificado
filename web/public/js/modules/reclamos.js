@@ -381,6 +381,10 @@ const Reclamos = {
                             </div>
 
                             <div style="margin-top:10px">
+                                <label>Costo Total ($)</label>
+                                <input type="text" id="rcCostoTotal" value="${r.costo_total ? Number(r.costo_total).toLocaleString('es-CL') : ''}" placeholder="Calculado desde items o ingrese manualmente" ${!canCreate ? 'readonly style="background:#f8fafc"' : ''} onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'" oninput="this._userEdited=true">
+                            </div>
+                            <div style="margin-top:10px">
                                 <label>Detalle del Reclamo *</label>
                                 <textarea id="rcDetalle" rows="3" required placeholder="Describe el problema reportado por el cliente..." ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>${r.detalle_reclamo || ''}</textarea>
                             </div>
@@ -860,6 +864,13 @@ const Reclamos = {
                 + (canCreate ? '<td style="padding:4px 6px;text-align:center"><button type="button" onclick="App.modules.reclamos.removeItem(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>' : '<td></td>')
                 + '</tr>';
         }).join('');
+
+        // Auto-calcular costo total desde items
+        const costoInput = document.getElementById('rcCostoTotal');
+        if (costoInput && !costoInput._userEdited) {
+            const totalItems = items.reduce((sum, it) => sum + (it.valor_unitario || 0) * (it.cantidad || 1), 0);
+            costoInput.value = totalItems > 0 ? this._fmtCLP(totalItems) : '';
+        }
     },
 
     async guardar(e) {
@@ -906,7 +917,8 @@ const Reclamos = {
             responsable_falla: document.getElementById('rcResponsableFalla').value,
             motivo: document.getElementById('rcMotivo').value,
             observacion_analisis: document.getElementById('rcObservacion').value,
-            resolucion: document.getElementById('rcResolucion').value
+            resolucion: document.getElementById('rcResolucion').value,
+            costo_total: (() => { const v = (document.getElementById('rcCostoTotal').value || '').replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,''); return parseFloat(v) || 0; })()
         };
 
         // Auto-finalizar si se selecciona resolución
