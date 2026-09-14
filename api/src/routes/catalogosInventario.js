@@ -171,7 +171,7 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
         const topDimensiones = await query(`
             SELECT TRIM(TO_CHAR(ancho, 'FM999990')) || 'x' || TRIM(TO_CHAR(alto, 'FM999990')) as dimension, COUNT(*)::int as salidas
             FROM movimientos
-            WHERE EXTRACT(YEAR FROM fecha_hora) = $1 AND tipo_movimiento = 'salida'
+            WHERE EXTRACT(YEAR FROM fecha_hora) = $1 AND tipo_movimiento = 'salida' AND tipo_salida = 'plancha_completa'
             GROUP BY ancho, alto ORDER BY salidas DESC LIMIT 8
         `, [anio]);
 
