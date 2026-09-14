@@ -79,7 +79,7 @@ App.registerModule('asistencia_reporte', {
 
         document.getElementById('arKpis').innerHTML = ''
             + '<div class="ar-kpi kpi-red"><div class="ar-kpi-value">' + d.totalFaltas + ' <span style="font-size:12px;font-weight:600">dias</span></div><div class="ar-kpi-label">Faltas</div></div>'
-            + '<div class="ar-kpi kpi-blue"><div class="ar-kpi-value">' + d.totalPermisos + ' <span style="font-size:12px;font-weight:600">dias</span></div><div class="ar-kpi-label">Permisos</div></div>'
+            + '<div class="ar-kpi kpi-blue"><div class="ar-kpi-value">' + d.totalPermisos + ' <span style="font-size:12px;font-weight:600">hrs</span></div><div class="ar-kpi-label">Permisos</div></div>'
             + '<div class="ar-kpi kpi-amber"><div class="ar-kpi-value">' + d.totalLicencias + ' <span style="font-size:12px;font-weight:600">dias</span></div><div class="ar-kpi-label">Licencias</div></div>'
             + '<div class="ar-kpi kpi-green"><div class="ar-kpi-value">' + d.totalVacaciones + ' <span style="font-size:12px;font-weight:600">dias</span></div><div class="ar-kpi-label">Vacaciones</div></div>'
             + '<div class="ar-kpi kpi-purple"><div class="ar-kpi-value">' + d.totalHorasExtras + ' <span style="font-size:12px;font-weight:600">hrs</span></div><div class="ar-kpi-label">Horas Extras</div></div>';
