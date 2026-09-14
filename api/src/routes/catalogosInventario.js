@@ -140,4 +140,87 @@ router.get('/api/inv/run-migration', canViewInv, async (req, res) => {
     }
 });
 
+// Reporte de inventario por anio
+router.get('/api/inv/reporte', canViewInv, async (req, res) => {
+    try {
+        const { query } = require('../config/database');
+        const anio = parseInt(req.query.anio) || new Date().getFullYear();
+
+        const result = await query(`
+            SELECT
+                EXTRACT(MONTH FROM fecha_hora)::int as mes,
+                COUNT(*)::int as total,
+                COUNT(*) FILTER (WHERE tipo_movimiento = 'entrada')::int as entradas,
+                COUNT(*) FILTER (WHERE tipo_movimiento = 'salida')::int as salidas,
+                COALESCE(SUM(metros_cuadrados) FILTER (WHERE tipo_movimiento = 'entrada'), 0)::numeric as m2_entradas,
+                COALESCE(SUM(metros_cuadrados) FILTER (WHERE tipo_movimiento = 'salida'), 0)::numeric as m2_salidas,
+                COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento = 'entrada'), 0)::int as planchas_entradas,
+                COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento = 'salida'), 0)::int as planchas_salidas,
+                COALESCE(NULLIF(tipo_cristal,''), 'Sin tipo') as tipo_cristal
+            FROM movimientos
+            WHERE EXTRACT(YEAR FROM fecha_hora) = $1
+            GROUP BY EXTRACT(MONTH FROM fecha_hora), tipo_cristal
+            ORDER BY mes
+        `, [anio]);
+
+        const topMateriales = await query(`
+            SELECT tipo_cristal, COUNT(*)::int as salidas, COALESCE(SUM(metros_cuadrados), 0)::numeric as m2
+            FROM movimientos
+            WHERE EXTRACT(YEAR FROM fecha_hora) = $1 AND tipo_movimiento = 'salida'
+            GROUP BY tipo_cristal ORDER BY salidas DESC LIMIT 8
+        `, [anio]);
+
+        const topDimensiones = await query(`
+            SELECT ancho || 'x' || alto as dimension, COUNT(*)::int as salidas
+            FROM movimientos
+            WHERE EXTRACT(YEAR FROM fecha_hora) = $1 AND tipo_movimiento = 'salida'
+            GROUP BY ancho, alto ORDER BY salidas DESC LIMIT 8
+        `, [anio]);
+
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const porMes = {};
+        const porTipo = {};
+
+        for (const row of result.rows) {
+            const idx = row.mes - 1;
+            if (!porMes[idx]) porMes[idx] = { total:0, entradas:0, salidas:0, m2_entradas:0, m2_salidas:0, planchas_entradas:0, planchas_salidas:0 };
+            porMes[idx].total += row.total;
+            porMes[idx].entradas += row.entradas;
+            porMes[idx].salidas += row.salidas;
+            porMes[idx].m2_entradas += parseFloat(row.m2_entradas) || 0;
+            porMes[idx].m2_salidas += parseFloat(row.m2_salidas) || 0;
+            porMes[idx].planchas_entradas += row.planchas_entradas;
+            porMes[idx].planchas_salidas += row.planchas_salidas;
+
+            const tipo = (row.tipo_cristal || '').trim() || 'Sin tipo';
+            porTipo[tipo] = (porTipo[tipo] || 0) + row.salidas;
+        }
+
+        const mesesData = meses.map((nombre, i) => ({
+            nombre,
+            ...(porMes[i] || { total:0, entradas:0, salidas:0, m2_entradas:0, m2_salidas:0, planchas_entradas:0, planchas_salidas:0 })
+        }));
+
+        const totalEntradas = mesesData.reduce((s, m) => s + m.entradas, 0);
+        const totalSalidas = mesesData.reduce((s, m) => s + m.salidas, 0);
+        const totalM2Entradas = mesesData.reduce((s, m) => s + m.m2_entradas, 0);
+        const totalM2Salidas = mesesData.reduce((s, m) => s + m.m2_salidas, 0);
+
+        res.json({
+            anio,
+            meses: mesesData,
+            topMateriales: topMateriales.rows.map(r => ({ nombre: r.tipo_cristal, total: r.salidas, m2: parseFloat(r.m2) || 0 })),
+            topDimensiones: topDimensiones.rows,
+            tipos: Object.entries(porTipo).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total),
+            totalEntradas,
+            totalSalidas,
+            totalM2Entradas: Math.round(totalM2Entradas),
+            totalM2Salidas: Math.round(totalM2Salidas)
+        });
+    } catch (e) {
+        console.error('[INV REPORTE ERROR]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;

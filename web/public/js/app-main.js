@@ -679,7 +679,7 @@ const SIDEBAR_SECTIONS = {
     atencion: ['turnos_recepcion', 'turnos_bodega', 'turnos_almacen', 'turnos_facturar', 'turnos_qr', 'turnos_reporte'],
     costeo: ['costeo'],
     instalaciones: ['instalaciones', 'inst_historial', 'inst_reporte'],
-    inventario: ['inv_dashboard', 'inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_consume'],
+    inventario: ['inv_dashboard', 'inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_consume', 'inv_reporte'],
     mantencion: ['bitacora', 'calendar', 'components', 'corrective', 'dashboard', 'history', 'machines', 'machineTypes', 'notas', 'preventive', 'proveedores', 'reports'],
     pedidos: ['pedidos', 'pedidos_grafico_mes', 'pedidos_reporte'],
     produccion: ['prod_config', 'prod_notas', 'prod_planificacion', 'prod_ordenes', 'prod_reportes', 'prod_prog_estacion', 'taller', 'bodega'],
@@ -748,7 +748,8 @@ function renderSidebar() {
             { id: 'inv_inventario', label: 'Inventario', icon: SVG.clipboard },
             { id: 'inv_movimientos', label: 'Movimientos', icon: SVG.list },
             { id: 'inv_historial', label: 'Historial Inventario', icon: SVG.clock },
-            { id: 'inv_consume', label: 'Consumo y Autonomia', icon: SVG.barChart }
+            { id: 'inv_consume', label: 'Consumo y Autonomia', icon: SVG.barChart },
+            { id: 'inv_reporte', label: 'Reporte', icon: SVG.chart }
         ]},
         { key: 'mantencion', label: 'MANTENCION', items: [
             { id: 'bitacora', label: 'Bitacora de Mantencion', icon: SVG.book },
@@ -923,7 +924,8 @@ const INV_PAGES = {
     inv_inventario: { label: 'Inventario', render: () => InvInventario.render() },
     inv_movimientos: { label: 'Movimientos', render: () => InvMovimientos.render() },
     inv_historial: { label: 'Historial Inventario', render: () => InvHistorial.render() },
-    inv_consume: { label: 'Consumo y Autonomia', render: () => InvConsume.render() }
+    inv_consume: { label: 'Consumo y Autonomia', render: () => InvConsume.render() },
+    inv_reporte: { label: 'Reporte', render: () => App.modules.inv_reporte.render() }
 };
 
 function navigateToInv(name) {
