@@ -78,6 +78,24 @@ async function limpiarMovimientos() {
     return result.rowCount;
 }
 
+// ══════════════════════════════════════════════════════════════
+// NOTA: Diferencia entre funciones de inventario
+// ══════════════════════════════════════════════════════════════
+// getInventario()        → Stock REAL por material+dimension. Solo muestra materiales
+//                          que tienen movimientos (entradas registradas). Es la vista
+//                          principal del módulo "Inventario".
+//
+// getAnalyticsInventario → Analytics para "Consumo y Autonomía". Muestra TODOS los
+//                          materiales con consumo_promedio_mensual > 0, incluyendo
+//                          los con stock 0. Usa LEFT JOIN desde materias_primas.
+//
+// /api/inv/reporte       → Reporte anual. Las alertas usan planchas (no m2) para
+//                          calcular autonomía, igual que Consumo y Autonomía.
+//                          Fórmula: stock_planchas / consumo_promedio_mensual.
+//
+// Fórmula de KG:         metros_cuadrados * espesor_mm * 2.5 (NO usar 1.25/1000)
+// ══════════════════════════════════════════════════════════════
+
 async function getInventario(filtros = {}) {
     let sql = `SELECT 
         mp.codigo_mp,
