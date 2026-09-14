@@ -100,8 +100,8 @@ App.registerModule('inv_reporte', {
         this.charts.mes = new Chart(document.getElementById('irChartMes'), {
             type: 'bar',
             data: { labels, datasets: [
-                { label: 'Entradas', data: d.meses.map(m => m.entradas), backgroundColor: '#10b981', borderRadius: 6, borderSkipped: false },
-                { label: 'Salidas', data: d.meses.map(m => m.salidas), backgroundColor: '#ef4444', borderRadius: 6, borderSkipped: false }
+                { label: 'Planchas Entradas', data: d.meses.map(m => m.entradas), backgroundColor: '#10b981', borderRadius: 6, borderSkipped: false },
+                { label: 'Planchas Salidas', data: d.meses.map(m => m.salidas), backgroundColor: '#ef4444', borderRadius: 6, borderSkipped: false }
             ] },
             options: { ...defaults, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } } } }
         });

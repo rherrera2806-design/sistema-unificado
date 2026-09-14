@@ -149,13 +149,10 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
         const result = await query(`
             SELECT
                 EXTRACT(MONTH FROM fecha_hora)::int as mes,
-                COUNT(*)::int as total,
-                COUNT(*) FILTER (WHERE tipo_movimiento = 'entrada')::int as entradas,
-                COUNT(*) FILTER (WHERE tipo_movimiento = 'salida')::int as salidas,
+                COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento = 'entrada'), 0)::int as entradas,
+                COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento = 'salida'), 0)::int as salidas,
                 COALESCE(SUM(metros_cuadrados) FILTER (WHERE tipo_movimiento = 'entrada'), 0)::numeric as m2_entradas,
                 COALESCE(SUM(metros_cuadrados) FILTER (WHERE tipo_movimiento = 'salida'), 0)::numeric as m2_salidas,
-                COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento = 'entrada'), 0)::int as planchas_entradas,
-                COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento = 'salida'), 0)::int as planchas_salidas,
                 COALESCE(NULLIF(tipo_cristal,''), 'Sin tipo') as tipo_cristal,
                 espesor
             FROM movimientos
@@ -184,14 +181,11 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
 
         for (const row of result.rows) {
             const idx = row.mes - 1;
-            if (!porMes[idx]) porMes[idx] = { total:0, entradas:0, salidas:0, m2_entradas:0, m2_salidas:0, planchas_entradas:0, planchas_salidas:0 };
-            porMes[idx].total += row.total;
+            if (!porMes[idx]) porMes[idx] = { entradas:0, salidas:0, m2_entradas:0, m2_salidas:0 };
             porMes[idx].entradas += row.entradas;
             porMes[idx].salidas += row.salidas;
             porMes[idx].m2_entradas += parseFloat(row.m2_entradas) || 0;
             porMes[idx].m2_salidas += parseFloat(row.m2_salidas) || 0;
-            porMes[idx].planchas_entradas += row.planchas_entradas;
-            porMes[idx].planchas_salidas += row.planchas_salidas;
 
             const tipo = ((row.tipo_cristal || '').trim() || 'Sin tipo') + ' ' + (row.espesor ? row.espesor + 'mm' : '');
             porTipo[tipo.trim()] = (porTipo[tipo.trim()] || 0) + row.salidas;
@@ -199,7 +193,7 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
 
         const mesesData = meses.map((nombre, i) => ({
             nombre,
-            ...(porMes[i] || { total:0, entradas:0, salidas:0, m2_entradas:0, m2_salidas:0, planchas_entradas:0, planchas_salidas:0 })
+            ...(porMes[i] || { entradas:0, salidas:0, m2_entradas:0, m2_salidas:0 })
         }));
 
         const totalEntradas = mesesData.reduce((s, m) => s + m.entradas, 0);
