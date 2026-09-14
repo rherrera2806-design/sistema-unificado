@@ -110,7 +110,7 @@ App.registerModule('inv_reporte', {
             data: { labels, datasets: [
                 { label: 'Planchas Consumidas', data: d.meses.map(m => m.salidas), backgroundColor: '#ef4444', borderRadius: 6, borderSkipped: false }
             ] },
-            options: { ...defaults, scales: { y: { beginAtZero: true, suggestedMax: maxSalidas * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: false }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', offset: 6, color: '#1e293b', font: { size: 13, weight: '800' } } } },
+            options: { ...defaults, layout: { padding: { top: 30 } }, scales: { y: { beginAtZero: true, suggestedMax: maxSalidas * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: false }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', offset: 6, color: '#1e293b', font: { size: 13, weight: '800' } } } },
             plugins: [ChartDataLabels]
         });
 
@@ -128,7 +128,7 @@ App.registerModule('inv_reporte', {
                 { label: 'M2 Entradas', data: d.meses.map(m => Math.round(m.m2_entradas)), backgroundColor: '#10b981', borderRadius: 6, borderSkipped: false },
                 { label: 'M2 Salidas', data: d.meses.map(m => Math.round(m.m2_salidas)), backgroundColor: '#ef4444', borderRadius: 6, borderSkipped: false }
             ] },
-            options: { ...defaults, scales: { y: { beginAtZero: true, suggestedMax: maxM2 * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', offset: 6, color: '#1e293b', font: { size: 11, weight: '700' } } } },
+            options: { ...defaults, layout: { padding: { top: 30 } }, scales: { y: { beginAtZero: true, suggestedMax: maxM2 * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', offset: 6, color: '#1e293b', font: { size: 11, weight: '700' } } } },
             plugins: [ChartDataLabels]
         });
 
