@@ -166,7 +166,6 @@ App.registerModule('inv_reporte', {
             return;
         }
         const colores = { critico: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', icon: '●', label: 'Stock critico' },
-            bajo: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', icon: '●', label: 'Stock bajo' },
             medio: { bg: '#fffbeb', border: '#fde68a', text: '#d97706', icon: '●', label: 'Stock medio' },
             ok: { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a', icon: '●', label: 'Stock ok' } };
         let html = '<div style="display:flex;gap:8px;flex-wrap:wrap">';

@@ -249,7 +249,7 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
             `);
             alertas = alertRes.rows.map(r => {
                 const auto = parseFloat(r.autonomia_meses) || 0;
-                return { nombre: r.nombre, espesor: r.espesor_mm, nivel: auto <= 1.5 ? 'critico' : auto <= 3 ? 'bajo' : 'medio', autonomia: auto };
+                return { nombre: r.nombre, espesor: r.espesor_mm, nivel: auto < 1 ? 'critico' : auto <= 3 ? 'medio' : 'ok', autonomia: auto };
             });
         } catch(e) { console.error('[INV] Alertas:', e.message); }
 
