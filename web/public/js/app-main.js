@@ -675,7 +675,7 @@ function doLogout() {
 
 // ─── Sidebar Structure (permisos jerárquicos) ────
 const SIDEBAR_SECTIONS = {
-    asistencia: ['asistencia'],
+    asistencia: ['asistencia', 'asistencia_reporte'],
     atencion: ['turnos_recepcion', 'turnos_bodega', 'turnos_almacen', 'turnos_facturar', 'turnos_qr', 'turnos_reporte'],
     costeo: ['costeo'],
     instalaciones: ['instalaciones', 'inst_historial', 'inst_reporte'],
@@ -724,7 +724,8 @@ function renderSidebar() {
 
     const sections = [
         { key: 'asistencia', label: 'ASISTENCIA', items: [
-            { id: 'asistencia', label: 'Control de Asistencia', icon: SVG.clipboard }
+            { id: 'asistencia', label: 'Control de Asistencia', icon: SVG.clipboard },
+            { id: 'asistencia_reporte', label: 'Reporte', icon: SVG.chart }
         ]},
         { key: 'atencion', label: 'ATENCION', items: [
             { id: 'turnos_recepcion', label: 'Recepcion y Control', icon: SVG.users },

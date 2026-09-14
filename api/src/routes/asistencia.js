@@ -739,6 +739,90 @@ router.get('/api/asistencia/dashboard', canView, async (req, res) => {
     }
 });
 
+// Reporte anual de asistencia
+router.get('/api/asistencia/reporte', canView, async (req, res) => {
+    try {
+        const anio = parseInt(req.query.anio) || new Date().getFullYear();
+
+        // Faltas por mes
+        const faltasMes = await pool.query(`
+            SELECT EXTRACT(MONTH FROM fecha)::int as mes, COUNT(*)::int as total
+            FROM asistencia WHERE EXTRACT(YEAR FROM fecha) = $1
+            GROUP BY EXTRACT(MONTH FROM fecha) ORDER BY mes
+        `, [anio]);
+
+        // Permisos por mes (aprobados)
+        const permisosMes = await pool.query(`
+            SELECT EXTRACT(MONTH FROM fecha_inicio)::int as mes, COUNT(*)::int as total,
+                   COALESCE(SUM(CASE WHEN horas > 0 THEN horas / 8.0 ELSE (fecha_fin - fecha_inicio + 1) END), 0)::numeric as dias
+            FROM permisos WHERE EXTRACT(YEAR FROM fecha_inicio) = $1 AND estado = 'aprobado'
+            GROUP BY EXTRACT(MONTH FROM fecha_inicio) ORDER BY mes
+        `, [anio]);
+
+        // Licencias medicas por mes (aprobadas)
+        const licenciasMes = await pool.query(`
+            SELECT EXTRACT(MONTH FROM fecha_inicio)::int as mes, COUNT(*)::int as total,
+                   COALESCE(SUM(LEAST(fecha_fin, MAKE_DATE($1, 12, 31)) - GREATEST(fecha_inicio, MAKE_DATE($1, 1, 1)) + 1), 0)::int as dias
+            FROM licencias_medicas WHERE EXTRACT(YEAR FROM fecha_inicio) = $1 AND estado = 'aprobada'
+            GROUP BY EXTRACT(MONTH FROM fecha_inicio) ORDER BY mes
+        `, [anio]);
+
+        // Vacaciones por mes
+        const vacacionesMes = await pool.query(`
+            SELECT EXTRACT(MONTH FROM fecha_inicio)::int as mes, COUNT(*)::int as total,
+                   COALESCE(SUM(dias), 0)::int as dias
+            FROM vacaciones WHERE EXTRACT(YEAR FROM fecha_inicio) = $1
+            GROUP BY EXTRACT(MONTH FROM fecha_inicio) ORDER BY mes
+        `, [anio]);
+
+        // Horas extras por mes (aprobadas)
+        const horasMes = await pool.query(`
+            SELECT EXTRACT(MONTH FROM fecha)::int as mes, COUNT(*)::int as total,
+                   COALESCE(SUM(horas), 0)::numeric as horas
+            FROM horas_extras WHERE EXTRACT(YEAR FROM fecha) = $1 AND estado = 'aprobada'
+            GROUP BY EXTRACT(MONTH FROM fecha) ORDER BY mes
+        `, [anio]);
+
+        // Ranking de faltas por trabajador
+        const ranking = await pool.query(`
+            SELECT t.nombre, COUNT(*) as faltas
+            FROM asistencia a JOIN trabajadores t ON a.trabajador_id = t.id
+            WHERE EXTRACT(YEAR FROM a.fecha) = $1
+            GROUP BY t.id, t.nombre ORDER BY faltas DESC LIMIT 10
+        `, [anio]);
+
+        // Trabajadores activos
+        const trabajadores = await pool.query(`SELECT COUNT(*) as total FROM trabajadores WHERE activo = true`);
+
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const porMes = {};
+        for (let i = 0; i < 12; i++) porMes[i] = { faltas:0, permisos:0, licencias:0, vacaciones:0, horas_extras:0 };
+
+        faltasMes.rows.forEach(r => { porMes[r.mes - 1].faltas = r.total; });
+        permisosMes.rows.forEach(r => { porMes[r.mes - 1].permisos = r.total; });
+        licenciasMes.rows.forEach(r => { porMes[r.mes - 1].licencias = r.total; });
+        vacacionesMes.rows.forEach(r => { porMes[r.mes - 1].vacaciones = r.total; });
+        horasMes.rows.forEach(r => { porMes[r.mes - 1].horas_extras = r.total; });
+
+        const mesesData = meses.map((nombre, i) => ({ nombre, ...porMes[i] }));
+
+        res.json({
+            anio,
+            meses: mesesData,
+            ranking: ranking.rows,
+            trabajadores_activos: parseInt(trabajadores.rows[0].total),
+            totalFaltas: mesesData.reduce((s, m) => s + m.faltas, 0),
+            totalPermisos: mesesData.reduce((s, m) => s + m.permisos, 0),
+            totalLicencias: mesesData.reduce((s, m) => s + m.licencias, 0),
+            totalVacaciones: mesesData.reduce((s, m) => s + m.vacaciones, 0),
+            totalHorasExtras: mesesData.reduce((s, m) => s + m.horas_extras, 0)
+        });
+    } catch (e) {
+        console.error('[ASISTENCIA REPORTE ERROR]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ═══════════════════════════════════════════════════════
 // HORAS EXTRAS
 // ═══════════════════════════════════════════════════════
