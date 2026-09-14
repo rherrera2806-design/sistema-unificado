@@ -28,7 +28,7 @@ App.registerModule('asistencia_reporte', {
             + '.ar-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.ar-table tr:hover td{background:#f8fafc}'
             + '.ar-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.ar-chart-row{grid-template-columns:1fr}.ar-kpi-row{grid-template-columns:repeat(2,1fr)}.ar-kpi-value{font-size:22px}.ar-chart-box{padding:12px}.ar-section{padding:12px}.ar-table{font-size:11px}.ar-table th{font-size:9px}.ar-chart-row canvas{height:220px!important}.ar-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
+            + '@media(max-width:768px){.ar-chart-row{grid-template-columns:1fr;overflow-x:auto}.ar-kpi-row{grid-template-columns:repeat(2,1fr)}.ar-kpi-value{font-size:20px}.ar-chart-box{padding:8px;overflow:hidden}.ar-section{padding:10px}.ar-table{font-size:11px}.ar-table th{font-size:9px}.ar-chart-row canvas{height:180px!important}.ar-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
             + '</style>'
 
             + '<div class="ar-hero" style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 50%,#8b5cf6 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(124,58,237,0.3)">'

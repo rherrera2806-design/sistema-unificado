@@ -28,7 +28,7 @@ App.registerModule('pedidos_reporte', {
             + '.pr-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.pr-table tr:hover td{background:#f8fafc}'
             + '.pr-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.pr-chart-row{grid-template-columns:1fr}.pr-kpi-row{grid-template-columns:repeat(2,1fr)}.pr-kpi-value{font-size:22px}.pr-chart-box{padding:12px}.pr-section{padding:12px}.pr-table{font-size:11px}.pr-table th{font-size:9px}.pr-chart-row canvas{height:220px!important}.pr-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
+            + '@media(max-width:768px){.pr-chart-row{grid-template-columns:1fr;overflow-x:auto}.pr-kpi-row{grid-template-columns:repeat(2,1fr)}.pr-kpi-value{font-size:20px}.pr-chart-box{padding:8px;overflow:hidden}.pr-section{padding:10px}.pr-table{font-size:11px}.pr-table th{font-size:9px}.pr-chart-row canvas{height:180px!important}.pr-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
             + '</style>'
 
             + '<div class="pr-hero" style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#3b82f6 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(30,58,95,0.3)">'

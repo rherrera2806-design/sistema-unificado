@@ -28,7 +28,7 @@ App.registerModule('inst_reporte', {
             + '.rep-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.rep-table tr:hover td{background:#f8fafc}'
             + '.rep-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.rep-chart-row{grid-template-columns:1fr}.rep-kpi-row{grid-template-columns:repeat(2,1fr)}.rep-kpi-value{font-size:22px}.rep-chart-box{padding:12px}.rep-section{padding:12px}.rep-table{font-size:11px}.rep-table th{font-size:9px}.rep-chart-row canvas{height:220px!important}.rep-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
+            + '@media(max-width:768px){.rep-chart-row{grid-template-columns:1fr;overflow-x:auto}.rep-kpi-row{grid-template-columns:repeat(2,1fr)}.rep-kpi-value{font-size:20px}.rep-chart-box{padding:8px;overflow:hidden}.rep-section{padding:10px}.rep-table{font-size:11px}.rep-table th{font-size:9px}.rep-chart-row canvas{height:180px!important}.rep-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
             + '</style>'
 
             + '<div class="rep-hero" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'

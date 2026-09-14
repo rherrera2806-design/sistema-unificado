@@ -28,7 +28,7 @@ App.registerModule('reclamos_reporte', {
             + '.rr-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.rr-table tr:hover td{background:#f8fafc}'
             + '.rr-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.rr-chart-row{grid-template-columns:1fr}.rr-kpi-row{grid-template-columns:repeat(2,1fr)}.rr-kpi-value{font-size:22px}.rr-chart-box{padding:12px}.rr-section{padding:12px}.rr-table{font-size:11px}.rr-table th{font-size:9px}.rr-chart-row canvas{height:220px!important}.rr-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
+            + '@media(max-width:768px){.rr-chart-row{grid-template-columns:1fr;overflow-x:auto}.rr-kpi-row{grid-template-columns:repeat(2,1fr)}.rr-kpi-value{font-size:20px}.rr-chart-box{padding:8px;overflow:hidden}.rr-section{padding:10px}.rr-table{font-size:11px}.rr-table th{font-size:9px}.rr-chart-row canvas{height:180px!important}.rr-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
             + '</style>'
 
             + '<div class="rr-hero" style="background:linear-gradient(135deg,#7c2d12 0%,#c2410c 50%,#f97316 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(124,45,18,0.3)">'
