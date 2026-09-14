@@ -121,8 +121,9 @@ App.registerModule('inst_reporte', {
             },
             options: {
                 ...defaults,
+                layout: { padding: { top: 30 } },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+                    y: { beginAtZero: true, suggestedMax: Math.max(...d.meses.map(m => m.total), 1) * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
                     x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
                 },
                 plugins: {
@@ -191,8 +192,9 @@ App.registerModule('inst_reporte', {
             },
             options: {
                 ...defaults, indexAxis: 'y',
+                layout: { padding: { right: 30 } },
                 scales: {
-                    x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+                    x: { beginAtZero: true, suggestedMax: Math.max(...tecnicos.map(t => t.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
                     y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
                 },
                 plugins: {
@@ -221,8 +223,9 @@ App.registerModule('inst_reporte', {
             },
             options: {
                 ...defaults, indexAxis: 'y',
+                layout: { padding: { right: 30 } },
                 scales: {
-                    x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+                    x: { beginAtZero: true, suggestedMax: Math.max(...vendedores.map(v => v.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
                     y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
                 },
                 plugins: {

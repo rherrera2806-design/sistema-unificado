@@ -136,7 +136,7 @@ App.registerModule('inv_reporte', {
         this.charts.material = new Chart(document.getElementById('irChartMaterial'), {
             type: 'bar',
             data: { labels: materiales.map(m => m.nombre.length > 14 ? m.nombre.substring(0,14)+'.' : m.nombre), datasets: [{ data: materiales.map(m => m.total), backgroundColor: ['#10b981','#3b82f6','#f59e0b','#8b5cf6','#ef4444','#06b6d4','#ec4899','#f97316'], borderRadius: 6, borderSkipped: false }] },
-            options: { ...defaults, indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } } },
+            options: { ...defaults, indexAxis: 'y', layout: { padding: { right: 30 } }, scales: { x: { beginAtZero: true, suggestedMax: Math.max(...materiales.map(m => m.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } } },
             plugins: [ChartDataLabels]
         });
 
@@ -153,7 +153,7 @@ App.registerModule('inv_reporte', {
         this.charts.dimension = new Chart(document.getElementById('irChartDimension'), {
             type: 'bar',
             data: { labels: dims.map(r => r.dimension), datasets: [{ data: dims.map(r => r.salidas), backgroundColor: ['#06b6d4','#0ea5e9','#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899'], borderRadius: 6, borderSkipped: false }] },
-            options: { ...defaults, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } } },
+            options: { ...defaults, layout: { padding: { top: 30 } }, scales: { y: { beginAtZero: true, suggestedMax: Math.max(...dims.map(r => r.salidas), 1) * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } } },
             plugins: [ChartDataLabels]
         });
     },

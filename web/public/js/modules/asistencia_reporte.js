@@ -142,7 +142,7 @@ App.registerModule('asistencia_reporte', {
                 { label: 'Licencias', data: d.meses.map(m => m.licencias), backgroundColor: '#f59e0b', borderRadius: 4, borderSkipped: false },
                 { label: 'Vacaciones', data: d.meses.map(m => m.vacaciones), backgroundColor: '#16a34a', borderRadius: 4, borderSkipped: false }
             ] },
-            options: { ...defaults, scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }, y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#fff', font: { size: 9, weight: '700' }, textShadowColor: 'rgba(0,0,0,0.3)', textShadowBlur: 2 } } },
+            options: { ...defaults, layout: { padding: { top: 30 } }, scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }, y: { stacked: true, beginAtZero: true, suggestedMax: Math.max(...d.meses.map(m => m.faltas + m.licencias + m.vacaciones), 1) * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#fff', font: { size: 9, weight: '700' }, textShadowColor: 'rgba(0,0,0,0.3)', textShadowBlur: 2 } } },
             plugins: [ChartDataLabels, totalPlugin]
         });
 

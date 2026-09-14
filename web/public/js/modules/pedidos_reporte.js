@@ -103,7 +103,7 @@ App.registerModule('pedidos_reporte', {
         this.charts.mes = new Chart(document.getElementById('prChartMes'), {
             type: 'bar',
             data: { labels, datasets: [{ data: d.meses.map(m => m.total), backgroundColor: d.meses.map((m, i) => { const h = new Date(); return (i === h.getMonth() && this.anio === h.getFullYear()) ? '#3b82f6' : '#93c5fd'; }), borderRadius: 6, borderSkipped: false }] },
-            options: { ...defaults, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } } },
+            options: { ...defaults, layout: { padding: { top: 30 } }, scales: { y: { beginAtZero: true, suggestedMax: Math.max(...d.meses.map(m => m.total), 1) * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } } },
             plugins: [ChartDataLabels]
         });
 
@@ -119,7 +119,7 @@ App.registerModule('pedidos_reporte', {
         this.charts.vendedor = new Chart(document.getElementById('prChartVendedor'), {
             type: 'bar',
             data: { labels: vendedores.map(v => v.nombre.length > 14 ? v.nombre.substring(0,14)+'.' : v.nombre), datasets: [{ data: vendedores.map(v => v.total), backgroundColor: ['#3b82f6','#8b5cf6','#06b6d4','#16a34a','#f59e0b','#ef4444','#ec4899','#6366f1','#14b8a6','#f97316'], borderRadius: 6, borderSkipped: false }] },
-            options: { ...defaults, indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } } },
+            options: { ...defaults, indexAxis: 'y', layout: { padding: { right: 30 } }, scales: { x: { beginAtZero: true, suggestedMax: Math.max(...vendedores.map(v => v.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } } },
             plugins: [ChartDataLabels]
         });
 
@@ -144,7 +144,7 @@ App.registerModule('pedidos_reporte', {
         this.charts.cliente = new Chart(document.getElementById('prChartCliente'), {
             type: 'bar',
             data: { labels: clientes.map(c => c.nombre.length > 16 ? c.nombre.substring(0,16)+'.' : c.nombre), datasets: [{ data: clientes.map(c => c.total), backgroundColor: ['#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#22c55e','#14b8a6','#06b6d4'], borderRadius: 6, borderSkipped: false }] },
-            options: { ...defaults, indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } } },
+            options: { ...defaults, indexAxis: 'y', layout: { padding: { right: 30 } }, scales: { x: { beginAtZero: true, suggestedMax: Math.max(...clientes.map(c => c.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } } },
             plugins: [ChartDataLabels]
         });
     },

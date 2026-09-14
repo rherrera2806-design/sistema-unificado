@@ -130,7 +130,8 @@ App.registerModule('reclamos_reporte', {
             },
             options: {
                 ...defaults,
-                scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
+                layout: { padding: { top: 30 } },
+                scales: { y: { beginAtZero: true, suggestedMax: Math.max(...d.meses.map(m => m.total), 1) * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
                 plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } }
             },
             plugins: [ChartDataLabels]
@@ -168,7 +169,8 @@ App.registerModule('reclamos_reporte', {
             },
             options: {
                 ...defaults, indexAxis: 'y',
-                scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
+                layout: { padding: { right: 30 } },
+                scales: { x: { beginAtZero: true, suggestedMax: Math.max(...responsables.map(r => r.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
                 plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } }
             },
             plugins: [ChartDataLabels]
@@ -183,7 +185,8 @@ App.registerModule('reclamos_reporte', {
             },
             options: {
                 ...defaults, indexAxis: 'y',
-                scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 9, weight: '600' } } } },
+                layout: { padding: { right: 30 } },
+                scales: { x: { beginAtZero: true, suggestedMax: Math.max(...motivos.map(m => m.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 9, weight: '600' } } } },
                 plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } }
             },
             plugins: [ChartDataLabels]
@@ -242,8 +245,9 @@ App.registerModule('reclamos_reporte', {
             },
             options: {
                 ...defaults,
+                layout: { padding: { top: 30 } },
                 scales: {
-                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: (v) => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
+                    y: { beginAtZero: true, suggestedMax: Math.max(...d.meses.map(m => m.costo || 0), 1) * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: (v) => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
                     x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
                 },
                 plugins: {
@@ -265,7 +269,8 @@ App.registerModule('reclamos_reporte', {
             },
             options: {
                 ...defaults, indexAxis: 'y',
-                scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
+                layout: { padding: { right: 30 } },
+                scales: { x: { beginAtZero: true, suggestedMax: Math.max(...clientes.map(c => c.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
                 plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } }
             },
             plugins: [ChartDataLabels]
@@ -281,8 +286,9 @@ App.registerModule('reclamos_reporte', {
             },
             options: {
                 ...defaults, indexAxis: 'y',
+                layout: { padding: { right: 30 } },
                 scales: {
-                    x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: (v) => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
+                    x: { beginAtZero: true, suggestedMax: Math.max(...costoResp.map(r => r.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: (v) => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
                     y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }
                 },
                 plugins: {
@@ -304,7 +310,8 @@ App.registerModule('reclamos_reporte', {
             },
             options: {
                 ...defaults,
-                scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
+                layout: { padding: { top: 30 } },
+                scales: { y: { beginAtZero: true, suggestedMax: Math.max(...dias.map(d => d.total), 1) * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } },
                 plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } }
             },
             plugins: [ChartDataLabels]
