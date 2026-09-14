@@ -156,10 +156,11 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
                 COALESCE(SUM(metros_cuadrados) FILTER (WHERE tipo_movimiento = 'salida'), 0)::numeric as m2_salidas,
                 COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento = 'entrada'), 0)::int as planchas_entradas,
                 COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento = 'salida'), 0)::int as planchas_salidas,
-                COALESCE(NULLIF(tipo_cristal,''), 'Sin tipo') as tipo_cristal
+                COALESCE(NULLIF(tipo_cristal,''), 'Sin tipo') as tipo_cristal,
+                espesor
             FROM movimientos
             WHERE EXTRACT(YEAR FROM fecha_hora) = $1
-            GROUP BY EXTRACT(MONTH FROM fecha_hora), tipo_cristal
+            GROUP BY EXTRACT(MONTH FROM fecha_hora), tipo_cristal, espesor
             ORDER BY mes
         `, [anio]);
 
@@ -192,8 +193,8 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
             porMes[idx].planchas_entradas += row.planchas_entradas;
             porMes[idx].planchas_salidas += row.planchas_salidas;
 
-            const tipo = (row.tipo_cristal || '').trim() || 'Sin tipo';
-            porTipo[tipo] = (porTipo[tipo] || 0) + row.salidas;
+            const tipo = ((row.tipo_cristal || '').trim() || 'Sin tipo') + ' ' + (row.espesor ? row.espesor + 'mm' : '');
+            porTipo[tipo.trim()] = (porTipo[tipo.trim()] || 0) + row.salidas;
         }
 
         const mesesData = meses.map((nombre, i) => ({
