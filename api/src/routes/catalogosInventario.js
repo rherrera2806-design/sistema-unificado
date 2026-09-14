@@ -201,12 +201,19 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
         const totalM2Entradas = mesesData.reduce((s, m) => s + m.m2_entradas, 0);
         const totalM2Salidas = mesesData.reduce((s, m) => s + m.m2_salidas, 0);
 
+        // Agrupar: top 5 tipos, resto como "Otros"
+        const todosTipos = Object.entries(porTipo).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total);
+        const top5 = todosTipos.slice(0, 5);
+        const otrosTotal = todosTipos.slice(5).reduce((s, t) => s + t.total, 0);
+        const tiposFinales = top5;
+        if (otrosTotal > 0) tiposFinales.push({ nombre: 'Otros', total: otrosTotal });
+
         res.json({
             anio,
             meses: mesesData,
             topMateriales: topMateriales.rows.map(r => ({ nombre: r.tipo_cristal, total: r.salidas, m2: parseFloat(r.m2) || 0 })),
             topDimensiones: topDimensiones.rows,
-            tipos: Object.entries(porTipo).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total),
+            tipos: tiposFinales,
             totalEntradas,
             totalSalidas,
             totalM2Entradas: Math.round(totalM2Entradas),
