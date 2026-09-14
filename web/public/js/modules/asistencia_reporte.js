@@ -147,6 +147,14 @@ App.registerModule('asistencia_reporte', {
         });
 
         const maxHoras = Math.max(...d.meses.map(m => m.horas_extras), 1);
+
+        this.charts.permisos = new Chart(document.getElementById('arChartPermisos'), {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Permisos (horas)', data: d.meses.map(m => m.permisos), backgroundColor: '#3b82f6', borderRadius: 6, borderSkipped: false }] },
+            options: { ...defaults, layout: { padding: { top: 30 } }, scales: { y: { beginAtZero: true, suggestedMax: Math.max(...d.meses.map(m => m.permisos), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', offset: 6, color: '#1e293b', font: { size: 12, weight: '700' } } } },
+            plugins: [ChartDataLabels]
+        });
+
         this.charts.horas = new Chart(document.getElementById('arChartHoras'), {
             type: 'bar',
             data: { labels, datasets: [{ label: 'Horas Extras', data: d.meses.map(m => m.horas_extras), backgroundColor: '#f59e0b', borderRadius: 6, borderSkipped: false }] },
