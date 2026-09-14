@@ -40,14 +40,14 @@ async function ensureColumns() {
         }
         if (!existing.includes('costo_total')) {
             await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN costo_total NUMERIC DEFAULT 0`);
-            // Backfill from items JSONB
-            await query(`
-                UPDATE reclamos_devoluciones SET costo_total = COALESCE(
-                    (SELECT SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1))
-                     FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item), 0
-                ) WHERE costo_total = 0 AND items != '[]'::jsonb
-            `);
         }
+        // Siempre recalcular costo_total desde items
+        await query(`
+            UPDATE reclamos_devoluciones SET costo_total = COALESCE(
+                (SELECT SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1))
+                 FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item), 0
+            )
+        `);
         const histCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')`);
         if (!histCheck.rows[0].exists) {
             await query(`CREATE TABLE IF NOT EXISTS reclamos_historial (
