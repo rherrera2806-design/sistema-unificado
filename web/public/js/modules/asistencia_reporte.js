@@ -48,7 +48,7 @@ App.registerModule('asistencia_reporte', {
             + '<div class="ar-chart-box"><div class="ar-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20" fill="#8b5cf6" opacity="0.2"/></svg>Por Tipo de Ausencia</div><div style="position:relative;height:280px;display:flex;justify-content:center"><canvas id="arChartTipo"></canvas></div></div>'
             + '</div>'
             + '<div class="ar-chart-row">'
-            + '<div class="ar-chart-box"><div class="ar-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Tendencia de Asistencia</div><div style="position:relative;height:280px"><canvas id="arChartTendencia"></canvas></div></div>'
+            + '<div class="ar-chart-box"><div class="ar-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Todas las Ausencias por Mes</div><div style="position:relative;height:280px"><canvas id="arChartAusencias"></canvas></div></div>'
             + '<div class="ar-chart-box"><div class="ar-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>Horas Extras por Mes</div><div style="position:relative;height:280px"><canvas id="arChartHoras"></canvas></div></div>'
             + '</div>'
             + '<div class="ar-chart-row">'
@@ -115,13 +115,15 @@ App.registerModule('asistencia_reporte', {
             plugins: [ChartDataLabels]
         });
 
-        this.charts.tendencia = new Chart(document.getElementById('arChartTendencia'), {
-            type: 'line',
+        this.charts.tendencia = new Chart(document.getElementById('arChartAusencias'), {
+            type: 'bar',
             data: { labels, datasets: [
-                { label: 'Faltas', data: d.meses.map(m => m.faltas), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#ef4444', pointBorderColor: '#fff', pointBorderWidth: 2 },
-                { label: 'Permisos', data: d.meses.map(m => m.permisos), borderColor: '#3b82f6', backgroundColor: 'transparent', fill: false, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#3b82f6', pointBorderColor: '#fff', pointBorderWidth: 2 }
+                { label: 'Faltas', data: d.meses.map(m => m.faltas), backgroundColor: '#ef4444', borderRadius: 4, borderSkipped: false },
+                { label: 'Permisos', data: d.meses.map(m => m.permisos), backgroundColor: '#3b82f6', borderRadius: 4, borderSkipped: false },
+                { label: 'Licencias', data: d.meses.map(m => m.licencias), backgroundColor: '#f59e0b', borderRadius: 4, borderSkipped: false },
+                { label: 'Vacaciones', data: d.meses.map(m => m.vacaciones), backgroundColor: '#16a34a', borderRadius: 4, borderSkipped: false }
             ] },
-            options: { ...defaults, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } } } }
+            options: { ...defaults, scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }, y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } } } }
         });
 
         const maxHoras = Math.max(...d.meses.map(m => m.horas_extras), 1);

@@ -799,9 +799,9 @@ router.get('/api/asistencia/reporte', canView, async (req, res) => {
         for (let i = 0; i < 12; i++) porMes[i] = { faltas:0, permisos:0, licencias:0, vacaciones:0, horas_extras:0 };
 
         faltasMes.rows.forEach(r => { porMes[r.mes - 1].faltas = r.total; });
-        permisosMes.rows.forEach(r => { porMes[r.mes - 1].permisos = r.total; });
-        licenciasMes.rows.forEach(r => { porMes[r.mes - 1].licencias = r.total; });
-        vacacionesMes.rows.forEach(r => { porMes[r.mes - 1].vacaciones = r.total; });
+        permisosMes.rows.forEach(r => { porMes[r.mes - 1].permisos = parseFloat(r.dias) || 0; });
+        licenciasMes.rows.forEach(r => { porMes[r.mes - 1].licencias = parseInt(r.dias) || 0; });
+        vacacionesMes.rows.forEach(r => { porMes[r.mes - 1].vacaciones = parseInt(r.dias) || 0; });
         horasMes.rows.forEach(r => { porMes[r.mes - 1].horas_extras = parseFloat(r.horas) || 0; });
 
         const mesesData = meses.map((nombre, i) => ({ nombre, ...porMes[i] }));
