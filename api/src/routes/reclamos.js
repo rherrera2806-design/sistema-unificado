@@ -419,6 +419,15 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
     try {
         await ensureColumns();
         const anio = parseInt(req.query.anio) || new Date().getFullYear();
+
+        // Forzar recálculo de costo_total desde items antes del reporte
+        await query(`
+            UPDATE reclamos_devoluciones SET costo_total = COALESCE(
+                (SELECT SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1))
+                 FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item), 0
+            )
+        `);
+
         const result = await query(`
             SELECT
                 EXTRACT(MONTH FROM fecha_ingreso)::int as mes,
