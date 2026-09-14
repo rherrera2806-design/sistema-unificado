@@ -133,10 +133,11 @@ App.registerModule('asistencia_reporte', {
         });
 
         const ranking = (d.ranking || []).slice(0, 8);
+        const maxRanking = Math.max(...ranking.map(r => r.faltas), 1);
         this.charts.ranking = new Chart(document.getElementById('arChartRanking'), {
             type: 'bar',
             data: { labels: ranking.map(r => r.nombre.length > 16 ? r.nombre.substring(0,16)+'.' : r.nombre), datasets: [{ data: ranking.map(r => r.faltas), backgroundColor: ['#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#22c55e','#14b8a6','#06b6d4'], borderRadius: 6, borderSkipped: false }] },
-            options: { ...defaults, indexAxis: 'y', scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } } },
+            options: { ...defaults, indexAxis: 'y', layout: { padding: { right: 30 } }, scales: { x: { beginAtZero: true, suggestedMax: maxRanking * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', offset: 6, color: '#475569', font: { size: 10, weight: '700' } } } },
             plugins: [ChartDataLabels]
         });
     },
