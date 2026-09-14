@@ -444,17 +444,20 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
         `, [anio]);
 
         // Costo por mes (desde items JSONB)
-        const costoResult = await query(`
-            SELECT
-                EXTRACT(MONTH FROM fecha_ingreso)::int as mes,
-                COALESCE(SUM(
-                    (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'m2')::numeric, 1)), 0) FROM jsonb_array_elements(items) AS item)
-                ), 0)::numeric as costo_total
-            FROM reclamos_devoluciones
-            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-            GROUP BY EXTRACT(MONTH FROM fecha_ingreso)
-            ORDER BY mes
-        `, [anio]);
+        let costoResult = { rows: [] };
+        try {
+            costoResult = await query(`
+                SELECT
+                    EXTRACT(MONTH FROM fecha_ingreso)::int as mes,
+                    COALESCE(SUM(
+                        (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'m2')::numeric, 1)), 0) FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item)
+                    ), 0)::numeric as costo_total
+                FROM reclamos_devoluciones
+                WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
+                GROUP BY EXTRACT(MONTH FROM fecha_ingreso)
+                ORDER BY mes
+            `, [anio]);
+        } catch(cErr) { console.error('[RECLAMOS] Error costo query:', cErr.message); }
 
         // Top clientes
         const clienteResult = await query(`
@@ -465,17 +468,20 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
         `, [anio]);
 
         // Costo por responsable
-        const costoRespResult = await query(`
-            SELECT
-                COALESCE(NULLIF(COALESCE(responsable_falla,''), ''), 'Sin asignar') as responsable,
-                COALESCE(SUM(
-                    (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'m2')::numeric, 1)), 0) FROM jsonb_array_elements(items) AS item)
-                ), 0)::numeric as costo_total
-            FROM reclamos_devoluciones
-            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-            GROUP BY responsable_falla
-            ORDER BY costo_total DESC LIMIT 8
-        `, [anio]);
+        let costoRespResult = { rows: [] };
+        try {
+            costoRespResult = await query(`
+                SELECT
+                    COALESCE(NULLIF(COALESCE(responsable_falla,''), ''), 'Sin asignar') as responsable,
+                    COALESCE(SUM(
+                        (SELECT COALESCE(SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'m2')::numeric, 1)), 0) FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item)
+                    ), 0)::numeric as costo_total
+                FROM reclamos_devoluciones
+                WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
+                GROUP BY responsable_falla
+                ORDER BY costo_total DESC LIMIT 8
+            `, [anio]);
+        } catch(cErr) { console.error('[RECLAMOS] Error costo responsable:', cErr.message); }
 
         // Reclamos por dia de semana (0=Dom, 1=Lun...)
         const diaSemanaResult = await query(`
