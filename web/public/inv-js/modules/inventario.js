@@ -43,6 +43,10 @@ const InvInventario = {
                         <div class="m-card-header">
                             <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">Inventario Actual <span id="invCount" style="color:var(--gray-500);font-weight:400;font-size:13px">(${this._allItems.length} tipos)</span></h3>
                         </div>
+                        <div style="padding:8px 16px;background:#fffbeb;border-bottom:1px solid #fde68a;font-size:11px;color:#92400e;display:flex;align-items:center;gap:6px">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                            <span>Muestra solo materiales con <b>stock real</b> (entradas registradas). Para ver materiales sin stock pero con consumo, usa <b>Consumo y Autonomia</b> o <b>Reporte</b>.</span>
+                        </div>
                         <div class="m-card-body" id="invContent"></div>
                     </div>
                 </div>`;
