@@ -28,10 +28,10 @@ App.registerModule('asistencia_reporte', {
             + '.ar-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.ar-table tr:hover td{background:#f8fafc}'
             + '.ar-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.ar-chart-row{grid-template-columns:1fr}.ar-kpi-row{grid-template-columns:repeat(2,1fr)}.ar-kpi-value{font-size:22px}}'
+            + '@media(max-width:768px){.ar-chart-row{grid-template-columns:1fr}.ar-kpi-row{grid-template-columns:repeat(2,1fr)}.ar-kpi-value{font-size:22px}.ar-chart-box{padding:12px}.ar-section{padding:12px}.ar-table{font-size:11px}.ar-table th{font-size:9px}.ar-chart-row canvas{height:220px!important}.ar-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
             + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 50%,#8b5cf6 100%);border-radius:16px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(124,58,237,0.3)">'
+            + '<div class="ar-hero" style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 50%,#8b5cf6 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(124,58,237,0.3)">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(139,92,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
             + '<div><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Reporte de Asistencia</h2>'

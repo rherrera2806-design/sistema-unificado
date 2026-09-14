@@ -28,10 +28,10 @@ App.registerModule('pedidos_reporte', {
             + '.pr-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.pr-table tr:hover td{background:#f8fafc}'
             + '.pr-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.pr-chart-row{grid-template-columns:1fr}.pr-kpi-row{grid-template-columns:repeat(2,1fr)}.pr-kpi-value{font-size:22px}}'
+            + '@media(max-width:768px){.pr-chart-row{grid-template-columns:1fr}.pr-kpi-row{grid-template-columns:repeat(2,1fr)}.pr-kpi-value{font-size:22px}.pr-chart-box{padding:12px}.pr-section{padding:12px}.pr-table{font-size:11px}.pr-table th{font-size:9px}.pr-chart-row canvas{height:220px!important}.pr-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
             + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#3b82f6 100%);border-radius:16px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(30,58,95,0.3)">'
+            + '<div class="pr-hero" style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#3b82f6 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(30,58,95,0.3)">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
             + '<div><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Reporte de Pedidos</h2>'

@@ -28,10 +28,10 @@ App.registerModule('inst_reporte', {
             + '.rep-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.rep-table tr:hover td{background:#f8fafc}'
             + '.rep-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.rep-chart-row{grid-template-columns:1fr}.rep-kpi-row{grid-template-columns:repeat(2,1fr)}.rep-kpi-value{font-size:22px}}'
+            + '@media(max-width:768px){.rep-chart-row{grid-template-columns:1fr}.rep-kpi-row{grid-template-columns:repeat(2,1fr)}.rep-kpi-value{font-size:22px}.rep-chart-box{padding:12px}.rep-section{padding:12px}.rep-table{font-size:11px}.rep-table th{font-size:9px}.rep-chart-row canvas{height:220px!important}.rep-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
             + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
+            + '<div class="rep-hero" style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
             + '<div><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><path d="M21 3v5h-5"/></svg>Reporte de Instalaciones</h2>'

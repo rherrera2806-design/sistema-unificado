@@ -28,10 +28,10 @@ App.registerModule('reclamos_reporte', {
             + '.rr-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.rr-table tr:hover td{background:#f8fafc}'
             + '.rr-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.rr-chart-row{grid-template-columns:1fr}.rr-kpi-row{grid-template-columns:repeat(2,1fr)}.rr-kpi-value{font-size:22px}}'
+            + '@media(max-width:768px){.rr-chart-row{grid-template-columns:1fr}.rr-kpi-row{grid-template-columns:repeat(2,1fr)}.rr-kpi-value{font-size:22px}.rr-chart-box{padding:12px}.rr-section{padding:12px}.rr-table{font-size:11px}.rr-table th{font-size:9px}.rr-chart-row canvas{height:220px!important}.rr-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
             + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#7c2d12 0%,#c2410c 50%,#f97316 100%);border-radius:16px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(124,45,18,0.3)">'
+            + '<div class="rr-hero" style="background:linear-gradient(135deg,#7c2d12 0%,#c2410c 50%,#f97316 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(124,45,18,0.3)">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(249,115,22,0.2) 0%,transparent 70%);border-radius:50%"></div>'
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
             + '<div><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Reporte de Reclamos</h2>'

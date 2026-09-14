@@ -28,10 +28,10 @@ App.registerModule('inv_reporte', {
             + '.ir-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.ir-table tr:hover td{background:#f8fafc}'
             + '.ir-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.ir-chart-row{grid-template-columns:1fr}.ir-kpi-row{grid-template-columns:repeat(2,1fr)}.ir-kpi-value{font-size:22px}}'
+            + '@media(max-width:768px){.ir-chart-row{grid-template-columns:1fr}.ir-kpi-row{grid-template-columns:repeat(2,1fr)}.ir-kpi-value{font-size:22px}.ir-chart-box{padding:12px}.ir-section{padding:12px}.ir-table{font-size:11px}.ir-table th{font-size:9px}.ir-chart-row canvas{height:220px!important}.ir-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
             + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#065f46 0%,#059669 50%,#10b981 100%);border-radius:16px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(6,95,70,0.3)">'
+            + '<div class="ir-hero" style="background:linear-gradient(135deg,#065f46 0%,#059669 50%,#10b981 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(6,95,70,0.3)">'
             + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(16,185,129,0.2) 0%,transparent 70%);border-radius:50%"></div>'
             + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
             + '<div><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Reporte de Inventario</h2>'
