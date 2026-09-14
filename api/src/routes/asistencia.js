@@ -754,7 +754,7 @@ router.get('/api/asistencia/reporte', canView, async (req, res) => {
         // Permisos por mes (aprobados)
         const permisosMes = await pool.query(`
             SELECT EXTRACT(MONTH FROM fecha_inicio)::int as mes, COUNT(*)::int as total,
-                   COALESCE(SUM(CASE WHEN horas > 0 THEN horas / 8.0 ELSE (fecha_fin - fecha_inicio + 1) END), 0)::numeric as dias
+                   COALESCE(SUM(COALESCE(horas, (fecha_fin - fecha_inicio + 1) * 8)), 0)::numeric as horas
             FROM permisos WHERE EXTRACT(YEAR FROM fecha_inicio) = $1 AND estado = 'aprobado'
             GROUP BY EXTRACT(MONTH FROM fecha_inicio) ORDER BY mes
         `, [anio]);
@@ -799,7 +799,7 @@ router.get('/api/asistencia/reporte', canView, async (req, res) => {
         for (let i = 0; i < 12; i++) porMes[i] = { faltas:0, permisos:0, licencias:0, vacaciones:0, horas_extras:0 };
 
         faltasMes.rows.forEach(r => { porMes[r.mes - 1].faltas = r.total; });
-        permisosMes.rows.forEach(r => { porMes[r.mes - 1].permisos = parseFloat(r.dias) || 0; });
+        permisosMes.rows.forEach(r => { porMes[r.mes - 1].permisos = parseFloat(r.horas) || 0; });
         licenciasMes.rows.forEach(r => { porMes[r.mes - 1].licencias = parseInt(r.dias) || 0; });
         vacacionesMes.rows.forEach(r => { porMes[r.mes - 1].vacaciones = parseInt(r.dias) || 0; });
         horasMes.rows.forEach(r => { porMes[r.mes - 1].horas_extras = parseFloat(r.horas) || 0; });
