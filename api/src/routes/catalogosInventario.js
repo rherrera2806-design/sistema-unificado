@@ -209,15 +209,56 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
         if (otrosTotal > 0) tiposFinales.push({ nombre: 'Otros', total: otrosTotal });
 
         // Datos actuales de stock (como el dashboard)
-        let stockData = { stockPlanchas: 0, kgStock: 0, autonomia: 0, planchasMes: 0 };
+        let stockData = { stockPlanchas: 0, kgStock: 0, autonomia: 0, planchasMes: 0, sparklinePlanchas: [], sparklineKg: [] };
         try {
             const stockRes = await query(`SELECT COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento='entrada'),0) - COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento='salida' AND tipo_salida='plancha_completa'),0) as stock FROM movimientos`);
-            const kgRes = await query(`SELECT COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN metros_cuadrados*1.25*espesor/1000*2.5 WHEN tipo_movimiento='salida' THEN -metros_cuadrados*1.25*espesor/1000*2.5 ELSE 0 END),0) as kg FROM movimientos`);
+            const kgRes = await query(`SELECT COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN metros_cuadrados * espesor * 2.5 WHEN tipo_movimiento='salida' THEN -metros_cuadrados * espesor * 2.5 ELSE 0 END),0) as kg FROM movimientos`);
             const mesRes = await query(`SELECT COALESCE(SUM(cantidad_planchas),0) as planchas FROM movimientos WHERE EXTRACT(MONTH FROM fecha_hora)=EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM fecha_hora)=EXTRACT(YEAR FROM CURRENT_DATE) AND tipo_movimiento='salida'`);
             stockData.stockPlanchas = Number(stockRes.rows[0]?.stock) || 0;
             stockData.kgStock = Math.round(Number(kgRes.rows[0]?.kg) || 0);
             stockData.planchasMes = Number(mesRes.rows[0]?.planchas) || 0;
             stockData.autonomia = stockData.stockPlanchas > 0 && stockData.planchasMes > 0 ? (stockData.stockPlanchas / stockData.planchasMes).toFixed(1) : '0';
+
+            // Sparkline: ultimos 6 meses
+            const sparkRes = await query(`
+                SELECT EXTRACT(MONTH FROM fecha_hora)::int as mes, EXTRACT(YEAR FROM fecha_hora)::int as anio,
+                    COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento='salida'),0) as salidas,
+                    COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN metros_cuadrados*1.25*espesor/1000*2.5 WHEN tipo_movimiento='salida' THEN -metros_cuadrados*1.25*espesor/1000*2.5 ELSE 0 END),0) as kg
+                FROM movimientos
+                WHERE fecha_hora >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+                GROUP BY EXTRACT(YEAR FROM fecha_hora), EXTRACT(MONTH FROM fecha_hora)
+                ORDER BY anio, mes
+            `);
+            stockData.sparklinePlanchas = sparkRes.rows.map(r => Number(r.salidas));
+            stockData.sparklineKg = sparkRes.rows.map(r => Math.round(Number(r.kg)));
+        } catch(e) {}
+
+        // Alertas de autonomía
+        let alertas = [];
+        try {
+            const alertRes = await query(`
+                SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual,
+                    COALESCE(ROUND((COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5, 0), 0) as kg_stock,
+                    CASE
+                        WHEN mp.consumo_promedio_mensual > 0 AND (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / (mp.consumo_promedio_mensual * mp.espesor_mm * 2.5) <= 1.5 THEN 'critico'
+                        WHEN mp.consumo_promedio_mensual > 0 AND (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / (mp.consumo_promedio_mensual * mp.espesor_mm * 2.5) <= 3 THEN 'bajo'
+                        WHEN mp.consumo_promedio_mensual > 0 AND (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / (mp.consumo_promedio_mensual * mp.espesor_mm * 2.5) <= 6 THEN 'medio'
+                        ELSE 'ok'
+                    END as nivel,
+                    ROUND((COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / NULLIF(mp.consumo_promedio_mensual * mp.espesor_mm * 2.5, 0), 1) as autonomia_meses
+                FROM materias_primas mp
+                LEFT JOIN movimientos m ON m.materia_prima_id = mp.id
+                WHERE mp.consumo_promedio_mensual > 0
+                GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual
+                HAVING (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / NULLIF(mp.consumo_promedio_mensual * mp.espesor_mm * 2.5, 0) <= 6
+                ORDER BY autonomia_meses ASC
+            `);
+            alertas = alertRes.rows.map(r => ({
+                nombre: r.nombre,
+                espesor: r.espesor_mm,
+                nivel: r.nivel,
+                autonomia: r.autonomia_meses
+            }));
         } catch(e) {}
 
         res.json({
@@ -233,7 +274,8 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
             stockPlanchas: stockData.stockPlanchas,
             kgStock: stockData.kgStock,
             autonomia: stockData.autonomia,
-            planchasMes: stockData.planchasMes
+            planchasMes: stockData.planchasMes,
+            alertas
         });
     } catch (e) {
         console.error('[INV REPORTE ERROR]', e.message);

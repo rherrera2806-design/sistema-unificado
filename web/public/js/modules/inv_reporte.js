@@ -43,6 +43,7 @@ App.registerModule('inv_reporte', {
             + '</div></div></div>'
 
             + '<div id="irKpis" class="ir-kpi-row"></div>'
+            + '<div id="irAlertas" style="margin-bottom:16px"></div>'
             + '<div class="ir-chart-row">'
             + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>Movimientos por Mes</div><div style="position:relative;height:280px"><canvas id="irChartMes"></canvas></div></div>'
             + '<div class="ir-chart-box"><div class="ir-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20" fill="#8b5cf6" opacity="0.2"/></svg>Por Tipo de Cristal</div><div style="position:relative;height:280px;display:flex;justify-content:center"><canvas id="irChartTipo"></canvas></div></div>'
@@ -67,6 +68,7 @@ App.registerModule('inv_reporte', {
             if (!res.ok) { this.reportData = { meses: Array(12).fill(null).map(() => ({ total:0,entradas:0,salidas:0,m2_entradas:0,m2_salidas:0,planchas_entradas:0,planchas_salidas:0 })), topMateriales: [], topDimensiones: [], tipos: [], totalEntradas: 0, totalSalidas: 0, totalM2Entradas: 0, totalM2Salidas: 0 }; }
             else { this.reportData = await res.json(); }
             this.renderKpis();
+            this.renderAlertas();
             this.renderTabla();
             if (this._chartTimer) clearTimeout(this._chartTimer);
             this._chartTimer = setTimeout(() => this.renderCharts(), 100);
@@ -75,11 +77,18 @@ App.registerModule('inv_reporte', {
 
     renderKpis() {
         const d = this.reportData;
+        const sparkSvg = (data, color) => {
+            if (!data || data.length < 2) return '';
+            const max = Math.max(...data, 1);
+            const w = 120, h = 32;
+            const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`).join(' ');
+            return `<svg width="${w}" height="${h}" style="display:block;margin-top:6px"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polygon points="0,${h} ${pts} ${w},${h}" fill="${color}" opacity="0.15"/></svg>`;
+        };
 
         document.getElementById('irKpis').innerHTML = ''
-            + '<div class="ir-kpi kpi-amber"><div class="ir-kpi-value">' + (d.planchasMes || 0).toLocaleString('es-CL') + '</div><div class="ir-kpi-label">Planchas Este Mes</div></div>'
+            + '<div class="ir-kpi kpi-amber"><div class="ir-kpi-value">' + (d.planchasMes || 0).toLocaleString('es-CL') + '</div><div class="ir-kpi-label">Planchas Este Mes</div>' + sparkSvg(d.sparklinePlanchas, '#f59e0b') + '</div>'
             + '<div class="ir-kpi kpi-blue"><div class="ir-kpi-value">' + (d.stockPlanchas || 0).toLocaleString('es-CL') + ' <span style="font-size:14px;font-weight:600">pl.</span></div><div class="ir-kpi-label">Stock Planchas</div></div>'
-            + '<div class="ir-kpi kpi-purple"><div class="ir-kpi-value">' + (d.kgStock || 0).toLocaleString('es-CL') + ' <span style="font-size:14px;font-weight:600">kg</span></div><div class="ir-kpi-label">KG en Stock</div></div>'
+            + '<div class="ir-kpi kpi-purple"><div class="ir-kpi-value">' + (d.kgStock || 0).toLocaleString('es-CL') + ' <span style="font-size:14px;font-weight:600">kg</span></div><div class="ir-kpi-label">KG en Stock</div>' + sparkSvg(d.sparklineKg, '#8b5cf6') + '</div>'
             + '<div class="ir-kpi kpi-green"><div class="ir-kpi-value">' + (d.autonomia || 0) + ' <span style="font-size:14px;font-weight:600">meses</span></div><div class="ir-kpi-label">Autonomia Prom.</div></div>';
     },
 
@@ -98,7 +107,8 @@ App.registerModule('inv_reporte', {
             data: { labels, datasets: [
                 { label: 'Planchas Consumidas', data: d.meses.map(m => m.salidas), backgroundColor: '#ef4444', borderRadius: 6, borderSkipped: false }
             ] },
-            options: { ...defaults, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: false } } }
+            options: { ...defaults, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: false }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } } },
+            plugins: [ChartDataLabels]
         });
 
         const tipoTotal = d.tipos || [];
@@ -115,7 +125,8 @@ App.registerModule('inv_reporte', {
                 { label: 'M2 Entradas', data: d.meses.map(m => Math.round(m.m2_entradas)), backgroundColor: '#10b981', borderRadius: 6, borderSkipped: false },
                 { label: 'M2 Salidas', data: d.meses.map(m => Math.round(m.m2_salidas)), backgroundColor: '#ef4444', borderRadius: 6, borderSkipped: false }
             ] },
-            options: { ...defaults, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } } } }
+            options: { ...defaults, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 9, weight: '600' } } } },
+            plugins: [ChartDataLabels]
         });
 
         const materiales = (d.topMateriales || []).slice(0, 8);
@@ -144,7 +155,27 @@ App.registerModule('inv_reporte', {
         });
     },
 
-    renderTabla() {
+    renderAlertas() {
+        const d = this.reportData;
+        const alertas = d.alertas || [];
+        if (alertas.length === 0) {
+            document.getElementById('irAlertas').innerHTML = '';
+            return;
+        }
+        const colores = { critico: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', icon: '●', label: 'Stock critico' },
+            bajo: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', icon: '●', label: 'Stock bajo' },
+            medio: { bg: '#fffbeb', border: '#fde68a', text: '#d97706', icon: '●', label: 'Stock medio' },
+            ok: { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a', icon: '●', label: 'Stock ok' } };
+        let html = '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+        alertas.forEach(a => {
+            const c = colores[a.nivel] || colores.ok;
+            html += '<div style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;background:' + c.bg + ';border:1px solid ' + c.border + ';font-size:12px;color:' + c.text + '">'
+                + '<span style="font-size:14px">' + c.icon + '</span>'
+                + '<span>' + c.label + ': ' + a.nombre + ' ' + a.espesor + 'mm — ' + (a.autonomia || 0) + ' meses de autonomia</span></div>';
+        });
+        html += '</div>';
+        document.getElementById('irAlertas').innerHTML = html;
+    },
         const d = this.reportData;
         const mesesCortos = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
         const badge = (v, color) => `<span class="ir-badge" style="background:${color}15;color:${color}">${v}</span>`;
