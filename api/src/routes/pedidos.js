@@ -62,6 +62,82 @@ router.post('/api/pedidos', canCreate, upload.single('archivo_pdf'), async (req,
     } catch (e) { next(e); }
 });
 
+// Reporte de pedidos por anio
+router.get('/api/pedidos/reporte', canView, async (req, res) => {
+    try {
+        const anio = parseInt(req.query.anio) || new Date().getFullYear();
+        const result = await query(`
+            SELECT
+                EXTRACT(MONTH FROM fecha_subida)::int as mes,
+                COUNT(*)::int as total,
+                COUNT(*) FILTER (WHERE estado = 'pendiente')::int as pendientes,
+                COUNT(*) FILTER (WHERE estado = 'aprobado')::int as aprobados,
+                COUNT(*) FILTER (WHERE estado = 'rechazado')::int as rechazados,
+                COALESCE(NULLIF(vendedor,''), 'Sin asignar') as vendedor,
+                COALESCE(NULLIF(cliente,''), 'Sin cliente') as cliente,
+                COALESCE(NULLIF(tipo_ov,''), 'Normal') as tipo_ov
+            FROM pedidos
+            WHERE EXTRACT(YEAR FROM fecha_subida) = $1
+            GROUP BY EXTRACT(MONTH FROM fecha_subida), vendedor, cliente, tipo_ov
+            ORDER BY mes
+        `, [anio]);
+
+        const motivoResult = await query(`
+            SELECT COALESCE(NULLIF(motivo_rechazo,''), 'Sin motivo') as motivo, COUNT(*)::int as total
+            FROM pedidos WHERE EXTRACT(YEAR FROM fecha_subida) = $1 AND estado = 'rechazado' AND motivo_rechazo IS NOT NULL AND motivo_rechazo != ''
+            GROUP BY motivo_rechazo ORDER BY total DESC LIMIT 8
+        `, [anio]);
+
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const porMes = {};
+        const porVendedor = {};
+        const porCliente = {};
+        const porTipo = {};
+
+        for (const row of result.rows) {
+            const idx = row.mes - 1;
+            if (!porMes[idx]) porMes[idx] = { total:0, pendientes:0, aprobados:0, rechazados:0 };
+            porMes[idx].total += row.total;
+            porMes[idx].pendientes += row.pendientes;
+            porMes[idx].aprobados += row.aprobados;
+            porMes[idx].rechazados += row.rechazados;
+
+            const vend = (row.vendedor || '').trim() || 'Sin asignar';
+            porVendedor[vend] = (porVendedor[vend] || 0) + row.total;
+
+            const cli = (row.cliente || '').trim() || 'Sin cliente';
+            porCliente[cli] = (porCliente[cli] || 0) + row.total;
+
+            const tipo = (row.tipo_ov || 'Normal').trim();
+            porTipo[tipo] = (porTipo[tipo] || 0) + row.total;
+        }
+
+        const mesesData = meses.map((nombre, i) => ({
+            nombre,
+            ...(porMes[i] || { total:0, pendientes:0, aprobados:0, rechazados:0 })
+        }));
+
+        const totalGeneral = result.rows.reduce((s, r) => s + r.total, 0);
+        const totalAprobados = mesesData.reduce((s, m) => s + m.aprobados, 0);
+        const totalRechazados = mesesData.reduce((s, m) => s + m.rechazados, 0);
+
+        res.json({
+            anio,
+            meses: mesesData,
+            vendedores: Object.entries(porVendedor).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total),
+            clientes: Object.entries(porCliente).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total).slice(0, 10),
+            tipos: Object.entries(porTipo).map(([nombre, total]) => ({ nombre, total })).sort((a,b) => b.total - a.total),
+            motivos: motivoResult.rows,
+            totalGeneral,
+            totalAprobados,
+            totalRechazados
+        });
+    } catch (e) {
+        console.error('[PEDIDOS REPORTE ERROR]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 router.get('/api/pedidos/:id/pdf', async (req, res, next) => {
     try {
         const id = Number(req.params.id);
