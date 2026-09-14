@@ -802,7 +802,7 @@ router.get('/api/asistencia/reporte', canView, async (req, res) => {
         permisosMes.rows.forEach(r => { porMes[r.mes - 1].permisos = r.total; });
         licenciasMes.rows.forEach(r => { porMes[r.mes - 1].licencias = r.total; });
         vacacionesMes.rows.forEach(r => { porMes[r.mes - 1].vacaciones = r.total; });
-        horasMes.rows.forEach(r => { porMes[r.mes - 1].horas_extras = r.total; });
+        horasMes.rows.forEach(r => { porMes[r.mes - 1].horas_extras = parseFloat(r.horas) || 0; });
 
         const mesesData = meses.map((nombre, i) => ({ nombre, ...porMes[i] }));
 
