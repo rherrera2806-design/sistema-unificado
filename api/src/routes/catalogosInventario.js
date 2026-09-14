@@ -237,29 +237,22 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
         let alertas = [];
         try {
             const alertRes = await query(`
-                SELECT mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual,
-                    COALESCE(ROUND((COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5, 0), 0) as kg_stock,
-                    CASE
-                        WHEN mp.consumo_promedio_mensual > 0 AND (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / (mp.consumo_promedio_mensual * mp.espesor_mm * 2.5) <= 1.5 THEN 'critico'
-                        WHEN mp.consumo_promedio_mensual > 0 AND (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / (mp.consumo_promedio_mensual * mp.espesor_mm * 2.5) <= 3 THEN 'bajo'
-                        WHEN mp.consumo_promedio_mensual > 0 AND (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / (mp.consumo_promedio_mensual * mp.espesor_mm * 2.5) <= 6 THEN 'medio'
-                        ELSE 'ok'
-                    END as nivel,
-                    ROUND((COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / NULLIF(mp.consumo_promedio_mensual * mp.espesor_mm * 2.5, 0), 1) as autonomia_meses
+                SELECT mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual,
+                    ROUND((COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5, 0) as kg_stock,
+                    ROUND((COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) / NULLIF(mp.consumo_promedio_mensual, 0), 1) as autonomia_meses
                 FROM materias_primas mp
                 LEFT JOIN movimientos m ON m.materia_prima_id = mp.id
                 WHERE mp.consumo_promedio_mensual > 0
-                GROUP BY mp.id, mp.codigo_mp, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual
-                HAVING (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) * mp.espesor_mm * 2.5 / NULLIF(mp.consumo_promedio_mensual * mp.espesor_mm * 2.5, 0) <= 6
-                ORDER BY autonomia_meses ASC
+                GROUP BY mp.id, mp.nombre, mp.espesor_mm, mp.consumo_promedio_mensual
+                HAVING (COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='entrada'),0) - COALESCE(SUM(m.metros_cuadrados) FILTER (WHERE m.tipo_movimiento='salida' AND m.tipo_salida='plancha_completa'),0)) / NULLIF(mp.consumo_promedio_mensual, 0) <= 6
+                ORDER BY autonomia_meses ASC LIMIT 10
             `);
-            alertas = alertRes.rows.map(r => ({
-                nombre: r.nombre,
-                espesor: r.espesor_mm,
-                nivel: r.nivel,
-                autonomia: r.autonomia_meses
-            }));
-        } catch(e) {}
+            alertas = alertRes.rows.map(r => {
+                const auto = parseFloat(r.autonomia_meses) || 0;
+                const nivel = auto <= 1.5 ? 'critico' : auto <= 3 ? 'bajo' : auto <= 6 ? 'medio' : 'ok';
+                return { nombre: r.nombre, espesor: r.espesor_mm, nivel, autonomia: auto };
+            });
+        } catch(e) { console.error('[INV REPORTE] Alertas error:', e.message); }
 
         res.json({
             anio,
