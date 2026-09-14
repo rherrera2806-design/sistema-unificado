@@ -115,6 +115,24 @@ App.registerModule('asistencia_reporte', {
             plugins: [ChartDataLabels]
         });
 
+        const totalPlugin = {
+            id: 'totalOnTop',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+                ctx.save();
+                ctx.font = 'bold 11px Inter, sans-serif';
+                ctx.fillStyle = '#1e293b';
+                ctx.textAlign = 'center';
+                meta.data.forEach((bar, i) => {
+                    let total = 0;
+                    chart.data.datasets.forEach(ds => { total += ds.data[i]; });
+                    if (total > 0) ctx.fillText(total, bar.x, bar.y - 6);
+                });
+                ctx.restore();
+            }
+        };
+
         this.charts.tendencia = new Chart(document.getElementById('arChartAusencias'), {
             type: 'bar',
             data: { labels, datasets: [
@@ -123,10 +141,11 @@ App.registerModule('asistencia_reporte', {
                 { label: 'Licencias', data: d.meses.map(m => m.licencias), backgroundColor: '#f59e0b', borderRadius: 4, borderSkipped: false },
                 { label: 'Vacaciones', data: d.meses.map(m => m.vacaciones), backgroundColor: '#16a34a', borderRadius: 4, borderSkipped: false }
             ] },
-            options: { ...defaults, scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }, y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } } } }
+            options: { ...defaults, scales: { x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } }, y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#fff', font: { size: 9, weight: '700' }, textShadowColor: 'rgba(0,0,0,0.3)', textShadowBlur: 2 } } },
+            plugins: [ChartDataLabels, totalPlugin]
         });
 
-        const maxHoras = Math.max(...d.meses.map(m => m.horas_extras), 1);
+        const maxHoras = Math.max(...d.meses.map(m => m.horas_extras), 1); = Math.max(...d.meses.map(m => m.horas_extras), 1);
         this.charts.horas = new Chart(document.getElementById('arChartHoras'), {
             type: 'bar',
             data: { labels, datasets: [{ label: 'Horas Extras', data: d.meses.map(m => m.horas_extras), backgroundColor: '#f59e0b', borderRadius: 6, borderSkipped: false }] },
