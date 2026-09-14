@@ -146,7 +146,7 @@ App.registerModule('asistencia_reporte', {
             plugins: [ChartDataLabels, totalPlugin]
         });
 
-        const maxHoras = Math.max(...d.meses.map(m => m.horas_extras), 1); = Math.max(...d.meses.map(m => m.horas_extras), 1);
+        const maxHoras = Math.max(...d.meses.map(m => m.horas_extras), 1);
         this.charts.horas = new Chart(document.getElementById('arChartHoras'), {
             type: 'bar',
             data: { labels, datasets: [{ label: 'Horas Extras', data: d.meses.map(m => m.horas_extras), backgroundColor: '#f59e0b', borderRadius: 6, borderSkipped: false }] },
