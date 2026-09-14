@@ -703,7 +703,6 @@ function hasSection(section) {
 }
 function canSeeItem(item, section) {
     if (isAdmin()) return true;
-    if (item === 'inv_dashboard') return hasPerm('inv_dashboard');
     return hasPerm(item) || hasPerm(section) || hasPerm(section + '.editar') || hasPerm(section + '.eliminar') || hasPerm(section + '.agregar');
 }
 function canCreate(item, section) {
@@ -919,7 +918,6 @@ const SVG = {
 
 // ─── Inventario Navigation (inline) ────
 const INV_PAGES = {
-    inv_dashboard: { label: 'Dashboard', render: () => InvDashboard.render() },
     inv_inventario: { label: 'Inventario', render: () => InvInventario.render() },
     inv_movimientos: { label: 'Movimientos', render: () => InvMovimientos.render() },
     inv_historial: { label: 'Historial Inventario', render: () => InvHistorial.render() },
