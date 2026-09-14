@@ -110,10 +110,7 @@ App.registerModule('pedidos', {
                 + '<div style="display:flex;align-items:center;gap:8px">'
                 + '<div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
                 + '<span style="font-size:13px;font-weight:700;color:#0f172a">Pedidos <span id="pedCountLabel" style="color:#94a3b8;font-weight:400;font-size:12px"></span></span></div>'
-                + '<div style="display:flex;gap:6px">'
-                + '<button onclick="App.modules.pedidos.toggleGrafico()" id="pedBtnGrafico" class="btn btn-info" style="padding:6px 12px;font-size:11px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Gráfico</button>'
-                + '</div></div>'
-                + '<div id="pedGraficoContainer" style="display:none;padding:16px;border-bottom:1px solid #f1f5f9"></div>'
+                + '</div>'
                 + '<div class="m-card-body" style="padding:0">'
                 + '<div class="m-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px">'
                 + '<thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">'
@@ -828,96 +825,9 @@ App.registerModule('pedidos', {
         dc.innerHTML = html;
     },
 
-    toggleGrafico() {
-        const gc = document.getElementById('pedGraficoContainer');
-        const dc = document.getElementById('pedDashboardContainer');
-        const tc = document.querySelector('.m-table-wrap');
-        const btn = document.getElementById('pedBtnGrafico');
-        const btnD = document.getElementById('pedBtnDashboard');
-        if (gc.style.display === 'none') {
-            gc.style.display = 'block';
-            dc.style.display = 'none';
-            if (tc) tc.style.display = 'none';
-            btn.style.opacity = '1';
-            btnD.style.opacity = '0.6';
-            this.renderGrafico();
-        } else {
-            gc.style.display = 'none';
-            if (tc) tc.style.display = 'block';
-            btn.style.opacity = '0.6';
-        }
-    },
+    toggleGrafico() {},
 
-    renderGrafico() {
-        const gc = document.getElementById('pedGraficoContainer');
-        const filterMes = document.getElementById('pedFilterMes')?.value;
-        const filterAnio = document.getElementById('pedFilterAnio')?.value;
-        const now = new Date();
-        const mes = filterMes ? parseInt(filterMes) - 1 : now.getMonth();
-        const anio = filterAnio ? parseInt(filterAnio) : now.getFullYear();
-        const diasEnMes = new Date(anio, mes + 1, 0).getDate();
-        const colores = { Normal: '#3b82f6', Express: '#fde047', 'Vta. Region': '#9333ea', Reposicion: '#dc2626', Urgencia: '#f97316' };
-        const tipos = ['Normal', 'Express', 'Vta. Region', 'Reposicion', 'Urgencia'];
-
-        const source = this.filteredPedidos || this.allPedidos;
-        const pedidosMes = source.filter(p => {
-            const f = new Date(p.fecha_subida);
-            return f.getMonth() === mes && f.getFullYear() === anio && p.estado !== 'rechazado';
-        });
-
-        const porDia = {};
-        for (let d = 1; d <= diasEnMes; d++) {
-            porDia[d] = {};
-            tipos.forEach(t => porDia[d][t] = 0);
-        }
-        pedidosMes.forEach(p => {
-            const dia = new Date(p.fecha_subida).getDate();
-            const tipo = p.tipo_ov || 'Normal';
-            if (porDia[dia] && porDia[dia][tipo] !== undefined) porDia[dia][tipo]++;
-        });
-
-        const maxVal = Math.max(1, ...Object.values(porDia).flatMap(d => Object.values(d)));
-        const barH = 450;
-
-        const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-        let legendHtml = '<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">';
-        tipos.forEach(t => {
-            const count = pedidosMes.filter(p => (p.tipo_ov || 'Normal') === t).length;
-            legendHtml += '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b"><div style="width:12px;height:12px;border-radius:3px;background:' + colores[t] + '"></div>' + t + ' (' + count + ')</div>';
-        });
-        legendHtml += '</div>';
-
-        let barsHtml = '';
-        for (let d = 1; d <= diasEnMes; d++) {
-            const total = tipos.reduce((s, t) => s + porDia[d][t], 0);
-            let segmentsHtml = '';
-            if (total > 0) {
-                let stack = '';
-                for (let i = tipos.length - 1; i >= 0; i--) {
-                    const t = tipos[i];
-                    const val = porDia[d][t];
-                    if (val > 0) {
-                        const h = Math.max((val / maxVal) * barH, 4);
-                        stack += '<div style="width:100%;height:' + h + 'px;background:' + colores[t] + ';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.3)" title="Dia ' + d + ' - ' + t + ': ' + val + '">' + val + '</div>';
-                    }
-                }
-                segmentsHtml = '<div style="display:flex;flex-direction:column-reverse;width:100%;height:' + barH + 'px;justify-content:flex-start">' + stack + '</div>';
-            }
-            barsHtml += '<td style="width:' + (100 / diasEnMes) + '%;vertical-align:bottom;padding:0 1px">' + (total > 0 ? '<div style="text-align:center;font-size:11px;font-weight:800;color:#0f172a;margin-bottom:2px">' + total + '</div>' : '') + segmentsHtml + '</td>';
-        }
-
-        let labelsHtml = '';
-        for (let d = 1; d <= diasEnMes; d++) {
-            labelsHtml += '<td style="width:' + (100 / diasEnMes) + '%;text-align:center;font-size:9px;color:#94a3b8;padding:4px 1px">' + d + '</td>';
-        }
-
-        gc.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
-            + '<div><h4 style="margin:0;font-size:14px;font-weight:700;color:#0f172a">Ingresos por Dia - ' + monthNames[mes] + ' ' + anio + '</h4>'
-            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">Total: ' + pedidosMes.length + ' pedidos</p></div></div>'
-            + legendHtml
-            + '<table style="width:100%;border-collapse:collapse"><tr style="height:' + barH + 'px">' + barsHtml + '</tr><tr>' + labelsHtml + '</tr></table>';
-    },
+    renderGrafico() {},
 
     fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); },
     fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return '<div class="ped-dt">' + f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '</div><div class="ped-dt-sub">' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + '</div>'; },
