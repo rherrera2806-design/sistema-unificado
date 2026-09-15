@@ -241,7 +241,7 @@ App.registerModule('instalaciones', {
                 const totalDias = (this.diasMap[inst.id] || []).length;
                 const durLabel = totalDias > 1 ? `<span style="font-size:9px;opacity:0.7;margin-left:3px">(${dia.dia_numero}/${totalDias})</span>` : '';
                 html += `<div class="inst-event" onclick="App.modules.inst_detalle.abrir(${inst.id})" style="border-left-color:${color};background:${bg}" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
-                    <div class="inst-event-type" style="color:${color}">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')}${durLabel}</div>
+                    <div class="inst-event-type" style="color:${color}">${escapeHtml(inst.tipo || 'INSTALACION').replace('_',' ')} #${inst.id}${durLabel}</div>
                     <div class="inst-event-time" style="color:${color}">${inst.hora_programada || '09:00'}${inst.numero_orden ? ' · ' + escapeHtml(inst.numero_orden) : ''}</div>
                     <div class="inst-event-client">${escapeHtml(inst.cliente)}</div>
                 </div>`;
