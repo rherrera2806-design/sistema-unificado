@@ -100,16 +100,33 @@ const crearInstalacion = async (data, userEmail) => {
 const editarInstalacion = async (id, data, userEmail) => {
     const { cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor, numero_orden, notas_previas, tipo, duracion_dias } = data;
     const dias = Math.max(1, parseInt(duracion_dias) || 1);
+    
+    // Verificar si la fecha o duración cambiaron para regenerar los días
+    const actual = await query('SELECT fecha_programada, duracion_dias FROM instalaciones WHERE id=$1', [id]);
+    const fechaAnterior = actual.rows[0]?.fecha_programada;
+    const duracionAnterior = actual.rows[0]?.duracion_dias || 1;
+    const fechaNueva = fecha_programada ? String(fecha_programada).substring(0, 10) : null;
+    const fechaCambio = fechaNueva && String(fechaAnterior).substring(0, 10) !== fechaNueva;
+    const duracionCambio = dias !== duracionAnterior;
+    
     await query(
         `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, vendedor=$7, numero_orden=$8, notas_previas=$9, tipo=$10, duracion_dias=$11 WHERE id=$12`,
         [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor || '', numero_orden || '', notas_previas, tipo || 'INSTALACION', dias, id]
     );
-    await logHistorial(id, 'EDITADA', 'Datos actualizados', userEmail);
+    
+    // Si cambió la fecha o duración, regenerar los días
+    if (fechaCambio || duracionCambio) {
+        await query('DELETE FROM instalaciones_dias WHERE instalacion_id=$1', [id]);
+        await crearDias(id, fechaNueva || String(fechaAnterior).substring(0, 10), dias, userEmail);
+    }
+    
+    await logHistorial(id, 'EDITADA', 'Datos actualizados' + (fechaCambio ? ' (fecha cambiada)' : ''), userEmail);
 };
 
 const cambiarEstado = async (id, estado, detalle, userEmail) => {
     if (!ESTADOS_VALIDOS.includes(estado)) throw new Error('Estado inválido');
     await query('UPDATE instalaciones SET estado=$1 WHERE id=$2', [estado, id]);
+    await query('UPDATE instalaciones_dias SET estado=$1 WHERE instalacion_id=$2', [estado, id]);
     const histDetalle = detalle ? 'Novedad: ' + detalle : 'Estado cambiado a: ' + estado;
     await logHistorial(id, estado === 'CON_NOVEDADES' ? 'NOVEDAD' : 'CAMBIO_ESTADO', histDetalle, userEmail);
 };
