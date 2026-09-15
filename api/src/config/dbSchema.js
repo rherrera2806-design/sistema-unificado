@@ -440,6 +440,16 @@ async function initDB() {
         await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='vendedor') THEN ALTER TABLE instalaciones ADD COLUMN vendedor VARCHAR(200) DEFAULT ''; END IF; END $$`);
         await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='tipo') THEN ALTER TABLE instalaciones ADD COLUMN tipo VARCHAR(30) DEFAULT 'INSTALACION'; END IF; END $$`);
         await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='duracion_dias') THEN ALTER TABLE instalaciones ADD COLUMN duracion_dias INTEGER DEFAULT 1; END IF; END $$`);
+        // Sincronizar estados de instalaciones_dias con instalaciones padre
+        try {
+            await query(`
+                UPDATE instalaciones_dias d
+                SET estado = i.estado
+                FROM instalaciones i
+                WHERE d.instalacion_id = i.id AND d.estado != i.estado
+            `);
+        } catch(e) {}
+
         const year = new Date().getFullYear();
         for (let m = 0; m < 12; m++) {
             for (let d = 1; d <= 31; d++) {
