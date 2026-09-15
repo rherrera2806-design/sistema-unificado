@@ -109,8 +109,6 @@ const editarInstalacion = async (id, data, userEmail) => {
     const fechaCambio = fechaNueva && fechaAnterior !== fechaNueva;
     const duracionCambio = dias !== duracionAnterior;
     
-    console.log('[EDITAR INST]', id, 'anterior:', fechaAnterior, 'nueva:', fechaNueva, 'cambio:', fechaCambio, 'durCambio:', duracionCambio);
-    
     await query(
         `UPDATE instalaciones SET cliente=$1, direccion=$2, descripcion=$3, fecha_programada=$4, hora_programada=$5, tecnico=$6, vendedor=$7, numero_orden=$8, notas_previas=$9, tipo=$10, duracion_dias=$11 WHERE id=$12`,
         [cliente, direccion, descripcion, fecha_programada, hora_programada, tecnico, vendedor || '', numero_orden || '', notas_previas, tipo || 'INSTALACION', dias, id]
@@ -118,7 +116,6 @@ const editarInstalacion = async (id, data, userEmail) => {
     
     // Si cambió la fecha o duración, regenerar los días
     if (fechaCambio || duracionCambio) {
-        console.log('[EDITAR INST] Regenerando días para', fechaNueva || fechaAnterior, 'dias:', dias);
         await query('DELETE FROM instalaciones_dias WHERE instalacion_id=$1', [id]);
         await crearDias(id, fechaNueva || fechaAnterior, dias, userEmail);
     }
