@@ -102,11 +102,11 @@ const editarInstalacion = async (id, data, userEmail) => {
     const dias = Math.max(1, parseInt(duracion_dias) || 1);
     
     // Verificar si la fecha o duración cambiaron para regenerar los días
-    const actual = await query('SELECT fecha_programada, duracion_dias FROM instalaciones WHERE id=$1', [id]);
-    const fechaAnterior = actual.rows[0]?.fecha_programada;
+    const actual = await query('SELECT fecha_programada::text, duracion_dias FROM instalaciones WHERE id=$1', [id]);
+    const fechaAnterior = (actual.rows[0]?.fecha_programada || '').substring(0, 10);
     const duracionAnterior = actual.rows[0]?.duracion_dias || 1;
-    const fechaNueva = fecha_programada ? String(fecha_programada).substring(0, 10) : null;
-    const fechaCambio = fechaNueva && String(fechaAnterior).substring(0, 10) !== fechaNueva;
+    const fechaNueva = fecha_programada ? String(fecha_programada).substring(0, 10) : '';
+    const fechaCambio = fechaNueva && fechaAnterior !== fechaNueva;
     const duracionCambio = dias !== duracionAnterior;
     
     await query(
@@ -117,7 +117,7 @@ const editarInstalacion = async (id, data, userEmail) => {
     // Si cambió la fecha o duración, regenerar los días
     if (fechaCambio || duracionCambio) {
         await query('DELETE FROM instalaciones_dias WHERE instalacion_id=$1', [id]);
-        await crearDias(id, fechaNueva || String(fechaAnterior).substring(0, 10), dias, userEmail);
+        await crearDias(id, fechaNueva || fechaAnterior, dias, userEmail);
     }
     
     await logHistorial(id, 'EDITADA', 'Datos actualizados' + (fechaCambio ? ' (fecha cambiada)' : ''), userEmail);
