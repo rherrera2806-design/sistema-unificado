@@ -236,8 +236,9 @@ App.registerModule('instalaciones', {
                 <div style="text-align:right;padding:1px 3px;font-size:11px;${esHoy ? 'background:#3b82f6;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;margin-left:auto;font-weight:700' : (esFinde ? 'color:#94a3b8' : 'color:#1e293b')}">${d}</div>
             `;
             for (const { inst, dia } of instDia) {
-                const color = estadoColor(dia.estado || inst.estado);
-                const bg = estadoBg(dia.estado || inst.estado);
+                const estadoFinal = (inst.estado === 'COMPLETADA' || inst.estado === 'CANCELADA') ? inst.estado : (dia.estado || inst.estado);
+                const color = estadoColor(estadoFinal);
+                const bg = estadoBg(estadoFinal);
                 const totalDias = (this.diasMap[inst.id] || []).length;
                 const durLabel = totalDias > 1 ? `<span style="font-size:9px;opacity:0.7;margin-left:3px">(${dia.dia_numero}/${totalDias})</span>` : '';
                 html += `<div class="inst-event" onclick="App.modules.inst_detalle.abrir(${inst.id})" style="border-left-color:${color};background:${bg}" onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">

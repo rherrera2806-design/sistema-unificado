@@ -136,6 +136,7 @@ const cerrarInstalacion = async (id, notas_cierre, firma_cliente, userEmail) => 
         'UPDATE instalaciones SET estado=$1, notas_cierre=$2, firma_cliente=$3, cerrado_por=$4, fecha_cierre=NOW() WHERE id=$5',
         ['COMPLETADA', notas_cierre || '', firma_cliente || '', userEmail, id]
     );
+    await query('UPDATE instalaciones_dias SET estado=$1 WHERE instalacion_id=$2', ['COMPLETADA', id]);
     await logHistorial(id, 'CERRADA', 'Instalación cerrada. ' + (notas_cierre || ''), userEmail);
 };
 
