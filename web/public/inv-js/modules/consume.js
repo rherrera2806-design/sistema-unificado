@@ -1,8 +1,21 @@
+// ============================================================================
+// Consumo y Autonomía — colores originales conservados; tipografía ORDENADA:
+// escala fija (título 13 / header 11 / dato 12 / nota 10), números en formato
+// es-CL (miles con punto, decimales con coma) y alineación consistente
+// (texto izquierda, números derecha).
+// ============================================================================
+
+window.escText = window.escText || function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); };
+
 const InvConsume = {
     _filtAuto: 0,
     _data: null,
 
-    fmtKg(v) { return Math.round(v || 0).toLocaleString('es-CL'); },
+    // Formatos numéricos consistentes (es-CL: 1.234 · 2,4 · 1.188,00)
+    fmtInt(v) { return Math.round(v || 0).toLocaleString('es-CL'); },
+    fmtDec1(v) { return Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); },
+    fmtDec2(v) { return Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+    fmtKg(v) { return this.fmtInt(v); },
 
     async render() {
         const page = document.querySelector('.page.active');
@@ -19,164 +32,200 @@ const InvConsume = {
                 stock: a.stockActual || []
             };
             this._renderContent(page);
-        } catch(err) {
+        } catch (err) {
             // Error visible en vez de las tablas con "Sin datos"
             App.showAlert('Error al cargar consumo: ' + err.message, 'danger');
             page.innerHTML = '<div class="alert alert-danger">Error: ' + escText(err.message) + '</div>';
         }
     },
 
+    // ------------------------------------------------------------------
+    // Estilos: escala tipográfica única y alineaciones consistentes
+    // ------------------------------------------------------------------
+    _styles() {
+        return `
+            <style>
+                .cc-card-title{padding:12px 16px;font-size:13px;font-weight:600;color:var(--gray-800);border-bottom:1px solid var(--gray-100)}
+                .cc-th{padding:9px 10px;font-size:11px;font-weight:600;color:var(--gray-500);border-bottom:2px solid var(--gray-200);white-space:nowrap}
+                .cc-td{padding:8px 10px;font-size:12px;color:var(--gray-800);border-bottom:1px solid var(--gray-100)}
+                .cc-num{text-align:right}
+                .cc-sub{font-size:10px;font-weight:400;color:var(--gray-400)}
+                .cc-sticky{position:sticky;left:0;background:white;z-index:1}
+                .cc-sticky-2{position:sticky;left:56px;background:white;z-index:1}
+                .cc-total{font-weight:700;color:var(--primary);background:var(--gray-50)}
+                .cc-prom{font-weight:600;color:var(--gray-600);background:var(--gray-50)}
+                .inv-scroll-wrap{-webkit-overflow-scrolling:touch}
+                .inv-scroll-wrap table{min-width:760px}
+                .inv-scroll-wrap--wide table{min-width:1150px}
+                .inv-scroll-wrap th:first-child,.inv-scroll-wrap td:first-child{box-shadow:1px 0 0 var(--gray-200)}
+                .inv-filt-grupo{display:flex;gap:4px;align-items:center;font-size:11px;font-weight:600;flex-wrap:wrap}
+                .inv-filt-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--gray-200);cursor:pointer;font-size:11px;font-weight:600;background:white;color:var(--gray-600)}
+                .inv-filt-btn[aria-pressed="true"]{color:white}
+                .inv-filt-btn.c0[aria-pressed="true"]{background:var(--primary)}
+                .inv-filt-btn.c1[aria-pressed="true"],.inv-filt-btn.c2[aria-pressed="true"]{background:var(--danger)}
+                .inv-filt-btn.c3[aria-pressed="true"],.inv-filt-btn.c4[aria-pressed="true"]{background:var(--warning)}
+                .inv-filt-btn.c5[aria-pressed="true"],.inv-filt-btn.c6[aria-pressed="true"]{background:var(--success)}
+                @media(max-width:768px){
+                    .inv-scroll-wrap{display:block!important}
+                    .inv-scroll-wrap table{min-width:900px}
+                    .inv-scroll-wrap--wide table{min-width:1150px}
+                    .inv-scroll-wrap th,.inv-scroll-wrap td{padding:7px 6px}
+                    .inv-filt-btn{min-height:32px;padding:6px 10px!important;font-size:11px!important}
+                }
+            </style>`;
+    },
+
     _renderContent(page) {
         const consumo = this._data ? this._data.consumo : [];
-        const stock = this._data ? this._data.stock : [];
-        const monthNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        const monthNames = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
         page.innerHTML = `
-                <style>
-                    /* Matrices con scroll horizontal comodo en movil (sin duplicarlas como cards) */
-                    .inv-scroll-wrap{-webkit-overflow-scrolling:touch}
-                    .inv-scroll-wrap table{min-width:760px}
-                    .inv-scroll-wrap--wide table{min-width:1150px}
-                    .inv-scroll-wrap th:first-child,.inv-scroll-wrap td:first-child{box-shadow:1px 0 0 var(--gray-200)}
-                    .inv-filt-grupo{display:flex;gap:4px;align-items:center;font-size:10px;font-weight:600;flex-wrap:wrap}
-                    @media(max-width:768px){
-                        .inv-scroll-wrap{display:block!important}
-                        .inv-scroll-wrap table{min-width:900px;font-size:11px}
-                        .inv-scroll-wrap--wide table{min-width:1150px}
-                        .inv-scroll-wrap th,.inv-scroll-wrap td{padding:8px 6px}
-                        .inv-filt-btn{min-height:32px;padding:6px 10px!important;font-size:11px!important}
-                    }
-                </style>
+                ${this._styles()}
 
                 <div class="m-page">
                 <div class="m-hero" style="padding:12px 16px">
                     <div style="position:relative;z-index:1">
-                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white">Consumo y Autonomia</h2>
-                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Analisis de consumo mensual y proyeccion de stock</p>
+                        <h2 style="margin:0;font-size:15px;font-weight:700;color:white">Consumo y Autonomía</h2>
+                        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Análisis de consumo mensual y proyección de stock</p>
                     </div>
                 </div>
 
                 <div class="m-card" style="margin-bottom:16px">
-                    <div class="m-card-header" style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--gray-800)">Consumo Mensual por Material</div>
+                    <div class="cc-card-title">Consumo mensual por material</div>
                         <div class="m-table-wrap inv-scroll-wrap">
                             ${consumo.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
-                            (() => {
-                                const porMp = {};
-                                consumo.forEach(c => {
-                                    const key = c.codigo_mp + '|' + (c.espesor_mm || '');
-                                    if (!porMp[key]) porMp[key] = { nombre: c.nombre, espesor: c.espesor_mm, meses: {} };
-                                    porMp[key].meses[c.mes] = Number(c.planchas_consumidas);
-                                });
-                                const allMeses = [...new Set(consumo.map(c => c.mes))].sort();
-                                const rows = Object.entries(porMp).map(([key, data]) => {
-                                    const total = Object.values(data.meses).reduce((s, v) => s + v, 0);
-                                    const numMeses = Object.keys(data.meses).length || 1;
-                                    const promedio = total / numMeses;
-                                    return { nombre: data.nombre, espesor: data.espesor, meses: data.meses, total, promedio };
-                                });
-                                rows.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (a.espesor || '').localeCompare(b.espesor || ''));
-                                const maxVal = Math.max(...rows.flatMap(r => Object.values(r.meses)), 1);
-                                return '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
-                                    + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);position:sticky;left:0;background:white;z-index:1;min-width:140px">Material</th>'
-                                    + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);min-width:50px">Esp.</th>'
-                                    + allMeses.map(m => {
-                                        const parts = m.split('-');
-                                        return '<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:52px">' + monthNames[parseInt(parts[1])] + '<br><span style="font-weight:400;color:var(--gray-400)">' + parts[0].slice(2) + '</span></th>';
-                                    }).join('')
-                                    + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">TOTAL</th>'
-                                    + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">PROM.</th>'
-                                    + '</tr></thead><tbody>'
-                                    + rows.map(r => '<tr style="border-bottom:1px solid var(--gray-100)">'
-                                        + '<td style="padding:6px 12px;font-weight:600;color:var(--gray-800);position:sticky;left:0;background:white;z-index:1">' + escText(r.nombre || '-') + '</td>'
-                                        + '<td style="padding:6px 8px;color:var(--gray-600)">' + escText(r.espesor || '-') + '</td>'
-                                        + allMeses.map(m => {
-                                            const val = r.meses[m] || 0;
-                                                return '<td style="padding:6px;text-align:center;position:relative">'
-                                                    + (val > 0 ? '<div style="position:absolute;top:0;left:2px;right:2px;bottom:0;background:var(--primary);opacity:0.08;border-radius:2px"></div>' : '')
-                                                    + '<span style="position:relative;font-weight:600;color:' + (val > 0 ? 'var(--gray-800)' : 'var(--gray-300)') + '">' + (val > 0 ? Math.round(val) : '-') + '</span></td>';
-                                        }).join('')
-                                        + '<td style="padding:6px 12px;text-align:center;font-weight:700;color:var(--primary);background:var(--gray-50)">' + Math.round(r.total) + '</td>'
-                                        + '<td style="padding:6px 12px;text-align:center;font-weight:600;color:var(--gray-600);background:var(--gray-50)">' + Math.round(r.promedio) + '</td>'
-                                        + '</tr>').join('')
-                                    + '</tbody></table>';
-                            })()}
+            (() => {
+                const porMp = {};
+                consumo.forEach(c => {
+                    const key = c.codigo_mp + '|' + (c.espesor_mm || '');
+                    if (!porMp[key]) porMp[key] = { nombre: c.nombre, espesor: c.espesor_mm, meses: {} };
+                    porMp[key].meses[c.mes] = Number(c.planchas_consumidas);
+                });
+                const allMeses = [...new Set(consumo.map(c => c.mes))].sort();
+                const rows = Object.entries(porMp).map(([key, data]) => {
+                    const total = Object.values(data.meses).reduce((s, v) => s + v, 0);
+                    const numMeses = Object.keys(data.meses).length || 1;
+                    const promedio = total / numMeses;
+                    return { nombre: data.nombre, espesor: data.espesor, meses: data.meses, total, promedio };
+                });
+                rows.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (a.espesor || '').localeCompare(b.espesor || ''));
+                return '<table style="width:100%;border-collapse:collapse"><thead><tr>'
+                    + '<th class="cc-th cc-sticky" style="text-align:left;min-width:150px">Material</th>'
+                    + '<th class="cc-th" style="text-align:left;min-width:52px">Esp.</th>'
+                    + allMeses.map(m => {
+                        const parts = m.split('-');
+                        return '<th class="cc-th cc-num" style="min-width:56px">' + monthNames[parseInt(parts[1])] + ' <span class="cc-sub">' + parts[0].slice(2) + '</span></th>';
+                    }).join('')
+                    + '<th class="cc-th cc-num" style="min-width:70px">Total</th>'
+                    + '<th class="cc-th cc-num" style="min-width:70px">Promedio</th>'
+                    + '</tr></thead><tbody>'
+                    + rows.map(r => '<tr>'
+                        + '<td class="cc-td cc-sticky" style="font-weight:600">' + escText(r.nombre || '-') + '</td>'
+                        + '<td class="cc-td" style="color:var(--gray-600)">' + escText(r.espesor || '-') + '</td>'
+                        + allMeses.map(m => {
+                            const val = r.meses[m] || 0;
+                            return '<td class="cc-td cc-num" style="position:relative">'
+                                + (val > 0 ? '<div style="position:absolute;top:0;left:2px;right:2px;bottom:0;background:var(--primary);opacity:0.08;border-radius:2px"></div>' : '')
+                                + '<span style="position:relative;font-weight:600;color:' + (val > 0 ? 'var(--gray-800)' : 'var(--gray-300)') + '">' + (val > 0 ? InvConsume.fmtInt(val) : '-') + '</span></td>';
+                        }).join('')
+                        + '<td class="cc-td cc-num cc-total">' + InvConsume.fmtInt(r.total) + '</td>'
+                        + '<td class="cc-td cc-num cc-prom">' + InvConsume.fmtInt(r.promedio) + '</td>'
+                        + '</tr>').join('')
+                    + '</tbody></table>';
+            })()}
                         </div>
                     </div>
 
                 <div class="m-card" style="margin-bottom:16px">
-                    <div class="m-card-header" style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--gray-800);display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
-                        <span>Proyeccion de Stock por Material</span>
+                    <div class="cc-card-title" style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
+                        <span>Proyección de stock por material</span>
                         <div class="inv-filt-grupo">
-                            <span style="color:var(--gray-400);margin-right:4px">Filtrar ≤</span>
-                            <button onclick="InvConsume.filtAuto(0)" class="inv-filt-btn" data-val="0" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===0?'var(--primary)':'white'};color:${this._filtAuto===0?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">Todos</button>
-                            <button onclick="InvConsume.filtAuto(1)" class="inv-filt-btn" data-val="1" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===1?'var(--danger)':'white'};color:${this._filtAuto===1?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;1 mes</button>
-                            <button onclick="InvConsume.filtAuto(2)" class="inv-filt-btn" data-val="2" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===2?'var(--danger)':'white'};color:${this._filtAuto===2?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;2 meses</button>
-                            <button onclick="InvConsume.filtAuto(3)" class="inv-filt-btn" data-val="3" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===3?'var(--warning)':'white'};color:${this._filtAuto===3?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;3 meses</button>
-                            <button onclick="InvConsume.filtAuto(4)" class="inv-filt-btn" data-val="4" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===4?'var(--warning)':'white'};color:${this._filtAuto===4?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;4 meses</button>
-                            <button onclick="InvConsume.filtAuto(5)" class="inv-filt-btn" data-val="5" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===5?'var(--success)':'white'};color:${this._filtAuto===5?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;5 meses</button>
-                            <button onclick="InvConsume.filtAuto(6)" class="inv-filt-btn" data-val="6" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===6?'var(--success)':'white'};color:${this._filtAuto===6?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;6 meses</button>
+                            <span class="cc-sub">Filtrar:</span>
+                            ${[0, 1, 2, 3, 4, 5, 6].map(v => {
+                                const labels = { 0: 'Todos', 1: '<1 mes', 2: '<2 meses', 3: '<3 meses', 4: '<4 meses', 5: '<5 meses', 6: '<6 meses' };
+                                const activo = this._filtAuto === v;
+                                return '<button type="button" class="inv-filt-btn c' + v + '" data-val="' + v + '" aria-pressed="' + activo + '" onclick="InvConsume.filtAuto(' + v + ')">' + labels[v] + '</button>';
+                            }).join('')}
                         </div>
                     </div>
-                    <div class="m-table-wrap inv-scroll-wrap inv-scroll-wrap--wide">
-                        ${stock.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
-                        (() => {
-                            const now = new Date();
-                            const meses = [];
-                            for (let i = 0; i < 12; i++) {
-                                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-                                meses.push({ key: d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'), label: monthNames[d.getMonth()+1], anio: String(d.getFullYear()).slice(2) });
-                            }
-                            const maxAuto = this._filtAuto || 0;
-                            let filtered = stock.filter(s => s.consumo_promedio > 0 || s.stock > 0 || Number(s.entradas) > 0);
-                            if (maxAuto > 0) filtered = filtered.filter(s => (s.autonomia_meses || 0) < maxAuto);
-                            const sorted = filtered.sort((a,b) => (a.nombre || '').localeCompare(b.nombre || '') || (Number(b.espesor_mm) || 0) - (Number(a.espesor_mm) || 0));
-                            return '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
-                                + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);position:sticky;left:0;background:white;z-index:1;min-width:60px">SAP</th>'
-                                + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);min-width:100px">Material</th>'
-                                + '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);min-width:40px">Esp.</th>'
-                                + '<th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500);min-width:50px">Stock</th>'
-                                + '<th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500);min-width:50px">Kg</th>'
-                                + '<th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">Cons. Prom.</th>'
-                                + '<th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">Auton. (mes)</th>'
-                                + meses.map(m => '<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:44px">' + m.label + '<br><span style="font-weight:400;color:var(--gray-400)">' + m.anio + '</span></th>').join('')
-                                + '</tr></thead><tbody>'
-                                + sorted.map(s => {
-                                    const stockRem = s.stock;
-                                    const cpm = s.consumo_promedio || 0;
-                                    const auto = s.autonomia_meses || 0;
-                                    const autoColor = s.stock <= 0 ? 'var(--danger)' : auto < 2 ? 'var(--danger)' : auto < 4 ? 'var(--warning)' : 'var(--success)';
-                                    return '<tr style="border-bottom:1px solid var(--gray-100)">'
-                                        + '<td style="padding:6px 10px;color:var(--gray-600);position:sticky;left:0;background:white;z-index:1">' + escText(s.codigo_mp || '') + '</td>'
-                                        + '<td style="padding:6px 10px;font-weight:600;color:var(--gray-800);position:sticky;left:60px;background:white;z-index:1">' + escText(s.nombre || '') + '</td>'
-                                        + '<td style="padding:6px 10px;color:var(--gray-600)">' + escText(s.espesor_mm || '') + '</td>'
-                                        + '<td style="padding:6px 10px;text-align:right;font-weight:700;color:var(--gray-800)">' + Math.round(stockRem) + '</td>'
-                                        + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + InvConsume.fmtKg(s.kg_stock) + '</td>'
-                                        + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + Math.round(cpm) + '</td>'
-                                        + '<td style="padding:6px 10px;text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700;background:' + autoColor + '15;color:' + autoColor + '">' + (auto > 0 ? auto.toFixed(1) : '-') + '</span></td>'
-                                        + meses.map((m, i) => {
-                                            const cpmVal = cpm || 0;
-                                            if (cpmVal <= 0) return '<td style="padding:6px 4px;text-align:center;border-left:1px solid var(--gray-100)"><div style="width:100%;height:22px;border-radius:3px"></div></td>';
-                                            const stockInicioMes = stockRem - (cpmVal * i);
-                                            const stockFinMes = stockInicioMes - cpmVal;
-                                            let bgStyle = '';
-                                            if (stockInicioMes <= 0) bgStyle = '';
-                                            else if (stockFinMes <= 0) bgStyle = 'background:repeating-linear-gradient(45deg,rgba(245,158,11,0.2),rgba(245,158,11,0.2) 3px,transparent 3px,transparent 6px)';
-                                            else bgStyle = 'background:repeating-linear-gradient(45deg,rgba(34,197,94,0.18),rgba(34,197,94,0.18) 3px,transparent 3px,transparent 6px)';
-                                            return '<td style="padding:6px 4px;text-align:center;border-left:1px solid var(--gray-100)"><div style="width:100%;height:22px;border-radius:3px;' + bgStyle + '"></div></td>';
-                                        }).join('')
-                                        + '</tr>';
-                                }).join('')
-                                + '</tbody></table>';
-                        })()}
-                    </div>
+                    <div id="consumeProyWrap">${this._proyeccionHtml()}</div>
                 </div>
 
             </div>`;
     },
 
+    // ------------------------------------------------------------------
+    // Proyección de stock (se re-pinta sola al filtrar, sin parpadear)
+    // ------------------------------------------------------------------
+    _proyeccionHtml() {
+        const stock = this._data ? this._data.stock : [];
+        const monthNames = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        if (stock.length === 0) return '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>';
+
+        const now = new Date();
+        const meses = [];
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            meses.push({ key: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), label: monthNames[d.getMonth() + 1], anio: String(d.getFullYear()).slice(2) });
+        }
+        const maxAuto = this._filtAuto || 0;
+        let filtered = stock.filter(s => s.consumo_promedio > 0 || s.stock > 0 || Number(s.entradas) > 0);
+        if (maxAuto > 0) filtered = filtered.filter(s => (s.autonomia_meses || 0) < maxAuto);
+        const sorted = filtered.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (Number(b.espesor_mm) || 0) - (Number(a.espesor_mm) || 0));
+
+        return '<div class="m-table-wrap inv-scroll-wrap inv-scroll-wrap--wide">'
+            + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
+            + '<th class="cc-th cc-sticky" style="text-align:left;min-width:56px">SAP</th>'
+            + '<th class="cc-th cc-sticky-2" style="text-align:left;min-width:110px">Material</th>'
+            + '<th class="cc-th" style="text-align:left;min-width:44px">Esp.</th>'
+            + '<th class="cc-th cc-num" style="min-width:56px">Stock</th>'
+            + '<th class="cc-th cc-num" style="min-width:56px">Kg</th>'
+            + '<th class="cc-th cc-num" style="min-width:70px">Cons. prom.</th>'
+            + '<th class="cc-th cc-num" style="min-width:80px">Autonomía</th>'
+            + meses.map(m => '<th class="cc-th cc-num" style="min-width:48px">' + m.label + ' <span class="cc-sub">' + m.anio + '</span></th>').join('')
+            + '</tr></thead><tbody>'
+            + sorted.map(s => {
+                const stockRem = s.stock;
+                const cpm = s.consumo_promedio || 0;
+                const auto = s.autonomia_meses || 0;
+                const autoColor = s.stock <= 0 ? 'var(--danger)' : auto < 2 ? 'var(--danger)' : auto < 4 ? 'var(--warning)' : 'var(--success)';
+                return '<tr>'
+                    + '<td class="cc-td cc-sticky" style="color:var(--gray-600)">' + escText(s.codigo_mp || '') + '</td>'
+                    + '<td class="cc-td cc-sticky-2" style="font-weight:600">' + escText(s.nombre || '') + '</td>'
+                    + '<td class="cc-td" style="color:var(--gray-600)">' + escText(s.espesor_mm || '') + '</td>'
+                    + '<td class="cc-td cc-num" style="font-weight:700">' + InvConsume.fmtInt(stockRem) + '</td>'
+                    + '<td class="cc-td cc-num" style="font-weight:600;color:var(--gray-600)">' + InvConsume.fmtKg(s.kg_stock) + '</td>'
+                    + '<td class="cc-td cc-num" style="font-weight:600;color:var(--gray-600)">' + InvConsume.fmtInt(cpm) + '</td>'
+                    + '<td class="cc-td cc-num"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;background:' + autoColor + '15;color:' + autoColor + '">' + (auto > 0 ? InvConsume.fmtDec1(auto) + ' mes' : '-') + '</span></td>'
+                    + meses.map((m, i) => {
+                        const cpmVal = cpm || 0;
+                        if (cpmVal <= 0) return '<td style="padding:8px 4px;border-left:1px solid var(--gray-100)"><div style="width:100%;height:22px;border-radius:3px"></div></td>';
+                        const stockInicioMes = stockRem - (cpmVal * i);
+                        const stockFinMes = stockInicioMes - cpmVal;
+                        let bgStyle = '';
+                        if (stockInicioMes <= 0) bgStyle = '';
+                        else if (stockFinMes <= 0) bgStyle = 'background:repeating-linear-gradient(45deg,rgba(245,158,11,0.2),rgba(245,158,11,0.2) 3px,transparent 3px,transparent 6px)';
+                        else bgStyle = 'background:repeating-linear-gradient(45deg,rgba(34,197,94,0.18),rgba(34,197,94,0.18) 3px,transparent 3px,transparent 6px)';
+                        return '<td style="padding:8px 4px;border-left:1px solid var(--gray-100)"><div style="width:100%;height:22px;border-radius:3px;' + bgStyle + '"></div></td>';
+                    }).join('')
+                    + '</tr>';
+            }).join('')
+            + '</tbody></table></div>';
+    },
+
     filtAuto(val) {
         this._filtAuto = val;
-        const page = document.querySelector('.page.active');
-        this._renderContent(page);
+        // Re-pinta solo la tabla de proyección (sin parpadear todo el contenido)
+        const wrap = document.getElementById('consumeProyWrap');
+        if (wrap) {
+            wrap.innerHTML = this._proyeccionHtml();
+            // Refrescar el estado visual de los botones de filtro
+            document.querySelectorAll('.inv-filt-btn').forEach(btn => {
+                const v = parseInt(btn.getAttribute('data-val'));
+                btn.setAttribute('aria-pressed', v === val ? 'true' : 'false');
+            });
+        } else {
+            this._renderContent(document.querySelector('.page.active'));
+        }
     }
 };
