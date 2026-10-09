@@ -1,10 +1,16 @@
 /**
  * Middleware centralizado de permisos para VitroFlow
  *
- * La identidad y los permisos se resuelven EXCLUSIVAMENTE desde la sesión
- * creada por POST /api/auth/login (cookie HttpOnly 'session=').
+ * La identidad se resuelve EXCLUSIVAMENTE desde la sesión creada por
+ * POST /api/auth/login (cookie HttpOnly 'session=').
  * Los headers 'X-User-Permisos' / 'X-User-Email' los envía el cliente y pueden
  * falsificarse, por lo que se IGNORAN: no otorgan identidad ni permisos.
+ *
+ * En cambio los permisos, el rol y el estado 'activo' se leen SIEMPRE de la BD
+ * (ver resolveUser). Si se congelaran al hacer login, un cambio hecho por un
+ * admin no aplicaria hasta que el usuario cerrara sesion, mientras la UI (que
+ * los lee de /api/auth/me) ya mostraria los botones nuevos: el usuario tocaba
+ * "Subir Pedido" y el API respondia 403 "Sin permisos para esta accion".
  *
  * Convención de permisos (ver web/public/js/modules/usuarios.js):
  *   - modulo            → acceso base / lectura (ver módulo)
@@ -24,6 +30,69 @@ function getUserFromSession(req) {
     const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
     const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
     return getSession(token);
+}
+
+/**
+ * Normaliza un usuario al shape { id, nombre, email, rol, area, permisos, activo }.
+ */
+function normalizeUser(user) {
+    return {
+        id: user.id || null,
+        nombre: user.nombre || '',
+        email: user.email || '',
+        rol: user.rol || 'usuario',
+        area: user.area || '',
+        permisos: Array.isArray(user.permisos) ? user.permisos : [],
+        activo: user.activo !== false,
+    };
+}
+
+/**
+ * Usuario vigente: identidad desde la sesión + permisos/rol/activo desde la BD.
+ * Se resuelve UNA sola vez por request y se memoiza en req._userVigente, porque
+ * algunos routers encadenan varios middlewares de permisos sobre la misma ruta.
+ *
+ * Retorna null si no hay sesión válida, o si el usuario fue eliminado o está
+ * inactivo (eso aplica de inmediato, sin esperar a que expire la sesión).
+ * Si la consulta a la BD falla, se conserva el snapshot de la sesión para no
+ * cortar el acceso por un problema transitorio de base de datos.
+ */
+async function resolveUser(req) {
+    const sessionUser = getUserFromSession(req);
+    if (!sessionUser) return null;
+    if (req._userVigente !== undefined) return req._userVigente;
+
+    let user = normalizeUser(sessionUser);
+
+    if (sessionUser.id) {
+        try {
+            // require perezoso: evita un ciclo con config/database al cargar el módulo
+            const { query } = require('../config/database');
+            const result = await query(
+                'SELECT id, nombre, email, rol, area, permisos, activo FROM usuarios WHERE id = $1',
+                [sessionUser.id]
+            );
+            const row = result.rows[0];
+            if (!row || row.activo === false) {
+                req._userVigente = null;
+                return null;
+            }
+            user = {
+                id: row.id,
+                nombre: row.nombre || '',
+                email: row.email || '',
+                rol: row.rol || 'usuario',
+                area: row.area || '',
+                permisos: Array.isArray(row.permisos) ? row.permisos : [],
+                activo: true,
+            };
+        } catch (e) {
+            // BD no disponible: no se revoca el acceso, se usa el snapshot de la sesión.
+        }
+    }
+
+    req._userVigente = user;
+    return user;
 }
 
 /**
@@ -52,6 +121,10 @@ function getEmailFromReq(req) {
  * El id proviene de la sesión creada por login() (api/src/services/auth.js),
  * nunca del body ni de headers: sirve para persistir la identidad real.
  * Sin sesión válida → usuario anónimo sin permisos.
+ *
+ * OJO: este helper es síncrono y devuelve el snapshot congelado al hacer login.
+ * Los middlewares usan resolveUser() (permisos frescos desde la BD). No lo uses
+ * para decidir accesos.
  */
 function getUserFromReq(req) {
     const user = getUserFromSession(req);
@@ -79,23 +152,24 @@ function isAdmin(user) {
  * Si no tiene ninguno, retorna 403.
  */
 function requireAnyPerm(...permisosRequeridos) {
-    return (req, res, next) => {
-        const user = getUserFromReq(req);
-        const userPerms = user.permisos || [];
-
-        // Admin total: rol 'admin' o permiso 'usuarios' (de la BD)
-        if (isAdmin(user)) {
+    return async (req, res, next) => {
+        try {
+            const user = await resolveUser(req);
+            if (!user) return res.status(401).json({ error: 'No autenticado' });
             req.user = user;
+
+            // Admin total: rol 'admin' o permiso 'usuarios' (de la BD)
+            if (isAdmin(user)) return next();
+
+            const userPerms = user.permisos || [];
+            const tieneAlguno = permisosRequeridos.some(p => userPerms.includes(p));
+            if (!tieneAlguno) {
+                return res.status(403).json({ error: 'Sin permisos para esta acción' });
+            }
             return next();
+        } catch (e) {
+            return next(e);
         }
-
-        const tieneAlguno = permisosRequeridos.some(p => userPerms.includes(p));
-        if (!tieneAlguno) {
-            return res.status(403).json({ error: 'Sin permisos para esta acción' });
-        }
-
-        req.user = user;
-        next();
     };
 }
 
@@ -103,22 +177,22 @@ function requireAnyPerm(...permisosRequeridos) {
  * Verifica que el usuario tenga el permiso específico indicado.
  */
 function requirePerm(permisoRequerido) {
-    return (req, res, next) => {
-        const user = getUserFromReq(req);
-        const userPerms = user.permisos || [];
-
-        // Admin total
-        if (isAdmin(user)) {
+    return async (req, res, next) => {
+        try {
+            const user = await resolveUser(req);
+            if (!user) return res.status(401).json({ error: 'No autenticado' });
             req.user = user;
+
+            // Admin total
+            if (isAdmin(user)) return next();
+
+            if (!(user.permisos || []).includes(permisoRequerido)) {
+                return res.status(403).json({ error: 'Sin permisos para esta acción' });
+            }
             return next();
+        } catch (e) {
+            return next(e);
         }
-
-        if (!userPerms.includes(permisoRequerido)) {
-            return res.status(403).json({ error: 'Sin permisos para esta acción' });
-        }
-
-        req.user = user;
-        next();
     };
 }
 
@@ -127,20 +201,16 @@ function requirePerm(permisoRequerido) {
  * NO verifica permisos específicos - solo que haya sesión válida.
  * Útil para recursos como PDFs que se abren en iframe/window.open.
  */
-function requireAuth(req, res, next) {
-    // Solo la sesión otorga identidad (los headers X-User-* se ignoran)
-    const sessionUser = getUserFromSession(req);
-    if (!sessionUser) {
-        return res.status(401).json({ error: 'No autenticado' });
+async function requireAuth(req, res, next) {
+    try {
+        // Solo la sesión otorga identidad (los headers X-User-* se ignoran)
+        const user = await resolveUser(req);
+        if (!user) return res.status(401).json({ error: 'No autenticado' });
+        req.user = user;
+        return next();
+    } catch (e) {
+        return next(e);
     }
-
-    req.user = {
-        id: sessionUser.id || null,
-        email: sessionUser.email || '',
-        permisos: Array.isArray(sessionUser.permisos) ? sessionUser.permisos : [],
-        rol: sessionUser.rol || 'usuario'
-    };
-    return next();
 }
 
 /**
@@ -161,19 +231,23 @@ function crudPerms(modulo) {
  * Middleware que verifica que el usuario sea administrador.
  * Reemplaza las funciones checkAdmin() duplicadas en los routes.
  */
-function requireAdmin(req, res, next) {
-    const user = getUserFromReq(req);
-    if (isAdmin(user)) {
+async function requireAdmin(req, res, next) {
+    try {
+        const user = await resolveUser(req);
+        if (!user) return res.status(401).json({ error: 'No autenticado' });
         req.user = user;
-        return next();
+        if (isAdmin(user)) return next();
+        return res.status(403).json({ error: 'Solo administradores' });
+    } catch (e) {
+        return next(e);
     }
-    return res.status(403).json({ error: 'Solo administradores' });
 }
 
 module.exports = {
     getPermisosFromReq,
     getEmailFromReq,
     getUserFromReq,
+    resolveUser,
     requireAnyPerm,
     requirePerm,
     requireAuth,
