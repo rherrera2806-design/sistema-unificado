@@ -13,6 +13,12 @@ const InvInventario = {
     _query: '',
     _verSensible: false,
 
+    // Meses de autonomía con 1 decimal (0.5m, 1m, 1.5m)
+    _fmtMeses(i) {
+        const m = Number(i.autonomia_meses) || 0;
+        return (Math.round(m * 10) / 10).toLocaleString('es-CL');
+    },
+
     // Estado del material: el unico dato que se colorea en la tabla
     _estado(i) {
         const stock = Number(i.stock) || 0;
@@ -115,7 +121,9 @@ const InvInventario = {
                 + '<td class="num invp-mono sutil">' + (i.salidas_plancha || 0) + '</td>';
             tableHtml += '<td class="num invp-mono invp-col-stock ' + est.stockCls + '">' + (i.stock || 0) + '</td>';
             if (verS) tableHtml += '<td class="num invp-mono sutil">' + cpm.toLocaleString('es-CL') + '</td>'
-                + '<td class="num invp-mono ' + est.autoCls + '">' + (cpm > 0 ? autoDias + '<span class="invp-unidad">d</span>' : '—') + '</td>';
+                + '<td class="num invp-mono ' + est.autoCls + '">' + (cpm > 0
+                    ? autoDias + '<span class="invp-unidad">d</span> / ' + self._fmtMeses(i) + '<span class="invp-unidad">m</span>'
+                    : '—') + '</td>';
             tableHtml += '<td class="num invp-mono sutil">' + m2.toFixed(2) + '<span class="invp-unidad">m²</span></td>'
                 + '<td><span class="invp-chip ' + (est.cls === 'critico' ? 'critico' : est.cls === 'bajo' ? 'bajo' : 'ok') + '"><span class="dot"></span>' + est.label + '</span></td>'
                 + '</tr>';
@@ -142,7 +150,7 @@ const InvInventario = {
                 + '<div><div class="invp-lbl">Salidas</div><div class="invp-val">' + (i.salidas_plancha || 0) + '</div></div>';
             cardsHtml += '<div><div class="invp-lbl">M² en stock</div><div class="invp-val">' + m2.toFixed(2) + '</div></div>';
             if (verS) cardsHtml += '<div><div class="invp-lbl">Consumo/mes</div><div class="invp-val">' + cpm.toLocaleString('es-CL') + '</div></div>'
-                + '<div><div class="invp-lbl">Autonomía</div><div class="invp-val ' + est.autoCls + '">' + (cpm > 0 ? autoDias + ' d' : '—') + '</div></div>';
+                + '<div><div class="invp-lbl">Autonomía</div><div class="invp-val ' + est.autoCls + '">' + (cpm > 0 ? autoDias + ' d / ' + self._fmtMeses(i) + ' m' : '—') + '</div></div>';
             cardsHtml += '</div></div>';
         });
         cardsHtml += '</div>';
