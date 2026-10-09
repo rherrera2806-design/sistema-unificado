@@ -32,7 +32,7 @@ App.registerModule('prod_maquinas', {
                             <table style="font-size:12px"><thead><tr>
                                 <th>Codigo</th><th>Nombre</th><th>Estacion</th><th>Estado</th><th>Acciones</th>
                             </tr></thead><tbody id="mqTable">
-                                <tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
+                                <tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
                             </tbody></table>
                         </div>
                         <div class="m-cards-mobile" id="mqCardsMobile" style="display:none;padding:12px"></div>
@@ -72,7 +72,7 @@ App.registerModule('prod_maquinas', {
             const estaciones = await res.json();
             const sel = document.getElementById('mqEstacion');
             if (sel) {
-                sel.innerHTML = '<option value="">Sin estacion</option>' + estaciones.map(e => `<option value="${e.id}">${e.nombre_estacion}</option>`).join('');
+                sel.innerHTML = '<option value="">Sin estacion</option>' + estaciones.map(e => `<option value="${e.id}">${escText(e.nombre_estacion)}</option>`).join('');
             }
         } catch(e) {}
     },
@@ -101,15 +101,15 @@ App.registerModule('prod_maquinas', {
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
         const estadoBadge = (e) => {
             const cols = { ACTIVA: 'background:#dcfce7;color:#166534', INACTIVA: 'background:#f1f5f9;color:#64748b', MANTENCION: 'background:#fef9c3;color:#854d0e' };
-            return `<span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;${cols[e] || ''}">${e}</span>`;
+            return `<span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;${cols[e] || ''}">${escText(e)}</span>`;
         };
         const td = 'padding:6px 12px';
         
         if (tbody) {
             tbody.innerHTML = this.maquinas.map(m => `<tr style="line-height:1.3">
-                <td style="${td}"><strong>${m.codigo}</strong></td>
-                <td style="${td}">${m.nombre}</td>
-                <td style="${td}">${m.estacion_nombre || '-'}</td>
+                <td style="${td}"><strong>${escText(m.codigo)}</strong></td>
+                <td style="${td}">${escText(m.nombre)}</td>
+                <td style="${td}">${escText(m.estacion_nombre || '-')}</td>
                 <td style="${td}">${estadoBadge(m.estado)}</td>
                 <td style="${td}">
                     ${puedeEditar ? `<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_maquinas.edit(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -123,8 +123,8 @@ App.registerModule('prod_maquinas', {
                 return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
                     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
                         <div>
-                            <div style="font-weight:700;font-size:13px">${m.codigo}</div>
-                            <div style="font-size:11px;color:#64748b">${m.nombre}</div>
+                            <div style="font-weight:700;font-size:13px">${escText(m.codigo)}</div>
+                            <div style="font-size:11px;color:#64748b">${escText(m.nombre)}</div>
                         </div>
                         <div style="display:flex;gap:4px">
                             ${puedeEditar ? `
@@ -135,7 +135,7 @@ App.registerModule('prod_maquinas', {
                     </div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
                         ${estadoBadge(m.estado)}
-                        ${m.estacion_nombre ? `<span style="font-size:10px;color:#64748b">${m.estacion_nombre}</span>` : ''}
+                        ${m.estacion_nombre ? `<span style="font-size:10px;color:#64748b">${escText(m.estacion_nombre)}</span>` : ''}
                     </div>
                 </div>`;
             }).join('');
@@ -179,9 +179,9 @@ App.registerModule('prod_maquinas', {
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
             const data = { nombre, codigo, estado, estacion_id };
             if (this.editingId) {
-                await fetch(`/api/produccion/maquinas/${this.editingId}`, { method: 'PUT', headers, body: JSON.stringify(data) });
+                await apiJson(await fetch(`/api/produccion/maquinas/${this.editingId}`, { method: 'PUT', headers, body: JSON.stringify(data) }));
             } else {
-                await fetch('/api/produccion/maquinas', { method: 'POST', headers, body: JSON.stringify(data) });
+                await apiJson(await fetch('/api/produccion/maquinas', { method: 'POST', headers, body: JSON.stringify(data) }));
             }
             this.hideCreateModal();
             App.toast(this.editingId ? 'Maquina actualizada' : 'Maquina creada');
@@ -193,9 +193,9 @@ App.registerModule('prod_maquinas', {
         if (!confirm('Eliminar esta maquina?')) return;
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            await fetch(`/api/produccion/maquinas/${id}`, {
+            await apiJson(await fetch(`/api/produccion/maquinas/${id}`, {
                 method: 'DELETE', headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
-            });
+            }));
             App.toast('Maquina eliminada');
             await this.load();
         } catch(e) { alert('Error: ' + e.message); }
@@ -258,7 +258,7 @@ App.registerModule('prod_maquinas', {
                 const preview = document.getElementById('mqImportPreview');
                 preview.innerHTML = `<div style="margin-bottom:8px;font-size:13px"><strong>${this._importData.length}</strong> maquinas encontradas</div>
                     <table style="width:100%;font-size:12px"><thead><tr><th>Codigo</th><th>Nombre</th><th>Tipo Proceso</th><th>N° Op</th><th>Capacidad</th><th>Estado</th></tr></thead><tbody>
-                    ${this._importData.slice(0, 20).map(m => `<tr><td>${m.codigo}</td><td>${m.nombre}</td><td>${m.tipo_proceso}</td><td>${m.num_operacion || '-'}</td><td>${m.cap_max}</td><td>${m.estado}</td></tr>`).join('')}
+                    ${this._importData.slice(0, 20).map(m => `<tr><td>${escText(m.codigo)}</td><td>${escText(m.nombre)}</td><td>${escText(m.tipo_proceso)}</td><td>${escText(m.num_operacion || '-')}</td><td>${escText(m.cap_max)}</td><td>${escText(m.estado)}</td></tr>`).join('')}
                     ${this._importData.length > 20 ? `<tr><td colspan="6" style="text-align:center;color:var(--text-light)">... y ${this._importData.length - 20} mas</td></tr>` : ''}
                     </tbody></table>`;
                 document.getElementById('mqImportBtn').disabled = this._importData.length === 0;

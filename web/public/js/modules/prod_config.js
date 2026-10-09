@@ -1,5 +1,6 @@
 App.registerModule('prod_config', {
     _tab: 'estaciones',
+    _tabToken: 0, // contador de tab: descarta respuestas de fetches de tabs anteriores
     _estaciones: [],
     _familias: [],
     _grupos: [],
@@ -19,6 +20,7 @@ App.registerModule('prod_config', {
         const tabs = [
             { id: 'codigos', label: 'Códigos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
             { id: 'recetas', label: 'Recetas BOM', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>' },
+            { id: 'carroceria', label: 'Carrocería', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' },
             { id: 'estaciones', label: 'Estaciones', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' },
             { id: 'maquinas', label: 'Maquinas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a2.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
             { id: 'grupos', label: 'Grupos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
@@ -44,33 +46,41 @@ App.registerModule('prod_config', {
         await this.loadTab();
     },
 
-    switchTab(tab) {
+    async switchTab(tab) {
         this._tab = tab;
-        this.render();
+        // await + catch: un fetch fallido no debe congelar el "Cargando..." y
+        // el contador de tab descarta respuestas de tabs antiguos (carreras por clics rapidos)
+        try { await this.render(); }
+        catch(e) {
+            const container = document.getElementById('prodConfigContent');
+            if (container) container.innerHTML = '<div style="background:#fee2e2;border-radius:8px;padding:12px;color:#991b1b">Error al cargar: ' + escText(e.message) + '</div>';
+        }
     },
 
     async loadTab() {
         const container = document.getElementById('prodConfigContent');
+        const token = ++this._tabToken; // id de esta carga: si cambia el tab, la respuesta se descarta
         container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light)">Cargando...</div>';
         // Tabs que delegan a modulos originales (Codigos, Maquinas, Recetas, Carroceria)
-        if (this._tab === 'codigos' || this._tab === 'maquinas' || this._tab === 'recetas') {
-            await this.loadDelegated(this._tab);
+        if (this._tab === 'codigos' || this._tab === 'maquinas' || this._tab === 'recetas' || this._tab === 'carroceria') {
+            await this.loadDelegated(this._tab, token);
             return;
         }
         switch(this._tab) {
-            case 'estaciones': await this.loadEstaciones(); break;
-            case 'grupos': await this.loadGrupos(); break;
-            case 'familias': await this.loadFamilias(); break;
-            case 'materias': await this.loadMaterias(); break;
-            case 'reglas': await this.loadReglas(); break;
-            case 'calendario': await this.loadCalendario(); break;
+            case 'estaciones': await this.loadEstaciones(token); break;
+            case 'grupos': await this.loadGrupos(token); break;
+            case 'familias': await this.loadFamilias(token); break;
+            case 'materias': await this.loadMaterias(token); break;
+            case 'reglas': await this.loadReglas(token); break;
+            case 'calendario': await this.loadCalendario(token); break;
         }
     },
 
-    async loadDelegated(tab) {
+    async loadDelegated(tab, token) {
+        if (token != null && token !== this._tabToken) return; // respuesta de un tab viejo: descartar
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = '';
-        const moduleMap = { codigos: 'prod_codigos', maquinas: 'prod_maquinas', recetas: 'prod_recetas' };
+        const moduleMap = { codigos: 'prod_codigos', maquinas: 'prod_maquinas', recetas: 'prod_recetas', carroceria: 'prod_carroceria' };
         const moduleName = moduleMap[tab];
         const pageId = 'page-' + moduleName;
         // Crear page temporal para que el modulo original pueda renderizar
@@ -92,9 +102,10 @@ App.registerModule('prod_config', {
     // ═══════════════════════════════════════════
     // ESTACIONES MAESTRAS
     // ═══════════════════════════════════════════
-    async loadEstaciones() {
+    async loadEstaciones(token) {
         const res = await fetch('/api/produccion/estaciones', { headers: this._headers() });
         this._estaciones = await res.json();
+        if (token != null && token !== this._tabToken) return; // respuesta de un tab viejo: descartar
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
             <div class="m-page">
@@ -181,7 +192,7 @@ App.registerModule('prod_config', {
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">
                         <div class="form-group" style="margin:0">
                             <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Nombre de Estacion *</label>
-                            <input class="form-control" id="estNombre" value="${est ? est.nombre_estacion : ''}" placeholder="Ej: Corte, Pulido" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
+                            <input class="form-control" id="estNombre" value="${est ? escAttr(est.nombre_estacion) : ''}" placeholder="Ej: Corte, Pulido" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
                         </div>
                         <div class="form-group" style="margin:0">
                             <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Orden de Secuencia *</label>
@@ -228,8 +239,12 @@ App.registerModule('prod_config', {
             activa: document.getElementById('estActiva').checked
         };
         if (!data.nombre_estacion || !data.orden_secuencia_defecto) { App.showAlert('Nombre y orden requeridos', 'danger'); return; }
-        if (id === 0) await fetch('/api/produccion/estaciones', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
-        else await fetch(`/api/produccion/estaciones/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+        try {
+            const res = id === 0
+                ? await fetch('/api/produccion/estaciones', { method:'POST', headers:this._headers(), body: JSON.stringify(data) })
+                : await fetch(`/api/produccion/estaciones/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+            await apiJson(res); // si !res.ok lanza Error: no cerrar ni mostrar exito
+        } catch(e) { App.showAlert('Error al guardar: ' + e.message, 'danger'); return; }
         App.hideModal();
         App.showAlert(id === 0 ? 'Estacion creada' : 'Estacion actualizada');
         this.loadEstaciones();
@@ -237,7 +252,9 @@ App.registerModule('prod_config', {
 
     async deleteEstacion(id) {
         if (!await App.confirm('¿Eliminar esta estacion?')) return;
-        await fetch(`/api/produccion/estaciones/${id}`, { method:'DELETE', headers:this._headers() });
+        try {
+            await apiJson(await fetch(`/api/produccion/estaciones/${id}`, { method:'DELETE', headers:this._headers() }));
+        } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); return; }
         App.showAlert('Estacion eliminada');
         this.loadEstaciones();
     },
@@ -245,13 +262,14 @@ App.registerModule('prod_config', {
     // ═══════════════════════════════════════════
     // FAMILIAS DE PRODUCTO
     // ═══════════════════════════════════════════
-    async loadFamilias() {
+    async loadFamilias(token) {
         const [famRes, estRes] = await Promise.all([
             fetch('/api/produccion/familias', { headers: this._headers() }),
             fetch('/api/produccion/estaciones', { headers: this._headers() })
         ]);
         this._familias = await famRes.json();
         this._estaciones = await estRes.json();
+        if (token != null && token !== this._tabToken) return; // respuesta de un tab viejo: descartar
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
             <div class="m-page">
@@ -276,7 +294,7 @@ App.registerModule('prod_config', {
                                 <th>Codigo</th><th>Nombre</th><th>Costo HH</th><th>Costo Energia</th><th>Estaciones Base</th><th>Acciones</th>
                             </tr></thead>
                             <tbody>${this._familias.map(f => {
-                                const estNames = (f.estaciones_base || []).map(e => `<span class="status-badge status-programada" style="margin:1px;font-size:10px">${e.nombre_estacion}</span>`).join(' ');
+                                const estNames = (f.estaciones_base || []).map(e => `<span class="status-badge status-programada" style="margin:1px;font-size:10px">${escText(e.nombre_estacion)}</span>`).join(' ');
                                 return `<tr>
                                     <td><strong>${escapeHtml(f.codigo_familia)}</strong></td>
                                     <td>${escapeHtml(f.nombre_familia)}</td>
@@ -351,8 +369,8 @@ App.registerModule('prod_config', {
                 <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos de Familia</div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div class="fam-form-grid">
-                        <div class="form-group"><label>Codigo Familia *</label><input class="form-control" id="famCodigo" value="${fam ? fam.codigo_familia : ''}" placeholder="Ej: TEMPLADO"></div>
-                        <div class="form-group"><label>Nombre *</label><input class="form-control" id="famNombre" value="${fam ? fam.nombre_familia : ''}" placeholder="Ej: Templado"></div>
+                        <div class="form-group"><label>Codigo Familia *</label><input class="form-control" id="famCodigo" value="${fam ? escAttr(fam.codigo_familia) : ''}" placeholder="Ej: TEMPLADO"></div>
+                        <div class="form-group"><label>Nombre *</label><input class="form-control" id="famNombre" value="${fam ? escAttr(fam.nombre_familia) : ''}" placeholder="Ej: Templado"></div>
                     </div>
                 </div>
             </div>
@@ -370,7 +388,7 @@ App.registerModule('prod_config', {
                 <div class="m-card-body" style="padding:8px 12px">
                     <div style="display:flex;flex-wrap:wrap;gap:4px 12px">
                         ${this._estaciones.filter(e => e.activa).map(e => `<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
-                            <input type="checkbox" class="fam-est-check" value="${e.id}" ${estIds.includes(e.id) ? 'checked' : ''}> ${e.orden_secuencia_defecto}. ${e.nombre_estacion}
+                            <input type="checkbox" class="fam-est-check" value="${e.id}" ${estIds.includes(e.id) ? 'checked' : ''}> ${e.orden_secuencia_defecto}. ${escText(e.nombre_estacion)}
                         </label>`).join('')}
                     </div>
                 </div>
@@ -390,8 +408,12 @@ App.registerModule('prod_config', {
             estacion_ids: Array.from(document.querySelectorAll('.fam-est-check:checked')).map(c => parseInt(c.value))
         };
         if (!data.codigo_familia || !data.nombre_familia) { App.showAlert('Codigo y nombre requeridos', 'danger'); return; }
-        if (id === 0) await fetch('/api/produccion/familias', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
-        else await fetch(`/api/produccion/familias/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+        try {
+            const res = id === 0
+                ? await fetch('/api/produccion/familias', { method:'POST', headers:this._headers(), body: JSON.stringify(data) })
+                : await fetch(`/api/produccion/familias/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+            await apiJson(res); // si !res.ok lanza Error: no cerrar ni mostrar exito
+        } catch(e) { App.showAlert('Error al guardar: ' + e.message, 'danger'); return; }
         App.hideModal();
         App.showAlert(id === 0 ? 'Familia creada' : 'Familia actualizada');
         this.loadFamilias();
@@ -399,7 +421,9 @@ App.registerModule('prod_config', {
 
     async deleteFamilia(id) {
         if (!await App.confirm('¿Eliminar esta familia?')) return;
-        await fetch(`/api/produccion/familias/${id}`, { method:'DELETE', headers:this._headers() });
+        try {
+            await apiJson(await fetch(`/api/produccion/familias/${id}`, { method:'DELETE', headers:this._headers() }));
+        } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); return; }
         App.showAlert('Familia eliminada');
         this.loadFamilias();
     },
@@ -407,9 +431,10 @@ App.registerModule('prod_config', {
     // ═══════════════════════════════════════════
     // GRUPOS DE PRODUCCION
     // ═══════════════════════════════════════════
-    async loadGrupos() {
+    async loadGrupos(token) {
         const res = await fetch('/api/produccion/capacidad-grupo/all', { headers: this._headers() });
         this._grupos = await res.json();
+        if (token != null && token !== this._tabToken) return; // respuesta de un tab viejo: descartar
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = `
             <div class="m-page">
@@ -434,7 +459,7 @@ App.registerModule('prod_config', {
                                 <th style="width:50px">Color</th><th>Grupo</th><th>Capacidad (kg/dia)</th><th>Estado</th><th>Acciones</th>
                             </tr></thead>
                             <tbody>${this._grupos.map(g => `<tr>
-                                <td><span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:${g.color || '#3b82f6'};border:2px solid rgba(0,0,0,0.1)"></span></td>
+                                <td><span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:${escAttr(g.color || '#3b82f6')};border:2px solid rgba(0,0,0,0.1)"></span></td>
                                 <td><strong>${escapeHtml(g.grupo)}</strong></td>
                                 <td>${Number(g.capacidad_kg_dia).toLocaleString('es-CL')} kg</td>
                                 <td>${g.activo ? '<span class="status-badge status-terminado">Activo</span>' : '<span class="status-badge status-mermado">Inactivo</span>'}</td>
@@ -463,7 +488,7 @@ App.registerModule('prod_config', {
             return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
                 <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
                     <div style="display:flex;align-items:center;gap:8px">
-                        <span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:${g.color || '#3b82f6'};border:2px solid rgba(0,0,0,0.1)"></span>
+                        <span style="display:inline-block;width:24px;height:24px;border-radius:6px;background:${escAttr(g.color || '#3b82f6')};border:2px solid rgba(0,0,0,0.1)"></span>
                         <div>
                             <div style="font-weight:700;font-size:13px">${escapeHtml(g.grupo)}</div>
                             <div style="font-size:10px;color:#64748b">${Number(g.capacidad_kg_dia).toLocaleString('es-CL')} kg/dia</div>
@@ -490,7 +515,7 @@ App.registerModule('prod_config', {
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">
                         <div class="form-group" style="margin:0">
                             <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Nombre del Grupo *</label>
-                            <input class="form-control" id="grupoNombre" value="${g ? escapeHtml(g.grupo) : ''}" placeholder="Ej: Arquitectura" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
+                            <input class="form-control" id="grupoNombre" value="${g ? escAttr(g.grupo) : ''}" placeholder="Ej: Arquitectura" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
                         </div>
                         <div class="form-group" style="margin:0">
                             <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Capacidad (kg/dia)</label>
@@ -505,7 +530,7 @@ App.registerModule('prod_config', {
                     <div style="display:flex;gap:8px;flex-wrap:wrap" id="grupoColorPicker">
                         ${colores.map(c => `<div onclick="document.getElementById('grupoColor').value='${c}';document.querySelectorAll('#grupoColorPicker div').forEach(d=>d.style.outline='none');this.style.outline='3px solid #3b82f6'" style="width:32px;height:32px;border-radius:8px;background:${c};cursor:pointer;border:2px solid rgba(0,0,0,0.1);${g && g.color === c ? 'outline:3px solid #3b82f6' : ''}"></div>`).join('')}
                     </div>
-                    <input type="hidden" id="grupoColor" value="${g ? (g.color || '#3b82f6') : '#3b82f6'}">
+                    <input type="hidden" id="grupoColor" value="${g ? escAttr(g.color || '#3b82f6') : '#3b82f6'}">
                 </div>
             </div>
             <div class="m-card">
@@ -530,10 +555,12 @@ App.registerModule('prod_config', {
             activo: document.getElementById('grupoActivo').checked
         };
         if (!data.grupo) { App.showAlert('Nombre requerido', 'danger'); return; }
-        if (id === 0)
-            await fetch('/api/produccion/capacidad-grupo', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
-        else
-            await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+        try {
+            const res = id === 0
+                ? await fetch('/api/produccion/capacidad-grupo', { method:'POST', headers:this._headers(), body: JSON.stringify(data) })
+                : await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+            await apiJson(res); // si !res.ok lanza Error: no cerrar ni mostrar exito
+        } catch(e) { App.showAlert('Error al guardar: ' + e.message, 'danger'); return; }
         App.hideModal();
         App.showAlert(id === 0 ? 'Grupo creado' : 'Grupo actualizado');
         this.loadGrupos();
@@ -541,7 +568,9 @@ App.registerModule('prod_config', {
 
     async deleteGrupo(id) {
         if (!await App.confirm('¿Eliminar este grupo?')) return;
-        await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'DELETE', headers:this._headers() });
+        try {
+            await apiJson(await fetch(`/api/produccion/capacidad-grupo/${id}`, { method:'DELETE', headers:this._headers() }));
+        } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); return; }
         App.showAlert('Grupo eliminado');
         this.loadGrupos();
     },
@@ -549,9 +578,10 @@ App.registerModule('prod_config', {
     // ═══════════════════════════════════════════
     // MATERIAS PRIMAS
     // ═══════════════════════════════════════════
-    async loadMaterias() {
+    async loadMaterias(token) {
         const res = await fetch('/api/produccion/materias-primas', { headers: this._headers() });
         this._materias = await res.json();
+        if (token != null && token !== this._tabToken) return; // respuesta de un tab viejo: descartar
         const search = document.getElementById('mpSearch')?.value || '';
         if (document.getElementById('mpTableBody')) {
             this._filterMaterias();
@@ -841,8 +871,8 @@ App.registerModule('prod_config', {
                 <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos Basicos</div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div class="mp-form-grid">
-                        <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? m.codigo_mp : ''}" placeholder="SKU interno"></div>
-                        <div class="form-group"><label>Nombre *</label><input class="form-control" id="mpNombre" value="${m ? m.nombre : ''}" placeholder="Ej: Vidrio 6mm"></div>
+                        <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? escAttr(m.codigo_mp) : ''}" placeholder="SKU interno"></div>
+                        <div class="form-group"><label>Nombre *</label><input class="form-control" id="mpNombre" value="${m ? escAttr(m.nombre) : ''}" placeholder="Ej: Vidrio 6mm"></div>
                         <div class="form-group"><label>Espesor (mm)</label><input type="number" class="form-control" id="mpEspesor" value="${v('espesor_mm')}" min="0" step="0.5"></div>
                     </div>
                 </div>
@@ -890,7 +920,7 @@ App.registerModule('prod_config', {
             <div class="m-card" style="margin-bottom:10px">
                 <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Observaciones</div>
                 <div class="m-card-body" style="padding:8px 12px">
-                    <div class="form-group"><textarea class="form-control" id="mpObs" rows="2" placeholder="Notas adicionales...">${m ? m.observacion || '' : ''}</textarea></div>
+                    <div class="form-group"><textarea class="form-control" id="mpObs" rows="2" placeholder="Notas adicionales...">${m ? escText(m.observacion || '') : ''}</textarea></div>
                 </div>
             </div>
             <div style="padding:8px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px">
@@ -949,8 +979,12 @@ App.registerModule('prod_config', {
             mpa: parseFloat(document.getElementById('mpMPA').value) || 0
         };
         if (!data.codigo_mp || !data.nombre) { App.showAlert('Codigo y nombre requeridos', 'danger'); return; }
-        if (id === 0) await fetch('/api/produccion/materias-primas', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
-        else await fetch(`/api/produccion/materias-primas/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+        try {
+            const res = id === 0
+                ? await fetch('/api/produccion/materias-primas', { method:'POST', headers:this._headers(), body: JSON.stringify(data) })
+                : await fetch(`/api/produccion/materias-primas/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+            await apiJson(res); // si !res.ok lanza Error: no cerrar ni mostrar exito
+        } catch(e) { App.showAlert('Error al guardar: ' + e.message, 'danger'); return; }
         App.hideModal();
         App.showAlert(id === 0 ? 'Materia prima creada' : 'Materia prima actualizada');
         this.loadMaterias();
@@ -958,7 +992,9 @@ App.registerModule('prod_config', {
 
     async deleteMateria(id) {
         if (!await App.confirm('¿Eliminar esta materia prima?')) return;
-        await fetch(`/api/produccion/materias-primas/${id}`, { method:'DELETE', headers:this._headers() });
+        try {
+            await apiJson(await fetch(`/api/produccion/materias-primas/${id}`, { method:'DELETE', headers:this._headers() }));
+        } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); return; }
         App.showAlert('Materia prima eliminada');
         this.loadMaterias();
     },
@@ -966,7 +1002,7 @@ App.registerModule('prod_config', {
     // ═══════════════════════════════════════════
     // REGLAS PROCESOS EXTRAS
     // ═══════════════════════════════════════════
-    async loadReglas() {
+    async loadReglas(token) {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const hdrs = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
         const [regRes, estRes] = await Promise.all([
@@ -976,6 +1012,7 @@ App.registerModule('prod_config', {
         this._reglas = await regRes.json();
         this._reglas.sort((a, b) => (a.orden_secuencia_defecto || 999) - (b.orden_secuencia_defecto || 999));
         this._estaciones = await estRes.json();
+        if (token != null && token !== this._tabToken) return; // respuesta de un tab viejo: descartar
         const container = document.getElementById('prodConfigContent');
         const total = this._reglas.length;
         const activas = this._reglas.filter(r => r.activa).length;
@@ -1052,11 +1089,11 @@ App.registerModule('prod_config', {
     showReglaForm(id) {
         const r = id ? this._reglas.find(x => x.id === id) : null;
         App.showModal(`
-            <div class="form-group"><label>Nombre Flag Excel *</label><input class="form-control" id="regFlag" value="${r ? r.nombre_flag : ''}" placeholder="Ej: radio, pulido, mecanizado..."><small style="color:var(--text-light)">Nombre exacto de la columna en el Excel (sin espacios, minusculas)</small></div>
+            <div class="form-group"><label>Nombre Flag Excel *</label><input class="form-control" id="regFlag" value="${r ? escAttr(r.nombre_flag) : ''}" placeholder="Ej: radio, pulido, mecanizado..."><small style="color:var(--text-light)">Nombre exacto de la columna en el Excel (sin espacios, minusculas)</small></div>
             <div class="form-group"><label>Estacion a Asignar *</label>
                 <select class="form-control" id="regEstacion">
                     <option value="">Seleccionar...</option>
-                    ${this._estaciones.filter(e => e.activa).map(e => `<option value="${e.id}" ${r && r.estacion_id === e.id ? 'selected' : ''}>${e.orden_secuencia_defecto}. ${e.nombre_estacion}</option>`).join('')}
+                    ${this._estaciones.filter(e => e.activa).map(e => `<option value="${e.id}" ${r && r.estacion_id === e.id ? 'selected' : ''}>${e.orden_secuencia_defecto}. ${escText(e.nombre_estacion)}</option>`).join('')}
                 </select>
             </div>
             <div class="form-group"><label><input type="checkbox" id="regActiva" ${!r || r.activa ? 'checked' : ''}> Activa</label></div>
@@ -1073,8 +1110,12 @@ App.registerModule('prod_config', {
             activa: document.getElementById('regActiva').checked
         };
         if (!data.nombre_flag || !data.estacion_id) { App.showAlert('Flag y estacion requeridos', 'danger'); return; }
-        if (id === 0) await fetch('/api/produccion/reglas-extras', { method:'POST', headers:this._headers(), body: JSON.stringify(data) });
-        else await fetch(`/api/produccion/reglas-extras/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+        try {
+            const res = id === 0
+                ? await fetch('/api/produccion/reglas-extras', { method:'POST', headers:this._headers(), body: JSON.stringify(data) })
+                : await fetch(`/api/produccion/reglas-extras/${id}`, { method:'PUT', headers:this._headers(), body: JSON.stringify(data) });
+            await apiJson(res); // si !res.ok lanza Error: no cerrar ni mostrar exito
+        } catch(e) { App.showAlert('Error al guardar: ' + e.message, 'danger'); return; }
         App.hideModal();
         App.showAlert(id === 0 ? 'Regla creada' : 'Regla actualizada');
         this.loadReglas();
@@ -1082,7 +1123,9 @@ App.registerModule('prod_config', {
 
     async deleteRegla(id) {
         if (!await App.confirm('¿Eliminar esta regla?')) return;
-        await fetch(`/api/produccion/reglas-extras/${id}`, { method:'DELETE', headers:this._headers() });
+        try {
+            await apiJson(await fetch(`/api/produccion/reglas-extras/${id}`, { method:'DELETE', headers:this._headers() }));
+        } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); return; }
         App.showAlert('Regla eliminada');
         this.loadReglas();
     },
@@ -1091,11 +1134,12 @@ App.registerModule('prod_config', {
     // CALENDARIO DE PRODUCCION
     // ═══════════════════════════════════════════
 
-    async loadCalendario() {
+    async loadCalendario(token) {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const hdrs = { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
         const res = await fetch('/api/produccion/calendario', { headers: hdrs });
         this._calendario = await res.json();
+        if (token != null && token !== this._tabToken) return; // respuesta de un tab viejo: descartar
         this.renderCalendario();
     },
 
@@ -1168,7 +1212,7 @@ App.registerModule('prod_config', {
             const borderColor = esNoLaboral ? '#ef4444' : '#22c55e';
             const textColor = esNoLaboral ? '#991b1b' : '#166534';
             const title = esNoLaboral ? (motivo || 'No laboral') : 'Laboral';
-            html += `<div onclick="App.modules.prod_config.toggleDia('${fs}')" title="${title}" style="cursor:pointer;padding:8px 4px;border-radius:8px;border:1px solid ${borderColor};background:${bgColor};color:${textColor};font-weight:600;font-size:13px;transition:all .15s" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">${d}</div>`;
+            html += `<div onclick="App.modules.prod_config.toggleDia('${fs}')" title="${escAttr(title)}" style="cursor:pointer;padding:8px 4px;border-radius:8px;border:1px solid ${borderColor};background:${bgColor};color:${textColor};font-weight:600;font-size:13px;transition:all .15s" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">${d}</div>`;
         }
         html += `</div></div></div></div>`;
         container.innerHTML = html;

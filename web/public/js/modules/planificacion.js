@@ -20,11 +20,6 @@ App.modules.planificacion = {
         return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     },
 
-    init() {
-        this.calcSemana(new Date());
-        if (!this.fechaGrupo) this.fechaGrupo = new Date().toISOString().split('T')[0];
-    },
-
     // ── Vista por GRUPO (kg/dia) ──
     async cargarGrupo() {
         try {
@@ -47,7 +42,7 @@ App.modules.planificacion = {
         } catch(e) {
             console.error('Error cargarGrupo:', e);
             const elC = document.getElementById('planGrupoCards');
-            if (elC) elC.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:12px;color:#991b1b;font-size:13px">Error: ${e.message}</div>`;
+            if (elC) elC.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:12px;color:#991b1b;font-size:13px">Error: ${escText(e.message)}</div>`;
         }
     },
 
@@ -60,23 +55,11 @@ App.modules.planificacion = {
         const pct = totalCap > 0 ? Math.round((totalUsado / totalCap) * 100) : 0;
         const color = pct > 100 ? '#ef4444' : pct > 85 ? '#f59e0b' : '#10b981';
         el.innerHTML = `
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
-                <div class="card plan-card" style="text-align:center"><div class="card-body" style="padding:12px">
-                    <div style="font-size:22px;font-weight:700;color:var(--primary)">${totalCap.toLocaleString('es-CL')}</div>
-                    <div style="color:var(--text-light);font-size:12px">Capacidad (kg/dia)</div>
-                </div></div>
-                <div class="card plan-card" style="text-align:center"><div class="card-body" style="padding:12px">
-                    <div style="font-size:22px;font-weight:700;color:${color}">${totalUsado.toLocaleString('es-CL', {maximumFractionDigits:1})}</div>
-                    <div style="color:var(--text-light);font-size:12px">Kg Asignados</div>
-                </div></div>
-                <div class="card plan-card" style="text-align:center"><div class="card-body" style="padding:12px">
-                    <div style="font-size:22px;font-weight:700;color:${color}">${pct}%</div>
-                    <div style="color:var(--text-light);font-size:12px">Ocupacion</div>
-                </div></div>
-                <div class="card plan-card" style="text-align:center"><div class="card-body" style="padding:12px">
-                    <div style="font-size:22px;font-weight:700;color:var(--info)">${totalOrdenes}</div>
-                    <div style="color:var(--text-light);font-size:12px">Ordenes Asignadas</div>
-                </div></div>
+            <div class="m-stats" style="margin-bottom:16px">
+                <div class="m-stat-card stat-blue"><div class="m-stat-label">Capacidad (kg/dia)</div><div class="m-stat-value" style="color:var(--primary)">${totalCap.toLocaleString('es-CL')}</div></div>
+                <div class="m-stat-card stat-purple"><div class="m-stat-label">Kg Asignados</div><div class="m-stat-value" style="color:${color}">${totalUsado.toLocaleString('es-CL', {maximumFractionDigits:1})}</div></div>
+                <div class="m-stat-card stat-amber"><div class="m-stat-label">Ocupacion</div><div class="m-stat-value" style="color:${color}">${pct}%</div></div>
+                <div class="m-stat-card stat-info"><div class="m-stat-label">Ordenes Asignadas</div><div class="m-stat-value" style="color:var(--info)">${totalOrdenes}</div></div>
             </div>
         `;
     },
@@ -98,12 +81,12 @@ App.modules.planificacion = {
             const colorBar = pct > 100 ? '#ef4444' : pct > 85 ? '#f59e0b' : (c.color || '#3b82f6');
             const status = pct > 100 ? 'SOBRECARGADO' : pct > 85 ? 'CASI LLENO' : pct > 0 ? 'OK' : 'VACIO';
             return `
-                <div class="card plan-card" style="border-left:4px solid ${c.color || '#3b82f6'}">
+                <div class="card plan-card" style="border-left:4px solid ${escAttr(c.color || '#3b82f6')}">
                     <div class="card-body" style="padding:12px">
                         <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
                             <div>
-                                <div style="font-size:10px;color:var(--text-light);text-transform:uppercase;font-weight:600">${c.grupo}</div>
-                                <div style="font-size:18px;font-weight:700;color:${c.color || '#3b82f6'}">${usado.toLocaleString('es-CL', {maximumFractionDigits:1})} <span style="font-size:11px;color:var(--text-light);font-weight:500">/ ${cap.toLocaleString('es-CL')}</span></div>
+                                <div style="font-size:10px;color:var(--text-light);text-transform:uppercase;font-weight:600">${escText(c.grupo)}</div>
+                                <div style="font-size:18px;font-weight:700;color:${escAttr(c.color || '#3b82f6')}">${usado.toLocaleString('es-CL', {maximumFractionDigits:1})} <span style="font-size:11px;color:var(--text-light);font-weight:500">/ ${cap.toLocaleString('es-CL')}</span></div>
                             </div>
                             <div style="text-align:right">
                                 <div style="font-size:18px;font-weight:700;color:${colorBar}">${pct}%</div>
@@ -138,7 +121,7 @@ App.modules.planificacion = {
             <strong>${sinAsignar.length} pendientes sin asignar · ${kgTotal.toLocaleString('es-CL', {maximumFractionDigits:1})} kg${sinGrupo ? ` · <span style="color:#ef4444">${sinGrupo} sin grupo</span>` : ''}</strong>
             <span>Usa <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar para programar todas</span>
         </div>`;
-        html += `<div style="max-height:300px;overflow-y:auto"><table style="width:100%;font-size:12px"><thead><tr style="background:#f8fafc">
+        html += `<div style="max-height:300px;overflow-y:auto"><div class="m-table-wrap"><table style="width:100%;font-size:12px"><thead><tr style="background:#f8fafc">
             <th style="${td}">Pedido</th><th style="${td}">Cliente</th><th style="${td}">Codigo</th>
             <th style="${td}">Padre</th><th style="${td}">Producto</th>
             <th style="${td}">Dim</th><th style="${td}">Cant</th><th style="${td}">kg</th><th style="${td}">Grupo</th><th style="${td}">Accion</th>
@@ -155,11 +138,35 @@ App.modules.planificacion = {
                 <td style="${td}">${o.ancho}x${o.alto}</td>
                 <td style="${td}">${o.cantidad || 1}</td>
                 <td style="${td}"><strong>${Number(o.kilos || 0).toFixed(1)}</strong></td>
-                <td style="${td}"><span style="padding:1px 6px;border-radius:3px;font-size:10px;background:${grupoColor};color:${grupoText}">${o.grupo || 'sin grupo'}</span></td>
+                <td style="${td}"><span style="padding:1px 6px;border-radius:3px;font-size:10px;background:${grupoColor};color:${grupoText}">${escText(o.grupo || 'sin grupo')}</span></td>
                 <td style="${td}">${o.grupo ? `<span style="font-size:10px;color:#6b7280">usa <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar</span>` : '<span style="font-size:10px;color:#ef4444">requiere grupo</span>'}</td>
             </tr>`;
         }).join('');
-        html += '</tbody></table></div>';
+
+        // Cards movil (patron MODULE_RESPONSIVE_V1): una card por pendiente sin asignar
+        const cardsHtml = sinAsignar.map(o => {
+            const grupoColor = o.grupo ? '#dcfce7' : '#fee2e2';
+            const grupoText = o.grupo ? '#166534' : '#991b1b';
+            return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
+                    <div style="font-weight:700;font-size:13px;color:#0f172a;min-width:0">${escapeHtml(o.pedido_sap_id || '-')}</div>
+                    <span style="flex-shrink:0;padding:1px 6px;border-radius:3px;font-size:10px;background:${grupoColor};color:${grupoText}">${escText(o.grupo || 'sin grupo')}</span>
+                </div>
+                <div style="font-size:11px;color:#475569;margin-bottom:4px">${escapeHtml(o.cliente || '-')}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px">
+                    <strong style="font-size:12px;color:#0f172a">${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}
+                    <span style="font-size:10px;color:#6b7280">${escapeHtml(o.codigo_padre || '-')} · ${escapeHtml(o.nombre_padre || '-')}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">
+                    <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${o.ancho}x${o.alto}</span></div>
+                    <div><span style="color:#94a3b8">Cant:</span> <span style="color:#475569">${o.cantidad || 1}</span></div>
+                    <div><span style="color:#94a3b8">kg:</span> <strong style="color:#0f172a">${Number(o.kilos || 0).toFixed(1)}</strong></div>
+                </div>
+                <div style="font-size:10px;color:${o.grupo ? '#6b7280' : '#ef4444'}">${o.grupo ? 'Usa Auto-Asignar para programar' : 'Requiere grupo'}</div>
+            </div>`;
+        }).join('');
+
+        html += '</tbody></table></div><div class="m-cards-mobile" style="display:none;padding:12px">' + cardsHtml + '</div></div>';
         el.innerHTML = html;
     },
 
@@ -182,14 +189,14 @@ App.modules.planificacion = {
             ordenes.forEach(o => {
                 const esCompuesto = o.es_compuesto;
                 rows += `<tr style="border-bottom:1px solid #f1f5f9">
-                    <td style="padding:6px 10px;font-weight:600">${o.pedido_sap_id}</td>
-                    <td style="padding:6px 10px">${o.item_numero}</td>
-                    <td style="padding:6px 10px">${o.codigo_producto}${esCompuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span>' : ''}</td>
-                    <td style="padding:6px 10px;color:#64748b;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.descripcion || '-'}</td>
+                    <td style="padding:6px 10px;font-weight:600">${escText(o.pedido_sap_id)}</td>
+                    <td style="padding:6px 10px">${escText(o.item_numero)}</td>
+                    <td style="padding:6px 10px">${escText(o.codigo_producto)}${esCompuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span>' : ''}</td>
+                    <td style="padding:6px 10px;color:#64748b;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escText(o.descripcion || '-')}</td>
                     <td style="padding:6px 10px">${o.ancho}×${o.alto}</td>
                     <td style="padding:6px 10px;text-align:right">${(Number(o.metros_cuadrados)||0).toFixed(2)}</td>
                     <td style="padding:6px 10px;text-align:right">${(Number(o.kilos)||0).toFixed(1)}</td>
-                    <td style="padding:6px 10px;font-size:11px;color:#7c3aed">${o.ruta || '-'}</td>
+                    <td style="padding:6px 10px;font-size:11px;color:#7c3aed">${escText(o.ruta || '-')}</td>
                 </tr>`;
             });
 
@@ -197,7 +204,7 @@ App.modules.planificacion = {
                 <div style="background:var(--card-bg);border-radius:12px;border:1px solid var(--border);padding:16px;margin-top:16px">
                     <div style="display:flex;justify-between;align-items:center;margin-bottom:12px">
                         <div>
-                            <span style="font-size:14px;font-weight:700;color:#0f172a">${grupo} — ${fechaLabel}</span>
+                            <span style="font-size:14px;font-weight:700;color:#0f172a">${escText(grupo)} — ${fechaLabel}</span>
                             <span style="font-size:12px;color:#64748b;margin-left:12px">${ordenes.length} ordenes · ${totalM2.toFixed(1)} m² · ${totalKg.toFixed(0)} kg</span>
                         </div>
                         <button onclick="document.getElementById('planDetalleGrupoDia').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:#94a3b8;padding:2px 6px">✕</button>
@@ -220,7 +227,7 @@ App.modules.planificacion = {
                 </div>`;
             el.scrollIntoView({ behavior: 'smooth' });
         } catch(e) {
-            el.innerHTML = `<div style="padding:16px;background:#fee2e2;border-radius:12px;color:#991b1b;font-size:13px">Error: ${e.message}</div>`;
+            el.innerHTML = `<div style="padding:16px;background:#fee2e2;border-radius:12px;color:#991b1b;font-size:13px">Error: ${escText(e.message)}</div>`;
         }
     },
 
@@ -247,6 +254,10 @@ App.modules.planificacion = {
             if (res.ok) {
                 App.toast('Orden asignada');
         await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
+            } else {
+                // Sin este else un fallo de la API parecia exitoso en silencio
+                const d = await res.json().catch(() => ({}));
+                alert(d.error || 'Error al asignar la orden');
             }
         } catch(e) { alert('Error: ' + e.message); }
     },
@@ -260,7 +271,7 @@ App.modules.planificacion = {
             <p style="font-size:12px;color:var(--text-light);margin-bottom:12px">Capacidad maxima en kg por dia para cada grupo:</p>
             ${this.capacidadGrupo.map(c => `
                 <div style="display:grid;grid-template-columns:1fr 120px 60px;gap:8px;align-items:center;margin-bottom:8px">
-                    <div style="font-weight:500"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c.color};margin-right:6px"></span>${c.grupo}</div>
+                    <div style="font-weight:500"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${escAttr(c.color)};margin-right:6px"></span>${escText(c.grupo)}</div>
                     <input type="number" class="form-control" value="${c.capacidad_kg_dia}" id="planCapG_${c.id}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
                     <button class="btn btn-sm btn-primary" title="Guardar capacidad" onclick="App.modules.planificacion.guardarCapacidadGrupo(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
                 </div>
@@ -278,6 +289,11 @@ App.modules.planificacion = {
                 body: JSON.stringify({ capacidad_kg_dia: val })
             });
             if (res.ok) { App.toast('Capacidad actualizada'); await this.cargarGrupo(); }
+            else {
+                // Sin este else un fallo de la API parecia exitoso en silencio
+                const d = await res.json().catch(() => ({}));
+                alert(d.error || 'Error al guardar la capacidad');
+            }
         } catch(e) { alert('Error: ' + e.message); }
     },
 
@@ -439,10 +455,10 @@ App.modules.planificacion = {
         const page = document.getElementById('page-planificacion');
         if (!page) return;
         page.innerHTML = `
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">
+            <div class="m-hero" style="padding:10px 14px">
 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Planificacion</h2>
-<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Carga por grupo (kg) + calendario por estacion (m2)</p></div>
+<div class="m-hero-inner"><div><h2 class="m-hero-title" style="font-size:15px">Planificacion</h2>
+<p class="m-hero-sub" style="font-size:10px">Carga por grupo (kg) + calendario por estacion (m2)</p></div>
 </div></div>
 
 <style>
@@ -451,6 +467,15 @@ App.modules.planificacion = {
 .plan-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
 .plan-row{transition:all 0.2s}
 .plan-row:hover{transform:translateX(2px);background:#f8fafc!important}
+/* Patron MODULE_RESPONSIVE_V1: botones de cabecera y chart movil */
+.m-hero-btns{display:flex;gap:8px;flex-wrap:wrap}
+.plan-chart-row{display:flex;gap:16px;align-items:center}
+.plan-chart-box{position:relative;height:300px;flex:1;min-width:0}
+@media(max-width:768px){
+    .m-hero-btns .btn{height:40px;min-height:40px;flex:1}
+    .plan-chart-row{flex-direction:column;align-items:stretch}
+    .plan-chart-box{height:180px}
+}
 </style>
 
             <!-- VISTA POR GRUPO (kg/dia) - nueva -->
@@ -460,14 +485,16 @@ App.modules.planificacion = {
                         <h3 style="margin:0;font-size:16px">⚖️ Vista por Grupo (kg/dia)</h3>
                         <div style="font-size:12px;color:var(--text-light)">Capacidad maxima diaria por grupo de productos</div>
                     </div>
-                    <div style="display:flex;gap:6px;align-items:center">
+                    <div class="m-filters">
                         <label style="font-size:12px;color:var(--text-light)">Fecha:</label>
-                        <input type="date" class="form-control" id="planGrupoFecha" value="${this.fechaGrupo}" onchange="App.modules.planificacion.cambiarFechaGrupo()" style="width:140px;padding:4px 8px;font-size:12px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                        <input type="date" class="form-control" id="planGrupoFecha" value="${this.fechaGrupo}" onchange="App.modules.planificacion.cambiarFechaGrupo()" style="width:140px;flex:0 0 auto;padding:4px 8px;font-size:12px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
+                        <div class="m-hero-btns">
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(-1)">◀</button>
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(1)">▶</button>
                         ${puedeEditar ? '<button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.showCapacidadGrupo()" title="Configurar capacidad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Capacidad</button>' : ''}
                         ${puedeEditar ? '<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="App.modules.planificacion.showAutoAsignarGrupo()" title="Auto-asignar"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar</button>' : ''}
                         ${puedeEditar ? '<button class="btn btn-danger" style="padding:4px 12px;font-size:12px;background:#ef4444;border-color:#ef4444;color:white" onclick="App.modules.planificacion.showReprogramar()" title="Reprogramar: libera PROGRAMADO y re-asigna por prioridad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reprogramar</button>' : ''}
+                        </div>
                     </div>
                 </div>
                 <div class="card-body" style="padding:16px">
@@ -490,12 +517,14 @@ App.modules.planificacion = {
                         <h3 style="margin:0;font-size:16px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg> Carga por Estaciones</h3>
                         <div style="font-size:12px;color:var(--text-light)">Ocupacion de m2 por estacion y dia - <span id="planDiasLabel">${this.diasEstaciones}</span> dias corridos</div>
                     </div>
-                    <div style="display:flex;gap:6px;align-items:center">
+                    <div class="m-filters">
                         <label style="font-size:12px;color:var(--text-light)">Dias:</label>
-                        <input type="number" min="1" max="60" value="${this.diasEstaciones}" onchange="App.modules.planificacion.cambiarDiasEstaciones(this.value)" style="width:56px;padding:4px 6px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;text-align:center">
+                        <input type="number" min="1" max="60" value="${this.diasEstaciones}" onchange="App.modules.planificacion.cambiarDiasEstaciones(this.value)" style="width:56px;flex:0 0 auto;padding:4px 6px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;text-align:center">
                         <label style="font-size:12px;color:var(--text-light)">Periodo:</label>
+                        <div class="m-hero-btns">
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarSemanaEstaciones(-1)">◀</button>
                         <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarSemanaEstaciones(1)">▶</button>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body" style="padding:16px">
@@ -532,6 +561,12 @@ App.modules.planificacion = {
                 fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${chartFinStr}`),
                 fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${chartFinStr}`)
             ]);
+            if (cargaGrupoRes.ok) {
+                // planificacion-grupo/semana responde { grupos: [{ grupo, dias: [{fecha, kilos}] }], dias, calendario }
+                const semana = await cargaGrupoRes.json();
+                this.cargaGrupoSemana = semana.grupos || [];
+            }
+            else { console.error('planificacion-grupo/semana error:', cargaGrupoRes.status); this.cargaGrupoSemana = []; }
             if (pendRes.ok) this.pendientes = await pendRes.json();
             else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
             if (cargaEstRes.ok) this.cargaSemanal = await cargaEstRes.json();
@@ -565,8 +600,9 @@ App.modules.planificacion = {
     },
 
     _findFirstDayWithData() {
-        // Buscar en gruposSemana el primer dia con kilos > 0
-        for (const g of this.gruposSemana) {
+        // Buscar en cargaGrupoSemana el primer dia con kilos > 0
+        // (antes se iteraba this.gruposSemana, que no existia y lanzaba TypeError en cada carga)
+        for (const g of (this.cargaGrupoSemana || [])) {
             for (const d of (g.dias || [])) {
                 if ((d.kilos || 0) > 0) return d.fecha;
             }
@@ -574,116 +610,7 @@ App.modules.planificacion = {
         return null;
     },
 
-    renderPendientes() {
-        const div = document.getElementById('planPendientes');
-        if (!div) return;
-        if (this.pendientes.length === 0) {
-            div.innerHTML = '<div style="background:var(--card-bg);border-radius:12px;padding:20px;text-align:center;color:var(--text-light)">No hay ordenes pendientes de programar</div>';
-            return;
-        }
-        div.innerHTML = `
-            <div style="background:var(--card-bg);border-radius:12px;padding:16px;border:1px solid var(--border)">
-                <h3 style="margin:0 0 12px;font-size:16px">Pedidos Pendientes (${this.pendientes.length})</h3>
-                <div style="overflow-x:auto">
-                    <table style="width:100%;font-size:13px;border-collapse:collapse">
-                        <thead><tr style="border-bottom:2px solid var(--border)">
-                            <th style="padding:8px;text-align:left">Pedido</th>
-                            <th style="padding:8px;text-align:left">Item</th>
-                            <th style="padding:8px;text-align:left">Cliente</th>
-                            <th style="padding:8px;text-align:left">Codigo</th>
-                            <th style="padding:8px;text-align:left">Descripcion</th>
-                            <th style="padding:8px;text-align:right">M2</th>
-                            <th style="padding:8px;text-align:right">Kilos</th>
-                            <th style="padding:8px;text-align:center">Ruta</th>
-                            <th style="padding:8px;text-align:center">Accion</th>
-                        </tr></thead>
-                        <tbody>${this.pendientes.map(o => {
-                            const progreso = o.total_pasos > 0 ? `0/${o.total_pasos}` : '-';
-                            return `<tr class="plan-row" style="border-bottom:1px solid var(--border)">
-                                <td style="padding:8px"><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
-                                <td style="padding:8px">${o.item_numero || '-'}</td>
-                                <td style="padding:8px">${escapeHtml(o.cliente || '-')}</td>
-                                <td style="padding:8px"><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:2px 5px;border-radius:4px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
-                                <td style="padding:8px;font-size:12px;color:var(--text-light)">${escapeHtml(o.descripcion || o.nombre_mp || '-')}</td>
-                                <td style="padding:8px;text-align:right;font-weight:600">${Number(o.metros_cuadrados || 0).toFixed(2)}</td>
-                                <td style="padding:8px;text-align:right;font-weight:600">${Number(o.kilos || 0).toFixed(2)}</td>
-                                <td style="padding:8px;text-align:center">${progreso}</td>
-                                <td style="padding:8px;text-align:center"><button class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:12px" onclick="App.modules.planificacion.abrirModal(${o.id})">Asignar Fecha</button></td>
-                            </tr>`;
-                        }).join('')}</tbody>
-                    </table>
-                </div>
-            </div>
-        `;
-    },
-
-    cambiarSemana(dir) {
-        this.semanaInicio.setDate(this.semanaInicio.getDate() + (dir * 15));
-        this.semanaFin.setDate(this.semanaFin.getDate() + (dir * 15));
-        this._dataLoaded = false;
-        this.cargarDatos();
-    },
-
-    async abrirModal(ordenId) {
-        const orden = this.pendientes.find(o => o.id === ordenId);
-        if (!orden) return;
-        const body = document.getElementById('planAsignarBody');
-        body.innerHTML = `
-            <div style="margin-bottom:16px">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
-                    <div><strong>Pedido:</strong> ${orden.pedido_sap_id}</div>
-                    <div><strong>Item:</strong> ${orden.item_numero}</div>
-                    <div><strong>Codigo:</strong> ${orden.codigo_producto}</div>
-                    <div><strong>M2:</strong> ${Number(orden.metros_cuadrados || 0).toFixed(2)}</div>
-                    <div><strong>Kilos:</strong> ${Number(orden.kilos || 0).toFixed(2)}</div>
-                    <div><strong>Cliente:</strong> ${escapeHtml(orden.cliente || '-')}</div>
-                    <div><strong>Ruta:</strong> ${orden.total_pasos} estaciones</div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Fecha de Entrega Propuesta *</label>
-                <input class="form-control" type="date" id="planFechaEntrega" min="${new Date().toISOString().split('T')[0]}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-            </div>
-            <div id="planError" style="display:none;background:#fee2e2;border:1px solid #ef4444;border-radius:8px;padding:12px;margin-top:12px;color:#991b1b;font-size:13px"></div>
-            <div style="margin-top:16px;text-align:right">
-                <button class="btn btn-outline" onclick="App.modules.planificacion.cerrarModal()">Cancelar</button>
-                <button class="btn btn-primary" id="planBtnProgramar" onclick="App.modules.planificacion.programar(${ordenId})">Programar</button>
-            </div>
-        `;
-        document.getElementById('planAsignarModal').classList.add('show');
-    },
-
     cerrarModal() { document.getElementById('planAsignarModal').classList.remove('show'); },
-
-    async programar(ordenId) {
-        const fecha = document.getElementById('planFechaEntrega').value;
-        if (!fecha) { alert('Seleccione una fecha'); return; }
-        const btn = document.getElementById('planBtnProgramar');
-        btn.textContent = 'Validando...';
-        btn.disabled = true;
-        try {
-            const res = await fetch('/api/produccion/planificacion/programar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orden_id: ordenId, fecha_entrega_propuesta: fecha })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                App.toast(data.mensaje || 'Orden programada correctamente');
-                this.cerrarModal();
-                await this.cargarDatos();
-            } else {
-                const errDiv = document.getElementById('planError');
-                errDiv.style.display = 'block';
-                errDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
-                if (data.conflictos && data.conflictos.length > 0) {
-                    errDiv.innerHTML += `<div style="margin-top:8px;font-size:12px"><strong>Detalle de conflictos:</strong><ul style="margin:4px 0;padding-left:20px">${data.conflictos.map(c => `<li>${c.fecha}: ${Number(c.disponibles).toFixed(2)} m² disponibles, ${c.necesarios} m² necesarios</li>`).join('')}</ul></div>`;
-                }
-            }
-        } catch(e) { alert('Error: ' + e.message); }
-        btn.textContent = 'Programar';
-        btn.disabled = false;
-    },
 
     cambiarModoChart(modo) {
         this.chartModo = modo;
@@ -760,12 +687,12 @@ App.modules.planificacion = {
                         <span style="font-size:12px;color:var(--text-light);margin-left:8px">Capacidad promedio: <strong>${Math.round(capacidadPromedio).toLocaleString('es-CL')} kg/día</strong></span>
                     </div>
                 </div>
-                <div style="display:flex;gap:16px;align-items:center">
+                <div class="plan-chart-row">
                     <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--text-light);min-width:120px">
                         <div style="font-weight:600;font-size:12px;margin-bottom:4px">Grupo</div>
-                        ${data.familias.map((fam, i) => `<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colores[i % colores.length].bg};vertical-align:middle"></span> ${fam}</span>`).join('')}
+                        ${data.familias.map((fam, i) => `<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colores[i % colores.length].bg};vertical-align:middle"></span> ${escText(fam)}</span>`).join('')}
                     </div>
-                    <div style="position:relative;height:300px;flex:1">
+                    <div class="plan-chart-box">
                         <canvas id="chartCargaGrupo"></canvas>
                     </div>
                 </div>
@@ -923,7 +850,7 @@ App.modules.planificacion = {
 
         estaciones.forEach(est => {
             html += '<tr class="plan-row" style="border-bottom:1px solid var(--border)">';
-            html += `<td style="padding:8px;font-weight:600;white-space:nowrap">${est.nombre}${est.cuello_botella ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#fef2f2;color:#ef4444">CB</span>' : ''}</td>`;
+            html += `<td style="padding:8px;font-weight:600;white-space:nowrap">${escText(est.nombre)}${est.cuello_botella ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#fef2f2;color:#ef4444">CB</span>' : ''}</td>`;
             html += `<td style="padding:6px 2px 6px 0;text-align:left;font-size:11px;color:var(--text-light)">${est.capacidad_m2_dia}</td>`;
 
             dias.forEach(f => {

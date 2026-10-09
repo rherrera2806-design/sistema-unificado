@@ -1,10 +1,15 @@
 App.registerModule('prod_notas', {
     _data: [],
 
+    // Usuario de sesion con default seguro (evita TypeError si no hay sesion)
+    _user() {
+        try { return JSON.parse(localStorage.getItem('unified_user')) || {}; } catch (e) { return {}; }
+    },
+
     async render() {
         const el = document.getElementById('page-prod_notas');
 
-        const user = JSON.parse(localStorage.getItem('unified_user'));
+        const user = this._user();
         const res = await fetch('/api/produccion/notas', {
             headers: { 'X-User-Email': user.email || '' }
         });
@@ -120,7 +125,7 @@ App.registerModule('prod_notas', {
     },
 
     async refresh() {
-        const user = JSON.parse(localStorage.getItem('unified_user'));
+        const user = this._user();
         const res = await fetch('/api/produccion/notas', {
             headers: { 'X-User-Email': user.email || '' }
         });
@@ -138,32 +143,34 @@ App.registerModule('prod_notas', {
 
     async marcarRealizado(id) {
         try {
-            const user = JSON.parse(localStorage.getItem('unified_user'));
-            await fetch(`/api/produccion/notas/${id}`, {
+            const user = this._user();
+            const res = await fetch(`/api/produccion/notas/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
                 body: JSON.stringify({ estado: 'realizado' })
             });
+            await apiJson(res); // lanza Error si la API respondio con fallo
             App.showAlert('Marcado como realizado');
             await this.refresh();
-        } catch(e) { App.showAlert('Error al actualizar', 'danger'); }
+        } catch(e) { App.showAlert('Error al actualizar: ' + e.message, 'danger'); }
     },
 
     async marcarPendiente(id) {
         try {
-            const user = JSON.parse(localStorage.getItem('unified_user'));
-            await fetch(`/api/produccion/notas/${id}`, {
+            const user = this._user();
+            const res = await fetch(`/api/produccion/notas/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
                 body: JSON.stringify({ estado: 'pendiente' })
             });
+            await apiJson(res); // lanza Error si la API respondio con fallo
             App.showAlert('Vuelto a pendiente');
             await this.refresh();
-        } catch(e) { App.showAlert('Error al actualizar', 'danger'); }
+        } catch(e) { App.showAlert('Error al actualizar: ' + e.message, 'danger'); }
     },
 
     async showForm(id) {
-        const user = JSON.parse(localStorage.getItem('unified_user'));
+        const user = this._user();
         let reg = null;
         if (id) {
             const res = await fetch('/api/produccion/notas', {
@@ -173,7 +180,7 @@ App.registerModule('prod_notas', {
             reg = all.find(n => n.id === id);
         }
         App.showModal(`
-            <div class="form-group"><label>Pendiente *</label><textarea class="form-control" id="prodNotaTexto" rows="5" placeholder="Escribe tu pendiente aqui...">${reg ? reg.nota || '' : ''}</textarea></div>
+            <div class="form-group"><label>Pendiente *</label><textarea class="form-control" id="prodNotaTexto" rows="5" placeholder="Escribe tu pendiente aqui...">${escText(reg ? reg.nota || '' : '')}</textarea></div>
         `, { title: reg ? 'Editar Pendiente' : 'Nuevo Pendiente' });
         const footer = document.querySelector('#modalOverlay .modal-footer');
         footer.innerHTML = `
@@ -184,22 +191,22 @@ App.registerModule('prod_notas', {
 
     async save(id) {
         try {
-            const user = JSON.parse(localStorage.getItem('unified_user'));
+            const user = this._user();
             const nota = document.getElementById('prodNotaTexto').value.trim();
             if (!nota) { App.showAlert('Escribe un pendiente', 'danger'); return; }
 
             if (id === 0) {
-                await fetch('/api/produccion/notas', {
+                await apiJson(await fetch('/api/produccion/notas', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
                     body: JSON.stringify({ nota })
-                });
+                }));
             } else {
-                await fetch(`/api/produccion/notas/${id}`, {
+                await apiJson(await fetch(`/api/produccion/notas/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
                     body: JSON.stringify({ nota })
-                });
+                }));
             }
             App.hideModal();
             App.showAlert(id === 0 ? 'Pendiente creado' : 'Pendiente actualizado');
@@ -211,13 +218,13 @@ App.registerModule('prod_notas', {
         try {
             const confirmed = await App.confirm('¿Eliminar este pendiente?');
             if (!confirmed) return;
-            const user = JSON.parse(localStorage.getItem('unified_user'));
-            await fetch(`/api/produccion/notas/${id}`, {
+            const user = this._user();
+            await apiJson(await fetch(`/api/produccion/notas/${id}`, {
                 method: 'DELETE',
                 headers: { 'X-User-Email': user.email || '' }
-            });
+            }));
             App.showAlert('Pendiente eliminado');
             this.refresh();
-        } catch(e) { App.showAlert('Error al eliminar', 'danger'); }
+        } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); }
     }
 });

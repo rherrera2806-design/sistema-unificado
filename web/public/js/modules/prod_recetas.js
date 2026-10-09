@@ -447,7 +447,7 @@ App.registerModule('prod_recetas', {
     async delete(id) {
         if (!confirm('Eliminar esta receta BOM?')) return;
         try {
-            await fetch('/api/produccion/recetas-bom/' + id, { method: 'DELETE', headers: this._headers() });
+            await apiJson(await fetch('/api/produccion/recetas-bom/' + id, { method: 'DELETE', headers: this._headers() }));
             App.toast('Receta eliminada');
             await this.load();
         } catch (e) { alert('Error: ' + e.message); }
@@ -491,11 +491,6 @@ App.registerModule('prod_recetas', {
                 preview.style.display = 'block';
                 document.getElementById('recImportBtn').disabled = data.validas === 0;
 
-                if (data._rawKeys) {
-                    const debugHtml = '<div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:11px"><strong style="color:#92400e">Debug - Headers detectados:</strong> <code>' + data._rawKeys.join(' | ') + '</code><br><strong>Columnas encontradas:</strong> Estaciones=' + (data._debug?.colEst || 'NULL') + ', Ancho=' + (data._debug?.colAncho || 'NULL') + ', Alto=' + (data._debug?.colAlto || 'NULL') + '</div>';
-                    document.getElementById('recImportStats').insertAdjacentHTML('afterend', debugHtml);
-                }
-
                 let statsHtml = '<span style="background:#dbeafe;color:#1e40af;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Total: ' + data.total + '</span>';
                 statsHtml += '<span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Validas: ' + data.validas + '</span>';
                 if (data.errores.length > 0) statsHtml += '<span style="background:#fef2f2;color:#991b1b;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Errores: ' + data.errores.length + '</span>';
@@ -504,7 +499,7 @@ App.registerModule('prod_recetas', {
                 if (data.errores.length > 0) {
                     let errHtml = '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:8px 12px;margin-bottom:8px;max-height:100px;overflow-y:auto"><strong style="font-size:11px;color:#991b1b">Errores:</strong><br>';
                     data.errores.slice(0, 10).forEach(err => {
-                        errHtml += '<span style="font-size:11px;color:#991b1b">Fila ' + err.fila + ': ' + err.error + '</span><br>';
+                        errHtml += '<span style="font-size:11px;color:#991b1b">Fila ' + escText(err.fila) + ': ' + escText(err.error) + '</span><br>';
                     });
                     if (data.errores.length > 10) errHtml += '<span style="font-size:11px;color:#991b1b">... +' + (data.errores.length - 10) + ' mas</span>';
                     errHtml += '</div>';
@@ -517,7 +512,7 @@ App.registerModule('prod_recetas', {
 
                 let tableHtml = '';
                 data.sample.forEach(s => {
-                    tableHtml += '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace">' + (s.codigo_sap || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.codigo_mp || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center">' + (s.cantidad || 1) + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + (s.estaciones || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + (s.ancho || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + (s.alto || '-') + '</td></tr>';
+                    tableHtml += '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace">' + escText(s.codigo_sap || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + escText(s.codigo_mp || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center">' + escText(s.cantidad || 1) + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + escText(s.estaciones || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + escText(s.ancho || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + escText(s.alto || '-') + '</td></tr>';
                 });
                 document.getElementById('recImportTable').innerHTML = tableHtml;
             } catch (err) { alert('Error al procesar archivo: ' + err.message); }

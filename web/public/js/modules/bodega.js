@@ -621,6 +621,9 @@ App.registerModule('bodega', {
             </div>
         `;
         document.getElementById('bodEntregaModal').classList.add('show');
+        } catch (e) {
+            alert('Error de conexión: ' + e.message);
+        }
     },
 
     async recibirEntrega(entregaId) {

@@ -212,18 +212,18 @@ App.registerModule('prod_codigos', {
             if (!grupo) return '<span style="color:#cbd5e1">-</span>';
             const hex = this._grupoColores[grupo] || '#3b82f6';
             const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-            return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:rgba(${r},${g},${b},0.15);color:${hex}">${grupo}</span>`;
+            return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:rgba(${r},${g},${b},0.15);color:${escAttr(hex)}">${escText(grupo)}</span>`;
         };
 
         const getFamiliaBadge = (familia) => {
             if (!familia) return '<span style="color:#cbd5e1">-</span>';
-            return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${familia}</span>`;
+            return `<span style="padding:2px 8px;border-radius:4px;font-size:11px;background:#dcfce7;color:#166534">${escText(familia)}</span>`;
         };
 
         const getRecetasBadge = (c) => {
             const rc = parseInt(c.recetas_count) || 0;
             if (rc > 0) {
-                return `<span onclick="App.modules.prod_codigos.verRecetas('${escapeHtml(c.codigo)}')" style="cursor:pointer;background:#7c3aed15;color:#7c3aed;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px" title="Ver ${rc} receta(s)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${rc}</span>`;
+                return `<span onclick="App.modules.prod_codigos.verRecetas('${escJs(c.codigo)}')" style="cursor:pointer;background:#7c3aed15;color:#7c3aed;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px" title="Ver ${rc} receta(s)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${rc}</span>`;
             }
             return '<span style="color:#cbd5e1;font-size:11px">-</span>';
         };
@@ -235,8 +235,8 @@ App.registerModule('prod_codigos', {
 
         tbody.innerHTML = codigos.map(c => {
             return `<tr class="pcod-row" style="line-height:1.3">
-                <td style="padding:4px 10px"><strong>${c.codigo}</strong></td>
-                <td style="padding:4px 10px">${c.descripcion || '-'}</td>
+                <td style="padding:4px 10px"><strong>${escText(c.codigo)}</strong></td>
+                <td style="padding:4px 10px">${escText(c.descripcion || '-')}</td>
                 <td style="padding:4px 10px">${getGrupoBadge(c.grupo)}</td>
                 <td style="padding:4px 10px">${getFamiliaBadge(c.familia)}</td>
                 <td style="padding:4px 10px;text-align:center">${getRecetasBadge(c)}</td>
@@ -249,8 +249,8 @@ App.registerModule('prod_codigos', {
                 <div class="m-card-header m-table-row">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%">
                         <div style="flex:1">
-                            <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px">${c.codigo}</div>
-                            <div style="font-size:12px;color:#64748b;margin-bottom:6px">${c.descripcion || '-'}</div>
+                            <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px">${escText(c.codigo)}</div>
+                            <div style="font-size:12px;color:#64748b;margin-bottom:6px">${escText(c.descripcion || '-')}</div>
                             <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
                                 ${getGrupoBadge(c.grupo)}
                                 ${getFamiliaBadge(c.familia)}
@@ -315,10 +315,10 @@ App.registerModule('prod_codigos', {
             gSel.innerHTML = '<option value="">-- Seleccionar Grupo --</option>'
                 + grupos.map(g => {
                     const hex = colorMap[g] || '#3b82f6';
-                    return `<option value="${escapeHtml(g)}" data-color="${hex}" ${g === cur ? 'selected' : ''}>${g}</option>`;
+                    return `<option value="${escAttr(g)}" data-color="${escAttr(hex)}" ${g === cur ? 'selected' : ''}>${escText(g)}</option>`;
                 }).join('');
             if (cur && !grupos.includes(cur)) {
-                gSel.innerHTML += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>`;
+                gSel.innerHTML += `<option value="${escAttr(cur)}" selected>${escText(cur)}</option>`;
             }
             const applyGrupoColor = () => {
                 const sel = gSel.options[gSel.selectedIndex];
@@ -349,9 +349,9 @@ App.registerModule('prod_codigos', {
         }
         const cur = selectedFamilia || fSel.value || '';
         fSel.innerHTML = '<option value="">-- Seleccionar Familia --</option>'
-            + familias.map(f => `<option value="${escapeHtml(f)}" ${f === cur ? 'selected' : ''}>${escapeHtml(f)}</option>`).join('');
+            + familias.map(f => `<option value="${escAttr(f)}" ${f === cur ? 'selected' : ''}>${escText(f)}</option>`).join('');
         if (cur && !familias.includes(cur)) {
-            fSel.innerHTML += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}</option>`;
+            fSel.innerHTML += `<option value="${escAttr(cur)}" selected>${escText(cur)}</option>`;
         }
     },
 
@@ -418,9 +418,9 @@ App.registerModule('prod_codigos', {
         if (!confirm('Eliminar este codigo?')) return;
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            await fetch(`/api/produccion/codigos/${id}`, {
+            await apiJson(await fetch(`/api/produccion/codigos/${id}`, {
                 method: 'DELETE', headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
-            });
+            }));
             App.toast('Codigo eliminado');
             const grupo = document.getElementById('codFilterGrupo')?.value || '';
             const familia = document.getElementById('codFilterFamilia')?.value || '';
@@ -493,7 +493,7 @@ App.registerModule('prod_codigos', {
                 <span style="font-size:18px;font-weight:800;color:#166534">${data.con_codigo}</span> registros a importar<br>
                 ${data.duplicados > 0 ? `<span style="color:#b45309">${data.duplicados}</span> duplicados (se omiten)<br>` : ''}
                 ${data.sin_codigo > 0 ? `<span style="color:#dc2626">${data.sin_codigo}</span> filas sin codigo (se omiten)<br>` : ''}
-                <span style="color:#64748b">Columnas: ${data.columnas_detectadas.slice(0, 6).join(', ')}${data.columnas_detectadas.length > 6 ? '...' : ''}</span>
+                <span style="color:#64748b">Columnas: ${escText(data.columnas_detectadas.slice(0, 6).join(', '))}${data.columnas_detectadas.length > 6 ? '...' : ''}</span>
             `;
 
             const sample = document.getElementById('codPreviewSample');
@@ -508,7 +508,8 @@ App.registerModule('prod_codigos', {
         } catch(e) { alert('Error: ' + e.message); }
     },
 
-    esc(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; },
+    // Escapeo de texto/atributo: delega al helper global (escapa comillas, a diferencia del regex viejo)
+    esc(s) { return escText(s); },
 
     async doImport() {
         if (!this.selectedImportFile) return;

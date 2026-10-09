@@ -30,41 +30,45 @@ App.registerModule('prod_prog_estacion', {
                 .ppe-estado-TERMINADO{background:#d1fae5;color:#065f46}
                 .ppe-estado-CERRADO{background:#f1f5f9;color:#64748b}
                 .ppe-totales{display:flex;gap:16px;padding:8px 16px;background:#f8fafc;border-radius:0 0 10px 10px;font-size:12px;font-weight:600;color:#475569}
+                .ppe-totales{display:flex;gap:16px;padding:8px 16px;background:#f8fafc;border-radius:0 0 10px 10px;font-size:12px;font-weight:600;color:#475569;flex-wrap:wrap}
                 .ppe-totales span{color:#0f172a}
+                /* Botones de cabecera del hero (patron MODULE_RESPONSIVE_V1) */
+                .m-hero-btns{display:flex;gap:8px;flex-wrap:wrap}
+                @media(max-width:768px){.m-hero-btns .btn{height:40px;min-height:40px;flex:1}}
             </style>
 
-            <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,.3)">
+            <div class="m-hero" style="padding:10px 14px">
                 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,.2) 0%,transparent 70%);border-radius:50%"></div>
-                <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center">
+                <div class="m-hero-inner">
                     <div>
-                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg>Programacion por Estacion</h2>
-                        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,.7)">Vista de programacion completa por estacion y fecha</p>
+                        <h2 class="m-hero-title" style="font-size:15px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg>Programacion por Estacion</h2>
+                        <p class="m-hero-sub" style="font-size:10px">Vista de programacion completa por estacion y fecha</p>
                     </div>
-                    <div style="display:flex;gap:8px">
+                    <div class="m-hero-btns">
                         <button onclick="App.modules.prod_prog_estacion.exportarExcel()" class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar</button>
                     </div>
                 </div>
             </div>
 
             <div style="background:white;border-radius:14px;padding:20px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:20px;animation:ppeFadeUp .5s ease both">
-                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+                <div class="m-filters">
                     <div style="flex:2;min-width:200px">
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Estacion</label>
-                        <select id="ppeFilterEstacion" onchange="App.modules.prod_prog_estacion.aplicarFiltros()" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
+                        <select id="ppeFilterEstacion" onchange="App.modules.prod_prog_estacion.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
                             <option value="">Todas las estaciones</option>
                         </select>
                     </div>
                     <div style="flex:1;min-width:140px">
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Desde</label>
-                        <input type="date" id="ppeFilterInicio" value="${this.filtros.fecha_inicio}" onchange="App.modules.prod_prog_estacion.aplicarFiltros()" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
+                        <input type="date" id="ppeFilterInicio" value="${this.filtros.fecha_inicio}" onchange="App.modules.prod_prog_estacion.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
                     </div>
                     <div style="flex:1;min-width:140px">
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Hasta</label>
-                        <input type="date" id="ppeFilterFin" value="${this.filtros.fecha_fin}" onchange="App.modules.prod_prog_estacion.aplicarFiltros()" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
+                        <input type="date" id="ppeFilterFin" value="${this.filtros.fecha_fin}" onchange="App.modules.prod_prog_estacion.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none">
                     </div>
                     <div style="flex:1;min-width:140px">
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Estado</label>
-                        <select id="ppeFilterEstado" onchange="App.modules.prod_prog_estacion.aplicarFiltros()" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
+                        <select id="ppeFilterEstado" onchange="App.modules.prod_prog_estacion.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
                             <option value="todos">Todos</option>
                             <option value="PENDIENTE">Pendiente</option>
                             <option value="PROGRAMADO">Programado</option>
@@ -111,7 +115,7 @@ App.registerModule('prod_prog_estacion', {
         sel.innerHTML = '<option value="">Todas las estaciones</option>';
         for (const e of this.datos.todas_estaciones || []) {
             const cb = e.cuello_botella ? ' [CB]' : '';
-            sel.innerHTML += `<option value="${e.id}" ${String(e.id) === String(val) ? 'selected' : ''}>${e.orden_secuencia_defecto || '?'}° ${e.nombre_estacion}${cb} (cap: ${e.cap_max} m²)</option>`;
+            sel.innerHTML += `<option value="${e.id}" ${String(e.id) === String(val) ? 'selected' : ''}>${e.orden_secuencia_defecto || '?'}° ${escText(e.nombre_estacion)}${cb} (cap: ${e.cap_max} m²)</option>`;
         }
     },
 
@@ -127,23 +131,11 @@ App.registerModule('prod_prog_estacion', {
             totalKg += e.total_kg;
         }
         el.innerHTML = `
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-                <div class="ppe-card" style="background:white;border-radius:12px;padding:16px;border:1px solid #e2e8f0;text-align:center">
-                    <div style="font-size:24px;font-weight:800;color:#3b82f6">${totalEstaciones}</div>
-                    <div style="font-size:11px;color:#64748b;font-weight:600">Estaciones</div>
-                </div>
-                <div class="ppe-card" style="background:white;border-radius:12px;padding:16px;border:1px solid #e2e8f0;text-align:center">
-                    <div style="font-size:24px;font-weight:800;color:#8b5cf6">${totalOrd}</div>
-                    <div style="font-size:11px;color:#64748b;font-weight:600">Total Ordenes</div>
-                </div>
-                <div class="ppe-card" style="background:white;border-radius:12px;padding:16px;border:1px solid #e2e8f0;text-align:center">
-                    <div style="font-size:24px;font-weight:800;color:#10b981">${totalM2.toFixed(1)}</div>
-                    <div style="font-size:11px;color:#64748b;font-weight:600">Total M²</div>
-                </div>
-                <div class="ppe-card" style="background:white;border-radius:12px;padding:16px;border:1px solid #e2e8f0;text-align:center">
-                    <div style="font-size:24px;font-weight:800;color:#f59e0b">${totalKg.toFixed(0)}</div>
-                    <div style="font-size:11px;color:#64748b;font-weight:600">Total Kg</div>
-                </div>
+            <div class="m-stats">
+                <div class="m-stat-card stat-blue"><div class="m-stat-label">Estaciones</div><div class="m-stat-value" style="color:#3b82f6">${totalEstaciones}</div></div>
+                <div class="m-stat-card stat-purple"><div class="m-stat-label">Total Ordenes</div><div class="m-stat-value" style="color:#8b5cf6">${totalOrd}</div></div>
+                <div class="m-stat-card stat-green"><div class="m-stat-label">Total M²</div><div class="m-stat-value" style="color:#10b981">${totalM2.toFixed(1)}</div></div>
+                <div class="m-stat-card stat-amber"><div class="m-stat-label">Total Kg</div><div class="m-stat-value" style="color:#f59e0b">${totalKg.toFixed(0)}</div></div>
             </div>
         `;
     },
@@ -162,7 +154,7 @@ App.registerModule('prod_prog_estacion', {
             const color = est.cuello_botella ? '#ef4444' : '#3b82f6';
             html += `<div style="background:white;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)">`;
             html += `<div style="background:linear-gradient(135deg,${color},${color}dd);color:white;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">`;
-            html += `<div><span style="font-size:15px;font-weight:800">${est.orden}° ${est.nombre}</span>`;
+            html += `<div><span style="font-size:15px;font-weight:800">${escText(est.orden)}° ${escText(est.nombre)}</span>`;
             if (est.cuello_botella) html += ` <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.2);margin-left:6px">CUELLO DE BOTELLA</span>`;
             html += `</div>`;
             html += `<div style="text-align:right;font-size:12px"><span>${est.total_ordenes} ord</span> · <span>${est.total_m2.toFixed(1)} m²</span> · <span>${est.total_kg.toFixed(0)} kg</span></div>`;
@@ -178,10 +170,11 @@ App.registerModule('prod_prog_estacion', {
                     html += `<div>${esHoy ? 'HOY - ' : ''}${fechaFmt}</div>`;
                     html += `<div>${dia.total_ordenes} ord · ${dia.total_m2.toFixed(1)} m² · ${dia.total_kg.toFixed(0)} kg</div>`;
                     html += `</div>`;
-                    html += `<div style="overflow-x:auto"><table class="ppe-table"><thead><tr>`;
+                    html += `<div class="m-table-wrap"><table class="ppe-table"><thead><tr>`;
                     html += `<th>Pedido</th><th>Item</th><th>Codigo</th><th>Ref/Padre</th><th>Dim</th><th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
                     html += `</tr></thead><tbody>`;
 
+                    let cardsDia = '';
                     const groups = {};
                     const sinGrupo = [];
                     for (const o of dia.ordenes) {
@@ -197,13 +190,14 @@ App.registerModule('prod_prog_estacion', {
                     for (const o of sinGrupo) {
                         const estadoClass = `ppe-estado-${o.estado}`;
                         html += this._renderFila(o, estadoClass, false);
+                        cardsDia += this._renderFilaCard(o);
                     }
 
                     for (const [key, grp] of Object.entries(groups)) {
                         const p = grp.padre;
                         html += `<tr style="background:#f0f9ff;border-bottom:2px solid #bae6fd">`;
                         html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
-                        html += `<td>${p.item || '-'}</td>`;
+                        html += `<td>${this.esc(p.item || '-')}</td>`;
                         html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong> <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#0ea5e9;color:white">PADRE</span></td>`;
                         html += `<td style="font-size:11px"><strong>${this.esc(p.codigo_ref)}</strong>${p.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
                         html += `<td>${p.ancho}×${p.alto}</td>`;
@@ -213,21 +207,21 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td><strong>${totalM2Grupo.toFixed(2)}</strong></td>`;
                         html += `<td><strong>${totalKgGrupo.toFixed(1)}</strong></td>`;
                         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(p.cliente || '-')}</td>`;
-                        html += `<td><span class="ppe-badge ppe-estado-${p.estado}">${p.estado}</span></td>`;
+                        html += `<td><span class="ppe-badge ppe-estado-${p.estado}">${this.esc(p.estado)}</span></td>`;
                         html += `<td style="font-size:11px">${this.esc(p.ruta)}</td>`;
                         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></td>`;
                         html += `</tr>`;
 
                         for (const h of grp.hijos) {
                             const estadoClass = `ppe-estado-${h.estado}`;
-                            const mpInfo = h.mp_nombre ? `${this.esc(h.mp_nombre)}${h.mp_espesor ? ' ' + h.mp_espesor + 'mm' : ''}` : '';
+                            const mpInfo = h.mp_nombre ? `${this.esc(h.mp_nombre)}${h.mp_espesor ? ' ' + escText(h.mp_espesor) + 'mm' : ''}` : '';
                             html += `<tr style="background:#faf5ff">`;
                             html += `<td style="padding-left:24px"><span style="color:#7c3aed">└</span> ${this.esc(h.pedido || '-')}</td>`;
-                            html += `<td>${h.item || '-'}</td>`;
+                            html += `<td>${this.esc(h.item || '-')}</td>`;
                             html += `<td><strong>${this.esc(h.codigo)}</strong> <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span></td>`;
                             html += `<td style="font-size:11px;color:#7c3aed;font-weight:600">${mpInfo || this.esc(h.codigo_ref)}</td>`;
                             html += `<td></td>`;
-                            html += `<td>${h.cantidad || 1}</td>`;
+                            html += `<td>${this.esc(h.cantidad || 1)}</td>`;
                             html += `<td></td>`;
                             html += `<td><strong>${h.kg.toFixed(1)}</strong></td>`;
                             html += `<td></td>`;
@@ -236,9 +230,11 @@ App.registerModule('prod_prog_estacion', {
                             html += `<td></td>`;
                             html += `</tr>`;
                         }
+                        cardsDia += this._renderGrupoCard(p, grp.hijos);
                     }
 
                     html += `</tbody></table></div>`;
+                    html += `<div class="m-cards-mobile" style="display:none;padding:12px">${cardsDia}</div>`;
                     html += `<div class="ppe-totales"><div>M²: <span>${dia.total_m2.toFixed(2)}</span></div><div>Kg: <span>${dia.total_kg.toFixed(1)}</span></div><div>Ordenes: <span>${dia.total_ordenes}</span></div></div>`;
                 }
             }
@@ -268,12 +264,72 @@ App.registerModule('prod_prog_estacion', {
         return `${d.getDate()} de ${meses[d.getMonth()]} ${d.getFullYear()}`;
     },
 
-    esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; },
+    // Escapeo de texto/atributo: delega al helper global (el metodo viejo no escapaba comillas)
+    esc(s) { return escText(s); },
+
+    // Card movil para una orden suelta (patron MODULE_RESPONSIVE_V1)
+    _renderFilaCard(o) {
+        return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
+                <div style="min-width:0">
+                    <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(o.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(o.item || '-')}</span></div>
+                    <div style="font-size:11px;color:#475569;margin-top:2px">${this.esc(o.cliente || '-')}</div>
+                </div>
+                <div style="flex-shrink:0"><span class="ppe-badge ppe-estado-${o.estado}">${this.esc(o.estado)}</span></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px">
+                <strong style="font-size:12px;color:#0f172a">${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}
+                <span style="font-size:10px;color:#94a3b8">${this.esc(o.codigo_ref)}${o.nombre_padre ? ' · ' + this.esc(o.nombre_padre) : ''}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
+                <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(o.ancho)}×${this.esc(o.alto)}</span></div>
+                <div><span style="color:#94a3b8">Cant:</span> <span style="color:#475569">${this.esc(o.cantidad || 1)}</span></div>
+                <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${(o.m2_asignados || o.m2).toFixed(2)}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${o.kg.toFixed(1)}</strong></div>
+                <div><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></div>
+                <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="font-size:10px;color:#7c3aed">${this.esc(o.ruta || '-')}</span></div>
+            </div>
+        </div>`;
+    },
+
+    // Card movil para un grupo padre con sus materias primas
+    _renderGrupoCard(p, hijos) {
+        const totalM2Grupo = hijos[0] ? (hijos[0].m2_asignados || hijos[0].m2) : 0;
+        const totalKgGrupo = hijos.reduce((s, h) => s + h.kg, 0);
+        const hijosHtml = hijos.map(h => {
+            const mpInfo = h.mp_nombre ? `${this.esc(h.mp_nombre)}${h.mp_espesor ? ' ' + escText(h.mp_espesor) + 'mm' : ''}` : '';
+            return `<div style="display:flex;justify-content:space-between;gap:6px;padding:4px 0;border-top:1px solid #f1f5f9;font-size:11px">
+                <div style="min-width:0"><span style="color:#7c3aed">└</span> <strong>${this.esc(h.codigo)}</strong> <span style="color:#94a3b8">${mpInfo || this.esc(h.codigo_ref)}</span></div>
+                <div style="white-space:nowrap;color:#475569">${this.esc(h.cantidad || 1)} un · <strong>${h.kg.toFixed(1)}</strong> kg</div>
+            </div>`;
+        }).join('');
+        return `<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
+                <div style="min-width:0">
+                    <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(p.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(p.item || '-')}</span></div>
+                    <div style="font-size:11px;color:#475569;margin-top:2px">${this.esc(p.cliente || '-')}</div>
+                </div>
+                <div style="flex-shrink:0"><span class="ppe-badge ppe-estado-${p.estado}">${this.esc(p.estado)}</span></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px">
+                <strong style="color:#0369a1;font-size:12px">${this.esc(p.codigo_ref)}</strong>
+                <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#0ea5e9;color:white">PADRE</span>
+                ${p.nombre_padre ? '<span style="font-size:10px;color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:4px">
+                <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(p.ancho)}×${this.esc(p.alto)}</span></div>
+                <div><span style="color:#94a3b8">MP:</span> <span style="color:#475569">${hijos.length}</span></div>
+                <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${totalM2Grupo.toFixed(2)}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${totalKgGrupo.toFixed(1)}</strong></div>
+                <div><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></div>
+                <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="font-size:10px;color:#7c3aed">${this.esc(p.ruta)}</span></div>
+            </div>
+            ${hijosHtml}
+        </div>`;
+    },
 
     _renderFila(o, estadoClass, esHijo) {
         let html = '<tr>';
         html += `<td><strong>${this.esc(o.pedido || '-')}</strong></td>`;
-        html += `<td>${o.item || '-'}</td>`;
+        html += `<td>${this.esc(o.item || '-')}</td>`;
         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
         html += `<td style="font-size:11px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
         html += `<td>${o.ancho}×${o.alto}</td>`;
@@ -281,8 +337,8 @@ App.registerModule('prod_prog_estacion', {
         html += `<td><strong>${(o.m2_asignados || o.m2).toFixed(2)}</strong></td>`;
         html += `<td><strong>${o.kg.toFixed(1)}</strong></td>`;
         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(o.cliente || '-')}</td>`;
-        html += `<td><span class="ppe-badge ${estadoClass}">${o.estado}</span></td>`;
-        html += `<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${this.esc(o.ruta)}">${this.esc(o.ruta)}</td>`;
+        html += `<td><span class="ppe-badge ${estadoClass}">${this.esc(o.estado)}</span></td>`;
+        html += `<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta)}">${this.esc(o.ruta)}</td>`;
         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></td>`;
         html += '</tr>';
         return html;

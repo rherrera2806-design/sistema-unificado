@@ -111,6 +111,47 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
+// ─── Helpers de escapeo (XSS) ────
+// Usar SIEMPRE que se inyecte un dato de la API o del usuario en HTML.
+
+// Texto dentro de la etiqueta (nodos de texto): <td>${escText(x)}</td>
+function escText(str) { return escapeHtml(str); }
+
+// Valor dentro de un atributo HTML entre comillas dobles: title="${escAttr(x)}"
+function escAttr(str) { return escapeHtml(str); }
+
+// Literal JS dentro de un atributo de evento onclick="fn('${escJs(x)}')".
+// Escapa de verdad \ ' " ` y saltos de linea a nivel JS, y luego escapa HTML
+// para no romper el atributo (el parser decodifica entidades antes de ejecutar JS).
+function escJs(str) {
+    const js = String(str == null ? '' : str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/`/g, '\\`')
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029')
+        .replace(/</g, '\\x3C')
+        .replace(/>/g, '\\x3E');
+    return js.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// Lee la respuesta como JSON y lanza Error con el mensaje del body si !res.ok.
+// Evita los "falsos exitos" (mostrar Guardado/Eliminado cuando la API fallo).
+async function apiJson(res) {
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.mensaje || ('HTTP ' + res.status));
+    return data;
+}
+
+// Mapea el nombre del modulo al id real del item del sidebar (para resaltar nav)
+const NAV_PAGE_ALIASES = {
+    produccion: 'prod_ordenes',
+    planificacion: 'prod_planificacion'
+};
+
 const App = {
     modules: {},
     currentPage: null,
@@ -157,13 +198,18 @@ const App = {
         page.classList.add('active');
         page.innerHTML = '<div style="text-align:center;padding:40px;color:#64748b">Cargando...</div>';
 
-        const navItem = document.querySelector(`.nav-item[data-page="${name}"]`);
+        const navItem = document.querySelector(`.nav-item[data-page="${NAV_PAGE_ALIASES[name] || name}"]`);
         if (navItem) navItem.classList.add('active');
         this.currentPage = name;
 
         if (this.modules[name]) {
             try { await this.modules[name].render(); }
-            catch (e) { page.innerHTML = `<div class="alert alert-danger">Error al cargar: ${e.message}</div>`; console.error(e); }
+            catch (e) {
+                // Resetear currentPage para que reintentar vuelva a cargar el modulo
+                this.currentPage = null;
+                page.innerHTML = `<div class="alert alert-danger">Error al cargar: ${escText(e.message)}</div>`;
+                console.error(e);
+            }
         }
     },
 

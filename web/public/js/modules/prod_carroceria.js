@@ -70,7 +70,7 @@ App.registerModule('prod_carroceria', {
             + '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;align-items:center;gap:12px;flex-wrap:wrap;animation:pcFadeUp 0.4s ease 60ms both">'
             + '<div style="position:relative;flex:1;min-width:200px">'
             + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-            + '<input type="text" placeholder="Buscar codigo SAP o descripcion..." value="' + escapeHtml(this._search) + '" oninput="App.modules.prod_carroceria.setSearch(this.value)" style="width:100%;padding:8px 12px 8px 32px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'">'
+            + '<input type="text" placeholder="Buscar codigo SAP o descripcion..." value="' + escAttr(this._search) + '" oninput="App.modules.prod_carroceria.setSearch(this.value)" style="width:100%;padding:8px 12px 8px 32px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'">'
             + '</div>'
             + '<button onclick="App.modules.prod_carroceria.showImportModal()" class="btn btn-primary" style="padding:7px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar Masivo</button>'
             + '<button onclick="App.modules.prod_carroceria.showAddModal()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
@@ -107,7 +107,7 @@ App.registerModule('prod_carroceria', {
             + '<td style="padding:11px 16px"><div style="display:flex;flex-wrap:wrap;gap:4px">' + (chips || '<span style="color:#cbd5e1">-</span>') + '</div></td>'
             + '<td style="padding:11px 16px;text-align:center;white-space:nowrap">'
             + '<button onclick="App.modules.prod_carroceria.showAddModal(' + it.id + ')" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-            + '<button onclick="App.modules.prod_carroceria.deleteItem(' + it.id + ',\'' + escapeHtml(it.codigo_sap) + '\')" class="btn btn-sm btn-danger" title="Eliminar" style="margin-left:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+            + '<button onclick="App.modules.prod_carroceria.deleteItem(' + it.id + ',\'' + escJs(it.codigo_sap) + '\')" class="btn btn-sm btn-danger" title="Eliminar" style="margin-left:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
             + '</td></tr>';
     },
 
@@ -220,7 +220,7 @@ App.registerModule('prod_carroceria', {
     },
 
     _renderAddModal() {
-        const estOpts = this._estaciones.map(e => '<option value="' + e.id + '">' + e.nombre_estacion + ' (orden ' + (e.orden_secuencia_defecto || '-') + ')</option>').join('');
+        const estOpts = this._estaciones.map(e => '<option value="' + e.id + '">' + escText(e.nombre_estacion) + ' (orden ' + (e.orden_secuencia_defecto || '-') + ')</option>').join('');
         return '<div id="carAddModal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center">'
             + '<div style="background:white;border-radius:16px;width:560px;max-width:95vw;max-height:90vh;overflow:auto;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:pcFadeUp 0.25s ease">'
             + '<div style="padding:18px 22px;border-bottom:1px solid #e2e8f0">'
@@ -243,7 +243,7 @@ App.registerModule('prod_carroceria', {
     addEstRow(estId) {
         const list = document.getElementById('carAddEstList');
         if (!list) return;
-        const estOpts = '<option value="">Seleccionar estacion...</option>' + this._estaciones.map(e => '<option value="' + e.id + '"' + (e.id === estId ? ' selected' : '') + '>' + e.nombre_estacion + ' (#' + e.id + ' · orden ' + (e.orden_secuencia_defecto || '-') + ')</option>').join('');
+        const estOpts = '<option value="">Seleccionar estacion...</option>' + this._estaciones.map(e => '<option value="' + e.id + '"' + (e.id === estId ? ' selected' : '') + '>' + escText(e.nombre_estacion) + ' (#' + e.id + ' · orden ' + (e.orden_secuencia_defecto || '-') + ')</option>').join('');
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;gap:6px;align-items:center';
         row.innerHTML = '<span style="background:#3b82f6;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">' + (list.children.length + 1) + '</span>'
