@@ -48,10 +48,15 @@ App.registerModule('pedidos', {
         const el = document.getElementById('page-pedidos');
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const permisos = user.permisos || [];
+        const isAdmin = user.rol === 'admin' || permisos.includes('usuarios');
         this.isVendedor = permisos.includes('pedidos') && !permisos.includes('pedidos.agregar');
-        this.canAuthorize = permisos.includes('pedidos.editar') || permisos.includes('usuarios');
-        this.canCreate = permisos.includes('pedidos.agregar') || permisos.includes('usuarios');
-        const showNew = this.isVendedor || this.canAuthorize || this.canCreate;
+        this.canAuthorize = permisos.includes('pedidos.editar') || isAdmin;
+        // Debe coincidir EXACTAMENTE con canCreate del backend (api/src/routes/
+        // pedidos.js): requireAnyPerm('pedidos.agregar', 'pedidos') + admin.
+        // Antes showNew también incluía a quien solo tenia 'pedidos.editar'
+        // (autorizar), el formulario se abria igual y el POST devolvia 403.
+        this.canCreate = isAdmin || permisos.includes('pedidos.agregar') || permisos.includes('pedidos');
+        const showNew = this.canCreate;
 
         const modalesReady = document.getElementById('pedUploadModal');
         if (!modalesReady) {
@@ -475,6 +480,15 @@ App.registerModule('pedidos', {
         const tipo_ov = document.getElementById('pedTipoOV').value;
         if (!numero || !cliente) { alert('Numero de pedido y cliente son requeridos'); return; }
         if (!this.selectedFile) { alert('Por favor selecciona un archivo PDF'); return; }
+        // El backend rechaza igual (canCreate), pero conviene avisar antes de
+        // recorrer todo el formulario y adjuntar el PDF que perderlo con un 403.
+        const sesion = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const perms = sesion.permisos || [];
+        const puedeCrear = sesion.rol === 'admin' || perms.includes('usuarios') || perms.includes('pedidos') || perms.includes('pedidos.agregar');
+        if (!puedeCrear) {
+            alert('No tienes permiso para crear pedidos. Pide al administrador el permiso "Pedidos / Ordenes - Agregar" y recarga la pagina.');
+            return;
+        }
         if (this.uploading) return;
         this.uploading = true;
         try {
