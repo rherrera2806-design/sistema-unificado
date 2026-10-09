@@ -48,15 +48,18 @@ function getEmailFromReq(req) {
 }
 
 /**
- * Usuario normalizado { email, permisos, rol } desde la sesión.
+ * Usuario normalizado { id, email, permisos, rol } desde la sesión.
+ * El id proviene de la sesión creada por login() (api/src/services/auth.js),
+ * nunca del body ni de headers: sirve para persistir la identidad real.
  * Sin sesión válida → usuario anónimo sin permisos.
  */
 function getUserFromReq(req) {
     const user = getUserFromSession(req);
     if (!user) {
-        return { email: '', permisos: [], rol: null };
+        return { id: null, email: '', permisos: [], rol: null };
     }
     return {
+        id: user.id || null,
         email: user.email || '',
         permisos: Array.isArray(user.permisos) ? user.permisos : [],
         rol: user.rol || 'usuario'
@@ -132,6 +135,7 @@ function requireAuth(req, res, next) {
     }
 
     req.user = {
+        id: sessionUser.id || null,
         email: sessionUser.email || '',
         permisos: Array.isArray(sessionUser.permisos) ? sessionUser.permisos : [],
         rol: sessionUser.rol || 'usuario'

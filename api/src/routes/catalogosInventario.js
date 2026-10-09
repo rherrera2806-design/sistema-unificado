@@ -3,57 +3,71 @@ const router = express.Router();
 const { sanitizeObject } = require('../utils/helpers');
 const catalogosService = require('../services/catalogos');
 const inventarioService = require('../services/inventario');
-const { requireAnyPerm } = require('../middleware/permisos');
+const { requireAnyPerm, requireAdmin } = require('../middleware/permisos');
+const { asyncHandler } = require('../middleware/asyncHandler');
 
-const MOD = 'inv_catalogos';
-const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
-const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
-const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
-const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
+// ══════════════════════════════════════════════════════════════
+// Permisos por recurso (vocabulario de web/public/js/modules/usuarios.js)
+// Lectura y escritura separadas, mismo patrón que produccionConfig.js:
+// el permiso base (sin sufijo) SOLO habilita lectura; crear/editar/eliminar
+// exigen su sufijo específico (.agregar/.editar/.eliminar). El admin pasa siempre.
+// ══════════════════════════════════════════════════════════════
+const MOD_CAT = 'inv_catalogos';    // Catálogos: tipos de cristal y espesores
+const MOD_MOV = 'inv_movimientos';  // Movimientos de inventario
+const MOD_INV = 'inv_inventario';   // Stock, reportes y analytics de inventario
 
-const MOD_INV = 'inv_inventario';
-const canViewInv   = requireAnyPerm(MOD_INV, `${MOD_INV}.editar`, `${MOD_INV}.eliminar`, `${MOD_INV}.agregar`);
-const canCreateInv = requireAnyPerm(`${MOD_INV}.agregar`, MOD_INV);
-const canUpdateInv = requireAnyPerm(`${MOD_INV}.editar`, MOD_INV);
-const canDeleteInv = requireAnyPerm(`${MOD_INV}.eliminar`, MOD_INV);
+// Catálogos (inv_catalogos)
+const canViewCat   = requireAnyPerm(MOD_CAT);
+const canCreateCat = requireAnyPerm(`${MOD_CAT}.agregar`);
+const canUpdateCat = requireAnyPerm(`${MOD_CAT}.editar`);
+const canDeleteCat = requireAnyPerm(`${MOD_CAT}.eliminar`);
 
-router.get('/api/catalogos/tipos-cristal', canView, async (req, res, next) => {
+// Movimientos (inv_movimientos)
+const canViewMov   = requireAnyPerm(MOD_MOV);
+const canCreateMov = requireAnyPerm(`${MOD_MOV}.agregar`);
+const canUpdateMov = requireAnyPerm(`${MOD_MOV}.editar`);
+const canDeleteMov = requireAnyPerm(`${MOD_MOV}.eliminar`);
+
+// Lectura de inventario/reportes/analytics (inv_inventario)
+const canViewInv = requireAnyPerm(MOD_INV);
+
+router.get('/api/catalogos/tipos-cristal', canViewCat, async (req, res, next) => {
     try { res.json(await catalogosService.getTiposCristal()); }
     catch (e) { next(e); }
 });
 
-router.post('/api/catalogos/tipos-cristal', canCreate, async (req, res, next) => {
+router.post('/api/catalogos/tipos-cristal', canCreateCat, async (req, res, next) => {
     try { res.status(201).json(await catalogosService.crearTipoCristal(req.body)); }
     catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-router.put('/api/catalogos/tipos-cristal/:id', canUpdate, async (req, res, next) => {
+router.put('/api/catalogos/tipos-cristal/:id', canUpdateCat, asyncHandler(async (req, res) => {
     const item = await catalogosService.updateTipoCristal(Number(req.params.id), req.body);
     if (!item) return res.status(404).json({ error: 'No encontrado' });
     res.json(item);
-});
+}));
 
-router.delete('/api/catalogos/tipos-cristal/:id', canDelete, async (req, res, next) => {
+router.delete('/api/catalogos/tipos-cristal/:id', canDeleteCat, asyncHandler(async (req, res) => {
     const item = await catalogosService.eliminarTipoCristal(Number(req.params.id));
     if (!item) return res.status(404).json({ error: 'No encontrado' });
     res.json({ ok: true, item });
-});
+}));
 
-router.get('/api/catalogos/espesores', canView, async (req, res, next) => {
+router.get('/api/catalogos/espesores', canViewCat, async (req, res, next) => {
     try { res.json(await catalogosService.getEspesores()); }
     catch (e) { next(e); }
 });
 
-router.post('/api/catalogos/espesores', canCreate, async (req, res, next) => {
+router.post('/api/catalogos/espesores', canCreateCat, async (req, res, next) => {
     try { res.status(201).json(await catalogosService.crearEspesor(req.body.valor)); }
     catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-router.delete('/api/catalogos/espesores/:id', canDelete, async (req, res, next) => {
+router.delete('/api/catalogos/espesores/:id', canDeleteCat, asyncHandler(async (req, res) => {
     const item = await catalogosService.eliminarEspesor(Number(req.params.id));
     if (!item) return res.status(404).json({ error: 'No encontrado' });
     res.json({ ok: true, item });
-});
+}));
 
 router.get('/api/inv/materias-primas', canViewInv, async (req, res, next) => {
     try {
@@ -62,35 +76,61 @@ router.get('/api/inv/materias-primas', canViewInv, async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/inv/movimientos', canViewInv, async (req, res, next) => {
+router.get('/api/inv/movimientos', canViewMov, async (req, res, next) => {
     try { res.json(await inventarioService.getMovimientos(req.query)); }
     catch (e) { next(e); }
 });
 
-router.post('/api/inv/movimientos', canCreateInv, async (req, res, next) => {
-    try { res.status(201).json(await inventarioService.crearMovimiento(sanitizeObject(req.body))); }
-    catch (e) { res.status(400).json({ error: e.message }); }
-});
-
-router.delete('/api/inv/movimientos/:id', canDeleteInv, async (req, res, next) => {
-    await inventarioService.eliminarMovimiento(Number(req.params.id));
-    res.json({ ok: true });
-});
-
-router.put('/api/inv/movimientos/:id', canUpdateInv, async (req, res, next) => {
+router.post('/api/inv/movimientos', canCreateMov, async (req, res, next) => {
     try {
-        const result = await inventarioService.editarMovimiento(Number(req.params.id), sanitizeObject(req.body));
+        const data = sanitizeObject(req.body);
+        // La identidad viene SOLO de la sesión: el usuario_id del body se sobrescribe
+        // para que no pueda falsificarse. Firma actual del servicio: crearMovimiento(data);
+        // si pasa a crearMovimiento(data, usuarioId), el 2º argumento es el que se usa
+        // (el argumento extra es ignorado sin efecto con la firma actual).
+        data.usuario_id = req.user.id || null;
+        res.status(201).json(await inventarioService.crearMovimiento(data, req.user.id || null));
+    }
+    catch (e) {
+        // Errores de negocio con err.status (404, 409...) se respetan tal cual
+        if (Number.isInteger(e.status)) return next(e);
+        res.status(400).json({ error: e.message });
+    }
+});
+
+router.delete('/api/inv/movimientos/:id', canDeleteMov, asyncHandler(async (req, res) => {
+    // Contrato actual del servicio: devuelve boolean (true si borró algo).
+    // Si el servicio pasa a lanzar err.status=404, asyncHandler lo propaga al
+    // manejador global de errores antes de llegar aquí.
+    const eliminado = await inventarioService.eliminarMovimiento(Number(req.params.id));
+    if (eliminado === false || eliminado === 0) {
+        return res.status(404).json({ error: 'Movimiento no encontrado' });
+    }
+    res.json({ ok: true });
+}));
+
+router.put('/api/inv/movimientos/:id', canUpdateMov, async (req, res, next) => {
+    try {
+        const data = sanitizeObject(req.body);
+        // Igual que en POST: la identidad del usuario de la sesión reemplaza
+        // cualquier usuario_id enviado por el cliente.
+        data.usuario_id = req.user.id || null;
+        const result = await inventarioService.editarMovimiento(Number(req.params.id), data);
         if (result) res.json(result);
         else res.status(404).json({ error: 'Movimiento no encontrado' });
-    } catch (e) { res.status(400).json({ error: e.message }); }
+    } catch (e) {
+        // Errores de negocio con err.status (404, 409...) se respetan tal cual
+        if (Number.isInteger(e.status)) return next(e);
+        res.status(400).json({ error: e.message });
+    }
 });
 
-router.delete('/api/inv/movimientos', canDeleteInv, async (req, res, next) => {
-    try {
-        const result = await inventarioService.limpiarMovimientos();
-        res.json({ ok: true, eliminados: result });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
+// Borrado masivo de TODA la tabla movimientos: además del permiso .eliminar,
+// exige administrador (mismo criterio que produccionConfig.js en /codigos/all)
+router.delete('/api/inv/movimientos', canDeleteMov, requireAdmin, asyncHandler(async (req, res) => {
+    const result = await inventarioService.limpiarMovimientos();
+    res.json({ ok: true, eliminados: result });
+}));
 
 router.get('/api/inv/inventario', canViewInv, async (req, res, next) => {
     try { res.json(await inventarioService.getInventario(req.query)); }
@@ -128,16 +168,6 @@ router.get('/api/inv/alertas', canViewInv, async (req, res, next) => {
 router.get('/api/inv/analytics', canViewInv, async (req, res, next) => {
     try { res.json(await inventarioService.getAnalyticsInventario(req.query.meses || 6, req.query.mes || null)); }
     catch (e) { next(e); }
-});
-
-router.get('/api/inv/run-migration', canViewInv, async (req, res) => {
-    try {
-        const { query } = require('../config/database');
-        await query("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS turno VARCHAR(10) DEFAULT NULL");
-        res.json({ ok: true, message: 'Columna turno agregada' });
-    } catch (e) {
-        res.json({ ok: true, message: 'Columna ya existe o error: ' + e.message });
-    }
 });
 
 // Reporte de inventario por anio
@@ -217,13 +247,17 @@ router.get('/api/inv/reporte', canViewInv, async (req, res) => {
             stockData.stockPlanchas = Number(stockRes.rows[0]?.stock) || 0;
             stockData.kgStock = Math.round(Number(kgRes.rows[0]?.kg) || 0);
             stockData.planchasMes = Number(mesRes.rows[0]?.planchas) || 0;
-            stockData.autonomia = stockData.stockPlanchas > 0 && stockData.planchasMes > 0 ? (stockData.stockPlanchas / stockData.planchasMes).toFixed(1) : '0';
+            // Autonomia unificada (ver calcularAutonomia en services/inventario.js):
+            // meses = stock / consumo mensual, siempre como numero (antes string)
+            stockData.autonomia = stockData.planchasMes > 0
+                ? Number(inventarioService.calcularAutonomia(stockData.stockPlanchas, stockData.planchasMes).meses.toFixed(1))
+                : 0;
 
             // Sparkline: ultimos 6 meses
             const sparkRes = await query(`
                 SELECT EXTRACT(MONTH FROM fecha_hora)::int as mes, EXTRACT(YEAR FROM fecha_hora)::int as anio,
                     COALESCE(SUM(cantidad_planchas) FILTER (WHERE tipo_movimiento='salida'),0) as salidas,
-                    COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN metros_cuadrados*1.25*espesor/1000*2.5 WHEN tipo_movimiento='salida' THEN -metros_cuadrados*1.25*espesor/1000*2.5 ELSE 0 END),0) as kg
+                    COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN ${inventarioService.KG_SQL()} WHEN tipo_movimiento='salida' THEN -(${inventarioService.KG_SQL()}) ELSE 0 END),0) as kg
                 FROM movimientos
                 WHERE fecha_hora >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
                 GROUP BY EXTRACT(YEAR FROM fecha_hora), EXTRACT(MONTH FROM fecha_hora)
