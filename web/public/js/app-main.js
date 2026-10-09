@@ -999,9 +999,45 @@ function closeModule() {
 }
 
 // ─── Init ────
+// Interceptor de sesion: si el servidor responde 401/403 porque la sesion
+// murio (reinicio/despliegue), volvemos al login en vez de dejar las
+// pantallas cargando eternamente. Los 403 por permisos reales no redirigen:
+// se verifica contra /api/auth/me antes de tomar la decision.
+(() => {
+    const originalFetch = window.fetch.bind(window);
+    let checkSesion = null;
+    window.fetch = async (input, init) => {
+        const res = await originalFetch(input, init);
+        try {
+            const url = typeof input === 'string' ? input : (input && input.url) || '';
+            if ((res.status === 401 || res.status === 403) && url.startsWith('/api/') && !url.startsWith('/api/auth/')) {
+                if (!checkSesion) {
+                    checkSesion = originalFetch('/api/auth/me').then(r => {
+                        if (!r.ok) {
+                            try { localStorage.removeItem('unified_user'); } catch (e) {}
+                            window.location.href = '/';
+                        }
+                        return r.ok;
+                    }).catch(() => true).finally(() => { setTimeout(() => { checkSesion = null; }, 10000); });
+                }
+            }
+        } catch (e) {}
+        return res;
+    };
+})();
+
 document.addEventListener('DOMContentLoaded', async () => {
     const user = getUser();
     if (!user) { window.location.href = '/'; return; }
+    // La sesion vive en memoria en el servidor: tras un reinicio/despliegue el
+    // usuario en localStorage queda obsoleto y todas las APIs responden 403.
+    // Validamos contra /api/auth/me antes de renderizar.
+    const sesionOk = await fetch('/api/auth/me').then(r => r.ok).catch(() => true);
+    if (!sesionOk) {
+        try { localStorage.removeItem('unified_user'); } catch (e) {}
+        window.location.href = '/';
+        return;
+    }
     document.getElementById('userName').textContent = user.nombre || user.email || 'Usuario';
     document.getElementById('userAvatar').textContent = (user.nombre || 'U').charAt(0).toUpperCase();
     document.getElementById('sidebarUserName').textContent = user.nombre || user.email || 'Usuario';
