@@ -13,6 +13,7 @@ const InvHistorial = {
     _vistaActual: [],   // lo que se pinta (tras filtro de texto): es lo que se exporta
     _query: '',
     _onKeyEsc: null,
+    _filtrosAbiertos: false,   // panel de filtros expandible/contráible
 
     async render() {
         const page = document.querySelector('.page.active');
@@ -28,6 +29,8 @@ const InvHistorial = {
                     .inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;align-items:end}
                     .inv-form-grid>div{min-width:0;margin:0}
                     .inv-pro .invp-sutil{color:var(--invp-slate);font-weight:400}
+                    /* SALIDA se marca con punto rojo (pedido del usuario) */
+                    .inv-pro .invp-chip.sal .dot{background:var(--invp-danger)}
                     @media(max-width:768px){
                         .inv-form-grid{grid-template-columns:1fr}
                     }
@@ -40,30 +43,33 @@ const InvHistorial = {
                             <p>Consulta de movimientos de inventario</p>
                         </div>
                         <div class="invp-hero-actions">
+                            <button onclick="window.print()" class="invp-btn">Imprimir</button>
+                            <button onclick="InvHistorial.exportarExcel()" class="invp-btn invp-btn-primary">Exportar Excel</button>
                             <input class="invp-search" type="text" id="hBuscar" placeholder="Buscar código, cristal, proveedor…" oninput="InvHistorial.filtrar()">
                         </div>
                     </div>
 
                     <div class="invp-card" style="margin-bottom:12px">
-                        <div class="invp-card-head">
+                        <div class="invp-card-head" id="hFiltrosHead" role="button" tabindex="0" aria-expanded="${this._filtrosAbiertos}"
+                            onclick="InvHistorial.toggleFiltros()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();InvHistorial.toggleFiltros()}"
+                            style="cursor:pointer;user-select:none">
                             <h3>Filtros</h3>
+                            <span class="invp-count" id="hFiltrosHint"></span>
+                            <span style="margin-left:auto;display:flex;align-items:center">
+                                <svg id="hFiltrosChevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform .2s;transform:rotate(${this._filtrosAbiertos ? 180 : 0}deg);color:var(--invp-muted)"><polyline points="6 9 12 15 18 9"/></svg>
+                            </span>
                         </div>
-                        <form onsubmit="InvHistorial.buscar(event)" style="padding:14px 22px 18px">
+                        <form id="hFiltrosBody" onsubmit="InvHistorial.buscar(event)" style="padding:14px 22px 18px;${this._filtrosAbiertos ? '' : 'display:none'}">
                             <div class="inv-form-grid">
-                                <div class="invp-field"><label for="hFechaInicio">Fecha inicio</label><input type="date" id="hFechaInicio"></div>
-                                <div class="invp-field"><label for="hFechaFin">Fecha fin</label><input type="date" id="hFechaFin"></div>
-                                <div class="invp-field"><label for="hTipo">Tipo</label><select id="hTipo"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select></div>
+                                <div class="invp-field"><label for="hFechaInicio">Fecha inicio</label><input type="date" id="hFechaInicio" onchange="InvHistorial._actualizarHintFiltros()"></div>
+                                <div class="invp-field"><label for="hFechaFin">Fecha fin</label><input type="date" id="hFechaFin" onchange="InvHistorial._actualizarHintFiltros()"></div>
+                                <div class="invp-field"><label for="hTipo">Tipo</label><select id="hTipo" onchange="InvHistorial._actualizarHintFiltros()"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option></select></div>
                             </div>
                             <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
                                 <button type="submit" class="invp-btn invp-btn-primary">Buscar</button>
                                 <button type="button" class="invp-btn" onclick="InvHistorial.limpiar()">Limpiar</button>
                             </div>
                         </form>
-                    </div>
-
-                    <div class="m-actions" style="justify-content:flex-end">
-                        <button onclick="window.print()" class="invp-btn">Imprimir</button>
-                        <button onclick="InvHistorial.exportarExcel()" class="invp-btn invp-btn-primary">Exportar Excel</button>
                     </div>
 
                     <div class="invp-card">
@@ -114,7 +120,8 @@ const InvHistorial = {
 
         const tipoHtml = function (m) {
             const tipoTxt = m.tipo_movimiento === 'entrada' ? 'ENTRADA' : m.tipo_movimiento === 'salida' ? 'SALIDA' : escText(m.tipo_movimiento || '-');
-            const chipCls = m.tipo_movimiento === 'entrada' ? 'ok' : 'neutro';
+            // ENTRADA = punto verde · SALIDA = punto rojo (pedido del usuario)
+            const chipCls = m.tipo_movimiento === 'entrada' ? 'ok' : m.tipo_movimiento === 'salida' ? 'sal' : 'neutro';
             let html = '<span class="invp-chip ' + chipCls + '"><span class="dot"></span>' + tipoTxt + '</span>';
             if (m.tipo_movimiento === 'salida' && m.tipo_salida) {
                 html += '<div class="invp-sutil" style="font-size:10px;margin-top:3px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : escText(m.tipo_salida)) + '</div>';
@@ -241,6 +248,9 @@ const InvHistorial = {
             const buscador = document.getElementById('hBuscar');
             this._query = (buscador && buscador.value ? buscador.value : '').toLowerCase().trim();
             this._aplicarTexto();
+            // Contraer los filtros para mostrar los resultados
+            this.toggleFiltros(false);
+            this._actualizarHintFiltros();
         } catch (err) { App.toast('Error: ' + err.message, 'error'); }
     },
 
@@ -252,6 +262,26 @@ const InvHistorial = {
         if (buscador) buscador.value = '';
         this._query = '';
         this.render();
+    },
+
+    // Panel de filtros expandible/contráible (estado persistente entre renders)
+    toggleFiltros(abrir) {
+        this._filtrosAbiertos = (typeof abrir === 'boolean') ? abrir : !this._filtrosAbiertos;
+        const body = document.getElementById('hFiltrosBody');
+        const chev = document.getElementById('hFiltrosChevron');
+        const head = document.getElementById('hFiltrosHead');
+        if (body) body.style.display = this._filtrosAbiertos ? '' : 'none';
+        if (chev) chev.style.transform = 'rotate(' + (this._filtrosAbiertos ? 180 : 0) + 'deg)';
+        if (head) head.setAttribute('aria-expanded', this._filtrosAbiertos ? 'true' : 'false');
+    },
+
+    _actualizarHintFiltros() {
+        const hint = document.getElementById('hFiltrosHint');
+        if (!hint) return;
+        const activos = (document.getElementById('hFechaInicio')?.value ? 1 : 0)
+            + (document.getElementById('hFechaFin')?.value ? 1 : 0)
+            + (document.getElementById('hTipo')?.value ? 1 : 0);
+        hint.textContent = activos > 0 ? activos + (activos === 1 ? ' filtro activo' : ' filtros activos') : '';
     },
 
     // Exporta los datos ACTUALMENTE visibles (sin la columna de Acciones).
