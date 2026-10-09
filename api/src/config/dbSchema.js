@@ -27,7 +27,10 @@
 //
 // VOCABULARIO DE ESTADOS (documentado a propósito; NO se agregan constraints
 // CHECK sobre columnas con datos existentes porque podrían fallar al validar
-// valores históricos):
+// valores históricos — ÚNICA excepción: pedidos.estado, cuyo CHECK se agrega
+// en forma CONDICIONAL en faseColumnas, solo después de verificar que NO haya
+// valores fuera del vocabulario; si los hay, se omite el CHECK y se deja
+// constancia en el log):
 //  * produccion_ordenes.estado_programacion: 'PENDIENTE' | 'PROGRAMADO' |
 //      'EN PRODUCCIÓN' / 'EN PRODUCCION' | 'COMPLETADA' | 'CERRADO' /
 //      'CERRADA' | 'CANCELADA'  (services/planificacion*.js,
@@ -37,6 +40,14 @@
 //  * instalaciones.estado / instalaciones_dias.estado: 'PROGRAMADA' |
 //      'EN_CAMINO' | 'EN_CURSO' | 'COMPLETADA' | 'CON_NOVEDADES' |
 //      'CANCELADA'  (services/instalaciones.js)
+//  * pedidos.estado: 'pendiente' | 'aprobado' | 'rechazado'
+//      (routes/pedidos.js, middleware/validate.js). Máquina de estados:
+//        pendiente → aprobado | rechazado
+//        aprobado  → rechazado | pendiente
+//        rechazado → pendiente
+//      La validación de las transiciones se hace en routes/pedidos.js; este
+//      archivo solo documenta el dominio y crea el CHECK pedidos_estado_check
+//      cuando los datos existentes lo permiten (ver faseColumnas).
 //  * mermas.causa: texto libre definido por el usuario (services/taller.js)
 //  * movimientos.tipo_movimiento: 'entrada' | 'salida'
 //      (services/inventario.js, middleware/validate.js)
@@ -52,6 +63,14 @@
 //      catalogo_espesores.valor: DECIMAL(6,2) desde la corrección de este
 //      archivo (antes INTEGER no admitía espesores reales como 4.76 o 6.35;
 //      ver faseColumnas). materias_primas.espesor_mm siempre fue DECIMAL(6,2).
+//
+// AUDITORÍA DE PEDIDOS (pedido_historial): las filas de historial NO se
+// destruyen junto con su pedido. pedido_id es anulable y su FK es
+// ON DELETE SET NULL (ver faseTablas y la migración condicional de
+// faseColumnas): al eliminar un pedido, sus filas de historial quedan con
+// pedido_id = NULL y conservan el snapshot del pedido en campos_antes /
+// campos_despues (routes/pedidos.js registra la fila de 'Eliminación' antes
+// del DELETE, justamente para que esa auditoría sobreviva).
 // ═════════════════════════════════════════════════════════════════════════════
 
 const { query, pool } = require('./dbPool');
@@ -255,16 +274,25 @@ async function faseTablas({ q }) {
         proveedor VARCHAR(100), tipo_salida VARCHAR(20), observaciones TEXT,
         fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    // pedidos: numero_pedido es UNIQUE en la definición (base fresca nace con
+    // el UNIQUE). En una base EXISTENTE que ya tiene la tabla sin UNIQUE, este
+    // CREATE es no-op y el índice único se crea en faseIndices de forma
+    // CONDICIONAL (solo si no hay numero_pedido duplicados) — ver ese bloque.
     await q(`CREATE TABLE IF NOT EXISTS pedidos (
-        id SERIAL PRIMARY KEY, numero_pedido TEXT NOT NULL, cliente TEXT NOT NULL,
+        id SERIAL PRIMARY KEY, numero_pedido TEXT NOT NULL UNIQUE, cliente TEXT NOT NULL,
         vendedor TEXT NOT NULL, archivo_url TEXT, archivo_pdf BYTEA,
-        estado TEXT DEFAULT 'pendiente', motivo_rechazo TEXT,
+        estado TEXT NOT NULL DEFAULT 'pendiente', motivo_rechazo TEXT,
         fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         fecha_revision TIMESTAMP, revisado_por TEXT
     )`);
+    // pedido_historial: pedido_id ANULABLE + ON DELETE SET NULL (antes NOT NULL
+    // + ON DELETE CASCADE, lo que borraba la auditoría junto con el pedido).
+    // La fila de historial sobrevive a la eliminación del pedido y conserva su
+    // snapshot en campos_antes / campos_despues. En bases existentes la FK se
+    // recrea en faseColumnas (bloque DO condicional sobre pg_constraint).
     await q(`CREATE TABLE IF NOT EXISTS pedido_historial (
         id SERIAL PRIMARY KEY,
-        pedido_id INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+        pedido_id INTEGER REFERENCES pedidos(id) ON DELETE SET NULL,
         accion VARCHAR(100) NOT NULL,
         campos_antes JSONB,
         campos_despues JSONB,
@@ -446,7 +474,9 @@ async function faseColumnas({ q, safe }) {
     await safe(`ALTER TABLE catalogo_tipos_cristal ALTER COLUMN consumo_mensual_aprox TYPE INTEGER USING consumo_mensual_aprox::INTEGER`, 'catalogo_tipos_cristal.consumo_mensual_aprox tipo');
     // Estas dos restricciones UNIQUE se reemplazan por el índice parcial
     // idx_tipos_cristal_nombre_espesor (ver faseIndices). DROP CONSTRAINT IF
-    // EXISTS es idempotente y es el único DROP que conserva este archivo.
+    // EXISTS es idempotente y es de los únicos DROP que conserva este archivo
+    // (el otro es la recreación de la FK de pedido_historial más abajo, también
+    // condicional e idempotente). DROP TABLE/COLUMN y TRUNCATE siguen vetados.
     // (Antes había una tercera sentencia con dos nombres en una sola acción,
     //  `DROP CONSTRAINT IF EXISTS a, b`, que es un syntax error y generaba un
     //  warn permanente en cada arranque: era redundante con las dos anteriores
@@ -507,6 +537,87 @@ async function faseColumnas({ q, safe }) {
     // ── pedidos ──────────────────────────────────────────────────────────────
     await safe(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS tipo_ov VARCHAR(30) DEFAULT 'Normal'`, 'pedidos.tipo_ov');
     await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pedidos' AND column_name='archivo_pdf') THEN ALTER TABLE pedidos ADD COLUMN archivo_pdf BYTEA; END IF; END $$`, 'pedidos.archivo_pdf');
+
+    // pedidos.estado: DEFAULT + NOT NULL seguros para base existente.
+    // El UPDATE es ACOTADO (solo filas con estado IS NULL) e idempotente: la
+    // segunda corrida no encuentra filas y no toca nada. Va ANTES del
+    // SET NOT NULL y en la misma fase para que el ALTER no falle con datos
+    // heredados. (En base fresca la columna ya nace NOT NULL DEFAULT
+    // 'pendiente' en faseTablas; estos tres sentencias son no-op.)
+    await safe(`ALTER TABLE pedidos ALTER COLUMN estado SET DEFAULT 'pendiente'`, 'pedidos.estado default');
+    await safe(`UPDATE pedidos SET estado = 'pendiente' WHERE estado IS NULL`, 'pedidos.estado backfill NULL');
+    await safe(`ALTER TABLE pedidos ALTER COLUMN estado SET NOT NULL`, 'pedidos.estado not null');
+    // CHECK de dominio SOLO si los datos existentes respetan el vocabulario
+    // ('pendiente' | 'aprobado' | 'rechazado', ver cabecera). Se verifican los
+    // valores ANTES de crearlo: si hay valores fuera del conjunto (o vacíos),
+    // NO se agrega el CHECK y se deja constancia en el log — el arranque nunca
+    // se rompe por datos históricos. Idempotente: el bloque DO solo crea la
+    // constraint si no existe.
+    const estadosPedidos = await q(`SELECT DISTINCT estado FROM pedidos WHERE estado IS NOT NULL`);
+    const fueraDeVocabulario = estadosPedidos.rows
+        .map((fila) => fila.estado)
+        .filter((valor) => !['pendiente', 'aprobado', 'rechazado'].includes(valor));
+    if (fueraDeVocabulario.length === 0) {
+        await safe(`DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint
+                WHERE conname = 'pedidos_estado_check' AND conrelid = 'pedidos'::regclass
+            ) THEN
+                ALTER TABLE pedidos ADD CONSTRAINT pedidos_estado_check
+                    CHECK (estado IN ('pendiente', 'aprobado', 'rechazado'));
+            END IF;
+        END $$`, 'pedidos.estado check');
+    } else {
+        console.warn(`[DB] pedidos.estado tiene ${fueraDeVocabulario.length} valor(es) fuera del vocabulario (${fueraDeVocabulario.join(', ')}); se OMITE el CHECK pedidos_estado_check hasta normalizar esos datos.`);
+    }
+
+    // pedido_historial: la FK debe ser ON DELETE SET NULL (antes CASCADE, que
+    // destruía la auditoría al borrar el pedido) y pedido_id debe aceptar NULL
+    // para que la fila de historial sobreviva con el snapshot en
+    // campos_antes / campos_despues. El bloque DO es CONDICIONAL e idempotente:
+    //  * busca la FK actual en pg_constraint por identidad de tablas (el nombre
+    //    autogenerado típico es pedido_historial_pedido_id_fkey, pero no se
+    //    depende del nombre);
+    //  * si no existe FK, la crea directo con ON DELETE SET NULL;
+    //  * si existe pero su ON DELETE no es SET NULL ('n'; 'c' es el CASCADE
+    //    heredado), la elimina y la recrea con SET NULL conservando su nombre
+    //    (ON DELETE no es modificable in place). DROP CONSTRAINT + ADD
+    //    CONSTRAINT idempotente: en corridas posteriores ya es 'n' y no hace
+    //    nada;
+    //  * por último quita el NOT NULL de pedido_id (condicional sobre
+    //    information_schema; no falla si ya es anulable).
+    await safe(`DO $$
+    DECLARE
+        v_conname TEXT;
+        v_deltype TEXT;
+    BEGIN
+        SELECT con.conname, con.confdeltype::text
+          INTO v_conname, v_deltype
+        FROM pg_constraint con
+        WHERE con.conrelid = 'pedido_historial'::regclass
+          AND con.confrelid = 'pedidos'::regclass
+          AND con.contype = 'f'
+        LIMIT 1;
+
+        IF v_conname IS NULL THEN
+            ALTER TABLE pedido_historial
+                ADD CONSTRAINT pedido_historial_pedido_id_fkey
+                FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE SET NULL;
+        ELSIF v_deltype <> 'n' THEN
+            EXECUTE format('ALTER TABLE pedido_historial DROP CONSTRAINT %I', v_conname);
+            EXECUTE format('ALTER TABLE pedido_historial ADD CONSTRAINT %I FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE SET NULL', v_conname);
+        END IF;
+
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = 'pedido_historial'
+              AND column_name = 'pedido_id'
+              AND is_nullable = 'NO'
+        ) THEN
+            ALTER TABLE pedido_historial ALTER COLUMN pedido_id DROP NOT NULL;
+        END IF;
+    END $$`, 'pedido_historial FK ON DELETE SET NULL + pedido_id anulable');
 
     // ── produccion_maquinas / cola_produccion_pasos ──────────────────────────
     await safe(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS tipo_proceso VARCHAR(50)`, 'produccion_maquinas.tipo_proceso');
@@ -621,7 +732,7 @@ async function faseColumnas({ q, safe }) {
 // cola_produccion_pasos.fecha_programada, columna que antes se agregaba
 // DESPUÉS de crear el índice (en una base nueva el índice fallaba).
 // ─────────────────────────────────────────────────────────────────────────────
-async function faseIndices({ q }) {
+async function faseIndices({ q, safe }) {
     await q(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tipos_cristal_nombre_espesor ON catalogo_tipos_cristal (nombre, espesor) WHERE activo = TRUE`);
     await q('CREATE UNIQUE INDEX IF NOT EXISTS idx_machine_types_nombre ON machine_types(nombre)');
     await q('CREATE UNIQUE INDEX IF NOT EXISTS idx_components_nombre ON components(nombre)');
@@ -634,7 +745,68 @@ async function faseIndices({ q }) {
     await q('CREATE INDEX IF NOT EXISTS idx_cm_estado ON corrective_maintenance(estado)');
     await q('CREATE INDEX IF NOT EXISTS idx_cm_maquina ON corrective_maintenance(maquina_id)');
     await q('CREATE INDEX IF NOT EXISTS idx_machines_codigo ON machines(codigo)');
+
+    // ── pedidos / pedido_historial ───────────────────────────────────────────
+    // Confirmado el hallazgo: el índice de pedido_historial(pedido_id) YA
+    // existía (idx_pedido_historial_pedido). Se agrega además el compuesto
+    // (pedido_id, created_at DESC) que cubre el ORDER BY created_at DESC del
+    // historial de un pedido (routes/pedidos.js).
     await q('CREATE INDEX IF NOT EXISTS idx_pedido_historial_pedido ON pedido_historial(pedido_id)');
+    await q('CREATE INDEX IF NOT EXISTS idx_pedido_historial_pedido_fecha ON pedido_historial(pedido_id, created_at DESC)');
+    // Índices elegidos según las queries reales de routes/pedidos.js:
+    //  - idx_pedidos_numero: chequeo de unicidad previo al INSERT
+    //    (SELECT id FROM pedidos WHERE numero_pedido = $1 LIMIT 1).
+    await q('CREATE INDEX IF NOT EXISTS idx_pedidos_numero ON pedidos(numero_pedido)');
+    //  - idx_pedidos_estado: conteos del dashboard (WHERE estado = ...), los
+    //    FILTER del reporte y cleanup-pdf (WHERE estado != 'pendiente').
+    await q('CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado)');
+    //  - idx_pedidos_vendedor: listado del área de ventas (WHERE p.vendedor = $1).
+    await q('CREATE INDEX IF NOT EXISTS idx_pedidos_vendedor ON pedidos(vendedor)');
+    //  - idx_pedidos_fecha_subida: ORDER BY p.fecha_subida DESC del listado y
+    //    columna REAL del filtro por año del reporte. Nota: el filtro del
+    //    reporte es EXTRACT(YEAR FROM fecha_subida) = $1, que NO es sargable,
+    //    así que hoy el índice sirve para el orden y para rangos de fecha; la
+    //    corrección de esa query es aparte (aquí solo índices).
+    await q('CREATE INDEX IF NOT EXISTS idx_pedidos_fecha_subida ON pedidos(fecha_subida)');
+    //  - idx_pedidos_fecha_revision: pedido por el reporte/auditoría de
+    //    revisiones. Hoy las queries solo seleccionan esa columna (el reporte
+    //    filtra por fecha_subida), pero es el índice que habilita reportes por
+    //    fecha de revisión sin seq scan; el costo de escritura es despreciable
+    //    en una tabla de bajo volumen como pedidos.
+    await q('CREATE INDEX IF NOT EXISTS idx_pedidos_fecha_revision ON pedidos(fecha_revision)');
+
+    // ── unicidad de pedidos.numero_pedido ────────────────────────────────────
+    // Hasta ahora la unicidad era solo de aplicación (SELECT EXISTS previo al
+    // INSERT en routes/pedidos.js) y con ventana de carrera. Decisión tomada
+    // para agregar el UNIQUE sin romper una base existente con datos:
+    //  1) si YA existe un índice/constraint UNIQUE sobre solo numero_pedido
+    //     (nacido del UNIQUE en línea del CREATE TABLE en base fresca, o de
+    //     una corrida anterior), no se hace nada (idempotente);
+    //  2) si no lo hay y HAY numero_pedido duplicados, NO se rompe el
+    //     arranque: se deja constancia en el log con la cantidad y se OMITE
+    //     la creación del índice UNIQUE hasta normalizar los datos;
+    //  3) si no hay duplicados, se crea uq_pedidos_numero_pedido (UNIQUE).
+    // En base fresca pedidos está vacía al llegar a esta fase (los seeds corren
+    // en faseDatos, después), así que el UNIQUE queda SIEMPRE.
+    // La creación va por safe(): si entre el conteo y el CREATE otro proceso
+    // inserta un duplicado, el error 23505 no revierte la fase entera ni rompe
+    // el arranque: solo se registra y el UNIQUE se re-intenta en el próximo
+    // arranque.
+    const uniquePedidos = await q(`SELECT 1 FROM pg_indexes
+        WHERE schemaname = current_schema() AND tablename = 'pedidos'
+          AND indexdef LIKE 'CREATE UNIQUE%' AND indexdef LIKE '%(numero_pedido)%'
+        LIMIT 1`);
+    if (uniquePedidos.rows.length === 0) {
+        const duplicados = await q(`SELECT COUNT(*)::int AS c FROM (
+            SELECT numero_pedido FROM pedidos GROUP BY numero_pedido HAVING COUNT(*) > 1
+        ) d`);
+        const cantidad = Number(duplicados.rows[0].c);
+        if (cantidad > 0) {
+            console.warn(`[DB] pedidos.numero_pedido tiene ${cantidad} valor(es) duplicados; se OMITE la creación del índice UNIQUE uq_pedidos_numero_pedido hasta corregir los datos (el arranque continúa normal y el UNIQUE se re-intenta en el próximo arranque).`);
+        } else {
+            await safe(`CREATE UNIQUE INDEX IF NOT EXISTS uq_pedidos_numero_pedido ON pedidos(numero_pedido)`, 'uq_pedidos_numero_pedido');
+        }
+    }
 
     await q('CREATE INDEX IF NOT EXISTS idx_recetas_bom_padre ON recetas_bom(codigo_sap_padre)');
     await q('CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)');
