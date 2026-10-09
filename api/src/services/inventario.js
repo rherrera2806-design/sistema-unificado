@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { transaction } = require('../config/dbPool');
 const { sanitizeString } = require('../utils/helpers');
 
 // ══════════════════════════════════════════════════════════════
@@ -234,9 +235,11 @@ async function crearMovimiento(data, usuarioId = null) {
             tipoCristalFinal = mp.nombre;
             espesorFinal = mp.espesor_mm;
             // Usar dimensiones de la materia prima si no se proporcionan
+            // (las columnas reales son ancho_nal/alto_nal y ancho_imp/alto_imp;
+            // antes se referenciaba mp.ancho/mp.alto que NO existen)
             if (!ancho || !alto) {
-                anchoFinal = mp.ancho_nal || mp.ancho || 0;
-                altoFinal = mp.alto_nal || mp.alto || 0;
+                anchoFinal = mp.ancho_nal || mp.ancho_imp || 0;
+                altoFinal = mp.alto_nal || mp.alto_imp || 0;
             }
         }
     }
@@ -258,13 +261,49 @@ async function crearMovimiento(data, usuarioId = null) {
         fechaFinal = parseFechaHora(fecha_hora);
     }
 
-    const result = await query(
-        `INSERT INTO movimientos (usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, turno, tipo_salida, observaciones, fecha_hora)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
-        [usuarioFirmante, tipoMovimientoFinal, mpIdFinal, recortar(tipoCristalFinal, 50), espesorNum, anchoInt, altoInt, cantidadFinal, metros_cuadrados.toFixed(4),
-         recortar(proveedor, 100) || null, recortar(turno, 10) || null, tipoSalidaFinal, observaciones ? String(observaciones) : null, fechaFinal]
-    );
-    return result.rows[0];
+    // VALIDACIÓN DE STOCK EN EL BACKEND (antes solo la hacía el frontend:
+    // dos salidas concurrentes dejaban stock negativo). Todo en una transacción
+    // con lock sobre la materia prima para serializar movimientos simultáneos.
+    return await transaction(async ({ query: q }) => {
+        if (mpIdFinal) {
+            await q('SELECT id FROM materias_primas WHERE id = $1 FOR UPDATE', [mpIdFinal]);
+        }
+        if (tipoMovimientoFinal === 'salida' && mpIdFinal) {
+            if (tipoSalidaFinal === 'plancha_completa') {
+                // Mismo criterio que getStockPorDimension / la UI:
+                // stock = entradas - salidas plancha_completa, por medida.
+                const stockRes = await q(`
+                    SELECT COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN cantidad_planchas ELSE 0 END),0)
+                         - COALESCE(SUM(CASE WHEN tipo_movimiento='salida' AND tipo_salida='plancha_completa' THEN cantidad_planchas ELSE 0 END),0) AS stock
+                    FROM movimientos WHERE materia_prima_id = $1 AND ancho = $2 AND alto = $3`,
+                    [mpIdFinal, anchoInt, altoInt]);
+                const stockDisp = Number(stockRes.rows[0].stock) || 0;
+                if (cantidadFinal > stockDisp) {
+                    throw errorValidacion('Cantidad excede el stock disponible (' + stockDisp + ' planchas de ' + anchoInt + 'x' + altoInt + ' mm)');
+                }
+            } else if (tipoSalidaFinal === 'trozo') {
+                // Regla del proyecto: el m2 descuenta TODAS las salidas.
+                // Un trozo no puede exceder el m2 disponible de la materia prima.
+                const m2Res = await q(`
+                    SELECT COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN metros_cuadrados ELSE 0 END),0)
+                         - COALESCE(SUM(CASE WHEN tipo_movimiento='salida' THEN metros_cuadrados ELSE 0 END),0) AS m2
+                    FROM movimientos WHERE materia_prima_id = $1`,
+                    [mpIdFinal]);
+                const m2Disp = Number(m2Res.rows[0].m2) || 0;
+                if (metros_cuadrados > m2Disp) {
+                    throw errorValidacion('El trozo (' + metros_cuadrados.toFixed(2) + ' m2) excede el stock disponible de la materia prima (' + m2Disp.toFixed(2) + ' m2)');
+                }
+            }
+        }
+
+        const result = await q(
+            `INSERT INTO movimientos (usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, turno, tipo_salida, observaciones, fecha_hora)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+            [usuarioFirmante, tipoMovimientoFinal, mpIdFinal, recortar(tipoCristalFinal, 50), espesorNum, anchoInt, altoInt, cantidadFinal, metros_cuadrados.toFixed(4),
+             recortar(proveedor, 100) || null, recortar(turno, 10) || null, tipoSalidaFinal, observaciones ? String(observaciones) : null, fechaFinal]
+        );
+        return result.rows[0];
+    });
 }
 
 async function eliminarMovimiento(id) {

@@ -9,7 +9,6 @@ window.escAttr = window.escAttr || window.escText;
 const InvMovimientos = {
     tipoMovimiento: '',
     tipoSalida: '',
-    _allMovimientos: [],
     _materiasPrimas: [],
     _stockDimensiones: [],
     _guardando: false,
@@ -26,6 +25,10 @@ const InvMovimientos = {
             const mpData = mpBody;
             this._materiasPrimas = Array.isArray(mpData) ? mpData : [];
             const mpOptions = this._materiasPrimas.map(mp => `<option value="${mp.id}" data-ancho="${mp.ancho_nal || 0}" data-alto="${mp.alto_nal || 0}" data-espesor="${mp.espesor_mm || 0}">${escText(mp.codigo_mp)} - ${escText(mp.nombre)} (${escText(mp.espesor_mm)}mm)</option>`).join('');
+
+            const ahora = new Date();
+            const hoy = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0') + '-' + String(ahora.getDate()).padStart(2, '0');
+            const horaAhora = String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0');
 
             page.innerHTML = `
                 <style>
@@ -67,7 +70,7 @@ const InvMovimientos = {
                                             <button type="button" class="invp-btn invp-btn-filter" id="btnSalida" aria-pressed="false" style="flex:1;justify-content:center" onclick="InvMovimientos.setTipo('salida')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</button>
                                         </div>
                                     </div>
-                                    <div class="invp-field"><label>Materia prima *</label>
+                                    <div class="invp-field"><label for="materiaPrimaId">Materia prima *</label>
                                         <select id="materiaPrimaId" required onchange="InvMovimientos.onMpChange()">
                                             <option value="">Seleccionar...</option>${mpOptions}
                                         </select>
@@ -98,17 +101,18 @@ const InvMovimientos = {
                                 </div>
 
                                 <div class="inv-form-dims" style="margin-top:10px">
-                                    <div class="invp-field"><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                    <div class="invp-field"><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                    <div class="invp-field"><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                    <div class="invp-field"><label for="ancho">Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                    <div class="invp-field"><label for="alto">Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                    <div class="invp-field"><label for="cantidadPlanchas">Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
                                     <div class="invp-field"><label>m²</label><div id="m2Display" class="invp-val" style="padding:10px 12px;background:#fbfcfe;border:1px solid var(--invp-line);border-radius:8px">0.00</div></div>
                                 </div>
                                 <div class="inv-form-grid" style="margin-top:10px">
-                                    <div class="invp-field"><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
-                                    <div class="invp-field"><label>Fecha</label><input type="date" id="fecha"></div>
+                                    <div class="invp-field"><label for="turno">Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
+                                    <div class="invp-field"><label for="fecha">Fecha</label><input type="date" id="fecha" max="${hoy}" title="No se pueden registrar movimientos con fecha futura"></div>
+                                    <div class="invp-field"><label for="hora">Hora</label><input type="time" id="hora" value="${horaAhora}" title="Hora del movimiento (si cambias la fecha, revisa la hora)"></div>
                                 </div>
-                                <div class="invp-field" style="margin-top:10px"><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
-                                <div class="invp-field" style="margin-top:10px"><label>Observaciones</label><input type="text" id="observaciones" placeholder="Notas..."></div>
+                                <div class="invp-field" style="margin-top:10px"><label for="proveedor">Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
+                                <div class="invp-field" style="margin-top:10px"><label for="observaciones">Observaciones</label><input type="text" id="observaciones" placeholder="Notas..."></div>
                                 <div class="inv-form-bottom">
                                     <button type="submit" class="invp-btn invp-btn-primary" style="padding:11px 28px">Registrar</button>
                                 </div>
@@ -301,11 +305,16 @@ const InvMovimientos = {
         const btn = e.target.querySelector('button[type="submit"]');
         if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
-        // El backend firma el movimiento con el usuario de la sesion: ya no se envia usuario_id
+        // Fecha y hora explícitas: si el usuario elige una fecha pasada, se
+        // respeta la hora del campo (antes se pegaba la hora ACTUAL y quedaba
+        // un movimiento "del lunes pasado a las 14:32 de hoy").
         var now = new Date();
-        var fechaLocal = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + 'T' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+        var hhmmss = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+        var fechaLocal = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + 'T' + hhmmss;
         var fechaSeleccionada = document.getElementById('fecha').value;
-        var fechaHora = fechaSeleccionada ? fechaSeleccionada + 'T' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0') : fechaLocal;
+        var horaSeleccionada = document.getElementById('hora').value;
+        var horaFinal = horaSeleccionada ? horaSeleccionada + ':00' : hhmmss;
+        var fechaHora = fechaSeleccionada ? fechaSeleccionada + 'T' + horaFinal : fechaLocal;
         const data = {
             tipo_movimiento: this.tipoMovimiento,
             materia_prima_id: parseInt(materiaPrimaId),
@@ -328,14 +337,5 @@ const InvMovimientos = {
             this._guardando = false;
             if (btn) { btn.disabled = false; btn.textContent = 'Registrar'; }
         }
-    },
-
-    async eliminar(id) {
-        if (!confirm('Eliminar este movimiento?')) return;
-        try {
-            await api.inv().eliminarMovimiento(id);
-            App.toast('Movimiento eliminado');
-            this.render();
-        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
     }
 };
