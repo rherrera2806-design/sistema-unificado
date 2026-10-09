@@ -393,11 +393,46 @@ async function editarMovimiento(id, data) {
     if (fields.length === 0) return fila;
 
     params.push(idNum);
-    const result = await query(
-        `UPDATE movimientos SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
-        params
-    );
-    return result.rows[0] || null;
+    // VALIDACIÓN DE STOCK AL EDITAR (misma regla que en creación): si el
+    // movimiento resultante es una SALIDA, no puede exceder el stock disponible.
+    // El propio movimiento se EXCLUYE del cálculo (se está editando). Todo en
+    // transacción con lock sobre la materia prima para serializar ediciones.
+    return await transaction(async ({ query: q }) => {
+        const mpId = fila.materia_prima_id ? Number(fila.materia_prima_id) : null;
+        if (mpId) {
+            await q('SELECT id FROM materias_primas WHERE id = $1 FOR UPDATE', [mpId]);
+        }
+        if (tipoMovimiento === 'salida' && mpId) {
+            const nuevoM2 = (ancho * alto * cantidad) / 1000000;
+            if (tipoSalida === 'plancha_completa') {
+                const stockRes = await q(`
+                    SELECT COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN cantidad_planchas ELSE 0 END),0)
+                         - COALESCE(SUM(CASE WHEN tipo_movimiento='salida' AND tipo_salida='plancha_completa' THEN cantidad_planchas ELSE 0 END),0) AS stock
+                    FROM movimientos WHERE materia_prima_id = $1 AND ancho = $2 AND alto = $3 AND id != $4`,
+                    [mpId, ancho, alto, idNum]);
+                const stockDisp = Number(stockRes.rows[0].stock) || 0;
+                if (cantidad > stockDisp) {
+                    throw errorValidacion('La cantidad excede el stock disponible (' + stockDisp + ' planchas de ' + ancho + 'x' + alto + ' mm)');
+                }
+            } else if (tipoSalida === 'trozo') {
+                const m2Res = await q(`
+                    SELECT COALESCE(SUM(CASE WHEN tipo_movimiento='entrada' THEN metros_cuadrados ELSE 0 END),0)
+                         - COALESCE(SUM(CASE WHEN tipo_movimiento='salida' THEN metros_cuadrados ELSE 0 END),0) AS m2
+                    FROM movimientos WHERE materia_prima_id = $1 AND id != $2`,
+                    [mpId, idNum]);
+                const m2Disp = Number(m2Res.rows[0].m2) || 0;
+                if (nuevoM2 > m2Disp) {
+                    throw errorValidacion('El trozo (' + nuevoM2.toFixed(2) + ' m2) excede el stock disponible de la materia prima (' + m2Disp.toFixed(2) + ' m2)');
+                }
+            }
+        }
+
+        const result = await q(
+            `UPDATE movimientos SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+            params
+        );
+        return result.rows[0] || null;
+    });
 }
 
 async function limpiarMovimientos() {
