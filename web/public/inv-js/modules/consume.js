@@ -49,7 +49,7 @@ const InvConsume = {
                 .cc-th{padding:9px 10px;font-size:11px;font-weight:600;color:var(--gray-500);border-bottom:2px solid var(--gray-200);white-space:nowrap}
                 .cc-td{padding:8px 10px;font-size:12px;color:var(--gray-800);border-bottom:1px solid var(--gray-100)}
                 .cc-num{text-align:right}
-                .cc-sub{font-size:10px;font-weight:400;color:var(--gray-400)}
+                .cc-sub{font-size:inherit;font-weight:400;color:var(--gray-400)}
                 .cc-sticky{position:sticky;left:0;background:white;z-index:1}
                 .cc-sticky-2{position:sticky;left:56px;background:white;z-index:1}
                 .cc-total{font-weight:700;color:var(--primary);background:var(--gray-50)}
@@ -196,7 +196,7 @@ const InvConsume = {
                     + '<td class="cc-td cc-num" style="font-weight:700">' + InvConsume.fmtInt(stockRem) + '</td>'
                     + '<td class="cc-td cc-num" style="font-weight:600;color:var(--gray-600)">' + InvConsume.fmtKg(s.kg_stock) + '</td>'
                     + '<td class="cc-td cc-num" style="font-weight:600;color:var(--gray-600)">' + InvConsume.fmtInt(cpm) + '</td>'
-                    + '<td class="cc-td cc-num"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;background:' + autoColor + '15;color:' + autoColor + '">' + (auto > 0 ? InvConsume.fmtDec1(auto) + ' mes' : '-') + '</span></td>'
+                    + '<td class="cc-td cc-num"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-weight:700;background:' + autoColor + '15;color:' + autoColor + '">' + (auto > 0 ? InvConsume.fmtDec1(auto) + ' mes' : '-') + '</span></td>'
                     + meses.map((m, i) => {
                         const cpmVal = cpm || 0;
                         if (cpmVal <= 0) return '<td style="padding:8px 4px;border-left:1px solid var(--gray-100)"><div style="width:100%;height:22px;border-radius:3px"></div></td>';
