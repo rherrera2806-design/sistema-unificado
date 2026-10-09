@@ -1,7 +1,10 @@
 // ============================================================================
-// Consumo y Autonomía — colores originales conservados; tipografía ORDENADA:
-// escala fija (título 13 / header 11 / dato 12 / nota 10), números en formato
-// es-CL (miles con punto, decimales con coma) y alineación consistente
+// Consumo y Autonomía — ahora en DOS vistas separadas:
+//   1. Consumo por Meses  -> renderConsumo()  (consumo mensual por material)
+//   2. Autonomía          -> renderAutonomia() (proyección de stock por material)
+// Colores originales conservados; tipografía ORDENADA: escala fija
+// (título 13 / header 11 / dato 12 / nota 10), números en formato es-CL
+// (miles con punto, decimales con coma) y alineación consistente
 // (texto izquierda, números derecha).
 // ============================================================================
 
@@ -17,27 +20,92 @@ const InvConsume = {
     fmtDec2(v) { return Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     fmtKg(v) { return this.fmtInt(v); },
 
-    async render() {
+    // Carga los datos (apiJson lanza Error con el mensaje del body si !res.ok:
+    // un 401/403/500 NO se confunde con "Sin datos")
+    async _cargar() {
+        const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+        const res = await fetch('/api/inv/analytics?meses=6', { headers: hdrs });
+        const analytics = await apiJson(res);
+        const a = analytics || {};
+        this._data = {
+            consumo: a.consumoMensual || [],
+            stock: a.stockActual || []
+        };
+        return this._data;
+    },
+
+    // ------------------------------------------------------------------
+    // VISTA 1: Consumo por Meses (consumo mensual por material)
+    // ------------------------------------------------------------------
+    async renderConsumo() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400)">Cargando consumo...</div>';
         try {
-            const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
-            const res = await fetch('/api/inv/analytics?meses=6', { headers: hdrs });
-            // apiJson lanza Error con el mensaje del body si !res.ok:
-            // un 401/403/500 NO se confunde con "Sin datos"
-            const analytics = await apiJson(res);
-            const a = analytics || {};
-            this._data = {
-                consumo: a.consumoMensual || [],
-                stock: a.stockActual || []
-            };
-            this._renderContent(page);
+            await this._cargar();
+            page.innerHTML = `
+                ${this._styles()}
+
+                <div class="m-page">
+                <div class="m-hero" style="padding:12px 16px">
+                    <div style="position:relative;z-index:1">
+                        <h2 style="margin:0;font-size:15px;font-weight:700;color:white">Consumo por Meses</h2>
+                        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Consumo mensual por material, mes a mes</p>
+                    </div>
+                </div>
+
+                <div class="m-card" style="margin-bottom:16px">
+                    <div class="cc-card-title">Consumo mensual por material</div>
+                    <div class="m-table-wrap inv-scroll-wrap">${this._consumoHtml()}</div>
+                </div>
+                </div>`;
         } catch (err) {
-            // Error visible en vez de las tablas con "Sin datos"
             App.showAlert('Error al cargar consumo: ' + err.message, 'danger');
             page.innerHTML = '<div class="alert alert-danger">Error: ' + escText(err.message) + '</div>';
         }
     },
+
+    // ------------------------------------------------------------------
+    // VISTA 2: Autonomía (proyección de stock por material)
+    // ------------------------------------------------------------------
+    async renderAutonomia() {
+        const page = document.querySelector('.page.active');
+        page.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400)">Cargando autonomía...</div>';
+        try {
+            await this._cargar();
+            page.innerHTML = `
+                ${this._styles()}
+
+                <div class="m-page">
+                <div class="m-hero" style="padding:12px 16px">
+                    <div style="position:relative;z-index:1">
+                        <h2 style="margin:0;font-size:15px;font-weight:700;color:white">Autonomía</h2>
+                        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Proyección de stock por material</p>
+                    </div>
+                </div>
+
+                <div class="m-card" style="margin-bottom:16px">
+                    <div class="cc-card-title" style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
+                        <span>Proyección de stock por material</span>
+                        <div class="inv-filt-grupo">
+                            <span class="cc-sub">Filtrar:</span>
+                            ${[0, 1, 2, 3, 4, 5, 6].map(v => {
+                                const labels = { 0: 'Todos', 1: '<1 mes', 2: '<2 meses', 3: '<3 meses', 4: '<4 meses', 5: '<5 meses', 6: '<6 meses' };
+                                const activo = this._filtAuto === v;
+                                return '<button type="button" class="inv-filt-btn c' + v + '" data-val="' + v + '" aria-pressed="' + activo + '" onclick="InvConsume.filtAuto(' + v + ')">' + labels[v] + '</button>';
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div id="consumeProyWrap">${this._proyeccionHtml()}</div>
+                </div>
+                </div>`;
+        } catch (err) {
+            App.showAlert('Error al cargar autonomía: ' + err.message, 'danger');
+            page.innerHTML = '<div class="alert alert-danger">Error: ' + escText(err.message) + '</div>';
+        }
+    },
+
+    // Compatibilidad: la vista antigua "Consumo y Autonomía" abre Consumo por Meses
+    render() { return this.renderConsumo(); },
 
     // ------------------------------------------------------------------
     // Estilos: escala tipográfica única y alineaciones consistentes
@@ -75,87 +143,56 @@ const InvConsume = {
             </style>`;
     },
 
-    _renderContent(page) {
+    // ------------------------------------------------------------------
+    // Tabla: consumo mensual por material
+    // ------------------------------------------------------------------
+    _consumoHtml() {
         const consumo = this._data ? this._data.consumo : [];
         const monthNames = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        if (consumo.length === 0) return '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>';
 
-        page.innerHTML = `
-                ${this._styles()}
+        const porMp = {};
+        consumo.forEach(c => {
+            const key = c.codigo_mp + '|' + (c.espesor_mm || '');
+            if (!porMp[key]) porMp[key] = { nombre: c.nombre, espesor: c.espesor_mm, meses: {} };
+            porMp[key].meses[c.mes] = Number(c.planchas_consumidas);
+        });
+        const allMeses = [...new Set(consumo.map(c => c.mes))].sort();
+        const rows = Object.entries(porMp).map(([key, data]) => {
+            const total = Object.values(data.meses).reduce((s, v) => s + v, 0);
+            const numMeses = Object.keys(data.meses).length || 1;
+            const promedio = total / numMeses;
+            return { nombre: data.nombre, espesor: data.espesor, meses: data.meses, total, promedio };
+        });
+        rows.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (a.espesor || '').localeCompare(b.espesor || ''));
 
-                <div class="m-page">
-                <div class="m-hero" style="padding:12px 16px">
-                    <div style="position:relative;z-index:1">
-                        <h2 style="margin:0;font-size:15px;font-weight:700;color:white">Consumo y Autonomía</h2>
-                        <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Análisis de consumo mensual y proyección de stock</p>
-                    </div>
-                </div>
-
-                <div class="m-card" style="margin-bottom:16px">
-                    <div class="cc-card-title">Consumo mensual por material</div>
-                        <div class="m-table-wrap inv-scroll-wrap">
-                            ${consumo.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
-            (() => {
-                const porMp = {};
-                consumo.forEach(c => {
-                    const key = c.codigo_mp + '|' + (c.espesor_mm || '');
-                    if (!porMp[key]) porMp[key] = { nombre: c.nombre, espesor: c.espesor_mm, meses: {} };
-                    porMp[key].meses[c.mes] = Number(c.planchas_consumidas);
-                });
-                const allMeses = [...new Set(consumo.map(c => c.mes))].sort();
-                const rows = Object.entries(porMp).map(([key, data]) => {
-                    const total = Object.values(data.meses).reduce((s, v) => s + v, 0);
-                    const numMeses = Object.keys(data.meses).length || 1;
-                    const promedio = total / numMeses;
-                    return { nombre: data.nombre, espesor: data.espesor, meses: data.meses, total, promedio };
-                });
-                rows.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (a.espesor || '').localeCompare(b.espesor || ''));
-                return '<table style="width:100%;border-collapse:collapse"><thead><tr>'
-                    + '<th class="cc-th cc-sticky" style="text-align:left;min-width:150px">Material</th>'
-                    + '<th class="cc-th" style="text-align:left;min-width:52px">Esp.</th>'
-                    + allMeses.map(m => {
-                        const parts = m.split('-');
-                        return '<th class="cc-th cc-num" style="min-width:56px">' + monthNames[parseInt(parts[1])] + ' <span class="cc-sub">' + parts[0].slice(2) + '</span></th>';
-                    }).join('')
-                    + '<th class="cc-th cc-num" style="min-width:70px">Total</th>'
-                    + '<th class="cc-th cc-num" style="min-width:70px">Promedio</th>'
-                    + '</tr></thead><tbody>'
-                    + rows.map(r => '<tr>'
-                        + '<td class="cc-td cc-sticky" style="font-weight:600">' + escText(r.nombre || '-') + '</td>'
-                        + '<td class="cc-td" style="color:var(--gray-600)">' + escText(r.espesor || '-') + '</td>'
-                        + allMeses.map(m => {
-                            const val = r.meses[m] || 0;
-                            return '<td class="cc-td cc-num" style="position:relative">'
-                                + (val > 0 ? '<div style="position:absolute;top:0;left:2px;right:2px;bottom:0;background:var(--primary);opacity:0.08;border-radius:2px"></div>' : '')
-                                + '<span style="position:relative;font-weight:600;color:' + (val > 0 ? 'var(--gray-800)' : 'var(--gray-300)') + '">' + (val > 0 ? InvConsume.fmtInt(val) : '-') + '</span></td>';
-                        }).join('')
-                        + '<td class="cc-td cc-num cc-total">' + InvConsume.fmtInt(r.total) + '</td>'
-                        + '<td class="cc-td cc-num cc-prom">' + InvConsume.fmtInt(r.promedio) + '</td>'
-                        + '</tr>').join('')
-                    + '</tbody></table>';
-            })()}
-                        </div>
-                    </div>
-
-                <div class="m-card" style="margin-bottom:16px">
-                    <div class="cc-card-title" style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
-                        <span>Proyección de stock por material</span>
-                        <div class="inv-filt-grupo">
-                            <span class="cc-sub">Filtrar:</span>
-                            ${[0, 1, 2, 3, 4, 5, 6].map(v => {
-                                const labels = { 0: 'Todos', 1: '<1 mes', 2: '<2 meses', 3: '<3 meses', 4: '<4 meses', 5: '<5 meses', 6: '<6 meses' };
-                                const activo = this._filtAuto === v;
-                                return '<button type="button" class="inv-filt-btn c' + v + '" data-val="' + v + '" aria-pressed="' + activo + '" onclick="InvConsume.filtAuto(' + v + ')">' + labels[v] + '</button>';
-                            }).join('')}
-                        </div>
-                    </div>
-                    <div id="consumeProyWrap">${this._proyeccionHtml()}</div>
-                </div>
-
-            </div>`;
+        return '<table style="width:100%;border-collapse:collapse"><thead><tr>'
+            + '<th class="cc-th cc-sticky" style="text-align:left;min-width:150px">Material</th>'
+            + '<th class="cc-th" style="text-align:left;min-width:52px">Esp.</th>'
+            + allMeses.map(m => {
+                const parts = m.split('-');
+                return '<th class="cc-th cc-num" style="min-width:56px">' + monthNames[parseInt(parts[1])] + ' <span class="cc-sub">' + parts[0].slice(2) + '</span></th>';
+            }).join('')
+            + '<th class="cc-th cc-num" style="min-width:70px">Total</th>'
+            + '<th class="cc-th cc-num" style="min-width:70px">Promedio</th>'
+            + '</tr></thead><tbody>'
+            + rows.map(r => '<tr>'
+                + '<td class="cc-td cc-sticky" style="font-weight:600">' + escText(r.nombre || '-') + '</td>'
+                + '<td class="cc-td" style="color:var(--gray-600)">' + escText(r.espesor || '-') + '</td>'
+                + allMeses.map(m => {
+                    const val = r.meses[m] || 0;
+                    return '<td class="cc-td cc-num" style="position:relative">'
+                        + (val > 0 ? '<div style="position:absolute;top:0;left:2px;right:2px;bottom:0;background:var(--primary);opacity:0.08;border-radius:2px"></div>' : '')
+                        + '<span style="position:relative;font-weight:600;color:' + (val > 0 ? 'var(--gray-800)' : 'var(--gray-300)') + '">' + (val > 0 ? InvConsume.fmtInt(val) : '-') + '</span></td>';
+                }).join('')
+                + '<td class="cc-td cc-num cc-total">' + InvConsume.fmtInt(r.total) + '</td>'
+                + '<td class="cc-td cc-num cc-prom">' + InvConsume.fmtInt(r.promedio) + '</td>'
+                + '</tr>').join('')
+            + '</tbody></table>';
     },
 
     // ------------------------------------------------------------------
-    // Proyección de stock (se re-pinta sola al filtrar, sin parpadear)
+    // Tabla: proyección de stock (se re-pinta sola al filtrar, sin parpadear)
     // ------------------------------------------------------------------
     _proyeccionHtml() {
         const stock = this._data ? this._data.stock : [];
@@ -225,7 +262,7 @@ const InvConsume = {
                 btn.setAttribute('aria-pressed', v === val ? 'true' : 'false');
             });
         } else {
-            this._renderContent(document.querySelector('.page.active'));
+            this.renderAutonomia();
         }
     }
 };

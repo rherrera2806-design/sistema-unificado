@@ -725,7 +725,7 @@ const SIDEBAR_SECTIONS = {
     atencion: ['turnos_recepcion', 'turnos_bodega', 'turnos_almacen', 'turnos_facturar', 'turnos_qr', 'turnos_reporte'],
     costeo: ['costeo'],
     instalaciones: ['instalaciones', 'inst_historial', 'inst_reporte'],
-    inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_consume', 'inv_reporte'],
+    inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_consumo', 'inv_autonomia', 'inv_reporte'],
     mantencion: ['bitacora', 'calendar', 'components', 'corrective', 'dashboard', 'history', 'machines', 'machineTypes', 'notas', 'preventive', 'proveedores', 'reports'],
     pedidos: ['pedidos', 'pedidos_grafico_mes', 'pedidos_reporte'],
     produccion: ['prod_config', 'prod_notas', 'prod_planificacion', 'prod_ordenes', 'prod_reportes', 'prod_prog_estacion', 'taller', 'bodega'],
@@ -749,6 +749,10 @@ function hasSection(section) {
 }
 function canSeeItem(item, section) {
     if (isAdmin()) return true;
+    // Alias legado: el permiso 'inv_consume' ("Consumo y Autonomía", ahora
+    // separado en dos vistas) sigue dando acceso a inv_consumo / inv_autonomia.
+    const LEGACY_ITEM_PERMS = { inv_consumo: 'inv_consume', inv_autonomia: 'inv_consume' };
+    if (LEGACY_ITEM_PERMS[item] && hasPerm(LEGACY_ITEM_PERMS[item])) return true;
     return hasPerm(item) || hasPerm(section) || hasPerm(section + '.editar') || hasPerm(section + '.eliminar') || hasPerm(section + '.agregar');
 }
 function canCreate(item, section) {
@@ -793,7 +797,8 @@ function renderSidebar() {
             { id: 'inv_inventario', label: 'Inventario', icon: SVG.clipboard },
             { id: 'inv_movimientos', label: 'Movimientos', icon: SVG.list },
             { id: 'inv_historial', label: 'Historial Inventario', icon: SVG.clock },
-            { id: 'inv_consume', label: 'Consumo y Autonomia', icon: SVG.barChart },
+            { id: 'inv_consumo', label: 'Consumo por Meses', icon: SVG.barChart },
+            { id: 'inv_autonomia', label: 'Autonomía', icon: SVG.calendar },
             { id: 'inv_reporte', label: 'Reporte', icon: SVG.chart }
         ]},
         { key: 'mantencion', label: 'MANTENCION', items: [
@@ -968,7 +973,8 @@ const INV_PAGES = {
     inv_inventario: { label: 'Inventario', render: () => InvInventario.render() },
     inv_movimientos: { label: 'Movimientos', render: () => InvMovimientos.render() },
     inv_historial: { label: 'Historial Inventario', render: () => InvHistorial.render() },
-    inv_consume: { label: 'Consumo y Autonomia', render: () => InvConsume.render() },
+    inv_consumo: { label: 'Consumo por Meses', render: () => InvConsume.renderConsumo() },
+    inv_autonomia: { label: 'Autonomía', render: () => InvConsume.renderAutonomia() },
     inv_reporte: { label: 'Reporte', render: () => App.modules.inv_reporte.render() }
 };
 
