@@ -581,9 +581,12 @@ router.put('/api/pedidos/:id', canUpdate, async (req, res, next) => {
                     [motivo.valor || null, user, id]
                 );
             } else if (destino === 'aprobado') {
+                // Aprobacion: igual que el rechazo, se ELIMINA el PDF (BYTEA y
+                // archivo_url) una vez aprobado: el usuario ya no necesita
+                // descargarlo y el documento no debe seguir disponible.
                 result = await tx.query(
                     `UPDATE pedidos SET estado = 'aprobado', motivo_rechazo = NULL, revisado_por = $1,
-                        fecha_revision = CURRENT_TIMESTAMP WHERE id = $2 RETURNING ${COLS_PEDIDO}`,
+                        fecha_revision = CURRENT_TIMESTAMP, archivo_pdf = NULL, archivo_url = NULL WHERE id = $2 RETURNING ${COLS_PEDIDO}`,
                     [user, id]
                 );
             } else {
@@ -624,7 +627,7 @@ router.put('/api/pedidos/:id', canUpdate, async (req, res, next) => {
                 );
             }
             // Si el rechazo borró un PDF, queda además su propio evento en el historial.
-            if (destino === 'rechazado' && (before.tiene_pdf || before.archivo_url)) {
+            if ((destino === 'rechazado' || destino === 'aprobado') && (before.tiene_pdf || before.archivo_url)) {
                 await tx.query(
                     'INSERT INTO pedido_historial (pedido_id, accion, campos_antes, campos_despues, usuario) VALUES ($1, $2, $3, $4, $5)',
                     [id, 'Eliminación de PDF',

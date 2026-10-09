@@ -82,30 +82,25 @@ App.registerModule('pedidos', {
         setTimeout(() => el.remove(), ms || 8000);
     },
 
-    // Tamaño legible para validar/adjuntar PDFs.
+    // Tamaño legible para validar/adjuntar PDFs. Decimales con coma (es-CL):
+    // "1,5 MB", nunca "1.5 MB".
     _fmtTamano(bytes) {
         if (bytes === null || bytes === undefined) return '';
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        if (bytes < 1024) return this._fmtNum(bytes) + ' B';
+        if (bytes < 1024 * 1024) return this._fmtNum(Math.round(bytes / 1024)) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+    },
+
+    // Entero con separador de miles es-CL (1.234). Solo para cantidades:
+    // los años NUNCA se formatean (2026, no "2.026").
+    _fmtNum(n) {
+        const v = Number(n);
+        return isNaN(v) ? String(n == null ? '' : n) : v.toLocaleString('es-CL');
     },
 
     // Descarga SEGURA de un blob: fetch → blob → objectURL → link.click(),
     // esperando a que el navegador procese la descarga antes de liberar la
     // URL (revocarla demasiado pronto corta la descarga).
-    async _descargarPdf(blob, nombre) {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = String(nombre || 'pedido').replace(/[\\/:*?"<>|]/g, '_');
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        // Esperar a que la descarga del blob complete antes de limpiar.
-        await new Promise(r => setTimeout(r, 1500));
-        link.remove();
-        URL.revokeObjectURL(url);
-    },
 
     // Acciones disponibles para un pedido según su estado y los permisos del
     // usuario. Fuente única para el dropdown de la tabla y las cards móviles.
@@ -176,22 +171,45 @@ App.registerModule('pedidos', {
                 + '.ped-row{will-change:auto;transition:background 0.15s ease}'
                 + '.ped-row:hover{background:#f8fafc}'
                 + '.ped-section{animation:pedFadeUp 0.5s ease both}'
-                + '.ped-badge{transition:all 0.2s ease}'
-                + '.ped-badge:hover{transform:scale(1.08)}'
                 + '.ped-btn{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}'
                 + '.ped-btn:hover{transform:translateY(-1px)!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important}'
                 + '#pedFilterSearch::placeholder{color:rgba(255,255,255,0.6)}'
-                + '.ped-th{padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px}'
-                + '.ped-td{padding:10px 12px;border-bottom:1px solid #f1f5f9}'
+                // ── Regla tipográfica del sistema (misma escala que css/inv-pro.css) ──
+                // Fuente única: Inter (la de la app). SIN monoespaciadas ni
+                // "numerales máquina de escribir": los números se alinean por
+                // alineación de columna, no por fuente mecánica.
+                // Escala única (5 tamaños):
+                //   20px display  → números de stats (única excepción)
+                //   15px títulos  → hero, modales, mensajes principales
+                //   13px datos    → celdas, cards, inputs, menús, títulos de card/stat label
+                //   11px labels   → headers de tabla, etiquetas de formulario, badges/chips
+                //   10px notas    → subtítulos, notas, ayudas, unidades
+                + '.ped-th{padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px}'
+                + '.ped-th-right{text-align:right}'
+                + '.ped-th-center{text-align:center}'
+                + '.ped-td{padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:13px}'
+                + '.ped-td-right{text-align:right}'
+                + '.ped-td-center{text-align:center}'
                 + '.ped-num{font-weight:700;color:#0f172a;font-size:13px;background:#f1f5f9;padding:4px 10px;border-radius:6px}'
-                + '.ped-mono{font-size:12px;color:#64748b}'
+                // Celda de fecha/hora (antes .ped-mono: el nombre "mono" confundía,
+                // nunca fue fuente monoespaciada).
+                + '.ped-fecha{font-size:13px;color:#64748b;text-align:right}'
                 + '.ped-dt{line-height:1.4}'
-                + '.ped-dt-sub{font-size:11px;color:#94a3b8;font-weight:400}'
-                + '.ped-actions-btn{width:32px;height:32px;border-radius:8px;border:1px solid #e2e8f0;background:white;cursor:pointer;font-size:16px;color:#64748b;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s}'
+                + '.ped-dt-sub{font-size:10px;color:#94a3b8;font-weight:400}'
+                + '.ped-vacio{color:#cbd5e1}'
+                + '.ped-nota{font-size:10px;color:#94a3b8}'
+                + '.ped-label{display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}'
+                + '.ped-mini-label{display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase}'
+                + '.ped-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;transition:all 0.2s ease}'
+                + '.ped-badge:hover{transform:scale(1.08)}'
+                + '.ped-chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}'
+                + '.ped-stat-num{font-size:20px;font-weight:700;color:#0f172a;line-height:1}'
+                + '.ped-stat-label{font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}'
+                + '.ped-actions-btn{width:32px;height:32px;border-radius:8px;border:1px solid #e2e8f0;background:white;cursor:pointer;font-size:15px;color:#64748b;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s}'
                 + '.ped-actions-btn:hover{background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}'
                 + '.ped-dropdown{display:none;background:white;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:9999;min-width:140px;padding:4px;overflow:hidden}'
                 + '.ped-dropdown.open{display:block}'
-                + '.ped-drop-item{padding:8px 12px;font-size:12px;color:#334155;cursor:pointer;border-radius:6px;transition:background 0.1s}'
+                + '.ped-drop-item{padding:8px 12px;font-size:13px;color:#334155;cursor:pointer;border-radius:6px;transition:background 0.1s}'
                 + '.ped-drop-item:hover{background:#f1f5f9}'
                 + '.ped-drop-danger{color:#dc2626}'
                 + '.ped-drop-danger:hover{background:#fef2f2}'
@@ -201,18 +219,18 @@ App.registerModule('pedidos', {
                 + '<div class="m-hero" style="padding:10px 14px">'
                 + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
                 + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-                + '<div style="flex-shrink:0"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px">Pedidos / Ordenes</h2>'
+                + '<div style="flex-shrink:0"><h2 style="margin:0;font-size:15px;font-weight:700;color:white;letter-spacing:-0.5px">Pedidos / Ordenes</h2>'
                 + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestion de pedidos y documentos de ventas</p></div>'
                 + '<div class="m-hero-btns" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0">'
                 + '<div style="position:relative;width:180px;flex-shrink:0"><svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-                + '<input type="text" id="pedFilterSearch" placeholder="Buscar..." oninput="App.modules.pedidos.debouncedFilter()" style="font-size:12px;padding:8px 10px 8px 28px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);outline:none;transition:border-color 0.2s;width:100%;box-sizing:border-box" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'"></div>'
-                + '<select id="pedFilterAnio" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
+                + '<input type="text" id="pedFilterSearch" placeholder="Buscar..." oninput="App.modules.pedidos.debouncedFilter()" style="font-size:13px;padding:8px 10px 8px 28px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);outline:none;transition:border-color 0.2s;width:100%;box-sizing:border-box" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'"></div>'
+                + '<select id="pedFilterAnio" onchange="App.modules.pedidos.filter()" style="font-size:13px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
                 + '<option value="" style="color:#1e293b;background:white">Año</option></select>'
-                + '<select id="pedFilterMes" onchange="App.modules.pedidos.filter()" style="font-size:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
+                + '<select id="pedFilterMes" onchange="App.modules.pedidos.filter()" style="font-size:13px;padding:8px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;background:rgba(255,255,255,0.1);cursor:pointer;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'rgba(255,255,255,0.5)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.2)\'">'
                 + '<option value="" style="color:#1e293b;background:white">Mes</option>'
                 + '<option value="1" style="color:#1e293b;background:white">Ene</option><option value="2" style="color:#1e293b;background:white">Feb</option><option value="3" style="color:#1e293b;background:white">Mar</option><option value="4" style="color:#1e293b;background:white">Abr</option><option value="5" style="color:#1e293b;background:white">May</option><option value="6" style="color:#1e293b;background:white">Jun</option><option value="7" style="color:#1e293b;background:white">Jul</option><option value="8" style="color:#1e293b;background:white">Ago</option><option value="9" style="color:#1e293b;background:white">Sep</option><option value="10" style="color:#1e293b;background:white">Oct</option><option value="11" style="color:#1e293b;background:white">Nov</option><option value="12" style="color:#1e293b;background:white">Dic</option>'
                 + '</select>'
-                + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
+                + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:13px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
                 + '</div></div></div>'
 
                 + '<div id="pedStats" class="m-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px"></div>'
@@ -221,21 +239,21 @@ App.registerModule('pedidos', {
                 + '<div class="m-card-header" style="padding:8px 14px;display:flex;align-items:center;justify-content:space-between">'
                 + '<div style="display:flex;align-items:center;gap:8px">'
                 + '<div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
-                + '<span style="font-size:13px;font-weight:700;color:#0f172a">Pedidos <span id="pedCountLabel" style="color:#94a3b8;font-weight:400;font-size:12px"></span></span></div>'
+                + '<span style="font-size:13px;font-weight:600;color:#0f172a">Pedidos <span id="pedCountLabel" style="color:#94a3b8;font-weight:400;font-size:10px"></span></span></div>'
                 + '</div>'
                 + '<div class="m-card-body" style="padding:0">'
-                + '<div class="m-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px">'
+                + '<div class="m-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:800px">'
                 + '<thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">'
                 + '<th class="ped-th">N Pedido</th>'
                 + '<th class="ped-th">Cliente</th>'
-                + '<th class="ped-th">Tipo</th>'
+                + '<th class="ped-th ped-th-center">Tipo</th>'
                 + '<th class="ped-th">Vendedor</th>'
-                + '<th class="ped-th">Fecha</th>'
-                + '<th class="ped-th">Estado</th>'
+                + '<th class="ped-th ped-th-right">Fecha</th>'
+                + '<th class="ped-th ped-th-center">Estado</th>'
                 + '<th class="ped-th">Revisor</th>'
-                + '<th class="ped-th">Fecha Revisión</th>'
-                + '<th class="ped-th">Tiempo</th>'
-                + '<th class="ped-th" style="text-align:center">Acciones</th>'
+                + '<th class="ped-th ped-th-right">Fecha Revisión</th>'
+                + '<th class="ped-th ped-th-right">Tiempo</th>'
+                + '<th class="ped-th ped-th-center">Acciones</th>'
                 + '</tr></thead><tbody id="pedidosTable">'
                 + '<tr><td colspan="' + this.COLUMNAS + '" style="text-align:center;padding:48px;color:#94a3b8">Cargando pedidos...</td></tr>'
                 + '</tbody></table></div>'
@@ -253,7 +271,7 @@ App.registerModule('pedidos', {
                 + '.m-hero-btns{flex-wrap:wrap}'
                 + '.m-hero-btns .btn{height:40px;min-height:40px;flex:1}'
                 + '.m-stats{grid-template-columns:repeat(2,1fr)!important}'
-                + '.m-hero-btns select{padding:8px 10px;font-size:11px}'
+                + '.m-hero-btns select{padding:8px 10px}'
                 + '}'
                 + '</style>';
 
@@ -275,14 +293,14 @@ App.registerModule('pedidos', {
             + '<div style="display:flex;justify-content:space-between;align-items:center;padding:24px 28px;border-bottom:1px solid #e2e8f0">'
             + '<div style="display:flex;align-items:center;gap:12px">'
             + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>'
-            + '<h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Nuevo Pedido</h3></div>'
+            + '<h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Nuevo Pedido</h3></div>'
             + '<button class="modal-close" onclick="App.modules.pedidos.hideUploadModal()"></button></div>'
             + '<div style="padding:28px">'
-            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Numero de Pedido *</label>'
+            + '<div style="margin-bottom:20px"><label class="ped-label">Numero de Pedido *</label>'
             + '<input type="text" id="pedNumero" placeholder="Ej: 12345" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Cliente *</label>'
+            + '<div style="margin-bottom:20px"><label class="ped-label">Cliente *</label>'
             + '<input type="text" id="pedCliente" placeholder="Nombre del cliente" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Tipo de OV *</label>'
+            + '<div style="margin-bottom:20px"><label class="ped-label">Tipo de OV *</label>'
             + '<select id="pedTipoOV" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'">'
             + '<option value="Normal" selected style="background:#e0f2fe;color:#0f172a">Normal</option>'
             + '<option value="Express" style="background:#fde047;color:#0f172a;font-weight:700">Express</option>'
@@ -290,11 +308,11 @@ App.registerModule('pedidos', {
             + '<option value="Reposicion" style="background:#dc2626;color:white">Reposición</option>'
             + '<option value="Urgencia" style="background:#f97316;color:white;font-weight:700">Urgencia</option>'
             + '</select></div>'
-            + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">PDF del Pedido *</label>'
+            + '<div><label class="ped-label">PDF del Pedido *</label>'
             + '<div id="pedUploadArea" onclick="document.getElementById(\'pedFileInput\').click()" style="border:2px dashed #cbd5e1;border-radius:12px;padding:36px;text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc">'
             + '<div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#eff6ff,#dbeafe);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 4px 12px rgba(59,130,246,0.15)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
             + '<div style="color:#64748b;font-size:13px;font-weight:500">Arrastra un PDF aqui o haz clic para seleccionar</div>'
-            + '<div style="color:#94a3b8;font-size:11px;margin-top:4px">Solo archivos PDF (máximo 50 MB)</div>'
+            + '<div class="ped-nota" style="margin-top:4px">Solo archivos PDF (máximo 50 MB)</div>'
             + '<div id="pedUploadFilename" style="display:none;margin-top:14px;padding:8px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-weight:600;font-size:13px"></div></div>'
             + '<input type="file" id="pedFileInput" accept=".pdf,application/pdf" style="display:none" onchange="App.modules.pedidos.handleFileSelect(event)"></div></div>'
             + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
@@ -309,15 +327,15 @@ App.registerModule('pedidos', {
             + '<div style="display:flex;justify-content:space-between;align-items:center;padding:24px 28px;border-bottom:1px solid #e2e8f0">'
             + '<div style="display:flex;align-items:center;gap:12px">'
             + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>'
-            + '<h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Editar Pedido</h3></div>'
+            + '<h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Editar Pedido</h3></div>'
             + '<button class="modal-close" onclick="App.modules.pedidos.hideEditModal()"></button></div>'
             + '<div style="padding:28px">'
-            + '<div id="pedEditAviso" style="display:none;margin-bottom:16px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;color:#92400e;font-size:12px"></div>'
-            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Numero de Pedido *</label>'
+            + '<div id="pedEditAviso" style="display:none;margin-bottom:16px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;color:#92400e;font-size:10px"></div>'
+            + '<div style="margin-bottom:20px"><label class="ped-label">Numero de Pedido *</label>'
             + '<input type="text" id="pedEditNumero" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Cliente *</label>'
+            + '<div style="margin-bottom:20px"><label class="ped-label">Cliente *</label>'
             + '<input type="text" id="pedEditCliente" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Tipo de OV</label>'
+            + '<div style="margin-bottom:20px"><label class="ped-label">Tipo de OV</label>'
             + '<select id="pedEditTipoOV" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none">'
             + '<option value="Normal">Normal</option>'
             + '<option value="Express">Express</option>'
@@ -325,10 +343,10 @@ App.registerModule('pedidos', {
             + '<option value="Reposicion">Reposición</option>'
             + '<option value="Urgencia">Urgencia</option>'
             + '</select></div>'
-            + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">PDF del Pedido (opcional)</label>'
-            + '<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">El PDF se elimina automaticamente al rechazar un pedido. Si no tiene PDF, adjunta uno nuevo aqui.</div>'
-            + '<input type="file" id="pedEditFileInput" accept=".pdf,application/pdf" style="font-size:12px;width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none" onchange="App.modules.pedidos.handleEditFileSelect(event)">'
-            + '<div id="pedEditFilename" style="display:none;margin-top:8px;padding:8px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-weight:600;font-size:12px"></div></div></div>'
+            + '<div><label class="ped-label">PDF del Pedido (opcional)</label>'
+            + '<div class="ped-nota" style="margin-bottom:8px">El PDF se elimina automaticamente al rechazar un pedido. Si no tiene PDF, adjunta uno nuevo aqui.</div>'
+            + '<input type="file" id="pedEditFileInput" accept=".pdf,application/pdf" style="font-size:13px;width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none" onchange="App.modules.pedidos.handleEditFileSelect(event)">'
+            + '<div id="pedEditFilename" style="display:none;margin-top:8px;padding:8px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-weight:600;font-size:13px"></div></div></div>'
             + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
                 + '<button onclick="App.modules.pedidos.hideEditModal()" class="btn btn-outline">Cancelar</button>'
                 + '<button onclick="App.modules.pedidos.saveEdit()" class="btn btn-primary">Guardar</button>'
@@ -343,7 +361,7 @@ App.registerModule('pedidos', {
             const data = await this._apiJson(res);
             this.allPedidos = Array.isArray(data) ? data : [];
             const lbl = document.getElementById('pedCountLabel');
-            if (lbl) lbl.textContent = '(' + this.allPedidos.length + ')';
+            if (lbl) lbl.textContent = '(' + this._fmtNum(this.allPedidos.length) + ')';
             this.renderStats();
             this.populateYears();
             this.filter();
@@ -411,8 +429,8 @@ App.registerModule('pedidos', {
         return '<div class="m-stat-card ' + cls + ' ped-card' + activeCls + '" style="animation:pedFadeUp 0.5s ease ' + delay + 'ms both" onclick="App.modules.pedidos.toggleStatFilter(\'' + (label === 'Total' ? '' : label.toLowerCase().replace(/s$/, '')) + '\')">'
             + '<div style="display:flex;align-items:center;gap:10px;position:relative;z-index:1">'
             + '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
-            + '<div><div style="font-size:20px;font-weight:800;color:#0f172a;font-family:\'JetBrains Mono\',monospace;line-height:1;animation:pedCount 0.6s ease ' + (delay + 200) + 'ms both">' + value + '</div>'
-            + '<div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">' + label + '</div></div></div></div>';
+            + '<div><div class="ped-stat-num" style="animation:pedCount 0.6s ease ' + (delay + 200) + 'ms both">' + this._fmtNum(value) + '</div>'
+            + '<div class="ped-stat-label">' + label + '</div></div></div></div>';
     },
 
     filter() {
@@ -429,7 +447,7 @@ App.registerModule('pedidos', {
             return matchSearch && matchEstado && matchAnio && matchMes;
         });
         const lbl = document.getElementById('pedCountLabel');
-        if (lbl) lbl.textContent = '(' + filtered.length + ')';
+        if (lbl) lbl.textContent = '(' + this._fmtNum(filtered.length) + ')';
         this.renderTable(filtered);
     },
 
@@ -450,8 +468,8 @@ App.registerModule('pedidos', {
         if (!pedidos.length) {
             tbody.innerHTML = '<tr><td colspan="' + this.COLUMNAS + '" style="text-align:center;padding:56px 20px">'
                 + '<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
-                + '<div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:4px">Sin pedidos</div>'
-                + '<div style="color:#94a3b8;font-size:13px">No hay pedidos que mostrar</div></td></tr>';
+                + '<div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:4px">Sin pedidos</div>'
+                + '<div class="ped-nota">No hay pedidos que mostrar</div></td></tr>';
             if (cardsEl) cardsEl.innerHTML = '';
             return;
         }
@@ -463,14 +481,14 @@ App.registerModule('pedidos', {
             return '<tr class="ped-row" style="cursor:pointer">'
                 + '<td class="ped-td"><span class="ped-num">' + escText(p.numero_pedido) + '</span></td>'
                 + '<td class="ped-td" style="font-weight:600;color:#0f172a">' + escText(p.cliente) + '</td>'
-                + '<td class="ped-td">' + this.tipoOvBadge(p.tipo_ov) + '</td>'
+                + '<td class="ped-td ped-td-center">' + this.tipoOvBadge(p.tipo_ov) + '</td>'
                 + '<td class="ped-td" style="color:#475569">' + escText(p.vendedor_nombre || p.vendedor) + '</td>'
-                + '<td class="ped-td ped-mono">' + this.fmtDateTime(p.fecha_subida) + '</td>'
-                + '<td class="ped-td">' + badge + '</td>'
+                + '<td class="ped-td ped-fecha">' + this.fmtDateTime(p.fecha_subida) + '</td>'
+                + '<td class="ped-td ped-td-center">' + badge + '</td>'
                 + '<td class="ped-td" style="color:#475569">' + escText(p.revisor_nombre || '-') + '</td>'
-                + '<td class="ped-td ped-mono">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</td>'
-                + '<td class="ped-td ped-mono">' + this.fmtTiempo(p.fecha_subida, p.fecha_revision) + '</td>'
-                + '<td class="ped-td" style="text-align:center;white-space:nowrap;position:relative">'
+                + '<td class="ped-td ped-fecha">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span class="ped-vacio">-</span>') + '</td>'
+                + '<td class="ped-td ped-td-right">' + this.fmtTiempo(p.fecha_subida, p.fecha_revision) + '</td>'
+                + '<td class="ped-td ped-td-center" style="white-space:nowrap;position:relative">'
                 + '<button onclick="App.modules.pedidos.toggleActions(event,' + (Number(p.id) || 0) + ')" class="ped-actions-btn">⋮</button>'
                 + '<div class="ped-dropdown" id="pedDrop' + (Number(p.id) || 0) + '">'
                 + dropItems
@@ -500,11 +518,11 @@ App.registerModule('pedidos', {
     },
 
     badgeHtml(estado, motivo) {
-        if (estado === 'aprobado') return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>APROBADO</span>';
+        if (estado === 'aprobado') return '<span class="ped-badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>APROBADO</span>';
         // El motivo viaja como literal JS dentro del onclick: escJs (NO
         // escapeHtml, que dejaba escapar el atributo y permitía breakout XSS).
-        if (estado === 'rechazado') return '<span class="ped-badge" onclick="App.modules.pedidos.showMotivoRechazo(\'' + escJs(motivo || '') + '\')" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;cursor:pointer" title="Ver motivo de rechazo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>RECHAZADO</span>';
-        return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fefce8;color:#ca8a04;border:1px solid #fde68a"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>PENDIENTE</span>';
+        if (estado === 'rechazado') return '<span class="ped-badge" onclick="App.modules.pedidos.showMotivoRechazo(\'' + escJs(motivo || '') + '\')" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;cursor:pointer" title="Ver motivo de rechazo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>RECHAZADO</span>';
+        return '<span class="ped-badge" style="background:#fefce8;color:#ca8a04;border:1px solid #fde68a"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>PENDIENTE</span>';
     },
     showMotivoRechazo(motivo) {
         if (!motivo) { App.toast('No hay motivo de rechazo registrado'); return; }
@@ -512,11 +530,11 @@ App.registerModule('pedidos', {
     },
     tipoOvBadge(tipo) {
         const t = tipo || 'Normal';
-        if (t === 'Express') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#fde047;color:#0f172a">Express</span>';
-        if (t === 'Vta. Region') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#9333ea;color:white">Vta. Region</span>';
-        if (t === 'Reposicion') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#dc2626;color:white">Reposición</span>';
-        if (t === 'Urgencia') return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f97316;color:white">Urgencia</span>';
-        return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#e0f2fe;color:#0f172a">Normal</span>';
+        if (t === 'Express') return '<span class="ped-chip" style="font-weight:700;background:#fde047;color:#0f172a">Express</span>';
+        if (t === 'Vta. Region') return '<span class="ped-chip" style="background:#9333ea;color:white">Vta. Region</span>';
+        if (t === 'Reposicion') return '<span class="ped-chip" style="background:#dc2626;color:white">Reposición</span>';
+        if (t === 'Urgencia') return '<span class="ped-chip" style="font-weight:700;background:#f97316;color:white">Urgencia</span>';
+        return '<span class="ped-chip" style="background:#e0f2fe;color:#0f172a">Normal</span>';
     },
     tipoOvHtml(tipo) {
         return tipo || 'Normal';
@@ -710,15 +728,14 @@ App.registerModule('pedidos', {
     // 2) PUT {estado:'aprobado'}
     // 3) Descargar el PDF de forma segura y ESPERAR a que la descarga complete
     // 4) Recién entonces DELETE /:id/pdf
-    // 5) Toast honesto: dice exactamente qué falló si algo falló.
+    // APROBAR: el backend elimina el PDF al aprobar (sin descarga).
     async aprobarPedido(id) {
         if (this._ocupado) return;
         const p = this.allPedidos.find(x => x.id === id);
         if (!p) return;
-        const ok = await App.confirm('¿Aprobar el pedido <strong>' + escText(p.numero_pedido) + '</strong>?<br>Se descargará el PDF y será eliminado del servidor.');
+        const ok = await App.confirm('�Aprobar el pedido <strong>' + escText(p.numero_pedido) + '</strong>?<br>El PDF ser� eliminado del servidor.');
         if (!ok) return;
         this._ocupado = true;
-        // 1) Cambiar estado a aprobado.
         try {
             const res = await fetch('/api/pedidos/' + (Number(id) || 0), {
                 method: 'PUT',
@@ -726,43 +743,13 @@ App.registerModule('pedidos', {
                 body: JSON.stringify({ estado: 'aprobado' })
             });
             await this._apiJson(res);   // 409/400 del backend muestran su mensaje
+            App.toast('Pedido aprobado. PDF eliminado por el sistema.');
         } catch(e) {
-            this._ocupado = false;
             App.toast('No se pudo aprobar el pedido: ' + e.message, 'error');
-            return;
-        }
-        // 2) Descargar el PDF (fetch → blob → objectURL → click, esperando).
-        let descargaError = '';
-        try {
-            const rPdf = await fetch('/api/pedidos/' + (Number(id) || 0) + '/download-pdf');
-            if (!rPdf.ok) {
-                const d = await rPdf.json().catch(() => ({}));
-                throw new Error(d.error || ('HTTP ' + rPdf.status));
-            }
-            const blob = await rPdf.blob();
-            await this._descargarPdf(blob, (p.numero_pedido || 'pedido') + '.pdf');
-        } catch(e) {
-            descargaError = e.message || 'error desconocido';
-        }
-        // 3) Eliminar el PDF del servidor SOLO si la descarga fue bien.
-        if (descargaError) {
+        } finally {
             this._ocupado = false;
-            App.toast('Pedido aprobado, pero FALLÓ la descarga del PDF (' + descargaError + '). No se eliminó el PDF del servidor.', 'error');
             this.load();
-            return;
         }
-        try {
-            const rDel = await fetch('/api/pedidos/' + (Number(id) || 0) + '/pdf', { method: 'DELETE' });
-            await this._apiJson(rDel);   // verificar res.ok: antes el toast mentía
-        } catch(e) {
-            this._ocupado = false;
-            App.toast('Pedido aprobado y PDF descargado, pero NO se pudo eliminar el PDF del servidor: ' + e.message, 'error');
-            this.load();
-            return;
-        }
-        this._ocupado = false;
-        App.toast('Pedido aprobado. PDF descargado y eliminado');
-        this.load();
     },
 
     // ───────────────────── Flujo RECHAZAR (→ rechazado) ─────────────────────
@@ -782,18 +769,18 @@ App.registerModule('pedidos', {
             + '<div style="padding:20px 24px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:12px;justify-content:space-between">'
             + '<div style="display:flex;align-items:center;gap:12px">'
             + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#fef2f2,#fee2e2);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>'
-            + '<div><div style="font-size:16px;font-weight:700;color:#0f172a">Rechazar Pedido</div>'
-            + '<div style="font-size:11px;color:#94a3b8">El PDF será eliminado por el sistema</div></div></div>'
+            + '<div><div style="font-size:15px;font-weight:700;color:#0f172a">Rechazar Pedido</div>'
+            + '<div class="ped-nota">El PDF será eliminado por el sistema</div></div></div>'
             + '<button onclick="App.modules.pedidos._cerrarRechazoModal()" style="background:none;border:none;cursor:pointer;padding:4px;color:#94a3b8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
             + '</div>'
             + '<div style="padding:24px">'
             + '<div style="display:flex;gap:16px;margin-bottom:18px;padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">'
-            + '<div><span style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;display:block">N Pedido</span><span style="font-weight:700;color:#0f172a">' + escText(p.numero_pedido) + '</span></div>'
-            + '<div><span style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;display:block">Cliente</span><span style="font-weight:600;color:#475569">' + escText(p.cliente) + '</span></div>'
+            + '<div><span class="ped-mini-label">N Pedido</span><span style="font-size:13px;font-weight:700;color:#0f172a">' + escText(p.numero_pedido) + '</span></div>'
+            + '<div><span class="ped-mini-label">Cliente</span><span style="font-size:13px;font-weight:600;color:#475569">' + escText(p.cliente) + '</span></div>'
             + '</div>'
-            + '<label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Motivo de Rechazo *</label>'
+            + '<label class="ped-label">Motivo de Rechazo *</label>'
             + '<textarea id="pedRechazoMotivo" rows="4" placeholder="Indica el motivo del rechazo..." style="font-size:13px;width:100%;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;resize:vertical;transition:all 0.2s" onfocus="this.style.borderColor=\'#ef4444\';this.style.boxShadow=\'0 0 0 3px rgba(239,68,68,0.1)\'" oninput="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></textarea>'
-            + '<div style="font-size:11px;color:#94a3b8;margin-top:6px">El motivo es obligatorio y quedará visible en el badge RECHAZADO.</div>'
+            + '<div class="ped-nota" style="margin-top:6px">El motivo es obligatorio y quedará visible en el badge RECHAZADO.</div>'
             + '</div>'
             + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid #f1f5f9;background:#f8fafc">'
             + '<button onclick="App.modules.pedidos._cerrarRechazoModal()" class="btn btn-outline">Cancelar</button>'
@@ -874,12 +861,13 @@ App.registerModule('pedidos', {
             const ped = this.allPedidos.find(x => x.id === id);
             let html = '<div style="padding:0">';
             if (!Array.isArray(historial) || historial.length === 0) {
-                html += '<div style="padding:32px;text-align:center;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style="font-size:13px">Sin cambios registrados</div></div>';
+                html += '<div style="padding:32px;text-align:center;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div class="ped-nota">Sin cambios registrados</div></div>';
             } else {
-                html += '<div style="padding:20px 24px 12px;border-bottom:1px solid #f1f5f9"><div style="font-size:14px;font-weight:600;color:#0f172a">' + escText(ped ? ped.numero_pedido : '') + '</div><div style="font-size:12px;color:#64748b;margin-top:2px">' + historial.length + ' evento(s)</div></div>';
+                html += '<div style="padding:20px 24px 12px;border-bottom:1px solid #f1f5f9"><div style="font-size:13px;font-weight:600;color:#0f172a">' + escText(ped ? ped.numero_pedido : '') + '</div><div class="ped-nota" style="margin-top:2px">' + this._fmtNum(historial.length) + ' evento(s)</div></div>';
                 html += '<div style="max-height:400px;overflow-y:auto">';
                 historial.forEach(h => {
-                    const fecha = h.created_at ? new Date(h.created_at).toLocaleString('es-CL') : '-';
+                    // Fecha+hora en el MISMO patrón que la tabla: dd-mm-yyyy HH:mm.
+                    const fecha = h.created_at ? this.fmtFechaHoraTexto(h.created_at) : '-';
                     const iconColor = h.accion === 'Aprobado' ? '#16a34a' : h.accion === 'Rechazado' ? '#dc2626' : h.accion === 'Vuelto a pendiente' ? '#f59e0b' : '#8b5cf6';
                     html += '<div style="padding:16px 24px;border-bottom:1px solid #f8fafc">';
                     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">';
@@ -890,9 +878,9 @@ App.registerModule('pedidos', {
                     else html += '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>';
                     html += '</svg></div>';
                     html += '<div><div style="font-size:13px;font-weight:600;color:#0f172a">' + escText(h.accion) + '</div>';
-                    html += '<div style="font-size:11px;color:#94a3b8">' + fecha + (h.usuario ? ' · ' + escText(h.usuario) : '') + '</div></div></div>';
+                    html += '<div class="ped-nota">' + fecha + (h.usuario ? ' · ' + escText(h.usuario) : '') + '</div></div></div>';
                     if (h.campos_despues && typeof h.campos_despues === 'object') {
-                        html += '<div style="margin-left:38px;font-size:12px;color:#475569">';
+                        html += '<div style="margin-left:38px;font-size:13px;color:#475569">';
                         for (const [campo, vals] of Object.entries(h.campos_despues)) {
                             html += '<div style="margin-top:4px"><span style="color:#64748b">' + escText(campo) + ':</span> ';
                             if (vals.antes !== undefined && vals.antes !== null) html += '<span style="text-decoration:line-through;color:#dc2626">' + escText(String(vals.antes)) + '</span> ';
@@ -911,7 +899,7 @@ App.registerModule('pedidos', {
             overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
             overlay.innerHTML = '<div style="background:white;border-radius:16px;width:460px;max-width:95vw;box-shadow:0 25px 60px rgba(0,0,0,0.15);overflow:hidden">'
                 + '<div style="padding:20px 24px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">'
-                + '<div><div style="font-size:16px;font-weight:700;color:#0f172a">Historial de Cambios</div></div>'
+                + '<div><div style="font-size:15px;font-weight:700;color:#0f172a">Historial de Cambios</div></div>'
                 + '<button onclick="document.getElementById(\'pedHistorialModal\').remove()" style="background:none;border:none;cursor:pointer;padding:4px;color:#94a3b8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
                 + '</div>' + html + '</div>';
             document.body.appendChild(overlay);
@@ -920,15 +908,37 @@ App.registerModule('pedidos', {
         }
     },
 
-    fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return '<div class="ped-dt">' + f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '</div><div class="ped-dt-sub">' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + '</div>'; },
+    // ─────────────────── Formatos es-CL (un solo patrón en el módulo) ───────────────────
+    // Fecha: dd-mm-yyyy · Hora: HH:mm (24h) · Fecha+hora: dd-mm-yyyy HH:mm.
+
+    _fmtFecha(d) {
+        return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    },
+    _fmtHora(d) {
+        return new Date(d).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
+    },
+    // Fecha+hora en texto plano (historial): mismo patrón que la tabla.
+    fmtFechaHoraTexto(d) {
+        if (!d) return '-';
+        return this._fmtFecha(d) + ' ' + this._fmtHora(d);
+    },
+    // Celda de fecha/hora de la tabla: fecha arriba (dato) y hora abajo (nota).
+    fmtDateTime(d) {
+        if (!d) return '-';
+        return '<div class="ped-dt">' + this._fmtFecha(d) + '</div><div class="ped-dt-sub">' + this._fmtHora(d) + '</div>';
+    },
+    // Duración: SIEMPRE las 2 unidades más significativas con espacio —
+    // "5 min", "2 h 30 min", "2 d 4 h" (un solo formato en todo el módulo).
     fmtTiempo(inicio, fin) {
-        if (!inicio || !fin) return '<span style="color:#cbd5e1">-</span>';
+        if (!inicio || !fin) return '<span class="ped-vacio">-</span>';
         const diff = new Date(fin) - new Date(inicio);
-        if (diff < 0) return '-';
+        if (diff < 0) return '<span class="ped-vacio">-</span>';
         const mins = Math.floor(diff / 60000);
-        if (mins < 60) return mins + ' min';
-        const h = Math.floor(mins / 60);
+        const d = Math.floor(mins / 1440);
+        const h = Math.floor((mins % 1440) / 60);
         const m = mins % 60;
-        return h + 'h ' + m + 'min';
+        if (d > 0) return d + ' d ' + h + ' h';
+        if (h > 0) return h + ' h ' + m + ' min';
+        return m + ' min';
     }
 });
