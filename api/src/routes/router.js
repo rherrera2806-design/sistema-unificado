@@ -18,8 +18,10 @@ router.use(require('./tallerInspecciones'));
 router.use(require('./tallerMetricas'));
 router.use(require('./bodega'));
 router.use(require('./adminUsuarios'));
-router.use(require('./r2Storage'));
-router.use(require('./r2Legacy'));
+// R2 LEGACY RETIRADO (seguridad): r2Legacy (upload por curl+exec) y r2Storage
+// (delete por exec) permitían inyección de comandos vía fileName/key y no tenían
+// consumidores en la app actual (los PDFs viajan como BYTEA en pedidos). El
+// código queda en el repo documentado, pero sin montar.
 router.use(require('./pedidos'));
 router.use(require('./asistencia'));
 router.use(require('./maintenance'));

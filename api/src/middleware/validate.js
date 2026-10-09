@@ -17,12 +17,32 @@ const entregasSchema = z.object({
     tipo: z.enum(['Retira', 'Despacho']).optional().default('Retira')
 });
 
+/**
+ * CONTRATO REAL de /api/pedidos (esquema de REFERENCIA, no se conecta como
+ * middleware de validación).
+ *
+ * ¿Por qué no se conecta tal cual? Porque el PUT /api/pedidos/:id es PARCIAL
+ * (solo cambia los campos que llegan: edición, aprobación o rechazo) y un
+ * schema zod completo exigiría todos los campos requeridos. La validación
+ * efectiva vive en routes/pedidos.js y replica a mano estas mismas reglas
+ * (límites, estados válidos y URL de archivo). Las TRANSICIONES de estado
+ * permitidas también están documentadas en routes/pedidos.js.
+ *
+ * El campo 'vendedor' se acepta en el body por compatibilidad con el frontend,
+ * pero el backend lo IGNORA: siempre usa el email de la sesión. El PDF viaja en
+ * el campo multipart 'archivo_pdf' (BYTEA), nunca como base64 en el JSON.
+ */
 const pedidosSchema = z.object({
     numero_pedido: z.string().min(1, 'Numero de pedido requerido').max(50).transform(s => s.trim()),
-    cliente: z.string().min(1, 'Cliente requerido').max(100).transform(s => s.trim()),
-    vendedor: z.string().max(100).optional().default(''),
-    archivo_url: z.string().url().optional().or(z.literal('')).default(''),
-    pdf_base64: z.string().optional()
+    cliente: z.string().min(1, 'Cliente requerido').max(200).transform(s => s.trim()),
+    tipo_ov: z.string().max(30).optional().default('Normal').transform(s => s.trim() || 'Normal'),
+    estado: z.enum(['pendiente', 'aprobado', 'rechazado']).optional(),
+    motivo_rechazo: z.string().max(500).nullable().optional(),
+    // La semántica del protocolo (https, http solo en localhost, sin
+    // javascript:/data:) la valida validarArchivoUrl() en routes/pedidos.js,
+    // tanto al guardarla como antes de redirigir.
+    archivo_url: z.string().max(2000).optional().or(z.literal('')).default(''),
+    vendedor: z.string().max(200).optional()
 });
 
 const produccionOrdenSchema = z.object({
@@ -72,10 +92,13 @@ const validate = (schema) => (req, res, next) => {
         next();
     } catch (e) {
         if (e instanceof z.ZodError) {
+            // zod v4 expone los detalles en e.issues (e.errors ya no existe:
+            // antes este catch lanzaba TypeError y respondía 500 en vez de 400).
+            const issues = e.issues || e.errors || [];
             return res.status(400).json({
                 error: 'Datos invalidos',
-                details: e.errors.map(err => ({
-                    field: err.path.join('.'),
+                details: issues.map(err => ({
+                    field: (err.path || []).join('.'),
                     message: err.message
                 }))
             });
