@@ -38,6 +38,20 @@
 //      'EN_CAMINO' | 'EN_CURSO' | 'COMPLETADA' | 'CON_NOVEDADES' |
 //      'CANCELADA'  (services/instalaciones.js)
 //  * mermas.causa: texto libre definido por el usuario (services/taller.js)
+//  * movimientos.tipo_movimiento: 'entrada' | 'salida'
+//      (services/inventario.js, middleware/validate.js)
+//  * movimientos.tipo_salida (solo aplica a salidas; NULL en entradas):
+//      'plancha_completa' | 'trozo'  (web/public/inv-js/modules/movimientos.js,
+//      services/inventario.js)
+//  * REGLA DE STOCK del inventario: las PLANCHAS descuentan solo las salidas
+//      con tipo_salida = 'plancha_completa' (un trozo no consume una plancha
+//      entera); los M² y los KG descuentan TODAS las salidas sin importar
+//      tipo_salida (services/inventario.js, services/catalogos.js,
+//      routes/catalogosInventario.js).
+//  * movimientos.espesor / catalogo_tipos_cristal.espesor /
+//      catalogo_espesores.valor: DECIMAL(6,2) desde la corrección de este
+//      archivo (antes INTEGER no admitía espesores reales como 4.76 o 6.35;
+//      ver faseColumnas). materias_primas.espesor_mm siempre fue DECIMAL(6,2).
 // ═════════════════════════════════════════════════════════════════════════════
 
 const { query, pool } = require('./dbPool');
@@ -71,6 +85,9 @@ function esErrorIdempotencia(e) {
  *                           SAVEPOINT para no abortar la transacción; solo se
  *                           ignoran errores de idempotencia y el resto se
  *                           registra con console.warn.
+ *   client                  conexión (ya en transacción) para bloques que
+ *                           necesiten armar sus propios SAVEPOINTs (ver
+ *                           runMigrations). No usar fuera de fn.
  * Si algo falla, la fase se revierte COMPLETA y el error real se relanza.
  */
 async function runFase(nombre, fn) {
@@ -94,7 +111,7 @@ async function runFase(nombre, fn) {
     };
     try {
         await client.query('BEGIN');
-        await fn({ q, safe });
+        await fn({ q, safe, client });
         await client.query('COMMIT');
     } catch (e) {
         try { await client.query('ROLLBACK'); } catch (eRollback) { /* conexión ya caída */ }
@@ -140,10 +157,12 @@ async function faseTablas({ q }) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // espesor: DECIMAL(6,2) para admitir espesores reales (4.76, 6.35 mm);
+    // era INTEGER. Ver conversión de bases existentes en faseColumnas.
     await q(`CREATE TABLE IF NOT EXISTS catalogo_tipos_cristal (
         id SERIAL PRIMARY KEY,
         nombre VARCHAR(100) NOT NULL,
-        espesor INTEGER NOT NULL DEFAULT 0,
+        espesor DECIMAL(6,2) NOT NULL DEFAULT 0,
         codigo_sap VARCHAR(50) DEFAULT '',
         stock_critico INTEGER DEFAULT 0,
         consumo_mensual_aprox INTEGER DEFAULT 0,
@@ -151,9 +170,11 @@ async function faseTablas({ q }) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // valor: DECIMAL(6,2) (coherente con movimientos.espesor /
+    // catalogo_tipos_cristal.espesor; era INTEGER).
     await q(`CREATE TABLE IF NOT EXISTS catalogo_espesores (
         id SERIAL PRIMARY KEY,
-        valor INTEGER UNIQUE NOT NULL,
+        valor DECIMAL(6,2) UNIQUE NOT NULL,
         activo BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
@@ -229,7 +250,7 @@ async function faseTablas({ q }) {
     await q(`CREATE TABLE IF NOT EXISTS movimientos (
         id SERIAL PRIMARY KEY, usuario_id INTEGER REFERENCES usuarios(id),
         tipo_movimiento VARCHAR(20) NOT NULL, tipo_cristal VARCHAR(50) NOT NULL,
-        espesor INTEGER NOT NULL, ancho INTEGER NOT NULL, alto INTEGER NOT NULL,
+        espesor DECIMAL(6,2) NOT NULL, ancho INTEGER NOT NULL, alto INTEGER NOT NULL,
         cantidad_planchas INTEGER NOT NULL, metros_cuadrados DECIMAL(10,4) NOT NULL,
         proveedor VARCHAR(100), tipo_salida VARCHAR(20), observaciones TEXT,
         fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -420,15 +441,43 @@ async function faseColumnas({ q, safe }) {
     // ── catalogo_tipos_cristal ───────────────────────────────────────────────
     await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.stock_critico');
     await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.consumo_mensual_aprox');
-    await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS espesor INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.espesor');
+    await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS espesor DECIMAL(6,2) DEFAULT 0`, 'catalogo_tipos_cristal.espesor');
     await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''`, 'catalogo_tipos_cristal.codigo_sap');
     await safe(`ALTER TABLE catalogo_tipos_cristal ALTER COLUMN consumo_mensual_aprox TYPE INTEGER USING consumo_mensual_aprox::INTEGER`, 'catalogo_tipos_cristal.consumo_mensual_aprox tipo');
     // Estas dos restricciones UNIQUE se reemplazan por el índice parcial
     // idx_tipos_cristal_nombre_espesor (ver faseIndices). DROP CONSTRAINT IF
     // EXISTS es idempotente y es el único DROP que conserva este archivo.
+    // (Antes había una tercera sentencia con dos nombres en una sola acción,
+    //  `DROP CONSTRAINT IF EXISTS a, b`, que es un syntax error y generaba un
+    //  warn permanente en cada arranque: era redundante con las dos anteriores
+    //  y se eliminó.)
     await safe(`ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_key`, 'catalogo_tipos_cristal drop unique');
     await safe(`ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_espesor_key`, 'catalogo_tipos_cristal drop unique');
-    await safe(`ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_espesor_key, catalogo_tipos_cristal_nombre_key`, 'catalogo_tipos_cristal drop unique');
+
+    // ── espesores: INTEGER → DECIMAL(6,2) ───────────────────────────────────
+    // Las columnas de espesor nacieron como INTEGER y no admiten espesores
+    // reales del rubro (4.76, 6.35 mm). La conversión es SEGURA en la base
+    // existente: los valores enteros se preservan exactamente (entero → decimal
+    // es inyectivo, no se pierde ni redondea nada) y el USING es explícito.
+    // El DO $$ solo ejecuta el ALTER si la columna sigue siendo 'integer', así
+    // en una base fresca (que ya nace con DECIMAL(6,2)) y en cada arranque
+    // posterior no se repite el rewrite de la tabla. Sin DROP, solo conversión
+    // de tipo. Ver documentación de vocabulario en la cabecera del archivo.
+    await safe(`DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='movimientos' AND column_name='espesor' AND data_type='integer') THEN
+            ALTER TABLE movimientos ALTER COLUMN espesor TYPE DECIMAL(6,2) USING espesor::DECIMAL(6,2);
+        END IF;
+    END $$`, 'movimientos.espesor tipo integer->decimal');
+    await safe(`DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='catalogo_tipos_cristal' AND column_name='espesor' AND data_type='integer') THEN
+            ALTER TABLE catalogo_tipos_cristal ALTER COLUMN espesor TYPE DECIMAL(6,2) USING espesor::DECIMAL(6,2);
+        END IF;
+    END $$`, 'catalogo_tipos_cristal.espesor tipo integer->decimal');
+    await safe(`DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='catalogo_espesores' AND column_name='valor' AND data_type='integer') THEN
+            ALTER TABLE catalogo_espesores ALTER COLUMN valor TYPE DECIMAL(6,2) USING valor::DECIMAL(6,2);
+        END IF;
+    END $$`, 'catalogo_espesores.valor tipo integer->decimal');
 
     // ── mantención ───────────────────────────────────────────────────────────
     await safe(`ALTER TABLE preventive_maintenance ADD COLUMN IF NOT EXISTS horas_ocupadas REAL DEFAULT 0`, 'preventive_maintenance.horas_ocupadas');
@@ -591,6 +640,16 @@ async function faseIndices({ q }) {
     await q('CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)');
     await q('CREATE INDEX IF NOT EXISTS idx_fam_estaciones_estacion ON familia_estaciones_base(estacion_id)');
     await q('CREATE INDEX IF NOT EXISTS idx_cola_pasos_orden ON cola_produccion_pasos(orden_produccion_id)');
+    // Índices de inventario (movimientos): todos los reportes del módulo
+    // filtraban por fecha_hora / tipo_movimiento / (tipo_cristal, espesor) y el
+    // planificador caía en seq scan. Nota: los filtros con EXTRACT(... FROM
+    // fecha_hora) no son sargables, así que no aprovechan idx_movimientos_fecha
+    // directamente; la corrección de las queries es aparte. Aquí solo se crean
+    // los índices que faltaban (el de materia_prima_id se crea en
+    // runMigrations, junto a la columna).
+    await q('CREATE INDEX IF NOT EXISTS idx_movimientos_fecha ON movimientos(fecha_hora)');
+    await q('CREATE INDEX IF NOT EXISTS idx_movimientos_tipo ON movimientos(tipo_movimiento)');
+    await q('CREATE INDEX IF NOT EXISTS idx_movimientos_tipo_cristal ON movimientos(tipo_cristal, espesor)');
     // fecha_programada ya fue agregada en faseColumnas.
     await q('CREATE INDEX IF NOT EXISTS idx_cola_pasos_estacion_fecha ON cola_produccion_pasos(estacion_id, fecha_programada) WHERE fecha_programada IS NOT NULL');
     await q('CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON produccion_ordenes(estado_programacion, created_at DESC)');
@@ -868,312 +927,393 @@ async function faseDatos({ q, safe }) {
 // real con console.error si algo falla, sin tragarlo en silencio).
 // Se ejecutan después de las fases, por lo que sus tablas/columnas objetivo ya
 // existen.
+//
+// ATOMICIDAD: antes cada sentencia corría en autocommit suelto y un fallo a
+// mitad de bloque dejaba el esquema a medias (p. ej. se aplicaba un ALTER pero
+// no el siguiente y los INSERT fallaban en runtime). Ahora TODAS las
+// migraciones corren en UNA transacción (runFase('migraciones', ...)) y cada
+// bloque corre dentro de su propio SAVEPOINT: si un bloque falla se revierte
+// SOLO ese bloque (nunca queda una sentencia aplicada y otra no) y se registra
+// con el mismo mensaje de siempre ('Migration warning (...)'); los demás bloques
+// y el COMMIT final siguen igual. El comportamiento idempotente no cambia: todo
+// sigue siendo ALTER/CREATE ... IF NOT EXISTS, ON CONFLICT DO NOTHING o UPDATE
+// con WHERE estrecho.
 // ─────────────────────────────────────────────────────────────────────────────
 async function runMigrations() {
-    try {
-        await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS fecha_ingreso DATE");
-        await query("UPDATE trabajadores SET fecha_ingreso = DATE(created_at) WHERE fecha_ingreso IS NULL");
-        await query("ALTER TABLE trabajadores ALTER COLUMN fecha_ingreso SET DEFAULT CURRENT_DATE");
-        await query("ALTER TABLE trabajadores ALTER COLUMN fecha_ingreso SET NOT NULL");
-    } catch (e) {
-        console.error('Migration warning (001):', e.message);
-    }
-    try {
-        await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS telefono VARCHAR(20)");
-        await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS puesto VARCHAR(100)");
-    } catch (e) {
-        console.error('Migration warning (telefono/puesto):', e.message);
-    }
-    try {
-        await query("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS materia_prima_id INTEGER REFERENCES materias_primas(id)");
-        await query("CREATE INDEX IF NOT EXISTS idx_movimientos_materia_prima ON movimientos(materia_prima_id)");
-        await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''");
-        await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0");
-        // LEGACY / SIN USO: materias_primas.consumo_mensual_aprox NO se usa en
-        // ninguna parte de api/src (verificado con grep). La columna viva es
-        // consumo_promedio_mensual (services/inventario.js, services/catalogos.js,
-        // services/materiasPrimasService.js, routes/catalogosInventario.js,
-        // routes/produccionConfig.js). NO se elimina porque la base de
-        // producción ya la tiene y puede contener datos; se mantiene solo por
-        // compatibilidad. (Ojo: catalogo_tipos_cristal.consumo_mensual_aprox es
-        // otra tabla y esa sí está en uso.)
-        await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0");
-        await query("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS turno VARCHAR(10) DEFAULT NULL");
-    } catch (e) {
-        console.error('Migration warning (inventario-materias_primas):', e.message);
-    }
-    try {
-        await query(`CREATE TABLE IF NOT EXISTS procesos_carroceria_sap (
-            id SERIAL PRIMARY KEY,
-            codigo_sap VARCHAR(50) UNIQUE NOT NULL,
-            estaciones_json JSONB NOT NULL DEFAULT '[]'::jsonb,
-            descripcion TEXT,
-            ancho DECIMAL(10,2) DEFAULT NULL,
-            alto DECIMAL(10,2) DEFAULT NULL,
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
-        )`);
-        await query("ALTER TABLE procesos_carroceria_sap ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL");
-        await query("ALTER TABLE procesos_carroceria_sap ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL");
-        await query(`CREATE INDEX IF NOT EXISTS idx_procesos_carroceria_sap_codigo ON procesos_carroceria_sap(codigo_sap)`);
-    } catch (e) {
-        console.error('Migration warning (002/003):', e.message);
-    }
-    // ── costos_config: parámetros de costeo para el módulo de Costos ──
-    try {
-        await query(`CREATE TABLE IF NOT EXISTS costos_config (
-            id SERIAL PRIMARY KEY,
-            clave VARCHAR(50) UNIQUE NOT NULL,
-            valor DECIMAL(12,2) DEFAULT 0,
-            descripcion TEXT,
-            unidad VARCHAR(20),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
-        const existingCount = await query('SELECT COUNT(*) FROM costos_config WHERE valor != 0');
-        if (parseInt(existingCount.rows[0].count) === 0) {
-            const defaultParams = [
-                ['costo_hh', 0, 'Costo hora-hombre por m²', '$/m²'],
-                ['costo_energia_m2', 0, 'Costo energía por m²', '$/m²'],
-                ['costo_pulido_ml', 0, 'Costo pulido por metro lineal', '$/ml'],
-                ['costo_perforacion', 0, 'Costo por perforación', '$/ud'],
-                ['costo_destaje_kg', 0, 'Costo destaje normal por kg', '$/kg'],
-                ['costo_destaje_complejo_kg', 0, 'Costo destaje complejo por kg', '$/kg'],
-                ['costo_pintura_ml', 0, 'Costo pintura por ml', '$/ml'],
-                ['costo_insumos_pintura', 0, 'Costos insumos de pintura por m²', '$/m²'],
-                ['costo_otros_m2', 0, 'Costos otros por m²', '$/m²'],
-                ['hh_crudo_sin_pulir', 0, 'HH Crudo/Laminado sin pulir', '$/m²'],
-                ['energia_crudo_sin_pulir', 0, 'Energía Crudo/Laminado sin pulir', '$/m²'],
-                ['hh_crudo_pulido', 0, 'HH Crudo/Laminado pulido', '$/m²'],
-                ['energia_crudo_pulido', 0, 'Energía Crudo/Laminado pulido', '$/m²'],
-                ['hh_templado_plano', 0, 'HH Templado plano', '$/m²'],
-                ['energia_templado_plano', 0, 'Energía Templado plano', '$/m²'],
-                ['hh_templado_curvo', 0, 'HH Templado curvo', '$/m²'],
-                ['energia_templado_curvo', 0, 'Energía Templado curvo', '$/m²'],
-                ['merma_proceso_pct', 0, 'Porcentaje merma de proceso', '%'],
-                ['merma_aprovechamiento_pct', 0, 'Porcentaje merma de aprovechamiento', '%']
-            ];
-            for (const [clave, valor, descripcion, unidad] of defaultParams) {
-                await query('INSERT INTO costos_config (clave, valor, descripcion, unidad) VALUES ($1, $2, $3, $4) ON CONFLICT (clave) DO NOTHING', [clave, valor, descripcion, unidad]);
+    await runFase('migraciones', async ({ client }) => {
+        // query local: misma firma que config/dbPool.query pero atada a la
+        // conexión de la transacción (un pool no sirve dentro de un BEGIN).
+        const query = (text, params = []) => client.query(text, params);
+        let contadorSavepoints = 0;
+        // bloque(etiqueta, fn): corre fn dentro de un SAVEPOINT. Si fn falla se
+        // revierte SOLO ese bloque y se conserva el log histórico
+        // 'Migration warning (<etiqueta>): <error>' (forma sin cambios).
+        const bloque = async (etiqueta, fn) => {
+            const punto = `mig_bloque_${++contadorSavepoints}`;
+            await client.query(`SAVEPOINT ${punto}`);
+            try {
+                await fn();
+                await client.query(`RELEASE SAVEPOINT ${punto}`);
+            } catch (e) {
+                await client.query(`ROLLBACK TO SAVEPOINT ${punto}`);
+                await client.query(`RELEASE SAVEPOINT ${punto}`);
+                console.error(`Migration warning (${etiqueta}):`, e.message);
             }
-        }
-    } catch (e) {
-        console.error('Migration warning (costos_config):', e.message);
-    }
-    try {
-        await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS mecanizado_operaciones TEXT");
-    } catch (e) {
-        console.error('Migration warning (mecanizado_operaciones):', e.message);
-    }
-    try {
-        await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS nivel_prioridad INTEGER DEFAULT 1");
-        await query("UPDATE produccion_ordenes SET nivel_prioridad = 1 WHERE nivel_prioridad IS NULL");
-        await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS needs_reprogramming BOOLEAN DEFAULT FALSE");
-    } catch (e) {
-        console.error('Migration warning (nivel_prioridad):', e.message);
-    }
-    try {
-        await query("UPDATE produccion_capacidad_grupo SET color = '#22c55e' WHERE grupo = 'Arquitectura'");
-        await query("UPDATE produccion_capacidad_grupo SET color = '#67e8f9' WHERE grupo = 'Carroceros'");
-        await query("UPDATE produccion_capacidad_grupo SET color = '#1e3a8a' WHERE grupo LIKE '%Termopanel%'");
-        await query("UPDATE produccion_capacidad_grupo SET color = '#1e293b' WHERE grupo LIKE '%Laminado%' AND grupo NOT LIKE '%VM%'");
-        await query("UPDATE produccion_capacidad_grupo SET color = '#f97316' WHERE grupo LIKE '%Laminado VM%'");
-        await query("UPDATE produccion_capacidad_grupo SET color = '#fde047' WHERE grupo LIKE '%Servicio%'");
-    } catch (e) {
-        console.error('Migration warning (grupo colors):', e.message);
-    }
-    try {
-        await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL");
-        await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS procesos_especificos_json JSONB DEFAULT NULL");
-        await query("CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)");
-        // Migrar datos desde procesos_carroceria_sap a recetas_bom.procesos_especificos_json
-        await query(`
-            UPDATE recetas_bom r
-            SET procesos_especificos_json = pcs.estaciones_json
-            FROM procesos_carroceria_sap pcs
-            WHERE r.codigo_sap_padre = pcs.codigo_sap
-              AND (r.procesos_especificos_json IS NULL OR r.procesos_especificos_json = '[]'::jsonb)
-              AND pcs.estaciones_json IS NOT NULL
-        `);
-    } catch (e) {
-        console.error('Migration warning (004):', e.message);
-    }
-    try {
-        await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL");
-        await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL");
-    } catch (e) {
-        console.error('Migration warning (ancho_alto):', e.message);
-    }
-    // ── Migración: Mejoras al Módulo Taller (operario, inspecciones, historial) ──
-    try {
-        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS operario_email VARCHAR(200)`);
-        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS operario_nombre VARCHAR(200)`);
-        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS pausado_en TIMESTAMP`);
-        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS tiempo_pausado_segundos INTEGER DEFAULT 0`);
-        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS locked_by VARCHAR(200)`);
-        await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_pasos_operario ON cola_produccion_pasos(operario_email)`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_pasos_locked ON cola_produccion_pasos(locked_by, locked_at)`);
-    } catch (e) {
-        console.error('Migration warning (taller-pasos):', e.message);
-    }
-    try {
-        await query(`CREATE TABLE IF NOT EXISTS inspecciones_calidad (
-            id SERIAL PRIMARY KEY,
-            paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE CASCADE,
-            orden_produccion_id INTEGER REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
-            estacion_id INTEGER REFERENCES estaciones_maestras(id),
-            tipo_inspeccion VARCHAR(50) NOT NULL,
-            resultado VARCHAR(20) NOT NULL,
-            defectos JSONB DEFAULT '[]',
-            cantidad_inspeccionada INTEGER DEFAULT 0,
-            cantidad_defectuosa INTEGER DEFAULT 0,
-            inspector_email VARCHAR(200) NOT NULL,
-            inspector_nombre VARCHAR(200),
-            observaciones TEXT,
-            imagenes JSONB DEFAULT '[]',
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
-        )`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_paso ON inspecciones_calidad(paso_id)`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_orden ON inspecciones_calidad(orden_produccion_id)`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_fecha ON inspecciones_calidad(created_at)`);
-    } catch (e) {
-        console.error('Migration warning (inspecciones_calidad):', e.message);
-    }
-    try {
-        await query(`CREATE TABLE IF NOT EXISTS taller_historial (
-            id SERIAL PRIMARY KEY,
-            entidad_tipo VARCHAR(50) NOT NULL,
-            entidad_id INTEGER NOT NULL,
-            accion VARCHAR(50) NOT NULL,
-            datos_anteriores JSONB,
-            datos_nuevos JSONB,
-            usuario_email VARCHAR(200),
-            usuario_nombre VARCHAR(200),
-            created_at TIMESTAMP DEFAULT NOW()
-        )`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_historial_entidad ON taller_historial(entidad_tipo, entidad_id)`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_historial_fecha ON taller_historial(created_at)`);
-    } catch (e) {
-        console.error('Migration warning (taller_historial):', e.message);
-    }
-    try {
-        await query(`CREATE TABLE IF NOT EXISTS tipos_defecto (
-            id SERIAL PRIMARY KEY,
-            codigo VARCHAR(20) UNIQUE NOT NULL,
-            nombre VARCHAR(100) NOT NULL,
-            categoria VARCHAR(50),
-            severidad_default VARCHAR(20) DEFAULT 'menor',
-            requiere_foto BOOLEAN DEFAULT false,
-            activo BOOLEAN DEFAULT true,
-            created_at TIMESTAMP DEFAULT NOW()
-        )`);
-        await query(`INSERT INTO tipos_defecto (codigo, nombre, categoria, severidad_default, requiere_foto) VALUES
-            ('RAY','Rayón','cosmetico','menor',false),
-            ('BUR','Burbuja','cosmetico','menor',true),
-            ('RAJ','Rajadura','estructural','critico',true),
-            ('QUE','Quiebre','estructural','critico',true),
-            ('DIM','Fuera de dimensión','dimensional','mayor',false),
-            ('DES','Desalineación','dimensional','mayor',false),
-            ('PIN','Defecto de pintado','cosmetico','menor',true),
-            ('PER','Perforación incorrecta','dimensional','mayor',false),
-            ('TEM','Defecto de templado','estructural','critico',true),
-            ('LAM','Defecto de laminado','estructural','critico',true),
-            ('SUC','Suciedad/Contaminación','cosmetico','menor',false),
-            ('BOR','Borde irregular','cosmetico','menor',true)
-        ON CONFLICT (codigo) DO NOTHING`);
-    } catch (e) {
-        console.error('Migration warning (tipos_defecto):', e.message);
-    }
-    try {
-        await query(`CREATE TABLE IF NOT EXISTS taller_turnos (
-            id SERIAL PRIMARY KEY,
-            fecha DATE NOT NULL,
-            turno VARCHAR(20) NOT NULL,
-            operario_email VARCHAR(200) NOT NULL,
-            operario_nombre VARCHAR(200),
-            estacion_id INTEGER REFERENCES estaciones_maestras(id),
-            hora_inicio TIMESTAMP,
-            hora_fin TIMESTAMP,
-            ordenes_completadas INTEGER DEFAULT 0,
-            m2_producidos DECIMAL(10,2) DEFAULT 0,
-            mermas_generadas INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT NOW()
-        )`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON taller_turnos(fecha, turno)`);
-    } catch (e) {
-        console.error('Migration warning (taller_turnos):', e.message);
-    }
-    // ── Módulo Bodega: carros de producto terminado, pre-entrega, entregas ──
-    try {
-        await query(`CREATE TABLE IF NOT EXISTS bodega_carros (
-            id SERIAL PRIMARY KEY,
-            codigo VARCHAR(30) UNIQUE NOT NULL,
-            tipo VARCHAR(50) DEFAULT 'carro',
-            capacidad_items INTEGER DEFAULT 50,
-            activo BOOLEAN DEFAULT true,
-            observaciones TEXT,
-            created_at TIMESTAMP DEFAULT NOW()
-        )`);
-        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS tipo VARCHAR(50) DEFAULT 'carro'`);
-        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS capacidad_items INTEGER DEFAULT 50`);
-        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true`);
-        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS observaciones TEXT`);
-        await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()`);
-        await query(`CREATE TABLE IF NOT EXISTS bodega_carros_items (
-            id SERIAL PRIMARY KEY,
-            carro_id INTEGER REFERENCES bodega_carros(id) ON DELETE CASCADE,
-            orden_produccion_id INTEGER REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
-            paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE CASCADE,
-            armador_email VARCHAR(200),
-            armador_nombre VARCHAR(200),
-            armado_at TIMESTAMP DEFAULT NOW(),
-            entregado_at TIMESTAMP,
-            entregado_por_email VARCHAR(200),
-            observaciones TEXT
-        )`);
-        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armador_email VARCHAR(200)`);
-        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armador_nombre VARCHAR(200)`);
-        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armado_at TIMESTAMP DEFAULT NOW()`);
-        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS entregado_at TIMESTAMP`);
-        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS entregado_por_email VARCHAR(200)`);
-        await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS observaciones TEXT`);
-        await query(`CREATE TABLE IF NOT EXISTS bodega_entregas (
-            id SERIAL PRIMARY KEY,
-            carro_id INTEGER REFERENCES bodega_carros(id),
-            numero_documento VARCHAR(50) UNIQUE NOT NULL,
-            generado_at TIMESTAMP DEFAULT NOW(),
-            generado_por_email VARCHAR(200),
-            generado_por_nombre VARCHAR(200),
-            recibido_at TIMESTAMP,
-            recibido_por_email VARCHAR(200),
-            recibido_por_nombre VARCHAR(200),
-            total_items INTEGER DEFAULT 0,
-            total_kilos DECIMAL(10,2) DEFAULT 0,
-            total_m2 DECIMAL(10,2) DEFAULT 0,
-            observaciones TEXT
-        )`);
-        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS generado_por_email VARCHAR(200)`);
-        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS generado_por_nombre VARCHAR(200)`);
-        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_at TIMESTAMP`);
-        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_por_email VARCHAR(200)`);
-        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_por_nombre VARCHAR(200)`);
-        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_items INTEGER DEFAULT 0`);
-        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_kilos DECIMAL(10,2) DEFAULT 0`);
-        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_m2 DECIMAL(10,2) DEFAULT 0`);
-        await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS observaciones TEXT`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_carro ON bodega_carros_items(carro_id)`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_orden ON bodega_carros_items(orden_produccion_id)`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_entregado ON bodega_carros_items(entregado_at)`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_entregas_carro ON bodega_entregas(carro_id)`);
-        await query(`CREATE INDEX IF NOT EXISTS idx_bodega_entregas_recibido ON bodega_entregas(recibido_at)`);
-        // Carros iniciales (catálogo)
-        for (const codigo of ['C-001', 'C-002', 'C-003', 'A-001', 'A-002']) {
-            await query(`INSERT INTO bodega_carros (codigo, tipo) VALUES ($1, $2) ON CONFLICT (codigo) DO NOTHING`, [codigo, codigo.startsWith('A-') ? 'atril' : 'carro']);
-        }
-    } catch (e) {
-        console.error('Migration warning (bodega):', e.message);
-    }
+        };
+
+        await bloque('001', async () => {
+            await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS fecha_ingreso DATE");
+            await query("UPDATE trabajadores SET fecha_ingreso = DATE(created_at) WHERE fecha_ingreso IS NULL");
+            await query("ALTER TABLE trabajadores ALTER COLUMN fecha_ingreso SET DEFAULT CURRENT_DATE");
+            await query("ALTER TABLE trabajadores ALTER COLUMN fecha_ingreso SET NOT NULL");
+        });
+        await bloque('telefono/puesto', async () => {
+            await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS telefono VARCHAR(20)");
+            await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS puesto VARCHAR(100)");
+        });
+        await bloque('inventario-materias_primas', async () => {
+            await query("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS materia_prima_id INTEGER REFERENCES materias_primas(id)");
+            await query("CREATE INDEX IF NOT EXISTS idx_movimientos_materia_prima ON movimientos(materia_prima_id)");
+            await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''");
+            await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0");
+            // LEGACY / SIN USO: materias_primas.consumo_mensual_aprox NO se usa en
+            // ninguna parte de api/src (verificado con grep). La columna viva es
+            // consumo_promedio_mensual (services/inventario.js, services/catalogos.js,
+            // services/materiasPrimasService.js, routes/catalogosInventario.js,
+            // routes/produccionConfig.js). NO se elimina porque la base de
+            // producción ya la tiene y puede contener datos; se mantiene solo por
+            // compatibilidad. (Ojo: catalogo_tipos_cristal.consumo_mensual_aprox es
+            // otra tabla y esa sí está en uso.)
+            await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0");
+            await query("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS turno VARCHAR(10) DEFAULT NULL");
+        });
+
+        // ── Backfill de la migración 003 · movimientos → materias_primas ─────
+        // api/src/db/migrations/003_unificar_inventario_materias_primas.sql
+        // traía este backfill, pero ningún runner ejecuta esos .sql y
+        // runMigrations() solo había replicado los ALTER: los movimientos
+        // antiguos quedaron con materia_prima_id = NULL (invisibles para el
+        // analytics y sin descontar stock). Aquí se implementa por fin.
+        //
+        // CRITERIO DE EMPAREJAMIENTO (mismo que el .sql, pero tolerante):
+        //  * Nombre: LOWER(TRIM(tipo_cristal)) = LOWER(TRIM(materias_primas.nombre)).
+        //  * Espesor: comparación NUMÉRICA con tolerancia
+        //      ABS(m.espesor - mp.espesor_mm) < 1 mm. No se usa
+        //      mp.espesor_mm::integer porque redondea (12.5 → 13) mientras que
+        //      services/inventario.js guarda el espesor con parseInt (trunca:
+        //      4.76 → 4); una tolerancia < 1 cubre ambos casos (truncar deja
+        //      diferencia < 1; redondear deja diferencia ≤ 0.5).
+        //  * Ambigüedad: si una fila matchea con VARIAS materias primas NO se
+        //      asigna al azar: queda con materia_prima_id = NULL y se cuenta en
+        //      el log. Ídem si no hay ninguna candidata.
+        // IDEMPOTENTE: solo toca filas con materia_prima_id IS NULL; las ya
+        // mapeadas nunca se re-evalúan. Las que quedaron NULL se re-evalúan en
+        // cada arranque (por si después se crean las MPs que faltan).
+        await bloque('003-backfill-materia-prima', async () => {
+            const mapeados = await query(`
+                WITH candidatos AS (
+                    SELECT m.id AS movimiento_id, mp.id AS materia_prima_id,
+                           COUNT(*) OVER (PARTITION BY m.id) AS total_candidatas
+                    FROM movimientos m
+                    JOIN materias_primas mp
+                      ON LOWER(TRIM(m.tipo_cristal)) = LOWER(TRIM(mp.nombre))
+                     AND ABS(m.espesor::numeric - mp.espesor_mm) < 1
+                    WHERE m.materia_prima_id IS NULL
+                )
+                UPDATE movimientos m
+                SET materia_prima_id = c.materia_prima_id
+                FROM candidatos c
+                WHERE c.movimiento_id = m.id AND c.total_candidatas = 1
+                RETURNING m.id
+            `);
+            // Quedan sin mapear: las ambiguas (varias MPs candidatas) y las que
+            // no tienen ninguna MP con ese nombre+espesor.
+            const ambiguas = await query(`
+                SELECT COUNT(DISTINCT m.id) AS c
+                FROM movimientos m
+                JOIN materias_primas mp
+                  ON LOWER(TRIM(m.tipo_cristal)) = LOWER(TRIM(mp.nombre))
+                 AND ABS(m.espesor::numeric - mp.espesor_mm) < 1
+                WHERE m.materia_prima_id IS NULL
+            `);
+            const sinCandidata = await query(`
+                SELECT COUNT(*) AS c FROM movimientos m
+                WHERE m.materia_prima_id IS NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM materias_primas mp
+                    WHERE LOWER(TRIM(m.tipo_cristal)) = LOWER(TRIM(mp.nombre))
+                      AND ABS(m.espesor::numeric - mp.espesor_mm) < 1)
+            `);
+            const nAmbiguas = Number(ambiguas.rows[0].c);
+            const nSinCandidata = Number(sinCandidata.rows[0].c);
+            if (Number(mapeados.rowCount) > 0 || nAmbiguas > 0 || nSinCandidata > 0) {
+                console.log(`[DB] Backfill 003 (movimientos → materias_primas): ${mapeados.rowCount} mapeados, ${nAmbiguas} sin mapear por nombre+espesor ambiguos, ${nSinCandidata} sin materia prima candidata`);
+            }
+
+            // Paso 5 del mismo .sql (tampoco corrió nunca): completar
+            // materias_primas.codigo_sap desde catalogo_tipos_cristal cuando
+            // está vacío. Mismo criterio de tolerancia y unicidad; solo rellena
+            // valores vacíos, nunca sobreescribe un codigo_sap existente.
+            await query(`
+                UPDATE materias_primas mp
+                SET codigo_sap = c.codigo_sap
+                FROM catalogo_tipos_cristal c
+                WHERE LOWER(TRIM(mp.nombre)) = LOWER(TRIM(c.nombre))
+                  AND ABS(mp.espesor_mm::numeric - c.espesor::numeric) < 1
+                  AND c.codigo_sap IS NOT NULL AND c.codigo_sap != ''
+                  AND (mp.codigo_sap IS NULL OR mp.codigo_sap = '')
+                  AND (SELECT COUNT(*) FROM catalogo_tipos_cristal c2
+                        WHERE LOWER(TRIM(mp.nombre)) = LOWER(TRIM(c2.nombre))
+                          AND ABS(mp.espesor_mm::numeric - c2.espesor::numeric) < 1) = 1
+            `);
+        });
+        await bloque('002/003', async () => {
+            await query(`CREATE TABLE IF NOT EXISTS procesos_carroceria_sap (
+                id SERIAL PRIMARY KEY,
+                codigo_sap VARCHAR(50) UNIQUE NOT NULL,
+                estaciones_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+                descripcion TEXT,
+                ancho DECIMAL(10,2) DEFAULT NULL,
+                alto DECIMAL(10,2) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )`);
+            await query("ALTER TABLE procesos_carroceria_sap ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL");
+            await query("ALTER TABLE procesos_carroceria_sap ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL");
+            await query(`CREATE INDEX IF NOT EXISTS idx_procesos_carroceria_sap_codigo ON procesos_carroceria_sap(codigo_sap)`);
+        });
+        // ── costos_config: parámetros de costeo para el módulo de Costos ──
+        await bloque('costos_config', async () => {
+            await query(`CREATE TABLE IF NOT EXISTS costos_config (
+                id SERIAL PRIMARY KEY,
+                clave VARCHAR(50) UNIQUE NOT NULL,
+                valor DECIMAL(12,2) DEFAULT 0,
+                descripcion TEXT,
+                unidad VARCHAR(20),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`);
+            const existingCount = await query('SELECT COUNT(*) FROM costos_config WHERE valor != 0');
+            if (parseInt(existingCount.rows[0].count) === 0) {
+                const defaultParams = [
+                    ['costo_hh', 0, 'Costo hora-hombre por m²', '$/m²'],
+                    ['costo_energia_m2', 0, 'Costo energía por m²', '$/m²'],
+                    ['costo_pulido_ml', 0, 'Costo pulido por metro lineal', '$/ml'],
+                    ['costo_perforacion', 0, 'Costo por perforación', '$/ud'],
+                    ['costo_destaje_kg', 0, 'Costo destaje normal por kg', '$/kg'],
+                    ['costo_destaje_complejo_kg', 0, 'Costo destaje complejo por kg', '$/kg'],
+                    ['costo_pintura_ml', 0, 'Costo pintura por ml', '$/ml'],
+                    ['costo_insumos_pintura', 0, 'Costos insumos de pintura por m²', '$/m²'],
+                    ['costo_otros_m2', 0, 'Costos otros por m²', '$/m²'],
+                    ['hh_crudo_sin_pulir', 0, 'HH Crudo/Laminado sin pulir', '$/m²'],
+                    ['energia_crudo_sin_pulir', 0, 'Energía Crudo/Laminado sin pulir', '$/m²'],
+                    ['hh_crudo_pulido', 0, 'HH Crudo/Laminado pulido', '$/m²'],
+                    ['energia_crudo_pulido', 0, 'Energía Crudo/Laminado pulido', '$/m²'],
+                    ['hh_templado_plano', 0, 'HH Templado plano', '$/m²'],
+                    ['energia_templado_plano', 0, 'Energía Templado plano', '$/m²'],
+                    ['hh_templado_curvo', 0, 'HH Templado curvo', '$/m²'],
+                    ['energia_templado_curvo', 0, 'Energía Templado curvo', '$/m²'],
+                    ['merma_proceso_pct', 0, 'Porcentaje merma de proceso', '%'],
+                    ['merma_aprovechamiento_pct', 0, 'Porcentaje merma de aprovechamiento', '%']
+                ];
+                for (const [clave, valor, descripcion, unidad] of defaultParams) {
+                    await query('INSERT INTO costos_config (clave, valor, descripcion, unidad) VALUES ($1, $2, $3, $4) ON CONFLICT (clave) DO NOTHING', [clave, valor, descripcion, unidad]);
+                }
+            }
+        });
+        await bloque('mecanizado_operaciones', async () => {
+            await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS mecanizado_operaciones TEXT");
+        });
+        await bloque('nivel_prioridad', async () => {
+            await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS nivel_prioridad INTEGER DEFAULT 1");
+            await query("UPDATE produccion_ordenes SET nivel_prioridad = 1 WHERE nivel_prioridad IS NULL");
+            await query("ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS needs_reprogramming BOOLEAN DEFAULT FALSE");
+        });
+        await bloque('grupo colors', async () => {
+            await query("UPDATE produccion_capacidad_grupo SET color = '#22c55e' WHERE grupo = 'Arquitectura'");
+            await query("UPDATE produccion_capacidad_grupo SET color = '#67e8f9' WHERE grupo = 'Carroceros'");
+            await query("UPDATE produccion_capacidad_grupo SET color = '#1e3a8a' WHERE grupo LIKE '%Termopanel%'");
+            await query("UPDATE produccion_capacidad_grupo SET color = '#1e293b' WHERE grupo LIKE '%Laminado%' AND grupo NOT LIKE '%VM%'");
+            await query("UPDATE produccion_capacidad_grupo SET color = '#f97316' WHERE grupo LIKE '%Laminado VM%'");
+            await query("UPDATE produccion_capacidad_grupo SET color = '#fde047' WHERE grupo LIKE '%Servicio%'");
+        });
+        await bloque('004', async () => {
+            await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL");
+            await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS procesos_especificos_json JSONB DEFAULT NULL");
+            await query("CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)");
+            // Migrar datos desde procesos_carroceria_sap a recetas_bom.procesos_especificos_json
+            await query(`
+                UPDATE recetas_bom r
+                SET procesos_especificos_json = pcs.estaciones_json
+                FROM procesos_carroceria_sap pcs
+                WHERE r.codigo_sap_padre = pcs.codigo_sap
+                  AND (r.procesos_especificos_json IS NULL OR r.procesos_especificos_json = '[]'::jsonb)
+                  AND pcs.estaciones_json IS NOT NULL
+            `);
+        });
+        await bloque('ancho_alto', async () => {
+            await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL");
+            await query("ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL");
+        });
+        // ── Migración: Mejoras al Módulo Taller (operario, inspecciones, historial) ──
+        await bloque('taller-pasos', async () => {
+            await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS operario_email VARCHAR(200)`);
+            await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS operario_nombre VARCHAR(200)`);
+            await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS pausado_en TIMESTAMP`);
+            await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS tiempo_pausado_segundos INTEGER DEFAULT 0`);
+            await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS locked_by VARCHAR(200)`);
+            await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS locked_at TIMESTAMP`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_pasos_operario ON cola_produccion_pasos(operario_email)`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_pasos_locked ON cola_produccion_pasos(locked_by, locked_at)`);
+        });
+        await bloque('inspecciones_calidad', async () => {
+            await query(`CREATE TABLE IF NOT EXISTS inspecciones_calidad (
+                id SERIAL PRIMARY KEY,
+                paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE CASCADE,
+                orden_produccion_id INTEGER REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+                estacion_id INTEGER REFERENCES estaciones_maestras(id),
+                tipo_inspeccion VARCHAR(50) NOT NULL,
+                resultado VARCHAR(20) NOT NULL,
+                defectos JSONB DEFAULT '[]',
+                cantidad_inspeccionada INTEGER DEFAULT 0,
+                cantidad_defectuosa INTEGER DEFAULT 0,
+                inspector_email VARCHAR(200) NOT NULL,
+                inspector_nombre VARCHAR(200),
+                observaciones TEXT,
+                imagenes JSONB DEFAULT '[]',
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_paso ON inspecciones_calidad(paso_id)`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_orden ON inspecciones_calidad(orden_produccion_id)`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_inspecciones_fecha ON inspecciones_calidad(created_at)`);
+        });
+        await bloque('taller_historial', async () => {
+            await query(`CREATE TABLE IF NOT EXISTS taller_historial (
+                id SERIAL PRIMARY KEY,
+                entidad_tipo VARCHAR(50) NOT NULL,
+                entidad_id INTEGER NOT NULL,
+                accion VARCHAR(50) NOT NULL,
+                datos_anteriores JSONB,
+                datos_nuevos JSONB,
+                usuario_email VARCHAR(200),
+                usuario_nombre VARCHAR(200),
+                created_at TIMESTAMP DEFAULT NOW()
+            )`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_historial_entidad ON taller_historial(entidad_tipo, entidad_id)`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_historial_fecha ON taller_historial(created_at)`);
+        });
+        await bloque('tipos_defecto', async () => {
+            await query(`CREATE TABLE IF NOT EXISTS tipos_defecto (
+                id SERIAL PRIMARY KEY,
+                codigo VARCHAR(20) UNIQUE NOT NULL,
+                nombre VARCHAR(100) NOT NULL,
+                categoria VARCHAR(50),
+                severidad_default VARCHAR(20) DEFAULT 'menor',
+                requiere_foto BOOLEAN DEFAULT false,
+                activo BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT NOW()
+            )`);
+            await query(`INSERT INTO tipos_defecto (codigo, nombre, categoria, severidad_default, requiere_foto) VALUES
+                ('RAY','Rayón','cosmetico','menor',false),
+                ('BUR','Burbuja','cosmetico','menor',true),
+                ('RAJ','Rajadura','estructural','critico',true),
+                ('QUE','Quiebre','estructural','critico',true),
+                ('DIM','Fuera de dimensión','dimensional','mayor',false),
+                ('DES','Desalineación','dimensional','mayor',false),
+                ('PIN','Defecto de pintado','cosmetico','menor',true),
+                ('PER','Perforación incorrecta','dimensional','mayor',false),
+                ('TEM','Defecto de templado','estructural','critico',true),
+                ('LAM','Defecto de laminado','estructural','critico',true),
+                ('SUC','Suciedad/Contaminación','cosmetico','menor',false),
+                ('BOR','Borde irregular','cosmetico','menor',true)
+            ON CONFLICT (codigo) DO NOTHING`);
+        });
+        await bloque('taller_turnos', async () => {
+            await query(`CREATE TABLE IF NOT EXISTS taller_turnos (
+                id SERIAL PRIMARY KEY,
+                fecha DATE NOT NULL,
+                turno VARCHAR(20) NOT NULL,
+                operario_email VARCHAR(200) NOT NULL,
+                operario_nombre VARCHAR(200),
+                estacion_id INTEGER REFERENCES estaciones_maestras(id),
+                hora_inicio TIMESTAMP,
+                hora_fin TIMESTAMP,
+                ordenes_completadas INTEGER DEFAULT 0,
+                m2_producidos DECIMAL(10,2) DEFAULT 0,
+                mermas_generadas INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            )`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON taller_turnos(fecha, turno)`);
+        });
+        // ── Módulo Bodega: carros de producto terminado, pre-entrega, entregas ──
+        await bloque('bodega', async () => {
+            await query(`CREATE TABLE IF NOT EXISTS bodega_carros (
+                id SERIAL PRIMARY KEY,
+                codigo VARCHAR(30) UNIQUE NOT NULL,
+                tipo VARCHAR(50) DEFAULT 'carro',
+                capacidad_items INTEGER DEFAULT 50,
+                activo BOOLEAN DEFAULT true,
+                observaciones TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            )`);
+            await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS tipo VARCHAR(50) DEFAULT 'carro'`);
+            await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS capacidad_items INTEGER DEFAULT 50`);
+            await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true`);
+            await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS observaciones TEXT`);
+            await query(`ALTER TABLE bodega_carros ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()`);
+            await query(`CREATE TABLE IF NOT EXISTS bodega_carros_items (
+                id SERIAL PRIMARY KEY,
+                carro_id INTEGER REFERENCES bodega_carros(id) ON DELETE CASCADE,
+                orden_produccion_id INTEGER REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+                paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE CASCADE,
+                armador_email VARCHAR(200),
+                armador_nombre VARCHAR(200),
+                armado_at TIMESTAMP DEFAULT NOW(),
+                entregado_at TIMESTAMP,
+                entregado_por_email VARCHAR(200),
+                observaciones TEXT
+            )`);
+            await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armador_email VARCHAR(200)`);
+            await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armador_nombre VARCHAR(200)`);
+            await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS armado_at TIMESTAMP DEFAULT NOW()`);
+            await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS entregado_at TIMESTAMP`);
+            await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS entregado_por_email VARCHAR(200)`);
+            await query(`ALTER TABLE bodega_carros_items ADD COLUMN IF NOT EXISTS observaciones TEXT`);
+            await query(`CREATE TABLE IF NOT EXISTS bodega_entregas (
+                id SERIAL PRIMARY KEY,
+                carro_id INTEGER REFERENCES bodega_carros(id),
+                numero_documento VARCHAR(50) UNIQUE NOT NULL,
+                generado_at TIMESTAMP DEFAULT NOW(),
+                generado_por_email VARCHAR(200),
+                generado_por_nombre VARCHAR(200),
+                recibido_at TIMESTAMP,
+                recibido_por_email VARCHAR(200),
+                recibido_por_nombre VARCHAR(200),
+                total_items INTEGER DEFAULT 0,
+                total_kilos DECIMAL(10,2) DEFAULT 0,
+                total_m2 DECIMAL(10,2) DEFAULT 0,
+                observaciones TEXT
+            )`);
+            await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS generado_por_email VARCHAR(200)`);
+            await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS generado_por_nombre VARCHAR(200)`);
+            await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_at TIMESTAMP`);
+            await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_por_email VARCHAR(200)`);
+            await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS recibido_por_nombre VARCHAR(200)`);
+            await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_items INTEGER DEFAULT 0`);
+            await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_kilos DECIMAL(10,2) DEFAULT 0`);
+            await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS total_m2 DECIMAL(10,2) DEFAULT 0`);
+            await query(`ALTER TABLE bodega_entregas ADD COLUMN IF NOT EXISTS observaciones TEXT`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_carro ON bodega_carros_items(carro_id)`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_orden ON bodega_carros_items(orden_produccion_id)`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_bodega_items_entregado ON bodega_carros_items(entregado_at)`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_bodega_entregas_carro ON bodega_entregas(carro_id)`);
+            await query(`CREATE INDEX IF NOT EXISTS idx_bodega_entregas_recibido ON bodega_entregas(recibido_at)`);
+            // Carros iniciales (catálogo)
+            for (const codigo of ['C-001', 'C-002', 'C-003', 'A-001', 'A-002']) {
+                await query(`INSERT INTO bodega_carros (codigo, tipo) VALUES ($1, $2) ON CONFLICT (codigo) DO NOTHING`, [codigo, codigo.startsWith('A-') ? 'atril' : 'carro']);
+            }
+        });
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1299,12 +1439,43 @@ async function seedBusinessData() {
             }
 
             if (Number(movimientosCount.rows[0].c) === 0) {
-                await q(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-                    [1, 'entrada', 'Clear', 6, 2000, 1500, 20, 60.0, 'Vidrios Chile', 'Compra mensual']);
-                await q(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, tipo_salida, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-                    [1, 'salida', 'Clear', 6, 2000, 1500, 5, 15.0, 'Producción', 'Para orden PRD-001']);
-                await q(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-                    [1, 'entrada', 'Templado', 8, 1800, 1200, 10, 21.6, 'Vidrios Chile', 'Pedido urgente']);
+                // Materia prima de demo asociada a los movimientos: sin
+                // materia_prima_id los movimientos NO descuentan stock ni
+                // aparecen en los reportes por materia prima (ver backfill 003).
+                // Se busca por nombre+espesor (mismo criterio que el backfill
+                // 003) y, si no existe, se crea con código de demo propio.
+                const mpDemo = {};
+                for (const mp of [
+                    { clave: 'clear6', codigo: 'MP-DEMO-CLEAR-6', nombre: 'Clear', espesor: 6 },
+                    { clave: 'templado8', codigo: 'MP-DEMO-TEMPLADO-8', nombre: 'Templado', espesor: 8 }
+                ]) {
+                    let r = await q(
+                        'SELECT id FROM materias_primas WHERE LOWER(TRIM(nombre)) = LOWER($1) AND espesor_mm = $2 ORDER BY id LIMIT 1',
+                        [mp.nombre, mp.espesor]);
+                    if (r.rows.length === 0) {
+                        r = await q('INSERT INTO materias_primas (codigo_mp, nombre, espesor_mm) VALUES ($1, $2, $3) ON CONFLICT (codigo_mp) DO NOTHING RETURNING id', [mp.codigo, mp.nombre, mp.espesor]);
+                        if (r.rows.length === 0) {
+                            r = await q('SELECT id FROM materias_primas WHERE codigo_mp = $1', [mp.codigo]);
+                        }
+                    }
+                    mpDemo[mp.clave] = r.rows[0].id;
+                }
+
+                // Valores de demo CONSISTENTES (planchas y m² cuadran):
+                // plancha Clear 2.0 x 1.5 = 3 m² · plancha Templado 1.8 x 1.2 = 2.16 m².
+                //  * Entrada Clear:    20 planchas = 60 m²
+                //  * Salida  Clear:     5 planchas = 15 m² (tipo_salida
+                //      'plancha_completa': descuenta 5 planchas y 15 m²; con
+                //      'trozo' NO descontaría planchas según la regla de stock)
+                //  * Entrada Templado: 10 planchas = 21.6 m²
+                // Stock resultante: Clear 15 planchas / 45 m² · Templado 10
+                // planchas / 21.6 m².
+                await q(`INSERT INTO movimientos (usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+                    [1, 'entrada', mpDemo.clear6, 'Clear', 6, 2000, 1500, 20, 60.0, 'Vidrios Chile', 'Compra mensual']);
+                await q(`INSERT INTO movimientos (usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, tipo_salida, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+                    [1, 'salida', mpDemo.clear6, 'Clear', 6, 2000, 1500, 5, 15.0, 'plancha_completa', 'Para orden PRD-001']);
+                await q(`INSERT INTO movimientos (usuario_id, tipo_movimiento, materia_prima_id, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+                    [1, 'entrada', mpDemo.templado8, 'Templado', 8, 1800, 1200, 10, 21.6, 'Vidrios Chile', 'Pedido urgente']);
                 console.log('[SEED] Movimientos de inventario insertados');
             }
 

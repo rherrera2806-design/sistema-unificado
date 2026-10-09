@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { transaction } = require('../config/dbPool');
 
 /**
  * Service para gestión de materias primas.
@@ -60,21 +61,41 @@ const editarMateriaPrima = async (id, { codigo_mp, nombre, espesor_mm, costo_uni
 };
 
 const eliminarMateriaPrima = async (id) => {
-    // recetas_bom.materia_prima_id es ON DELETE CASCADE: un DELETE directo borraría
-    // recetas BOM en silencio. Se bloquea el borrado si hay recetas que usan la MP.
-    const recetas = await query('SELECT COUNT(*) as total FROM recetas_bom WHERE materia_prima_id = $1', [id]);
-    const total = Number(recetas.rows[0].total) || 0;
-    if (total > 0) {
-        const err = new Error('No se puede eliminar la materia prima: ' + total + ' receta(s) BOM la utilizan. Elimine o reasigne esas recetas primero.');
-        err.status = 409;
-        throw err;
-    }
-    const result = await query('DELETE FROM materias_primas WHERE id = $1', [id]);
-    if (result.rowCount === 0) {
-        const err = new Error('Materia prima no encontrada');
-        err.status = 404;
-        throw err;
-    }
+    // Antes era un check-then-delete sin transacción sobre recetas_bom: como esa FK es
+    // ON DELETE CASCADE, una receta creada entre el COUNT y el DELETE se borraba en silencio.
+    // Ahora todo corre en una transacción con SELECT ... FOR UPDATE sobre la materia prima:
+    // el lock bloquea INSERTs concurrentes con FK hacia esta fila (recetas_bom y movimientos
+    // toman FOR KEY SHARE sobre el padre), así que los conteos no pueden quedar desactualizados.
+    await transaction(async ({ query: tquery }) => {
+        const mp = await tquery('SELECT id FROM materias_primas WHERE id = $1 FOR UPDATE', [id]);
+        if (mp.rows.length === 0) {
+            const err = new Error('Materia prima no encontrada');
+            err.status = 404;
+            throw err;
+        }
+
+        // recetas_bom.materia_prima_id es ON DELETE CASCADE: bloquear si hay recetas que
+        // usan la MP para no borrarlas en silencio.
+        const recetas = await tquery('SELECT COUNT(*) as total FROM recetas_bom WHERE materia_prima_id = $1', [id]);
+        const totalRecetas = Number(recetas.rows[0].total) || 0;
+        if (totalRecetas > 0) {
+            const err = new Error('No se puede eliminar la materia prima: ' + totalRecetas + ' receta(s) BOM la utilizan. Elimine o reasigne esas recetas primero.');
+            err.status = 409;
+            throw err;
+        }
+
+        // movimientos.materia_prima_id es FK NO ACTION: sin este chequeo el DELETE fallaba
+        // con un error crudo de FK (500). Se responde 409 indicando cuántos movimientos la usan.
+        const movimientos = await tquery('SELECT COUNT(*) as total FROM movimientos WHERE materia_prima_id = $1', [id]);
+        const totalMovimientos = Number(movimientos.rows[0].total) || 0;
+        if (totalMovimientos > 0) {
+            const err = new Error('No se puede eliminar la materia prima: ' + totalMovimientos + ' movimiento(s) de inventario la referencian.');
+            err.status = 409;
+            throw err;
+        }
+
+        await tquery('DELETE FROM materias_primas WHERE id = $1', [id]);
+    });
 };
 
 module.exports = {

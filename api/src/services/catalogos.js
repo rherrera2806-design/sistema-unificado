@@ -1,5 +1,17 @@
 const { query } = require('../config/database');
 const { sanitizeString } = require('../utils/helpers');
+const { calcularAutonomia } = require('./inventario');
+
+// Normaliza el nombre de un tipo de cristal: sanitiza y capitaliza ("vidrio laminado" → "Vidrio laminado").
+// Robusto ante bodies sin `nombre` (p. ej. solo { espesor }) o con valores no string: antes
+// `sanitizeString(data.nombre || data)` podía devolver el objeto completo y luego .charAt() lanzaba TypeError (500).
+function normalizarNombreTipoCristal(data) {
+    const raw = data && typeof data === 'object' ? data.nombre : data;
+    let nombre = typeof raw === 'string' ? sanitizeString(raw) : (Number.isFinite(raw) && raw !== null && raw !== '' ? String(raw) : '');
+    nombre = String(nombre).trim();
+    if (!nombre) throw new Error('Nombre requerido');
+    return nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+}
 
 async function getTiposCristal() {
     const result = await query('SELECT * FROM catalogo_tipos_cristal WHERE activo = TRUE ORDER BY espesor, nombre');
@@ -7,10 +19,8 @@ async function getTiposCristal() {
 }
 
 async function crearTipoCristal(data) {
-    let nombre = sanitizeString(data.nombre || data);
-    if (!nombre) throw new Error('Nombre requerido');
-    nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
-    const espesor = parseInt(data.espesor) || 0;
+    const nombre = normalizarNombreTipoCristal(data);
+    const espesor = parseFloat(data.espesor) || 0;
     const exists = await query('SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1 AND espesor = $2 AND activo = TRUE', [nombre, espesor]);
     if (exists.rows.length > 0) throw new Error('Ya existe este tipo de cristal con ese espesor');
     const codigoSap = sanitizeString(data.codigo_sap) || '';
@@ -29,12 +39,18 @@ async function eliminarTipoCristal(id) {
 }
 
 async function updateTipoCristal(id, data) {
-    let nombre = sanitizeString(data.nombre || '');
-    if (!nombre) throw new Error('Nombre requerido');
-    nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+    // Se persiste el nombre NORMALIZADO (antes se guardaba data.nombre crudo, sin sanitizar
+    // ni capitalizar) y se valida duplicado igual que en crearTipoCristal.
+    const nombre = normalizarNombreTipoCristal(data);
+    const espesor = parseFloat(data.espesor) || 0;
+    const exists = await query(
+        'SELECT id FROM catalogo_tipos_cristal WHERE nombre = $1 AND espesor = $2 AND activo = TRUE AND id != $3',
+        [nombre, espesor, id]
+    );
+    if (exists.rows.length > 0) throw new Error('Ya existe este tipo de cristal con ese espesor');
     const result = await query(
         'UPDATE catalogo_tipos_cristal SET nombre = $1, espesor = $2, codigo_sap = $3, stock_critico = $4, consumo_mensual_aprox = $5 WHERE id = $6 AND activo = TRUE RETURNING *',
-        [data.nombre, parseInt(data.espesor) || 0, sanitizeString(data.codigo_sap) || '', parseInt(data.stock_critico) || 0, parseInt(data.consumo_mensual_aprox) || 0, id]
+        [nombre, espesor, sanitizeString(data.codigo_sap) || '', parseInt(data.stock_critico) || 0, parseInt(data.consumo_mensual_aprox) || 0, id]
     );
     return result.rows[0] || null;
 }
@@ -74,10 +90,15 @@ async function getAutonomia() {
         if (stock <= 0) { estado = 'sin_stock'; }
         else if (consumo <= 0) { estado = 'sin_datos'; }
         else {
-            autonomiaMeses = stock / consumo;
-            autonomiaSemanas = Math.round(autonomiaMeses * 4.33 * 10) / 10;
-            autonomiaDias = Math.round(autonomiaMeses * 30);
-            if (autonomiaMeses <= 1) estado = 'critico';
+            // Autonomía canónica (helper calcularAutonomia de inventario.js):
+            // meses = stock / consumoMensual, dias = meses * 30. Siempre números.
+            // Antes aquí se calculaba con × 30 días y × 4.33 semanas mientras inventario.js
+            // usaba × 21 días: ahora todos los módulos comparten la misma fórmula.
+            const autonomia = calcularAutonomia(stock, consumo);
+            autonomiaMeses = autonomia.meses;
+            autonomiaSemanas = Math.round(autonomia.meses * 4.33 * 10) / 10;
+            autonomiaDias = Math.round(autonomia.dias);
+            if (autonomia.meses <= 1) estado = 'critico';
         }
         return { codigo_mp: codigo, tipo: cat.nombre || '', espesor: Number(cat.espesor_mm || 0), stock, consumoMensual: consumo, stockCritico: critico,
             autonomiaMeses: autonomiaMeses !== null ? Math.round(autonomiaMeses * 10) / 10 : null,
@@ -96,7 +117,8 @@ async function getEspesores() {
 }
 
 async function crearEspesor(valor) {
-    const val = parseInt(valor);
+    // Decimal: los espesores reales del vidrio son fraccionarios (4.76, 6.35 mm)
+    const val = parseFloat(valor);
     if (isNaN(val) || val <= 0) throw new Error('Valor de espesor invalido');
     const exists = await query('SELECT id FROM catalogo_espesores WHERE valor = $1', [val]);
     if (exists.rows.length > 0) throw new Error('El espesor ya existe');
