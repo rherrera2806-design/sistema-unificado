@@ -5,6 +5,9 @@ window.escAttr = window.escAttr || window.escText;
 // ============================================================================
 // Movimientos — lenguaje visual "hoja tecnica de vidrio" (ver css/inv-pro.css)
 // COLOR = SIGNIFICADO: datos neutros; solo se colorea lo que exige una decision.
+// Diseno aprobado (diseno-movimientos-v1.html): formulario en 3 secciones
+// mas panel RESUMEN EN VIVO — el usuario ve lo que va a registrar antes de
+// confirmar. Todo el estilo local vive en el <style> de esta vista.
 // ============================================================================
 const InvMovimientos = {
     tipoMovimiento: '',
@@ -32,20 +35,56 @@ const InvMovimientos = {
 
             page.innerHTML = `
                 <style>
-                    /* Grids del formulario (patron del modulo) + utilidades de datos */
-                    .inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;align-items:end}
-                    .inv-form-dims{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 10px;align-items:end}
-                    .inv-form-grid>div,.inv-form-dims>div{min-width:0;margin:0}
-                    .inv-form-bottom{display:flex;gap:8px;margin-top:10px;align-items:center;padding-top:10px;border-top:1px solid var(--invp-line)}
-                    .inv-pro .invp-sutil{color:var(--invp-slate);font-weight:400}
-                    .inv-pro .invp-val.invp-danger{color:var(--invp-danger)}
-                    /* La regla base de td pinta slate; esta variante gana por especificidad */
-                    .inv-pro .invp-table td.invp-danger{color:var(--invp-danger);font-weight:600}
+                    /* ---- Layout del formulario (solo esta vista) ---- */
+                    .mv-layout{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+                    .mv-sec{padding:18px 0;border-bottom:1px solid #eef2f7}
+                    .mv-sec:last-child{border-bottom:none}
+                    .mv-sec-title{font-size:10.5px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:var(--invp-muted);margin-bottom:4px}
+                    .mv-sec-help{font-size:11.5px;color:var(--invp-muted);margin-bottom:12px}
+                    /* Toggles de tipo: tarjetas grandes (decision principal) */
+                    .mv-tipo-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+                    .mv-tipo-card{display:flex;gap:10px;align-items:center;text-align:left;padding:13px 15px;border:1.5px solid var(--invp-line);border-radius:11px;background:#fff;cursor:pointer;transition:all .15s;font-family:inherit}
+                    .mv-tipo-card:hover{border-color:#c3cedd}
+                    .mv-tipo-card[aria-pressed="true"]{border-color:var(--invp-ink);background:#f5f7fa}
+                    .mv-tipo-card .ico{width:34px;height:34px;border-radius:9px;background:#eef2f8;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--invp-slate)}
+                    .mv-tipo-card[aria-pressed="true"] .ico{background:var(--invp-ink);color:#fff}
+                    .mv-tipo-card .t{font-size:13.5px;font-weight:600;color:var(--invp-ink)}
+                    .mv-tipo-card .d{font-size:11px;color:var(--invp-muted);margin-top:1px}
+                    .mv-chips-row{display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap}
+                    .mv-chip-hint{font-size:11px;color:var(--invp-muted)}
+                    /* Campos */
+                    .mv-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 12px}
+                    .mv-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 12px}
+                    .mv-calc{padding:10px 12px;background:#f8fafc;border:1px solid var(--invp-line);border-radius:8px;font-size:13px;font-weight:600;color:var(--invp-ink);font-variant-numeric:tabular-nums}
+                    .mv-calc .sub{font-size:9.5px;color:var(--invp-muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+                    /* Aviso de stock contextual */
+                    .mv-stock-note{margin-top:10px;display:flex;gap:8px;align-items:baseline;padding:9px 13px;border-radius:8px;font-size:12px;background:#f8fafc;border-left:3px solid #cbd5e1;color:var(--invp-slate)}
+                    .mv-stock-note.warn{background:#fdf8f1;border-left-color:var(--invp-warn);color:var(--invp-warn)}
+                    .mv-stock-note.danger{background:#fdf3f2;border-left-color:var(--invp-danger);color:var(--invp-danger)}
+                    /* Panel RESUMEN */
+                    .mv-resumen{position:sticky;top:16px}
+                    .mv-r-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;letter-spacing:.3px;padding:3px 10px;border-radius:20px;border:1px solid var(--invp-line);color:var(--invp-slate)}
+                    .mv-r-chip .dot{width:6px;height:6px;border-radius:50%;background:#94a3b8}
+                    .mv-r-chip.ok .dot{background:#10b981}
+                    .mv-r-chip.neutro .dot{background:#64748b}
+                    .mv-r-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px dashed #eef2f7}
+                    .mv-r-lbl{font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--invp-muted)}
+                    .mv-r-val{font-size:13px;font-weight:600;color:var(--invp-ink);font-variant-numeric:tabular-nums;text-align:right}
+                    .mv-r-total{margin-top:10px;padding:12px 14px;background:#f5f7fa;border-radius:10px;display:flex;justify-content:space-between;align-items:baseline}
+                    .mv-r-total .l{font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--invp-slate);font-weight:600}
+                    .mv-r-total .v{font-size:20px;font-weight:700;color:var(--invp-ink);font-variant-numeric:tabular-nums}
+                    .mv-btn-registrar{width:100%;margin-top:14px;padding:13px;font-family:inherit;font-size:13.5px;font-weight:600;background:var(--invp-accent);color:#fff;border:none;border-radius:10px;cursor:pointer;transition:background .15s}
+                    .mv-btn-registrar:hover{background:#1a44c0}
+                    .mv-btn-registrar:disabled{opacity:.65;cursor:not-allowed}
+                    .mv-btn-registrar:focus-visible{outline:2px solid var(--invp-accent);outline-offset:2px}
+                    @media(max-width:900px){
+                        .mv-layout{display:block}
+                        .mv-resumen{position:static;margin-top:12px}
+                    }
                     @media(max-width:768px){
-                        .inv-form-grid{grid-template-columns:1fr}
-                        .inv-form-dims{grid-template-columns:1fr 1fr}
-                        .inv-form-bottom{flex-direction:column;align-items:stretch}
-                        .inv-form-bottom .invp-btn{width:100%;justify-content:center}
+                        .mv-grid3,.mv-grid4{grid-template-columns:1fr 1fr}
+                        .mv-tipo-card{flex-direction:column;text-align:center;gap:6px}
+                        .mv-btn-registrar{padding:15px;font-size:14px}
                     }
                 </style>
 
@@ -57,75 +96,183 @@ const InvMovimientos = {
                         </div>
                     </div>
 
-                    <div class="invp-card">
-                        <div class="invp-card-head">
-                            <h3>Nuevo movimiento</h3>
-                        </div>
-                        <div style="padding:16px 22px">
-                            <form onsubmit="InvMovimientos.guardar(event)">
-                                <div class="inv-form-grid">
-                                    <div class="invp-field"><label>Tipo de movimiento *</label>
-                                        <div style="display:flex;gap:6px">
-                                            <button type="button" class="invp-btn invp-btn-filter" id="btnEntrada" aria-pressed="false" style="flex:1;justify-content:center" onclick="InvMovimientos.setTipo('entrada')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Entrada</button>
-                                            <button type="button" class="invp-btn invp-btn-filter" id="btnSalida" aria-pressed="false" style="flex:1;justify-content:center" onclick="InvMovimientos.setTipo('salida')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</button>
-                                        </div>
-                                    </div>
-                                    <div class="invp-field"><label for="materiaPrimaId">Materia prima *</label>
-                                        <select id="materiaPrimaId" required onchange="InvMovimientos.onMpChange()">
-                                            <option value="">Seleccionar...</option>${mpOptions}
-                                        </select>
-                                    </div>
-                                    <div class="invp-field" id="tipoSalidaGroup" style="display:none"><label>Tipo de salida</label>
-                                        <div style="display:flex;gap:6px">
-                                            <button type="button" class="invp-btn invp-btn-filter" id="btnPlancha" aria-pressed="false" style="flex:1;justify-content:center;padding:7px 10px" onclick="InvMovimientos.setTipoSalida('plancha_completa')">Plancha</button>
-                                            <button type="button" class="invp-btn invp-btn-filter" id="btnTrozo" aria-pressed="false" style="flex:1;justify-content:center;padding:7px 10px" onclick="InvMovimientos.setTipoSalida('trozo')">Trozo</button>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div class="mv-layout">
+                        <!-- ================= FORMULARIO ================= -->
+                        <div class="invp-card">
+                            <div class="invp-card-head"><h3>Nuevo movimiento</h3></div>
+                            <div style="padding:6px 22px 22px">
+                                <form id="formMovimiento" onsubmit="InvMovimientos.guardar(event)">
 
-                                <div id="stockDimGroup" style="display:none;margin-top:10px">
-                                    <div class="inv-form-dims">
-                                        <div class="invp-field" style="grid-column:span 2"><label>Medida disponible (stock)</label>
-                                            <select id="stockDimensionSelect" onchange="InvMovimientos.onStockDimChange()">
-                                                <option value="">Seleccionar medida...</option>
+                                    <div class="mv-sec">
+                                        <div class="mv-sec-title">Tipo de movimiento</div>
+                                        <div class="mv-sec-help">Elige primero la dirección del movimiento.</div>
+                                        <div class="mv-tipo-row">
+                                            <button type="button" class="mv-tipo-card" id="btnEntrada" aria-pressed="false" onclick="InvMovimientos.setTipo('entrada')">
+                                                <span class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg></span>
+                                                <span><span class="t">Entrada</span><br><span class="d">Entra material al inventario</span></span>
+                                            </button>
+                                            <button type="button" class="mv-tipo-card" id="btnSalida" aria-pressed="false" onclick="InvMovimientos.setTipo('salida')">
+                                                <span class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span>
+                                                <span><span class="t">Salida</span><br><span class="d">Sale material del inventario</span></span>
+                                            </button>
+                                        </div>
+                                        <div class="mv-chips-row" id="tipoSalidaGroup" style="display:none">
+                                            <span class="mv-chip-hint">Tipo de salida:</span>
+                                            <button type="button" class="invp-btn invp-btn-filter" id="btnPlancha" aria-pressed="false" onclick="InvMovimientos.setTipoSalida('plancha_completa')">Plancha completa</button>
+                                            <button type="button" class="invp-btn invp-btn-filter" id="btnTrozo" aria-pressed="false" onclick="InvMovimientos.setTipoSalida('trozo')">Trozo</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="mv-sec">
+                                        <div class="mv-sec-title">Material y medidas</div>
+                                        <div class="mv-sec-help">Las medidas se completan solas al elegir una medida del stock.</div>
+                                        <div class="invp-field" style="margin-bottom:12px">
+                                            <label for="materiaPrimaId">Materia prima *</label>
+                                            <select id="materiaPrimaId" required onchange="InvMovimientos.onMpChange()">
+                                                <option value="">Seleccionar...</option>${mpOptions}
                                             </select>
                                         </div>
-                                        <div class="invp-field"><label>Stock</label>
-                                            <div id="stockDimInfo" class="invp-val" style="padding:10px 12px;background:#fbfcfe;border:1px solid var(--invp-line);border-radius:8px">-</div>
+
+                                        <div id="stockDimGroup" style="display:none;margin-bottom:12px">
+                                            <div class="invp-field" style="margin-bottom:8px">
+                                                <label for="stockDimensionSelect">Medida disponible (stock)</label>
+                                                <select id="stockDimensionSelect" onchange="InvMovimientos.onStockDimChange()">
+                                                    <option value="">Seleccionar medida...</option>
+                                                </select>
+                                            </div>
+                                            <div id="stockDimTabla"></div>
                                         </div>
-                                        <div class="invp-field"><label>m² Unitario</label>
-                                            <div id="m2UnitDisplay" class="invp-val" style="padding:10px 12px;background:#fbfcfe;border:1px solid var(--invp-line);border-radius:8px">-</div>
+
+                                        <div class="mv-grid4">
+                                            <div class="invp-field"><label for="ancho">Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                            <div class="invp-field"><label for="alto">Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                            <div class="invp-field"><label for="cantidadPlanchas">Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                            <div class="invp-field"><label>M² total</label><div class="mv-calc"><span class="sub">calculado</span><br><span id="m2Display">0.00 m²</span></div></div>
+                                        </div>
+                                        <div class="mv-stock-note" id="stockNote"><span>◇</span><span id="stockNoteTxt">Selecciona una materia prima para ver su stock.</span></div>
+                                    </div>
+
+                                    <div class="mv-sec">
+                                        <div class="mv-sec-title">Registro</div>
+                                        <div class="mv-sec-help">Datos de contexto del movimiento.</div>
+                                        <div class="mv-grid3">
+                                            <div class="invp-field"><label for="turno">Turno *</label><select id="turno" required onchange="InvMovimientos.updateResumen()"><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
+                                            <div class="invp-field"><label for="fecha">Fecha</label><input type="date" id="fecha" max="${hoy}" onchange="InvMovimientos.updateResumen()" title="No se pueden registrar movimientos con fecha futura"></div>
+                                            <div class="invp-field"><label for="hora">Hora</label><input type="time" id="hora" value="${horaAhora}" onchange="InvMovimientos.updateResumen()" title="Hora del movimiento (si cambias la fecha, revisa la hora)"></div>
+                                            <div class="invp-field" style="grid-column:span 2"><label for="proveedor">Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
+                                            <div class="invp-field"><label for="observaciones">Observaciones</label><input type="text" id="observaciones" placeholder="Notas..."></div>
                                         </div>
                                     </div>
-                                    <div id="stockDimTabla" style="margin-top:10px"></div>
-                                </div>
 
-                                <div class="inv-form-dims" style="margin-top:10px">
-                                    <div class="invp-field"><label for="ancho">Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                    <div class="invp-field"><label for="alto">Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                    <div class="invp-field"><label for="cantidadPlanchas">Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                    <div class="invp-field"><label>m²</label><div id="m2Display" class="invp-val" style="padding:10px 12px;background:#fbfcfe;border:1px solid var(--invp-line);border-radius:8px">0.00</div></div>
-                                </div>
-                                <div class="inv-form-grid" style="margin-top:10px">
-                                    <div class="invp-field"><label for="turno">Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
-                                    <div class="invp-field"><label for="fecha">Fecha</label><input type="date" id="fecha" max="${hoy}" title="No se pueden registrar movimientos con fecha futura"></div>
-                                    <div class="invp-field"><label for="hora">Hora</label><input type="time" id="hora" value="${horaAhora}" title="Hora del movimiento (si cambias la fecha, revisa la hora)"></div>
-                                </div>
-                                <div class="invp-field" style="margin-top:10px"><label for="proveedor">Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
-                                <div class="invp-field" style="margin-top:10px"><label for="observaciones">Observaciones</label><input type="text" id="observaciones" placeholder="Notas..."></div>
-                                <div class="inv-form-bottom">
-                                    <button type="submit" class="invp-btn invp-btn-primary" style="padding:11px 28px">Registrar</button>
-                                </div>
-                            </form>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- ================= RESUMEN EN VIVO ================= -->
+                        <div class="invp-card mv-resumen">
+                            <div class="invp-card-head"><h3>Resumen</h3></div>
+                            <div style="padding:18px 20px">
+                                <div style="margin-bottom:10px"><span class="mv-r-chip neutro" id="rTipoChip"><span class="dot"></span><span id="rTipoTxt">SIN TIPO</span></span></div>
+                                <div class="mv-r-row"><span class="mv-r-lbl">Material</span><span class="mv-r-val" id="rMaterial">—</span></div>
+                                <div class="mv-r-row"><span class="mv-r-lbl">Medida</span><span class="mv-r-val" id="rMedida">—</span></div>
+                                <div class="mv-r-row"><span class="mv-r-lbl">Cantidad</span><span class="mv-r-val" id="rCantidad">—</span></div>
+                                <div class="mv-r-row"><span class="mv-r-lbl">Fecha</span><span class="mv-r-val" id="rFecha">—</span></div>
+                                <div class="mv-r-row"><span class="mv-r-lbl">Turno</span><span class="mv-r-val" id="rTurno">—</span></div>
+                                <div class="mv-r-total"><span class="l">Total m²</span><span class="v" id="rTotalM2">0.00</span></div>
+                                <button type="submit" form="formMovimiento" class="mv-btn-registrar" id="btnRegistrar">Registrar movimiento</button>
+                            </div>
                         </div>
                     </div>
                 </div>`;
 
-        } catch(err) {
-            // Error visible en vez de un formulario con el selector vacío
+            this.updateResumen();
+        } catch (err) {
+            // Error visible en vez de un formulario con el selector vacio
             App.toast('Error al cargar materias primas: ' + err.message, 'error');
             page.innerHTML = '<div class="inv-pro"><div class="alert alert-danger">Error: ' + escText(err.message) + '</div></div>';
         }
+    },
+
+    // ------------------------------------------------------------------
+    // RESUMEN EN VIVO: refleja exactamente lo que se va a registrar.
+    // ------------------------------------------------------------------
+    updateResumen() {
+        const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+        // Chip de tipo (texto + dot: accesible, sin colores de alarma)
+        const chip = document.getElementById('rTipoChip');
+        const tipoTxt = this.tipoMovimiento === 'entrada' ? 'ENTRADA' : this.tipoMovimiento === 'salida' ? 'SALIDA' : 'SIN TIPO';
+        if (chip) chip.className = 'mv-r-chip ' + (this.tipoMovimiento === 'entrada' ? 'ok' : 'neutro');
+        set('rTipoTxt', tipoTxt + (this.tipoMovimiento === 'salida' && this.tipoSalida ? ' · ' + (this.tipoSalida === 'plancha_completa' ? 'PLANCHA' : 'TROZO') : ''));
+
+        // Material
+        const selMp = document.getElementById('materiaPrimaId');
+        let material = '—';
+        if (selMp && selMp.value) {
+            const opt = selMp.options[selMp.selectedIndex];
+            material = opt ? opt.text : '—';
+        }
+        set('rMaterial', material);
+
+        // Medida y cantidad
+        const ancho = parseInt(document.getElementById('ancho')?.value) || 0;
+        const alto = parseInt(document.getElementById('alto')?.value) || 0;
+        const cant = parseInt(document.getElementById('cantidadPlanchas')?.value) || 0;
+        set('rMedida', (ancho && alto) ? ancho + '×' + alto + ' mm' : '—');
+        set('rCantidad', cant ? cant + (this.tipoMovimiento === 'salida' && this.tipoSalida === 'trozo' ? ' piezas' : ' planchas') : '—');
+
+        // Fecha y turno
+        const fecha = document.getElementById('fecha')?.value;
+        const hora = document.getElementById('hora')?.value;
+        let fechaTxt = 'Ahora';
+        if (fecha) {
+            const p = fecha.split('-');
+            fechaTxt = (p[2] || '') + '-' + (p[1] || '') + '-' + (p[0] || '');
+        }
+        set('rFecha', fechaTxt + (hora ? ' · ' + hora : ''));
+        set('rTurno', document.getElementById('turno')?.value || '—');
+
+        // Total m2
+        const m2 = (ancho * alto * cant) / 1000000;
+        set('rTotalM2', m2.toFixed(2));
+    },
+
+    // Aviso contextual de stock bajo las medidas (color SOLO si hay riesgo)
+    _updateStockNote() {
+        const note = document.getElementById('stockNote');
+        const txt = document.getElementById('stockNoteTxt');
+        if (!note || !txt) return;
+        note.className = 'mv-stock-note';
+        const selMp = document.getElementById('materiaPrimaId');
+        const mpSel = selMp && selMp.value ? selMp.options[selMp.selectedIndex].text : '';
+        const cant = parseInt(document.getElementById('cantidadPlanchas')?.value) || 0;
+
+        if (this.tipoMovimiento === 'salida' && this.tipoSalida === 'plancha_completa') {
+            const selDim = document.getElementById('stockDimensionSelect');
+            const dim = selDim && selDim.value !== '' ? this._stockDimensiones[parseInt(selDim.value)] : null;
+            if (dim) {
+                const m2Disp = Number(dim.stock) * Number(dim.m2_unitario || 0);
+                txt.innerHTML = 'Stock disponible de <strong>' + escText(dim.ancho) + '×' + escText(dim.alto) + '</strong>: <strong>' + escText(dim.stock) + ' planchas</strong> · ' + m2Disp.toFixed(2) + ' m²';
+                if (cant > Number(dim.stock)) {
+                    note.className = 'mv-stock-note danger';
+                    txt.innerHTML += ' — la cantidad excede el stock';
+                } else if (Number(dim.stock) <= 0) {
+                    note.className = 'mv-stock-note danger';
+                }
+                return;
+            }
+            txt.textContent = 'Selecciona una medida disponible para ver su stock.';
+            return;
+        }
+        if (this.tipoMovimiento === 'salida' && this.tipoSalida === 'trozo') {
+            txt.innerHTML = 'El trozo descuenta <strong>m²</strong> del material' + (mpSel ? ' (' + escText(mpSel) + ')' : '') + '. El stock total se valida al registrar.';
+            return;
+        }
+        if (this.tipoMovimiento === 'entrada') {
+            txt.innerHTML = 'La entrada <strong>suma stock</strong> de la medida indicada.';
+            return;
+        }
+        txt.textContent = 'Selecciona una materia prima para ver su stock.';
     },
 
     onMpChange() {
@@ -146,13 +293,13 @@ const InvMovimientos = {
                 this.calcM2();
             }
         }
+        this._updateStockNote();
+        this.updateResumen();
     },
 
     async cargarStockDimensiones(mpId) {
         const group = document.getElementById('stockDimGroup');
         const select = document.getElementById('stockDimensionSelect');
-        const info = document.getElementById('stockDimInfo');
-        const m2Info = document.getElementById('m2UnitDisplay');
         try {
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch('/api/inv/stock-por-dimension?mp_id=' + mpId, { headers: hdrs });
@@ -172,8 +319,8 @@ const InvMovimientos = {
                     return '<option value="' + i + '">' + escText(d.ancho) + ' x ' + escText(d.alto) + ' mm</option>';
                 }).join('');
 
-            // Tabla de medidas disponibles (invp-table): datos en mono, numeros a la
-            // derecha. COLOR = SIGNIFICADO: el stock solo se colorea si esta en 0.
+            // Tabla de medidas disponibles (invp-table): numeros a la derecha.
+            // COLOR = SIGNIFICADO: el stock solo se colorea si esta en 0.
             const tabla = document.getElementById('stockDimTabla');
             if (tabla) {
                 tabla.innerHTML = '<table class="invp-table"><thead><tr>'
@@ -193,14 +340,12 @@ const InvMovimientos = {
                 select.value = '0';
                 this.onStockDimChange();
             } else {
-                info.textContent = '-';
-                info.className = 'invp-val';
-                m2Info.textContent = '-';
                 this.resetDimInputs(true);
+                this._updateStockNote();
             }
 
             group.style.display = 'block';
-        } catch(e) {
+        } catch (e) {
             // Aviso claro: sin esto el usuario podia registrar salidas sin validacion de stock
             group.style.display = 'none';
             this._stockDimensiones = [];
@@ -210,33 +355,28 @@ const InvMovimientos = {
 
     onStockDimChange() {
         const select = document.getElementById('stockDimensionSelect');
-        const info = document.getElementById('stockDimInfo');
-        const m2Info = document.getElementById('m2UnitDisplay');
         const idx = select.value;
 
         if (idx === '') {
-            info.textContent = '-';
-            info.className = 'invp-val';
-            m2Info.textContent = '-';
             this.resetDimInputs(true);
+            this._updateStockNote();
+            this.updateResumen();
             return;
         }
 
-        var dim = this._stockDimensiones[parseInt(idx)];
+        const dim = this._stockDimensiones[parseInt(idx)];
         document.getElementById('ancho').value = dim.ancho;
         document.getElementById('alto').value = dim.alto;
         document.getElementById('ancho').readOnly = true;
         document.getElementById('alto').readOnly = true;
-        info.textContent = dim.stock + ' planchas';
-        // COLOR = SIGNIFICADO: el stock por medida solo se colorea si esta agotado
-        info.className = 'invp-val' + (Number(dim.stock) <= 0 ? ' invp-danger' : '');
-        m2Info.textContent = dim.m2_unitario + ' m2';
         this.calcM2();
+        this._updateStockNote();
+        this.updateResumen();
     },
 
     resetDimInputs(readonly) {
-        var ancho = document.getElementById('ancho');
-        var alto = document.getElementById('alto');
+        const ancho = document.getElementById('ancho');
+        const alto = document.getElementById('alto');
         if (ancho) { ancho.readOnly = readonly; if (readonly) ancho.value = ''; }
         if (alto) { alto.readOnly = readonly; if (readonly) alto.value = ''; }
     },
@@ -248,7 +388,7 @@ const InvMovimientos = {
         const btnS = document.getElementById('btnSalida');
         if (btnE) btnE.setAttribute('aria-pressed', t === 'entrada' ? 'true' : 'false');
         if (btnS) btnS.setAttribute('aria-pressed', t === 'salida' ? 'true' : 'false');
-        document.getElementById('tipoSalidaGroup').style.display = t === 'salida' ? 'block' : 'none';
+        document.getElementById('tipoSalidaGroup').style.display = t === 'salida' ? 'flex' : 'none';
         document.getElementById('stockDimGroup').style.display = 'none';
         this.resetDimInputs(false);
         this.tipoSalida = '';
@@ -256,6 +396,8 @@ const InvMovimientos = {
         const btnT = document.getElementById('btnTrozo');
         if (btnP) btnP.setAttribute('aria-pressed', 'false');
         if (btnT) btnT.setAttribute('aria-pressed', 'false');
+        this._updateStockNote();
+        this.updateResumen();
     },
 
     setTipoSalida(ts) {
@@ -265,13 +407,15 @@ const InvMovimientos = {
         if (btnP) btnP.setAttribute('aria-pressed', ts === 'plancha_completa' ? 'true' : 'false');
         if (btnT) btnT.setAttribute('aria-pressed', ts === 'trozo' ? 'true' : 'false');
 
-        var mpId = document.getElementById('materiaPrimaId').value;
+        const mpId = document.getElementById('materiaPrimaId').value;
         if (ts === 'plancha_completa' && mpId) {
             this.cargarStockDimensiones(mpId);
         } else {
             document.getElementById('stockDimGroup').style.display = 'none';
             this.resetDimInputs(false);
         }
+        this._updateStockNote();
+        this.updateResumen();
     },
 
     calcM2() {
@@ -280,7 +424,9 @@ const InvMovimientos = {
         const c = parseInt(document.getElementById('cantidadPlanchas')?.value) || 0;
         const m2 = (a * al * c) / 1000000;
         const el = document.getElementById('m2Display');
-        if (el) el.textContent = m2.toFixed(2) + ' m2';
+        if (el) el.textContent = m2.toFixed(2) + ' m²';
+        this._updateStockNote();
+        this.updateResumen();
     },
 
     async guardar(e) {
@@ -292,29 +438,30 @@ const InvMovimientos = {
         if (this.tipoMovimiento === 'salida' && !this.tipoSalida) { App.toast('Selecciona tipo de salida: Plancha o Trozo', 'error'); return; }
 
         if (this.tipoMovimiento === 'salida' && this.tipoSalida === 'plancha_completa') {
-            var sel = document.getElementById('stockDimensionSelect');
+            const sel = document.getElementById('stockDimensionSelect');
             if (!sel || sel.value === '') { App.toast('Selecciona una medida disponible', 'error'); return; }
-            var dim = this._stockDimensiones[parseInt(sel.value)];
-            var cant = parseInt(document.getElementById('cantidadPlanchas').value) || 0;
+            const dim = this._stockDimensiones[parseInt(sel.value)];
+            const cant = parseInt(document.getElementById('cantidadPlanchas').value) || 0;
             if (cant > dim.stock) { App.toast('Cantidad excede stock disponible (' + dim.stock + ' planchas)', 'error'); return; }
         }
 
         // Evitar doble submit: doble click = doble movimiento
         if (this._guardando) return;
         this._guardando = true;
-        const btn = e.target.querySelector('button[type="submit"]');
+        const btn = document.getElementById('btnRegistrar');
         if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
-        // Fecha y hora explícitas: si el usuario elige una fecha pasada, se
+        // Fecha y hora explicitas: si el usuario elige una fecha pasada, se
         // respeta la hora del campo (antes se pegaba la hora ACTUAL y quedaba
         // un movimiento "del lunes pasado a las 14:32 de hoy").
-        var now = new Date();
-        var hhmmss = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
-        var fechaLocal = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + 'T' + hhmmss;
-        var fechaSeleccionada = document.getElementById('fecha').value;
-        var horaSeleccionada = document.getElementById('hora').value;
-        var horaFinal = horaSeleccionada ? horaSeleccionada + ':00' : hhmmss;
-        var fechaHora = fechaSeleccionada ? fechaSeleccionada + 'T' + horaFinal : fechaLocal;
+        const now = new Date();
+        const hhmmss = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+        const fechaLocal = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + 'T' + hhmmss;
+        const fechaSeleccionada = document.getElementById('fecha').value;
+        const horaSeleccionada = document.getElementById('hora').value;
+        const horaFinal = horaSeleccionada ? horaSeleccionada + ':00' : hhmmss;
+        const fechaHora = fechaSeleccionada ? fechaSeleccionada + 'T' + horaFinal : fechaLocal;
+
         const data = {
             tipo_movimiento: this.tipoMovimiento,
             materia_prima_id: parseInt(materiaPrimaId),
@@ -331,11 +478,11 @@ const InvMovimientos = {
             await api.inv().crearMovimiento(data);
             App.toast('Movimiento registrado');
             this.render();
-        } catch(err) { App.toast('Error: ' + err.message, 'error'); }
+        } catch (err) { App.toast('Error: ' + err.message, 'error'); }
         finally {
             // Re-habilitar el boton siempre (tambien si la vista no se re-renderiza)
             this._guardando = false;
-            if (btn) { btn.disabled = false; btn.textContent = 'Registrar'; }
+            if (btn) { btn.disabled = false; btn.textContent = 'Registrar movimiento'; }
         }
     }
 };
