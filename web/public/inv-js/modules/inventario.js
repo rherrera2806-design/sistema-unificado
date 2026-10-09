@@ -95,7 +95,7 @@ const InvInventario = {
         // ---------- Tabla desktop ----------
         let headers = '<th>Código</th><th>Tipo de cristal</th><th class="num">Espesor</th><th>Medida</th>';
         if (verS) headers += '<th class="num">Entradas</th><th class="num">Salidas</th>';
-        headers += '<th class="num">Stock</th>';
+        headers += '<th class="num invp-col-stock">Stock</th>';
         if (verS) headers += '<th class="num">Consumo/mes</th><th class="num">Autonomía</th>';
         headers += '<th class="num">M² en stock</th><th>Estado</th>';
 
@@ -113,7 +113,7 @@ const InvInventario = {
                 + '<td class="invp-mono sutil">' + Math.round(i.ancho || 0) + '×' + Math.round(i.alto || 0) + '</td>';
             if (verS) tableHtml += '<td class="num invp-mono sutil">' + (i.entradas || 0) + '</td>'
                 + '<td class="num invp-mono sutil">' + (i.salidas_plancha || 0) + '</td>';
-            tableHtml += '<td class="num invp-mono ' + est.stockCls + '">' + (i.stock || 0) + '</td>';
+            tableHtml += '<td class="num invp-mono invp-col-stock ' + est.stockCls + '">' + (i.stock || 0) + '</td>';
             if (verS) tableHtml += '<td class="num invp-mono sutil">' + cpm.toLocaleString('es-CL') + '</td>'
                 + '<td class="num invp-mono ' + est.autoCls + '">' + (cpm > 0 ? autoDias + '<span class="invp-unidad">d</span>' : '—') + '</td>';
             tableHtml += '<td class="num invp-mono sutil">' + m2.toFixed(2) + '<span class="invp-unidad">m²</span></td>'

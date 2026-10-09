@@ -173,12 +173,12 @@ const InvMovimientos = {
             const tabla = document.getElementById('stockDimTabla');
             if (tabla) {
                 tabla.innerHTML = '<table class="invp-table"><thead><tr>'
-                    + '<th>Medida</th><th class="num">Stock</th><th class="num">m² unit.</th>'
+                    + '<th>Medida</th><th class="num invp-col-stock">Stock</th><th class="num">m² unit.</th>'
                     + '</tr></thead><tbody>'
                     + this._stockDimensiones.map(function(d, i) {
                         return '<tr style="cursor:pointer" onclick="document.getElementById(\'stockDimensionSelect\').value=\'' + i + '\';InvMovimientos.onStockDimChange()">'
                             + '<td class="codigo invp-mono">' + escText(d.ancho) + '×' + escText(d.alto) + '<span class="invp-unidad">mm</span></td>'
-                            + '<td class="num invp-mono ' + (Number(d.stock) <= 0 ? 'invp-danger' : 'valor') + '">' + escText(d.stock) + '</td>'
+                            + '<td class="num invp-mono invp-col-stock ' + (Number(d.stock) <= 0 ? 'invp-danger' : 'valor') + '">' + escText(d.stock) + '</td>'
                             + '<td class="num invp-mono sutil">' + escText(d.m2_unitario) + '</td>'
                             + '</tr>';
                     }).join('')

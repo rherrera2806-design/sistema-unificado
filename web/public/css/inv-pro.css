@@ -2,7 +2,8 @@
    inv-pro.css — Lenguaje visual "hoja técnica de vidrio" para Inventario
    Principio: COLOR = SIGNIFICADO. Los datos son neutros; solo se colorea
    lo que exige una decisión (stock crítico / autonomía baja).
-   Tipografía: IBM Plex Sans (UI) + IBM Plex Mono (datos técnicos).
+   Tipografía: IBM Plex Sans en todo el módulo; los números conservan
+   alineación con font-variant-numeric: tabular-nums (sin monoespaciada).
    Todas las clases van con prefijo invp- y scope .inv-pro para no afectar
    al resto de la SPA.
    ========================================================================== */
@@ -22,7 +23,7 @@
 }
 
 .inv-pro .invp-mono {
-    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-family: inherit;
     font-variant-numeric: tabular-nums;
 }
 
@@ -156,10 +157,17 @@
 .inv-pro .invp-mcard.critico { border-left-color: var(--invp-danger); }
 .inv-pro .invp-mcard.bajo { border-left-color: var(--invp-warn); }
 .inv-pro .invp-mcard .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
-.inv-pro .invp-mcard .cod { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: var(--invp-ink); }
+.inv-pro .invp-mcard .cod { font-family: inherit; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; color: var(--invp-ink); }
 .inv-pro .invp-mgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 10px; }
 .inv-pro .invp-lbl { font-size: 9px; letter-spacing: .6px; text-transform: uppercase; color: var(--invp-muted); margin-bottom: 1px; }
-.inv-pro .invp-val { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--invp-ink); font-weight: 500; }
+.inv-pro .invp-val { font-family: inherit; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--invp-ink); font-weight: 500; }
+
+/* ---------- Columna Stock: fondo identificador para localizarla de un vistazo ---------- */
+.inv-pro .invp-table th.invp-col-stock { background: #dfe7f1; color: var(--invp-slate); }
+.inv-pro .invp-table td.invp-col-stock { background: #eaeff7; }
+.inv-pro .invp-table tbody tr:hover td.invp-col-stock { background: #dde5f0; }
+.inv-pro .invp-table tr.critico td.invp-col-stock { background: #f6ddd9; }
+.inv-pro .invp-table tr.critico:hover td.invp-col-stock { background: #f2d3cf; }
 
 /* ---------- Formularios (coherentes con inv-form-grid del patrón) ---------- */
 .inv-pro .invp-field label {

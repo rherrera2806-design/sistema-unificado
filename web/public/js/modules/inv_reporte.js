@@ -15,7 +15,7 @@ App.registerModule('inv_reporte', {
             + '.ir-section{background:var(--invp-surface);border:1px solid var(--invp-line);border-radius:12px;padding:20px;margin-bottom:16px}'
             + '.ir-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}'
             + '.ir-kpi{background:var(--invp-surface);border:1px solid var(--invp-line);border-radius:10px;padding:16px;text-align:center}'
-            + '.ir-kpi-value{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;font-size:26px;font-weight:600;color:var(--invp-ink);line-height:1.1}'
+            + '.ir-kpi-value{font-family:inherit;font-variant-numeric:tabular-nums;font-size:26px;font-weight:600;color:var(--invp-ink);line-height:1.1}'
             + '.ir-kpi-label{font-size:10px;font-weight:600;color:var(--invp-muted);text-transform:uppercase;letter-spacing:.8px;margin-top:4px}'
             + '.ir-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}'
             + '.ir-chart-box{background:var(--invp-surface);border:1px solid var(--invp-line);border-radius:12px;padding:16px}'
