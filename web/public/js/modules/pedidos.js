@@ -1,12 +1,129 @@
+// ══════════════════════════════════════════════════════════════════════════
+// Módulo: Pedidos / Órdenes (SPA — app.html)
+// Flujo de revisión (pedido del usuario):
+//   - La acción única "Revisar" ya NO existe.
+//   - Pedido PENDIENTE  → acciones directas "Aprobar" y "Rechazar".
+//   - Pedido APROBADO   → se mantiene "Rechazar" (rechazar aprobado).
+//   - AL APROBAR: confirmar → PUT {estado:'aprobado'} → descargar el PDF de
+//     forma segura (fetch → blob → objectURL → click, esperando a que la
+//     descarga termine) → recién ahí DELETE /:id/pdf → toast honesto.
+//   - AL RECHAZAR: modal con motivo obligatorio → PUT {estado:'rechazado',
+//     motivo_rechazo} → el backend elimina el PDF él solo → toast.
+//     El motivo queda visible en el badge RECHAZADO (click para verlo).
+// Máquina de estados del backend: pendiente→aprobado/rechazado,
+// aprobado→rechazado/pendiente, rechazado→pendiente (al editar).
+// Notas de seguridad: texto en HTML = escText, atributos = escAttr y
+// literales JS dentro de onclick = escJs (ver app-main.js).
+// ══════════════════════════════════════════════════════════════════════════
+
 App.registerModule('pedidos', {
     allPedidos: [],
     currentPedido: null,
-    selectedFile: null,
-    isVendedor: false,
-    canAuthorize: false,
+    selectedFile: null,      // PDF elegido en el modal de "Nuevo Pedido"
+    editFile: null,          // PDF elegido en el modal de edición (opcional)
     uploading: false,
+    _ocupado: false,         // Guard anti doble-submit de aprobar/rechazar/editar/eliminar
     _filterTimer: null,
+    _dropdownsGlobal: false, // El listener global de clics se registra UNA sola vez
+    _rechazoKeyHandler: null,
     activeStatFilter: null,
+    COLUMNAS: 10,            // Columnas reales de la tabla (th y td deben coincidir)
+
+    // ──────────────────────────── Helpers locales ────────────────────────────
+
+    // Usuario de sesión. Nunca lanzar si el JSON de localStorage está corrupto.
+    _user() {
+        try {
+            return JSON.parse(localStorage.getItem('unified_user') || '{}') || {};
+        } catch (e) { return {}; }
+    },
+
+    // Lectura segura de cualquier clave JSON de localStorage.
+    _leerClave(clave, porDefecto) {
+        try {
+            const v = JSON.parse(localStorage.getItem(clave));
+            return (v === null || v === undefined) ? porDefecto : v;
+        } catch (e) { return porDefecto; }
+    },
+
+    // Permiso de creación UNIFICADO (antes estaba duplicado en render() y
+    // upload()). Debe coincidir EXACTAMENTE con canCreate del backend
+    // (api/src/routes/pedidos.js): requireAnyPerm('pedidos.agregar', 'pedidos')
+    // + admin (rol 'admin' o permiso 'usuarios').
+    _puedeCrear() {
+        const user = this._user();
+        const permisos = user.permisos || [];
+        const esAdmin = user.rol === 'admin' || permisos.includes('usuarios');
+        return esAdmin || permisos.includes('pedidos.agregar') || permisos.includes('pedidos');
+    },
+
+    // Igual que apiJson (app-main.js), pero traduce los errores 413/415 del
+    // servidor (archivo demasiado grande / tipo no permitido) a mensajes amables.
+    async _apiJson(res) {
+        if (res.status === 413) throw new Error('El archivo supera el tamaño máximo permitido (50 MB)');
+        if (res.status === 415) throw new Error('Formato no permitido: solo se aceptan archivos PDF');
+        return apiJson(res);
+    },
+
+    // App.toast ignora el 3.er argumento (duración), así que los avisos largos
+    // usan este toast local con tiempo configurable (mismo look que showAlert).
+    _toastLargo(mensaje, tipo, ms) {
+        let cont = document.getElementById('alertContainer');
+        if (!cont) {
+            cont = document.createElement('div');
+            cont.id = 'alertContainer';
+            cont.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2000;max-width:400px;';
+            document.body.appendChild(cont);
+        }
+        const el = document.createElement('div');
+        el.className = 'alert alert-' + (tipo === 'error' ? 'danger' : (tipo || 'success'));
+        el.textContent = mensaje;   // textContent: sin riesgo de XSS
+        cont.appendChild(el);
+        setTimeout(() => el.remove(), ms || 8000);
+    },
+
+    // Tamaño legible para validar/adjuntar PDFs.
+    _fmtTamano(bytes) {
+        if (bytes === null || bytes === undefined) return '';
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    },
+
+    // Descarga SEGURA de un blob: fetch → blob → objectURL → link.click(),
+    // esperando a que el navegador procese la descarga antes de liberar la
+    // URL (revocarla demasiado pronto corta la descarga).
+    async _descargarPdf(blob, nombre) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = String(nombre || 'pedido').replace(/[\\/:*?"<>|]/g, '_');
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        // Esperar a que la descarga del blob complete antes de limpiar.
+        await new Promise(r => setTimeout(r, 1500));
+        link.remove();
+        URL.revokeObjectURL(url);
+    },
+
+    // Acciones disponibles para un pedido según su estado y los permisos del
+    // usuario. Fuente única para el dropdown de la tabla y las cards móviles.
+    //   - Eliminar exige pedidos.eliminar (App.canDelete), como el backend.
+    //   - Aprobar/Rechazar/Editar exigen pedidos.editar (App.canEdit).
+    _acciones(p) {
+        const id = Number(p.id) || 0;
+        const puedeEditar = App.canEdit('pedidos');
+        const puedeEliminar = App.canDelete('pedidos');
+        const acc = [];
+        if (p.estado === 'pendiente') acc.push({ txt: 'Ver PDF', fn: 'viewPdf(' + id + ')' });
+        if (puedeEditar && p.estado === 'pendiente') acc.push({ txt: 'Aprobar', fn: 'aprobarPedido(' + id + ')', ok: true });
+        if (puedeEditar && (p.estado === 'pendiente' || p.estado === 'aprobado')) acc.push({ txt: 'Rechazar', fn: 'showRechazoModal(' + id + ')', danger: true });
+        if (p.estado !== 'pendiente') acc.push({ txt: 'Historial', fn: 'showHistorial(' + id + ')' });
+        if (puedeEditar) acc.push({ txt: 'Editar', fn: 'showEditModal(' + id + ')' });
+        if (puedeEliminar) acc.push({ txt: 'Eliminar', fn: 'deletePedido(' + id + ',\'' + escJs(p.numero_pedido) + '\')', danger: true });
+        return acc;
+    },
 
     debouncedFilter() {
         clearTimeout(this._filterTimer);
@@ -46,17 +163,7 @@ App.registerModule('pedidos', {
 
     async render() {
         const el = document.getElementById('page-pedidos');
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const permisos = user.permisos || [];
-        const isAdmin = user.rol === 'admin' || permisos.includes('usuarios');
-        this.isVendedor = permisos.includes('pedidos') && !permisos.includes('pedidos.agregar');
-        this.canAuthorize = permisos.includes('pedidos.editar') || isAdmin;
-        // Debe coincidir EXACTAMENTE con canCreate del backend (api/src/routes/
-        // pedidos.js): requireAnyPerm('pedidos.agregar', 'pedidos') + admin.
-        // Antes showNew también incluía a quien solo tenia 'pedidos.editar'
-        // (autorizar), el formulario se abria igual y el POST devolvia 403.
-        this.canCreate = isAdmin || permisos.includes('pedidos.agregar') || permisos.includes('pedidos');
-        const showNew = this.canCreate;
+        const showNew = this._puedeCrear();
 
         const modalesReady = document.getElementById('pedUploadModal');
         if (!modalesReady) {
@@ -126,16 +233,16 @@ App.registerModule('pedidos', {
                 + '<th class="ped-th">Fecha</th>'
                 + '<th class="ped-th">Estado</th>'
                 + '<th class="ped-th">Revisor</th>'
+                + '<th class="ped-th">Fecha Revisión</th>'
                 + '<th class="ped-th">Tiempo</th>'
                 + '<th class="ped-th" style="text-align:center">Acciones</th>'
                 + '</tr></thead><tbody id="pedidosTable">'
-                + '<tr><td colspan="9" style="text-align:center;padding:48px;color:#94a3b8">Cargando pedidos...</td></tr>'
+                + '<tr><td colspan="' + this.COLUMNAS + '" style="text-align:center;padding:48px;color:#94a3b8">Cargando pedidos...</td></tr>'
                 + '</tbody></table></div>'
                 + '<div id="pedidosCards" class="m-cards-mobile" style="display:none;padding:8px 12px"></div>'
                 + '</div></div>'
 
                 + this.uploadModalHtml()
-                + this.reviewModalHtml()
                 + this.editModalHtml()
                 + '</div>'
 
@@ -151,7 +258,13 @@ App.registerModule('pedidos', {
                 + '</style>';
 
             this.setupDragDrop();
-            document.addEventListener('click', () => this.closeAllDropdowns());
+            // Registrar el listener global UNA sola vez: el DOM del módulo se
+            // reconstruye en cada visita y antes este listener se acumulaba
+            // (memory leak + handlers huérfanos).
+            if (!this._dropdownsGlobal) {
+                this._dropdownsGlobal = true;
+                document.addEventListener('click', () => this.closeAllDropdowns());
+            }
         }
         await this.load();
     },
@@ -181,35 +294,12 @@ App.registerModule('pedidos', {
             + '<div id="pedUploadArea" onclick="document.getElementById(\'pedFileInput\').click()" style="border:2px dashed #cbd5e1;border-radius:12px;padding:36px;text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc">'
             + '<div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#eff6ff,#dbeafe);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 4px 12px rgba(59,130,246,0.15)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
             + '<div style="color:#64748b;font-size:13px;font-weight:500">Arrastra un PDF aqui o haz clic para seleccionar</div>'
-            + '<div style="color:#94a3b8;font-size:11px;margin-top:4px">Solo archivos PDF</div>'
+            + '<div style="color:#94a3b8;font-size:11px;margin-top:4px">Solo archivos PDF (máximo 50 MB)</div>'
             + '<div id="pedUploadFilename" style="display:none;margin-top:14px;padding:8px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-weight:600;font-size:13px"></div></div>'
-            + '<input type="file" id="pedFileInput" accept=".pdf" style="display:none" onchange="App.modules.pedidos.handleFileSelect(event)"></div></div>'
+            + '<input type="file" id="pedFileInput" accept=".pdf,application/pdf" style="display:none" onchange="App.modules.pedidos.handleFileSelect(event)"></div></div>'
             + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
                 + '<button onclick="App.modules.pedidos.hideUploadModal()" class="btn btn-outline">Cancelar</button>'
                 + '<button onclick="App.modules.pedidos.upload()" class="btn btn-primary">Subir Pedido</button>'
-            + '</div></div></div>';
-    },
-
-    reviewModalHtml() {
-        return '<div id="pedReviewModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center">'
-            + '<div style="background:white;border-radius:16px;width:620px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:pedFadeUp 0.3s ease both">'
-            + '<div style="display:flex;justify-content:space-between;align-items:center;padding:24px 28px;border-bottom:1px solid #e2e8f0">'
-            + '<div style="display:flex;align-items:center;gap:12px">'
-            + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>'
-            + '<h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Revisar Pedido</h3></div>'
-            + '<button class="modal-close" onclick="App.modules.pedidos.hideReviewModal()"></button></div>'
-            + '<div style="padding:28px">'
-            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;padding:20px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:12px;border:1px solid #e2e8f0">'
-            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">N Pedido</span><span id="pedReviewNumero" style="font-weight:700;color:#0f172a;font-family:\'JetBrains Mono\',monospace;font-size:15px"></span></div>'
-            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Cliente</span><span id="pedReviewCliente" style="font-weight:700;color:#0f172a;font-size:15px"></span></div>'
-            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Vendedor</span><span id="pedReviewVendedor" style="color:#475569;font-size:14px"></span></div>'
-            + '<div><span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px">Fecha Subida</span><span id="pedReviewFecha" style="color:#475569;font-family:\'JetBrains Mono\',monospace;font-size:13px"></span></div></div>'
-            + '<div id="pedMotivoGroup" style="display:none;margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Motivo de Rechazo *</label>'
-            + '<textarea id="pedMotivo" rows="3" placeholder="Indica el motivo del rechazo..." style="font-size:13px;width:100%;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;resize:vertical;transition:all 0.2s" onfocus="this.style.borderColor=\'#ef4444\';this.style.boxShadow=\'0 0 0 3px rgba(239,68,68,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></textarea></div></div>'
-            + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
-                + '<button onclick="App.modules.pedidos.hideReviewModal()" class="btn btn-outline">Cancelar</button>'
-                + '<button id="pedBtnRechazar" onclick="App.modules.pedidos.review(\'rechazado\')" class="btn btn-danger">Rechazar</button>'
-                + '<button id="pedBtnAprobar" onclick="App.modules.pedidos.review(\'aprobado\')" class="btn btn-primary">Aprobar</button>'
             + '</div></div></div>';
     },
 
@@ -222,6 +312,7 @@ App.registerModule('pedidos', {
             + '<h3 style="margin:0;font-size:17px;font-weight:700;color:#0f172a">Editar Pedido</h3></div>'
             + '<button class="modal-close" onclick="App.modules.pedidos.hideEditModal()"></button></div>'
             + '<div style="padding:28px">'
+            + '<div id="pedEditAviso" style="display:none;margin-bottom:16px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;color:#92400e;font-size:12px"></div>'
             + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Numero de Pedido *</label>'
             + '<input type="text" id="pedEditNumero" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
             + '<div style="margin-bottom:20px"><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Cliente *</label>'
@@ -233,7 +324,11 @@ App.registerModule('pedidos', {
             + '<option value="Vta. Region">Vta. Region</option>'
             + '<option value="Reposicion">Reposición</option>'
             + '<option value="Urgencia">Urgencia</option>'
-            + '</select></div></div>'
+            + '</select></div>'
+            + '<div><label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">PDF del Pedido (opcional)</label>'
+            + '<div style="font-size:11px;color:#94a3b8;margin-bottom:8px">El PDF se elimina automaticamente al rechazar un pedido. Si no tiene PDF, adjunta uno nuevo aqui.</div>'
+            + '<input type="file" id="pedEditFileInput" accept=".pdf,application/pdf" style="font-size:12px;width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none" onchange="App.modules.pedidos.handleEditFileSelect(event)">'
+            + '<div id="pedEditFilename" style="display:none;margin-top:8px;padding:8px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-weight:600;font-size:12px"></div></div></div>'
             + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
                 + '<button onclick="App.modules.pedidos.hideEditModal()" class="btn btn-outline">Cancelar</button>'
                 + '<button onclick="App.modules.pedidos.saveEdit()" class="btn btn-primary">Guardar</button>'
@@ -242,42 +337,42 @@ App.registerModule('pedidos', {
 
     async load() {
         try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const res = await fetch('/api/pedidos', {
-                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' }
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || 'HTTP ' + res.status);
-            }
-            const data = await res.json();
+            // La identidad/permisos los resuelve el backend desde la sesión:
+            // no enviar headers X-User-* (eran ignorables y engañosos).
+            const res = await fetch('/api/pedidos');
+            const data = await this._apiJson(res);
             this.allPedidos = Array.isArray(data) ? data : [];
             const lbl = document.getElementById('pedCountLabel');
             if (lbl) lbl.textContent = '(' + this.allPedidos.length + ')';
             this.renderStats();
             this.populateYears();
             this.filter();
-            this.notifyRechazados(user);
+            this.notifyRechazados();
         } catch(e) {
             console.error('Error loading pedidos:', e);
-            document.getElementById('pedidosTable').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8">Error al cargar pedidos: ' + (e.message || '') + '</td></tr>';
+            const tb = document.getElementById('pedidosTable');
+            if (tb) tb.innerHTML = '<tr><td colspan="' + this.COLUMNAS + '" style="text-align:center;padding:48px;color:#94a3b8">Error al cargar pedidos: ' + escText(e.message || '') + '</td></tr>';
         }
     },
 
-    notifyRechazados(user) {
+    notifyRechazados() {
+        const user = this._user();
         if (!user.email) return;
         const esAdmin = (user.permisos || []).includes('pedidos.editar');
         if (esAdmin) return;
-        const seen = JSON.parse(localStorage.getItem('ped_rechazados_seen') || '[]');
+        const seen = this._leerClave('ped_rechazados_seen', []);
         const rechazados = this.allPedidos.filter(p => p.estado === 'rechazado' && p.vendedor === user.email && !seen.includes(p.id));
         if (rechazados.length === 0) return;
         setTimeout(() => {
             rechazados.forEach((p, i) => {
                 setTimeout(() => {
-                    App.toast('Pedido ' + p.numero_pedido + ' RECHAZADO — Motivo: ' + (p.motivo_rechazo || 'No especificado'), 'error', 8000);
+                    // Aviso largo con toast local: App.toast ignora la duración.
+                    this._toastLargo('Pedido ' + p.numero_pedido + ' RECHAZADO — Motivo: ' + (p.motivo_rechazo || 'No especificado'), 'error', 8000);
                 }, i * 2000);
             });
-            localStorage.setItem('ped_rechazados_seen', JSON.stringify([...seen, ...rechazados.map(p => p.id)]));
+            try {
+                localStorage.setItem('ped_rechazados_seen', JSON.stringify([...seen, ...rechazados.map(p => p.id)]));
+            } catch (e) { /* cuota de localStorage llena: se reintenta en la próxima carga */ }
         }, 800);
     },
 
@@ -291,7 +386,9 @@ App.registerModule('pedidos', {
             else if (e === 'rechazado') rech++;
         }
         const af = this.activeStatFilter;
-        document.getElementById('pedStats').innerHTML =
+        const statsEl = document.getElementById('pedStats');
+        if (!statsEl) return;
+        statsEl.innerHTML =
             this.statCard(total, 'Total', '#64748b', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>', 0, 'stat-blue', !af)
             + this.statCard(pend, 'Pendientes', '#f59e0b', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>', 100, 'stat-green', af === 'pendiente')
             + this.statCard(apr, 'Aprobados', '#22c55e', '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>', 200, 'stat-green', af === 'aprobado')
@@ -331,14 +428,9 @@ App.registerModule('pedidos', {
             const matchMes = !mes || (fecha.getMonth() + 1) === parseInt(mes);
             return matchSearch && matchEstado && matchAnio && matchMes;
         });
-        this.filteredPedidos = filtered;
         const lbl = document.getElementById('pedCountLabel');
         if (lbl) lbl.textContent = '(' + filtered.length + ')';
         this.renderTable(filtered);
-        const dc = document.getElementById('pedDashboardContainer');
-        if (dc && dc.style.display !== 'none') this.renderDashboard();
-        const gc = document.getElementById('pedGraficoContainer');
-        if (gc && gc.style.display !== 'none') this.renderGrafico();
     },
 
     toggleStatFilter(estado) {
@@ -354,8 +446,9 @@ App.registerModule('pedidos', {
     renderTable(pedidos) {
         const tbody = document.getElementById('pedidosTable');
         const cardsEl = document.getElementById('pedidosCards');
+        if (!tbody) return;
         if (!pedidos.length) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:56px 20px">'
+            tbody.innerHTML = '<tr><td colspan="' + this.COLUMNAS + '" style="text-align:center;padding:56px 20px">'
                 + '<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;box-shadow:0 4px 12px rgba(0,0,0,0.08)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
                 + '<div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:4px">Sin pedidos</div>'
                 + '<div style="color:#94a3b8;font-size:13px">No hay pedidos que mostrar</div></td></tr>';
@@ -364,52 +457,42 @@ App.registerModule('pedidos', {
         }
         tbody.innerHTML = pedidos.map(p => {
             const badge = this.badgeHtml(p.estado, p.motivo_rechazo);
+            const dropItems = this._acciones(p).map(a =>
+                '<div class="ped-drop-item' + (a.danger ? ' ped-drop-danger' : '') + '" onclick="event.stopPropagation();App.modules.pedidos.' + a.fn + '">' + a.txt + '</div>'
+            ).join('');
             return '<tr class="ped-row" style="cursor:pointer">'
-                + '<td class="ped-td"><span class="ped-num">' + escapeHtml(p.numero_pedido) + '</span></td>'
-                + '<td class="ped-td" style="font-weight:600;color:#0f172a">' + escapeHtml(p.cliente) + '</td>'
+                + '<td class="ped-td"><span class="ped-num">' + escText(p.numero_pedido) + '</span></td>'
+                + '<td class="ped-td" style="font-weight:600;color:#0f172a">' + escText(p.cliente) + '</td>'
                 + '<td class="ped-td">' + this.tipoOvBadge(p.tipo_ov) + '</td>'
-                + '<td class="ped-td" style="color:#475569">' + escapeHtml(p.vendedor_nombre || p.vendedor) + '</td>'
+                + '<td class="ped-td" style="color:#475569">' + escText(p.vendedor_nombre || p.vendedor) + '</td>'
                 + '<td class="ped-td ped-mono">' + this.fmtDateTime(p.fecha_subida) + '</td>'
                 + '<td class="ped-td">' + badge + '</td>'
-                + '<td class="ped-td" style="color:#475569">' + escapeHtml(p.revisor_nombre || '-') + '</td>'
+                + '<td class="ped-td" style="color:#475569">' + escText(p.revisor_nombre || '-') + '</td>'
                 + '<td class="ped-td ped-mono">' + (p.fecha_revision ? this.fmtDateTime(p.fecha_revision) : '<span style="color:#cbd5e1">-</span>') + '</td>'
                 + '<td class="ped-td ped-mono">' + this.fmtTiempo(p.fecha_subida, p.fecha_revision) + '</td>'
                 + '<td class="ped-td" style="text-align:center;white-space:nowrap;position:relative">'
-                + '<button onclick="App.modules.pedidos.toggleActions(event,' + p.id + ')" class="ped-actions-btn">⋮</button>'
-                + '<div class="ped-dropdown" id="pedDrop' + p.id + '">'
-                + (p.estado === 'pendiente' ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')">Ver PDF</div>' : '')
-                + (this.canAuthorize && p.estado === 'pendiente' ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')">Revisar</div>' : '')
-                + (this.canAuthorize && p.estado === 'aprobado' ? '<div class="ped-drop-item ped-drop-danger" onclick="event.stopPropagation();App.modules.pedidos.rechazarAprobado(' + p.id + ')">Rechazar</div>' : '')
-                + (p.estado !== 'pendiente' ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.showHistorial(' + p.id + ')">Historial</div>' : '')
-                + (this.canAuthorize ? '<div class="ped-drop-item" onclick="event.stopPropagation();App.modules.pedidos.showEditModal(' + p.id + ')">Editar</div>' : '')
-                + (this.canAuthorize ? '<div class="ped-drop-item ped-drop-danger" onclick="event.stopPropagation();App.modules.pedidos.deletePedido(' + p.id + ',\'' + escapeHtml(p.numero_pedido) + '\')">Eliminar</div>' : '')
+                + '<button onclick="App.modules.pedidos.toggleActions(event,' + (Number(p.id) || 0) + ')" class="ped-actions-btn">⋮</button>'
+                + '<div class="ped-dropdown" id="pedDrop' + (Number(p.id) || 0) + '">'
+                + dropItems
                 + '</div></td></tr>';
         }).join('');
 
         if (cardsEl && cardsEl.offsetParent !== null) {
             cardsEl.innerHTML = SigmaCards.generate({
-                title: p => '<strong>' + escapeHtml(p.numero_pedido) + '</strong>',
-                subtitle: p => escapeHtml(p.cliente),
+                title: p => '<strong>' + escText(p.numero_pedido) + '</strong>',
+                subtitle: p => escText(p.cliente),
                 badge: p => this.badgeHtml(p.estado, p.motivo_rechazo),
                 fields: [
                     { label: 'Tipo', value: p => this.tipoOvHtml(p.tipo_ov) },
-                    { label: 'Vendedor', value: p => escapeHtml(p.vendedor_nombre || p.vendedor) },
+                    { label: 'Vendedor', value: p => escText(p.vendedor_nombre || p.vendedor) },
                     { label: 'Fecha', value: p => this.fmtDateTime(p.fecha_subida) },
-                    { label: 'Revisor', value: p => escapeHtml(p.revisor_nombre || '-') }
+                    { label: 'Revisor', value: p => escText(p.revisor_nombre || '-') }
                 ],
-                actions: p => {
-                    let html = '';
-                    if (p.estado === 'pendiente') {
-                        html += '<button onclick="event.stopPropagation();App.modules.pedidos.viewPdf(' + p.id + ')" class="btn btn-sm btn-info" style="margin-right:4px">PDF</button>';
-                    }
-                    if (this.canAuthorize && p.estado === 'pendiente') {
-                        html += '<button onclick="event.stopPropagation();App.modules.pedidos.showReviewModal(' + p.id + ')" class="btn btn-sm btn-info" style="margin-right:4px">Revisar</button>';
-                    }
-                    if (this.canAuthorize) {
-                        html += '<button onclick="event.stopPropagation();App.modules.pedidos.showEditModal(' + p.id + ')" class="btn btn-sm btn-outline">Editar</button>';
-                    }
-                    return html;
-                }
+                // Mismas acciones que el dropdown (incluye Eliminar, Historial y
+                // Rechazar aprobado, que antes faltaban en móvil).
+                actions: p => this._acciones(p).map(a =>
+                    '<button onclick="event.stopPropagation();App.modules.pedidos.' + a.fn + '" class="btn btn-sm ' + (a.danger ? 'btn-danger' : (a.ok ? 'btn-primary' : 'btn-outline')) + '" style="margin:2px">' + a.txt + '</button>'
+                ).join('')
             }, pedidos);
         }
 
@@ -418,7 +501,9 @@ App.registerModule('pedidos', {
 
     badgeHtml(estado, motivo) {
         if (estado === 'aprobado') return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>APROBADO</span>';
-        if (estado === 'rechazado') return '<span class="ped-badge" onclick="App.modules.pedidos.showMotivoRechazo(\'' + escapeHtml(motivo || '').replace(/'/g, "\\'") + '\')" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;cursor:pointer" title="Ver motivo de rechazo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>RECHAZADO</span>';
+        // El motivo viaja como literal JS dentro del onclick: escJs (NO
+        // escapeHtml, que dejaba escapar el atributo y permitía breakout XSS).
+        if (estado === 'rechazado') return '<span class="ped-badge" onclick="App.modules.pedidos.showMotivoRechazo(\'' + escJs(motivo || '') + '\')" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;cursor:pointer" title="Ver motivo de rechazo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>RECHAZADO</span>';
         return '<span class="ped-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;background:#fefce8;color:#ca8a04;border:1px solid #fde68a"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>PENDIENTE</span>';
     },
     showMotivoRechazo(motivo) {
@@ -464,66 +549,78 @@ App.registerModule('pedidos', {
 
     handleFileSelect(e) { this.handleFile(e.target.files[0]); },
 
+    // Validación del PDF: tipo + tamaño máximo 50 MB (igual que el límite de
+    // multer en el backend), con mensajes claros.
+    _validarPdf(file) {
+        if (!file) return null;
+        const esPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+        if (!esPdf) return 'Por favor selecciona un archivo PDF';
+        if (file.size > 50 * 1024 * 1024) return 'El PDF "' + file.name + '" pesa ' + this._fmtTamano(file.size) + '. El máximo permitido es 50 MB';
+        return null;
+    },
+
     handleFile(file) {
-        if (file && file.type === 'application/pdf') {
-            this.selectedFile = file;
-            document.getElementById('pedUploadFilename').textContent = file.name;
-            document.getElementById('pedUploadFilename').style.display = 'block';
-            document.getElementById('pedUploadArea').style.borderColor = '#22c55e';
-            document.getElementById('pedUploadArea').style.background = '#f0fdf4';
-        } else { alert('Por favor selecciona un archivo PDF'); }
+        const error = this._validarPdf(file);
+        if (error) { App.toast(error, 'error'); return; }
+        this.selectedFile = file;
+        const fname = document.getElementById('pedUploadFilename');
+        if (fname) {
+            fname.textContent = file.name + ' (' + this._fmtTamano(file.size) + ')';
+            fname.style.display = 'block';
+        }
+        document.getElementById('pedUploadArea').style.borderColor = '#22c55e';
+        document.getElementById('pedUploadArea').style.background = '#f0fdf4';
+    },
+
+    handleEditFileSelect(e) { this._setEditFile(e.target.files[0]); },
+
+    _setEditFile(file) {
+        const fname = document.getElementById('pedEditFilename');
+        if (!file) {
+            this.editFile = null;
+            if (fname) fname.style.display = 'none';
+            return;
+        }
+        const error = this._validarPdf(file);
+        if (error) { App.toast(error, 'error'); return; }
+        this.editFile = file;
+        if (fname) {
+            fname.textContent = file.name + ' (' + this._fmtTamano(file.size) + ')';
+            fname.style.display = 'block';
+        }
     },
 
     async upload() {
         const numero = document.getElementById('pedNumero').value.trim();
         const cliente = document.getElementById('pedCliente').value.trim().toUpperCase();
         const tipo_ov = document.getElementById('pedTipoOV').value;
-        if (!numero || !cliente) { alert('Numero de pedido y cliente son requeridos'); return; }
-        if (!this.selectedFile) { alert('Por favor selecciona un archivo PDF'); return; }
+        if (!numero || !cliente) { App.toast('Numero de pedido y cliente son requeridos', 'error'); return; }
+        if (!this.selectedFile) { App.toast('Por favor selecciona un archivo PDF', 'error'); return; }
         // El backend rechaza igual (canCreate), pero conviene avisar antes de
         // recorrer todo el formulario y adjuntar el PDF que perderlo con un 403.
-        const sesion = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const perms = sesion.permisos || [];
-        const puedeCrear = sesion.rol === 'admin' || perms.includes('usuarios') || perms.includes('pedidos') || perms.includes('pedidos.agregar');
-        if (!puedeCrear) {
-            alert('No tienes permiso para crear pedidos. Pide al administrador el permiso "Pedidos / Ordenes - Agregar" y recarga la pagina.');
+        if (!this._puedeCrear()) {
+            App.toast('No tienes permiso para crear pedidos. Pide al administrador el permiso "Pedidos / Ordenes - Agregar" y recarga la pagina.', 'error');
             return;
         }
         if (this.uploading) return;
         this.uploading = true;
         try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const fd = new FormData();
             fd.append('numero_pedido', numero);
             fd.append('cliente', cliente);
             fd.append('tipo_ov', tipo_ov);
-            fd.append('vendedor', user.email || '');
+            // El vendedor lo determina el backend desde la sesión.
             fd.append('archivo_pdf', this.selectedFile);
-            const res = await fetch('/api/pedidos', {
-                method: 'POST',
-                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' },
-                body: fd
-            });
-            if (res.ok) { this.hideUploadModal(); this.load(); App.toast('Pedido subido exitosamente'); }
-            else { const data = await res.json(); alert(data.error || 'Error al guardar pedido'); }
-        } catch(e) { alert('Error al subir pedido: ' + e.message); }
+            const res = await fetch('/api/pedidos', { method: 'POST', body: fd });
+            await this._apiJson(res);
+            this.hideUploadModal();
+            App.toast('Pedido subido exitosamente');
+            this.load();
+        } catch(e) {
+            App.toast('Error al subir pedido: ' + e.message, 'error');
+        }
         this.uploading = false;
     },
-
-    showReviewModal(id) {
-        this.currentPedido = this.allPedidos.find(p => p.id === id);
-        if (!this.currentPedido) return;
-        document.getElementById('pedReviewNumero').textContent = this.currentPedido.numero_pedido;
-        document.getElementById('pedReviewCliente').textContent = this.currentPedido.cliente;
-        document.getElementById('pedReviewVendedor').textContent = this.currentPedido.vendedor_nombre || this.currentPedido.vendedor;
-        document.getElementById('pedReviewFecha').innerHTML = this.fmtDateTime(this.currentPedido.fecha_subida);
-        document.getElementById('pedMotivo').value = '';
-        document.getElementById('pedMotivoGroup').style.display = 'none';
-        document.getElementById('pedBtnRechazar').style.display = '';
-        document.getElementById('pedBtnAprobar').style.display = '';
-        document.getElementById('pedReviewModal').style.display = 'flex';
-    },
-    hideReviewModal() { document.getElementById('pedReviewModal').style.display = 'none'; this.currentPedido = null; },
 
     showEditModal(id) {
         const p = this.allPedidos.find(x => x.id === id);
@@ -532,105 +629,254 @@ App.registerModule('pedidos', {
         document.getElementById('pedEditNumero').value = p.numero_pedido;
         document.getElementById('pedEditCliente').value = p.cliente;
         document.getElementById('pedEditTipoOV').value = p.tipo_ov || 'Normal';
+        // Aviso de rescate: editar un APROBADO/RECHAZADO lo devuelve a 'pendiente'.
+        const aviso = document.getElementById('pedEditAviso');
+        if (aviso) {
+            if (p.estado !== 'pendiente') {
+                aviso.textContent = 'Este pedido está ' + (p.estado === 'aprobado' ? 'APROBADO' : 'RECHAZADO') + '. Al guardarlo volverá a PENDIENTE para poder revisarlo de nuevo.'
+                    + (p.estado === 'rechazado' ? ' Su PDF fue eliminado: puedes adjuntar uno nuevo aquí abajo.' : '');
+                aviso.style.display = 'block';
+            } else {
+                aviso.style.display = 'none';
+            }
+        }
+        // Limpiar el PDF opcional de una edición anterior.
+        this.editFile = null;
+        const fileInput = document.getElementById('pedEditFileInput');
+        if (fileInput) fileInput.value = '';
+        const fname = document.getElementById('pedEditFilename');
+        if (fname) fname.style.display = 'none';
         document.getElementById('pedEditModal').style.display = 'flex';
     },
-    hideEditModal() { document.getElementById('pedEditModal').style.display = 'none'; this.currentPedido = null; },
+    hideEditModal() {
+        document.getElementById('pedEditModal').style.display = 'none';
+        this.currentPedido = null;
+        this.editFile = null;
+    },
+
     async saveEdit() {
-        if (!this.currentPedido) return;
+        if (this._ocupado) return;
+        const p = this.currentPedido;
+        if (!p) return;
         const numero = document.getElementById('pedEditNumero').value.trim();
         const cliente = document.getElementById('pedEditCliente').value.trim().toUpperCase();
         const tipo_ov = document.getElementById('pedEditTipoOV').value;
-        if (!numero || !cliente) { alert('Numero y cliente son requeridos'); return; }
-        const goingToPendiente = this.currentPedido.estado === 'aprobado';
+        if (!numero || !cliente) { App.toast('Numero y cliente son requeridos', 'error'); return; }
+        // Al editar, un pedido APROBADO o RECHAZADO vuelve a 'pendiente'
+        // (rechazado→pendiente y aprobado→pendiente los permite el backend):
+        // así un pedido rechazado puede rescatarse en vez de quedar en un
+        // callejón sin salida.
+        const volverAPendiente = p.estado !== 'pendiente';
+        this._ocupado = true;
         try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const body = { numero_pedido: numero, cliente, tipo_ov };
-            if (goingToPendiente) body.estado = 'pendiente';
-            const res = await fetch('/api/pedidos/' + this.currentPedido.id, {
+            if (volverAPendiente) body.estado = 'pendiente';
+            const res = await fetch('/api/pedidos/' + (Number(p.id) || 0), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
-            if (res.ok) { this.hideEditModal(); this.load(); App.toast(goingToPendiente ? 'Pedido editado, vuelve a pendiente para revisión' : 'Pedido actualizado'); }
-            else { const data = await res.json(); alert(data.error || 'Error al guardar'); }
-        } catch(e) { alert('Error al guardar: ' + e.message); }
+            await this._apiJson(res);
+        } catch(e) {
+            this._ocupado = false;
+            App.toast('Error al guardar: ' + e.message, 'error');
+            return;
+        }
+        // PDF nuevo (opcional): si el pedido no tiene PDF (se borró al
+        // rechazar), se puede re-adjuntar aquí vía POST /api/pedidos/:id/pdf.
+        let pdfError = '';
+        if (this.editFile) {
+            try {
+                const fd = new FormData();
+                fd.append('archivo_pdf', this.editFile);
+                const rPdf = await fetch('/api/pedidos/' + (Number(p.id) || 0) + '/pdf', { method: 'POST', body: fd });
+                await this._apiJson(rPdf);
+            } catch(e) {
+                pdfError = e.message;
+            }
+        }
+        this._ocupado = false;
+        this.hideEditModal();
+        this.load();
+        if (pdfError) {
+            App.toast('Pedido guardado, pero no se pudo adjuntar el PDF nuevo: ' + pdfError, 'error');
+        } else {
+            App.toast(volverAPendiente ? 'Pedido editado y vuelto a pendiente para revisión' : 'Pedido actualizado');
+        }
     },
 
-    async review(estado) {
-        if (!this.currentPedido) return;
-        if (estado === 'rechazado') {
-            document.getElementById('pedMotivoGroup').style.display = 'block';
-            if (!document.getElementById('pedMotivo').value.trim()) { alert('Por favor indica el motivo del rechazo'); return; }
+    // ───────────────────── Flujo APROBAR (pendiente → aprobado) ─────────────────────
+    // 1) Confirmar (App.confirm)
+    // 2) PUT {estado:'aprobado'}
+    // 3) Descargar el PDF de forma segura y ESPERAR a que la descarga complete
+    // 4) Recién entonces DELETE /:id/pdf
+    // 5) Toast honesto: dice exactamente qué falló si algo falló.
+    async aprobarPedido(id) {
+        if (this._ocupado) return;
+        const p = this.allPedidos.find(x => x.id === id);
+        if (!p) return;
+        const ok = await App.confirm('¿Aprobar el pedido <strong>' + escText(p.numero_pedido) + '</strong>?<br>Se descargará el PDF y será eliminado del servidor.');
+        if (!ok) return;
+        this._ocupado = true;
+        // 1) Cambiar estado a aprobado.
+        try {
+            const res = await fetch('/api/pedidos/' + (Number(id) || 0), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: 'aprobado' })
+            });
+            await this._apiJson(res);   // 409/400 del backend muestran su mensaje
+        } catch(e) {
+            this._ocupado = false;
+            App.toast('No se pudo aprobar el pedido: ' + e.message, 'error');
+            return;
+        }
+        // 2) Descargar el PDF (fetch → blob → objectURL → click, esperando).
+        let descargaError = '';
+        try {
+            const rPdf = await fetch('/api/pedidos/' + (Number(id) || 0) + '/download-pdf');
+            if (!rPdf.ok) {
+                const d = await rPdf.json().catch(() => ({}));
+                throw new Error(d.error || ('HTTP ' + rPdf.status));
+            }
+            const blob = await rPdf.blob();
+            await this._descargarPdf(blob, (p.numero_pedido || 'pedido') + '.pdf');
+        } catch(e) {
+            descargaError = e.message || 'error desconocido';
+        }
+        // 3) Eliminar el PDF del servidor SOLO si la descarga fue bien.
+        if (descargaError) {
+            this._ocupado = false;
+            App.toast('Pedido aprobado, pero FALLÓ la descarga del PDF (' + descargaError + '). No se eliminó el PDF del servidor.', 'error');
+            this.load();
+            return;
         }
         try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const res = await fetch('/api/pedidos/' + this.currentPedido.id, {
+            const rDel = await fetch('/api/pedidos/' + (Number(id) || 0) + '/pdf', { method: 'DELETE' });
+            await this._apiJson(rDel);   // verificar res.ok: antes el toast mentía
+        } catch(e) {
+            this._ocupado = false;
+            App.toast('Pedido aprobado y PDF descargado, pero NO se pudo eliminar el PDF del servidor: ' + e.message, 'error');
+            this.load();
+            return;
+        }
+        this._ocupado = false;
+        App.toast('Pedido aprobado. PDF descargado y eliminado');
+        this.load();
+    },
+
+    // ───────────────────── Flujo RECHAZAR (→ rechazado) ─────────────────────
+    // Modal con motivo OBLIGATORIO (estilo del sistema, sin prompt() nativo).
+    // El backend elimina el PDF él solo al rechazar. El motivo queda visible
+    // después en el badge RECHAZADO (click → showMotivoRechazo).
+    showRechazoModal(id) {
+        const p = this.allPedidos.find(x => x.id === id);
+        if (!p) return;
+        if (document.getElementById('pedRechazoModal')) return;
+        // Mismo patrón de overlay que el modal de historial: clic-fuera cierra.
+        const overlay = document.createElement('div');
+        overlay.id = 'pedRechazoModal';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+        overlay.onclick = (e) => { if (e.target === overlay) this._cerrarRechazoModal(); };
+        overlay.innerHTML = '<div style="background:white;border-radius:16px;width:520px;max-width:95vw;box-shadow:0 25px 60px rgba(0,0,0,0.15);overflow:hidden">'
+            + '<div style="padding:20px 24px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:12px;justify-content:space-between">'
+            + '<div style="display:flex;align-items:center;gap:12px">'
+            + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#fef2f2,#fee2e2);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>'
+            + '<div><div style="font-size:16px;font-weight:700;color:#0f172a">Rechazar Pedido</div>'
+            + '<div style="font-size:11px;color:#94a3b8">El PDF será eliminado por el sistema</div></div></div>'
+            + '<button onclick="App.modules.pedidos._cerrarRechazoModal()" style="background:none;border:none;cursor:pointer;padding:4px;color:#94a3b8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+            + '</div>'
+            + '<div style="padding:24px">'
+            + '<div style="display:flex;gap:16px;margin-bottom:18px;padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">'
+            + '<div><span style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;display:block">N Pedido</span><span style="font-weight:700;color:#0f172a">' + escText(p.numero_pedido) + '</span></div>'
+            + '<div><span style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;display:block">Cliente</span><span style="font-weight:600;color:#475569">' + escText(p.cliente) + '</span></div>'
+            + '</div>'
+            + '<label style="display:block;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Motivo de Rechazo *</label>'
+            + '<textarea id="pedRechazoMotivo" rows="4" placeholder="Indica el motivo del rechazo..." style="font-size:13px;width:100%;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;resize:vertical;transition:all 0.2s" onfocus="this.style.borderColor=\'#ef4444\';this.style.boxShadow=\'0 0 0 3px rgba(239,68,68,0.1)\'" oninput="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></textarea>'
+            + '<div style="font-size:11px;color:#94a3b8;margin-top:6px">El motivo es obligatorio y quedará visible en el badge RECHAZADO.</div>'
+            + '</div>'
+            + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid #f1f5f9;background:#f8fafc">'
+            + '<button onclick="App.modules.pedidos._cerrarRechazoModal()" class="btn btn-outline">Cancelar</button>'
+            + '<button onclick="App.modules.pedidos.confirmarRechazo(' + (Number(p.id) || 0) + ')" class="btn btn-danger">Rechazar</button>'
+            + '</div></div>';
+        document.body.appendChild(overlay);
+        // Cierre con Escape (además del clic-fuera).
+        this._rechazoKeyHandler = (e) => { if (e.key === 'Escape') this._cerrarRechazoModal(); };
+        document.addEventListener('keydown', this._rechazoKeyHandler);
+        const ta = document.getElementById('pedRechazoMotivo');
+        if (ta) ta.focus();
+    },
+
+    _cerrarRechazoModal() {
+        const overlay = document.getElementById('pedRechazoModal');
+        if (overlay) overlay.remove();
+        if (this._rechazoKeyHandler) {
+            document.removeEventListener('keydown', this._rechazoKeyHandler);
+            this._rechazoKeyHandler = null;
+        }
+    },
+
+    async confirmarRechazo(id) {
+        if (this._ocupado) return;
+        const ta = document.getElementById('pedRechazoMotivo');
+        const motivo = (ta ? ta.value : '').trim();
+        if (!motivo) {
+            App.toast('Debes indicar el motivo del rechazo', 'error');
+            if (ta) { ta.style.borderColor = '#ef4444'; ta.focus(); }
+            return;
+        }
+        this._ocupado = true;
+        try {
+            const res = await fetch('/api/pedidos/' + (Number(id) || 0), {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' },
-                body: JSON.stringify({ estado, motivo_rechazo: estado === 'rechazado' ? document.getElementById('pedMotivo').value.trim() : null, revisado_por: user.email || '' })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: 'rechazado', motivo_rechazo: motivo })
             });
-            if (res.ok) {
-                if (estado === 'aprobado') {
-                    const link = document.createElement('a');
-                    link.href = '/api/pedidos/' + this.currentPedido.id + '/download-pdf';
-                    link.download = '';
-                    link.style.display = 'none';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    await fetch('/api/pedidos/' + this.currentPedido.id + '/pdf', { method: 'DELETE' });
-                }
-                this.hideReviewModal(); this.load();
-                App.toast(estado === 'aprobado' ? 'Pedido aprobado. PDF descargado y eliminado.' : 'Pedido rechazado. PDF eliminado.');
-            }
-            else { const data = await res.json(); alert(data.error || 'Error al revisar pedido'); }
-        } catch(e) { alert('Error al revisar pedido: ' + e.message); }
+            await this._apiJson(res);   // 409/400 del backend muestran su mensaje
+        } catch(e) {
+            this._ocupado = false;
+            App.toast('No se pudo rechazar el pedido: ' + e.message, 'error');
+            return;
+        }
+        this._ocupado = false;
+        this._cerrarRechazoModal();
+        App.toast('Pedido rechazado. Motivo registrado y PDF eliminado por el sistema');
+        this.load();
     },
 
     viewPdf(id) {
-        window.open('/api/pedidos/' + id + '/pdf', '_blank');
+        window.open('/api/pedidos/' + (Number(id) || 0) + '/pdf', '_blank');
     },
 
     async deletePedido(id, numero) {
-        if (!confirm('Eliminar pedido ' + numero + '? Esta accion no se puede deshacer.')) return;
+        if (this._ocupado) return;
+        // App.confirm (modal del sistema) en vez de confirm() nativo.
+        // OJO: el mensaje se inyecta como HTML → escText.
+        const ok = await App.confirm('¿Eliminar el pedido ' + escText(numero) + '?<br>Esta acción no se puede deshacer.');
+        if (!ok) return;
+        this._ocupado = true;
         try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const res = await fetch('/api/pedidos/' + id, {
-                method: 'DELETE',
-                headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' }
-            });
-            if (res.ok) { this.load(); App.toast('Pedido eliminado'); }
-            else { const data = await res.json(); alert(data.error || 'Error al eliminar'); }
-        } catch(e) { alert('Error al eliminar: ' + e.message); }
-    },
-
-    async rechazarAprobado(id) {
-        const motivo = prompt('Motivo del rechazo del pedido aprobado:');
-        if (motivo === null) return;
-        if (!motivo.trim()) { alert('Debes indicar un motivo'); return; }
-        try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const res = await fetch('/api/pedidos/' + id, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '', 'X-User-Area': user.area || '' },
-                body: JSON.stringify({ estado: 'rechazado', motivo_rechazo: motivo.trim(), revisado_por: user.email || '' })
-            });
-            if (res.ok) { this.load(); App.toast('Pedido rechazado'); }
-            else { const data = await res.json(); alert(data.error || 'Error al rechazar'); }
-        } catch(e) { alert('Error al rechazar: ' + e.message); }
+            const res = await fetch('/api/pedidos/' + (Number(id) || 0), { method: 'DELETE' });
+            await this._apiJson(res);
+            App.toast('Pedido eliminado');
+            this.load();
+        } catch(e) {
+            App.toast('Error al eliminar: ' + e.message, 'error');
+        }
+        this._ocupado = false;
     },
 
     async showHistorial(id) {
+        if (this._ocupado) return;
         try {
-            const res = await fetch('/api/pedidos/' + id + '/historial');
-            if (!res.ok) { App.toast('Error al cargar historial'); return; }
-            const historial = await res.json();
+            const res = await fetch('/api/pedidos/' + (Number(id) || 0) + '/historial');
+            const historial = await this._apiJson(res);
             const ped = this.allPedidos.find(x => x.id === id);
             let html = '<div style="padding:0">';
-            if (historial.length === 0) {
+            if (!Array.isArray(historial) || historial.length === 0) {
                 html += '<div style="padding:32px;text-align:center;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div style="font-size:13px">Sin cambios registrados</div></div>';
             } else {
-                html += '<div style="padding:20px 24px 12px;border-bottom:1px solid #f1f5f9"><div style="font-size:14px;font-weight:600;color:#0f172a">' + escapeHtml(ped ? ped.numero_pedido : '') + '</div><div style="font-size:12px;color:#64748b;margin-top:2px">' + historial.length + ' evento(s)</div></div>';
+                html += '<div style="padding:20px 24px 12px;border-bottom:1px solid #f1f5f9"><div style="font-size:14px;font-weight:600;color:#0f172a">' + escText(ped ? ped.numero_pedido : '') + '</div><div style="font-size:12px;color:#64748b;margin-top:2px">' + historial.length + ' evento(s)</div></div>';
                 html += '<div style="max-height:400px;overflow-y:auto">';
                 historial.forEach(h => {
                     const fecha = h.created_at ? new Date(h.created_at).toLocaleString('es-CL') : '-';
@@ -643,14 +889,14 @@ App.registerModule('pedidos', {
                     else if (h.accion === 'Vuelto a pendiente') html += '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>';
                     else html += '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>';
                     html += '</svg></div>';
-                    html += '<div><div style="font-size:13px;font-weight:600;color:#0f172a">' + escapeHtml(h.accion) + '</div>';
-                    html += '<div style="font-size:11px;color:#94a3b8">' + fecha + (h.usuario ? ' · ' + escapeHtml(h.usuario) : '') + '</div></div></div>';
+                    html += '<div><div style="font-size:13px;font-weight:600;color:#0f172a">' + escText(h.accion) + '</div>';
+                    html += '<div style="font-size:11px;color:#94a3b8">' + fecha + (h.usuario ? ' · ' + escText(h.usuario) : '') + '</div></div></div>';
                     if (h.campos_despues && typeof h.campos_despues === 'object') {
                         html += '<div style="margin-left:38px;font-size:12px;color:#475569">';
                         for (const [campo, vals] of Object.entries(h.campos_despues)) {
-                            html += '<div style="margin-top:4px"><span style="color:#64748b">' + escapeHtml(campo) + ':</span> ';
-                            if (vals.antes !== undefined && vals.antes !== null) html += '<span style="text-decoration:line-through;color:#dc2626">' + escapeHtml(String(vals.antes)) + '</span> ';
-                            html += '<span style="color:#0f172a;font-weight:500">' + escapeHtml(String(vals.despues)) + '</span></div>';
+                            html += '<div style="margin-top:4px"><span style="color:#64748b">' + escText(campo) + ':</span> ';
+                            if (vals.antes !== undefined && vals.antes !== null) html += '<span style="text-decoration:line-through;color:#dc2626">' + escText(String(vals.antes)) + '</span> ';
+                            html += '<span style="color:#0f172a;font-weight:500">' + escText(String(vals.despues)) + '</span></div>';
                         }
                         html += '</div>';
                     }
@@ -669,181 +915,11 @@ App.registerModule('pedidos', {
                 + '<button onclick="document.getElementById(\'pedHistorialModal\').remove()" style="background:none;border:none;cursor:pointer;padding:4px;color:#94a3b8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
                 + '</div>' + html + '</div>';
             document.body.appendChild(overlay);
-        } catch(e) { alert('Error al cargar historial: ' + e.message); }
-    },
-
-    toggleDashboard() {
-        const dc = document.getElementById('pedDashboardContainer');
-        const gc = document.getElementById('pedGraficoContainer');
-        const tc = document.querySelector('.m-table-wrap');
-        const btn = document.getElementById('pedBtnDashboard');
-        const btnG = document.getElementById('pedBtnGrafico');
-        if (dc.style.display === 'none') {
-            dc.style.display = 'block';
-            gc.style.display = 'none';
-            if (tc) tc.style.display = 'none';
-            btn.style.opacity = '1';
-            btnG.style.opacity = '0.6';
-            this.renderDashboard();
-        } else {
-            dc.style.display = 'none';
-            if (tc) tc.style.display = 'block';
-            btn.style.opacity = '0.6';
+        } catch(e) {
+            App.toast('Error al cargar historial: ' + e.message, 'error');
         }
     },
 
-    renderDashboard() {
-        const dc = document.getElementById('pedDashboardContainer');
-        if (!dc) return;
-
-        const filterMes = document.getElementById('pedFilterMes')?.value;
-        const filterAnio = document.getElementById('pedFilterAnio')?.value;
-        const now = new Date();
-        const mes = filterMes ? parseInt(filterMes) - 1 : now.getMonth();
-        const anio = filterAnio ? parseInt(filterAnio) : now.getFullYear();
-        const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-        const pedidosMes = this.allPedidos.filter(p => {
-            const f = new Date(p.fecha_subida);
-            return f.getMonth() === mes && f.getFullYear() === anio;
-        });
-
-        const total = pedidosMes.length;
-        const aprobados = pedidosMes.filter(p => p.estado === 'aprobado').length;
-        const pendientes = pedidosMes.filter(p => p.estado === 'pendiente').length;
-        const rechazados = pedidosMes.filter(p => p.estado === 'rechazado').length;
-
-        const coloresTipo = { Normal: '#3b82f6', Express: '#f59e0b', 'Vta. Region': '#8b5cf6', Reposicion: '#ef4444', Urgencia: '#f97316' };
-
-        // 1. Pedidos por vendedor
-        const porVendedor = {};
-        pedidosMes.forEach(p => {
-            const v = p.vendedor_nombre || p.vendedor || 'Sin vendedor';
-            if (!porVendedor[v]) porVendedor[v] = { total: 0, aprobados: 0, pendientes: 0, rechazados: 0 };
-            porVendedor[v].total++;
-            if (p.estado === 'aprobado') porVendedor[v].aprobados++;
-            else if (p.estado === 'pendiente') porVendedor[v].pendientes++;
-            else if (p.estado === 'rechazado') porVendedor[v].rechazados++;
-        });
-        const vendedores = Object.entries(porVendedor).sort((a, b) => b[1].total - a[1].total);
-        const maxVen = vendedores.length > 0 ? vendedores[0][1].total : 1;
-
-        // 2. Ranking por tipo
-        const porTipo = {};
-        pedidosMes.forEach(p => {
-            const t = p.tipo_ov || 'Normal';
-            porTipo[t] = (porTipo[t] || 0) + 1;
-        });
-        const tipos = Object.entries(porTipo).sort((a, b) => b[1] - a[1]);
-        const maxTipo = tipos.length > 0 ? tipos[0][1] : 1;
-
-        // 3. Ranking de vendedores (top 10)
-        const topVendedores = vendedores.slice(0, 10);
-        const maxTop = topVendedores.length > 0 ? topVendedores[0][1].total : 1;
-
-        let html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
-            + '<div><h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a">Dashboard de Pedidos</h3>'
-            + '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8">' + monthNames[mes] + ' ' + anio + ' — ' + total + ' pedido(s)</p></div></div>'
-
-            // Resumen
-            + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">'
-            + '<div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#3b82f6">' + total + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Total</div></div>'
-            + '<div style="background:linear-gradient(135deg,#fefce8,#fef3c7);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#ca8a04">' + pendientes + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Pendientes</div></div>'
-            + '<div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#16a34a">' + aprobados + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Aprobados</div></div>'
-            + '<div style="background:linear-gradient(135deg,#fef2f2,#fee2e2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#dc2626">' + rechazados + '</div><div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase">Rechazados</div></div>'
-            + '</div>'
-
-            // Pedidos por vendedor + Ranking por tipo (2 columnas)
-            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
-
-            // Pedidos por vendedor
-            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">'
-            + '<div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg> Pedidos por Vendedor</div>'
-            + '<div style="padding:12px;max-height:300px;overflow-y:auto">';
-        if (vendedores.length === 0) {
-            html += '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px">Sin pedidos este mes</div>';
-        } else {
-            vendedores.forEach(([nombre, data], i) => {
-                const pct = Math.round((data.total / maxVen) * 100);
-                html += '<div style="margin-bottom:10px">'
-                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
-                    + '<span style="font-size:11px;font-weight:600;color:#0f172a">' + (i + 1) + '. ' + escapeHtml(nombre) + '</span>'
-                    + '<span style="font-size:11px;font-weight:700;color:#3b82f6">' + data.total + '</span></div>'
-                    + '<div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;display:flex">'
-                    + '<div style="width:' + Math.round((data.aprobados / data.total) * pct) + '%;background:#22c55e;height:100%"></div>'
-                    + '<div style="width:' + Math.round((data.pendientes / data.total) * pct) + '%;background:#f59e0b;height:100%"></div>'
-                    + '<div style="width:' + Math.round((data.rechazados / data.total) * pct) + '%;background:#ef4444;height:100%"></div>'
-                    + '</div>'
-                    + '<div style="display:flex;gap:8px;margin-top:2px;font-size:9px;color:#94a3b8">'
-                    + '<span style="color:#22c55e">●' + data.aprobados + '</span>'
-                    + '<span style="color:#f59e0b">●' + data.pendientes + '</span>'
-                    + '<span style="color:#ef4444">●' + data.rechazados + '</span></div>'
-                    + '</div>';
-            });
-        }
-        html += '</div></div>'
-
-            // Ranking por tipo
-            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">'
-            + '<div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Ranking por Tipo</div>'
-            + '<div style="padding:14px">';
-        if (tipos.length === 0) {
-            html += '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px">Sin pedidos este mes</div>';
-        } else {
-            tipos.forEach(([tipo, count], i) => {
-                const pct = Math.round((count / maxTipo) * 100);
-                const color = coloresTipo[tipo] || '#64748b';
-                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-                html += '<div style="margin-bottom:12px">'
-                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
-                    + '<span style="font-size:12px;font-weight:600;color:#0f172a">' + medal + ' ' + tipo + '</span>'
-                    + '<span style="font-size:12px;font-weight:700;color:' + color + '">' + count + ' <span style="font-weight:400;color:#94a3b8;font-size:10px">(' + Math.round((count / total) * 100) + '%)</span></span></div>'
-                    + '<div style="height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden">'
-                    + '<div style="width:' + pct + '%;background:' + color + ';height:100%;border-radius:5px;transition:width 0.5s ease"></div></div></div>';
-            });
-        }
-        html += '</div></div></div>'
-
-            // Ranking de vendedores (top 10) - tabla horizontal
-            + '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">'
-            + '<div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg> Top Vendedores — ' + monthNames[mes] + '</div>'
-            + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
-            + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b">#</th>'
-            + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b">Vendedor</th>'
-            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">Total</th>'
-            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">Aprobados</th>'
-            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">Pendientes</th>'
-            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">Rechazados</th>'
-            + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:#64748b">% Aprob.</th>'
-            + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:120px">Distribución</th>'
-            + '</tr></thead><tbody>';
-        topVendedores.forEach(([nombre, data], i) => {
-            const pctAprob = data.total > 0 ? Math.round((data.aprobados / data.total) * 100) : 0;
-            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-            html += '<tr style="border-bottom:1px solid #f1f5f9">'
-                + '<td style="padding:8px 12px;font-weight:700;color:' + (i < 3 ? '#f59e0b' : '#64748b') + '">' + medal + '</td>'
-                + '<td style="padding:8px 12px;font-weight:600;color:#0f172a">' + escapeHtml(nombre) + '</td>'
-                + '<td style="padding:8px 12px;text-align:center;font-weight:700;color:#3b82f6">' + data.total + '</td>'
-                + '<td style="padding:8px 12px;text-align:center;color:#22c55e">' + data.aprobados + '</td>'
-                + '<td style="padding:8px 12px;text-align:center;color:#f59e0b">' + data.pendientes + '</td>'
-                + '<td style="padding:8px 12px;text-align:center;color:#ef4444">' + data.rechazados + '</td>'
-                + '<td style="padding:8px 12px;text-align:center;font-weight:600;color:' + (pctAprob >= 80 ? '#22c55e' : pctAprob >= 50 ? '#f59e0b' : '#ef4444') + '">' + pctAprob + '%</td>'
-                + '<td style="padding:8px 12px"><div style="display:flex;height:8px;border-radius:4px;overflow:hidden;background:#f1f5f9">'
-                + '<div style="width:' + Math.round((data.aprobados / data.total) * 100) + '%;background:#22c55e"></div>'
-                + '<div style="width:' + Math.round((data.pendientes / data.total) * 100) + '%;background:#f59e0b"></div>'
-                + '<div style="width:' + Math.round((data.rechazados / data.total) * 100) + '%;background:#ef4444"></div>'
-                + '</div></td></tr>';
-        });
-        html += '</tbody></table></div></div>';
-
-        dc.innerHTML = html;
-    },
-
-    toggleGrafico() {},
-
-    renderGrafico() {},
-
-    fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }); },
     fmtDateTime(d) { if (!d) return '-'; const f = new Date(d); return '<div class="ped-dt">' + f.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) + '</div><div class="ped-dt-sub">' + f.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) + '</div>'; },
     fmtTiempo(inicio, fin) {
         if (!inicio || !fin) return '<span style="color:#cbd5e1">-</span>';
