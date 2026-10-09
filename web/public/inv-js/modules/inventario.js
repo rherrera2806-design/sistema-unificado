@@ -1,7 +1,11 @@
-// Escape XSS: usa los helpers del SPA (app-main.js); fallback si se carga en el mini-app legacy
+// Escape XSS: usa los helpers del SPA (app-main.js); fallback si se carga aislado
 window.escText = window.escText || function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); };
 window.escAttr = window.escAttr || window.escText;
 
+// ============================================================================
+// Inventario — lenguaje visual "hoja tecnica de vidrio" (ver css/inv-pro.css)
+// COLOR = SIGNIFICADO: datos neutros; solo se colorea lo que exige una decision.
+// ============================================================================
 const InvInventario = {
     _allItems: [],
     _originalItems: [],
@@ -9,58 +13,69 @@ const InvInventario = {
     _query: '',
     _verSensible: false,
 
+    // Estado del material: el unico dato que se colorea en la tabla
+    _estado(i) {
+        const stock = Number(i.stock) || 0;
+        const cpm = Number(i.consumo_promedio_mensual) || 0;
+        const autoMeses = Number(i.autonomia_meses) || 0;
+        const autoDias = Number(i.autonomia_dias) || 0;
+        if (stock <= 0) return { cls: 'critico', label: 'SIN STOCK', autoCls: 'invp-danger', stockCls: 'invp-danger' };
+        if (cpm > 0 && autoMeses <= 1) return { cls: 'critico', label: 'CRÍTICO', autoCls: 'invp-danger', stockCls: 'invp-valor' };
+        if (cpm > 0 && autoDias <= 21) return { cls: 'bajo', label: 'BAJO', autoCls: 'invp-warn', stockCls: 'invp-valor' };
+        return { cls: '', label: 'ÓPTIMO', autoCls: '', stockCls: 'invp-valor' };
+    },
+
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         try {
             this._verSensible = typeof hasPerm === 'function' && hasPerm('inv_inventario.sensible');
-            const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const items = await api.inv().getInventario();
             this._originalItems = Array.isArray(items) ? items : [];
             this._allItems = [...this._originalItems];
 
-            const btnsSensibles = this._verSensible ? `
-                        <button onclick="InvInventario.exportarExcel()" class="btn btn-success" style="padding:8px 16px;font-size:12px">Exportar Excel</button>
-                        <button onclick="window.print()" class="btn btn-outline" style="padding:8px 16px;font-size:12px">Imprimir</button>` : '';
+            const acciones = this._verSensible ? `
+                <button class="invp-btn" onclick="window.print()">Imprimir</button>
+                <button class="invp-btn invp-btn-primary" onclick="InvInventario.exportarExcel()">Exportar Excel</button>` : '';
 
             page.innerHTML = `
-                <div class="m-page">
-                    <div class="m-hero" style="padding:10px 14px">
-                        <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-                        <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-                            <div style="min-width:0">
-                                <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Inventario</h2>
-                                <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Stock actual por tipo de cristal</p>
-                            </div>
-                            <div style="position:relative;flex:1;min-width:140px;max-width:250px">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                <input type="text" id="invSearch" placeholder="Buscar..." oninput="InvInventario.buscar(this.value)" style="width:100%;padding:6px 8px 6px 28px;font-size:12px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;box-sizing:border-box;outline:none;background:rgba(255,255,255,0.1);color:white" onfocus="this.style.borderColor='rgba(255,255,255,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.2)'">
-                            </div>
+                <div class="inv-pro">
+                    <div class="invp-hero">
+                        <div>
+                            <h2>Inventario</h2>
+                            <p>Stock actual por tipo de cristal</p>
+                        </div>
+                        <div class="invp-hero-actions">
+                            <input class="invp-search" type="text" id="invSearch" placeholder="Buscar código o tipo…"
+                                oninput="InvInventario.buscar(this.value)">
                         </div>
                     </div>
 
-                    <div class="m-actions">
-                        <button onclick="InvInventario.toggleCriticos()" id="btnCriticos" class="btn btn-outline" style="padding:8px 16px;font-size:12px;border-color:#ef4444;color:#ef4444">Stock Crítico</button>
-                        ${btnsSensibles}
+                    <div class="m-actions" style="justify-content:flex-end">
+                        <button class="invp-btn invp-btn-filter" id="btnCriticos" aria-pressed="false"
+                            onclick="InvInventario.toggleCriticos()">Solo stock crítico</button>
+                        ${acciones}
                     </div>
 
-                    <div class="m-card">
-                        <div class="m-card-header">
-                            <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">Inventario Actual <span id="invCount" style="color:var(--gray-500);font-weight:400;font-size:13px">(${this._allItems.length} tipos)</span></h3>
+                    <div class="invp-note">
+                        <span>◇</span>
+                        <span>Muestra solo materiales con <strong>stock real</strong> (entradas registradas). Para ver materiales sin stock pero con consumo, usa <strong>Consumo y Autonomía</strong> o <strong>Reporte</strong>.</span>
+                    </div>
+
+                    <div class="invp-card">
+                        <div class="invp-card-head">
+                            <h3>Inventario actual</h3>
+                            <span class="invp-count" id="invCount">(${this._allItems.length} tipos)</span>
                         </div>
-                        <div style="padding:8px 16px;background:#fffbeb;border-bottom:1px solid #fde68a;font-size:11px;color:#92400e;display:flex;align-items:center;gap:6px">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                            <span>Muestra solo materiales con <b>stock real</b> (entradas registradas). Para ver materiales sin stock pero con consumo, usa <b>Consumo y Autonomia</b> o <b>Reporte</b>.</span>
-                        </div>
-                        <div class="m-card-body" id="invContent"></div>
+                        <div id="invContent"></div>
                     </div>
                 </div>`;
 
             this.renderContent();
-        } catch(err) {
+        } catch (err) {
             // Error visible en vez de una tabla vacia que parece "sin datos"
             App.toast('Error al cargar inventario: ' + err.message, 'error');
-            page.innerHTML = '<div class="alert alert-danger">Error: ' + escText(err.message) + '</div>';
+            page.innerHTML = '<div class="inv-pro"><div class="alert alert-danger">Error: ' + escText(err.message) + '</div></div>';
         }
     },
 
@@ -68,64 +83,66 @@ const InvInventario = {
         const container = document.getElementById('invContent');
         if (!container) return;
         const verS = this._verSensible;
+        const self = this;
 
         if (this._allItems.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:48px 20px"><div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h4 style="margin:0 0 4px;color:#334155;font-size:16px">No hay items en inventario</h4><p style="margin:0;color:#94a3b8;font-size:13px">Agrega el primer item</p></div>';
+            container.innerHTML = '<div style="text-align:center;padding:48px 20px">'
+                + '<h4 style="margin:0 0 4px;color:#334155;font-size:15px">No hay materiales en inventario</h4>'
+                + '<p style="margin:0;color:#8494a8;font-size:13px">Los materiales aparecen aquí al registrar su primera entrada.</p></div>';
             return;
         }
 
-        // Tabla desktop
-        let headers = '<th>Codigo</th><th>Tipo Cristal</th><th>Espesor</th><th>Medida</th>';
-        if (verS) headers += '<th>Entradas</th><th>Salidas</th>';
-        headers += '<th>Stock</th>';
-        if (verS) headers += '<th>CPM</th><th>Autonomía</th>';
-        headers += '<th>m2 Stock</th>';
+        // ---------- Tabla desktop ----------
+        let headers = '<th>Código</th><th>Tipo de cristal</th><th class="num">Espesor</th><th>Medida</th>';
+        if (verS) headers += '<th class="num">Entradas</th><th class="num">Salidas</th>';
+        headers += '<th class="num">Stock</th>';
+        if (verS) headers += '<th class="num">Consumo/mes</th><th class="num">Autonomía</th>';
+        headers += '<th class="num">M² en stock</th><th>Estado</th>';
 
-        let tableHtml = '<div class="m-table-wrap"><table id="invTable"><thead><tr>' + headers + '</tr></thead><tbody id="invBody">';
+        let tableHtml = '<div class="m-table-wrap"><table class="invp-table" id="invTable"><thead><tr>' + headers + '</tr></thead><tbody>';
 
-        this._allItems.forEach(function(i) {
-            var stockColor = i.stock > 0 ? 'var(--success)' : 'var(--danger)';
-            var cpm = Number(i.consumo_promedio_mensual) || 0;
-            var autoMeses = Number(i.autonomia_meses) || 0;
-            var autoDias = Number(i.autonomia_dias) || 0;
-            var autoColor = autoDias <= 0 ? 'var(--danger)' : autoDias <= 21 ? 'var(--warning)' : 'var(--success)';
-            tableHtml += '<tr>'
-                + '<td style="font-weight:600">' + escText(i.codigo_mp || '-') + '</td>'
-                + '<td>' + escText(i.tipo_cristal || '-') + '</td>'
-                + '<td style="font-weight:600;color:#334155">' + escText(i.espesor || 0) + 'mm</td>'
-                + '<td style="font-weight:600;color:#1e40af">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</td>';
-            if (verS) tableHtml += '<td style="color:var(--success);font-weight:600">' + (i.entradas || 0) + '</td>'
-                + '<td style="color:var(--danger)">' + (i.salidas_plancha || 0) + '</td>';
-            tableHtml += '<td><span style="font-size:18px;font-weight:700;color:' + stockColor + '">' + (i.stock || 0) + '</span></td>';
-            if (verS) tableHtml += '<td style="font-weight:600;color:#92400e;background:#fef3c7">' + cpm.toLocaleString('es-CL') + '</td>'
-                + '<td style="font-weight:600;color:' + autoColor + '">' + (cpm > 0 ? autoDias + 'd / ' + autoMeses + 'm' : '-') + '</td>';
-            tableHtml += '<td>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + ' m2</td>'
+        this._allItems.forEach(function (i) {
+            const est = self._estado(i);
+            const cpm = Number(i.consumo_promedio_mensual) || 0;
+            const autoDias = Number(i.autonomia_dias) || 0;
+            const m2 = ((i.m2_entradas || 0) - (i.m2_salidas || 0));
+            tableHtml += '<tr class="' + est.cls + '">'
+                + '<td class="codigo invp-mono">' + escText(i.codigo_mp || '-') + '</td>'
+                + '<td class="tipo">' + escText(i.tipo_cristal || '-') + '</td>'
+                + '<td class="num invp-mono sutil">' + escText(i.espesor != null ? i.espesor : 0) + '<span class="invp-unidad">mm</span></td>'
+                + '<td class="invp-mono sutil">' + Math.round(i.ancho || 0) + '×' + Math.round(i.alto || 0) + '</td>';
+            if (verS) tableHtml += '<td class="num invp-mono sutil">' + (i.entradas || 0) + '</td>'
+                + '<td class="num invp-mono sutil">' + (i.salidas_plancha || 0) + '</td>';
+            tableHtml += '<td class="num invp-mono ' + est.stockCls + '">' + (i.stock || 0) + '</td>';
+            if (verS) tableHtml += '<td class="num invp-mono sutil">' + cpm.toLocaleString('es-CL') + '</td>'
+                + '<td class="num invp-mono ' + est.autoCls + '">' + (cpm > 0 ? autoDias + '<span class="invp-unidad">d</span>' : '—') + '</td>';
+            tableHtml += '<td class="num invp-mono sutil">' + m2.toFixed(2) + '<span class="invp-unidad">m²</span></td>'
+                + '<td><span class="invp-chip ' + (est.cls === 'critico' ? 'critico' : est.cls === 'bajo' ? 'bajo' : 'ok') + '"><span class="dot"></span>' + est.label + '</span></td>'
                 + '</tr>';
         });
-
         tableHtml += '</tbody></table></div>';
 
-        // Cards móvil
+        // ---------- Cards móvil ----------
         let cardsHtml = '<div class="m-cards-mobile" style="display:none">';
-        this._allItems.forEach(function(i) {
-            var stockColor = i.stock > 0 ? '#22c55e' : '#ef4444';
-            var cpm = Number(i.consumo_promedio_mensual) || 0;
-            var autoMeses = Number(i.autonomia_meses) || 0;
-            var autoDias = Number(i.autonomia_dias) || 0;
-            var autoColor = autoDias <= 0 ? '#ef4444' : autoDias <= 21 ? '#f59e0b' : '#22c55e';
-            cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + stockColor + '">'
-                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-                + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + escText(i.codigo_mp || '-') + '</span>'
-                + '<span style="font-size:18px;font-weight:800;color:' + stockColor + '">' + (i.stock || 0) + '</span>'
-                + '</div>'
-                + '<div style="font-size:14px;color:#475569;margin-bottom:4px;font-weight:500">' + escText(i.tipo_cristal || '-') + ' ' + escText(i.espesor || 0) + 'mm</div>'
-                + '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</div>'
-                + '<div style="display:flex;gap:12px;font-size:11px;color:#64748b;flex-wrap:wrap">';
-            if (verS) cardsHtml += '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
-                + '<span>S: <strong style="color:#ef4444">' + (i.salidas_plancha || 0) + '</strong></span>';
-            cardsHtml += '<span>m2: <strong>' + ((i.m2_entradas || 0) - (i.m2_salidas || 0)).toFixed(2) + '</strong></span>';
-            if (verS) cardsHtml += '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;font-weight:600">CPM: ' + cpm.toLocaleString('es-CL') + '</span>'
-                + (cpm > 0 ? '<span style="background:' + autoColor + '20;color:' + autoColor + ';padding:1px 6px;border-radius:8px;font-weight:600">Auto: ' + autoDias + 'd / ' + autoMeses + 'm</span>' : '');
+        this._allItems.forEach(function (i) {
+            const est = self._estado(i);
+            const cpm = Number(i.consumo_promedio_mensual) || 0;
+            const autoDias = Number(i.autonomia_dias) || 0;
+            const m2 = ((i.m2_entradas || 0) - (i.m2_salidas || 0));
+            const chipCls = est.cls === 'critico' ? 'critico' : est.cls === 'bajo' ? 'bajo' : 'ok';
+            cardsHtml += '<div class="invp-mcard ' + est.cls + '">'
+                + '<div class="top">'
+                + '<span class="cod">' + escText(i.codigo_mp || '-') + ' · ' + escText(i.tipo_cristal || '-') + '</span>'
+                + '<span class="invp-chip ' + chipCls + '"><span class="dot"></span>' + est.label + '</span>'
+                + '</div><div class="invp-mgrid">'
+                + '<div><div class="invp-lbl">Espesor</div><div class="invp-val">' + escText(i.espesor != null ? i.espesor : 0) + ' mm</div></div>'
+                + '<div><div class="invp-lbl">Medida</div><div class="invp-val">' + Math.round(i.ancho || 0) + '×' + Math.round(i.alto || 0) + '</div></div>'
+                + '<div><div class="invp-lbl">Stock</div><div class="invp-val ' + est.stockCls + '">' + (i.stock || 0) + '</div></div>';
+            if (verS) cardsHtml += '<div><div class="invp-lbl">Entradas</div><div class="invp-val">' + (i.entradas || 0) + '</div></div>'
+                + '<div><div class="invp-lbl">Salidas</div><div class="invp-val">' + (i.salidas_plancha || 0) + '</div></div>';
+            cardsHtml += '<div><div class="invp-lbl">M² en stock</div><div class="invp-val">' + m2.toFixed(2) + '</div></div>';
+            if (verS) cardsHtml += '<div><div class="invp-lbl">Consumo/mes</div><div class="invp-val">' + cpm.toLocaleString('es-CL') + '</div></div>'
+                + '<div><div class="invp-lbl">Autonomía</div><div class="invp-val ' + est.autoCls + '">' + (cpm > 0 ? autoDias + ' d' : '—') + '</div></div>';
             cardsHtml += '</div></div>';
         });
         cardsHtml += '</div>';
@@ -133,39 +150,39 @@ const InvInventario = {
         container.innerHTML = tableHtml + cardsHtml;
     },
 
-    // Busqueda y "Stock Critico" se componen: ambos aplican sobre _originalItems
-    // respetando el estado del otro (antes se pisaban mutuamente).
+    // Busqueda y "Solo stock critico" se componen: ambos aplican sobre
+    // _originalItems respetando el estado del otro.
     _aplicarFiltros() {
-        var items = this._originalItems;
-        var query = this._query;
+        let items = this._originalItems;
+        const query = this._query;
         if (query) {
-            items = items.filter(function(i) {
-                var codigo = String(i.codigo_mp || '').toLowerCase();
-                var espesorStr = String(i.espesor != null ? i.espesor : '').toLowerCase();
-                var tipo = String(i.tipo_cristal || '').toLowerCase();
-                var ancho = String(i.ancho || '').toLowerCase();
-                var alto = String(i.alto || '').toLowerCase();
-                var cpm = String(i.consumo_promedio_mensual || '').toLowerCase();
+            items = items.filter(function (i) {
+                const codigo = String(i.codigo_mp || '').toLowerCase();
+                const espesorStr = String(i.espesor != null ? i.espesor : '').toLowerCase();
+                const tipo = String(i.tipo_cristal || '').toLowerCase();
+                const ancho = String(i.ancho || '').toLowerCase();
+                const alto = String(i.alto || '').toLowerCase();
+                const cpm = String(i.consumo_promedio_mensual || '').toLowerCase();
                 return codigo.includes(query) || tipo.includes(query) || espesorStr.includes(query) || ancho.includes(query) || alto.includes(query) || cpm.includes(query);
             });
         }
         if (this._filterCriticos) {
-            items = items.filter(function(i) {
-                var cpm = Number(i.consumo_promedio_mensual) || 0;
-                var autoMeses = Number(i.autonomia_meses) || 0;
+            items = items.filter(function (i) {
+                const cpm = Number(i.consumo_promedio_mensual) || 0;
+                const autoMeses = Number(i.autonomia_meses) || 0;
                 return cpm > 0 && autoMeses <= 1;
             });
         }
-        // Ordenar por tipo_cristal y luego por espesor
-        this._allItems = items.slice().sort(function(a, b) {
-            var nameA = (a.tipo_cristal || '').toLowerCase();
-            var nameB = (b.tipo_cristal || '').toLowerCase();
+        // Ordenar por tipo de cristal y luego por espesor
+        this._allItems = items.slice().sort(function (a, b) {
+            const nameA = (a.tipo_cristal || '').toLowerCase();
+            const nameB = (b.tipo_cristal || '').toLowerCase();
             if (nameA < nameB) return -1;
             if (nameA > nameB) return 1;
             return Number(a.espesor || 0) - Number(b.espesor || 0);
         });
         this.renderContent();
-        var counter = document.getElementById('invCount');
+        const counter = document.getElementById('invCount');
         if (counter) counter.textContent = '(' + this._allItems.length + ' tipos)';
     },
 
@@ -177,28 +194,18 @@ const InvInventario = {
     toggleCriticos() {
         this._filterCriticos = !this._filterCriticos;
         const btn = document.getElementById('btnCriticos');
-        if (this._filterCriticos) {
-            btn.style.background = '#ef4444';
-            btn.style.color = 'white';
-            btn.classList.remove('btn-outline');
-            btn.classList.add('btn-danger');
-        } else {
-            btn.style.background = '';
-            btn.style.color = '#ef4444';
-            btn.classList.add('btn-outline');
-            btn.classList.remove('btn-danger');
-        }
+        if (btn) btn.setAttribute('aria-pressed', this._filterCriticos ? 'true' : 'false');
         this._aplicarFiltros();
     },
 
     exportarExcel() {
-        var table = document.getElementById('invTable');
+        const table = document.getElementById('invTable');
         if (!table) return;
-        var csv = Array.from(table.querySelectorAll('tr')).map(function(row) {
-            return Array.from(row.querySelectorAll('th, td')).map(function(c) { return c.textContent.trim(); }).join(';');
+        const csv = Array.from(table.querySelectorAll('tr')).map(function (row) {
+            return Array.from(row.querySelectorAll('th, td')).map(function (c) { return c.textContent.trim(); }).join(';');
         }).join('\n');
-        var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-        var link = document.createElement('a');
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = 'inventario_' + new Date().toISOString().slice(0, 10) + '.csv';
         link.click();

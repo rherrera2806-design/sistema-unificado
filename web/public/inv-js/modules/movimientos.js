@@ -1,7 +1,11 @@
-// Escape XSS: usa los helpers del SPA (app-main.js); fallback si se carga en el mini-app legacy
+// Escape XSS: usa los helpers del SPA (app-main.js); fallback si se carga aislado
 window.escText = window.escText || function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); };
 window.escAttr = window.escAttr || window.escText;
 
+// ============================================================================
+// Movimientos — lenguaje visual "hoja tecnica de vidrio" (ver css/inv-pro.css)
+// COLOR = SIGNIFICADO: datos neutros; solo se colorea lo que exige una decision.
+// ============================================================================
 const InvMovimientos = {
     tipoMovimiento: '',
     tipoSalida: '',
@@ -25,96 +29,88 @@ const InvMovimientos = {
 
             page.innerHTML = `
                 <style>
+                    /* Grids del formulario (patron del modulo) + utilidades de datos */
                     .inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;align-items:end}
                     .inv-form-dims{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 10px;align-items:end}
                     .inv-form-grid>div,.inv-form-dims>div{min-width:0;margin:0}
-                    .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{width:100%;box-sizing:border-box}
-                    .inv-form-grid label,.inv-form-dims label{font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b}
-                    .inv-form-grid input,.inv-form-grid select,.inv-form-dims input,.inv-form-dims select{padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px}
-                    .inv-form-bottom{display:flex;gap:8px;margin-top:6px;align-items:end;padding-top:6px;border-top:1px solid #f1f5f9}
-                    .tipo-btn{border:1px solid #e2e8f0;border-radius:6px;background:white;cursor:pointer;transition:all 0.15s;padding:5px;font-size:11px}
-                    .tipo-btn:hover{background:#f8fafc}
-                    .tipo-btn.active{background:#dcfce7;color:#166534;border-color:#22c55e}
-                    .inv-filter-btn{padding:5px 12px;font-size:11px;font-weight:600;border-radius:8px;border:1px solid #e2e8f0;background:white!important;color:#64748b!important;cursor:pointer;transition:all 0.15s}
-                    .inv-filter-btn:hover{border-color:#93c5fd;color:#3b82f6!important;background:#eff6ff!important}
-                    .inv-filter-btn.active{background:linear-gradient(135deg,#1e40af,#2563eb)!important;color:white!important;border-color:#1e40af!important;box-shadow:0 2px 8px rgba(30,64,175,0.3)}
+                    .inv-form-bottom{display:flex;gap:8px;margin-top:10px;align-items:center;padding-top:10px;border-top:1px solid var(--invp-line)}
+                    .inv-pro .invp-sutil{color:var(--invp-slate);font-weight:400}
+                    .inv-pro .invp-val.invp-danger{color:var(--invp-danger)}
+                    /* La regla base de td pinta slate; esta variante gana por especificidad */
+                    .inv-pro .invp-table td.invp-danger{color:var(--invp-danger);font-weight:600}
                     @media(max-width:768px){
                         .inv-form-grid{grid-template-columns:1fr}
                         .inv-form-dims{grid-template-columns:1fr 1fr}
-                        .inv-form-bottom{flex-direction:column}
-                        .inv-form-bottom .btn{width:100%}
+                        .inv-form-bottom{flex-direction:column;align-items:stretch}
+                        .inv-form-bottom .invp-btn{width:100%;justify-content:center}
                     }
                 </style>
 
-                <div class="m-page">
-                    <div class="m-hero" style="padding:10px 14px">
-                        <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-                        <div style="position:relative;z-index:1">
-                            <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Movimientos</h2>
-                            <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Registrar entradas y salidas de inventario</p>
+                <div class="inv-pro">
+                    <div class="invp-hero">
+                        <div>
+                            <h2>Movimientos</h2>
+                            <p>Registro de entradas y salidas de inventario</p>
                         </div>
                     </div>
 
-                    <div class="m-card" style="margin-bottom:10px">
-                        <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Nuevo Movimiento</div>
-                        <div class="m-card-body" style="padding:8px 12px">
+                    <div class="invp-card">
+                        <div class="invp-card-head">
+                            <h3>Nuevo movimiento</h3>
+                        </div>
+                        <div style="padding:16px 22px">
                             <form onsubmit="InvMovimientos.guardar(event)">
                                 <div class="inv-form-grid">
-                                    <div class="form-group"><label>Tipo Movimiento *</label>
+                                    <div class="invp-field"><label>Tipo de movimiento *</label>
                                         <div style="display:flex;gap:6px">
-                                            <label class="tipo-btn" id="btnEntrada" onclick="InvMovimientos.setTipo('entrada')" style="flex:1;text-align:center;padding:8px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Entrada</label>
-                                            <label class="tipo-btn" id="btnSalida" onclick="InvMovimientos.setTipo('salida')" style="flex:1;text-align:center;padding:8px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</label>
+                                            <button type="button" class="invp-btn invp-btn-filter" id="btnEntrada" aria-pressed="false" style="flex:1;justify-content:center" onclick="InvMovimientos.setTipo('entrada')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Entrada</button>
+                                            <button type="button" class="invp-btn invp-btn-filter" id="btnSalida" aria-pressed="false" style="flex:1;justify-content:center" onclick="InvMovimientos.setTipo('salida')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg> Salida</button>
                                         </div>
                                     </div>
-                                    <div class="form-group"><label>Materia Prima *</label>
-                                        <select id="materiaPrimaId" class="form-control" required onchange="InvMovimientos.onMpChange()">
+                                    <div class="invp-field"><label>Materia prima *</label>
+                                        <select id="materiaPrimaId" required onchange="InvMovimientos.onMpChange()">
                                             <option value="">Seleccionar...</option>${mpOptions}
                                         </select>
                                     </div>
-                                    <div class="form-group" id="tipoSalidaGroup" style="display:none"><label>Tipo Salida</label>
+                                    <div class="invp-field" id="tipoSalidaGroup" style="display:none"><label>Tipo de salida</label>
                                         <div style="display:flex;gap:6px">
-                                            <label class="tipo-btn" id="btnPlancha" onclick="InvMovimientos.setTipoSalida('plancha_completa')" style="flex:1;text-align:center;padding:6px;font-size:11px">Plancha</label>
-                                            <label class="tipo-btn" id="btnTrozo" onclick="InvMovimientos.setTipoSalida('trozo')" style="flex:1;text-align:center;padding:6px;font-size:11px">Trozo</label>
+                                            <button type="button" class="invp-btn invp-btn-filter" id="btnPlancha" aria-pressed="false" style="flex:1;justify-content:center;padding:7px 10px" onclick="InvMovimientos.setTipoSalida('plancha_completa')">Plancha</button>
+                                            <button type="button" class="invp-btn invp-btn-filter" id="btnTrozo" aria-pressed="false" style="flex:1;justify-content:center;padding:7px 10px" onclick="InvMovimientos.setTipoSalida('trozo')">Trozo</button>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div id="stockDimGroup" style="display:none;margin-top:4px">
+                                <div id="stockDimGroup" style="display:none;margin-top:10px">
                                     <div class="inv-form-dims">
-                                        <div class="form-group" style="grid-column:span 2"><label>Medida disponible (stock)</label>
-                                            <select id="stockDimensionSelect" class="form-control" onchange="InvMovimientos.onStockDimChange()">
+                                        <div class="invp-field" style="grid-column:span 2"><label>Medida disponible (stock)</label>
+                                            <select id="stockDimensionSelect" onchange="InvMovimientos.onStockDimChange()">
                                                 <option value="">Seleccionar medida...</option>
                                             </select>
                                         </div>
-                                        <div class="form-group"><label>Stock</label>
-                                            <div id="stockDimInfo" style="padding:10px 12px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-size:13px;font-weight:600;color:#166534">-</div>
+                                        <div class="invp-field"><label>Stock</label>
+                                            <div id="stockDimInfo" class="invp-val" style="padding:10px 12px;background:#fbfcfe;border:1px solid var(--invp-line);border-radius:8px">-</div>
                                         </div>
-                                        <div class="form-group"><label>m² Unitario</label>
-                                            <div id="m2UnitDisplay" style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;color:#2563eb">-</div>
+                                        <div class="invp-field"><label>m² Unitario</label>
+                                            <div id="m2UnitDisplay" class="invp-val" style="padding:10px 12px;background:#fbfcfe;border:1px solid var(--invp-line);border-radius:8px">-</div>
                                         </div>
                                     </div>
+                                    <div id="stockDimTabla" style="margin-top:10px"></div>
                                 </div>
 
-                                <div class="inv-form-dims" style="margin-top:4px">
-                                    <div class="form-group"><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                    <div class="form-group"><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                    <div class="form-group"><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
-                                    <div class="form-group"><label>m²</label><div id="m2Display" style="padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:700;color:#2563eb">0.00</div></div>
+                                <div class="inv-form-dims" style="margin-top:10px">
+                                    <div class="invp-field"><label>Ancho (mm) *</label><input type="number" id="ancho" placeholder="2000" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                    <div class="invp-field"><label>Alto (mm) *</label><input type="number" id="alto" placeholder="1500" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                    <div class="invp-field"><label>Cantidad *</label><input type="number" id="cantidadPlanchas" placeholder="5" required min="1" oninput="InvMovimientos.calcM2()"></div>
+                                    <div class="invp-field"><label>m²</label><div id="m2Display" class="invp-val" style="padding:10px 12px;background:#fbfcfe;border:1px solid var(--invp-line);border-radius:8px">0.00</div></div>
                                 </div>
-                                <div class="inv-form-grid" style="margin-top:4px">
-                                    <div class="form-group"><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
-                                    <div class="form-group"><label>Fecha</label><input type="date" id="fecha"></div>
+                                <div class="inv-form-grid" style="margin-top:10px">
+                                    <div class="invp-field"><label>Turno *</label><select id="turno" required><option value="">Seleccionar...</option><option value="Dia">Dia</option><option value="Noche">Noche</option></select></div>
+                                    <div class="invp-field"><label>Fecha</label><input type="date" id="fecha"></div>
                                 </div>
-                                <div style="margin-top:4px">
-                                    <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Proveedor</label>
-                                    <input type="text" id="proveedor" placeholder="Opcional" style="width:100%;padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;box-sizing:border-box">
-                                </div>
-                                <div style="margin-top:4px">
-                                    <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Observaciones</label>
-                                    <input type="text" id="observaciones" placeholder="Notas..." style="width:100%;padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;box-sizing:border-box">
-                                </div>
+                                <div class="invp-field" style="margin-top:10px"><label>Proveedor</label><input type="text" id="proveedor" placeholder="Opcional"></div>
+                                <div class="invp-field" style="margin-top:10px"><label>Observaciones</label><input type="text" id="observaciones" placeholder="Notas..."></div>
                                 <div class="inv-form-bottom">
-                                    <button type="submit" class="btn btn-primary" style="padding:10px 28px;font-size:13px">Registrar</button>
+                                    <button type="submit" class="invp-btn invp-btn-primary" style="padding:11px 28px">Registrar</button>
                                 </div>
                             </form>
                         </div>
@@ -124,7 +120,7 @@ const InvMovimientos = {
         } catch(err) {
             // Error visible en vez de un formulario con el selector vacío
             App.toast('Error al cargar materias primas: ' + err.message, 'error');
-            page.innerHTML = '<div class="alert alert-danger">Error: ' + escText(err.message) + '</div>';
+            page.innerHTML = '<div class="inv-pro"><div class="alert alert-danger">Error: ' + escText(err.message) + '</div></div>';
         }
     },
 
@@ -169,14 +165,32 @@ const InvMovimientos = {
 
             select.innerHTML = '<option value="">Seleccionar medida...</option>' +
                 this._stockDimensiones.map(function(d, i) {
-                    return '<option value="' + i + '">' + d.ancho + ' x ' + d.alto + ' mm</option>';
+                    return '<option value="' + i + '">' + escText(d.ancho) + ' x ' + escText(d.alto) + ' mm</option>';
                 }).join('');
+
+            // Tabla de medidas disponibles (invp-table): datos en mono, numeros a la
+            // derecha. COLOR = SIGNIFICADO: el stock solo se colorea si esta en 0.
+            const tabla = document.getElementById('stockDimTabla');
+            if (tabla) {
+                tabla.innerHTML = '<table class="invp-table"><thead><tr>'
+                    + '<th>Medida</th><th class="num">Stock</th><th class="num">m² unit.</th>'
+                    + '</tr></thead><tbody>'
+                    + this._stockDimensiones.map(function(d, i) {
+                        return '<tr style="cursor:pointer" onclick="document.getElementById(\'stockDimensionSelect\').value=\'' + i + '\';InvMovimientos.onStockDimChange()">'
+                            + '<td class="codigo invp-mono">' + escText(d.ancho) + '×' + escText(d.alto) + '<span class="invp-unidad">mm</span></td>'
+                            + '<td class="num invp-mono ' + (Number(d.stock) <= 0 ? 'invp-danger' : 'valor') + '">' + escText(d.stock) + '</td>'
+                            + '<td class="num invp-mono sutil">' + escText(d.m2_unitario) + '</td>'
+                            + '</tr>';
+                    }).join('')
+                    + '</tbody></table>';
+            }
 
             if (this._stockDimensiones.length === 1) {
                 select.value = '0';
                 this.onStockDimChange();
             } else {
                 info.textContent = '-';
+                info.className = 'invp-val';
                 m2Info.textContent = '-';
                 this.resetDimInputs(true);
             }
@@ -198,6 +212,7 @@ const InvMovimientos = {
 
         if (idx === '') {
             info.textContent = '-';
+            info.className = 'invp-val';
             m2Info.textContent = '-';
             this.resetDimInputs(true);
             return;
@@ -209,6 +224,8 @@ const InvMovimientos = {
         document.getElementById('ancho').readOnly = true;
         document.getElementById('alto').readOnly = true;
         info.textContent = dim.stock + ' planchas';
+        // COLOR = SIGNIFICADO: el stock por medida solo se colorea si esta agotado
+        info.className = 'invp-val' + (Number(dim.stock) <= 0 ? ' invp-danger' : '');
         m2Info.textContent = dim.m2_unitario + ' m2';
         this.calcM2();
     },
@@ -222,30 +239,27 @@ const InvMovimientos = {
 
     setTipo(t) {
         this.tipoMovimiento = t;
+        // Estado visual via aria-pressed (sistema inv-pro): sin colores por tipo
         const btnE = document.getElementById('btnEntrada');
         const btnS = document.getElementById('btnSalida');
-        if (t === 'entrada') {
-            btnE.style.background = '#dcfce7'; btnE.style.color = '#166534'; btnE.style.border = '1px solid #22c55e';
-            btnS.style.background = ''; btnS.style.color = ''; btnS.style.border = '';
-        } else if (t === 'salida') {
-            btnS.style.background = '#fee2e2'; btnS.style.color = '#991b1b'; btnS.style.border = '1px solid #ef4444';
-            btnE.style.background = ''; btnE.style.color = ''; btnE.style.border = '';
-        } else {
-            btnE.style.background = ''; btnE.style.color = ''; btnE.style.border = '';
-            btnS.style.background = ''; btnS.style.color = ''; btnS.style.border = '';
-        }
+        if (btnE) btnE.setAttribute('aria-pressed', t === 'entrada' ? 'true' : 'false');
+        if (btnS) btnS.setAttribute('aria-pressed', t === 'salida' ? 'true' : 'false');
         document.getElementById('tipoSalidaGroup').style.display = t === 'salida' ? 'block' : 'none';
         document.getElementById('stockDimGroup').style.display = 'none';
         this.resetDimInputs(false);
         this.tipoSalida = '';
-        document.getElementById('btnPlancha').classList.remove('active');
-        document.getElementById('btnTrozo').classList.remove('active');
+        const btnP = document.getElementById('btnPlancha');
+        const btnT = document.getElementById('btnTrozo');
+        if (btnP) btnP.setAttribute('aria-pressed', 'false');
+        if (btnT) btnT.setAttribute('aria-pressed', 'false');
     },
 
     setTipoSalida(ts) {
         this.tipoSalida = ts;
-        document.getElementById('btnPlancha').classList.toggle('active', ts === 'plancha_completa');
-        document.getElementById('btnTrozo').classList.toggle('active', ts === 'trozo');
+        const btnP = document.getElementById('btnPlancha');
+        const btnT = document.getElementById('btnTrozo');
+        if (btnP) btnP.setAttribute('aria-pressed', ts === 'plancha_completa' ? 'true' : 'false');
+        if (btnT) btnT.setAttribute('aria-pressed', ts === 'trozo' ? 'true' : 'false');
 
         var mpId = document.getElementById('materiaPrimaId').value;
         if (ts === 'plancha_completa' && mpId) {

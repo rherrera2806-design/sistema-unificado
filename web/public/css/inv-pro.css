@@ -1,0 +1,192 @@
+/* ==========================================================================
+   inv-pro.css — Lenguaje visual "hoja técnica de vidrio" para Inventario
+   Principio: COLOR = SIGNIFICADO. Los datos son neutros; solo se colorea
+   lo que exige una decisión (stock crítico / autonomía baja).
+   Tipografía: IBM Plex Sans (UI) + IBM Plex Mono (datos técnicos).
+   Todas las clases van con prefijo invp- y scope .inv-pro para no afectar
+   al resto de la SPA.
+   ========================================================================== */
+
+.inv-pro {
+    --invp-ink:     #0f172a;
+    --invp-slate:   #475569;
+    --invp-muted:   #8494a8;
+    --invp-line:    #e4e9f0;
+    --invp-surface: #ffffff;
+    --invp-canvas:  #f5f7fa;
+    --invp-accent:  #1d4ed8;
+    --invp-warn:    #b45309;
+    --invp-danger:  #b91c1c;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    color: var(--invp-ink);
+}
+
+.inv-pro .invp-mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Hero: canto de vidrio (hairline luminoso inferior) ---------- */
+.inv-pro .invp-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #1e40af 100%);
+    border-radius: 14px;
+    padding: 22px 26px;
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    position: relative; overflow: hidden;
+    margin-bottom: 16px;
+}
+.inv-pro .invp-hero::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(147,197,253,.55), transparent);
+}
+.inv-pro .invp-hero h2 { color: #fff; font-size: 19px; font-weight: 600; letter-spacing: -.2px; margin: 0; }
+.inv-pro .invp-hero p { color: rgba(255,255,255,.62); font-size: 12px; margin: 3px 0 0; }
+.inv-pro .invp-hero-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ---------- Botones ---------- */
+.inv-pro .invp-btn {
+    font-family: inherit; font-size: 12.5px; font-weight: 600; letter-spacing: .1px;
+    padding: 9px 16px; border-radius: 8px; cursor: pointer; border: 1px solid var(--invp-line);
+    background: var(--invp-surface); color: var(--invp-slate); transition: all .15s;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.inv-pro .invp-btn:hover { border-color: #c3cedd; color: var(--invp-ink); }
+.inv-pro .invp-btn-primary { background: var(--invp-accent); border-color: var(--invp-accent); color: #fff; }
+.inv-pro .invp-btn-primary:hover { background: #1a44c0; border-color: #1a44c0; color: #fff; }
+.inv-pro .invp-btn-filter[aria-pressed="true"] { background: var(--invp-ink); border-color: var(--invp-ink); color: #fff; }
+.inv-pro .invp-btn:focus-visible { outline: 2px solid var(--invp-accent); outline-offset: 2px; }
+/* Botones dentro del hero (sobre fondo oscuro) */
+.inv-pro .invp-hero .invp-btn {
+    background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.22); color: #fff;
+}
+.inv-pro .invp-hero .invp-btn:hover { background: rgba(255,255,255,.18); }
+.inv-pro .invp-hero .invp-btn-primary { background: var(--invp-accent); border-color: var(--invp-accent); }
+
+/* ---------- Nota informativa ---------- */
+.inv-pro .invp-note {
+    display: flex; gap: 10px; align-items: baseline;
+    background: #f8fafc; border-left: 3px solid #cbd5e1;
+    padding: 11px 16px; border-radius: 0 8px 8px 0; margin-bottom: 14px;
+    font-size: 12px; color: var(--invp-slate); line-height: 1.55;
+}
+.inv-pro .invp-note strong { color: var(--invp-ink); font-weight: 600; }
+
+/* ---------- Card / tabla ---------- */
+.inv-pro .invp-card {
+    background: var(--invp-surface); border: 1px solid var(--invp-line);
+    border-radius: 14px; overflow: hidden;
+}
+.inv-pro .invp-card-head {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 18px 22px 14px; border-bottom: 1px solid var(--invp-line);
+}
+.inv-pro .invp-card-head h3 { font-size: 15px; font-weight: 600; letter-spacing: -.1px; margin: 0; }
+.inv-pro .invp-card-head .invp-count { font-size: 11px; color: var(--invp-muted); font-weight: 500; }
+
+.inv-pro .invp-table { width: 100%; border-collapse: collapse; }
+.inv-pro .invp-table thead th {
+    font-size: 10px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase;
+    color: var(--invp-muted); text-align: left; padding: 10px 16px;
+    border-bottom: 1px solid var(--invp-line); background: #fbfcfe; white-space: nowrap;
+}
+.inv-pro .invp-table th.num, .inv-pro .invp-table td.num { text-align: right; }
+.inv-pro .invp-table tbody td {
+    padding: 11px 16px; font-size: 13px; color: var(--invp-slate);
+    border-bottom: 1px solid #eef2f7; white-space: nowrap;
+}
+.inv-pro .invp-table tbody tr:last-child td { border-bottom: none; }
+.inv-pro .invp-table tbody tr:hover td { background: #f8fafc; }
+
+/* Fila con estado: riel lateral de 2px (único color de la fila) */
+.inv-pro .invp-table tbody td:first-child { border-left: 2px solid transparent; }
+.inv-pro .invp-table tr.critico td:first-child { border-left-color: var(--invp-danger); }
+.inv-pro .invp-table tr.critico td { background: #fef6f5; }
+.inv-pro .invp-table tr.critico:hover td { background: #fdeeed; }
+.inv-pro .invp-table tr.bajo td:first-child { border-left-color: var(--invp-warn); }
+
+/* Jerarquía tipográfica de datos */
+.inv-pro .invp-table td.codigo { color: var(--invp-ink); font-weight: 500; }
+.inv-pro .invp-table td.tipo   { color: var(--invp-ink); font-weight: 500; }
+.inv-pro .invp-table td.valor  { color: var(--invp-ink); font-weight: 500; }
+.inv-pro .invp-table td.sutil  { color: var(--invp-slate); font-weight: 400; }
+.inv-pro .invp-unidad { color: var(--invp-muted); font-size: 11px; font-weight: 400; margin-left: 2px; }
+
+/* Semántica SOLO donde hay que actuar */
+.inv-pro .invp-danger { color: var(--invp-danger); font-weight: 600; }
+.inv-pro .invp-warn   { color: var(--invp-warn); font-weight: 600; }
+.inv-pro .invp-ok     { color: #0f766e; font-weight: 600; }
+
+/* Utilidades de dato (válidas dentro y fuera de tablas) */
+.inv-pro .invp-valor { color: var(--invp-ink); font-weight: 500; }
+.inv-pro .invp-sutil { color: var(--invp-slate); font-weight: 400; }
+
+/* Dentro de tablas/mobile cards deben ganarle al estilo base de celda
+   (si no, la regla .invp-table tbody td las anula por especificidad) */
+.inv-pro .invp-table tbody td.invp-valor,
+.inv-pro .invp-mcard .invp-val.invp-valor { color: var(--invp-ink); font-weight: 500; }
+.inv-pro .invp-table tbody td.invp-sutil,
+.inv-pro .invp-mcard .invp-val.invp-sutil { color: var(--invp-slate); font-weight: 400; }
+.inv-pro .invp-table tbody td.invp-danger,
+.inv-pro .invp-mcard .invp-val.invp-danger { color: var(--invp-danger); font-weight: 600; }
+.inv-pro .invp-table tbody td.invp-warn,
+.inv-pro .invp-mcard .invp-val.invp-warn { color: var(--invp-warn); font-weight: 600; }
+.inv-pro .invp-table tbody td.invp-ok { color: #0f766e; font-weight: 600; }
+
+/* ---------- Chips de estado (texto + color: accesible) ---------- */
+.inv-pro .invp-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: .3px;
+    padding: 3px 9px; border-radius: 20px; border: 1px solid var(--invp-line); color: var(--invp-slate);
+    white-space: nowrap;
+}
+.inv-pro .invp-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: #94a3b8; flex-shrink: 0; }
+.inv-pro .invp-chip.ok .dot { background: #10b981; }
+.inv-pro .invp-chip.bajo { color: var(--invp-warn); border-color: #f0d9b5; background: #fdf8f1; }
+.inv-pro .invp-chip.bajo .dot { background: var(--invp-warn); }
+.inv-pro .invp-chip.critico { color: var(--invp-danger); border-color: #f3c9c6; background: #fdf3f2; }
+.inv-pro .invp-chip.critico .dot { background: var(--invp-danger); }
+.inv-pro .invp-chip.neutro .dot { background: #94a3b8; }
+
+/* ---------- Cards móvil (contenido de .m-cards-mobile) ---------- */
+.inv-pro .invp-mcard {
+    background: var(--invp-surface); border: 1px solid var(--invp-line); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 10px;
+    border-left: 2px solid transparent;
+}
+.inv-pro .invp-mcard.critico { border-left-color: var(--invp-danger); }
+.inv-pro .invp-mcard.bajo { border-left-color: var(--invp-warn); }
+.inv-pro .invp-mcard .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.inv-pro .invp-mcard .cod { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: var(--invp-ink); }
+.inv-pro .invp-mgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 10px; }
+.inv-pro .invp-lbl { font-size: 9px; letter-spacing: .6px; text-transform: uppercase; color: var(--invp-muted); margin-bottom: 1px; }
+.inv-pro .invp-val { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--invp-ink); font-weight: 500; }
+
+/* ---------- Formularios (coherentes con inv-form-grid del patrón) ---------- */
+.inv-pro .invp-field label {
+    display: block; font-size: 10px; font-weight: 600; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--invp-muted); margin-bottom: 3px;
+}
+.inv-pro .invp-field input, .inv-pro .invp-field select, .inv-pro .invp-field textarea {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 13px;
+    border: 1px solid var(--invp-line); border-radius: 8px; font-family: inherit; color: var(--invp-ink);
+    background: var(--invp-surface);
+}
+.inv-pro .invp-field input:focus, .inv-pro .invp-field select:focus, .inv-pro .invp-field textarea:focus {
+    outline: none; border-color: var(--invp-accent); box-shadow: 0 0 0 3px rgba(29,78,216,.10);
+}
+
+/* ---------- Búsqueda en hero ---------- */
+.inv-pro .invp-search {
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 9px; padding: 9px 14px; color: #fff; font-size: 13px; width: 260px; outline: none;
+    font-family: inherit;
+}
+.inv-pro .invp-search::placeholder { color: rgba(255,255,255,.45); }
+
+@media (max-width: 768px) {
+    .inv-pro .invp-hero { flex-direction: column; align-items: stretch; padding: 16px; }
+    .inv-pro .invp-hero h2 { font-size: 16px; }
+    .inv-pro .invp-search { width: 100%; }
+    .inv-pro .invp-hero-actions .invp-btn { flex: 1; justify-content: center; min-height: 40px; }
+    .inv-pro .invp-mgrid { grid-template-columns: 1fr 1fr 1fr; gap: 6px 8px; }
+}
