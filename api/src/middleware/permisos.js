@@ -1,11 +1,13 @@
 /**
  * Middleware centralizado de permisos para VitroFlow
  *
- * Los permisos se envían desde el frontend en el header 'X-User-Permisos'
- * como string separado por comas (ej: "asistencia,asistencia.editar,pedidos")
+ * La identidad y los permisos se resuelven EXCLUSIVAMENTE desde la sesión
+ * creada por POST /api/auth/login (cookie HttpOnly 'session=').
+ * Los headers 'X-User-Permisos' / 'X-User-Email' los envía el cliente y pueden
+ * falsificarse, por lo que se IGNORAN: no otorgan identidad ni permisos.
  *
- * Convención de permisos:
- *   - modulo            → acceso base (ver módulo)
+ * Convención de permisos (ver web/public/js/modules/usuarios.js):
+ *   - modulo            → acceso base / lectura (ver módulo)
  *   - modulo.agregar    → crear registros (POST)
  *   - modulo.editar     → editar registros (PUT/PATCH)
  *   - modulo.eliminar   → eliminar registros (DELETE)
@@ -13,67 +15,60 @@
 
 const { getSession } = require('./security');
 
-function getPermisosFromReq(req) {
-    // 1. Intentar desde el header X-User-Permisos
-    const raw = req.headers['x-user-permisos'] || '';
-    if (raw) {
-        return raw.split(',').map(p => p.trim()).filter(Boolean);
-    }
-
-    // 2. Intentar desde la sesión (cookie)
+/**
+ * Resuelve el usuario de la sesión a partir de la cookie 'session='.
+ * Retorna null si no hay cookie o el token no corresponde a una sesión válida.
+ */
+function getUserFromSession(req) {
     const cookieHeader = req.headers.cookie || '';
     const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
     const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-    const user = getSession(token);
+    return getSession(token);
+}
 
+/**
+ * Permisos del usuario, solo desde la sesión.
+ * Sin sesión válida → lista vacía (usuario anónimo).
+ */
+function getPermisosFromReq(req) {
+    const user = getUserFromSession(req);
     if (user && Array.isArray(user.permisos)) {
         return user.permisos;
     }
-
     return [];
 }
 
+/**
+ * Email del usuario, solo desde la sesión.
+ * Sin sesión válida → '' (usuario anónimo).
+ */
 function getEmailFromReq(req) {
-    // 1. Intentar desde el header
-    const raw = req.headers['x-user-email'] || '';
-    if (raw) return raw;
-
-    // 2. Intentar desde la sesión
-    const cookieHeader = req.headers.cookie || '';
-    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
-    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-    const user = getSession(token);
-
-    return user ? user.email : '';
+    const user = getUserFromSession(req);
+    return user ? (user.email || '') : '';
 }
 
+/**
+ * Usuario normalizado { email, permisos, rol } desde la sesión.
+ * Sin sesión válida → usuario anónimo sin permisos.
+ */
 function getUserFromReq(req) {
-    // 1. Intentar desde headers
-    const email = req.headers['x-user-email'] || '';
-    const raw = req.headers['x-user-permisos'] || '';
-    const permisos = raw.split(',').map(p => p.trim()).filter(Boolean);
-
-    if (email) {
-        // Si tiene permiso 'usuarios' o el email es admin conocido, tratar como admin
-        const isAdmin = permisos.includes('usuarios');
-        return { email, permisos, rol: isAdmin ? 'admin' : 'usuario' };
+    const user = getUserFromSession(req);
+    if (!user) {
+        return { email: '', permisos: [], rol: null };
     }
+    return {
+        email: user.email || '',
+        permisos: Array.isArray(user.permisos) ? user.permisos : [],
+        rol: user.rol || 'usuario'
+    };
+}
 
-    // 2. Intentar desde sesión
-    const cookieHeader = req.headers.cookie || '';
-    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
-    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-    const user = getSession(token);
-
-    if (user) {
-        return {
-            email: user.email || '',
-            permisos: Array.isArray(user.permisos) ? user.permisos : [],
-            rol: user.rol || 'usuario'
-        };
-    }
-
-    return { email: '', permisos: [], rol: null };
+/**
+ * Solo el rol 'admin' de la sesión (o el permiso 'usuarios' otorgado en la BD)
+ * otorga permisos de administrador. Los headers nunca definen el rol.
+ */
+function isAdmin(user) {
+    return user.rol === 'admin' || (user.permisos || []).includes('usuarios');
 }
 
 /**
@@ -85,8 +80,8 @@ function requireAnyPerm(...permisosRequeridos) {
         const user = getUserFromReq(req);
         const userPerms = user.permisos || [];
 
-        // Admin total: tiene permiso 'usuarios' o rol 'admin'
-        if (user.rol === 'admin' || userPerms.includes('usuarios')) {
+        // Admin total: rol 'admin' o permiso 'usuarios' (de la BD)
+        if (isAdmin(user)) {
             req.user = user;
             return next();
         }
@@ -110,7 +105,7 @@ function requirePerm(permisoRequerido) {
         const userPerms = user.permisos || [];
 
         // Admin total
-        if (user.rol === 'admin' || userPerms.includes('usuarios')) {
+        if (isAdmin(user)) {
             req.user = user;
             return next();
         }
@@ -125,46 +120,36 @@ function requirePerm(permisoRequerido) {
 }
 
 /**
- * Helper para crear middlewares CRUD completos para un módulo.
- */
-/**
- * Verifica que el usuario esté autenticado (sesión o headers).
+ * Verifica que el usuario esté autenticado (sesión válida en la cookie).
  * NO verifica permisos específicos - solo que haya sesión válida.
  * Útil para recursos como PDFs que se abren en iframe/window.open.
  */
 function requireAuth(req, res, next) {
-    // 1. Verificar sesión directamente (cookie)
-    const cookieHeader = req.headers.cookie || '';
-    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
-    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-    const sessionUser = getSession(token);
-
-    if (sessionUser) {
-        req.user = {
-            email: sessionUser.email || '',
-            permisos: Array.isArray(sessionUser.permisos) ? sessionUser.permisos : [],
-            rol: sessionUser.rol || 'usuario'
-        };
-        return next();
+    // Solo la sesión otorga identidad (los headers X-User-* se ignoran)
+    const sessionUser = getUserFromSession(req);
+    if (!sessionUser) {
+        return res.status(401).json({ error: 'No autenticado' });
     }
 
-    // 2. Verificar headers como fallback
-    const email = req.headers['x-user-email'] || '';
-    if (email) {
-        const permisos = (req.headers['x-user-permisos'] || '').split(',').map(p => p.trim()).filter(Boolean);
-        req.user = { email, permisos, rol: permisos.includes('usuarios') ? 'admin' : 'usuario' };
-        return next();
-    }
-
-    return res.status(401).json({ error: 'No autenticado' });
+    req.user = {
+        email: sessionUser.email || '',
+        permisos: Array.isArray(sessionUser.permisos) ? sessionUser.permisos : [],
+        rol: sessionUser.rol || 'usuario'
+    };
+    return next();
 }
 
+/**
+ * Helper para crear middlewares CRUD completos para un módulo.
+ * Lectura y escritura separadas: 'ver' (permiso base) solo habilita lectura;
+ * crear/editar/eliminar exigen su permiso específico. El admin pasa siempre.
+ */
 function crudPerms(modulo) {
     return {
-        view:   requireAnyPerm(modulo, `${modulo}.editar`, `${modulo}.eliminar`, `${modulo}.agregar`),
-        create: requireAnyPerm(`${modulo}.agregar`, `${modulo}`),
-        update: requireAnyPerm(`${modulo}.editar`, `${modulo}`),
-        delete: requireAnyPerm(`${modulo}.eliminar`, `${modulo}`),
+        view:   requireAnyPerm(modulo),
+        create: requireAnyPerm(`${modulo}.agregar`),
+        update: requireAnyPerm(`${modulo}.editar`),
+        delete: requireAnyPerm(`${modulo}.eliminar`),
     };
 }
 
@@ -174,7 +159,7 @@ function crudPerms(modulo) {
  */
 function requireAdmin(req, res, next) {
     const user = getUserFromReq(req);
-    if (user.rol === 'admin' || user.permisos.includes('usuarios')) {
+    if (isAdmin(user)) {
         req.user = user;
         return next();
     }

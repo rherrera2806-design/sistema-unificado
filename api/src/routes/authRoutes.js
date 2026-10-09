@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { parseBody } = require('../middleware/parser');
+const { requireAdmin } = require('../middleware/permisos');
 const authService = require('../services/auth');
 
 router.post('/api/auth/login', async (req, res, next) => {
@@ -77,7 +78,8 @@ router.post('/api/auth/logout', (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-router.get('/api/usuarios', async (req, res, next) => {
+// Listado de usuarios: solo administradores
+router.get('/api/usuarios', requireAdmin, async (req, res, next) => {
     try { res.json(await authService.getUsuarios()); }
     catch (e) { next(e); }
 });
@@ -141,54 +143,18 @@ router.get('/api/auth/sync-perms', async (req, res, next) => {
     } catch (e) { next(e); }
 });
 
-// Endpoint temporal para forzar permisos de admin
-router.post('/api/auth/force-admin', async (req, res, next) => {
-    try {
-        const cookieHeader = req.headers.cookie || '';
-        const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
-        const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-        const { getSession } = require('../middleware/security');
-        const user = getSession(token);
-        
-        if (!user) return res.status(401).json({ error: 'No autenticado' });
-        
-        // Obtener usuario completo de la BD
-        const { query } = require('../config/database');
-        const result = await query("SELECT id, nombre, email, rol, permisos FROM usuarios WHERE email = $1", [user.email]);
-        const dbUser = result.rows[0];
-        
-        if (!dbUser) return res.status(404).json({ error: 'Usuario no encontrado' });
-        
-        // Si es admin pero no tiene permiso 'usuarios', agregarlo
-        if (dbUser.rol === 'admin' && !(dbUser.permisos || []).includes('usuarios')) {
-            await query("UPDATE usuarios SET permisos = array_append(permisos, 'usuarios') WHERE id = $1", [dbUser.id]);
-            dbUser.permisos = [...(dbUser.permisos || []), 'usuarios'];
-        }
-        
-        res.json({
-            ok: true,
-            user: {
-                id: dbUser.id,
-                nombre: dbUser.nombre,
-                email: dbUser.email,
-                rol: dbUser.rol,
-                permisos: dbUser.permisos
-            }
-        });
-    } catch (e) { next(e); }
-});
-
-router.post('/api/usuarios', async (req, res, next) => {
+// CRUD de usuarios: solo administradores
+router.post('/api/usuarios', requireAdmin, async (req, res, next) => {
     try { res.status(201).json(await authService.crearUsuario(req.body)); }
     catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-router.put('/api/usuarios/:id', async (req, res, next) => {
+router.put('/api/usuarios/:id', requireAdmin, async (req, res, next) => {
     try { res.json(await authService.updateUsuario(Number(req.params.id), req.body)); }
     catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-router.delete('/api/usuarios/:id', async (req, res, next) => {
+router.delete('/api/usuarios/:id', requireAdmin, async (req, res, next) => {
     try { res.json({ ok: await authService.eliminarUsuario(Number(req.params.id)) }); }
     catch (e) { next(e); }
 });
