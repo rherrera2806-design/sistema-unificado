@@ -916,9 +916,9 @@ async function faseDatos({ q, safe }) {
         for (let m = 0; m < 12; m++) {
             for (let d = 1; d <= 31; d++) {
                 const dt = new Date(anio, m, d);
-                // OJO: new Date(...) DESBORDA d�as inexistentes (ej: 29 de
-                // febrero en a�o no bisiesto -> 1 de marzo). Si el mes cort�,
-                // salimos del loop; si no, se generaban fechas inv�lidas como
+                // OJO: new Date(...) DESBORDA días inexistentes (ej: 29 de
+                // febrero en año no bisiesto -> 1 de marzo). Si el mes cortó,
+                // salimos del loop; si no, se generaban fechas inválidas como
                 // '2026-02-29' y PostgreSQL rechazaba el INSERT tummando initDB.
                 if (dt.getMonth() !== m) break;
                 if (dt.getDay() === 0 || dt.getDay() === 6) {

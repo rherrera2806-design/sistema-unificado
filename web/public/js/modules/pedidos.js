@@ -733,7 +733,7 @@ App.registerModule('pedidos', {
         if (this._ocupado) return;
         const p = this.allPedidos.find(x => x.id === id);
         if (!p) return;
-        const ok = await App.confirm('¿Aprobar el pedido <strong>' + escText(p.numero_pedido) + '</strong>?<br>El PDF será eliminado del servidor.');
+        const ok = await App.confirm('Â¿Aprobar el pedido <strong>' + escText(p.numero_pedido) + '</strong>?<br>El PDF serÃ¡ eliminado del servidor.');
         if (!ok) return;
         this._ocupado = true;
         try {
