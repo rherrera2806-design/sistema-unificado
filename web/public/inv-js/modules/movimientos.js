@@ -1,18 +1,27 @@
+// Escape XSS: usa los helpers del SPA (app-main.js); fallback si se carga en el mini-app legacy
+window.escText = window.escText || function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); };
+window.escAttr = window.escAttr || window.escText;
+
 const InvMovimientos = {
     tipoMovimiento: '',
     tipoSalida: '',
     _allMovimientos: [],
     _materiasPrimas: [],
     _stockDimensiones: [],
+    _guardando: false,
 
     async render() {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         try {
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
-            const mpData = await fetch('/api/inv/materias-primas', { headers: hdrs }).then(r => r.json()).catch(() => []);
+            // Verificar res.ok: un 401/403/500 NO debe interpretarse como "sin materias primas"
+            const resMp = await fetch('/api/inv/materias-primas', { headers: hdrs });
+            const mpBody = await resMp.json().catch(() => ({}));
+            if (!resMp.ok) throw new Error(mpBody.error || mpBody.mensaje || ('HTTP ' + resMp.status));
+            const mpData = mpBody;
             this._materiasPrimas = Array.isArray(mpData) ? mpData : [];
-            const mpOptions = this._materiasPrimas.map(mp => `<option value="${mp.id}" data-ancho="${mp.ancho_nal || 0}" data-alto="${mp.alto_nal || 0}" data-espesor="${mp.espesor_mm || 0}">${mp.codigo_mp} - ${mp.nombre} (${mp.espesor_mm}mm)</option>`).join('');
+            const mpOptions = this._materiasPrimas.map(mp => `<option value="${mp.id}" data-ancho="${mp.ancho_nal || 0}" data-alto="${mp.alto_nal || 0}" data-espesor="${mp.espesor_mm || 0}">${escText(mp.codigo_mp)} - ${escText(mp.nombre)} (${escText(mp.espesor_mm)}mm)</option>`).join('');
 
             page.innerHTML = `
                 <style>
@@ -112,7 +121,11 @@ const InvMovimientos = {
                     </div>
                 </div>`;
 
-        } catch(err) { page.innerHTML = '<div class="alert alert-danger">Error: ' + err.message + '</div>'; }
+        } catch(err) {
+            // Error visible en vez de un formulario con el selector vacío
+            App.toast('Error al cargar materias primas: ' + err.message, 'error');
+            page.innerHTML = '<div class="alert alert-danger">Error: ' + escText(err.message) + '</div>';
+        }
     },
 
     onMpChange() {
@@ -143,7 +156,10 @@ const InvMovimientos = {
         try {
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch('/api/inv/stock-por-dimension?mp_id=' + mpId, { headers: hdrs });
-            this._stockDimensiones = await res.json();
+            const body = await res.json().catch(() => ({}));
+            // Sin res.ok el TypeError quedaba oculto y el grupo de medidas desaparecia sin aviso
+            if (!res.ok) throw new Error(body.error || body.mensaje || ('HTTP ' + res.status));
+            this._stockDimensiones = Array.isArray(body) ? body : [];
 
             if (this._stockDimensiones.length === 0) {
                 group.style.display = 'none';
@@ -167,7 +183,10 @@ const InvMovimientos = {
 
             group.style.display = 'block';
         } catch(e) {
+            // Aviso claro: sin esto el usuario podia registrar salidas sin validacion de stock
             group.style.display = 'none';
+            this._stockDimensiones = [];
+            App.toast('No se pudo cargar el stock por medida: ' + e.message, 'error');
         }
     },
 
@@ -262,14 +281,18 @@ const InvMovimientos = {
             if (cant > dim.stock) { App.toast('Cantidad excede stock disponible (' + dim.stock + ' planchas)', 'error'); return; }
         }
 
-        var user = null;
-        try { user = JSON.parse(localStorage.getItem('unified_user')); } catch(e) {}
+        // Evitar doble submit: doble click = doble movimiento
+        if (this._guardando) return;
+        this._guardando = true;
+        const btn = e.target.querySelector('button[type="submit"]');
+        if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+        // El backend firma el movimiento con el usuario de la sesion: ya no se envia usuario_id
         var now = new Date();
         var fechaLocal = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + 'T' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
         var fechaSeleccionada = document.getElementById('fecha').value;
         var fechaHora = fechaSeleccionada ? fechaSeleccionada + 'T' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0') : fechaLocal;
         const data = {
-            usuario_id: user ? user.id : null,
             tipo_movimiento: this.tipoMovimiento,
             materia_prima_id: parseInt(materiaPrimaId),
             ancho: parseInt(document.getElementById('ancho').value) || 0,
@@ -286,6 +309,11 @@ const InvMovimientos = {
             App.toast('Movimiento registrado');
             this.render();
         } catch(err) { App.toast('Error: ' + err.message, 'error'); }
+        finally {
+            // Re-habilitar el boton siempre (tambien si la vista no se re-renderiza)
+            this._guardando = false;
+            if (btn) { btn.disabled = false; btn.textContent = 'Registrar'; }
+        }
     },
 
     async eliminar(id) {

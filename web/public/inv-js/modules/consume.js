@@ -9,14 +9,21 @@ const InvConsume = {
         page.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400)">Cargando consumo...</div>';
         try {
             const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
-            const analytics = await fetch('/api/inv/analytics?meses=6', { headers: hdrs }).then(r => r.json()).catch(() => ({}));
+            const res = await fetch('/api/inv/analytics?meses=6', { headers: hdrs });
+            // apiJson lanza Error con el mensaje del body si !res.ok:
+            // un 401/403/500 NO se confunde con "Sin datos"
+            const analytics = await apiJson(res);
             const a = analytics || {};
             this._data = {
                 consumo: a.consumoMensual || [],
                 stock: a.stockActual || []
             };
             this._renderContent(page);
-        } catch(err) { page.innerHTML = '<div class="alert alert-danger">Error: ' + err.message + '</div>'; }
+        } catch(err) {
+            // Error visible en vez de las tablas con "Sin datos"
+            App.showAlert('Error al cargar consumo: ' + err.message, 'danger');
+            page.innerHTML = '<div class="alert alert-danger">Error: ' + escText(err.message) + '</div>';
+        }
     },
 
     _renderContent(page) {
@@ -25,15 +32,33 @@ const InvConsume = {
         const monthNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
         page.innerHTML = `
-                <div style="width:100%">
-                <div style="background:linear-gradient(135deg,#1e293b,#334155);border-radius:12px;padding:24px;margin-bottom:20px;color:white">
-                    <h2 style="margin:0;font-size:18px;font-weight:800">Consumo y Autonomia</h2>
-                    <p style="margin:4px 0 0;font-size:12px;opacity:0.7">Analisis de consumo mensual y proyeccion de stock</p>
+                <style>
+                    /* Matrices con scroll horizontal comodo en movil (sin duplicarlas como cards) */
+                    .inv-scroll-wrap{-webkit-overflow-scrolling:touch}
+                    .inv-scroll-wrap table{min-width:760px}
+                    .inv-scroll-wrap--wide table{min-width:1150px}
+                    .inv-scroll-wrap th:first-child,.inv-scroll-wrap td:first-child{box-shadow:1px 0 0 var(--gray-200)}
+                    .inv-filt-grupo{display:flex;gap:4px;align-items:center;font-size:10px;font-weight:600;flex-wrap:wrap}
+                    @media(max-width:768px){
+                        .inv-scroll-wrap{display:block!important}
+                        .inv-scroll-wrap table{min-width:900px;font-size:11px}
+                        .inv-scroll-wrap--wide table{min-width:1150px}
+                        .inv-scroll-wrap th,.inv-scroll-wrap td{padding:8px 6px}
+                        .inv-filt-btn{min-height:32px;padding:6px 10px!important;font-size:11px!important}
+                    }
+                </style>
+
+                <div class="m-page">
+                <div class="m-hero" style="padding:12px 16px">
+                    <div style="position:relative;z-index:1">
+                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white">Consumo y Autonomia</h2>
+                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Analisis de consumo mensual y proyeccion de stock</p>
+                    </div>
                 </div>
 
-                <div class="card" style="overflow:hidden;margin-bottom:16px">
-                    <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800)">Consumo Mensual por Material</div>
-                        <div style="padding:0;overflow-x:auto">
+                <div class="m-card" style="margin-bottom:16px">
+                    <div class="m-card-header" style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--gray-800)">Consumo Mensual por Material</div>
+                        <div class="m-table-wrap inv-scroll-wrap">
                             ${consumo.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
                             (() => {
                                 const porMp = {};
@@ -49,7 +74,7 @@ const InvConsume = {
                                     const promedio = total / numMeses;
                                     return { nombre: data.nombre, espesor: data.espesor, meses: data.meses, total, promedio };
                                 });
-                                rows.sort((a, b) => a.nombre.localeCompare(b.nombre) || (a.espesor || '').localeCompare(b.espesor || ''));
+                                rows.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (a.espesor || '').localeCompare(b.espesor || ''));
                                 const maxVal = Math.max(...rows.flatMap(r => Object.values(r.meses)), 1);
                                 return '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:2px solid var(--gray-200)">'
                                     + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);position:sticky;left:0;background:white;z-index:1;min-width:140px">Material</th>'
@@ -62,8 +87,8 @@ const InvConsume = {
                                     + '<th style="padding:8px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-500);min-width:60px">PROM.</th>'
                                     + '</tr></thead><tbody>'
                                     + rows.map(r => '<tr style="border-bottom:1px solid var(--gray-100)">'
-                                        + '<td style="padding:6px 12px;font-weight:600;color:var(--gray-800);position:sticky;left:0;background:white;z-index:1">' + (r.nombre || '-') + '</td>'
-                                        + '<td style="padding:6px 8px;color:var(--gray-600)">' + (r.espesor || '-') + '</td>'
+                                        + '<td style="padding:6px 12px;font-weight:600;color:var(--gray-800);position:sticky;left:0;background:white;z-index:1">' + escText(r.nombre || '-') + '</td>'
+                                        + '<td style="padding:6px 8px;color:var(--gray-600)">' + escText(r.espesor || '-') + '</td>'
                                         + allMeses.map(m => {
                                             const val = r.meses[m] || 0;
                                                 return '<td style="padding:6px;text-align:center;position:relative">'
@@ -77,12 +102,11 @@ const InvConsume = {
                             })()}
                         </div>
                     </div>
-                </div>
 
-                <div class="card" style="overflow:hidden;margin-bottom:16px">
-                    <div style="padding:14px 18px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800);display:flex;justify-content:space-between;align-items:center">
+                <div class="m-card" style="margin-bottom:16px">
+                    <div class="m-card-header" style="padding:10px 14px;font-size:12px;font-weight:700;color:var(--gray-800);display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
                         <span>Proyeccion de Stock por Material</span>
-                        <div style="display:flex;gap:4px;align-items:center;font-size:10px;font-weight:600">
+                        <div class="inv-filt-grupo">
                             <span style="color:var(--gray-400);margin-right:4px">Filtrar ≤</span>
                             <button onclick="InvConsume.filtAuto(0)" class="inv-filt-btn" data-val="0" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===0?'var(--primary)':'white'};color:${this._filtAuto===0?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">Todos</button>
                             <button onclick="InvConsume.filtAuto(1)" class="inv-filt-btn" data-val="1" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===1?'var(--danger)':'white'};color:${this._filtAuto===1?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;1 mes</button>
@@ -93,7 +117,7 @@ const InvConsume = {
                             <button onclick="InvConsume.filtAuto(6)" class="inv-filt-btn" data-val="6" style="padding:3px 8px;border-radius:6px;border:1px solid var(--gray-200);background:${this._filtAuto===6?'var(--success)':'white'};color:${this._filtAuto===6?'white':'var(--gray-600)'};cursor:pointer;font-size:10px;font-weight:600">&lt;6 meses</button>
                         </div>
                     </div>
-                    <div style="padding:0;overflow-x:auto">
+                    <div class="m-table-wrap inv-scroll-wrap inv-scroll-wrap--wide">
                         ${stock.length === 0 ? '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin datos</div>' :
                         (() => {
                             const now = new Date();
@@ -122,9 +146,9 @@ const InvConsume = {
                                     const auto = s.autonomia_meses || 0;
                                     const autoColor = s.stock <= 0 ? 'var(--danger)' : auto < 2 ? 'var(--danger)' : auto < 4 ? 'var(--warning)' : 'var(--success)';
                                     return '<tr style="border-bottom:1px solid var(--gray-100)">'
-                                        + '<td style="padding:6px 10px;color:var(--gray-600);position:sticky;left:0;background:white;z-index:1">' + (s.codigo_mp || '') + '</td>'
-                                        + '<td style="padding:6px 10px;font-weight:600;color:var(--gray-800);position:sticky;left:60px;background:white;z-index:1">' + (s.nombre || '') + '</td>'
-                                        + '<td style="padding:6px 10px;color:var(--gray-600)">' + (s.espesor_mm || '') + '</td>'
+                                        + '<td style="padding:6px 10px;color:var(--gray-600);position:sticky;left:0;background:white;z-index:1">' + escText(s.codigo_mp || '') + '</td>'
+                                        + '<td style="padding:6px 10px;font-weight:600;color:var(--gray-800);position:sticky;left:60px;background:white;z-index:1">' + escText(s.nombre || '') + '</td>'
+                                        + '<td style="padding:6px 10px;color:var(--gray-600)">' + escText(s.espesor_mm || '') + '</td>'
                                         + '<td style="padding:6px 10px;text-align:right;font-weight:700;color:var(--gray-800)">' + Math.round(stockRem) + '</td>'
                                         + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + InvConsume.fmtKg(s.kg_stock) + '</td>'
                                         + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--gray-600)">' + Math.round(cpm) + '</td>'

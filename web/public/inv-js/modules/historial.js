@@ -1,3 +1,7 @@
+// Escape XSS: usa los helpers del SPA (app-main.js); fallback si se carga en el mini-app legacy
+window.escText = window.escText || function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); };
+window.escAttr = window.escAttr || window.escText;
+
 const InvHistorial = {
     _currentData: [],
 
@@ -5,7 +9,7 @@ const InvHistorial = {
         const page = document.querySelector('.page.active');
         page.innerHTML = '<div class="empty-state"><p>Cargando...</p></div>';
         try {
-            const hdrs = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            // api.inv() ya lanza Error con el mensaje del body si la respuesta no es OK (401/403/500)
             const movimientos = await api.inv().getMovimientos();
             this._currentData = Array.isArray(movimientos) ? movimientos : [];
 
@@ -64,7 +68,11 @@ const InvHistorial = {
                 </div>`;
 
             this.renderContent();
-        } catch(err) { page.innerHTML = '<div class="alert alert-danger">Error: ' + err.message + '</div>'; }
+        } catch(err) {
+            // Fallo de API visible y claro (no estado vacío)
+            App.toast('Error al cargar movimientos: ' + err.message, 'error');
+            page.innerHTML = '<div class="alert alert-danger">Error: ' + escText(err.message) + '</div>';
+        }
     },
 
     renderContent() {
@@ -94,23 +102,23 @@ const InvHistorial = {
                 if (canDel) acciones += '<button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvHistorial.eliminar(' + m.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
                 acciones += '</td>';
             }
-            var tipoHtml = '<span class="badge ' + (m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida') + '">' + m.tipo_movimiento + '</span>';
+            var tipoHtml = '<span class="badge ' + (m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida') + '">' + escText(m.tipo_movimiento) + '</span>';
             if (m.tipo_movimiento === 'salida' && m.tipo_salida) {
-                tipoHtml += '<div style="font-size:9px;color:#64748b;margin-top:2px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : m.tipo_salida) + '</div>';
+                tipoHtml += '<div style="font-size:9px;color:#64748b;margin-top:2px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : escText(m.tipo_salida)) + '</div>';
             }
             tableHtml += '<tr>'
                 + '<td>' + f.toLocaleDateString('es-CL') + '</td>'
                 + '<td>' + hora + '</td>'
                 + '<td>' + tipoHtml + '</td>'
-                + '<td style="font-weight:600;color:#3b82f6">' + (m.codigo_mp || '-') + '</td>'
-                + '<td>' + (m.tipo_cristal || '-') + '</td>'
-                + '<td>' + (m.espesor || 0) + 'mm</td>'
+                + '<td style="font-weight:600;color:#3b82f6">' + escText(m.codigo_mp || '-') + '</td>'
+                + '<td>' + escText(m.tipo_cristal || '-') + '</td>'
+                + '<td>' + escText(m.espesor || 0) + 'mm</td>'
                 + '<td>' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</td>'
                 + '<td>' + (m.cantidad_planchas || 0) + '</td>'
                 + '<td>' + Number(m.metros_cuadrados || 0).toFixed(2) + '</td>'
-                + '<td>' + (m.proveedor || '-') + '</td>'
-                + '<td>' + (m.usuario_nombre || '-') + '</td>'
-                + '<td>' + (m.observaciones || '-') + '</td>'
+                + '<td>' + escText(m.proveedor || '-') + '</td>'
+                + '<td>' + escText(m.usuario_nombre || '-') + '</td>'
+                + '<td>' + escText(m.observaciones || '-') + '</td>'
                 + acciones
                 + '</tr>';
         });
@@ -128,17 +136,21 @@ const InvHistorial = {
                 + '<span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:600;color:#1e293b">' + f.toLocaleDateString('es-CL') + ' ' + hora + '</span>'
                 + '<span class="badge ' + (m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida') + '">' + m.tipo_movimiento + '</span>'
                 + '</div>'
-                + (m.tipo_movimiento === 'salida' && m.tipo_salida ? '<div style="font-size:10px;color:#64748b;margin-bottom:4px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : m.tipo_salida) + '</div>' : '')
-                + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">' + (m.tipo_cristal || '-') + ' ' + (m.espesor || 0) + 'mm</div>'
-                + (m.codigo_mp ? '<div style="font-size:11px;color:#3b82f6;font-weight:600;margin-bottom:2px">Código: ' + m.codigo_mp + '</div>' : '')
+                + (m.tipo_movimiento === 'salida' && m.tipo_salida ? '<div style="font-size:10px;color:#64748b;margin-bottom:4px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : escText(m.tipo_salida)) + '</div>' : '')
+                + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">' + escText(m.tipo_cristal || '-') + ' ' + escText(m.espesor || 0) + 'mm</div>'
+                + (m.codigo_mp ? '<div style="font-size:11px;color:#3b82f6;font-weight:600;margin-bottom:2px">Código: ' + escText(m.codigo_mp) + '</div>' : '')
                 + '<div style="font-size:12px;color:#475569">' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</div>'
                 + '<div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:#64748b">'
                 + '<span>Cantidad: <strong>' + (m.cantidad_planchas || 0) + '</strong></span>'
                 + '<span>m2: <strong>' + Number(m.metros_cuadrados || 0).toFixed(2) + '</strong></span>'
                 + '</div>'
-                + (m.proveedor ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Proveedor: ' + m.proveedor + '</div>' : '')
-                + (m.usuario_nombre ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Registrado por: <strong>' + m.usuario_nombre + '</strong></div>' : '')
-                + (m.observaciones ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Obs: ' + m.observaciones + '</div>' : '')
+                + (m.proveedor ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Proveedor: ' + escText(m.proveedor) + '</div>' : '')
+                + (m.usuario_nombre ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Registrado por: <strong>' + escText(m.usuario_nombre) + '</strong></div>' : '')
+                + (m.observaciones ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Obs: ' + escText(m.observaciones) + '</div>' : '')
+                + (canEdit || canDel ? '<div style="display:flex;gap:6px;margin-top:10px">'
+                    + (canEdit ? '<button class="btn btn-sm" style="flex:1;padding:8px;font-size:12px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe" title="Editar" onclick="InvHistorial.editar(' + m.id + ')">Editar</button>' : '')
+                    + (canDel ? '<button class="btn btn-danger btn-sm" style="flex:1;padding:8px;font-size:12px" title="Eliminar" onclick="InvHistorial.eliminar(' + m.id + ')">Eliminar</button>' : '')
+                    + '</div>' : '')
                 + '</div>';
         });
         cardsHtml += '</div>';
@@ -218,25 +230,23 @@ const InvHistorial = {
                 if (canDel) acciones += '<button class="btn btn-danger btn-sm" title="Eliminar" onclick="InvHistorial.eliminar(' + m.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
                 acciones += '</td>';
             }
-            var tipoHtml = '<span class="badge ' + (m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida') + '">' + m.tipo_movimiento + '</span>';
+            var tipoHtml = '<span class="badge ' + (m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida') + '">' + escText(m.tipo_movimiento) + '</span>';
             if (m.tipo_movimiento === 'salida' && m.tipo_salida) {
-                tipoHtml += '<div style="font-size:9px;color:#64748b;margin-top:2px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : m.tipo_salida) + '</div>';
+                tipoHtml += '<div style="font-size:9px;color:#64748b;margin-top:2px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : escText(m.tipo_salida)) + '</div>';
             }
             tableHtml += '<tr>'
                 + '<td>' + f.toLocaleDateString('es-CL') + '</td>'
                 + '<td>' + hora + '</td>'
                 + '<td>' + tipoHtml + '</td>'
-                + '<td style="font-weight:600;color:#3b82f6">' + (m.codigo_mp || '-') + '</td>'
-                + '<td>' + (m.tipo_cristal || '-') + '</td>'
-                + '<td>' + (m.espesor || 0) + 'mm</td>'
-                + '<td>' + (m.tipo_cristal || '-') + '</td>'
-                + '<td>' + (m.espesor || 0) + 'mm</td>'
+                + '<td style="font-weight:600;color:#3b82f6">' + escText(m.codigo_mp || '-') + '</td>'
+                + '<td>' + escText(m.tipo_cristal || '-') + '</td>'
+                + '<td>' + escText(m.espesor || 0) + 'mm</td>'
                 + '<td>' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</td>'
                 + '<td>' + (m.cantidad_planchas || 0) + '</td>'
                 + '<td>' + Number(m.metros_cuadrados || 0).toFixed(2) + '</td>'
-                + '<td>' + (m.proveedor || '-') + '</td>'
-                + '<td>' + (m.usuario_nombre || '-') + '</td>'
-                + '<td>' + (m.observaciones || '-') + '</td>'
+                + '<td>' + escText(m.proveedor || '-') + '</td>'
+                + '<td>' + escText(m.usuario_nombre || '-') + '</td>'
+                + '<td>' + escText(m.observaciones || '-') + '</td>'
                 + acciones
                 + '</tr>';
         });
@@ -253,17 +263,21 @@ const InvHistorial = {
                 + '<span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:600;color:#1e293b">' + f.toLocaleDateString('es-CL') + ' ' + hora + '</span>'
                 + '<span class="badge ' + (m.tipo_movimiento === 'entrada' ? 'badge-entrada' : 'badge-salida') + '">' + m.tipo_movimiento + '</span>'
                 + '</div>'
-                + (m.tipo_movimiento === 'salida' && m.tipo_salida ? '<div style="font-size:10px;color:#64748b;margin-bottom:4px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : m.tipo_salida) + '</div>' : '')
-                + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">' + (m.tipo_cristal || '-') + ' ' + (m.espesor || 0) + 'mm</div>'
-                + (m.codigo_mp ? '<div style="font-size:11px;color:#3b82f6;font-weight:600;margin-bottom:2px">Código: ' + m.codigo_mp + '</div>' : '')
+                + (m.tipo_movimiento === 'salida' && m.tipo_salida ? '<div style="font-size:10px;color:#64748b;margin-bottom:4px">' + (m.tipo_salida === 'plancha_completa' ? 'Plancha' : m.tipo_salida === 'trozo' ? 'Trozo' : escText(m.tipo_salida)) + '</div>' : '')
+                + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">' + escText(m.tipo_cristal || '-') + ' ' + escText(m.espesor || 0) + 'mm</div>'
+                + (m.codigo_mp ? '<div style="font-size:11px;color:#3b82f6;font-weight:600;margin-bottom:2px">Código: ' + escText(m.codigo_mp) + '</div>' : '')
                 + '<div style="font-size:12px;color:#475569">' + Math.round(m.ancho || 0) + ' x ' + Math.round(m.alto || 0) + ' mm</div>'
                 + '<div style="display:flex;gap:16px;margin-top:8px;font-size:12px;color:#64748b">'
                 + '<span>Cantidad: <strong>' + (m.cantidad_planchas || 0) + '</strong></span>'
                 + '<span>m2: <strong>' + Number(m.metros_cuadrados || 0).toFixed(2) + '</strong></span>'
                 + '</div>'
-                + (m.proveedor ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Proveedor: ' + m.proveedor + '</div>' : '')
-                + (m.usuario_nombre ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Registrado por: <strong>' + m.usuario_nombre + '</strong></div>' : '')
-                + (m.observaciones ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Obs: ' + m.observaciones + '</div>' : '')
+                + (m.proveedor ? '<div style="font-size:11px;color:#64748b;margin-top:4px">Proveedor: ' + escText(m.proveedor) + '</div>' : '')
+                + (m.usuario_nombre ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Registrado por: <strong>' + escText(m.usuario_nombre) + '</strong></div>' : '')
+                + (m.observaciones ? '<div style="font-size:11px;color:#64748b;margin-top:2px">Obs: ' + escText(m.observaciones) + '</div>' : '')
+                + (canEdit || canDel ? '<div style="display:flex;gap:6px;margin-top:10px">'
+                    + (canEdit ? '<button class="btn btn-sm" style="flex:1;padding:8px;font-size:12px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe" title="Editar" onclick="InvHistorial.editar(' + m.id + ')">Editar</button>' : '')
+                    + (canDel ? '<button class="btn btn-danger btn-sm" style="flex:1;padding:8px;font-size:12px" title="Eliminar" onclick="InvHistorial.eliminar(' + m.id + ')">Eliminar</button>' : '')
+                    + '</div>' : '')
                 + '</div>';
         });
         cardsHtml += '</div>';
@@ -303,7 +317,7 @@ const InvHistorial = {
             + '<select id="editTipoSalida" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px">'
             + '<option value="">N/A</option><option value="plancha_completa"' + (m.tipo_salida==='plancha_completa'?' selected':'') + '>Plancha</option><option value="trozo"' + (m.tipo_salida==='trozo'?' selected':'') + '>Trozo</option></select></div>'
             + '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Cristal</label>'
-            + '<input type="text" value="' + (m.tipo_cristal || '') + '" readonly style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box;background:#f8fafc;color:#64748b"></div>'
+            + '<input type="text" value="' + escAttr(m.tipo_cristal || '') + '" readonly style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box;background:#f8fafc;color:#64748b"></div>'
             + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Ancho (mm)</label>'
             + '<input type="number" id="editAncho" value="' + (m.ancho || 0) + '" min="1" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
             + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Alto (mm)</label>'
@@ -313,14 +327,14 @@ const InvHistorial = {
             + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">m²</label>'
             + '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-weight:700;color:#2563eb">' + Number(m.metros_cuadrados || 0).toFixed(2) + '</div></div>'
             + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Proveedor</label>'
-            + '<input type="text" id="editProveedor" value="' + (m.proveedor || '') + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
+            + '<input type="text" id="editProveedor" value="' + escAttr(m.proveedor || '') + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
             + '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Turno</label>'
             + '<select id="editTurno" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px">'
             + '<option value="">Seleccionar...</option><option value="Dia"' + (m.turno==='Dia'?' selected':'') + '>Dia</option><option value="Noche"' + (m.turno==='Noche'?' selected':'') + '>Noche</option></select></div>'
             + '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Fecha</label>'
             + '<input type="date" id="editFecha" value="' + fechaVal + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
             + '<div style="grid-column:span 2"><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">Observaciones</label>'
-            + '<input type="text" id="editObs" value="' + (m.observaciones || '') + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
+            + '<input type="text" id="editObs" value="' + escAttr(m.observaciones || '') + '" style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #e2e8f0;border-radius:6px;box-sizing:border-box"></div>'
             + '</div>'
             + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid #f1f5f9">'
             + '<button class="btn btn-outline" onclick="InvHistorial.cerrarModal()">Cancelar</button>'
@@ -335,6 +349,15 @@ const InvHistorial = {
     },
 
     async guardarEdicion(id) {
+        // Conservar la hora original del movimiento: solo se cambia la parte de fecha
+        var horaParte = '00:00:00';
+        var orig = this._currentData.find(function(x) { return x.id === id; });
+        if (orig && orig.fecha_hora) {
+            var fo = new Date(String(orig.fecha_hora).replace('Z', ''));
+            if (!isNaN(fo.getTime())) {
+                horaParte = String(fo.getHours()).padStart(2, '0') + ':' + String(fo.getMinutes()).padStart(2, '0') + ':' + String(fo.getSeconds()).padStart(2, '0');
+            }
+        }
         var data = {
             tipo_movimiento: document.getElementById('editTipo').value,
             tipo_salida: document.getElementById('editTipoSalida').value || null,
@@ -344,7 +367,7 @@ const InvHistorial = {
             proveedor: document.getElementById('editProveedor').value || null,
             turno: document.getElementById('editTurno').value || null,
             observaciones: document.getElementById('editObs').value || null,
-            fecha_hora: document.getElementById('editFecha').value ? document.getElementById('editFecha').value + 'T00:00:00' : null
+            fecha_hora: document.getElementById('editFecha').value ? document.getElementById('editFecha').value + 'T' + horaParte : null
         };
         try {
             await api.inv().editarMovimiento(id, data);

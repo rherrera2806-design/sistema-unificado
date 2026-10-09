@@ -1,7 +1,12 @@
+// Escape XSS: usa los helpers del SPA (app-main.js); fallback si se carga en el mini-app legacy
+window.escText = window.escText || function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); };
+window.escAttr = window.escAttr || window.escText;
+
 const InvInventario = {
     _allItems: [],
     _originalItems: [],
     _filterCriticos: false,
+    _query: '',
     _verSensible: false,
 
     async render() {
@@ -52,7 +57,11 @@ const InvInventario = {
                 </div>`;
 
             this.renderContent();
-        } catch(err) { page.innerHTML = '<div class="alert alert-danger">Error: ' + err.message + '</div>'; }
+        } catch(err) {
+            // Error visible en vez de una tabla vacia que parece "sin datos"
+            App.toast('Error al cargar inventario: ' + err.message, 'error');
+            page.innerHTML = '<div class="alert alert-danger">Error: ' + escText(err.message) + '</div>';
+        }
     },
 
     renderContent() {
@@ -81,9 +90,9 @@ const InvInventario = {
             var autoDias = Number(i.autonomia_dias) || 0;
             var autoColor = autoDias <= 0 ? 'var(--danger)' : autoDias <= 21 ? 'var(--warning)' : 'var(--success)';
             tableHtml += '<tr>'
-                + '<td style="font-weight:600">' + (i.codigo_mp || '-') + '</td>'
-                + '<td>' + (i.tipo_cristal || '-') + '</td>'
-                + '<td style="font-weight:600;color:#334155">' + (i.espesor || 0) + 'mm</td>'
+                + '<td style="font-weight:600">' + escText(i.codigo_mp || '-') + '</td>'
+                + '<td>' + escText(i.tipo_cristal || '-') + '</td>'
+                + '<td style="font-weight:600;color:#334155">' + escText(i.espesor || 0) + 'mm</td>'
                 + '<td style="font-weight:600;color:#1e40af">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</td>';
             if (verS) tableHtml += '<td style="color:var(--success);font-weight:600">' + (i.entradas || 0) + '</td>'
                 + '<td style="color:var(--danger)">' + (i.salidas_plancha || 0) + '</td>';
@@ -106,10 +115,10 @@ const InvInventario = {
             var autoColor = autoDias <= 0 ? '#ef4444' : autoDias <= 21 ? '#f59e0b' : '#22c55e';
             cardsHtml += '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04);border-left:4px solid ' + stockColor + '">'
                 + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
-                + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + (i.codigo_mp || '-') + '</span>'
+                + '<span style="font-weight:700;color:#0f172a;font-size:14px">' + escText(i.codigo_mp || '-') + '</span>'
                 + '<span style="font-size:18px;font-weight:800;color:' + stockColor + '">' + (i.stock || 0) + '</span>'
                 + '</div>'
-                + '<div style="font-size:14px;color:#475569;margin-bottom:4px;font-weight:500">' + (i.tipo_cristal || '-') + ' ' + (i.espesor || 0) + 'mm</div>'
+                + '<div style="font-size:14px;color:#475569;margin-bottom:4px;font-weight:500">' + escText(i.tipo_cristal || '-') + ' ' + escText(i.espesor || 0) + 'mm</div>'
                 + '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + Math.round(i.ancho || 0) + 'x' + Math.round(i.alto || 0) + 'mm</div>'
                 + '<div style="display:flex;gap:12px;font-size:11px;color:#64748b;flex-wrap:wrap">';
             if (verS) cardsHtml += '<span>E: <strong style="color:#22c55e">' + (i.entradas || 0) + '</strong></span>'
@@ -124,12 +133,13 @@ const InvInventario = {
         container.innerHTML = tableHtml + cardsHtml;
     },
 
-    buscar(q) {
-        var query = (q || '').toLowerCase().trim();
-        if (!query) {
-            this._allItems = [...this._originalItems];
-        } else {
-            this._allItems = this._originalItems.filter(function(i) {
+    // Busqueda y "Stock Critico" se componen: ambos aplican sobre _originalItems
+    // respetando el estado del otro (antes se pisaban mutuamente).
+    _aplicarFiltros() {
+        var items = this._originalItems;
+        var query = this._query;
+        if (query) {
+            items = items.filter(function(i) {
                 var codigo = String(i.codigo_mp || '').toLowerCase();
                 var espesorStr = String(i.espesor != null ? i.espesor : '').toLowerCase();
                 var tipo = String(i.tipo_cristal || '').toLowerCase();
@@ -139,8 +149,15 @@ const InvInventario = {
                 return codigo.includes(query) || tipo.includes(query) || espesorStr.includes(query) || ancho.includes(query) || alto.includes(query) || cpm.includes(query);
             });
         }
+        if (this._filterCriticos) {
+            items = items.filter(function(i) {
+                var cpm = Number(i.consumo_promedio_mensual) || 0;
+                var autoMeses = Number(i.autonomia_meses) || 0;
+                return cpm > 0 && autoMeses <= 1;
+            });
+        }
         // Ordenar por tipo_cristal y luego por espesor
-        this._allItems.sort(function(a, b) {
+        this._allItems = items.slice().sort(function(a, b) {
             var nameA = (a.tipo_cristal || '').toLowerCase();
             var nameB = (b.tipo_cristal || '').toLowerCase();
             if (nameA < nameB) return -1;
@@ -152,6 +169,11 @@ const InvInventario = {
         if (counter) counter.textContent = '(' + this._allItems.length + ' tipos)';
     },
 
+    buscar(q) {
+        this._query = (q || '').toLowerCase().trim();
+        this._aplicarFiltros();
+    },
+
     toggleCriticos() {
         this._filterCriticos = !this._filterCriticos;
         const btn = document.getElementById('btnCriticos');
@@ -160,21 +182,13 @@ const InvInventario = {
             btn.style.color = 'white';
             btn.classList.remove('btn-outline');
             btn.classList.add('btn-danger');
-            this._allItems = this._originalItems.filter(function(i) {
-                var cpm = Number(i.consumo_promedio_mensual) || 0;
-                var autoMeses = Number(i.autonomia_meses) || 0;
-                return cpm > 0 && autoMeses <= 1;
-            });
         } else {
             btn.style.background = '';
             btn.style.color = '#ef4444';
             btn.classList.add('btn-outline');
             btn.classList.remove('btn-danger');
-            this._allItems = [...this._originalItems];
         }
-        this.renderContent();
-        var counter = document.getElementById('invCount');
-        if (counter) counter.textContent = '(' + this._allItems.length + ' tipos)';
+        this._aplicarFiltros();
     },
 
     exportarExcel() {

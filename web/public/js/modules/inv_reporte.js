@@ -28,7 +28,9 @@ App.registerModule('inv_reporte', {
             + '.ir-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
             + '.ir-table tr:hover td{background:#f8fafc}'
             + '.ir-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.ir-chart-row{grid-template-columns:1fr;overflow-x:auto}.ir-kpi-row{grid-template-columns:repeat(2,1fr)}.ir-kpi-value{font-size:20px}.ir-chart-box{padding:8px;overflow:hidden}.ir-section{padding:10px}.ir-table{font-size:11px}.ir-table th{font-size:9px}.ir-chart-row canvas{height:180px!important}.ir-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
+            + '@media(max-width:768px){.ir-chart-row{grid-template-columns:1fr;overflow-x:auto}.ir-kpi-row{grid-template-columns:repeat(2,1fr)}.ir-kpi-value{font-size:20px}.ir-chart-box{padding:8px;overflow:hidden}.ir-section{padding:10px}.ir-table{font-size:11px}.ir-table th{font-size:9px}.ir-chart-row canvas{height:180px!important}.ir-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}'
+            /* Detalle Mensual: scroll horizontal comodo en movil (tabla no se comprime) */
+            + '.ir-table-wrap{-webkit-overflow-scrolling:touch;max-width:100%}.ir-table{min-width:520px}}'
             + '</style>'
 
             + '<div class="ir-hero" style="background:linear-gradient(135deg,#065f46 0%,#059669 50%,#10b981 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(6,95,70,0.3)">'
@@ -65,14 +67,22 @@ App.registerModule('inv_reporte', {
         try {
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch(`/api/inv/reporte?anio=${this.anio}`, { headers });
-            if (!res.ok) { this.reportData = { meses: Array(12).fill(null).map(() => ({ total:0,entradas:0,salidas:0,m2_entradas:0,m2_salidas:0,planchas_entradas:0,planchas_salidas:0 })), topMateriales: [], topDimensiones: [], tipos: [], totalEntradas: 0, totalSalidas: 0, totalM2Entradas: 0, totalM2Salidas: 0 }; }
+            if (!res.ok) {
+                // Un 401/403/500 NO debe pintarse como "Sin datos para este anio"
+                const body = await res.json().catch(() => ({}));
+                App.showAlert('Error al cargar el reporte: ' + (body.error || body.mensaje || ('HTTP ' + res.status)), 'danger');
+                this.reportData = { meses: Array(12).fill(null).map(() => ({ total:0,entradas:0,salidas:0,m2_entradas:0,m2_salidas:0,planchas_entradas:0,planchas_salidas:0 })), topMateriales: [], topDimensiones: [], tipos: [], totalEntradas: 0, totalSalidas: 0, totalM2Entradas: 0, totalM2Salidas: 0 };
+            }
             else { this.reportData = await res.json(); }
             this.renderKpis();
             this.renderAlertas();
             this.renderTabla();
             if (this._chartTimer) clearTimeout(this._chartTimer);
             this._chartTimer = setTimeout(() => this.renderCharts(), 100);
-        } catch (e) { console.error('Error reporte inventario:', e); }
+        } catch (e) {
+            console.error('Error reporte inventario:', e);
+            App.showAlert('Error al cargar el reporte: ' + e.message, 'danger');
+        }
     },
 
     renderKpis() {
@@ -173,7 +183,7 @@ App.registerModule('inv_reporte', {
             const c = colores[a.nivel] || colores.ok;
             html += '<div style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;background:' + c.bg + ';border:1px solid ' + c.border + ';font-size:12px;color:' + c.text + '">'
                 + '<span style="font-size:14px">' + c.icon + '</span>'
-                + '<span>' + c.label + ': ' + a.nombre + ' ' + a.espesor + 'mm — ' + (a.autonomia || 0) + ' meses de autonomia</span></div>';
+                + '<span>' + c.label + ': ' + escText(a.nombre) + ' ' + escText(a.espesor) + 'mm — ' + (a.autonomia || 0) + ' meses de autonomia</span></div>';
         });
         html += '</div>';
         document.getElementById('irAlertas').innerHTML = html;
@@ -189,8 +199,8 @@ App.registerModule('inv_reporte', {
             if (m.total === 0) continue;
             rows += `<tr>
                 <td style="font-weight:700">${mesesCortos[i]}</td>
-                <td>${m.entradas}</td>
-                <td>${m.salidas}</td>
+                <td>${escText(m.entradas)}</td>
+                <td>${escText(m.salidas)}</td>
                 <td>${Math.round(m.m2_entradas).toLocaleString('es-CL')}</td>
                 <td>${Math.round(m.m2_salidas).toLocaleString('es-CL')}</td>
                 <td style="font-weight:600;color:${(m.m2_entradas - m.m2_salidas) >= 0 ? '#16a34a' : '#dc2626'}">${(m.m2_entradas - m.m2_salidas) >= 0 ? '+' : ''}${Math.round(m.m2_entradas - m.m2_salidas).toLocaleString('es-CL')}</td>
