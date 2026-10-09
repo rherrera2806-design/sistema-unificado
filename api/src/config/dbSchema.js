@@ -685,8 +685,13 @@ async function faseDatos({ q, safe }) {
         for (let m = 0; m < 12; m++) {
             for (let d = 1; d <= 31; d++) {
                 const dt = new Date(anio, m, d);
-                if (dt.getFullYear() === anio && (dt.getDay() === 0 || dt.getDay() === 6)) {
-                    const fs = anio + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                // OJO: new Date(...) DESBORDA d�as inexistentes (ej: 29 de
+                // febrero en a�o no bisiesto -> 1 de marzo). Si el mes cort�,
+                // salimos del loop; si no, se generaban fechas inv�lidas como
+                // '2026-02-29' y PostgreSQL rechazaba el INSERT tummando initDB.
+                if (dt.getMonth() !== m) break;
+                if (dt.getDay() === 0 || dt.getDay() === 6) {
+                    const fs = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
                     const motivo = dt.getDay() === 0 ? 'Domingo' : 'Sabado';
                     await q('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, motivo]);
                 }
