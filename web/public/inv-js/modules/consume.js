@@ -14,6 +14,19 @@ const InvConsume = {
     _filtAuto: 0,
     _data: null,
     _queryConsumo: '',   // búsqueda de la vista Consumo por Meses
+    _queryAuto: '',      // búsqueda de la vista Autonomía
+
+    // ---- Buscador multi-palabra compartido por ambas vistas ----
+    // Cada palabra debe coincidir en MATERIAL o ESPESOR (sin acentos ni
+    // mayúsculas). Ej: "laminado" -> todos los Laminado; "laminado 10" -> solo
+    // los Laminado de espesor 10.
+    _norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); },
+    _coincideBusqueda(q, nombre, espesor) {
+        const tokens = this._norm(q).split(/\s+/).filter(Boolean);
+        if (tokens.length === 0) return true;
+        const texto = this._norm(nombre) + ' ' + this._norm(espesor);
+        return tokens.every(t => texto.includes(t));
+    },
 
     // Formatos numéricos consistentes (es-CL: 1.234 · 2,4 · 1.188,00)
     fmtInt(v) { return Math.round(v || 0).toLocaleString('es-CL'); },
@@ -79,11 +92,13 @@ const InvConsume = {
                 ${this._styles()}
 
                 <div class="m-page">
-                <div class="m-hero" style="padding:12px 16px">
+                <div class="m-hero" style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
                     <div style="position:relative;z-index:1">
                         <h2 style="margin:0;font-size:15px;font-weight:700;color:white">Autonomía</h2>
                         <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Proyección de stock por material</p>
                     </div>
+                    <input class="cc-search" type="text" id="caBuscar" placeholder="Buscar material o espesor… (ej: laminado 10)"
+                        value="${escAttr(this._queryAuto)}" oninput="InvConsume.buscarAutonomia(this.value)">
                 </div>
 
                 <div class="m-card" style="margin-bottom:16px">
@@ -174,17 +189,7 @@ const InvConsume = {
 
         // Búsqueda multi-palabra: cada palabra debe coincidir en MATERIAL o
         // ESPESOR (el código no se muestra en el reporte, así que no interfiere).
-        // Ejemplos: "laminado" muestra todos los Laminado; "laminado 10" filtra
-        // material Y espesor. Sin importar acentos/mayúsculas.
-        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const tokens = norm(this._queryConsumo).split(/\s+/).filter(Boolean);
-        let visibles = rows;
-        if (tokens.length) {
-            visibles = rows.filter(r => {
-                const texto = norm(r.nombre) + ' ' + norm(r.espesor);
-                return tokens.every(t => texto.includes(t));
-            });
-        }
+        let visibles = rows.filter(r => this._coincideBusqueda(this._queryConsumo, r.nombre, r.espesor));
         if (visibles.length === 0) {
             return '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin resultados para "<strong>' + escText(this._queryConsumo) + '</strong>"</div>';
         }
@@ -231,8 +236,16 @@ const InvConsume = {
         const maxAuto = this._filtAuto || 0;
         let filtered = stock.filter(s => s.consumo_promedio > 0 || s.stock > 0 || Number(s.entradas) > 0);
         if (maxAuto > 0) filtered = filtered.filter(s => (s.autonomia_meses || 0) < maxAuto);
+        // Búsqueda multi-palabra (mismo buscador que Consumo por Meses)
+        filtered = filtered.filter(s => this._coincideBusqueda(this._queryAuto, s.nombre, s.espesor_mm));
         // Orden: material y espesor ASCENDENTE (antes el espesor iba descendente)
         const sorted = filtered.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es') || (Number(a.espesor_mm) || 0) - (Number(b.espesor_mm) || 0));
+
+        if (sorted.length === 0) {
+            return '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">'
+                + (this._queryAuto ? 'Sin resultados para "<strong>' + escText(this._queryAuto) + '</strong>"' : 'Ningún material cumple el filtro de autonomía')
+                + '</div>';
+        }
 
         return '<div class="m-table-wrap inv-scroll-wrap inv-scroll-wrap--wide">'
             + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
@@ -279,6 +292,13 @@ const InvConsume = {
         this._queryConsumo = v || '';
         const wrap = document.getElementById('consumeTableWrap');
         if (wrap) wrap.innerHTML = this._consumoHtml();
+    },
+
+    // Búsqueda de la vista Autonomía (re-pinta solo la tabla de proyección)
+    buscarAutonomia(v) {
+        this._queryAuto = v || '';
+        const wrap = document.getElementById('consumeProyWrap');
+        if (wrap) wrap.innerHTML = this._proyeccionHtml();
     },
 
     filtAuto(val) {
