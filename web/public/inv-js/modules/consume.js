@@ -164,7 +164,7 @@ const InvConsume = {
             const promedio = total / numMeses;
             return { nombre: data.nombre, espesor: data.espesor, meses: data.meses, total, promedio };
         });
-        rows.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (a.espesor || '').localeCompare(b.espesor || ''));
+        rows.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es') || (Number(a.espesor) || 0) - (Number(b.espesor) || 0));
 
         return '<table style="width:100%;border-collapse:collapse"><thead><tr>'
             + '<th class="cc-th cc-sticky" style="text-align:left;min-width:150px">Material</th>'
@@ -208,7 +208,8 @@ const InvConsume = {
         const maxAuto = this._filtAuto || 0;
         let filtered = stock.filter(s => s.consumo_promedio > 0 || s.stock > 0 || Number(s.entradas) > 0);
         if (maxAuto > 0) filtered = filtered.filter(s => (s.autonomia_meses || 0) < maxAuto);
-        const sorted = filtered.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '') || (Number(b.espesor_mm) || 0) - (Number(a.espesor_mm) || 0));
+        // Orden: material y espesor ASCENDENTE (antes el espesor iba descendente)
+        const sorted = filtered.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es') || (Number(a.espesor_mm) || 0) - (Number(b.espesor_mm) || 0));
 
         return '<div class="m-table-wrap inv-scroll-wrap inv-scroll-wrap--wide">'
             + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
