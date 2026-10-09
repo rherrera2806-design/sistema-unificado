@@ -13,6 +13,7 @@ window.escText = window.escText || function (s) { return String(s == null ? '' :
 const InvConsume = {
     _filtAuto: 0,
     _data: null,
+    _queryConsumo: '',   // búsqueda de la vista Consumo por Meses
 
     // Formatos numéricos consistentes (es-CL: 1.234 · 2,4 · 1.188,00)
     fmtInt(v) { return Math.round(v || 0).toLocaleString('es-CL'); },
@@ -46,16 +47,18 @@ const InvConsume = {
                 ${this._styles()}
 
                 <div class="m-page">
-                <div class="m-hero" style="padding:12px 16px">
+                <div class="m-hero" style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
                     <div style="position:relative;z-index:1">
                         <h2 style="margin:0;font-size:15px;font-weight:700;color:white">Consumo por Meses</h2>
                         <p style="margin:2px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Consumo mensual por material, mes a mes</p>
                     </div>
+                    <input class="cc-search" type="text" id="ccBuscar" placeholder="Buscar material o espesor… (ej: laminado 10)"
+                        value="${escAttr(this._queryConsumo)}" oninput="InvConsume.filtrarConsumo(this.value)">
                 </div>
 
                 <div class="m-card" style="margin-bottom:16px">
                     <div class="cc-card-title">Consumo mensual por material</div>
-                    <div class="m-table-wrap inv-scroll-wrap">${this._consumoHtml()}</div>
+                    <div class="m-table-wrap inv-scroll-wrap" id="consumeTableWrap">${this._consumoHtml()}</div>
                 </div>
                 </div>`;
         } catch (err) {
@@ -127,6 +130,9 @@ const InvConsume = {
                 .inv-scroll-wrap--wide table{min-width:1150px}
                 .inv-scroll-wrap th:first-child,.inv-scroll-wrap td:first-child{box-shadow:1px 0 0 var(--gray-200)}
                 .inv-filt-grupo{display:flex;gap:4px;align-items:center;font-size:11px;font-weight:600;flex-wrap:wrap}
+                .cc-search{background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.22);border-radius:8px;padding:8px 12px;color:white;font-size:12px;outline:none;min-width:220px;flex:1;max-width:300px}
+                .cc-search::placeholder{color:rgba(255,255,255,0.5)}
+                .cc-search:focus{border-color:rgba(255,255,255,0.5)}
                 .inv-filt-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--gray-200);cursor:pointer;font-size:11px;font-weight:600;background:white;color:var(--gray-600)}
                 .inv-filt-btn[aria-pressed="true"]{color:white}
                 .inv-filt-btn.c0[aria-pressed="true"]{background:var(--primary)}
@@ -154,7 +160,7 @@ const InvConsume = {
         const porMp = {};
         consumo.forEach(c => {
             const key = c.codigo_mp + '|' + (c.espesor_mm || '');
-            if (!porMp[key]) porMp[key] = { nombre: c.nombre, espesor: c.espesor_mm, meses: {} };
+            if (!porMp[key]) porMp[key] = { codigo: c.codigo_mp, nombre: c.nombre, espesor: c.espesor_mm, meses: {} };
             porMp[key].meses[c.mes] = Number(c.planchas_consumidas);
         });
         const allMeses = [...new Set(consumo.map(c => c.mes))].sort();
@@ -162,9 +168,26 @@ const InvConsume = {
             const total = Object.values(data.meses).reduce((s, v) => s + v, 0);
             const numMeses = Object.keys(data.meses).length || 1;
             const promedio = total / numMeses;
-            return { nombre: data.nombre, espesor: data.espesor, meses: data.meses, total, promedio };
+            return { codigo: data.codigo, nombre: data.nombre, espesor: data.espesor, meses: data.meses, total, promedio };
         });
         rows.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es') || (Number(a.espesor) || 0) - (Number(b.espesor) || 0));
+
+        // Búsqueda multi-palabra: cada palabra debe coincidir en MATERIAL o
+        // ESPESOR (el código no se muestra en el reporte, así que no interfiere).
+        // Ejemplos: "laminado" muestra todos los Laminado; "laminado 10" filtra
+        // material Y espesor. Sin importar acentos/mayúsculas.
+        const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const tokens = norm(this._queryConsumo).split(/\s+/).filter(Boolean);
+        let visibles = rows;
+        if (tokens.length) {
+            visibles = rows.filter(r => {
+                const texto = norm(r.nombre) + ' ' + norm(r.espesor);
+                return tokens.every(t => texto.includes(t));
+            });
+        }
+        if (visibles.length === 0) {
+            return '<div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">Sin resultados para "<strong>' + escText(this._queryConsumo) + '</strong>"</div>';
+        }
 
         return '<table style="width:100%;border-collapse:collapse"><thead><tr>'
             + '<th class="cc-th cc-sticky" style="text-align:left;min-width:150px">Material</th>'
@@ -176,7 +199,7 @@ const InvConsume = {
             + '<th class="cc-th cc-num" style="min-width:70px">Total</th>'
             + '<th class="cc-th cc-num" style="min-width:70px">Promedio</th>'
             + '</tr></thead><tbody>'
-            + rows.map(r => '<tr>'
+            + visibles.map(r => '<tr>'
                 + '<td class="cc-td cc-sticky" style="font-weight:600">' + escText(r.nombre || '-') + '</td>'
                 + '<td class="cc-td" style="color:var(--gray-600)">' + escText(r.espesor || '-') + '</td>'
                 + allMeses.map(m => {
@@ -249,6 +272,13 @@ const InvConsume = {
                     + '</tr>';
             }).join('')
             + '</tbody></table></div>';
+    },
+
+    // Búsqueda de la vista Consumo por Meses (re-pinta solo la tabla)
+    filtrarConsumo(v) {
+        this._queryConsumo = v || '';
+        const wrap = document.getElementById('consumeTableWrap');
+        if (wrap) wrap.innerHTML = this._consumoHtml();
     },
 
     filtAuto(val) {
