@@ -11,10 +11,11 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { parseExcelSimple } = require('../utils/excelUtils');
 
 const MOD = 'prod_planificacion';
-const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
-const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
-const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
-const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
+// Lectura y escritura separadas: el permiso base (ver) ya no habilita todo
+const canView   = requireAnyPerm(MOD);
+const canCreate = requireAnyPerm(`${MOD}.agregar`);
+const canUpdate = requireAnyPerm(`${MOD}.editar`);
+const canDelete = requireAnyPerm(`${MOD}.eliminar`);
 
 router.post('/api/produccion/importar', canCreate, asyncHandler(async (req, res) => {
     let rows = req.body.rows;
@@ -133,21 +134,23 @@ router.post('/api/produccion/planificacion-grupo/auto-asignar', canCreate, async
     res.json(await autoAsignarPendientes({ dias, inicio }));
 }));
 
+// El dueno de la nota es el usuario de la SESION (req.user lo setea el middleware),
+// nunca el header 'x-user-email' (controlado por el cliente)
 router.get('/api/produccion/notas', canView, asyncHandler(async (req, res) => {
-    const userEmail = req.headers['x-user-email'];
+    const userEmail = (req.user && req.user.email) || '';
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     res.json(await planificacionService.getNotas(userEmail));
 }));
 
 router.post('/api/produccion/notas', canCreate, asyncHandler(async (req, res) => {
-    const userEmail = req.headers['x-user-email'];
+    const userEmail = (req.user && req.user.email) || '';
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     if (!req.body.nota || !req.body.nota.trim()) return res.status(400).json({ error: 'Nota requerida' });
     res.json(await planificacionService.crearNota(userEmail, req.body.nota));
 }));
 
 router.put('/api/produccion/notas/:id', canUpdate, asyncHandler(async (req, res) => {
-    const userEmail = req.headers['x-user-email'];
+    const userEmail = (req.user && req.user.email) || '';
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     const result = await planificacionService.actualizarNota(Number(req.params.id), userEmail, req.body.estado);
     if (!result) return res.status(404).json({ error: 'Nota no encontrada' });
@@ -155,7 +158,7 @@ router.put('/api/produccion/notas/:id', canUpdate, asyncHandler(async (req, res)
 }));
 
 router.delete('/api/produccion/notas/:id', canDelete, asyncHandler(async (req, res) => {
-    const userEmail = req.headers['x-user-email'];
+    const userEmail = (req.user && req.user.email) || '';
     if (!userEmail) return res.status(401).json({ error: 'Usuario requerido' });
     await planificacionService.eliminarNota(Number(req.params.id), userEmail);
     res.json({ ok: true });

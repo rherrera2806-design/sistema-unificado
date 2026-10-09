@@ -78,8 +78,14 @@ app.get('/{*path}', (req, res) => {
 });
 
 app.use((err, req, res, next) => {
-    logger.error('Unhandled error:', { message: err.message, stack: err.stack, path: req.path });
-    res.status(500).json({ error: err.message || 'Error interno del servidor' });
+    // Los servicios pueden marcar errores de negocio con err.status (404, 409, etc.)
+    const status = Number.isInteger(err.status) ? err.status : 500;
+    if (status >= 500) {
+        logger.error('Unhandled error:', { message: err.message, stack: err.stack, path: req.path });
+    } else {
+        logger.warn('Business error:', { message: err.message, status, path: req.path });
+    }
+    res.status(status).json({ error: err.message || 'Error interno del servidor' });
 });
 
 const server = app.listen(PORT, () => {

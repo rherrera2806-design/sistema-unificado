@@ -75,9 +75,17 @@ const importarMasivo = async (filas) => {
         await client.query('BEGIN');
         for (let i = 0; i < filas.length; i++) {
             const f = filas[i];
+            const code = String(f.codigo_sap || '').trim();
+            if (!code) {
+                errores++;
+                erroresDetalle.push({ fila: i + 1, error: 'codigo_sap vacío' });
+                continue;
+            }
+            // Savepoint por fila: si una fila falla se revierte SOLO esa fila y las
+            // demás siguen. Antes el error dejaba la transacción abortada y el COMMIT
+            // final no escribía nada aunque se reportara éxito.
+            await client.query('SAVEPOINT fila_import');
             try {
-                const code = String(f.codigo_sap || '').trim();
-                if (!code) { errores++; erroresDetalle.push({ fila: i + 1, error: 'codigo_sap vacío' }); continue; }
                 const estIds = (Array.isArray(f.estaciones) ? f.estaciones : []).map(Number).filter(n => Number.isFinite(n) && n > 0);
                 const anchoVal = (f.ancho !== undefined && f.ancho !== null && f.ancho !== '' && !isNaN(Number(f.ancho))) ? Number(f.ancho) : null;
                 const altoVal = (f.alto !== undefined && f.alto !== null && f.alto !== '' && !isNaN(Number(f.alto))) ? Number(f.alto) : null;
@@ -93,9 +101,11 @@ const importarMasivo = async (filas) => {
                      RETURNING (xmax = 0) AS inserted`,
                     [code, JSON.stringify(estIds), f.descripcion || null, anchoVal, altoVal]
                 );
+                await client.query('RELEASE SAVEPOINT fila_import');
                 if (r.rows[0] && r.rows[0].inserted) insertados++;
                 else actualizados++;
             } catch (e) {
+                await client.query('ROLLBACK TO SAVEPOINT fila_import');
                 errores++;
                 erroresDetalle.push({ fila: i + 1, codigo: f.codigo_sap, error: e.message });
             }
@@ -107,6 +117,7 @@ const importarMasivo = async (filas) => {
     } finally {
         client.release();
     }
+    // Conteo honesto: insertados + actualizados + errores = total procesado
     return { insertados, actualizados, errores, total: filas.length, erroresDetalle: erroresDetalle.slice(0, 20) };
 };
 

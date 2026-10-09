@@ -5,10 +5,11 @@ const { requireAnyPerm, requireAdmin } = require('../middleware/permisos');
 const { parseExcel } = require('../utils/excelUtils');
 
 const MOD = 'prod_config';
-const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
-const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
-const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
-const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
+// Lectura y escritura separadas: el permiso base (ver) ya no habilita todo
+const canView   = requireAnyPerm(MOD);
+const canCreate = requireAnyPerm(`${MOD}.agregar`);
+const canUpdate = requireAnyPerm(`${MOD}.editar`);
+const canDelete = requireAnyPerm(`${MOD}.eliminar`);
 
 router.get('/api/produccion/recetas-bom', canView, async (req, res, next) => { res.json(await catalogos.getRecetasBom()); });
 

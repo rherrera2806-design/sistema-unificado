@@ -19,25 +19,31 @@ async function reprogramarPendientes({ dias = 21, inicio } = {}) {
     // PASO A: LIBERACIÓN — Resetear PROGRAMADO → PENDIENTE
     // ═══════════════════════════════════════════════════════════════
     // Solo tocar órdenes PROGRAMADO. NUNCA EN PROCESO, MERMADO, TERMINADO.
+    // NOTA: NO se toca fecha_entrega_pactada; es una fecha pactada (puede haberse
+    // cargado a mano) y no depende de la programación diaria. Antes se ponía en
+    // NULL para todas las órdenes PROGRAMADO y se perdían pactos manuales.
     const liberar = await query(`
         UPDATE produccion_ordenes
         SET estado_programacion = 'PENDIENTE',
-            fecha_programada = NULL,
-            fecha_entrega_pactada = NULL
+            fecha_programada = NULL
         WHERE estado_programacion = 'PROGRAMADO'
+        RETURNING id
     `);
     const ordenesLiberadas = liberar.rowCount;
+    const idsLiberadas = liberar.rows.map(r => r.id);
 
-    // También limpiar las fechas en cola_produccion_pasos de las órdenes liberadas
-    if (ordenesLiberadas > 0) {
+    // Limpiar las fechas SOLO en los pasos de las órdenes recién liberadas (antes
+    // se limpiaban pasos de cualquier orden PENDIENTE con fecha_programada NULL en
+    // la orden, incluidas órdenes ajenas a esta reprogramación). Se conserva lo ya
+    // trabajado: no se tocan pasos con horas reales ni con estado avanzado.
+    if (idsLiberadas.length > 0) {
         await query(`
-            UPDATE cola_produccion_pasos cp
+            UPDATE cola_produccion_pasos
             SET fecha_programada = NULL, m2_asignados = 0
-            FROM produccion_ordenes o
-            WHERE cp.orden_produccion_id = o.id
-              AND o.estado_programacion = 'PENDIENTE'
-              AND o.fecha_programada IS NULL
-        `);
+            WHERE orden_produccion_id = ANY($1)
+              AND estado = 'PENDIENTE'
+              AND hora_inicio IS NULL AND hora_fin IS NULL
+        `, [idsLiberadas]);
     }
 
     // ═══════════════════════════════════════════════════════════════

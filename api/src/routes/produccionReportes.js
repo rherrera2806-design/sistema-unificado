@@ -4,7 +4,8 @@ const { getReporteFechas } = require('../services/produccionReportes');
 const { requireAnyPerm } = require('../middleware/permisos');
 
 const MOD = 'prod_reportes';
-const canView = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
+// Solo lectura: exige el permiso base del modulo
+const canView = requireAnyPerm(MOD);
 
 router.get('/api/produccion/reporte-fechas', canView, async (req, res, next) => {
     try {

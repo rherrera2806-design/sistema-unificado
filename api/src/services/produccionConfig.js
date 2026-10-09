@@ -43,10 +43,18 @@ const importarMaquinas = async (maquinas) => {
 };
 
 const editarMaquina = async (id, { nombre, codigo, estado, estacion_id }) => {
-    await query(
-        'UPDATE produccion_maquinas SET nombre=$1, codigo=$2, estado=$3, estacion_id=$4 WHERE id=$5',
-        [nombre, codigo, estado || 'ACTIVA', estacion_id || null, id]
-    );
+    // Actualización parcial: solo se modifican los campos presentes en el body
+    // (antes los ausentes llegaban como undefined → NULL y borraban datos)
+    const fields = [];
+    const params = [];
+    let idx = 1;
+    if (nombre !== undefined) { fields.push(`nombre = $${idx++}`); params.push(nombre); }
+    if (codigo !== undefined) { fields.push(`codigo = $${idx++}`); params.push(codigo); }
+    if (estado !== undefined) { fields.push(`estado = $${idx++}`); params.push(estado || 'ACTIVA'); }
+    if (estacion_id !== undefined) { fields.push(`estacion_id = $${idx++}`); params.push(estacion_id || null); }
+    if (fields.length === 0) throw new Error('Sin campos para actualizar');
+    params.push(id);
+    await query(`UPDATE produccion_maquinas SET ${fields.join(', ')} WHERE id = $${idx}`, params);
 };
 
 const eliminarMaquina = async (id) => {
@@ -201,9 +209,20 @@ const crearEstacion = async ({ nombre_estacion, orden_secuencia_defecto, activa,
 };
 
 const editarEstacion = async (id, { nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella }) => {
+    // Actualización parcial: solo se modifican los campos presentes en el body
+    const fields = [];
+    const params = [];
+    let idx = 1;
+    if (nombre_estacion !== undefined) { fields.push(`nombre_estacion = $${idx++}`); params.push(nombre_estacion); }
+    if (orden_secuencia_defecto !== undefined) { fields.push(`orden_secuencia_defecto = $${idx++}`); params.push(orden_secuencia_defecto); }
+    if (activa !== undefined) { fields.push(`activa = $${idx++}`); params.push(activa !== false); }
+    if (cap_max !== undefined) { fields.push(`cap_max = $${idx++}`); params.push(cap_max || 100); }
+    if (cuello_botella !== undefined) { fields.push(`cuello_botella = $${idx++}`); params.push(cuello_botella || false); }
+    if (fields.length === 0) throw new Error('Sin campos para actualizar');
+    params.push(id);
     const result = await query(
-        'UPDATE estaciones_maestras SET nombre_estacion=$1, orden_secuencia_defecto=$2, activa=$3, cap_max=$4, cuello_botella=$5 WHERE id=$6 RETURNING *',
-        [nombre_estacion, orden_secuencia_defecto, activa, cap_max || 100, cuello_botella || false, id]
+        `UPDATE estaciones_maestras SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+        params
     );
     return result.rows[0];
 };
@@ -242,16 +261,25 @@ const crearFamilia = async ({ codigo_familia, nombre_familia, costo_hh, costo_en
 };
 
 const editarFamilia = async (id, { codigo_familia, nombre_familia, costo_hh, costo_energia, estacion_ids }) => {
-    await query(
-        'UPDATE familias_producto SET codigo_familia=$1, nombre_familia=$2, costo_hh=$3, costo_energia=$4 WHERE id=$5',
-        [codigo_familia, nombre_familia, costo_hh, costo_energia, id]
-    );
+    // Actualización parcial: solo se modifican los campos presentes en el body
+    const fields = [];
+    const params = [];
+    let idx = 1;
+    if (codigo_familia !== undefined) { fields.push(`codigo_familia = $${idx++}`); params.push(codigo_familia); }
+    if (nombre_familia !== undefined) { fields.push(`nombre_familia = $${idx++}`); params.push(nombre_familia); }
+    if (costo_hh !== undefined) { fields.push(`costo_hh = $${idx++}`); params.push(costo_hh || 0); }
+    if (costo_energia !== undefined) { fields.push(`costo_energia = $${idx++}`); params.push(costo_energia || 0); }
+    if (fields.length > 0) {
+        params.push(id);
+        await query(`UPDATE familias_producto SET ${fields.join(', ')} WHERE id = $${idx}`, params);
+    }
     if (Array.isArray(estacion_ids)) {
         await query('DELETE FROM familia_estaciones_base WHERE familia_id = $1', [id]);
         for (const eid of estacion_ids) {
             await query('INSERT INTO familia_estaciones_base (familia_id, estacion_id) VALUES ($1, $2)', [id, eid]);
         }
     }
+    if (fields.length === 0 && !Array.isArray(estacion_ids)) throw new Error('Sin campos para actualizar');
 };
 
 const eliminarFamilia = async (id) => {

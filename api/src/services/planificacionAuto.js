@@ -17,6 +17,21 @@ const { query } = require('../config/database');
  * Columnas BD: estaciones_maestras.cap_max (m2/día), cuello_botella (bool)
  * NO CONFUNDIR con produccion_maquinas.capacidad_max_m2_dia (otra tabla)
  */
+
+/**
+ * Guard "una vez por proceso" para los backfills: antes se ejecutaban en cada
+ * llamada a autoAsignarPendientes y recorrían tablas completas. Se guarda la
+ * promise para evitar la carrera entre ejecuciones concurrentes; si falla se
+ * limpia para poder reintentar en la próxima ejecución.
+ */
+let backfillAutoPromise = null;
+const backfillAuto = (fn) => {
+    if (!backfillAutoPromise) {
+        backfillAutoPromise = fn().catch((e) => { backfillAutoPromise = null; throw e; });
+    }
+    return backfillAutoPromise;
+};
+
 async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   const fechaMinima = inicio || new Date().toISOString().split('T')[0];
 
@@ -59,28 +74,36 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
   // ═══════════════════════════════════════════════════════════════
   // 3. BACKFILL: grupo, espesor, kilos
+  //    Misma lógica que planificacionGrupo.backfill*: solo filas con datos
+  //    faltantes/desactualizados y una sola vez por proceso (las órdenes nuevas
+  //    ya calculan espesor/kilos/grupo al crearse: ver crearOrden).
+  //    bom_padre_id se resuelve primero contra recetas_bom (el espesor vive en
+  //    materias_primas.espesor_mm) con fallback a produccion_recetas_bom (legacy).
   // ═══════════════════════════════════════════════════════════════
-  await query(`UPDATE produccion_ordenes o SET grupo = CASE
-    WHEN o.es_compuesto = TRUE THEN COALESCE(
-      (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
-      (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
-    )
-    ELSE (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto)
-  END WHERE o.grupo IS NULL`);
+  await backfillAuto(async () => {
+    await query(`UPDATE produccion_ordenes o SET grupo = CASE
+      WHEN o.es_compuesto = TRUE THEN COALESCE(
+        (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+        (SELECT cc2.grupo FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+        (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+        o.grupo
+      )
+      ELSE COALESCE((SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto), o.grupo)
+    END
+    WHERE o.grupo IS NULL OR o.grupo = ''
+       OR (o.es_compuesto = TRUE AND o.grupo = (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto))`);
 
-  await query(`UPDATE produccion_ordenes o SET grupo = COALESCE(
-    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
-    (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
-  ) WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL`);
+    await query(`UPDATE produccion_ordenes o SET espesor_mm = COALESCE(
+      (SELECT NULLIF(mp.espesor_mm, 0) FROM recetas_bom rb JOIN materias_primas mp ON mp.id = rb.materia_prima_id WHERE rb.id = o.bom_padre_id),
+      (SELECT NULLIF(rb_old.espesor, 0) FROM produccion_recetas_bom rb_old WHERE rb_old.id = o.bom_padre_id),
+      o.espesor_mm, 6
+    ) WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+      AND (o.espesor_mm IS NULL OR o.espesor_mm = 0)`);
 
-  await query(`UPDATE produccion_ordenes o SET espesor_mm = COALESCE(
-    (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
-    o.espesor_mm, 6
-  ) WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL`);
-
-  await query(`UPDATE produccion_ordenes
-    SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
-    WHERE (kilos IS NULL OR kilos = 0) AND metros_cuadrados > 0`);
+    await query(`UPDATE produccion_ordenes
+      SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
+      WHERE (kilos IS NULL OR kilos = 0) AND metros_cuadrados > 0`);
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // 4. CAPACIDAD POR GRUPO
@@ -114,6 +137,8 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   const padreRes = await query(
     `SELECT o.id as orden_id, o.bom_padre_id, o.codigo_padre, COALESCE(
       (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+      -- bom_padre_id: primero recetas_bom (tabla nueva), fallback produccion_recetas_bom (legacy)
+      (SELECT cc2.grupo FROM recetas_bom rb2 JOIN produccion_codigos cc2 ON cc2.codigo = rb2.codigo_sap_padre WHERE rb2.id = o.bom_padre_id),
       (SELECT cc2.grupo FROM produccion_recetas_bom rb2 JOIN produccion_codigos cc2 ON cc2.codigo = rb2.codigo_sap_padre WHERE rb2.id = o.bom_padre_id)
     ) as grupo_padre
     FROM produccion_ordenes o WHERE o.es_compuesto = TRUE`

@@ -8,10 +8,11 @@ const { asyncHandler } = require('../middleware/asyncHandler');
 const { parseExcelSimple, findCol } = require('../utils/excelUtils');
 
 const MOD = 'prod_config';
-const canView   = requireAnyPerm(MOD, `${MOD}.editar`, `${MOD}.eliminar`, `${MOD}.agregar`);
-const canCreate = requireAnyPerm(`${MOD}.agregar`, MOD);
-const canUpdate = requireAnyPerm(`${MOD}.editar`, MOD);
-const canDelete = requireAnyPerm(`${MOD}.eliminar`, MOD);
+// Lectura y escritura separadas: el permiso base (ver) ya no habilita todo
+const canView   = requireAnyPerm(MOD);
+const canCreate = requireAnyPerm(`${MOD}.agregar`);
+const canUpdate = requireAnyPerm(`${MOD}.editar`);
+const canDelete = requireAnyPerm(`${MOD}.eliminar`);
 
 router.get('/api/produccion/maquinas', canView, asyncHandler(async (req, res) => { res.json(await config.getMaquinas()); }));
 
@@ -207,7 +208,8 @@ router.delete('/api/produccion/procesos-carroceria/:id', canDelete, asyncHandler
     res.json({ ok: true });
 }));
 
-router.delete('/api/produccion/procesos-carroceria/all/all', canDelete, asyncHandler(async (req, res) => {
+// Borrado masivo destructivo: ademas del permiso de eliminar, solo administradores
+router.delete('/api/produccion/procesos-carroceria/all/all', canDelete, requireAdmin, asyncHandler(async (req, res) => {
     const eliminados = await procesosCarroceria.removeAll();
     res.json({ ok: true, eliminados });
 }));

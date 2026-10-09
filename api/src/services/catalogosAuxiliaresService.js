@@ -26,10 +26,16 @@ const crearReglaExtra = async ({ nombre_flag, estacion_id }) => {
 };
 
 const editarReglaExtra = async (id, { nombre_flag, estacion_id, activa }) => {
-    await query(
-        'UPDATE reglas_procesos_extras SET nombre_flag=$1, estacion_id=$2, activa=$3 WHERE id=$4',
-        [nombre_flag, estacion_id, activa, id]
-    );
+    // Actualización parcial: solo se modifican los campos presentes en el body
+    const fields = [];
+    const params = [];
+    let idx = 1;
+    if (nombre_flag !== undefined) { fields.push(`nombre_flag = $${idx++}`); params.push(nombre_flag); }
+    if (estacion_id !== undefined) { fields.push(`estacion_id = $${idx++}`); params.push(estacion_id); }
+    if (activa !== undefined) { fields.push(`activa = $${idx++}`); params.push(activa !== false); }
+    if (fields.length === 0) throw new Error('Sin campos para actualizar');
+    params.push(id);
+    await query(`UPDATE reglas_procesos_extras SET ${fields.join(', ')} WHERE id = $${idx}`, params);
 };
 
 const eliminarReglaExtra = async (id) => {
@@ -49,7 +55,15 @@ const crearTecnico = async (nombre) => {
 };
 
 const editarTecnico = async (id, { nombre, activo }) => {
-    await query('UPDATE tecnicos SET nombre=$1, activo=$2 WHERE id=$3', [nombre, activo !== false, id]);
+    // Actualización parcial: solo se modifican los campos presentes en el body
+    const fields = [];
+    const params = [];
+    let idx = 1;
+    if (nombre !== undefined) { fields.push(`nombre = $${idx++}`); params.push(nombre); }
+    if (activo !== undefined) { fields.push(`activo = $${idx++}`); params.push(activo !== false); }
+    if (fields.length === 0) throw new Error('Sin campos para actualizar');
+    params.push(id);
+    await query(`UPDATE tecnicos SET ${fields.join(', ')} WHERE id = $${idx}`, params);
 };
 
 const eliminarTecnico = async (id) => {
@@ -69,7 +83,15 @@ const crearVendedor = async (nombre) => {
 };
 
 const editarVendedor = async (id, { nombre, activo }) => {
-    await query('UPDATE vendedores SET nombre=$1, activo=$2 WHERE id=$3', [nombre, activo !== false, id]);
+    // Actualización parcial: solo se modifican los campos presentes en el body
+    const fields = [];
+    const params = [];
+    let idx = 1;
+    if (nombre !== undefined) { fields.push(`nombre = $${idx++}`); params.push(nombre); }
+    if (activo !== undefined) { fields.push(`activo = $${idx++}`); params.push(activo !== false); }
+    if (fields.length === 0) throw new Error('Sin campos para actualizar');
+    params.push(id);
+    await query(`UPDATE vendedores SET ${fields.join(', ')} WHERE id = $${idx}`, params);
 };
 
 const eliminarVendedor = async (id) => {

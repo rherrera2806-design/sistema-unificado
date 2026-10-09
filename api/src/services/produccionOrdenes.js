@@ -1,5 +1,38 @@
 const { query } = require('../config/database');
+const { transaction } = require('../config/dbPool');
 const { getPasos, actualizarPaso, eliminarPaso, agregarPaso, crearPasos } = require('./produccionPasos');
+
+/**
+ * Deriva el estado de la orden desde el avance real de sus pasos
+ * (cola_produccion_pasos.estado) y lo refleja en produccion_ordenes.estado_programacion:
+ *  - algún paso EN_PROCESO/PAUSADO            → 'EN_PROCESO'
+ *  - todos los pasos TERMINADO/MERMADO (>= 1) → 'TERMINADO'
+ *  - en cualquier otro caso se conserva el estado actual (PENDIENTE/PROGRAMADO)
+ * Una orden 'CERRADO' nunca se toca. Si cambia, se devuelve el estado nuevo;
+ * si no existe la orden se devuelve null.
+ */
+const sincronizarEstadoOrden = async (ordenId) => {
+    if (!ordenId) return null;
+    const ordenRes = await query('SELECT estado_programacion FROM produccion_ordenes WHERE id = $1', [ordenId]);
+    if (ordenRes.rows.length === 0) return null;
+    const estadoActual = ordenRes.rows[0].estado_programacion;
+    if (estadoActual === 'CERRADO') return estadoActual;
+
+    const pasosRes = await query('SELECT estado FROM cola_produccion_pasos WHERE orden_produccion_id = $1', [ordenId]);
+    const estados = pasosRes.rows.map(r => r.estado);
+
+    let estadoNuevo = estadoActual;
+    if (estados.some(e => e === 'EN_PROCESO' || e === 'PAUSADO')) {
+        estadoNuevo = 'EN_PROCESO';
+    } else if (estados.length > 0 && estados.every(e => e === 'TERMINADO' || e === 'MERMADO')) {
+        estadoNuevo = 'TERMINADO';
+    }
+
+    if (estadoNuevo !== estadoActual) {
+        await query('UPDATE produccion_ordenes SET estado_programacion = $1 WHERE id = $2', [estadoNuevo, ordenId]);
+    }
+    return estadoNuevo;
+};
 
 const getOrdenes = async () => {
     const result = await query(`
@@ -183,38 +216,78 @@ const crearOrden = async (body) => {
 
     console.log('[PROD] Manual:', codigo, 'familia:', familia?.nombre_familia, 'BOM:', recetas.length, 'estaciones:', estacionesBaseIds.length);
 
-    const ids = [];
-    if (recetas.length > 0) {
-        for (const comp of recetas) {
-            const result = await query(
+    // Transacción: orden + pasos se crean juntos (no queda una orden sin ruta si
+    // algo falla). Además se calculan espesor, kilos y grupo al crear la orden,
+    // para que los backfills de las vistas de planificación no tengan que
+    // corregirlas después.
+    const recalcularOrden = async (q, ordenId) => {
+        // 1) espesor (recetas_bom → materias_primas.espesor_mm; fallback tabla
+        //    antigua produccion_recetas_bom que sí tiene columna espesor) y grupo
+        await q(`
+            UPDATE produccion_ordenes o SET
+                espesor_mm = COALESCE(o.espesor_mm,
+                    (SELECT NULLIF(mp.espesor_mm, 0) FROM materias_primas mp WHERE mp.codigo_mp = o.codigo_producto),
+                    (SELECT NULLIF(mp.espesor_mm, 0) FROM recetas_bom rb JOIN materias_primas mp ON mp.id = rb.materia_prima_id
+                     WHERE rb.codigo_sap_padre = COALESCE(o.codigo_padre, o.codigo_producto) LIMIT 1),
+                    (SELECT NULLIF(rb_old.espesor, 0) FROM produccion_recetas_bom rb_old
+                     WHERE rb_old.codigo_sap_padre = COALESCE(o.codigo_padre, o.codigo_producto) LIMIT 1),
+                    6),
+                grupo = COALESCE(o.grupo,
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto))
+            WHERE o.id = $1
+        `, [ordenId]);
+        // 2) kilos (usa el espesor recién calculado, por eso es una segunda sentencia)
+        await q(
+            'UPDATE produccion_ordenes SET kilos = ROUND(COALESCE(metros_cuadrados,0) * 2.5 * COALESCE(espesor_mm,6)::numeric, 2) WHERE id = $1',
+            [ordenId]
+        );
+    };
+
+    const ids = await transaction(async ({ query: q }) => {
+        const creados = [];
+        if (recetas.length > 0) {
+            for (const comp of recetas) {
+                const result = await q(
+                    `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
+                     es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre, nota, posicion, orden_compra, tipo_entrega, created_at, mecanizado_operaciones)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
+                    [pedido_sap_id, cliente || null, comp.codigo_mp || codigo, comp.mp_nombre || '', ancho, alto, m2,
+                     tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, codigo,
+                     nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString(), mecanizadoOperaciones]
+                );
+                creados.push(result.rows[0].id);
+                await crearPasos(result.rows[0].id, estacionesBaseIds, q);
+                await recalcularOrden(q, result.rows[0].id);
+            }
+        } else {
+            const result = await q(
                 `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
-                 es_compuesto, tipo_venta, item_numero, cantidad, familia_id, codigo_padre, nota, posicion, orden_compra, tipo_entrega, created_at, mecanizado_operaciones)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
-                [pedido_sap_id, cliente || null, comp.codigo_mp || codigo, comp.mp_nombre || '', ancho, alto, m2,
-                 tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null, codigo,
+                 tipo_venta, item_numero, cantidad, familia_id, nota, posicion, orden_compra, tipo_entrega, created_at, mecanizado_operaciones)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+                [pedido_sap_id, cliente || null, codigo, null, ancho, alto, m2,
+                 tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null,
                  nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString(), mecanizadoOperaciones]
             );
-            ids.push(result.rows[0].id);
-            await crearPasos(result.rows[0].id, estacionesBaseIds);
+            creados.push(result.rows[0].id);
+            await crearPasos(result.rows[0].id, estacionesBaseIds, q);
+            await recalcularOrden(q, result.rows[0].id);
         }
-    } else {
-        const result = await query(
-            `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
-             tipo_venta, item_numero, cantidad, familia_id, nota, posicion, orden_compra, tipo_entrega, created_at, mecanizado_operaciones)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
-            [pedido_sap_id, cliente || null, codigo, null, ancho, alto, m2,
-             tipo_venta || 'Normal', item_numero || 1, cant, familia?.id || null,
-             nota || null, posicion || null, orden_compra || null, tipo_entrega || 'Despacho', fecha_creacion || new Date().toISOString(), mecanizadoOperaciones]
-        );
-        ids.push(result.rows[0].id);
-        await crearPasos(result.rows[0].id, estacionesBaseIds);
-    }
+        return creados;
+    });
 
     return { ordenes_creadas: ids.length, ids };
 };
 
 const cerrarOrden = async (id, nota) => {
-    await query('UPDATE produccion_ordenes SET estado_programacion = $1, cerrado_nota = $2 WHERE id = $3', ['CERRADO', nota, id]);
+    // Se verifica existencia: si no existe se señala con status 404 para que la
+    // ruta/middleware pueda responder 404 en lugar de un éxito vacío
+    const result = await query('UPDATE produccion_ordenes SET estado_programacion = $1, cerrado_nota = $2 WHERE id = $3', ['CERRADO', nota, id]);
+    if (result.rowCount === 0) {
+        const err = new Error('Orden no encontrada');
+        err.status = 404;
+        throw err;
+    }
 };
 
 const editarOrden = async (id, body) => {
@@ -228,7 +301,13 @@ const editarOrden = async (id, body) => {
 
     values.push(id);
     await query(`UPDATE produccion_ordenes SET ${fields.join(', ')} WHERE id = $${idx}`, values);
-    await query(`UPDATE produccion_ordenes o SET espesor_mm = COALESCE((SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id), o.espesor_mm, 6) WHERE o.id = $1`, [id]);
+    // Espesor: bom_padre_id resuelve primero contra recetas_bom (vía
+    // materias_primas.espesor_mm, que es donde vive el espesor en la tabla nueva)
+    // y cae a la tabla antigua produccion_recetas_bom como fallback
+    await query(`UPDATE produccion_ordenes o SET espesor_mm = COALESCE(
+        (SELECT NULLIF(mp.espesor_mm, 0) FROM recetas_bom rb JOIN materias_primas mp ON mp.id = rb.materia_prima_id WHERE rb.id = o.bom_padre_id),
+        (SELECT NULLIF(rb_old.espesor, 0) FROM produccion_recetas_bom rb_old WHERE rb_old.id = o.bom_padre_id),
+        o.espesor_mm, 6) WHERE o.id = $1`, [id]);
     await query('UPDATE produccion_ordenes SET kilos = ROUND(COALESCE(metros_cuadrados,0) * 2.5 * COALESCE(espesor_mm,6)::numeric, 2) WHERE id = $1', [id]);
 
     const result = await query('SELECT * FROM produccion_ordenes WHERE id = $1', [id]);
@@ -236,7 +315,12 @@ const editarOrden = async (id, body) => {
 };
 
 const eliminarOrden = async (id) => {
-    await query('DELETE FROM produccion_ordenes WHERE id = $1', [id]);
+    const result = await query('DELETE FROM produccion_ordenes WHERE id = $1', [id]);
+    if (result.rowCount === 0) {
+        const err = new Error('Orden no encontrada');
+        err.status = 404;
+        throw err;
+    }
 };
 
 module.exports = {
@@ -245,6 +329,7 @@ module.exports = {
     cerrarOrden,
     editarOrden,
     eliminarOrden,
+    sincronizarEstadoOrden,
     getPasos,
     actualizarPaso,
     eliminarPaso,

@@ -30,6 +30,7 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
     const result = await query(`
         SELECT
             cp.id as paso_id,
+            cp.estacion_id,
             cp.fecha_programada,
             cp.estado,
             cp.orden_secuencia,
@@ -60,6 +61,10 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             ) as nombre_padre,
             COALESCE(
                 (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                -- bom_padre_id puede apuntar a recetas_bom (tabla nueva, donde el
+                -- id lo guarda explosionBOM) o a produccion_recetas_bom (legacy):
+                -- se resuelve primero contra la nueva y se usa la antigua como fallback
+                (SELECT cc2.grupo FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
                 (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
                 o.grupo, ''
             ) as grupo_resuelto,

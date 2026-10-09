@@ -21,7 +21,17 @@ const explosionBOM = async (r, recetaBomMap, materiaPrimaMap, materiasPrimas, fa
 
         const costo_hh = familia ? Number(familia.costo_hh) : 0;
         const costo_energia = familia ? Number(familia.costo_energia) : 0;
-        const costo_mp_total = (Number(mp.costo_unitario_mp) || 0) * (Number(comp.cantidad) || 1) * m2;
+        // DECISIÓN (semántica de cantidad/costo): el m2 que llega ya incluye la
+        // cantidad del pedido (produccionImportar.js: m2 = area_unit * cantidad).
+        // Por eso:
+        //  - 'cantidad' guarda la cantidad del PEDIDO (consistente con m2/kilos,
+        //    igual que crearOrdenSimple), no la cantidad del BOM (comp.cantidad),
+        //  - costo_mp_total = costo_unitario_mp * m2_total, sin volver a multiplicar
+        //    por comp.cantidad: ese era el doble conteo. costo_unitario_mp es costo
+        //    por m² (misma semántica que costeoService.js: materia_prima = area * precio).
+        //    Si un componente requiere un factor de consumo distinto (p.ej. merma de
+        //    corte), debe reflejarse en m2 o en costo_unitario_mp, no en comp.cantidad.
+        const costo_mp_total = (Number(mp.costo_unitario_mp) || 0) * m2;
         const costo_total = costo_hh + costo_energia + costo_mp_total;
         const margen = r.precio_unitario * r.cantidad - costo_total;
         const reglasExtras = buildReglasExtras(r);
@@ -30,13 +40,16 @@ const explosionBOM = async (r, recetaBomMap, materiaPrimaMap, materiasPrimas, fa
         const kilosHijo = Math.round(m2 * espesorMM * 2.5 * 100) / 100;
 
         const result = await query(
+            // bom_padre_id = comp.id de recetas_bom (tabla nueva). Al leerlo después
+            // hay que resolverlo contra recetas_bom, con fallback a la tabla antigua
+            // produccion_recetas_bom por si el id viene de datos legacy.
             `INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados,
              es_compuesto, bom_padre_id, tipo_venta, item_numero, cantidad, familia_id, codigo_padre,
              costo_hh, costo_energia, costo_materia_prima, costo_total_estimado, precio_unitario_sap, margen_estimado,
              nota, posicion, orden_compra, tipo_entrega, kilos, created_at, mecanizado_operaciones, reglas_extras_json, espesor_mm)
              VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28) RETURNING id`,
             [r.pedido, r.cliente, mp.codigo_mp, mp.nombre || r.descripcion, r.ancho, r.alto, m2,
-             comp.id, r.tipo_venta, r.item, Math.round(Number(comp.cantidad) || 1), familia?.id || null, r.codigo,
+             comp.id, r.tipo_venta, r.item, Math.round(Number(r.cantidad) || 1), familia?.id || null, r.codigo,
              costo_hh, costo_energia, costo_mp_total, costo_total, r.precio_unitario, margen,
              r.nota, r.posicion, r.orden_compra, r.tipo_entrega, kilosHijo,
              r.fecha_creacion || new Date().toISOString(), mecanizadoOperaciones || null,

@@ -45,23 +45,41 @@ const crearRecetaBom = async ({ codigo_sap_padre, materia_prima_id, cantidad, pr
 };
 
 const actualizarRecetaBom = async (id, { codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto }) => {
-    const procsJson = (procesos_especificos_json !== undefined)
-        ? (procesos_especificos_json === null || procesos_especificos_json === '' || (Array.isArray(procesos_especificos_json) && procesos_especificos_json.length === 0)
+    // Actualización parcial: SOLO se modifican los campos presentes en el body.
+    // Antes los ausentes llegaban como undefined → NULL y borraban la ruta
+    // (procesos_especificos_json) y las dimensiones (ancho/alto).
+    const fields = [];
+    const params = [];
+    let idx = 1;
+
+    if (codigo_sap_padre !== undefined) {
+        const codigo = String(codigo_sap_padre).trim();
+        fields.push(`codigo_sap_padre = $${idx++}`);
+        params.push(codigo);
+        // La familia se re-resuelve solo si cambia el código
+        fields.push(`familia_id = $${idx++}`);
+        params.push(await resolverFamilia(codigo));
+    }
+    if (materia_prima_id !== undefined) { fields.push(`materia_prima_id = $${idx++}`); params.push(materia_prima_id); }
+    if (cantidad !== undefined) { fields.push(`cantidad = $${idx++}`); params.push(cantidad || 1); }
+    if (procesos_especificos_json !== undefined) {
+        // null / '' / [] limpia la ruta explícitamente; si no, se guarda como jsonb
+        const procsJson = (procesos_especificos_json === null || procesos_especificos_json === '' || (Array.isArray(procesos_especificos_json) && procesos_especificos_json.length === 0))
             ? null
-            : JSON.stringify(procesos_especificos_json))
-        : undefined;
-    const famId = codigo_sap_padre ? await resolverFamilia(codigo_sap_padre) : undefined;
+            : JSON.stringify(procesos_especificos_json);
+        fields.push(`procesos_especificos_json = $${idx}::jsonb`);
+        params.push(procsJson);
+        idx++;
+    }
+    if (ancho !== undefined) { fields.push(`ancho = $${idx++}`); params.push(ancho || null); }
+    if (alto !== undefined) { fields.push(`alto = $${idx++}`); params.push(alto || null); }
+
+    if (fields.length === 0) throw new Error('Sin campos para actualizar');
+
+    params.push(id);
     const result = await query(
-        `UPDATE recetas_bom SET
-            codigo_sap_padre = COALESCE($1, codigo_sap_padre),
-            materia_prima_id = COALESCE($2, materia_prima_id),
-            familia_id = COALESCE($3, familia_id),
-            cantidad = COALESCE($4, cantidad),
-            procesos_especificos_json = $5::jsonb,
-            ancho = $7,
-            alto = $8
-         WHERE id = $6 RETURNING *`,
-        [codigo_sap_padre?.trim() || null, materia_prima_id || null, famId, cantidad || null, procsJson, id, ancho !== undefined ? (ancho || null) : undefined, alto !== undefined ? (alto || null) : undefined]
+        `UPDATE recetas_bom SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+        params
     );
     return result.rows[0];
 };
@@ -124,6 +142,20 @@ const importarRecetasAntiguas = async (parsedRows) => {
 };
 
 // ============ RECETAS BOM - IMPORTAR ============
+
+/**
+ * Normaliza la ruta (procesos_especificos_json) a una clave comparable.
+ * jsonb::text imprime '[1, 2]' (con espacios) mientras JSON.stringify produce
+ * '[1,2]'; sin normalizar, las claves nunca coincidían y re-importar duplicaba todo.
+ */
+const normalizarRuta = (valor) => {
+    if (valor === null || valor === undefined || valor === '') return 'null';
+    try {
+        const parsed = typeof valor === 'string' ? JSON.parse(valor) : valor;
+        if (!Array.isArray(parsed) || parsed.length === 0) return 'null';
+        return JSON.stringify(parsed.map(Number).filter(n => Number.isFinite(n) && n > 0));
+    } catch (e) { return 'null'; }
+};
 
 const findEstacionesCol = (rows) => {
     if (!rows.length) return null;
@@ -279,13 +311,15 @@ const importarRecetasBom = async (rows) => {
     );
     const existentesSet = new Set();
     existentes.rows.forEach(r => {
-        existentesSet.add(r.codigo_sap_padre + '|' + r.materia_prima_id + '|' + (r.ruta_text || 'null'));
+        // Clave normalizada: la comparación debe ser independiente del formato
+        // de impresión de jsonb ('[1, 2]') vs JSON.stringify ('[1,2]')
+        existentesSet.add(r.codigo_sap_padre + '|' + r.materia_prima_id + '|' + normalizarRuta(r.ruta_text));
     });
 
     const batch = [];
     const dupesEnExcel = [];
     for (const item of toInsert) {
-        const rutaKey = item.procsJson || 'null';
+        const rutaKey = normalizarRuta(item.procsJson);
         const dedupeKey = item.sap + '|' + item.mpId + '|' + rutaKey;
         if (existentesSet.has(dedupeKey)) {
             resultados.saltadas++;

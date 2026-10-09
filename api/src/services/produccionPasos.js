@@ -1,5 +1,8 @@
 const { query } = require('../config/database');
 
+// Vocabulario real de estados de cola_produccion_pasos
+const ESTADOS_PASO_VALIDOS = ['PENDIENTE', 'EN_PROCESO', 'PAUSADO', 'TERMINADO', 'MERMADO'];
+
 const getPasos = async (ordenId) => {
     const result = await query(`
         SELECT p.*, e.nombre_estacion, e.orden_secuencia_defecto
@@ -12,6 +15,10 @@ const getPasos = async (ordenId) => {
 };
 
 const actualizarPaso = async (id, { estado, operario_id }) => {
+    // El estado debe pertenecer al vocabulario de la tabla
+    if (!ESTADOS_PASO_VALIDOS.includes(estado)) {
+        throw new Error('Estado invalido. Permitidos: ' + ESTADOS_PASO_VALIDOS.join(', '));
+    }
     const updates = ['estado = $1'];
     const params = [estado];
     let idx = 2;
@@ -19,7 +26,15 @@ const actualizarPaso = async (id, { estado, operario_id }) => {
     if (estado === 'TERMINADO') updates.push('hora_fin = NOW()');
     if (operario_id !== undefined) { updates.push(`operario_id = $${idx}`); params.push(operario_id); idx++; }
     params.push(id);
-    await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx}`, params);
+    const result = await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx} RETURNING orden_produccion_id`, params);
+    // El estado de la orden se deriva del avance de sus pasos. Se usa require
+    // diferido porque produccionOrdenes.js requiere este módulo (evitar ciclo).
+    if (result.rows.length > 0) {
+        try {
+            const { sincronizarEstadoOrden } = require('./produccionOrdenes');
+            await sincronizarEstadoOrden(result.rows[0].orden_produccion_id);
+        } catch (e) { /* la sincronización no debe romper la actualización del paso */ }
+    }
 };
 
 const eliminarPaso = async (id) => {
@@ -49,9 +64,10 @@ const agregarPaso = async (ordenId, estacion_id) => {
     `, [ordenId]);
 };
 
-const crearPasos = async (ordenId, estacionesBaseIds) => {
+const crearPasos = async (ordenId, estacionesBaseIds, q = query) => {
+    // q permite ejecutar dentro de una transacción (ver crearOrden)
     for (let s = 0; s < estacionesBaseIds.length; s++) {
-        await query(
+        await q(
             'INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1,$2,$3,$4)',
             [ordenId, estacionesBaseIds[s], s + 1, 'PENDIENTE']
         );

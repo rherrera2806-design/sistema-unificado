@@ -3,42 +3,64 @@ const { getCalendarioMap } = require('./planificacion');
 
 // Planificación simplificada por grupo (kg/día)
 
+// Backfills: antes recorrían tablas completas en cada request de las vistas
+// semana/día. Ahora (a) solo tocan filas con datos faltantes o desactualizados y
+// (b) se ejecutan una sola vez por proceso (guard + promise para evitar la
+// carrera entre requests concurrentes). Las órdenes nuevas ya calculan espesor,
+// kilos y grupo al crearse (ver crearOrden en produccionOrdenes.js), por lo que
+// el guard no deja filas sin completar. Si falla se permite reintentar.
+let backfillOrdenesPromise = null;
 const backfillOrdenes = async () => {
-    await query(`
-        UPDATE produccion_ordenes o
-        SET espesor_mm = COALESCE(
-            (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id),
-            o.espesor_mm, 6
-        )
-        WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
-    `);
-    await query(`
-        UPDATE produccion_ordenes
-        SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
-        WHERE metros_cuadrados > 0
-    `);
+    if (backfillOrdenesPromise) return backfillOrdenesPromise;
+    backfillOrdenesPromise = (async () => {
+        await query(`
+            UPDATE produccion_ordenes o
+            SET espesor_mm = COALESCE(
+                -- bom_padre_id resuelve primero contra recetas_bom (el espesor vive
+                -- en materias_primas.espesor_mm; recetas_bom no tiene columna espesor)
+                -- y usa la tabla antigua produccion_recetas_bom como fallback
+                (SELECT NULLIF(mp.espesor_mm, 0) FROM recetas_bom rb JOIN materias_primas mp ON mp.id = rb.materia_prima_id WHERE rb.id = o.bom_padre_id),
+                (SELECT NULLIF(rb_old.espesor, 0) FROM produccion_recetas_bom rb_old WHERE rb_old.id = o.bom_padre_id),
+                o.espesor_mm, 6
+            )
+            WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
+              AND (o.espesor_mm IS NULL OR o.espesor_mm = 0)
+        `);
+        await query(`
+            UPDATE produccion_ordenes
+            SET kilos = ROUND(COALESCE(metros_cuadrados, 0) * 2.5 * COALESCE(espesor_mm, 6)::numeric, 2)
+            WHERE metros_cuadrados > 0 AND (kilos IS NULL OR kilos = 0)
+        `);
+    })();
+    // Si falla, se limpia el guard para poder reintentar en el próximo request
+    backfillOrdenesPromise.catch(() => { backfillOrdenesPromise = null; });
+    return backfillOrdenesPromise;
 };
 
+let backfillGruposPromise = null;
 const backfillGrupos = async () => {
-    await query(`
-        UPDATE produccion_ordenes o
-        SET grupo = CASE
-            WHEN o.es_compuesto = TRUE THEN COALESCE(
-                (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
-                (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
-            )
-            ELSE (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto)
-        END
-        WHERE o.grupo IS NULL OR (o.es_compuesto = TRUE AND o.grupo = (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto))
-    `);
-    await query(`
-        UPDATE produccion_ordenes o
-        SET grupo = COALESCE(
-            (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
-            (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
-        )
-        WHERE o.es_compuesto = TRUE AND o.bom_padre_id IS NOT NULL
-    `);
+    if (backfillGruposPromise) return backfillGruposPromise;
+    backfillGruposPromise = (async () => {
+        // Una sola pasada: filas sin grupo o cuyo grupo quedó tomado del código del
+        // hijo (desactualizado). El grupo ya cargado a mano se conserva (no se
+        // pisa con NULL ni se re-sobrescribe en cada request como antes).
+        await query(`
+            UPDATE produccion_ordenes o
+            SET grupo = CASE
+                WHEN o.es_compuesto = TRUE THEN COALESCE(
+                    (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                    (SELECT cc2.grupo FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+                    (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+                    o.grupo
+                )
+                ELSE COALESCE((SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto), o.grupo)
+            END
+            WHERE o.grupo IS NULL OR o.grupo = ''
+               OR (o.es_compuesto = TRUE AND o.grupo = (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto))
+        `);
+    })();
+    backfillGruposPromise.catch(() => { backfillGruposPromise = null; });
+    return backfillGruposPromise;
 };
 
 const getSemanaGrupo = async (inicio, fin) => {
@@ -127,14 +149,18 @@ const getDiaGrupo = async (fecha) => {
                (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto) as grupo_codigo,
                COALESCE(
                  (SELECT cc.codigo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                 -- bom_padre_id: primero recetas_bom (tabla nueva), fallback produccion_recetas_bom (legacy)
+                 (SELECT rb.codigo_sap_padre FROM recetas_bom rb WHERE rb.id = o.bom_padre_id),
                  (SELECT rb.codigo_sap_padre FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id)
                ) as codigo_padre,
                COALESCE(
                  (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                 (SELECT cc2.descripcion FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
                  (SELECT cc2.descripcion FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
                ) as nombre_padre,
                COALESCE(
                  (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                 (SELECT cc2.grupo FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
                  (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)
                ) as grupo_padre
         FROM produccion_ordenes o

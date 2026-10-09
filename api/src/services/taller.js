@@ -1,5 +1,7 @@
 const { query } = require('../config/database');
 const { transaction } = require('../config/dbPool');
+// Require normal: produccionOrdenes.js no requiere taller.js, no hay ciclo
+const { sincronizarEstadoOrden } = require('./produccionOrdenes');
 
 /**
  * Calcula m2 y kilos proporcionales a una cantidad.
@@ -135,7 +137,12 @@ async function iniciarPaso(pasoId, maquinaId, operarioEmail, operarioNombre, tur
     updates.push(`locked_at = NOW()`);
     params.push(pasoId);
 
-    await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx}`, params);
+    const upd = await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx} RETURNING orden_produccion_id`, params);
+
+    // El estado de la orden se deriva del avance de sus pasos
+    if (upd.rows.length > 0) {
+        try { await sincronizarEstadoOrden(upd.rows[0].orden_produccion_id); } catch (_) { }
+    }
 
     try {
         await query(
@@ -150,7 +157,7 @@ async function iniciarPaso(pasoId, maquinaId, operarioEmail, operarioNombre, tur
 
 async function pausarPaso(pasoId, operarioEmail, operarioNombre) {
     const paso = await query(
-        `SELECT hora_inicio FROM cola_produccion_pasos WHERE id = $1 AND estado = 'EN_PROCESO'`,
+        `SELECT hora_inicio, orden_produccion_id FROM cola_produccion_pasos WHERE id = $1 AND estado = 'EN_PROCESO'`,
         [pasoId]
     );
     if (paso.rows.length === 0) throw new Error('Paso no está en proceso');
@@ -159,6 +166,9 @@ async function pausarPaso(pasoId, operarioEmail, operarioNombre) {
         `UPDATE cola_produccion_pasos SET estado = 'PAUSADO', pausado_en = NOW() WHERE id = $1`,
         [pasoId]
     );
+
+    // El estado de la orden se deriva del avance de sus pasos
+    try { await sincronizarEstadoOrden(paso.rows[0].orden_produccion_id); } catch (_) { }
 
     try {
         await query(
@@ -171,7 +181,7 @@ async function pausarPaso(pasoId, operarioEmail, operarioNombre) {
 
 async function reanudarPaso(pasoId, operarioEmail, operarioNombre) {
     const paso = await query(
-        `SELECT pausado_en FROM cola_produccion_pasos WHERE id = $1 AND estado = 'PAUSADO'`,
+        `SELECT pausado_en, orden_produccion_id FROM cola_produccion_pasos WHERE id = $1 AND estado = 'PAUSADO'`,
         [pasoId]
     );
     if (paso.rows.length === 0) throw new Error('Paso no está pausado');
@@ -183,6 +193,9 @@ async function reanudarPaso(pasoId, operarioEmail, operarioNombre) {
         `UPDATE cola_produccion_pasos SET estado = 'EN_PROCESO', pausado_en = NULL, tiempo_pausado_segundos = tiempo_pausado_segundos + $1 WHERE id = $2`,
         [tiempoPausado, pasoId]
     );
+
+    // El estado de la orden se deriva del avance de sus pasos
+    try { await sincronizarEstadoOrden(paso.rows[0].orden_produccion_id); } catch (_) { }
 
     try {
         await query(
@@ -202,6 +215,9 @@ async function finalizarPaso(pasoId, operarioEmail, operarioNombre) {
         `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW(), locked_by = NULL, locked_at = NULL WHERE id = $1`,
         [pasoId]
     );
+
+    // El estado de la orden se deriva del avance de sus pasos
+    try { await sincronizarEstadoOrden(p.orden_produccion_id); } catch (_) { }
 
     try {
         await query(
@@ -228,7 +244,8 @@ async function finalizarPaso(pasoId, operarioEmail, operarioNombre) {
 }
 
 async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail }) {
-    return await transaction(async ({ query: txQuery }) => {
+    let ordenAfectadaId = null;
+    const resultado = await transaction(async ({ query: txQuery }) => {
         const pasoResult = await txQuery(
             `SELECT p.*, o.cliente, o.codigo_producto, o.descripcion, o.ancho, o.alto, o.cantidad, o.familia_id, o.kilos, o.espesor_mm, o.pedido_sap_id, o.grupo, o.metros_cuadrados, o.costo_materia_prima, o.nota, o.pintado, o.perforaciones, o.tipo_venta, o.posicion, o.orden_compra, o.tipo_entrega, o.item_numero, o.codigo_padre, o.mecanizado_operaciones
              FROM cola_produccion_pasos p
@@ -238,6 +255,7 @@ async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail
         );
         if (pasoResult.rows.length === 0) return null;
         const p = pasoResult.rows[0];
+        ordenAfectadaId = p.orden_produccion_id;
 
         const cantidadOriginal = Number(p.cantidad) || 1;
         const cantidadMermada = Number(cantidad) || 1;
@@ -305,6 +323,13 @@ async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail
 
         return { mermaId, nuevaOrdenId, cantidadRestante };
     });
+
+    // Sincroniza el estado de la orden con el avance de sus pasos. Se hace fuera
+    // de la transacción para no mezclar conexiones (la sincronización usa el pool).
+    if (resultado && ordenAfectadaId) {
+        try { await sincronizarEstadoOrden(ordenAfectadaId); } catch (_) { }
+    }
+    return resultado;
 }
 
 async function getMermas(fecha) {
@@ -377,6 +402,9 @@ async function procesarPaso(pasoId, cantidad, maquinaId, operarioEmail, operario
     await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx}`, params);
     await query(`UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW() WHERE id = $1`, [pasoId]);
 
+    // El estado de la orden se deriva del avance de sus pasos
+    try { await sincronizarEstadoOrden(p.orden_produccion_id); } catch (_) { }
+
     try {
         await query(
             `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_nuevos, usuario_email, usuario_nombre)
@@ -439,6 +467,8 @@ module.exports = {
     getMaquinasPorEstacion,
     iniciarPaso,
     iniciarPasosPorOrden,
+    pausarPaso,
+    reanudarPaso,
     finalizarPaso,
     finalizarPasosPorPedido,
     procesarPaso,

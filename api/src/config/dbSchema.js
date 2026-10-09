@@ -1,8 +1,135 @@
-const { query } = require('./dbPool');
+// ═════════════════════════════════════════════════════════════════════════════
+// VitroFlow · Esquema de base de datos (PostgreSQL vía `pg`)
+//
+// El esquema se define en código con CREATE TABLE IF NOT EXISTS + ALTERs
+// incrementales, pensado para correr tanto contra una base HEREDADA (que ya
+// tiene las tablas/columnas) como contra una base nueva.
+//
+// Reglas de este archivo:
+//  * Solo DDL aditivo: nada de DROP TABLE/COLUMN ni TRUNCATE. La base de
+//    producción ya existe y arrastra historia.
+//  * initDB ejecuta las sentencias agrupadas en FASES transaccionales
+//    (ver runFase): 1) creación de tablas, 2) columnas (ALTERs aditivos),
+//    3) índices, 4) datos / migraciones de datos / seeds. Una fase se ejecuta
+//    completa o se revierte completa (ROLLBACK), nunca queda la base a medias.
+//  * Las sentencias "defensivas" pasan por safe(): solo se ignoran errores
+//    esperados de idempotencia (columna/tabla/objeto duplicado: SQLSTATE
+//    42701 / 42P07 / 42710 / 42P06) y cualquier otro error se registra con
+//    console.warn. Nada de `.catch(() => {})` ni `catch(e) {}` silenciosos.
+//
+// ORDEN DE DEPENDENCIAS entre tablas de producción (ver faseTablas):
+//    estaciones_maestras ─┬─> familia_estaciones_base <─ familias_producto
+//                         ├─> reglas_procesos_extras
+//                         ├─> cola_produccion_pasos <─ produccion_ordenes
+//                         └─> mermas ──> (FK mermas desde produccion_ordenes)
+//    materias_primas + familias_producto ─> recetas_bom
+//    produccion_maquinas ──(ALTER maquina_id)──> cola_produccion_pasos
+//
+// VOCABULARIO DE ESTADOS (documentado a propósito; NO se agregan constraints
+// CHECK sobre columnas con datos existentes porque podrían fallar al validar
+// valores históricos):
+//  * produccion_ordenes.estado_programacion: 'PENDIENTE' | 'PROGRAMADO' |
+//      'EN PRODUCCIÓN' / 'EN PRODUCCION' | 'COMPLETADA' | 'CERRADO' /
+//      'CERRADA' | 'CANCELADA'  (services/planificacion*.js,
+//      services/produccionOrdenes.js, middleware/validate.js)
+//  * cola_produccion_pasos.estado y produccion_pasos.estado: 'PENDIENTE' |
+//      'PAUSADO' | 'TERMINADO' | 'COMPLETADO'  (services/taller.js)
+//  * instalaciones.estado / instalaciones_dias.estado: 'PROGRAMADA' |
+//      'EN_CAMINO' | 'EN_CURSO' | 'COMPLETADA' | 'CON_NOVEDADES' |
+//      'CANCELADA'  (services/instalaciones.js)
+//  * mermas.causa: texto libre definido por el usuario (services/taller.js)
+// ═════════════════════════════════════════════════════════════════════════════
+
+const { query, pool } = require('./dbPool');
 const { hashPassword } = require('./dbAuth');
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers de ejecución tolerante de DDL
+// ─────────────────────────────────────────────────────────────────────────────
+
+// SQLSTATE de errores de idempotencia que es SEGURO ignorar al re-ejecutar DDL
+// contra una base que ya tiene las columnas/tablas/objetos:
+//   42701 duplicate_column · 42P07 duplicate_table ("relation already exists")
+//   42710 duplicate_object · 42P06 duplicate_schema
+const CODIGOS_ERROR_IDEMPOTENCIA = new Set(['42701', '42P07', '42710', '42P06']);
+
+function esErrorIdempotencia(e) {
+    if (!e) return false;
+    if (CODIGOS_ERROR_IDEMPOTENCIA.has(e.code)) return true;
+    const msg = String(e.message || '');
+    return /already exists/i.test(msg)
+        || /duplicate column/i.test(msg)
+        || /duplicate object/i.test(msg)
+        || /duplicate table/i.test(msg);
+}
+
+/**
+ * Ejecuta una fase del esquema dentro de una transacción.
+ * La función `fn` recibe:
+ *   q(sql, params)          sentencia crítica: un error revierte la fase entera.
+ *   safe(sql, etiqueta, params)  sentencia tolerante: se ejecuta dentro de un
+ *                           SAVEPOINT para no abortar la transacción; solo se
+ *                           ignoran errores de idempotencia y el resto se
+ *                           registra con console.warn.
+ * Si algo falla, la fase se revierte COMPLETA y el error real se relanza.
+ */
+async function runFase(nombre, fn) {
+    const client = await pool.connect();
+    const q = (text, params = []) => client.query(text, params);
+    let contadorSavepoints = 0;
+    const safe = async (sql, etiqueta = '', params = []) => {
+        const punto = `ddl_safe_${++contadorSavepoints}`;
+        await client.query(`SAVEPOINT ${punto}`);
+        try {
+            const resultado = await client.query(sql, params);
+            await client.query(`RELEASE SAVEPOINT ${punto}`);
+            return resultado;
+        } catch (e) {
+            await client.query(`ROLLBACK TO SAVEPOINT ${punto}`);
+            await client.query(`RELEASE SAVEPOINT ${punto}`);
+            if (esErrorIdempotencia(e)) return null;
+            console.warn(`[DB] Sentencia omitida (fase "${nombre}"${etiqueta ? ' · ' + etiqueta : ''}): ${e.message}`);
+            return null;
+        }
+    };
+    try {
+        await client.query('BEGIN');
+        await fn({ q, safe });
+        await client.query('COMMIT');
+    } catch (e) {
+        try { await client.query('ROLLBACK'); } catch (eRollback) { /* conexión ya caída */ }
+        console.error(`[DB] Fase "${nombre}" revertida completa: ${e.message}`);
+        throw e;
+    } finally {
+        client.release();
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// initDB: orquesta las fases y luego migraciones históricas / seeds
+// ─────────────────────────────────────────────────────────────────────────────
 async function initDB() {
-    await query(`CREATE TABLE IF NOT EXISTS usuarios (
+    await runFase('creacion-tablas', faseTablas);
+    await runFase('columnas', faseColumnas);
+    await runFase('indices', faseIndices);
+    await runFase('datos-y-seeds', faseDatos);
+
+    const mtCount = await query('SELECT COUNT(*) as c FROM machine_types');
+    if (Number(mtCount.rows[0].c) === 0) await seedSigma();
+    await runMigrations();
+    await resetSequences();
+    await seedBusinessData();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FASE 1 · Creación de tablas
+// El orden respeta las dependencias: cada CREATE ocurre DESPUÉS de las tablas
+// a las que hace referencia (antes mermas se creaba antes que
+// produccion_ordenes / cola_produccion_pasos / estaciones_maestras y en una
+// base nueva fallaba con "relation does not exist").
+// ─────────────────────────────────────────────────────────────────────────────
+async function faseTablas({ q }) {
+    await q(`CREATE TABLE IF NOT EXISTS usuarios (
         id SERIAL PRIMARY KEY,
         nombre VARCHAR(100) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -12,11 +139,8 @@ async function initDB() {
         activo BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-    await query(`DO $$ BEGIN ALTER TABLE usuarios ADD COLUMN permisos TEXT[] DEFAULT '{}'; EXCEPTION WHEN duplicate_column THEN null; END $$`);
-    await query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_plain TEXT DEFAULT ''`);
-    try { await query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS area TEXT DEFAULT ''"); } catch(e) {}
 
-    await query(`CREATE TABLE IF NOT EXISTS catalogo_tipos_cristal (
+    await q(`CREATE TABLE IF NOT EXISTS catalogo_tipos_cristal (
         id SERIAL PRIMARY KEY,
         nombre VARCHAR(100) NOT NULL,
         espesor INTEGER NOT NULL DEFAULT 0,
@@ -26,50 +150,24 @@ async function initDB() {
         activo BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0").catch(() => {});
-    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0").catch(() => {});
-    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS espesor INTEGER DEFAULT 0").catch(() => {});
-    await query("ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''").catch(() => {});
-    await query("ALTER TABLE catalogo_tipos_cristal ALTER COLUMN consumo_mensual_aprox TYPE INTEGER USING consumo_mensual_aprox::INTEGER").catch(() => {});
-    try { await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_key"); } catch(e) { console.log('Drop constraint nombre_key:', e.message); }
-    try { await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_espesor_key"); } catch(e) { console.log('Drop constraint nombre_espesor_key:', e.message); }
-    try { await query("ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_espesor_key, catalogo_tipos_cristal_nombre_key"); } catch(e) {}
-    await query("CREATE UNIQUE INDEX IF NOT EXISTS idx_tipos_cristal_nombre_espesor ON catalogo_tipos_cristal (nombre, espesor) WHERE activo = TRUE").catch(() => {});
 
-    await query(`CREATE TABLE IF NOT EXISTS catalogo_espesores (
+    await q(`CREATE TABLE IF NOT EXISTS catalogo_espesores (
         id SERIAL PRIMARY KEY,
         valor INTEGER UNIQUE NOT NULL,
         activo BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-    const tiposCount = await query('SELECT COUNT(*) as c FROM catalogo_tipos_cristal');
-    if (Number(tiposCount.rows[0].c) === 0) {
-        const tiposDefault = ['Clear', 'Bronce', 'Gris', 'Azul', 'Verde', 'Espejo', 'Templado', 'Laminado', 'Otros'];
-        for (const tipo of tiposDefault) {
-            await query('INSERT INTO catalogo_tipos_cristal (nombre) VALUES ($1) ON CONFLICT DO NOTHING', [tipo]);
-        }
-    }
-    const espesoresCount = await query('SELECT COUNT(*) as c FROM catalogo_espesores');
-    if (Number(espesoresCount.rows[0].c) === 0) {
-        const espesoresDefault = [3, 4, 5, 6, 8, 10, 12, 15, 19, 25];
-        for (const esp of espesoresDefault) {
-            await query('INSERT INTO catalogo_espesores (valor) VALUES ($1) ON CONFLICT DO NOTHING', [esp]);
-        }
-    }
 
-    await query(`CREATE TABLE IF NOT EXISTS machine_types (id SERIAL PRIMARY KEY, nombre TEXT NOT NULL)`);
-    await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_machine_types_nombre ON machine_types(nombre)');
-    await query(`CREATE TABLE IF NOT EXISTS machines (
+    await q(`CREATE TABLE IF NOT EXISTS machine_types (id SERIAL PRIMARY KEY, nombre TEXT NOT NULL)`);
+    await q(`CREATE TABLE IF NOT EXISTS machines (
         id SERIAL PRIMARY KEY, codigo TEXT, nombre TEXT NOT NULL,
         tipo_id INTEGER, marca TEXT, modelo TEXT, numero_serie TEXT,
         ubicacion TEXT, fecha_compra TEXT, estado_operativo TEXT DEFAULT 'Operativo',
         observaciones TEXT
     )`);
-    await query(`CREATE TABLE IF NOT EXISTS components (id SERIAL PRIMARY KEY, nombre TEXT NOT NULL, descripcion TEXT)`);
-    await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_components_nombre ON components(nombre)');
-    await query(`CREATE TABLE IF NOT EXISTS component_type_links (id SERIAL PRIMARY KEY, tipo_id INTEGER, componente_id INTEGER)`);
-    await query('CREATE UNIQUE INDEX IF NOT EXISTS idx_component_type_links_unique ON component_type_links(tipo_id, componente_id)');
-    await query(`CREATE TABLE IF NOT EXISTS preventive_maintenance (
+    await q(`CREATE TABLE IF NOT EXISTS components (id SERIAL PRIMARY KEY, nombre TEXT NOT NULL, descripcion TEXT)`);
+    await q(`CREATE TABLE IF NOT EXISTS component_type_links (id SERIAL PRIMARY KEY, tipo_id INTEGER, componente_id INTEGER)`);
+    await q(`CREATE TABLE IF NOT EXISTS preventive_maintenance (
         id SERIAL PRIMARY KEY, maquina_id INTEGER, componente_id INTEGER,
         frecuencia_diaria INTEGER DEFAULT 0, frecuencia_semanal INTEGER DEFAULT 0,
         frecuencia_mensual INTEGER DEFAULT 0, frecuencia_trimestral INTEGER DEFAULT 0,
@@ -77,88 +175,178 @@ async function initDB() {
         fecha_programada TEXT, fecha_ejecutada TEXT, tecnico TEXT DEFAULT 'Pendiente',
         estado TEXT DEFAULT 'Programada', observaciones TEXT
     )`);
-    await query(`CREATE TABLE IF NOT EXISTS corrective_maintenance (
+    await q(`CREATE TABLE IF NOT EXISTS corrective_maintenance (
         id SERIAL PRIMARY KEY, maquina_id INTEGER, componente_id INTEGER,
         fecha_falla TEXT, descripcion_falla TEXT, diagnostico TEXT,
         accion_correctiva TEXT, repuestos_utilizados TEXT,
         horas_detencion REAL, responsable TEXT
     )`);
-    try { await query('ALTER TABLE preventive_maintenance ADD COLUMN IF NOT EXISTS horas_ocupadas REAL DEFAULT 0'); } catch(e) {}
-    try { await query('ALTER TABLE preventive_maintenance ADD COLUMN IF NOT EXISTS checklist TEXT'); } catch(e) {}
-    try { await query('ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS horas_ocupadas REAL DEFAULT 0'); } catch(e) {}
-    try { await query("ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS estado TEXT DEFAULT 'En Mantención'"); } catch(e) {}
-    try { await query('ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS fecha_reparacion TEXT'); } catch(e) {}
-    try { await query("ALTER TABLE preventive_maintenance ADD COLUMN IF NOT EXISTS turno TEXT DEFAULT 'Dia'"); } catch(e) {}
-    try { await query("ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS turno TEXT DEFAULT 'Dia'"); } catch(e) {}
-    try { await query("ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS imagenes TEXT"); } catch(e) {}
-    try { await query('CREATE INDEX IF NOT EXISTS idx_pm_fecha ON preventive_maintenance(fecha_programada)'); } catch(e) {}
-    try { await query('CREATE INDEX IF NOT EXISTS idx_pm_estado ON preventive_maintenance(estado)'); } catch(e) {}
-    try { await query('CREATE INDEX IF NOT EXISTS idx_pm_maquina ON preventive_maintenance(maquina_id)'); } catch(e) {}
-    try { await query('CREATE INDEX IF NOT EXISTS idx_cm_fecha ON corrective_maintenance(fecha_falla)'); } catch(e) {}
-    try { await query('CREATE INDEX IF NOT EXISTS idx_cm_estado ON corrective_maintenance(estado)'); } catch(e) {}
-    try { await query('CREATE INDEX IF NOT EXISTS idx_cm_maquina ON corrective_maintenance(maquina_id)'); } catch(e) {}
-    try { await query('CREATE INDEX IF NOT EXISTS idx_machines_codigo ON machines(codigo)'); } catch(e) {}
-    try { await query('CREATE INDEX IF NOT EXISTS idx_components_nombre ON components(nombre)'); } catch(e) {}
-
-    await query(`CREATE TABLE IF NOT EXISTS spare_parts (
+    await q(`CREATE TABLE IF NOT EXISTS spare_parts (
         id SERIAL PRIMARY KEY, codigo TEXT, descripcion TEXT,
         componente_id INTEGER, stock_actual INTEGER DEFAULT 0,
         stock_minimo INTEGER DEFAULT 0, proveedor TEXT, ubicacion_bodega TEXT
     )`);
-    await query(`CREATE TABLE IF NOT EXISTS machine_components (
+    await q(`CREATE TABLE IF NOT EXISTS machine_components (
         id SERIAL PRIMARY KEY, maquina_id INTEGER, componente_id INTEGER,
         UNIQUE(maquina_id, componente_id)
     )`);
-    await query(`CREATE TABLE IF NOT EXISTS proveedores (
+    await q(`CREATE TABLE IF NOT EXISTS proveedores (
         id SERIAL PRIMARY KEY, nombre VARCHAR(200) NOT NULL, rut VARCHAR(20),
         telefono VARCHAR(30), email VARCHAR(150), direccion TEXT,
         persona_contacto VARCHAR(150), especialidad TEXT, observaciones TEXT,
         estado VARCHAR(20) DEFAULT 'Activo', fecha_registro DATE DEFAULT CURRENT_DATE
     )`);
-    await query(`CREATE TABLE IF NOT EXISTS notas (
+    await q(`CREATE TABLE IF NOT EXISTS notas (
         id SERIAL PRIMARY KEY, tecnico TEXT, nota TEXT, fecha TEXT, hora TEXT
     )`);
-    try { await query("ALTER TABLE notas ADD COLUMN IF NOT EXISTS leido BOOLEAN DEFAULT FALSE"); } catch(e) {}
-
-    await query(`CREATE TABLE IF NOT EXISTS turnos (
+    await q(`CREATE TABLE IF NOT EXISTS turnos (
         id SERIAL PRIMARY KEY, nombre VARCHAR(100) NOT NULL, numero INTEGER NOT NULL,
         estado VARCHAR(20) DEFAULT 'espera', fecha DATE DEFAULT CURRENT_DATE,
         hora_creacion TIME DEFAULT CURRENT_TIME, hora_llamada TIME, hora_fin TIME
     )`);
-    await query(`CREATE TABLE IF NOT EXISTS entregas (
+    await q(`CREATE TABLE IF NOT EXISTS entregas (
         id SERIAL PRIMARY KEY, turno_id INTEGER REFERENCES turnos(id),
         cliente_nombre VARCHAR(100) NOT NULL, descripcion TEXT, pedidos TEXT,
         factura VARCHAR(50), tipo VARCHAR(30) DEFAULT 'Retira',
         estado VARCHAR(20) DEFAULT 'pendiente', fecha DATE DEFAULT CURRENT_DATE,
         hora_registrada TIME DEFAULT CURRENT_TIME, hora_entregada TIME
     )`);
-    await query(`CREATE TABLE IF NOT EXISTS turnos_adjuntos (
+    await q(`CREATE TABLE IF NOT EXISTS turnos_adjuntos (
         id SERIAL PRIMARY KEY, turno_id INTEGER REFERENCES turnos(id) ON DELETE CASCADE,
         nombre VARCHAR(255) NOT NULL, archivo BYTEA, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut') THEN ALTER TABLE turnos ADD COLUMN rut VARCHAR(20) DEFAULT ''; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='patente') THEN ALTER TABLE turnos ADD COLUMN patente VARCHAR(10) DEFAULT ''; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='motivo') THEN ALTER TABLE turnos ADD COLUMN motivo VARCHAR(20) DEFAULT 'Retirar'; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut_empresa') THEN ALTER TABLE turnos ADD COLUMN rut_empresa VARCHAR(20) DEFAULT ''; END IF; END $$`);
-    await query(`CREATE TABLE IF NOT EXISTS turnos_estados_log (
+    await q(`CREATE TABLE IF NOT EXISTS turnos_estados_log (
         id SERIAL PRIMARY KEY, turno_id INTEGER REFERENCES turnos(id) ON DELETE CASCADE,
         entrega_id INTEGER, estado VARCHAR(30) NOT NULL,
         fecha_entrada TIMESTAMP DEFAULT CURRENT_TIMESTAMP, fecha_salida TIMESTAMP,
         duracion_segundos INTEGER, usuario VARCHAR(200) DEFAULT ''
     )`);
-    await query(`CREATE TABLE IF NOT EXISTS tecnicos_almacen (
+    await q(`CREATE TABLE IF NOT EXISTS tecnicos_almacen (
         id SERIAL PRIMARY KEY, nombre VARCHAR(200) NOT NULL,
         activo BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='tecnico_almacen_id') THEN ALTER TABLE entregas ADD COLUMN tecnico_almacen_id INTEGER; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='observaciones_almacen') THEN ALTER TABLE entregas ADD COLUMN observaciones_almacen TEXT DEFAULT ''; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='numero_factura') THEN ALTER TABLE entregas ADD COLUMN numero_factura VARCHAR(50) DEFAULT ''; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='monto_factura') THEN ALTER TABLE entregas ADD COLUMN monto_factura DECIMAL(12,2) DEFAULT 0; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='hora_verificada') THEN ALTER TABLE entregas ADD COLUMN hora_verificada TIME; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='hora_cargada') THEN ALTER TABLE entregas ADD COLUMN hora_cargada TIME; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='hora_facturada') THEN ALTER TABLE entregas ADD COLUMN hora_facturada TIME; END IF; END $$`);
 
-    await query(`CREATE TABLE IF NOT EXISTS mermas (
+    await q(`CREATE TABLE IF NOT EXISTS movimientos (
+        id SERIAL PRIMARY KEY, usuario_id INTEGER REFERENCES usuarios(id),
+        tipo_movimiento VARCHAR(20) NOT NULL, tipo_cristal VARCHAR(50) NOT NULL,
+        espesor INTEGER NOT NULL, ancho INTEGER NOT NULL, alto INTEGER NOT NULL,
+        cantidad_planchas INTEGER NOT NULL, metros_cuadrados DECIMAL(10,4) NOT NULL,
+        proveedor VARCHAR(100), tipo_salida VARCHAR(20), observaciones TEXT,
+        fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS pedidos (
+        id SERIAL PRIMARY KEY, numero_pedido TEXT NOT NULL, cliente TEXT NOT NULL,
+        vendedor TEXT NOT NULL, archivo_url TEXT, archivo_pdf BYTEA,
+        estado TEXT DEFAULT 'pendiente', motivo_rechazo TEXT,
+        fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_revision TIMESTAMP, revisado_por TEXT
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS pedido_historial (
+        id SERIAL PRIMARY KEY,
+        pedido_id INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+        accion VARCHAR(100) NOT NULL,
+        campos_antes JSONB,
+        campos_despues JSONB,
+        usuario VARCHAR(200) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // ── Producción: sin dependencias ──────────────────────────────────────────
+    await q(`CREATE TABLE IF NOT EXISTS estaciones_maestras (
+        id SERIAL PRIMARY KEY, nombre_estacion VARCHAR(50) UNIQUE NOT NULL,
+        orden_secuencia_defecto INTEGER UNIQUE NOT NULL,
+        activa BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS familias_producto (
+        id SERIAL PRIMARY KEY, codigo_familia VARCHAR(30) UNIQUE NOT NULL,
+        nombre_familia VARCHAR(100) NOT NULL, costo_hh DECIMAL(12,2) DEFAULT 0,
+        costo_energia DECIMAL(12,2) DEFAULT 0, activa BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS materias_primas (
+        id SERIAL PRIMARY KEY, codigo_mp VARCHAR(30) UNIQUE NOT NULL,
+        nombre VARCHAR(150) NOT NULL, espesor_mm DECIMAL(6,2) DEFAULT 0,
+        costo_unitario_mp DECIMAL(12,2) DEFAULT 0, observacion TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    // produccion_maquinas se crea sin FK; su columna estacion_id (FK a
+    // estaciones_maestras) se agrega en faseColumnas, ya con la tabla creada.
+    await q(`CREATE TABLE IF NOT EXISTS produccion_maquinas (
+        id SERIAL PRIMARY KEY, nombre VARCHAR(100) NOT NULL,
+        codigo VARCHAR(20) UNIQUE NOT NULL, estado VARCHAR(20) DEFAULT 'ACTIVA',
+        capacidad_max_m2_dia DECIMAL(8,2) DEFAULT 0, tipo_proceso VARCHAR(50),
+        num_operacion INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS produccion_recetas_bom (
+        id SERIAL PRIMARY KEY, codigo_sap_padre VARCHAR(30) NOT NULL,
+        codigo_materia_prima VARCHAR(30) NOT NULL, descripcion TEXT,
+        espesor INTEGER, cantidad INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS tecnicos (
+        id SERIAL PRIMARY KEY, nombre VARCHAR(150) NOT NULL,
+        activo BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS vendedores (
+        id SERIAL PRIMARY KEY, nombre VARCHAR(150) NOT NULL,
+        activo BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // ── Producción: dependen de estaciones_maestras / familias_producto ──────
+    await q(`CREATE TABLE IF NOT EXISTS familia_estaciones_base (
+        id SERIAL PRIMARY KEY,
+        familia_id INTEGER NOT NULL REFERENCES familias_producto(id) ON DELETE CASCADE,
+        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id) ON DELETE CASCADE,
+        UNIQUE(familia_id, estacion_id)
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS recetas_bom (
+        id SERIAL PRIMARY KEY, codigo_sap_padre VARCHAR(30) NOT NULL,
+        materia_prima_id INTEGER NOT NULL REFERENCES materias_primas(id) ON DELETE CASCADE,
+        familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL,
+        cantidad DECIMAL(10,4) DEFAULT 1,
+        procesos_especificos_json JSONB DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS reglas_procesos_extras (
+        id SERIAL PRIMARY KEY, nombre_flag VARCHAR(50) UNIQUE NOT NULL,
+        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id) ON DELETE CASCADE,
+        activa BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // ── Producción: dependen de produccion_ordenes ───────────────────────────
+    await q(`CREATE TABLE IF NOT EXISTS produccion_ordenes (
+        id SERIAL PRIMARY KEY, pedido_sap_id VARCHAR(30), cliente TEXT,
+        codigo_producto VARCHAR(30) NOT NULL, descripcion TEXT,
+        ancho INTEGER NOT NULL, alto INTEGER NOT NULL,
+        metros_cuadrados DECIMAL(10,4), es_compuesto BOOLEAN DEFAULT FALSE,
+        bom_padre_id INTEGER, fecha_ingreso_sap TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_entrega_pactada DATE, estado_programacion VARCHAR(20) DEFAULT 'PENDIENTE',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS produccion_pasos (
+        id SERIAL PRIMARY KEY,
+        orden_produccion_id INTEGER NOT NULL REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+        estacion_nombre VARCHAR(50) NOT NULL, orden_secuencia INTEGER NOT NULL,
+        estado VARCHAR(20) DEFAULT 'PENDIENTE', hora_inicio TIMESTAMP,
+        hora_fin TIMESTAMP, operario_id INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS produccion_codigos (
+        id SERIAL PRIMARY KEY, codigo VARCHAR(30) UNIQUE NOT NULL,
+        descripcion TEXT, grupo VARCHAR(100), familia VARCHAR(100),
+        bloqueo_tela BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS cola_produccion_pasos (
+        id SERIAL PRIMARY KEY,
+        orden_produccion_id INTEGER NOT NULL REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
+        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id),
+        orden_secuencia INTEGER NOT NULL, estado VARCHAR(20) DEFAULT 'PENDIENTE',
+        hora_inicio TIMESTAMP, hora_fin TIMESTAMP, operario_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    // mermas referencia produccion_ordenes, cola_produccion_pasos y
+    // estaciones_maestras: se crea DESPUÉS que las tres (antes estaba antes y
+    // en una base nueva fallaba con "relation does not exist").
+    await q(`CREATE TABLE IF NOT EXISTS mermas (
         id SERIAL PRIMARY KEY,
         orden_produccion_id INTEGER NOT NULL REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
         paso_id INTEGER REFERENCES cola_produccion_pasos(id) ON DELETE SET NULL,
@@ -168,219 +356,274 @@ async function initDB() {
         costo_materia_prima DECIMAL(12,2) DEFAULT 0,
         creado_por VARCHAR(200) DEFAULT '', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_ordenes' AND column_name='es_reposicion') THEN ALTER TABLE produccion_ordenes ADD COLUMN es_reposicion BOOLEAN DEFAULT FALSE; END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_ordenes' AND column_name='merma_original_id') THEN ALTER TABLE produccion_ordenes ADD COLUMN merma_original_id INTEGER REFERENCES mermas(id); END IF; END $$`);
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='cola_produccion_pasos' AND column_name='estado') THEN ALTER TABLE cola_produccion_pasos ALTER COLUMN estado SET DEFAULT 'PENDIENTE'; END IF; END $$`);
-
-    await query(`CREATE TABLE IF NOT EXISTS movimientos (
-        id SERIAL PRIMARY KEY, usuario_id INTEGER REFERENCES usuarios(id),
-        tipo_movimiento VARCHAR(20) NOT NULL, tipo_cristal VARCHAR(50) NOT NULL,
-        espesor INTEGER NOT NULL, ancho INTEGER NOT NULL, alto INTEGER NOT NULL,
-        cantidad_planchas INTEGER NOT NULL, metros_cuadrados DECIMAL(10,4) NOT NULL,
-        proveedor VARCHAR(100), tipo_salida VARCHAR(20), observaciones TEXT,
-        fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS pedidos (
-        id SERIAL PRIMARY KEY, numero_pedido TEXT NOT NULL, cliente TEXT NOT NULL,
-        vendedor TEXT NOT NULL, archivo_url TEXT, archivo_pdf BYTEA,
-        estado TEXT DEFAULT 'pendiente', motivo_rechazo TEXT,
-        fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        fecha_revision TIMESTAMP, revisado_por TEXT
-    )`);
-    await query("ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS tipo_ov VARCHAR(30) DEFAULT 'Normal'").catch(() => {});
-    await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pedidos' AND column_name='archivo_pdf') THEN ALTER TABLE pedidos ADD COLUMN archivo_pdf BYTEA; END IF; END $$`);
-
-    await query(`CREATE TABLE IF NOT EXISTS pedido_historial (
-        id SERIAL PRIMARY KEY,
-        pedido_id INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
-        accion VARCHAR(100) NOT NULL,
-        campos_antes JSONB,
-        campos_despues JSONB,
-        usuario VARCHAR(200) DEFAULT '',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query('CREATE INDEX IF NOT EXISTS idx_pedido_historial_pedido ON pedido_historial(pedido_id)').catch(() => {});
-
-    await query(`CREATE TABLE IF NOT EXISTS produccion_maquinas (
-        id SERIAL PRIMARY KEY, nombre VARCHAR(100) NOT NULL,
-        codigo VARCHAR(20) UNIQUE NOT NULL, estado VARCHAR(20) DEFAULT 'ACTIVA',
-        capacidad_max_m2_dia DECIMAL(8,2) DEFAULT 0, tipo_proceso VARCHAR(50),
-        num_operacion INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS tipo_proceso VARCHAR(50)`);
-    await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS num_operacion INTEGER`);
-    await query(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS estacion_id INTEGER REFERENCES estaciones_maestras(id)`);
-    await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS maquina_id INTEGER REFERENCES produccion_maquinas(id)`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_venta VARCHAR(30) DEFAULT 'Normal'`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS pintado BOOLEAN DEFAULT FALSE`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS perforaciones INTEGER DEFAULT 0`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cerrado_nota TEXT`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cantidad INTEGER DEFAULT 1`);
-
-    await query(`CREATE TABLE IF NOT EXISTS produccion_recetas_bom (
-        id SERIAL PRIMARY KEY, codigo_sap_padre VARCHAR(30) NOT NULL,
-        codigo_materia_prima VARCHAR(30) NOT NULL, descripcion TEXT,
-        espesor INTEGER, cantidad INTEGER DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS produccion_ordenes (
-        id SERIAL PRIMARY KEY, pedido_sap_id VARCHAR(30), cliente TEXT,
-        codigo_producto VARCHAR(30) NOT NULL, descripcion TEXT,
-        ancho INTEGER NOT NULL, alto INTEGER NOT NULL,
-        metros_cuadrados DECIMAL(10,4), es_compuesto BOOLEAN DEFAULT FALSE,
-        bom_padre_id INTEGER, fecha_ingreso_sap TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        fecha_entrega_pactada DATE, estado_programacion VARCHAR(20) DEFAULT 'PENDIENTE',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS produccion_pasos (
-        id SERIAL PRIMARY KEY,
-        orden_produccion_id INTEGER NOT NULL REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
-        estacion_nombre VARCHAR(50) NOT NULL, orden_secuencia INTEGER NOT NULL,
-        estado VARCHAR(20) DEFAULT 'PENDIENTE', hora_inicio TIMESTAMP,
-        hora_fin TIMESTAMP, operario_id INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS produccion_codigos (
-        id SERIAL PRIMARY KEY, codigo VARCHAR(30) UNIQUE NOT NULL,
-        descripcion TEXT, grupo VARCHAR(100), familia VARCHAR(100),
-        bloqueo_tela BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    try { await query(`ALTER TABLE produccion_codigos ADD COLUMN IF NOT EXISTS bloqueo_tela BOOLEAN DEFAULT FALSE`); } catch(e) {}
-    try { await query(`ALTER TABLE produccion_codigos RENAME COLUMN bloque_tela TO bloqueo_tela`); } catch(e) {}
-    try {
-        await query(`DO $$ BEGIN
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_codigos' AND column_name='bloqueo_tela' AND data_type='character varying') THEN
-                UPDATE produccion_codigos SET bloqueo_tela = CASE WHEN bloqueo_tela IN ('si','s','1','true','Si','SI') THEN 'true'::boolean ELSE 'false'::boolean END;
-                ALTER TABLE produccion_codigos ALTER COLUMN bloqueo_tela TYPE BOOLEAN USING bloqueo_tela::text::boolean;
-            END IF;
-        END $$`);
-    } catch(e) {}
-
-    await query(`CREATE TABLE IF NOT EXISTS estaciones_maestras (
-        id SERIAL PRIMARY KEY, nombre_estacion VARCHAR(50) UNIQUE NOT NULL,
-        orden_secuencia_defecto INTEGER UNIQUE NOT NULL,
-        activa BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS familias_producto (
-        id SERIAL PRIMARY KEY, codigo_familia VARCHAR(30) UNIQUE NOT NULL,
-        nombre_familia VARCHAR(100) NOT NULL, costo_hh DECIMAL(12,2) DEFAULT 0,
-        costo_energia DECIMAL(12,2) DEFAULT 0, activa BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS tecnicos (
-        id SERIAL PRIMARY KEY, nombre VARCHAR(150) NOT NULL,
-        activo BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS vendedores (
-        id SERIAL PRIMARY KEY, nombre VARCHAR(150) NOT NULL,
-        activo BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS familia_estaciones_base (
-        id SERIAL PRIMARY KEY,
-        familia_id INTEGER NOT NULL REFERENCES familias_producto(id) ON DELETE CASCADE,
-        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id) ON DELETE CASCADE,
-        UNIQUE(familia_id, estacion_id)
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS materias_primas (
-        id SERIAL PRIMARY KEY, codigo_mp VARCHAR(30) UNIQUE NOT NULL,
-        nombre VARCHAR(150) NOT NULL, espesor_mm DECIMAL(6,2) DEFAULT 0,
-        costo_unitario_mp DECIMAL(12,2) DEFAULT 0, observacion TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS recetas_bom (
-        id SERIAL PRIMARY KEY, codigo_sap_padre VARCHAR(30) NOT NULL,
-        materia_prima_id INTEGER NOT NULL REFERENCES materias_primas(id) ON DELETE CASCADE,
-        familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL,
-        cantidad DECIMAL(10,4) DEFAULT 1,
-        procesos_especificos_json JSONB DEFAULT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL`);
-    await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS procesos_especificos_json JSONB DEFAULT NULL`);
-    await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL`);
-    await query(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL`);
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS costo_unitario_importado DECIMAL(12,2) DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS hojas_por_paquete_nal INTEGER DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS ancho_nal DECIMAL(10,2) DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS alto_nal DECIMAL(10,2) DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS paquetes_por_camion INTEGER DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS hojas_por_paquete_imp INTEGER DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS ancho_imp DECIMAL(10,2) DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS alto_imp DECIMAL(10,2) DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS paquetes_por_contenedor INTEGER DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS consumo_promedio_mensual INTEGER DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS mpa NUMERIC(5,2) DEFAULT 0`).catch(() => {});
-    await query(`ALTER TABLE materias_primas ALTER COLUMN mpa TYPE NUMERIC(5,2)`).catch(() => {});
-    await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_padre ON recetas_bom(codigo_sap_padre)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)`);
-    await query(`CREATE TABLE IF NOT EXISTS reglas_procesos_extras (
-        id SERIAL PRIMARY KEY, nombre_flag VARCHAR(50) UNIQUE NOT NULL,
-        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id) ON DELETE CASCADE,
-        activa BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS cola_produccion_pasos (
-        id SERIAL PRIMARY KEY,
-        orden_produccion_id INTEGER NOT NULL REFERENCES produccion_ordenes(id) ON DELETE CASCADE,
-        estacion_id INTEGER NOT NULL REFERENCES estaciones_maestras(id),
-        orden_secuencia INTEGER NOT NULL, estado VARCHAR(20) DEFAULT 'PENDIENTE',
-        hora_inicio TIMESTAMP, hora_fin TIMESTAMP, operario_id INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_cola_pasos_orden ON cola_produccion_pasos(orden_produccion_id)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_cola_pasos_estacion_fecha ON cola_produccion_pasos(estacion_id, fecha_programada) WHERE fecha_programada IS NOT NULL`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON produccion_ordenes(estado_programacion, created_at DESC)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_ordenes_pedido ON produccion_ordenes(pedido_sap_id, item_numero, codigo_producto)`);
-    await query(`CREATE INDEX IF NOT EXISTS idx_fam_estaciones_estacion ON familia_estaciones_base(estacion_id)`);
-
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id)`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_hh DECIMAL(12,2) DEFAULT 0`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_energia DECIMAL(12,2) DEFAULT 0`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_materia_prima DECIMAL(12,2) DEFAULT 0`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_total_estimado DECIMAL(12,2) DEFAULT 0`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS precio_unitario_sap DECIMAL(12,2) DEFAULT 0`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS margen_estimado DECIMAL(12,2) DEFAULT 0`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_venta VARCHAR(50) DEFAULT 'Normal'`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER DEFAULT 1`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cantidad INTEGER DEFAULT 1`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS codigo_padre VARCHAR(30)`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS nota TEXT`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS posicion VARCHAR(100)`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS orden_compra VARCHAR(50)`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_entrega VARCHAR(20) DEFAULT 'Despacho'`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS kilos DECIMAL(10,2) DEFAULT 0`);
-    await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS cap_max DECIMAL(10,2) DEFAULT 100`);
-    await query(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS cuello_botella BOOLEAN DEFAULT FALSE`);
-    // Migrar datos de columnas antiguas si existen
-    await query(`UPDATE estaciones_maestras SET cap_max = capacidad_max_m2_dia WHERE cap_max IS NULL OR cap_max = 0`);
-    await query(`UPDATE estaciones_maestras SET cuello_botella = es_cuello_botella WHERE cuello_botella IS NULL OR cuello_botella = FALSE`);
-    // Si cap_max sigue en 0 o NULL, asignar valores por defecto según nombre
-    await query(`UPDATE estaciones_maestras SET cap_max = 500 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Corte'`);
-    await query(`UPDATE estaciones_maestras SET cap_max = 300 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Pulido'`);
-    await query(`UPDATE estaciones_maestras SET cap_max = 200 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Radio'`);
-    await query(`UPDATE estaciones_maestras SET cap_max = 130 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Mecanizado'`);
-    await query(`UPDATE estaciones_maestras SET cap_max = 100 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Ventana'`);
-    await query(`UPDATE estaciones_maestras SET cap_max = 24 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Pintado'`);
-    await query(`UPDATE estaciones_maestras SET cap_max = 200 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Templado'`);
-    await query(`UPDATE estaciones_maestras SET cap_max = 24 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Armado'`);
-    await query(`UPDATE estaciones_maestras SET cuello_botella = TRUE WHERE orden_secuencia_defecto BETWEEN 4 AND 8 AND (cuello_botella IS NULL OR cuello_botella = FALSE)`);
-    await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
-    await query(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS grupo VARCHAR(100)`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS fecha_programada DATE`);
-    await query(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS espesor_mm NUMERIC(5,2) DEFAULT 6`);
-    await query(`
-        UPDATE produccion_ordenes o
-        SET espesor_mm = COALESCE(
-            (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id), 6
-        )
-        WHERE (o.espesor_mm IS NULL OR o.espesor_mm = 0)
-    `);
-    await query(`ALTER TABLE produccion_ordenes ALTER COLUMN espesor_mm TYPE NUMERIC(5,2) USING espesor_mm::NUMERIC`);
-    await query(`CREATE TABLE IF NOT EXISTS produccion_capacidad_grupo (
+    await q(`CREATE TABLE IF NOT EXISTS produccion_capacidad_grupo (
         id SERIAL PRIMARY KEY, grupo VARCHAR(100) UNIQUE NOT NULL,
         capacidad_kg_dia DECIMAL(10,2) DEFAULT 0, activo BOOLEAN DEFAULT TRUE,
         color VARCHAR(20) DEFAULT '#3b82f6', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+    await q(`CREATE TABLE IF NOT EXISTS prod_notas (
+        id SERIAL PRIMARY KEY, usuario_email VARCHAR(255) NOT NULL,
+        nota TEXT NOT NULL, estado VARCHAR(20) DEFAULT 'pendiente',
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_completado TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // ── Calendario e instalaciones ───────────────────────────────────────────
+    await q(`CREATE TABLE IF NOT EXISTS calendario_produccion (
+        id SERIAL PRIMARY KEY, fecha DATE UNIQUE NOT NULL,
+        es_laboral BOOLEAN DEFAULT TRUE, motivo TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS instalaciones (
+        id SERIAL PRIMARY KEY, cliente VARCHAR(200) NOT NULL, direccion TEXT NOT NULL,
+        descripcion TEXT DEFAULT '', fecha_programada DATE NOT NULL,
+        hora_programada TIME DEFAULT '09:00', tecnico VARCHAR(200) DEFAULT '',
+        estado VARCHAR(30) DEFAULT 'PROGRAMADA', notas_previas TEXT DEFAULT '',
+        notas_cierre TEXT DEFAULT '', firma_cliente TEXT DEFAULT '',
+        creado_por VARCHAR(200) DEFAULT '', cerrado_por VARCHAR(200) DEFAULT '',
+        fecha_cierre TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS instalaciones_historial (
+        id SERIAL PRIMARY KEY,
+        instalacion_id INTEGER REFERENCES instalaciones(id) ON DELETE CASCADE,
+        accion VARCHAR(100) NOT NULL, detalle TEXT DEFAULT '',
+        usuario VARCHAR(200) DEFAULT '', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS instalaciones_fotos (
+        id SERIAL PRIMARY KEY,
+        instalacion_id INTEGER REFERENCES instalaciones(id) ON DELETE CASCADE,
+        foto BYTEA, descripcion TEXT DEFAULT '', orden INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await q(`CREATE TABLE IF NOT EXISTS instalaciones_dias (
+        id SERIAL PRIMARY KEY,
+        instalacion_id INTEGER REFERENCES instalaciones(id) ON DELETE CASCADE,
+        fecha DATE NOT NULL,
+        dia_numero INTEGER NOT NULL,
+        estado VARCHAR(30) DEFAULT 'PROGRAMADA',
+        notas TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FASE 2 · Columnas (ALTERs aditivos / IF NOT EXISTS)
+// Todos los ALTER ocurren DESPUÉS de la creación de su tabla y de las tablas
+// referenciadas por sus FK (antes varios corrían antes que sus tablas).
+// ─────────────────────────────────────────────────────────────────────────────
+async function faseColumnas({ q, safe }) {
+    // ── usuarios ─────────────────────────────────────────────────────────────
+    await safe(`DO $$ BEGIN ALTER TABLE usuarios ADD COLUMN permisos TEXT[] DEFAULT '{}'; EXCEPTION WHEN duplicate_column THEN null; END $$`, 'usuarios.permisos');
+    await safe(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_plain TEXT DEFAULT ''`, 'usuarios.password_plain');
+    await safe(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS area TEXT DEFAULT ''`, 'usuarios.area');
+
+    // ── catalogo_tipos_cristal ───────────────────────────────────────────────
+    await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.stock_critico');
+    await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.consumo_mensual_aprox');
+    await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS espesor INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.espesor');
+    await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''`, 'catalogo_tipos_cristal.codigo_sap');
+    await safe(`ALTER TABLE catalogo_tipos_cristal ALTER COLUMN consumo_mensual_aprox TYPE INTEGER USING consumo_mensual_aprox::INTEGER`, 'catalogo_tipos_cristal.consumo_mensual_aprox tipo');
+    // Estas dos restricciones UNIQUE se reemplazan por el índice parcial
+    // idx_tipos_cristal_nombre_espesor (ver faseIndices). DROP CONSTRAINT IF
+    // EXISTS es idempotente y es el único DROP que conserva este archivo.
+    await safe(`ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_key`, 'catalogo_tipos_cristal drop unique');
+    await safe(`ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_espesor_key`, 'catalogo_tipos_cristal drop unique');
+    await safe(`ALTER TABLE catalogo_tipos_cristal DROP CONSTRAINT IF EXISTS catalogo_tipos_cristal_nombre_espesor_key, catalogo_tipos_cristal_nombre_key`, 'catalogo_tipos_cristal drop unique');
+
+    // ── mantención ───────────────────────────────────────────────────────────
+    await safe(`ALTER TABLE preventive_maintenance ADD COLUMN IF NOT EXISTS horas_ocupadas REAL DEFAULT 0`, 'preventive_maintenance.horas_ocupadas');
+    await safe(`ALTER TABLE preventive_maintenance ADD COLUMN IF NOT EXISTS checklist TEXT`, 'preventive_maintenance.checklist');
+    await safe(`ALTER TABLE preventive_maintenance ADD COLUMN IF NOT EXISTS turno TEXT DEFAULT 'Dia'`, 'preventive_maintenance.turno');
+    await safe(`ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS horas_ocupadas REAL DEFAULT 0`, 'corrective_maintenance.horas_ocupadas');
+    await safe(`ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS estado TEXT DEFAULT 'En Mantención'`, 'corrective_maintenance.estado');
+    await safe(`ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS fecha_reparacion TEXT`, 'corrective_maintenance.fecha_reparacion');
+    await safe(`ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS turno TEXT DEFAULT 'Dia'`, 'corrective_maintenance.turno');
+    await safe(`ALTER TABLE corrective_maintenance ADD COLUMN IF NOT EXISTS imagenes TEXT`, 'corrective_maintenance.imagenes');
+
+    await safe(`ALTER TABLE notas ADD COLUMN IF NOT EXISTS leido BOOLEAN DEFAULT FALSE`, 'notas.leido');
+
+    // ── turnos / entregas ────────────────────────────────────────────────────
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut') THEN ALTER TABLE turnos ADD COLUMN rut VARCHAR(20) DEFAULT ''; END IF; END $$`, 'turnos.rut');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='patente') THEN ALTER TABLE turnos ADD COLUMN patente VARCHAR(10) DEFAULT ''; END IF; END $$`, 'turnos.patente');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='motivo') THEN ALTER TABLE turnos ADD COLUMN motivo VARCHAR(20) DEFAULT 'Retirar'; END IF; END $$`, 'turnos.motivo');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='turnos' AND column_name='rut_empresa') THEN ALTER TABLE turnos ADD COLUMN rut_empresa VARCHAR(20) DEFAULT ''; END IF; END $$`, 'turnos.rut_empresa');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='tecnico_almacen_id') THEN ALTER TABLE entregas ADD COLUMN tecnico_almacen_id INTEGER; END IF; END $$`, 'entregas.tecnico_almacen_id');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='observaciones_almacen') THEN ALTER TABLE entregas ADD COLUMN observaciones_almacen TEXT DEFAULT ''; END IF; END $$`, 'entregas.observaciones_almacen');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='numero_factura') THEN ALTER TABLE entregas ADD COLUMN numero_factura VARCHAR(50) DEFAULT ''; END IF; END $$`, 'entregas.numero_factura');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='monto_factura') THEN ALTER TABLE entregas ADD COLUMN monto_factura DECIMAL(12,2) DEFAULT 0; END IF; END $$`, 'entregas.monto_factura');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='hora_verificada') THEN ALTER TABLE entregas ADD COLUMN hora_verificada TIME; END IF; END $$`, 'entregas.hora_verificada');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='hora_cargada') THEN ALTER TABLE entregas ADD COLUMN hora_cargada TIME; END IF; END $$`, 'entregas.hora_cargada');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entregas' AND column_name='hora_facturada') THEN ALTER TABLE entregas ADD COLUMN hora_facturada TIME; END IF; END $$`, 'entregas.hora_facturada');
+
+    // ── pedidos ──────────────────────────────────────────────────────────────
+    await safe(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS tipo_ov VARCHAR(30) DEFAULT 'Normal'`, 'pedidos.tipo_ov');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pedidos' AND column_name='archivo_pdf') THEN ALTER TABLE pedidos ADD COLUMN archivo_pdf BYTEA; END IF; END $$`, 'pedidos.archivo_pdf');
+
+    // ── produccion_maquinas / cola_produccion_pasos ──────────────────────────
+    await safe(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS tipo_proceso VARCHAR(50)`, 'produccion_maquinas.tipo_proceso');
+    await safe(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS num_operacion INTEGER`, 'produccion_maquinas.num_operacion');
+    // FK a estaciones_maestras: por eso esta fase corre después de faseTablas.
+    await safe(`ALTER TABLE produccion_maquinas ADD COLUMN IF NOT EXISTS estacion_id INTEGER REFERENCES estaciones_maestras(id)`, 'produccion_maquinas.estacion_id');
+    // FK a produccion_maquinas: por eso va después de crear produccion_maquinas.
+    await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS maquina_id INTEGER REFERENCES produccion_maquinas(id)`, 'cola_produccion_pasos.maquina_id');
+    await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_programada DATE`, 'cola_produccion_pasos.fecha_programada');
+    await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_asignados DECIMAL(10,2) DEFAULT 0`, 'cola_produccion_pasos.m2_asignados');
+    // Antes: DO $$ ... ALTER COLUMN estado SET DEFAULT 'PENDIENTE' condicionado
+    // a que la columna NO existiera (no-op, porque el CREATE ya la define).
+    await safe(`ALTER TABLE cola_produccion_pasos ALTER COLUMN estado SET DEFAULT 'PENDIENTE'`, 'cola_produccion_pasos.estado default');
+
+    // ── produccion_ordenes ───────────────────────────────────────────────────
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_venta VARCHAR(30) DEFAULT 'Normal'`, 'produccion_ordenes.tipo_venta');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS pintado BOOLEAN DEFAULT FALSE`, 'produccion_ordenes.pintado');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS perforaciones INTEGER DEFAULT 0`, 'produccion_ordenes.perforaciones');
+    // item_numero se creó originalmente SIN DEFAULT; ver más abajo el SET DEFAULT.
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER`, 'produccion_ordenes.item_numero');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cerrado_nota TEXT`, 'produccion_ordenes.cerrado_nota');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cantidad INTEGER DEFAULT 1`, 'produccion_ordenes.cantidad');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_ordenes' AND column_name='es_reposicion') THEN ALTER TABLE produccion_ordenes ADD COLUMN es_reposicion BOOLEAN DEFAULT FALSE; END IF; END $$`, 'produccion_ordenes.es_reposicion');
+    // FK circular con mermas: mermas ya fue creada en faseTablas, así que esta
+    // columna puede referenciarla (antes el ALTER corría antes que mermas).
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_ordenes' AND column_name='merma_original_id') THEN ALTER TABLE produccion_ordenes ADD COLUMN merma_original_id INTEGER REFERENCES mermas(id); END IF; END $$`, 'produccion_ordenes.merma_original_id');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id)`, 'produccion_ordenes.familia_id');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_hh DECIMAL(12,2) DEFAULT 0`, 'produccion_ordenes.costo_hh');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_energia DECIMAL(12,2) DEFAULT 0`, 'produccion_ordenes.costo_energia');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_materia_prima DECIMAL(12,2) DEFAULT 0`, 'produccion_ordenes.costo_materia_prima');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS costo_total_estimado DECIMAL(12,2) DEFAULT 0`, 'produccion_ordenes.costo_total_estimado');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS precio_unitario_sap DECIMAL(12,2) DEFAULT 0`, 'produccion_ordenes.precio_unitario_sap');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS margen_estimado DECIMAL(12,2) DEFAULT 0`, 'produccion_ordenes.margen_estimado');
+    // NOTA: tipo_venta se declara dos veces (VARCHAR(30) arriba y VARCHAR(50)
+    // aquí). ADD COLUMN IF NOT EXISTS es no-op si ya existe, por lo que el
+    // primer ancho es el que queda en bases ya creadas; se conserva la línea
+    // por compatibilidad con bases creadas con la segunda variante.
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_venta VARCHAR(50) DEFAULT 'Normal'`, 'produccion_ordenes.tipo_venta (variante VARCHAR(50))');
+    // No-op si la columna ya existe (fue creada arriba sin DEFAULT); el
+    // DEFAULT efectivo se fija con el ALTER COLUMN ... SET DEFAULT de más abajo.
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS item_numero INTEGER DEFAULT 1`, 'produccion_ordenes.item_numero (variante DEFAULT 1)');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS cantidad INTEGER DEFAULT 1`, 'produccion_ordenes.cantidad (variante DEFAULT 1)');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS codigo_padre VARCHAR(30)`, 'produccion_ordenes.codigo_padre');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS nota TEXT`, 'produccion_ordenes.nota');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS posicion VARCHAR(100)`, 'produccion_ordenes.posicion');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS orden_compra VARCHAR(50)`, 'produccion_ordenes.orden_compra');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS tipo_entrega VARCHAR(20) DEFAULT 'Despacho'`, 'produccion_ordenes.tipo_entrega');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS kilos DECIMAL(10,2) DEFAULT 0`, 'produccion_ordenes.kilos');
+    // Columna que INSERTA services/produccionBomExplosion.js y que el esquema
+    // nunca creaba (fallaba el INSERT en bases nuevas).
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS reglas_extras_json JSONB`, 'produccion_ordenes.reglas_extras_json');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS grupo VARCHAR(100)`, 'produccion_ordenes.grupo');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS fecha_programada DATE`, 'produccion_ordenes.fecha_programada');
+    await safe(`ALTER TABLE produccion_ordenes ADD COLUMN IF NOT EXISTS espesor_mm NUMERIC(5,2) DEFAULT 6`, 'produccion_ordenes.espesor_mm');
+    await safe(`ALTER TABLE produccion_ordenes ALTER COLUMN espesor_mm TYPE NUMERIC(5,2) USING espesor_mm::NUMERIC`, 'produccion_ordenes.espesor_mm tipo');
+    // item_numero se usaba sin DEFAULT: cualquier INSERT sin la columna
+    // dejaba NULL. El "re-agregar" con DEFAULT 1 era no-op si la columna ya
+    // existía, por eso se fija el DEFAULT explícitamente.
+    await safe(`ALTER TABLE produccion_ordenes ALTER COLUMN item_numero SET DEFAULT 1`, 'produccion_ordenes.item_numero default');
+
+    // ── estaciones_maestras ──────────────────────────────────────────────────
+    await safe(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS cap_max DECIMAL(10,2) DEFAULT 100`, 'estaciones_maestras.cap_max');
+    await safe(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS cuello_botella BOOLEAN DEFAULT FALSE`, 'estaciones_maestras.cuello_botella');
+
+    // ── recetas_bom / materias_primas ────────────────────────────────────────
+    await safe(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS familia_id INTEGER REFERENCES familias_producto(id) ON DELETE SET NULL`, 'recetas_bom.familia_id');
+    await safe(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS procesos_especificos_json JSONB DEFAULT NULL`, 'recetas_bom.procesos_especificos_json');
+    await safe(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS ancho DECIMAL(10,2) DEFAULT NULL`, 'recetas_bom.ancho');
+    await safe(`ALTER TABLE recetas_bom ADD COLUMN IF NOT EXISTS alto DECIMAL(10,2) DEFAULT NULL`, 'recetas_bom.alto');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS costo_unitario_importado DECIMAL(12,2) DEFAULT 0`, 'materias_primas.costo_unitario_importado');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS hojas_por_paquete_nal INTEGER DEFAULT 0`, 'materias_primas.hojas_por_paquete_nal');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS ancho_nal DECIMAL(10,2) DEFAULT 0`, 'materias_primas.ancho_nal');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS alto_nal DECIMAL(10,2) DEFAULT 0`, 'materias_primas.alto_nal');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS paquetes_por_camion INTEGER DEFAULT 0`, 'materias_primas.paquetes_por_camion');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS hojas_por_paquete_imp INTEGER DEFAULT 0`, 'materias_primas.hojas_por_paquete_imp');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS ancho_imp DECIMAL(10,2) DEFAULT 0`, 'materias_primas.ancho_imp');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS alto_imp DECIMAL(10,2) DEFAULT 0`, 'materias_primas.alto_imp');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS paquetes_por_contenedor INTEGER DEFAULT 0`, 'materias_primas.paquetes_por_contenedor');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS consumo_promedio_mensual INTEGER DEFAULT 0`, 'materias_primas.consumo_promedio_mensual');
+    await safe(`ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS mpa NUMERIC(5,2) DEFAULT 0`, 'materias_primas.mpa');
+    await safe(`ALTER TABLE materias_primas ALTER COLUMN mpa TYPE NUMERIC(5,2)`, 'materias_primas.mpa tipo');
+
+    // ── produccion_codigos: migración histórica bloque_tela -> bloqueo_tela ──
+    await safe(`ALTER TABLE produccion_codigos ADD COLUMN IF NOT EXISTS bloqueo_tela BOOLEAN DEFAULT FALSE`, 'produccion_codigos.bloqueo_tela');
+    // Antes era un RENAME COLUMN directo que fallaba (y se tragaba) en cada
+    // arranque posterior al primero. Ahora es condicional: solo renombra si la
+    // columna vieja existe y la nueva no.
+    await safe(`DO $mig$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_codigos' AND column_name='bloque_tela')
+               AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_codigos' AND column_name='bloqueo_tela') THEN
+                ALTER TABLE produccion_codigos RENAME COLUMN bloque_tela TO bloqueo_tela;
+            END IF;
+        END $mig$`, 'produccion_codigos rename bloque_tela');
+    // Conversión de la columna legada VARCHAR('si'/'no') a BOOLEAN.
+    await safe(`DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='produccion_codigos' AND column_name='bloqueo_tela' AND data_type='character varying') THEN
+                UPDATE produccion_codigos SET bloqueo_tela = CASE WHEN bloqueo_tela IN ('si','s','1','true','Si','SI') THEN 'true'::boolean ELSE 'false'::boolean END;
+                ALTER TABLE produccion_codigos ALTER COLUMN bloqueo_tela TYPE BOOLEAN USING bloqueo_tela::text::boolean;
+            END IF;
+        END $$`, 'produccion_codigos bloqueo_tela varchar->boolean');
+
+    // ── instalaciones (antes estos ALTER corrían ANTES del CREATE) ───────────
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='numero_orden') THEN ALTER TABLE instalaciones ADD COLUMN numero_orden VARCHAR(50) DEFAULT ''; END IF; END $$`, 'instalaciones.numero_orden');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='vendedor') THEN ALTER TABLE instalaciones ADD COLUMN vendedor VARCHAR(200) DEFAULT ''; END IF; END $$`, 'instalaciones.vendedor');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='tipo') THEN ALTER TABLE instalaciones ADD COLUMN tipo VARCHAR(30) DEFAULT 'INSTALACION'; END IF; END $$`, 'instalaciones.tipo');
+    await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='duracion_dias') THEN ALTER TABLE instalaciones ADD COLUMN duracion_dias INTEGER DEFAULT 1; END IF; END $$`, 'instalaciones.duracion_dias');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FASE 3 · Índices
+// Corre después de faseColumnas: idx_cola_pasos_estacion_fecha indexa
+// cola_produccion_pasos.fecha_programada, columna que antes se agregaba
+// DESPUÉS de crear el índice (en una base nueva el índice fallaba).
+// ─────────────────────────────────────────────────────────────────────────────
+async function faseIndices({ q }) {
+    await q(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tipos_cristal_nombre_espesor ON catalogo_tipos_cristal (nombre, espesor) WHERE activo = TRUE`);
+    await q('CREATE UNIQUE INDEX IF NOT EXISTS idx_machine_types_nombre ON machine_types(nombre)');
+    await q('CREATE UNIQUE INDEX IF NOT EXISTS idx_components_nombre ON components(nombre)');
+    await q('CREATE UNIQUE INDEX IF NOT EXISTS idx_component_type_links_unique ON component_type_links(tipo_id, componente_id)');
+
+    await q('CREATE INDEX IF NOT EXISTS idx_pm_fecha ON preventive_maintenance(fecha_programada)');
+    await q('CREATE INDEX IF NOT EXISTS idx_pm_estado ON preventive_maintenance(estado)');
+    await q('CREATE INDEX IF NOT EXISTS idx_pm_maquina ON preventive_maintenance(maquina_id)');
+    await q('CREATE INDEX IF NOT EXISTS idx_cm_fecha ON corrective_maintenance(fecha_falla)');
+    await q('CREATE INDEX IF NOT EXISTS idx_cm_estado ON corrective_maintenance(estado)');
+    await q('CREATE INDEX IF NOT EXISTS idx_cm_maquina ON corrective_maintenance(maquina_id)');
+    await q('CREATE INDEX IF NOT EXISTS idx_machines_codigo ON machines(codigo)');
+    await q('CREATE INDEX IF NOT EXISTS idx_pedido_historial_pedido ON pedido_historial(pedido_id)');
+
+    await q('CREATE INDEX IF NOT EXISTS idx_recetas_bom_padre ON recetas_bom(codigo_sap_padre)');
+    await q('CREATE INDEX IF NOT EXISTS idx_recetas_bom_familia ON recetas_bom(familia_id)');
+    await q('CREATE INDEX IF NOT EXISTS idx_fam_estaciones_estacion ON familia_estaciones_base(estacion_id)');
+    await q('CREATE INDEX IF NOT EXISTS idx_cola_pasos_orden ON cola_produccion_pasos(orden_produccion_id)');
+    // fecha_programada ya fue agregada en faseColumnas.
+    await q('CREATE INDEX IF NOT EXISTS idx_cola_pasos_estacion_fecha ON cola_produccion_pasos(estacion_id, fecha_programada) WHERE fecha_programada IS NOT NULL');
+    await q('CREATE INDEX IF NOT EXISTS idx_ordenes_estado ON produccion_ordenes(estado_programacion, created_at DESC)');
+    await q('CREATE INDEX IF NOT EXISTS idx_ordenes_pedido ON produccion_ordenes(pedido_sap_id, item_numero, codigo_producto)');
+    // Indices de apoyo a planificacion/metricas (fijas de rendimiento del modulo de produccion)
+    await q('CREATE INDEX IF NOT EXISTS idx_cola_pasos_estacion_estado ON cola_produccion_pasos(estacion_id, estado)');
+    await q('CREATE INDEX IF NOT EXISTS idx_ordenes_fecha_programada ON produccion_ordenes(fecha_programada)');
+    await q('CREATE INDEX IF NOT EXISTS idx_ordenes_grupo ON produccion_ordenes(grupo)');
+    await q('CREATE INDEX IF NOT EXISTS idx_ordenes_bom_padre ON produccion_ordenes(bom_padre_id)');
+    await q('CREATE INDEX IF NOT EXISTS idx_prod_notas_usuario ON prod_notas(usuario_email)');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FASE 4 · Datos: seeds iniciales y migraciones de datos
+// ─────────────────────────────────────────────────────────────────────────────
+async function faseDatos({ q, safe }) {
+    // ── Catálogos base ───────────────────────────────────────────────────────
+    const tiposCount = await q('SELECT COUNT(*) as c FROM catalogo_tipos_cristal');
+    if (Number(tiposCount.rows[0].c) === 0) {
+        const tiposDefault = ['Clear', 'Bronce', 'Gris', 'Azul', 'Verde', 'Espejo', 'Templado', 'Laminado', 'Otros'];
+        for (const tipo of tiposDefault) {
+            await q('INSERT INTO catalogo_tipos_cristal (nombre) VALUES ($1) ON CONFLICT DO NOTHING', [tipo]);
+        }
+    }
+    const espesoresCount = await q('SELECT COUNT(*) as c FROM catalogo_espesores');
+    if (Number(espesoresCount.rows[0].c) === 0) {
+        const espesoresDefault = [3, 4, 5, 6, 8, 10, 12, 15, 19, 25];
+        for (const esp of espesoresDefault) {
+            await q('INSERT INTO catalogo_espesores (valor) VALUES ($1) ON CONFLICT DO NOTHING', [esp]);
+        }
+    }
+
+    // ── Capacidad por grupo ──────────────────────────────────────────────────
     const capacidadesSeed = [
         { grupo: 'Arquitectura', capacidad: 6500, color: '#22c55e' },
         { grupo: 'Carroceros', capacidad: 1500, color: '#06b6d4' },
@@ -390,10 +633,12 @@ async function initDB() {
         { grupo: 'Termopanel', capacidad: 1600, color: '#1e3a8a' }
     ];
     for (const c of capacidadesSeed) {
-        await query('INSERT INTO produccion_capacidad_grupo (grupo, capacidad_kg_dia, color) VALUES ($1, $2, $3) ON CONFLICT (grupo) DO NOTHING', [c.grupo, c.capacidad, c.color]);
+        await q('INSERT INTO produccion_capacidad_grupo (grupo, capacidad_kg_dia, color) VALUES ($1, $2, $3) ON CONFLICT (grupo) DO NOTHING', [c.grupo, c.capacidad, c.color]);
     }
-    await query("DELETE FROM produccion_capacidad_grupo WHERE grupo IN ('Laminado Importado','Laminado Nacional','Termopanel Laminado Especial','Termopanel Pintado Blanco','Termopanel Pintado Fosco','Termopanel Pintado Negro','Termopanel triple')");
-    const estCount = await query('SELECT COUNT(*) as c FROM estaciones_maestras');
+    await q("DELETE FROM produccion_capacidad_grupo WHERE grupo IN ('Laminado Importado','Laminado Nacional','Termopanel Laminado Especial','Termopanel Pintado Blanco','Termopanel Pintado Fosco','Termopanel Pintado Negro','Termopanel triple')");
+
+    // ── Estaciones maestras por defecto ──────────────────────────────────────
+    const estCount = await q('SELECT COUNT(*) as c FROM estaciones_maestras');
     if (Number(estCount.rows[0].c) === 0) {
         const estacionesDefault = [
             ['Corte', 1, 500, false], ['Pulido', 2, 300, false], ['Radio', 3, 200, false],
@@ -401,104 +646,68 @@ async function initDB() {
             ['Templado', 7, 200, true], ['Armado', 8, 24, true]
         ];
         for (const [nombre, orden, cap, cuello] of estacionesDefault) {
-            await query('INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, cap_max, cuello_botella) VALUES ($1, $2, $3, $4)', [nombre, orden, cap, cuello]);
+            await q('INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, cap_max, cuello_botella) VALUES ($1, $2, $3, $4)', [nombre, orden, cap, cuello]);
         }
         console.log('[PROD] Estaciones maestras creadas por defecto');
     }
-    const regCount = await query('SELECT COUNT(*) as c FROM reglas_procesos_extras');
+
+    // ── Reglas de procesos extras ────────────────────────────────────────────
+    const regCount = await q('SELECT COUNT(*) as c FROM reglas_procesos_extras');
     if (Number(regCount.rows[0].c) === 0) {
         const reglasDefault = [
             ['radio', 'Radio'], ['pulido', 'Pulido'], ['mecanizado', 'Mecanizado'],
             ['ventana', 'Ventana'], ['pintado', 'Pintado'], ['pintado_car', 'Armado']
         ];
         for (const [flag, estNombre] of reglasDefault) {
-            const est = await query('SELECT id FROM estaciones_maestras WHERE nombre_estacion = $1', [estNombre]);
+            const est = await q('SELECT id FROM estaciones_maestras WHERE nombre_estacion = $1', [estNombre]);
             if (est.rows.length > 0) {
-                await query('INSERT INTO reglas_procesos_extras (nombre_flag, estacion_id) VALUES ($1, $2)', [flag, est.rows[0].id]);
+                await q('INSERT INTO reglas_procesos_extras (nombre_flag, estacion_id) VALUES ($1, $2)', [flag, est.rows[0].id]);
             }
         }
         console.log('[PROD] Reglas de procesos extras creadas por defecto');
     }
-    try {
-        const pcExists = await query("SELECT id FROM reglas_procesos_extras WHERE nombre_flag = 'pintado_car'");
-        if (pcExists.rows.length === 0) {
-            const armado = await query("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Armado'");
-            if (armado.rows.length > 0) {
-                await query('INSERT INTO reglas_procesos_extras (nombre_flag, estacion_id) VALUES ($1, $2)', ['pintado_car', armado.rows[0].id]);
-                console.log('[PROD] Regla pintado_car -> Armado creada');
-            }
+    const pcExists = await q("SELECT id FROM reglas_procesos_extras WHERE nombre_flag = 'pintado_car'");
+    if (pcExists.rows.length === 0) {
+        const armado = await q("SELECT id FROM estaciones_maestras WHERE nombre_estacion = 'Armado'");
+        if (armado.rows.length > 0) {
+            await q('INSERT INTO reglas_procesos_extras (nombre_flag, estacion_id) VALUES ($1, $2)', ['pintado_car', armado.rows[0].id]);
+            console.log('[PROD] Regla pintado_car -> Armado creada');
         }
-    } catch(e) {}
+    }
 
-    try {
-        await query(`CREATE TABLE IF NOT EXISTS calendario_produccion (
-            id SERIAL PRIMARY KEY, fecha DATE UNIQUE NOT NULL,
-            es_laboral BOOLEAN DEFAULT TRUE, motivo TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
-        await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='numero_orden') THEN ALTER TABLE instalaciones ADD COLUMN numero_orden VARCHAR(50) DEFAULT ''; END IF; END $$`);
-        await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='vendedor') THEN ALTER TABLE instalaciones ADD COLUMN vendedor VARCHAR(200) DEFAULT ''; END IF; END $$`);
-        await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='tipo') THEN ALTER TABLE instalaciones ADD COLUMN tipo VARCHAR(30) DEFAULT 'INSTALACION'; END IF; END $$`);
-        await query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='duracion_dias') THEN ALTER TABLE instalaciones ADD COLUMN duracion_dias INTEGER DEFAULT 1; END IF; END $$`);
-        // Sincronizar estados de instalaciones_dias con instalaciones padre
-        try {
-            await query(`
-                UPDATE instalaciones_dias d
-                SET estado = i.estado
-                FROM instalaciones i
-                WHERE d.instalacion_id = i.id AND d.estado != i.estado
-            `);
-        } catch(e) {}
-
-        const year = new Date().getFullYear();
+    // ── Calendario de producción: fines de semana no laborables ──────────────
+    // Se siembra el año en curso Y el siguiente. Si solo se siembra el año
+    // actual, al cruzar de año enero queda sin sábados/domingos marcados y la
+    // planificación los trata como laborables. Los INSERT son idempotentes
+    // (ON CONFLICT DO NOTHING), así que se puede ampliar el rango sin riesgo.
+    const anioActual = new Date().getFullYear();
+    for (const anio of [anioActual, anioActual + 1]) {
         for (let m = 0; m < 12; m++) {
             for (let d = 1; d <= 31; d++) {
-                const dt = new Date(year, m, d);
-                if (dt.getFullYear() === year && (dt.getDay() === 0 || dt.getDay() === 6)) {
-                    const fs = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                const dt = new Date(anio, m, d);
+                if (dt.getFullYear() === anio && (dt.getDay() === 0 || dt.getDay() === 6)) {
+                    const fs = anio + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
                     const motivo = dt.getDay() === 0 ? 'Domingo' : 'Sabado';
-                    await query('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, motivo]);
+                    await q('INSERT INTO calendario_produccion (fecha, es_laboral, motivo) VALUES ($1, FALSE, $2) ON CONFLICT (fecha) DO NOTHING', [fs, motivo]);
                 }
             }
         }
-    } catch(calErr) { console.error('[PROD] Error calendario:', calErr.message); }
+    }
 
-    await query(`CREATE TABLE IF NOT EXISTS instalaciones (
-        id SERIAL PRIMARY KEY, cliente VARCHAR(200) NOT NULL, direccion TEXT NOT NULL,
-        descripcion TEXT DEFAULT '', fecha_programada DATE NOT NULL,
-        hora_programada TIME DEFAULT '09:00', tecnico VARCHAR(200) DEFAULT '',
-        estado VARCHAR(30) DEFAULT 'PROGRAMADA', notas_previas TEXT DEFAULT '',
-        notas_cierre TEXT DEFAULT '', firma_cliente TEXT DEFAULT '',
-        creado_por VARCHAR(200) DEFAULT '', cerrado_por VARCHAR(200) DEFAULT '',
-        fecha_cierre TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS instalaciones_historial (
-        id SERIAL PRIMARY KEY,
-        instalacion_id INTEGER REFERENCES instalaciones(id) ON DELETE CASCADE,
-        accion VARCHAR(100) NOT NULL, detalle TEXT DEFAULT '',
-        usuario VARCHAR(200) DEFAULT '', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS instalaciones_fotos (
-        id SERIAL PRIMARY KEY,
-        instalacion_id INTEGER REFERENCES instalaciones(id) ON DELETE CASCADE,
-        foto BYTEA, descripcion TEXT DEFAULT '', orden INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-    await query(`CREATE TABLE IF NOT EXISTS instalaciones_dias (
-        id SERIAL PRIMARY KEY,
-        instalacion_id INTEGER REFERENCES instalaciones(id) ON DELETE CASCADE,
-        fecha DATE NOT NULL,
-        dia_numero INTEGER NOT NULL,
-        estado VARCHAR(30) DEFAULT 'PROGRAMADA',
-        notas TEXT DEFAULT '',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
+    // Sincronizar estados de instalaciones_dias con instalaciones padre
+    await safe(`
+        UPDATE instalaciones_dias d
+        SET estado = i.estado
+        FROM instalaciones i
+        WHERE d.instalacion_id = i.id AND d.estado != i.estado
+    `, 'instalaciones_dias sync');
 
-    const diasCount = await query('SELECT COUNT(*) as c FROM instalaciones_dias');
-    const instCount = await query('SELECT COUNT(*) as c FROM instalaciones');
+    // ── Migración de días de instalaciones ───────────────────────────────────
+    const diasCount = await q('SELECT COUNT(*) as c FROM instalaciones_dias');
+    const instCount = await q('SELECT COUNT(*) as c FROM instalaciones');
     if (Number(diasCount.rows[0].c) === 0 || Number(diasCount.rows[0].c) < Number(instCount.rows[0].c)) {
-        await query('DELETE FROM instalaciones_dias');
-        const instResult = await query('SELECT id, fecha_programada::text, duracion_dias, estado FROM instalaciones');
+        await q('DELETE FROM instalaciones_dias');
+        const instResult = await q('SELECT id, fecha_programada::text, duracion_dias, estado FROM instalaciones');
         for (const inst of instResult.rows) {
             try {
                 const duracion = Math.max(1, parseInt(inst.duracion_dias) || 1);
@@ -515,7 +724,7 @@ async function initDB() {
                         const mm = String(current.getMonth() + 1).padStart(2, '0');
                         const dd = String(current.getDate()).padStart(2, '0');
                         const fecha = `${yyyy}-${mm}-${dd}`;
-                        await query(
+                        await q(
                             'INSERT INTO instalaciones_dias (instalacion_id, fecha, dia_numero, estado) VALUES ($1, $2, $3, $4)',
                             [inst.id, fecha, diaNum, inst.estado || 'PROGRAMADA']
                         );
@@ -531,7 +740,8 @@ async function initDB() {
         console.log('[PROD] Días de instalaciones migrados:', instResult.rows.length);
     }
 
-    const famCount = await query('SELECT COUNT(*) as c FROM familias_producto');
+    // ── Familias de producto por defecto ─────────────────────────────────────
+    const famCount = await q('SELECT COUNT(*) as c FROM familias_producto');
     if (Number(famCount.rows[0].c) === 0) {
         const familiasDefault = [
             ['CRUDO_SP', 'Crudo sin pulir', 1500, 500], ['CRUDO_P', 'Crudo pulido', 2000, 600],
@@ -541,35 +751,63 @@ async function initDB() {
             ['CARROCERO', 'Carrocero', 3200, 800]
         ];
         for (const [codigo, nombre, hh, energia] of familiasDefault) {
-            await query('INSERT INTO familias_producto (codigo_familia, nombre_familia, costo_hh, costo_energia) VALUES ($1, $2, $3, $4)', [codigo, nombre, hh, energia]);
+            await q('INSERT INTO familias_producto (codigo_familia, nombre_familia, costo_hh, costo_energia) VALUES ($1, $2, $3, $4)', [codigo, nombre, hh, energia]);
         }
         console.log('[PROD] Familias de producto creadas por defecto');
     }
 
-    const rbCount = await query('SELECT COUNT(*) as c FROM recetas_bom');
-    const prbCount = await query('SELECT COUNT(*) as c FROM produccion_recetas_bom');
+    // ── Migración de recetas antiguas ────────────────────────────────────────
+    const rbCount = await q('SELECT COUNT(*) as c FROM recetas_bom');
+    const prbCount = await q('SELECT COUNT(*) as c FROM produccion_recetas_bom');
     if (Number(rbCount.rows[0].c) === 0 && Number(prbCount.rows[0].c) > 0) {
         console.log('[PROD] Migrando recetas de produccion_recetas_bom a recetas_bom...');
-        const oldRecetas = await query('SELECT DISTINCT codigo_sap_padre, codigo_materia_prima, descripcion, espesor, cantidad FROM produccion_recetas_bom');
+        const oldRecetas = await q('SELECT DISTINCT codigo_sap_padre, codigo_materia_prima, descripcion, espesor, cantidad FROM produccion_recetas_bom');
         for (const r of oldRecetas.rows) {
-            let mp = await query('SELECT id FROM materias_primas WHERE codigo_mp = $1', [r.codigo_materia_prima]);
+            let mp = await q('SELECT id FROM materias_primas WHERE codigo_mp = $1', [r.codigo_materia_prima]);
             if (mp.rows.length === 0) {
-                const mpResult = await query('INSERT INTO materias_primas (codigo_mp, nombre, espesor_mm) VALUES ($1, $2, $3) RETURNING id', [r.codigo_materia_prima, r.descripcion || r.codigo_materia_prima, r.espesor || 0]);
+                const mpResult = await q('INSERT INTO materias_primas (codigo_mp, nombre, espesor_mm) VALUES ($1, $2, $3) RETURNING id', [r.codigo_materia_prima, r.descripcion || r.codigo_materia_prima, r.espesor || 0]);
                 mp = mpResult;
             }
             const mpId = mp.rows[0].id;
-            await query('INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [r.codigo_sap_padre, mpId, r.cantidad || 1]);
+            await q('INSERT INTO recetas_bom (codigo_sap_padre, materia_prima_id, cantidad) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [r.codigo_sap_padre, mpId, r.cantidad || 1]);
         }
         console.log('[PROD] Recetas migradas:', oldRecetas.rows.length);
     }
 
-    await query(`CREATE TABLE IF NOT EXISTS prod_notas (
-        id SERIAL PRIMARY KEY, usuario_email VARCHAR(255) NOT NULL,
-        nota TEXT NOT NULL, estado VARCHAR(20) DEFAULT 'pendiente',
-        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        fecha_completado TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
+    // ── estaciones_maestras: migración desde columnas antiguas ───────────────
+    // Estos UPDATE referencian capacidad_max_m2_dia / es_cuello_botella, que NO
+    // existen en el esquema actual (solo en bases muy antiguas). Antes se
+    // ejecutaban a secas y abortaban initDB ("column does not exist"); ahora
+    // son condicionales.
+    await safe(`DO $mig$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='estaciones_maestras' AND column_name='capacidad_max_m2_dia') THEN
+                UPDATE estaciones_maestras SET cap_max = capacidad_max_m2_dia WHERE cap_max IS NULL OR cap_max = 0;
+            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='estaciones_maestras' AND column_name='es_cuello_botella') THEN
+                UPDATE estaciones_maestras SET cuello_botella = es_cuello_botella WHERE cuello_botella IS NULL OR cuello_botella = FALSE;
+            END IF;
+        END $mig$`, 'estaciones_maestras · columnas antiguas');
+    // Si cap_max sigue en 0 o NULL, asignar valores por defecto según nombre
+    await q(`UPDATE estaciones_maestras SET cap_max = 500 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Corte'`);
+    await q(`UPDATE estaciones_maestras SET cap_max = 300 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Pulido'`);
+    await q(`UPDATE estaciones_maestras SET cap_max = 200 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Radio'`);
+    await q(`UPDATE estaciones_maestras SET cap_max = 130 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Mecanizado'`);
+    await q(`UPDATE estaciones_maestras SET cap_max = 100 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Ventana'`);
+    await q(`UPDATE estaciones_maestras SET cap_max = 24 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Pintado'`);
+    await q(`UPDATE estaciones_maestras SET cap_max = 200 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Templado'`);
+    await q(`UPDATE estaciones_maestras SET cap_max = 24 WHERE (cap_max IS NULL OR cap_max = 0) AND nombre_estacion = 'Armado'`);
+    await q(`UPDATE estaciones_maestras SET cuello_botella = TRUE WHERE orden_secuencia_defecto BETWEEN 4 AND 8 AND (cuello_botella IS NULL OR cuello_botella = FALSE)`);
 
+    // ── produccion_ordenes: backfill de espesor_mm desde la receta ───────────
+    await q(`
+        UPDATE produccion_ordenes o
+        SET espesor_mm = COALESCE(
+            (SELECT rb.espesor FROM produccion_recetas_bom rb WHERE rb.id = o.bom_padre_id), 6
+        )
+        WHERE (o.espesor_mm IS NULL OR o.espesor_mm = 0)
+    `);
+
+    // ── Usuario administrador y permisos ─────────────────────────────────────
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     const ALL_PERMS = [
@@ -609,25 +847,23 @@ async function initDB() {
         'costeo','costeo.agregar','costeo.editar','costeo.eliminar',
         'usuarios'
     ];
-    const adminCheck = await query("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
+    const adminCheck = await q("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
     if (adminCheck.rows.length === 0) {
-        await query("INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5)",
+        await q("INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5)",
             ['Administrador', adminEmail, hashPassword(adminPassword), 'admin', ALL_PERMS]);
     } else {
-        try {
-            for (const p of ALL_PERMS) {
-                await query("UPDATE usuarios SET permisos = array_append(permisos, $1) WHERE rol = 'admin' AND NOT ($1 = ANY(permisos))", [p]);
-            }
-        } catch(e) {}
+        for (const p of ALL_PERMS) {
+            await safe("UPDATE usuarios SET permisos = array_append(permisos, $1) WHERE rol = 'admin' AND NOT ($1 = ANY(permisos))", 'permisos admin', [p]);
+        }
     }
-
-    const mtCount = await query('SELECT COUNT(*) as c FROM machine_types');
-    if (Number(mtCount.rows[0].c) === 0) await seedSigma();
-    await runMigrations();
-    await resetSequences();
-    await seedBusinessData();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Migraciones históricas (bloques independientes; cada uno registra su error
+// real con console.error si algo falla, sin tragarlo en silencio).
+// Se ejecutan después de las fases, por lo que sus tablas/columnas objetivo ya
+// existen.
+// ─────────────────────────────────────────────────────────────────────────────
 async function runMigrations() {
     try {
         await query("ALTER TABLE trabajadores ADD COLUMN IF NOT EXISTS fecha_ingreso DATE");
@@ -648,6 +884,14 @@ async function runMigrations() {
         await query("CREATE INDEX IF NOT EXISTS idx_movimientos_materia_prima ON movimientos(materia_prima_id)");
         await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS codigo_sap VARCHAR(50) DEFAULT ''");
         await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0");
+        // LEGACY / SIN USO: materias_primas.consumo_mensual_aprox NO se usa en
+        // ninguna parte de api/src (verificado con grep). La columna viva es
+        // consumo_promedio_mensual (services/inventario.js, services/catalogos.js,
+        // services/materiasPrimasService.js, routes/catalogosInventario.js,
+        // routes/produccionConfig.js). NO se elimina porque la base de
+        // producción ya la tiene y puede contener datos; se mantiene solo por
+        // compatibilidad. (Ojo: catalogo_tipos_cristal.consumo_mensual_aprox es
+        // otra tabla y esa sí está en uso.)
         await query("ALTER TABLE materias_primas ADD COLUMN IF NOT EXISTS consumo_mensual_aprox INTEGER DEFAULT 0");
         await query("ALTER TABLE movimientos ADD COLUMN IF NOT EXISTS turno VARCHAR(10) DEFAULT NULL");
     } catch (e) {
@@ -927,42 +1171,59 @@ async function runMigrations() {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// resetSequences: sincroniza TODAS las secuencias con el MAX(id) real.
+// Antes se mantenía una lista a mano y faltaban tablas (cola_produccion_pasos,
+// recetas_bom, mermas, familias_producto, estaciones_maestras,
+// procesos_carroceria_sap, produccion_capacidad_grupo, ...): tras restaurar
+// datos con IDs explícitos, los INSERT chocaban con PK duplicadas. Ahora se
+// descubren dinámicamente desde information_schema (columnas id serial o
+// identity).
+// ─────────────────────────────────────────────────────────────────────────────
 async function resetSequences() {
-    const tables = ['usuarios', 'trabajadores', 'machine_types', 'machines', 'components', 'component_type_links',
-                    'spare_parts', 'preventive_maintenance', 'corrective_maintenance',
-                    'machine_components', 'notas', 'turnos', 'entregas', 'movimientos', 'pedidos',
-                    'pedido_historial', 'catalogo_tipos_cristal', 'catalogo_espesores',
-                    'produccion_maquinas', 'produccion_recetas_bom', 'produccion_ordenes', 'produccion_pasos', 'produccion_codigos', 'prod_notas',
-                    'inspecciones_calidad', 'taller_historial', 'tipos_defecto', 'taller_turnos',
-                    'bodega_carros', 'bodega_carros_items', 'bodega_entregas'];
-    for (const table of tables) {
+    const tablas = await query(`
+        SELECT table_name
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND column_name = 'id'
+          AND (column_default LIKE 'nextval(%' OR is_identity = 'YES')
+        ORDER BY table_name
+    `);
+    for (const fila of tablas.rows) {
+        const tabla = fila.table_name;
+        // El nombre viene de information_schema; se valida igualmente antes de
+        // interpolarlo en SQL.
+        if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(tabla)) {
+            console.warn('[DB] resetSequences: nombre de tabla inesperado, se omite:', tabla);
+            continue;
+        }
         try {
-            await query(`SELECT setval(pg_get_serial_sequence('${table}', 'id'), COALESCE((SELECT MAX(id) FROM ${table}), 1))`);
-        } catch(e) {}
+            await query(`SELECT setval(pg_get_serial_sequence('${tabla}', 'id'), COALESCE((SELECT MAX(id) FROM ${tabla}), 1))`);
+        } catch (e) {
+            console.warn(`[DB] resetSequences: no se pudo resetear la secuencia de ${tabla}: ${e.message}`);
+        }
     }
 }
 
 async function seedSigma() {
-    await query('BEGIN');
-    try {
-        await query(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [1, 'Compresor']);
-        await query(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [2, 'Bomba']);
-        await query(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [3, 'Generador']);
-        await query(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [4, 'Transportador']);
-        await query(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [5, 'Mezclador']);
-        await query(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [1, 'Rodamiento', 'Rodamiento de bolas o rodillos']);
-        await query(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [2, 'Correa', 'Correa de transmisión']);
-        await query(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [3, 'Polea', 'Polea para transmisión por correa']);
-        await query(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [4, 'Motor Eléctrico', 'Motor de inducción trifásico']);
-        await query(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [5, 'Filtro', 'Filtro de aire o aceite']);
-        await query(`INSERT INTO spare_parts (id, codigo, descripcion, componente_id, stock_actual, stock_minimo, proveedor, ubicacion_bodega) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
+    await runFase('seed-sigma', async ({ q }) => {
+        await q(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [1, 'Compresor']);
+        await q(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [2, 'Bomba']);
+        await q(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [3, 'Generador']);
+        await q(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [4, 'Transportador']);
+        await q(`INSERT INTO machine_types (id, nombre) VALUES ($1,$2) ON CONFLICT (id) DO NOTHING`, [5, 'Mezclador']);
+        await q(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [1, 'Rodamiento', 'Rodamiento de bolas o rodillos']);
+        await q(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [2, 'Correa', 'Correa de transmisión']);
+        await q(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [3, 'Polea', 'Polea para transmisión por correa']);
+        await q(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [4, 'Motor Eléctrico', 'Motor de inducción trifásico']);
+        await q(`INSERT INTO components (id, nombre, descripcion) VALUES ($1,$2,$3) ON CONFLICT (id) DO NOTHING`, [5, 'Filtro', 'Filtro de aire o aceite']);
+        await q(`INSERT INTO spare_parts (id, codigo, descripcion, componente_id, stock_actual, stock_minimo, proveedor, ubicacion_bodega) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
             [1, 'ROD-001','Rodamiento SKF 6205-2Z',1,25,10,'SKF Chile','Estante A-12']);
-        await query(`INSERT INTO spare_parts (id, codigo, descripcion, componente_id, stock_actual, stock_minimo, proveedor, ubicacion_bodega) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
+        await q(`INSERT INTO spare_parts (id, codigo, descripcion, componente_id, stock_actual, stock_minimo, proveedor, ubicacion_bodega) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
             [2, 'COR-001','Correa trapezoidal B-85',2,8,5,'Gates','Estante B-03']);
-        await query(`INSERT INTO spare_parts (id, codigo, descripcion, componente_id, stock_actual, stock_minimo, proveedor, ubicacion_bodega) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
+        await q(`INSERT INTO spare_parts (id, codigo, descripcion, componente_id, stock_actual, stock_minimo, proveedor, ubicacion_bodega) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
             [3, 'FIL-001','Filtro de aceite P-5510',5,3,10,'Donaldson','Estante C-07']);
-        await query('COMMIT');
-    } catch(e) { await query('ROLLBACK'); throw e; }
+    });
 }
 
 async function seedBusinessData() {
@@ -983,96 +1244,97 @@ async function seedBusinessData() {
         && Number(prodOrdenesCount.rows[0].c) > 0;
     if (allSeeded) return;
 
-    await query('BEGIN');
     try {
-        if (!machinesExist) {
-            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-                ['CMP-001', 'Compresor Principal', 1, 'Atlas Copco', 'GA 37', 'Planta Baja', 'Operativo']);
-            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-                ['BMB-001', 'Bomba de Vacío', 2, 'Edwards', 'E2M18', 'Planta Alta', 'Operativo']);
-            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-                ['GEN-001', 'Generador Eléctrico', 3, 'Caterpillar', 'C9.3', 'Exterior', 'Operativo']);
-            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-                ['TRN-001', 'Transportador de Cinta', 4, 'Hytrol', 'EZLogic', 'Línea 1', 'Mantenimiento']);
-            await query(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-                ['MZC-001', 'Mezclador Industrial', 5, 'Hobart', 'HL800', 'Planta Baja', 'Operativo']);
-        }
+        await runFase('seed-business', async ({ q }) => {
+            if (!machinesExist) {
+                await q(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                    ['CMP-001', 'Compresor Principal', 1, 'Atlas Copco', 'GA 37', 'Planta Baja', 'Operativo']);
+                await q(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                    ['BMB-001', 'Bomba de Vacío', 2, 'Edwards', 'E2M18', 'Planta Alta', 'Operativo']);
+                await q(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                    ['GEN-001', 'Generador Eléctrico', 3, 'Caterpillar', 'C9.3', 'Exterior', 'Operativo']);
+                await q(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                    ['TRN-001', 'Transportador de Cinta', 4, 'Hytrol', 'EZLogic', 'Línea 1', 'Mantenimiento']);
+                await q(`INSERT INTO machines (codigo, nombre, tipo_id, marca, modelo, ubicacion, estado_operativo) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                    ['MZC-001', 'Mezclador Industrial', 5, 'Hobart', 'HL800', 'Planta Baja', 'Operativo']);
+            }
 
-        if (Number(pmCount.rows[0].c) === 0) {
-            await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado) VALUES ($1,$2,$3,$4,$5)`,
-                [1, 1, '2026-08-15', 'Carlos Muñoz', 'Programada']);
-            await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado) VALUES ($1,$2,$3,$4,$5)`,
-                [1, 5, '2026-08-20', 'Carlos Muñoz', 'Programada']);
-            await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado, fecha_ejecutada) VALUES ($1,$2,$3,$4,$5,$6)`,
-                [2, 4, '2026-07-10', 'Pedro Soto', 'Completada', '2026-07-10']);
-            await query(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado, fecha_ejecutada) VALUES ($1,$2,$3,$4,$5,$6)`,
-                [3, 1, '2026-07-25', 'Carlos Muñoz', 'Completada', '2026-07-25']);
-            console.log('[SEED] Mantención preventiva insertada');
-        }
+            if (Number(pmCount.rows[0].c) === 0) {
+                await q(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado) VALUES ($1,$2,$3,$4,$5)`,
+                    [1, 1, '2026-08-15', 'Carlos Muñoz', 'Programada']);
+                await q(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado) VALUES ($1,$2,$3,$4,$5)`,
+                    [1, 5, '2026-08-20', 'Carlos Muñoz', 'Programada']);
+                await q(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado, fecha_ejecutada) VALUES ($1,$2,$3,$4,$5,$6)`,
+                    [2, 4, '2026-07-10', 'Pedro Soto', 'Completada', '2026-07-10']);
+                await q(`INSERT INTO preventive_maintenance (maquina_id, componente_id, fecha_programada, tecnico, estado, fecha_ejecutada) VALUES ($1,$2,$3,$4,$5,$6)`,
+                    [3, 1, '2026-07-25', 'Carlos Muñoz', 'Completada', '2026-07-25']);
+                console.log('[SEED] Mantención preventiva insertada');
+            }
 
-        if (Number(cmCount.rows[0].c) === 0) {
-            await query(`INSERT INTO corrective_maintenance (maquina_id, componente_id, fecha_falla, descripcion_falla, diagnostico, accion_correctiva, responsable, horas_detencion, estado) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-                [4, 2, '2026-07-28', 'Correa cortada', 'Desgaste natural', 'Reemplazo de correa', 'Pedro Soto', 4.5, 'Reparada']);
-            await query(`INSERT INTO corrective_maintenance (maquina_id, componente_id, fecha_falla, descripcion_falla, diagnostico, responsable, estado) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-                [5, 3, '2026-07-30', 'Ruido anormal en polea', 'Desalineación', 'Carlos Muñoz', 'En Mantención']);
-            console.log('[SEED] Mantención correctiva insertada');
-        }
+            if (Number(cmCount.rows[0].c) === 0) {
+                await q(`INSERT INTO corrective_maintenance (maquina_id, componente_id, fecha_falla, descripcion_falla, diagnostico, accion_correctiva, responsable, horas_detencion, estado) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+                    [4, 2, '2026-07-28', 'Correa cortada', 'Desgaste natural', 'Reemplazo de correa', 'Pedro Soto', 4.5, 'Reparada']);
+                await q(`INSERT INTO corrective_maintenance (maquina_id, componente_id, fecha_falla, descripcion_falla, diagnostico, responsable, estado) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+                    [5, 3, '2026-07-30', 'Ruido anormal en polea', 'Desalineación', 'Carlos Muñoz', 'En Mantención']);
+                console.log('[SEED] Mantención correctiva insertada');
+            }
 
-        if (Number(turnosCount.rows[0].c) === 0) {
-            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-                ['María González', 1, 'atendido', '2026-07-30']);
-            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-                ['Juan Pérez', 2, 'espera', '2026-07-30']);
-            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-                ['Ana López', 3, 'espera', '2026-07-30']);
-            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-                ['Pedro Martínez', 4, 'llamado', '2026-07-30']);
-            await query(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
-                ['Laura Soto', 5, 'espera', '2026-07-30']);
-            console.log('[SEED] Turnos insertados');
-        }
+            if (Number(turnosCount.rows[0].c) === 0) {
+                await q(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                    ['María González', 1, 'atendido', '2026-07-30']);
+                await q(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                    ['Juan Pérez', 2, 'espera', '2026-07-30']);
+                await q(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                    ['Ana López', 3, 'espera', '2026-07-30']);
+                await q(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                    ['Pedro Martínez', 4, 'llamado', '2026-07-30']);
+                await q(`INSERT INTO turnos (nombre, numero, estado, fecha) VALUES ($1,$2,$3,$4)`,
+                    ['Laura Soto', 5, 'espera', '2026-07-30']);
+                console.log('[SEED] Turnos insertados');
+            }
 
-        if (Number(movimientosCount.rows[0].c) === 0) {
-            await query(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-                [1, 'entrada', 'Clear', 6, 2000, 1500, 20, 60.0, 'Vidrios Chile', 'Compra mensual']);
-            await query(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, tipo_salida, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-                [1, 'salida', 'Clear', 6, 2000, 1500, 5, 15.0, 'Producción', 'Para orden PRD-001']);
-            await query(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-                [1, 'entrada', 'Templado', 8, 1800, 1200, 10, 21.6, 'Vidrios Chile', 'Pedido urgente']);
-            console.log('[SEED] Movimientos de inventario insertados');
-        }
+            if (Number(movimientosCount.rows[0].c) === 0) {
+                await q(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+                    [1, 'entrada', 'Clear', 6, 2000, 1500, 20, 60.0, 'Vidrios Chile', 'Compra mensual']);
+                await q(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, tipo_salida, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+                    [1, 'salida', 'Clear', 6, 2000, 1500, 5, 15.0, 'Producción', 'Para orden PRD-001']);
+                await q(`INSERT INTO movimientos (usuario_id, tipo_movimiento, tipo_cristal, espesor, ancho, alto, cantidad_planchas, metros_cuadrados, proveedor, observaciones) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+                    [1, 'entrada', 'Templado', 8, 1800, 1200, 10, 21.6, 'Vidrios Chile', 'Pedido urgente']);
+                console.log('[SEED] Movimientos de inventario insertados');
+            }
 
-        if (Number(pedidosCount.rows[0].c) === 0) {
-            await query(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
-                ['PED-2026-001', 'Vidriería Los Andes', 'vendedor@vidrieria.com', 'aprobado']);
-            await query(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
-                ['PED-2026-002', 'Constructora Sur', 'vendedor@vidrieria.com', 'pendiente']);
-            await query(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
-                ['PED-2026-003', 'Inmobiliaria Norte', 'vendedor2@vidrieria.com', 'aprobado']);
-            console.log('[SEED] Pedidos insertados');
-        }
+            if (Number(pedidosCount.rows[0].c) === 0) {
+                await q(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
+                    ['PED-2026-001', 'Vidriería Los Andes', 'vendedor@vidrieria.com', 'aprobado']);
+                await q(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
+                    ['PED-2026-002', 'Constructora Sur', 'vendedor@vidrieria.com', 'pendiente']);
+                await q(`INSERT INTO pedidos (numero_pedido, cliente, vendedor, estado) VALUES ($1,$2,$3,$4)`,
+                    ['PED-2026-003', 'Inmobiliaria Norte', 'vendedor2@vidrieria.com', 'aprobado']);
+                console.log('[SEED] Pedidos insertados');
+            }
 
-        if (Number(prodMachinesCount.rows[0].c) === 0) {
-            await query(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
-                ['Corte CNC', 'CNC-01', 'ACTIVA', 120.00, 'Corte']);
-            await query(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
-                ['Horno Templado', 'HT-01', 'ACTIVA', 80.00, 'Templado']);
-            await query(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
-                ['Laminadora', 'LAM-01', 'ACTIVA', 60.00, 'Laminado']);
-            console.log('[SEED] Máquinas de producción insertadas');
-        }
+            if (Number(prodMachinesCount.rows[0].c) === 0) {
+                await q(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
+                    ['Corte CNC', 'CNC-01', 'ACTIVA', 120.00, 'Corte']);
+                await q(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
+                    ['Horno Templado', 'HT-01', 'ACTIVA', 80.00, 'Templado']);
+                await q(`INSERT INTO produccion_maquinas (nombre, codigo, estado, capacidad_max_m2_dia, tipo_proceso) VALUES ($1,$2,$3,$4,$5)`,
+                    ['Laminadora', 'LAM-01', 'ACTIVA', 60.00, 'Laminado']);
+                console.log('[SEED] Máquinas de producción insertadas');
+            }
 
-        if (Number(prodOrdenesCount.rows[0].c) === 0) {
-            await query(`INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, estado_programacion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-                ['PED-2026-001', 'Vidriería Los Andes', 'VT-001', 'Vidrio templado 8mm', 1500, 1000, 1.5, 'EN PRODUCCIÓN']);
-            await query(`INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, estado_programacion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-                ['PED-2026-003', 'Inmobiliaria Norte', 'VL-001', 'Vidrio laminado 10mm', 2000, 1200, 2.4, 'PENDIENTE']);
-            console.log('[SEED] Órdenes de producción insertadas');
-        }
-
-        await query('COMMIT');
+            if (Number(prodOrdenesCount.rows[0].c) === 0) {
+                await q(`INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, estado_programacion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                    ['PED-2026-001', 'Vidriería Los Andes', 'VT-001', 'Vidrio templado 8mm', 1500, 1000, 1.5, 'EN PRODUCCIÓN']);
+                await q(`INSERT INTO produccion_ordenes (pedido_sap_id, cliente, codigo_producto, descripcion, ancho, alto, metros_cuadrados, estado_programacion) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                    ['PED-2026-003', 'Inmobiliaria Norte', 'VL-001', 'Vidrio laminado 10mm', 2000, 1200, 2.4, 'PENDIENTE']);
+                console.log('[SEED] Órdenes de producción insertadas');
+            }
+        });
         console.log('[SEED] Datos de negocio insertados exitosamente');
-    } catch(e) { await query('ROLLBACK'); console.error('[SEED] Error:', e.message); }
+    } catch (e) {
+        console.error('[SEED] Error:', e.message);
+    }
 }
 
 module.exports = { initDB, resetSequences, seedSigma, seedBusinessData };

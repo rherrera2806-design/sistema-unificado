@@ -173,7 +173,7 @@ const getTasaMerma = async (fechaInicio, fechaFin) => {
             SUM(m.costo_materia_prima) as costo_total,
             ROUND(
                 SUM(m.cantidad)::numeric / 
-                NULLIF((SELECT SUM(cantidad) FROM produccion_ordenes WHERE estado_programacion != 'CERRADA'), 0) * 100, 
+                NULLIF((SELECT SUM(cantidad) FROM produccion_ordenes WHERE estado_programacion != 'CERRADO'), 0) * 100, 
             2) as tasa_merma_porcentaje
         FROM mermas m
         LEFT JOIN estaciones_maestras em ON m.estacion_id = em.id
