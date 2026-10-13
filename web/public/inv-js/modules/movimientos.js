@@ -27,7 +27,7 @@ const InvMovimientos = {
             if (!resMp.ok) throw new Error(mpBody.error || mpBody.mensaje || ('HTTP ' + resMp.status));
             const mpData = mpBody;
             this._materiasPrimas = Array.isArray(mpData) ? mpData : [];
-            const mpOptions = this._materiasPrimas.map(mp => `<option value="${mp.id}" data-ancho="${mp.ancho_nal || 0}" data-alto="${mp.alto_nal || 0}" data-espesor="${mp.espesor_mm || 0}">${escText(mp.codigo_mp)} - ${escText(mp.nombre)} (${escText(mp.espesor_mm)}mm)</option>`).join('');
+            const mpOptions = this._materiasPrimas.map(mp => `<option value="${mp.id}" data-ancho="${mp.ancho_nal || 0}" data-alto="${mp.alto_nal || 0}" data-espesor="${mp.espesor_mm || 0}">${escText(mp.nombre)} (${escText(mp.espesor_mm)}mm)</option>`).join('');
 
             const ahora = new Date();
             const hoy = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0') + '-' + String(ahora.getDate()).padStart(2, '0');
