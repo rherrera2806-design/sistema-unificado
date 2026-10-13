@@ -886,7 +886,7 @@ App.registerModule('pedidos', {
                 const escala = Math.min((pagAncho - MARGEN * 2) / anchoImg, (pagAlto - MARGEN * 2) / altoImg);
                 const w = anchoImg * escala;
                 const h = altoImg * escala;
-                const conv = this._prepararImagen(img);
+                const conv = this._prepararImagen(img, foto);
                 pdf.addImage(conv.dataUrl, conv.format, (pagAncho - w) / 2, (pagAlto - h) / 2, w, h);
             }
             const blob = pdf.output('blob');
@@ -917,25 +917,30 @@ App.registerModule('pedidos', {
     // lado, alcanza para A4 a 300dpi) y se re-comprime a JPEG 0.85 para no
     // generar PDFs gigantes; si ya es pequeña se conserva tal cual (calidad
     // original, incluidos PNG con transparencia).
-    _prepararImagen(img) {
+    // Prepara la foto para el PDF: SIEMPRE pasa por canvas y devuelve un
+    // dataUrl real. Antes se devolvia img.src tal cual para imagenes livianas,
+    // pero al usar objectURL eso entregaba un 'blob:...' que jsPDF no puede
+    // incrustar -> paginas en blanco. Grande -> re-escala max. 2500px y JPEG
+    // 0.85; liviana -> calidad alta (PNG liviano se conserva con transparencia).
+    _prepararImagen(img, foto) {
         const LADO_MAX = 2500;
         const ancho = img.naturalWidth || img.width || 0;
         const alto = img.naturalHeight || img.height || 0;
         const largo = Math.max(ancho, alto);
-        const src = img.src || '';
-        const esPesada = largo > LADO_MAX || src.length > 2000000;   // ~1,5 MB en base64
-        if (!esPesada) {
-            return { dataUrl: src, format: (src.indexOf('data:image/png') === 0 ? 'PNG' : 'JPEG') };
-        }
+        const esPesada = largo > LADO_MAX;
         const escala = Math.min(1, LADO_MAX / (largo || 1));
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(ancho * escala));
         canvas.height = Math.max(1, Math.round(alto * escala));
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#ffffff';   // JPEG no soporta transparencia
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const esPng = !!(foto && foto.file && /image\/png/i.test(foto.file.type || ''));
+        if (!esPng) {
+            ctx.fillStyle = '#ffffff';   // JPEG no soporta transparencia
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        return { dataUrl: canvas.toDataURL('image/jpeg', 0.85), format: 'JPEG' };
+        if (esPng && !esPesada) return { dataUrl: canvas.toDataURL('image/png'), format: 'PNG' };
+        return { dataUrl: canvas.toDataURL('image/jpeg', esPesada ? 0.85 : 0.92), format: 'JPEG' };
     },
 
     // Chip del PDF generado: nombre · páginas · tamaño + Descargar/Editar fotos/Quitar.
