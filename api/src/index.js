@@ -72,7 +72,14 @@ app.get('/api/health', (req, res) => {
 
 app.use(require('./routes/router'));
 
-app.use(express.static(PUBLIC_DIR));
+// HTML sin caché (no-cache = revalida siempre): sin esto, el navegador guarda
+// un app.html viejo que apunta a los módulos con ?v= antiguos y cada deploy se
+// ve recién tras un Ctrl+F5. Los demás estáticos (js/css con ?v=) sí cachean.
+app.use(express.static(PUBLIC_DIR, {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+    }
+}));
 app.get('/{*path}', (req, res) => {
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });

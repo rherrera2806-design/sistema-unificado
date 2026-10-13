@@ -737,9 +737,11 @@ App.registerModule('pedidos', {
             + '</div></div>'
         ).join('');
         if (this._fotos.length < 20) {
-            // En móvil: dos accesos claros — DESDE GALERÍA o CÁMARA.
-            // En desktop: el tile único "Agregar fotos".
-            const esMovil = typeof window.matchMedia === 'function' && window.matchMedia('(max-width:768px)').matches;
+            // En móvil (o pantallas táctiles): dos accesos claros — DESDE GALERÍA
+            // o CÁMARA. Se detecta por ancho O por táctil para cubrir teléfonos
+            // en horizontal y tablets. En desktop de mouse: el tile único.
+            const esMovil = (typeof window.matchMedia === 'function' && window.matchMedia('(max-width:768px)').matches)
+                || (navigator.maxTouchPoints || 0) > 0;
             const iconoGaleria = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
             const iconoCamara = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
             if (esMovil) {
