@@ -271,7 +271,7 @@ App.registerModule('pedidos', {
                 + '<option value="" style="color:#1e293b;background:white">Mes</option>'
                 + '<option value="1" style="color:#1e293b;background:white">Ene</option><option value="2" style="color:#1e293b;background:white">Feb</option><option value="3" style="color:#1e293b;background:white">Mar</option><option value="4" style="color:#1e293b;background:white">Abr</option><option value="5" style="color:#1e293b;background:white">May</option><option value="6" style="color:#1e293b;background:white">Jun</option><option value="7" style="color:#1e293b;background:white">Jul</option><option value="8" style="color:#1e293b;background:white">Ago</option><option value="9" style="color:#1e293b;background:white">Sep</option><option value="10" style="color:#1e293b;background:white">Oct</option><option value="11" style="color:#1e293b;background:white">Nov</option><option value="12" style="color:#1e293b;background:white">Dic</option>'
                 + '</select>'
-                + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:13px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
+                + (showNew ? '<button onclick="App.modules.pedidos.showUploadModal()" class="btn btn-accent ped-btn-nuevo" style="white-space:nowrap;padding:8px 14px;font-size:13px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>' : '')
                 + '</div></div></div>'
 
                 + '<div id="pedStats" class="m-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px"></div>'
@@ -310,9 +310,21 @@ App.registerModule('pedidos', {
                 + '.m-cards-mobile{display:block!important}'
                 + '.m-table-wrap{display:none!important}'
                 + '.m-hero-btns{flex-wrap:wrap}'
-                + '.m-hero-btns .btn{height:40px;min-height:40px;flex:1}'
-                + '.m-stats{grid-template-columns:repeat(2,1fr)!important}'
-                + '.m-hero-btns select{padding:8px 10px}'
+                // Hero COMPACTO en movil: titulo pequeno y controles en 2 columnas
+                + '.m-hero{padding:10px 12px!important}'
+                + '.m-hero h2{font-size:13px!important}'
+                + '.m-hero p{font-size:9.5px!important;margin-top:1px!important}'
+                + '.m-hero-btns{display:grid!important;grid-template-columns:1fr 1fr;gap:6px}'
+                + '.m-hero-btns input{grid-column:1 / -1}'
+                + '.m-hero-btns .btn{height:34px;min-height:34px;padding:7px 10px;font-size:12px;flex:none}'
+                + '.m-hero-btns select,.m-hero-btns input{padding:7px 10px;font-size:12px}'
+                + '.m-hero-btns .ped-btn-nuevo{grid-column:1 / -1}'
+                // Stat cards discretas: numeros y etiquetas mas pequenos
+                + '.m-stats{grid-template-columns:repeat(2,1fr)!important;gap:6px!important}'
+                + '.m-stat-card{padding:8px 10px!important}'
+                + '.ped-stat-ic{width:26px!important;height:26px!important}'
+                + '.ped-stat-num{font-size:15px!important}'
+                + '.ped-stat-label{font-size:9px!important;margin-top:2px!important;letter-spacing:0.3px!important}'
                 // Móvil (mockup 390px): selector de opción apilado y grilla de fotos 2 columnas.
                 + '.ped-opt-row{grid-template-columns:1fr}'
                 + '.ped-fotos-grid{grid-template-columns:1fr 1fr}'
@@ -499,7 +511,7 @@ App.registerModule('pedidos', {
         const activeCls = active ? ' ped-card-active' : '';
         return '<div class="m-stat-card ' + cls + ' ped-card' + activeCls + '" style="animation:pedFadeUp 0.5s ease ' + delay + 'ms both" onclick="App.modules.pedidos.toggleStatFilter(\'' + (label === 'Total' ? '' : label.toLowerCase().replace(/s$/, '')) + '\')">'
             + '<div style="display:flex;align-items:center;gap:10px;position:relative;z-index:1">'
-            + '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
+            + '<div class="ped-stat-ic" style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,' + color + '15,' + color + '08);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid ' + color + '20">' + icon + '</div>'
             + '<div><div class="ped-stat-num" style="animation:pedCount 0.6s ease ' + (delay + 200) + 'ms both">' + this._fmtNum(value) + '</div>'
             + '<div class="ped-stat-label">' + label + '</div></div></div></div>';
     },
