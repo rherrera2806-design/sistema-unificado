@@ -45,6 +45,12 @@ const InvInventario = {
                 <button class="invp-btn invp-btn-primary" onclick="InvInventario.exportarExcel()">Exportar Excel</button>` : '';
 
             page.innerHTML = `
+                <style>
+                    /* Encabezado de tabla FIJO al hacer scroll: contenedor con
+                       scroll propio (mismo patron que la tabla de produccion.js) */
+                    .inv-table-scroll{overflow:auto;max-height:calc(100vh - 330px);min-height:220px;position:relative}
+                    .inv-table-scroll thead th{position:sticky;top:0;z-index:6;box-shadow:0 1px 0 var(--invp-line)}
+                </style>
                 <div class="inv-pro">
                     <div class="invp-hero">
                         <div>
@@ -105,7 +111,7 @@ const InvInventario = {
         if (verS) headers += '<th class="num">Consumo/mes</th><th class="num">Autonomía</th>';
         headers += '<th class="num">M² en stock</th><th>Estado</th>';
 
-        let tableHtml = '<div class="m-table-wrap"><table class="invp-table" id="invTable"><thead><tr>' + headers + '</tr></thead><tbody>';
+        let tableHtml = '<div class="m-table-wrap inv-table-scroll"><table class="invp-table" id="invTable"><thead><tr>' + headers + '</tr></thead><tbody>';
 
         this._allItems.forEach(function (i) {
             const est = self._estado(i);
