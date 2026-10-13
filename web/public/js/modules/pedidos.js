@@ -334,8 +334,8 @@ App.registerModule('pedidos', {
     },
 
     uploadModalHtml() {
-        return '<div id="pedUploadModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center">'
-            + '<div style="background:white;border-radius:16px;width:500px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:pedFadeUp 0.3s ease both">'
+        return '<div id="pedUploadModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0">'
+            + '<div style="background:white;border-radius:16px;width:500px;max-width:95vw;max-height:calc(100vh - 32px);overflow-y:auto;margin:auto;box-shadow:0 24px 64px rgba(0,0,0,0.3);animation:pedFadeUp 0.3s ease both">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;padding:24px 28px;border-bottom:1px solid #e2e8f0">'
             + '<div style="display:flex;align-items:center;gap:12px">'
             + '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#eff6ff,#bfdbfe);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>'
@@ -728,7 +728,7 @@ App.registerModule('pedidos', {
         if (!grid) return;
         let html = this._fotos.map((f, i) =>
             '<div class="ped-foto">'
-            + '<img src="' + escAttr(f.dataUrl) + '" alt="' + escAttr(f.nombre) + '">'
+            + '<img src="' + escAttr(f.url) + '" alt="' + escAttr(f.nombre) + '">'
             + '<div class="ped-foto-n">' + escText(f.nombre) + '</div>'
             + '<div class="ped-foto-ops">'
             + '<button type="button" title="Subir" onclick="App.modules.pedidos.moverFoto(' + i + ',-1)">↑</button>'
@@ -760,12 +760,16 @@ App.registerModule('pedidos', {
 
     handleFotosSelect(e) {
         const files = Array.from(e.target.files || []);
+        if (this._agregandoFotos) return;   // guarda anti re-entrancia
+        if (!files.length) return;
         e.target.value = '';   // permitir volver a elegir los mismos archivos
         this._agregarFotos(files);
     },
 
     // Agrega imágenes al FINAL de la lista (máx. 20 en total), con aviso si se pasa.
     async _agregarFotos(files) {
+        this._agregandoFotos = true;
+        try {
         const imagenes = files.filter(f => /^image\//i.test(f.type) || /\.(jpe?g|png)$/i.test(f.name || ''));
         if (!imagenes.length) { App.toast('Solo se aceptan imágenes JPG o PNG', 'error'); return; }
         const espacio = 20 - this._fotos.length;
@@ -782,21 +786,20 @@ App.registerModule('pedidos', {
             }
         }
         this._pintarFotos();
+        } finally {
+            this._agregandoFotos = false;
+        }
     },
 
-    // Lee la foto como dataUrl y cachea sus dimensiones naturales.
+    // Crea una miniatura LIGERA (objectURL, no base64: con dataUrl el innerHTML
+    // pesaba megabytes y la vista parpadeaba en movil) y cachea las dimensiones.
     _leerImagen(file) {
         return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onerror = () => reject(new Error('error de lectura'));
-            reader.onload = () => {
-                const dataUrl = reader.result;
-                const img = new Image();
-                img.onload = () => resolve({ nombre: file.name || 'foto', dataUrl: dataUrl, w: img.naturalWidth, h: img.naturalHeight });
-                img.onerror = () => reject(new Error('imagen inválida'));
-                img.src = dataUrl;
-            };
-            reader.readAsDataURL(file);
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => resolve({ nombre: file.name || 'foto', file: file, url: url, w: img.naturalWidth, h: img.naturalHeight });
+            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('imagen invalida')); };
+            img.src = url;
         });
     },
 
@@ -811,6 +814,8 @@ App.registerModule('pedidos', {
 
     quitarFoto(i) {
         if (i < 0 || i >= this._fotos.length) return;
+        const fuera = this._fotos[i];
+        if (fuera && fuera.url) URL.revokeObjectURL(fuera.url);
         this._fotos.splice(i, 1);
         this._pintarFotos();
     },
@@ -860,7 +865,7 @@ App.registerModule('pedidos', {
             let pdf = null;
             for (let i = 0; i < this._fotos.length; i++) {
                 const foto = this._fotos[i];
-                const img = await this._cargarImagen(foto.dataUrl);
+                const img = await this._cargarImagen(foto.url);
                 const anchoImg = foto.w || img.naturalWidth;
                 const altoImg = foto.h || img.naturalHeight;
                 // Orientación según la imagen: ancho > alto → horizontal.
@@ -968,6 +973,7 @@ App.registerModule('pedidos', {
     // Limpieza total del estado de adjuntos (tras "Subir Pedido" exitoso o "Quitar").
     _limpiarAdjuntos() {
         this.selectedFile = null;
+        (this._fotos || []).forEach(f => { if (f && f.url) URL.revokeObjectURL(f.url); });
         this._fotos = [];
         this._pdfGenerado = null;
         this._modoAdjunto = 'pdf';
