@@ -1222,7 +1222,9 @@ App.registerModule('pedidos', {
     },
 
     viewPdf(id) {
-        window.open('/api/pedidos/' + (Number(id) || 0) + '/pdf', '_blank');
+        // ?t= rompe la caché del navegador móvil (aún con respuestas viejas
+        // cacheadas con max-age): siempre se pide el documento actual.
+        window.open('/api/pedidos/' + (Number(id) || 0) + '/pdf?t=' + Date.now(), '_blank');
     },
 
     async deletePedido(id, numero) {

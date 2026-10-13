@@ -339,7 +339,12 @@ function crearRutaPdf(disposition) {
                 res.setHeader('Content-Type', 'application/pdf');
                 res.setHeader('Content-Disposition', `${disposition}; filename="${nombreArchivoPdf(row.numero_pedido)}"`);
                 // private: el PDF tiene datos de clientes, no debe quedar en caché compartida
-                res.setHeader('Cache-Control', 'private, max-age=3600');
+                // PDFs NUNCA se cachean: el contenido cambia al editar/re-adjuntar un
+    // pedido (misma URL, distinto documento) y la caché móvil mostraba el PDF
+    // antiguo. no-store + revalidación obligatoria en todos los navegadores.
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
                 return res.end(row.archivo_pdf);
             }
             if (row.archivo_url) {
