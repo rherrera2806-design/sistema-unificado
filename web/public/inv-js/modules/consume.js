@@ -71,7 +71,7 @@ const InvConsume = {
 
                 <div class="m-card" style="margin-bottom:16px">
                     <div class="cc-card-title">Consumo mensual por material</div>
-                    <div class="m-table-wrap inv-scroll-wrap" id="consumeTableWrap">${this._consumoHtml()}</div>
+                    <div class="m-table-wrap inv-scroll-wrap inv-table-scroll" id="consumeTableWrap">${this._consumoHtml()}</div>
                 </div>
                 </div>`;
         } catch (err) {
@@ -247,7 +247,7 @@ const InvConsume = {
                 + '</div>';
         }
 
-        return '<div class="m-table-wrap inv-scroll-wrap inv-scroll-wrap--wide">'
+        return '<div class="m-table-wrap inv-scroll-wrap inv-scroll-wrap--wide inv-table-scroll">'
             + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
             + '<th class="cc-th cc-sticky" style="text-align:left;min-width:56px">SAP</th>'
             + '<th class="cc-th cc-sticky-2" style="text-align:left;min-width:110px">Material</th>'

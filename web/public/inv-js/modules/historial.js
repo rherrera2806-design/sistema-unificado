@@ -137,7 +137,7 @@ const InvHistorial = {
         };
 
         // ---------- Tabla desktop ----------
-        let tableHtml = '<div class="m-table-wrap"><table class="invp-table" id="hTable"><thead><tr>'
+        let tableHtml = '<div class="m-table-wrap inv-table-scroll"><table class="invp-table" id="hTable"><thead><tr>'
             + '<th>Fecha</th><th>Hora</th><th>Tipo</th><th>Código</th><th>Cristal</th><th class="num">Espesor</th><th>Medida</th><th class="num">Cantidad</th><th class="num">M²</th><th>Proveedor</th><th>Usuario</th><th>Obs</th>'
             + (canEdit || canDel ? '<th>Acciones</th>' : '')
             + '</tr></thead><tbody>';

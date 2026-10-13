@@ -134,6 +134,12 @@
 }
 
 /* ── Cards Grid ── */
+/* ===== Utilidad compartida: encabezado de tabla FIJO al hacer scroll =====
+   Uso: envolver la tabla en <div class="... inv-table-scroll">. El fondo lo
+   aporta cada sistema de estilos (invp-table, cc-th) o blanco por defecto. */
+.inv-table-scroll{overflow:auto;max-height:calc(100vh - 330px);min-height:220px;position:relative;-webkit-overflow-scrolling:touch}
+.inv-table-scroll thead th{position:sticky;top:0;z-index:6;background:#fff}
+
 .m-cards-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
