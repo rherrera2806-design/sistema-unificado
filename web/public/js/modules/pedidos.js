@@ -386,6 +386,7 @@ App.registerModule('pedidos', {
             + '</div>'
             + '<div id="pedPdfChip" class="ped-file-chip" style="display:none"></div>'
             + '<input type="file" id="pedFotosInput" accept="image/*" multiple style="display:none" onchange="App.modules.pedidos.handleFotosSelect(event)">'
+            + '<input type="file" id="pedFotosCamara" accept="image/*" capture="environment" style="display:none" onchange="App.modules.pedidos.handleFotosSelect(event)">'
             + '</div></div></div>'
             + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
                 + '<button onclick="App.modules.pedidos.hideUploadModal()" class="btn btn-outline">Cancelar</button>'
@@ -736,9 +737,21 @@ App.registerModule('pedidos', {
             + '</div></div>'
         ).join('');
         if (this._fotos.length < 20) {
-            html += '<div class="ped-foto-add" onclick="document.getElementById(\'pedFotosInput\').click()">'
-                + '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
-                + 'Agregar fotos</div>';
+            // En móvil: dos accesos claros — DESDE GALERÍA o CÁMARA.
+            // En desktop: el tile único "Agregar fotos".
+            const esMovil = typeof window.matchMedia === 'function' && window.matchMedia('(max-width:768px)').matches;
+            const iconoGaleria = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+            const iconoCamara = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+            if (esMovil) {
+                html += '<div class="ped-foto-add" onclick="document.getElementById(\'pedFotosInput\').click()">'
+                    + iconoGaleria + 'Desde galería</div>'
+                    + '<div class="ped-foto-add" onclick="document.getElementById(\'pedFotosCamara\').click()">'
+                    + iconoCamara + 'Cámara</div>';
+            } else {
+                html += '<div class="ped-foto-add" onclick="document.getElementById(\'pedFotosInput\').click()">'
+                    + '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+                    + 'Agregar fotos</div>';
+            }
         }
         grid.innerHTML = html;
     },
