@@ -21,6 +21,11 @@ App.registerModule('pedidos', {
     currentPedido: null,
     selectedFile: null,      // PDF elegido en el modal de "Nuevo Pedido"
     editFile: null,          // PDF elegido en el modal de edición (opcional)
+    // ── "Crear desde fotos" (modal de Nuevo Pedido) ──
+    _fotos: [],              // [{ nombre, dataUrl, w, h }] en el orden de las páginas
+    _modoAdjunto: 'pdf',     // 'pdf' (adjuntar archivo) | 'fotos' (crear desde fotos)
+    _pdfGenerado: null,      // { file, paginas, bytes } — PDF armado desde las fotos
+    _jspdfProm: null,        // Promesa cacheada de carga perezosa de jsPDF
     uploading: false,
     _ocupado: false,         // Guard anti doble-submit de aprobar/rechazar/editar/eliminar
     _filterTimer: null,
@@ -98,9 +103,19 @@ App.registerModule('pedidos', {
         return isNaN(v) ? String(n == null ? '' : n) : v.toLocaleString('es-CL');
     },
 
-    // Descarga SEGURA de un blob: fetch → blob → objectURL → link.click(),
-    // esperando a que el navegador procese la descarga antes de liberar la
-    // URL (revocarla demasiado pronto corta la descarga).
+    // Descarga de un archivo local (File/Blob): objectURL → link.click() →
+    // revokeObjectURL tras un breve delay (revocar demasiado pronto corta la
+    // descarga). Lo usa el botón "Descargar" del PDF generado desde fotos.
+    _descargarArchivo(archivo, nombre) {
+        const url = URL.createObjectURL(archivo);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = String(nombre || 'documento.pdf').replace(/[\\/:*?"<>|]/g, '_');
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => { link.remove(); URL.revokeObjectURL(url); }, 1500);
+    },
 
     // Acciones disponibles para un pedido según su estado y los permisos del
     // usuario. Fuente única para el dropdown de la tabla y las cards móviles.
@@ -205,6 +220,32 @@ App.registerModule('pedidos', {
                 + '.ped-chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}'
                 + '.ped-stat-num{font-size:20px;font-weight:700;color:#0f172a;line-height:1}'
                 + '.ped-stat-label{font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}'
+                // ── "Crear desde fotos" (mockup diseno-crearpdf-v1, paleta del modal) ──
+                // Selector de opción tipo tarjeta (aria-pressed).
+                + '.ped-opt-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}'
+                + '.ped-opt{display:flex;gap:10px;align-items:center;padding:12px 13px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;text-align:left;font-family:inherit}'
+                + '.ped-opt[aria-pressed="true"]{border-color:#2563eb;background:#eff6ff}'
+                + '.ped-opt-ic{width:32px;height:32px;border-radius:8px;background:#f1f5f9;color:#64748b;display:flex;align-items:center;justify-content:center;flex-shrink:0}'
+                + '.ped-opt[aria-pressed="true"] .ped-opt-ic{background:#2563eb;color:#fff}'
+                + '.ped-opt-t{font-size:13px;font-weight:700;color:#0f172a;display:block}'
+                + '.ped-opt-d{font-size:10px;color:#94a3b8;display:block}'
+                // Miniaturas de fotos (una por página del PDF).
+                + '.ped-fotos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}'
+                + '.ped-foto{position:relative;border:1px solid #e2e8f0;border-radius:9px;overflow:hidden;background:#f1f5f9;aspect-ratio:4/3}'
+                + '.ped-foto img{width:100%;height:100%;object-fit:cover;display:block}'
+                + '.ped-foto-n{position:absolute;left:0;right:0;bottom:0;background:rgba(15,23,42,0.62);color:#fff;font-size:10px;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+                + '.ped-foto-ops{position:absolute;top:5px;right:5px;display:flex;gap:3px}'
+                + '.ped-foto-ops button{width:21px;height:21px;padding:0;line-height:1;border:none;border-radius:6px;background:rgba(255,255,255,0.94);display:flex;align-items:center;justify-content:center;font-size:11px;color:#64748b;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.16)}'
+                + '.ped-foto-ops .ped-foto-del{color:#dc2626}'
+                + '.ped-foto-add{border:1.5px dashed #cbd5e1;border-radius:9px;aspect-ratio:4/3;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;cursor:pointer;background:#fbfcfe;font-weight:600}'
+                + '.ped-gen-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}'
+                // Chip del PDF generado (nombre · páginas · tamaño + acciones).
+                + '.ped-file-chip{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#eff6ff;margin-top:14px;flex-wrap:wrap}'
+                + '.ped-file-chip .ped-chip-ic{width:36px;height:36px;border-radius:9px;background:#dbeafe;color:#2563eb;display:flex;align-items:center;justify-content:center;flex-shrink:0}'
+                + '.ped-chip-nm{font-size:13px;font-weight:700;color:#0f172a;word-break:break-all}'
+                + '.ped-chip-sub{font-size:10px;color:#64748b;margin-top:1px}'
+                + '.ped-chip-acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}'
+                + '.ped-chip-btn{padding:7px 12px;font-size:11px}'
                 + '.ped-actions-btn{width:32px;height:32px;border-radius:8px;border:1px solid #e2e8f0;background:white;cursor:pointer;font-size:15px;color:#64748b;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s}'
                 + '.ped-actions-btn:hover{background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}'
                 + '.ped-dropdown{display:none;background:white;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:9999;min-width:140px;padding:4px;overflow:hidden}'
@@ -272,6 +313,11 @@ App.registerModule('pedidos', {
                 + '.m-hero-btns .btn{height:40px;min-height:40px;flex:1}'
                 + '.m-stats{grid-template-columns:repeat(2,1fr)!important}'
                 + '.m-hero-btns select{padding:8px 10px}'
+                // Móvil (mockup 390px): selector de opción apilado y grilla de fotos 2 columnas.
+                + '.ped-opt-row{grid-template-columns:1fr}'
+                + '.ped-fotos-grid{grid-template-columns:1fr 1fr}'
+                + '.ped-gen-row{grid-template-columns:1fr}'
+                + '.ped-btn-gen{width:100%}'
                 + '}'
                 + '</style>';
 
@@ -309,12 +355,38 @@ App.registerModule('pedidos', {
             + '<option value="Urgencia" style="background:#f97316;color:white;font-weight:700">Urgencia</option>'
             + '</select></div>'
             + '<div><label class="ped-label">PDF del Pedido *</label>'
+            // Selector de opción tipo tarjeta (mockup diseno-crearpdf-v1).
+            + '<div class="ped-opt-row">'
+            + '<button type="button" id="pedOptPdf" class="ped-opt" aria-pressed="true" onclick="App.modules.pedidos.setModoAdjunto(\'pdf\')">'
+            + '<span class="ped-opt-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>'
+            + '<span><span class="ped-opt-t">Adjuntar PDF</span><span class="ped-opt-d">Arrastra o selecciona un archivo</span></span>'
+            + '</button>'
+            + '<button type="button" id="pedOptFotos" class="ped-opt" aria-pressed="false" onclick="App.modules.pedidos.setModoAdjunto(\'fotos\')">'
+            + '<span class="ped-opt-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>'
+            + '<span><span class="ped-opt-t">Crear desde fotos</span><span class="ped-opt-d">Las une en un solo PDF</span></span>'
+            + '</button>'
+            + '</div>'
+            // Opción A: drop zone actual (sin cambios).
+            + '<div id="pedBloquePdf">'
             + '<div id="pedUploadArea" onclick="document.getElementById(\'pedFileInput\').click()" style="border:2px dashed #cbd5e1;border-radius:12px;padding:36px;text-align:center;cursor:pointer;transition:all 0.3s;background:#f8fafc">'
             + '<div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#eff6ff,#dbeafe);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 4px 12px rgba(59,130,246,0.15)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>'
             + '<div style="color:#64748b;font-size:13px;font-weight:500">Arrastra un PDF aqui o haz clic para seleccionar</div>'
             + '<div class="ped-nota" style="margin-top:4px">Solo archivos PDF (máximo 50 MB)</div>'
             + '<div id="pedUploadFilename" style="display:none;margin-top:14px;padding:8px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-weight:600;font-size:13px"></div></div>'
-            + '<input type="file" id="pedFileInput" accept=".pdf,application/pdf" style="display:none" onchange="App.modules.pedidos.handleFileSelect(event)"></div></div>'
+            + '<input type="file" id="pedFileInput" accept=".pdf,application/pdf" style="display:none" onchange="App.modules.pedidos.handleFileSelect(event)">'
+            + '</div>'
+            // Opción B: crear desde fotos (fotos → un solo PDF, una foto por página).
+            + '<div id="pedBloqueFotos" style="display:none">'
+            + '<div id="pedFotosGrid" class="ped-fotos-grid"></div>'
+            + '<div class="ped-nota" style="margin:2px 0 14px">JPG o PNG · Se unirán en el orden mostrado (usa ↑ ↓) · Máx. 20 fotos</div>'
+            + '<div class="ped-gen-row">'
+            + '<div><label class="ped-label">Nombre del PDF *</label>'
+            + '<input type="text" id="pedPdfNombre" placeholder="Ej: OV-12345 Cliente" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
+            + '<button type="button" class="btn btn-primary ped-btn-gen" onclick="App.modules.pedidos.generarPdfDesdeFotos()">Generar PDF</button>'
+            + '</div>'
+            + '<div id="pedPdfChip" class="ped-file-chip" style="display:none"></div>'
+            + '<input type="file" id="pedFotosInput" accept="image/*" multiple style="display:none" onchange="App.modules.pedidos.handleFotosSelect(event)">'
+            + '</div></div></div>'
             + '<div style="display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:0 0 16px 16px">'
                 + '<button onclick="App.modules.pedidos.hideUploadModal()" class="btn btn-outline">Cancelar</button>'
                 + '<button onclick="App.modules.pedidos.upload()" class="btn btn-primary">Subir Pedido</button>'
@@ -550,10 +622,19 @@ App.registerModule('pedidos', {
         document.getElementById('pedNumero').value = '';
         document.getElementById('pedCliente').value = '';
         document.getElementById('pedTipoOV').value = 'Normal';
-        document.getElementById('pedUploadFilename').style.display = 'none';
-        document.getElementById('pedUploadArea').style.borderColor = '#cbd5e1';
-        document.getElementById('pedUploadArea').style.background = '#f8fafc';
-        this.selectedFile = null;
+        // El modo de adjunto y las fotos en curso persisten al reabrir el modal
+        // (para poder "Editar fotos"); el estado completo se limpia tras un
+        // "Subir Pedido" exitoso (_limpiarAdjuntos).
+        if (this._fotos.length === 0 && !this._pdfGenerado) {
+            this.selectedFile = null;
+            const fname = document.getElementById('pedUploadFilename');
+            if (fname) fname.style.display = 'none';
+            const area = document.getElementById('pedUploadArea');
+            if (area) { area.style.borderColor = '#cbd5e1'; area.style.background = '#f8fafc'; }
+            const nom = document.getElementById('pedPdfNombre');
+            if (nom) nom.value = '';
+        }
+        this._pintarModoAdjunto();
     },
     hideUploadModal() { document.getElementById('pedUploadModal').style.display = 'none'; },
 
@@ -581,6 +662,11 @@ App.registerModule('pedidos', {
         const error = this._validarPdf(file);
         if (error) { App.toast(error, 'error'); return; }
         this.selectedFile = file;
+        // Un archivo elegido a mano reemplaza cualquier PDF generado desde fotos
+        // (generarPdfDesdeFotos vuelve a asignar _pdfGenerado DESPUÉS de pasar
+        // por aquí, así el chip siempre refleja el archivo real).
+        this._pdfGenerado = null;
+        this._pintarPdfChip();
         const fname = document.getElementById('pedUploadFilename');
         if (fname) {
             fname.textContent = file.name + ' (' + this._fmtTamano(file.size) + ')';
@@ -608,6 +694,276 @@ App.registerModule('pedidos', {
         }
     },
 
+    // ────────────────── "Crear desde fotos" (modal de Nuevo Pedido) ──────────────────
+    // Sube fotos (JPG/PNG) → las une en un SOLO PDF (una foto por página A4) →
+    // el PDF pasa por handleFile() y queda adjunto como this.selectedFile.
+
+    // Alterna "Adjuntar PDF" / "Crear desde fotos" (aria-pressed + bloques).
+    setModoAdjunto(modo) {
+        this._modoAdjunto = (modo === 'fotos') ? 'fotos' : 'pdf';
+        this._pintarModoAdjunto();
+    },
+
+    _pintarModoAdjunto() {
+        const esFotos = this._modoAdjunto === 'fotos';
+        const btnPdf = document.getElementById('pedOptPdf');
+        const btnFotos = document.getElementById('pedOptFotos');
+        if (btnPdf) btnPdf.setAttribute('aria-pressed', esFotos ? 'false' : 'true');
+        if (btnFotos) btnFotos.setAttribute('aria-pressed', esFotos ? 'true' : 'false');
+        const bloquePdf = document.getElementById('pedBloquePdf');
+        const bloqueFotos = document.getElementById('pedBloqueFotos');
+        if (bloquePdf) bloquePdf.style.display = esFotos ? 'none' : '';
+        if (bloqueFotos) bloqueFotos.style.display = esFotos ? '' : 'none';
+        // El chip se repinta siempre: al volver a "Adjuntar PDF" no debe quedar
+        // un estado "generado" colgado.
+        this._pintarFotos();
+        this._pintarPdfChip();
+    },
+
+    // Grilla de miniaturas: nombre (escText) + subir/bajar/quitar. El tile
+    // "Agregar fotos" va al final mientras haya espacio (máx. 20 fotos).
+    _pintarFotos() {
+        const grid = document.getElementById('pedFotosGrid');
+        if (!grid) return;
+        let html = this._fotos.map((f, i) =>
+            '<div class="ped-foto">'
+            + '<img src="' + escAttr(f.dataUrl) + '" alt="' + escAttr(f.nombre) + '">'
+            + '<div class="ped-foto-n">' + escText(f.nombre) + '</div>'
+            + '<div class="ped-foto-ops">'
+            + '<button type="button" title="Subir" onclick="App.modules.pedidos.moverFoto(' + i + ',-1)">↑</button>'
+            + '<button type="button" title="Bajar" onclick="App.modules.pedidos.moverFoto(' + i + ',1)">↓</button>'
+            + '<button type="button" class="ped-foto-del" title="Quitar" onclick="App.modules.pedidos.quitarFoto(' + i + ')">×</button>'
+            + '</div></div>'
+        ).join('');
+        if (this._fotos.length < 20) {
+            html += '<div class="ped-foto-add" onclick="document.getElementById(\'pedFotosInput\').click()">'
+                + '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+                + 'Agregar fotos</div>';
+        }
+        grid.innerHTML = html;
+    },
+
+    handleFotosSelect(e) {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';   // permitir volver a elegir los mismos archivos
+        this._agregarFotos(files);
+    },
+
+    // Agrega imágenes al FINAL de la lista (máx. 20 en total), con aviso si se pasa.
+    async _agregarFotos(files) {
+        const imagenes = files.filter(f => /^image\//i.test(f.type) || /\.(jpe?g|png)$/i.test(f.name || ''));
+        if (!imagenes.length) { App.toast('Solo se aceptan imágenes JPG o PNG', 'error'); return; }
+        const espacio = 20 - this._fotos.length;
+        if (espacio <= 0) { App.toast('Máximo 20 fotos. Quita alguna antes de agregar más.', 'error'); return; }
+        const aProcesar = imagenes.slice(0, espacio);
+        if (aProcesar.length < imagenes.length) {
+            App.toast('Máximo 20 fotos: solo se agregaron ' + this._fmtNum(aProcesar.length) + ' de ' + this._fmtNum(imagenes.length), 'error');
+        }
+        for (const file of aProcesar) {
+            try {
+                this._fotos.push(await this._leerImagen(file));
+            } catch (e) {
+                App.toast('No se pudo leer la imagen "' + file.name + '"', 'error');
+            }
+        }
+        this._pintarFotos();
+    },
+
+    // Lee la foto como dataUrl y cachea sus dimensiones naturales.
+    _leerImagen(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('error de lectura'));
+            reader.onload = () => {
+                const dataUrl = reader.result;
+                const img = new Image();
+                img.onload = () => resolve({ nombre: file.name || 'foto', dataUrl: dataUrl, w: img.naturalWidth, h: img.naturalHeight });
+                img.onerror = () => reject(new Error('imagen inválida'));
+                img.src = dataUrl;
+            };
+            reader.readAsDataURL(file);
+        });
+    },
+
+    moverFoto(i, delta) {
+        const j = i + delta;
+        if (i < 0 || i >= this._fotos.length || j < 0 || j >= this._fotos.length) return;
+        const tmp = this._fotos[i];
+        this._fotos[i] = this._fotos[j];
+        this._fotos[j] = tmp;
+        this._pintarFotos();
+    },
+
+    quitarFoto(i) {
+        if (i < 0 || i >= this._fotos.length) return;
+        this._fotos.splice(i, 1);
+        this._pintarFotos();
+    },
+
+    // Carga perezosa de jsPDF (/js/libs/jspdf.umd.min.js → window.jspdf.jsPDF).
+    // La promesa se cachea: el <script> se inyecta UNA sola vez, solo cuando el
+    // usuario elige "Crear desde fotos" y genera.
+    _cargarJsPdf() {
+        if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+        if (this._jspdfProm) return this._jspdfProm;
+        this._jspdfProm = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = '/js/libs/jspdf.umd.min.js';
+            s.onload = () => {
+                if (window.jspdf && window.jspdf.jsPDF) resolve(window.jspdf.jsPDF);
+                else reject(new Error('jsPDF no quedó disponible'));
+            };
+            s.onerror = () => reject(new Error('no se pudo cargar la librería de PDF'));
+            document.head.appendChild(s);
+            setTimeout(() => reject(new Error('tiempo de espera agotado')), 8000);
+        }).catch(err => {
+            this._jspdfProm = null;   // si falló la carga, permitir reintentar
+            throw err;
+        });
+        return this._jspdfProm;
+    },
+
+    // Une las fotos en un solo PDF (una foto por página A4) y lo deja adjunto.
+    async generarPdfDesdeFotos() {
+        if (this._ocupado) return;
+        if (this._fotos.length === 0) { App.toast('Agrega al menos una foto para generar el PDF', 'error'); return; }
+        // Nombre del PDF: lo que escriba el usuario, o OV-<numero_pedido> por defecto.
+        const numero = ((document.getElementById('pedNumero') || {}).value || '').trim();
+        const escrito = ((document.getElementById('pedPdfNombre') || {}).value || '').trim();
+        const base = (escrito || ('OV-' + (numero || 'pedido'))).replace(/\.pdf$/i, '').replace(/[\\/:*?"<>|]/g, '_').trim();
+        this._ocupado = true;
+        try {
+            let JsPdf;
+            try {
+                JsPdf = await this._cargarJsPdf();
+            } catch (e) {
+                App.toast('No se pudo cargar el generador de PDF (' + e.message + '). Recarga la página e inténtalo de nuevo.', 'error');
+                return;
+            }
+            const A4 = { ancho: 210, alto: 297 };   // mm
+            const MARGEN = 10;                      // mm por lado
+            let pdf = null;
+            for (let i = 0; i < this._fotos.length; i++) {
+                const foto = this._fotos[i];
+                const img = await this._cargarImagen(foto.dataUrl);
+                const anchoImg = foto.w || img.naturalWidth;
+                const altoImg = foto.h || img.naturalHeight;
+                // Orientación según la imagen: ancho > alto → horizontal.
+                const horizontal = anchoImg > altoImg;
+                const pagAncho = horizontal ? A4.alto : A4.ancho;
+                const pagAlto = horizontal ? A4.ancho : A4.alto;
+                const orient = horizontal ? 'landscape' : 'portrait';
+                if (!pdf) pdf = new JsPdf({ orientation: orient, unit: 'mm', format: 'a4' });
+                else pdf.addPage('a4', orient);
+                // Una foto por página, centrada y sin deformar (márgenes ~10mm).
+                const escala = Math.min((pagAncho - MARGEN * 2) / anchoImg, (pagAlto - MARGEN * 2) / altoImg);
+                const w = anchoImg * escala;
+                const h = altoImg * escala;
+                const conv = this._prepararImagen(img);
+                pdf.addImage(conv.dataUrl, conv.format, (pagAncho - w) / 2, (pagAlto - h) / 2, w, h);
+            }
+            const blob = pdf.output('blob');
+            const file = new File([blob], (base || 'OV-pedido') + '.pdf', { type: 'application/pdf' });
+            // MISMO camino que un PDF adjuntado: valida tamaño/tipo y setea selectedFile.
+            this.handleFile(file);
+            if (this.selectedFile !== file) return;   // la validación lo rechazó (ya hubo toast)
+            this._pdfGenerado = { file: file, paginas: this._fotos.length, bytes: file.size };
+            this._pintarPdfChip();
+            App.toast('PDF generado: ' + this._fmtNum(this._fotos.length) + (this._fotos.length === 1 ? ' página' : ' páginas'));
+        } catch (e) {
+            App.toast('No se pudo generar el PDF: ' + e.message, 'error');
+        } finally {
+            this._ocupado = false;
+        }
+    },
+
+    _cargarImagen(src) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error('no se pudo leer una de las fotos'));
+            img.src = src;
+        });
+    },
+
+    // Prepara la foto para el PDF: si es grande se re-escala (máx. 2500px de
+    // lado, alcanza para A4 a 300dpi) y se re-comprime a JPEG 0.85 para no
+    // generar PDFs gigantes; si ya es pequeña se conserva tal cual (calidad
+    // original, incluidos PNG con transparencia).
+    _prepararImagen(img) {
+        const LADO_MAX = 2500;
+        const ancho = img.naturalWidth || img.width || 0;
+        const alto = img.naturalHeight || img.height || 0;
+        const largo = Math.max(ancho, alto);
+        const src = img.src || '';
+        const esPesada = largo > LADO_MAX || src.length > 2000000;   // ~1,5 MB en base64
+        if (!esPesada) {
+            return { dataUrl: src, format: (src.indexOf('data:image/png') === 0 ? 'PNG' : 'JPEG') };
+        }
+        const escala = Math.min(1, LADO_MAX / (largo || 1));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(ancho * escala));
+        canvas.height = Math.max(1, Math.round(alto * escala));
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';   // JPEG no soporta transparencia
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        return { dataUrl: canvas.toDataURL('image/jpeg', 0.85), format: 'JPEG' };
+    },
+
+    // Chip del PDF generado: nombre · páginas · tamaño + Descargar/Editar fotos/Quitar.
+    _pintarPdfChip() {
+        const chip = document.getElementById('pedPdfChip');
+        if (!chip) return;
+        const g = this._pdfGenerado;
+        if (!g || !g.file) { chip.style.display = 'none'; chip.innerHTML = ''; return; }
+        chip.innerHTML = '<span class="ped-chip-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>'
+            + '<div><div class="ped-chip-nm">' + escText(g.file.name) + '</div>'
+            + '<div class="ped-chip-sub">' + this._fmtNum(g.paginas) + (g.paginas === 1 ? ' página' : ' páginas') + ' · ' + this._fmtTamano(g.bytes) + ' · listo para adjuntar</div></div>'
+            + '<div class="ped-chip-acts">'
+            + '<button type="button" class="btn btn-outline ped-chip-btn" onclick="App.modules.pedidos.descargarPdfGenerado()">Descargar</button>'
+            + '<button type="button" class="btn btn-outline ped-chip-btn" onclick="App.modules.pedidos.editarFotosGeneradas()">Editar fotos</button>'
+            + '<button type="button" class="btn btn-outline ped-chip-btn" style="color:#dc2626" onclick="App.modules.pedidos.quitarPdfGenerado()">Quitar</button>'
+            + '</div>';
+        chip.style.display = 'flex';
+    },
+
+    descargarPdfGenerado() {
+        const g = this._pdfGenerado;
+        if (!g || !g.file) return;
+        this._descargarArchivo(g.file, g.file.name);
+    },
+
+    // "Editar fotos": descarta el PDF generado pero deja las miniaturas intactas
+    // para ajustar el orden y regenerar.
+    editarFotosGeneradas() {
+        this._pdfGenerado = null;
+        this.selectedFile = null;
+        this._pintarPdfChip();
+        this._pintarFotos();
+    },
+
+    // "Quitar": limpia el archivo seleccionado y vuelve al estado inicial
+    // (sin PDF adjunto y sin fotos).
+    quitarPdfGenerado() {
+        this._limpiarAdjuntos();
+        this._pintarModoAdjunto();
+    },
+
+    // Limpieza total del estado de adjuntos (tras "Subir Pedido" exitoso o "Quitar").
+    _limpiarAdjuntos() {
+        this.selectedFile = null;
+        this._fotos = [];
+        this._pdfGenerado = null;
+        this._modoAdjunto = 'pdf';
+        const fname = document.getElementById('pedUploadFilename');
+        if (fname) fname.style.display = 'none';
+        const area = document.getElementById('pedUploadArea');
+        if (area) { area.style.borderColor = '#cbd5e1'; area.style.background = '#f8fafc'; }
+        const nom = document.getElementById('pedPdfNombre');
+        if (nom) nom.value = '';
+    },
+
     async upload() {
         const numero = document.getElementById('pedNumero').value.trim();
         const cliente = document.getElementById('pedCliente').value.trim().toUpperCase();
@@ -632,6 +988,9 @@ App.registerModule('pedidos', {
             const res = await fetch('/api/pedidos', { method: 'POST', body: fd });
             await this._apiJson(res);
             this.hideUploadModal();
+            // Éxito: limpiar TODO el estado de adjuntos (PDF elegido, fotos y
+            // PDF generado) para el próximo pedido.
+            this._limpiarAdjuntos();
             App.toast('Pedido subido exitosamente');
             this.load();
         } catch(e) {
