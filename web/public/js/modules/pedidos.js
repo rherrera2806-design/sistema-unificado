@@ -380,8 +380,6 @@ App.registerModule('pedidos', {
             + '<div id="pedFotosGrid" class="ped-fotos-grid"></div>'
             + '<div class="ped-nota" style="margin:2px 0 14px">JPG o PNG · Se unirán en el orden mostrado (usa ↑ ↓) · Máx. 20 fotos</div>'
             + '<div class="ped-gen-row">'
-            + '<div><label class="ped-label">Nombre del PDF *</label>'
-            + '<input type="text" id="pedPdfNombre" placeholder="Ej: OV-12345 Cliente" style="font-size:13px;width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;color:#1e293b;background:white;box-sizing:border-box;outline:none;transition:all 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
             + '<button type="button" class="btn btn-primary ped-btn-gen" onclick="App.modules.pedidos.generarPdfDesdeFotos()">Generar PDF</button>'
             + '</div>'
             + '<div id="pedPdfChip" class="ped-file-chip" style="display:none"></div>'
@@ -632,8 +630,6 @@ App.registerModule('pedidos', {
             if (fname) fname.style.display = 'none';
             const area = document.getElementById('pedUploadArea');
             if (area) { area.style.borderColor = '#cbd5e1'; area.style.background = '#f8fafc'; }
-            const nom = document.getElementById('pedPdfNombre');
-            if (nom) nom.value = '';
         }
         this._pintarModoAdjunto();
     },
@@ -847,10 +843,9 @@ App.registerModule('pedidos', {
     async generarPdfDesdeFotos() {
         if (this._ocupado) return;
         if (this._fotos.length === 0) { App.toast('Agrega al menos una foto para generar el PDF', 'error'); return; }
-        // Nombre del PDF: lo que escriba el usuario, o OV-<numero_pedido> por defecto.
+        // Nombre del PDF: siempre OV-<numero_pedido> (sin campo de nombre a mano).
         const numero = ((document.getElementById('pedNumero') || {}).value || '').trim();
-        const escrito = ((document.getElementById('pedPdfNombre') || {}).value || '').trim();
-        const base = (escrito || ('OV-' + (numero || 'pedido'))).replace(/\.pdf$/i, '').replace(/[\\/:*?"<>|]/g, '_').trim();
+        const base = ('OV-' + (numero || 'pedido')).replace(/\.pdf$/i, '').replace(/[\\/:*?"<>|]/g, '_').trim();
         this._ocupado = true;
         try {
             let JsPdf;
@@ -981,8 +976,6 @@ App.registerModule('pedidos', {
         if (fname) fname.style.display = 'none';
         const area = document.getElementById('pedUploadArea');
         if (area) { area.style.borderColor = '#cbd5e1'; area.style.background = '#f8fafc'; }
-        const nom = document.getElementById('pedPdfNombre');
-        if (nom) nom.value = '';
     },
 
     async upload() {
