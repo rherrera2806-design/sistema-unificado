@@ -24,11 +24,13 @@
 //                         └─> mermas ──> (FK mermas desde produccion_ordenes)
 //    materias_primas + familias_producto ─> recetas_bom
 //    produccion_maquinas ──(ALTER maquina_id)──> cola_produccion_pasos
+//    reclamos_devoluciones ──> reclamos_historial   (matriz_responsables_motivos: sin FK)
 //
 // VOCABULARIO DE ESTADOS (documentado a propósito; NO se agregan constraints
 // CHECK sobre columnas con datos existentes porque podrían fallar al validar
-// valores históricos — ÚNICA excepción: pedidos.estado, cuyo CHECK se agrega
-// en forma CONDICIONAL en faseColumnas, solo después de verificar que NO haya
+// valores históricos — ÚNICAS excepciones: pedidos.estado y el dominio de
+// reclamos_devoluciones (estado y resolucion), cuyos CHECK se agregan en forma
+// CONDICIONAL en faseColumnas, solo después de verificar que NO haya
 // valores fuera del vocabulario; si los hay, se omite el CHECK y se deja
 // constancia en el log):
 //  * produccion_ordenes.estado_programacion: 'PENDIENTE' | 'PROGRAMADO' |
@@ -48,6 +50,21 @@
 //      La validación de las transiciones se hace en routes/pedidos.js; este
 //      archivo solo documenta el dominio y crea el CHECK pedidos_estado_check
 //      cuando los datos existentes lo permiten (ver faseColumnas).
+//  * reclamos_devoluciones.estado: 'PENDIENTE' | 'EN REVISION' | 'EN PROCESO'
+//      | 'FINALIZADO' (routes/reclamos.js, web/public/js/modules/reclamos.js).
+//      Árbol de transiciones (la validación vive en routes/reclamos.js y el
+//      front; este archivo solo documenta el dominio y crea el CHECK
+//      condicional reclamos_devoluciones_estado_check):
+//        PENDIENTE   → EN REVISION
+//        EN REVISION → EN PROCESO | PENDIENTE   (retroceso)
+//        EN PROCESO  → FINALIZADO | PENDIENTE   (retroceso)
+//        FINALIZADO  → EN REVISION              (reapertura del reclamo)
+//  * reclamos_devoluciones.resolucion: '' (sin resolver) |
+//      'Aceptada Fabricacion nueva' | 'Aceptada Reproceso' | 'Rechazada'
+//      (routes/reclamos.js: dashboard/stats y reporte agrupan por esos valores
+//      exactos; web/public/js/modules/reclamos.js los ofrece en el select).
+//      CHECK condicional reclamos_devoluciones_resolucion_check, con la misma
+//      salvaguarda de datos existentes que los anteriores.
 //  * mermas.causa: texto libre definido por el usuario (services/taller.js)
 //  * movimientos.tipo_movimiento: 'entrada' | 'salida'
 //      (services/inventario.js, middleware/validate.js)
@@ -71,6 +88,19 @@
 // pedido_id = NULL y conservan el snapshot del pedido en campos_antes /
 // campos_despues (routes/pedidos.js registra la fila de 'Eliminación' antes
 // del DELETE, justamente para que esa auditoría sobreviva).
+//
+// AUDITORÍA DE RECLAMOS (reclamos_historial): mismo criterio que
+// pedido_historial — las filas de historial NO se destruyen junto con su
+// reclamo. reclamo_id es anulable y su FK es ON DELETE SET NULL (ver
+// faseTablas y la migración condicional de faseColumnas): al eliminar un
+// reclamo, sus filas de historial quedan con reclamo_id = NULL y conservan
+// el detalle del evento en accion / estado_antes / estado_despues /
+// observacion (routes/reclamos.js registra la fila final 'Eliminación' antes
+// del DELETE, justamente para que esa auditoría sobreviva). OJO: el /setup y
+// ensureColumns() de routes/reclamos.js crean esa FK con ON DELETE CASCADE +
+// reclamo_id NOT NULL (borraba el historial junto con el reclamo);
+// faseColumnas la normaliza a ON DELETE SET NULL en cada arranque (bloque DO
+// condicional sobre pg_constraint, que conserva el nombre de la constraint).
 // ═════════════════════════════════════════════════════════════════════════════
 
 const { query, pool } = require('./dbPool');
@@ -453,6 +483,70 @@ async function faseTablas({ q }) {
         notas TEXT DEFAULT '',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // ── Reclamos y Devoluciones ──────────────────────────────────────────────
+    // Fuente REAL de la estructura: el /setup y ensureColumns() de
+    // routes/reclamos.js (lo que la aplicación espera). La migración
+    // api/src/db/migrations/006_reclamos_devoluciones.sql tiene DDLs
+    // divergentes (p.ej. fecha_ingreso DATE en vez de TIMESTAMP) y NO se usa
+    // como referencia. Sin dependencias de otras tablas: reclamos_historial es
+    // la única que referencia (a reclamos_devoluciones, creada justo arriba).
+    await q(`CREATE TABLE IF NOT EXISTS matriz_responsables_motivos (
+        id SERIAL PRIMARY KEY,
+        responsable VARCHAR(100) NOT NULL,
+        motivo VARCHAR(200) NOT NULL,
+        activo BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW()
+    )`);
+    // numero_reclamo: SERIAL propio (secuencia independiente del id; se busca
+    // y ordena por él: ORDER BY numero_reclamo DESC en routes/reclamos.js) +
+    // UNIQUE en la definición, para que la base fresca nazca con la unicidad.
+    // En una base EXISTENTE que ya tiene la tabla sin UNIQUE, este CREATE es
+    // no-op y el índice único se crea en faseIndices de forma CONDICIONAL
+    // (solo si no hay numero_reclamo duplicados) — mismo patrón que
+    // pedidos.numero_pedido.
+    await q(`CREATE TABLE IF NOT EXISTS reclamos_devoluciones (
+        id SERIAL PRIMARY KEY,
+        numero_reclamo SERIAL UNIQUE,
+        fecha_ingreso TIMESTAMP DEFAULT NOW(),
+        responsable_ingreso VARCHAR(200) DEFAULT '',
+        cliente VARCHAR(200) DEFAULT '',
+        numero_orden VARCHAR(50) DEFAULT '',
+        items JSONB DEFAULT '[]',
+        descripcion TEXT DEFAULT '',
+        detalle_reclamo TEXT DEFAULT '',
+        fotos JSONB DEFAULT '[]',
+        estado VARCHAR(30) DEFAULT 'PENDIENTE',
+        responsable_falla VARCHAR(100) DEFAULT '',
+        motivo VARCHAR(200) DEFAULT '',
+        observacion_analisis TEXT DEFAULT '',
+        resolucion VARCHAR(50) DEFAULT '',
+        fecha_revision TIMESTAMP,
+        responsable_revision VARCHAR(200) DEFAULT '',
+        fecha_proceso TIMESTAMP,
+        responsable_proceso VARCHAR(200) DEFAULT '',
+        fecha_fin TIMESTAMP,
+        responsable_fin VARCHAR(200) DEFAULT '',
+        correo_electronico VARCHAR(255) DEFAULT '',
+        costo_total NUMERIC DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    )`);
+    // reclamos_historial: reclamo_id ANULABLE + ON DELETE SET NULL (el /setup
+    // y ensureColumns() lo crean con NOT NULL + ON DELETE CASCADE, lo que
+    // borraba la auditoría junto con el reclamo). La fila de historial
+    // sobrevive a la eliminación del reclamo; en bases existentes la FK se
+    // recrea en faseColumnas (bloque DO condicional sobre pg_constraint).
+    await q(`CREATE TABLE IF NOT EXISTS reclamos_historial (
+        id SERIAL PRIMARY KEY,
+        reclamo_id INTEGER REFERENCES reclamos_devoluciones(id) ON DELETE SET NULL,
+        accion VARCHAR(100) NOT NULL,
+        estado_antes VARCHAR(30),
+        estado_despues VARCHAR(30),
+        responsable VARCHAR(200) DEFAULT '',
+        observacion TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT NOW()
+    )`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -475,8 +569,9 @@ async function faseColumnas({ q, safe }) {
     // Estas dos restricciones UNIQUE se reemplazan por el índice parcial
     // idx_tipos_cristal_nombre_espesor (ver faseIndices). DROP CONSTRAINT IF
     // EXISTS es idempotente y es de los únicos DROP que conserva este archivo
-    // (el otro es la recreación de la FK de pedido_historial más abajo, también
-    // condicional e idempotente). DROP TABLE/COLUMN y TRUNCATE siguen vetados.
+    // (los otros son las recreaciones de las FK de pedido_historial y
+    // reclamos_historial más abajo, también condicionales e idempotentes).
+    // DROP TABLE/COLUMN y TRUNCATE siguen vetados.
     // (Antes había una tercera sentencia con dos nombres en una sola acción,
     //  `DROP CONSTRAINT IF EXISTS a, b`, que es un syntax error y generaba un
     //  warn permanente en cada arranque: era redundante con las dos anteriores
@@ -724,6 +819,131 @@ async function faseColumnas({ q, safe }) {
     await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='vendedor') THEN ALTER TABLE instalaciones ADD COLUMN vendedor VARCHAR(200) DEFAULT ''; END IF; END $$`, 'instalaciones.vendedor');
     await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='tipo') THEN ALTER TABLE instalaciones ADD COLUMN tipo VARCHAR(30) DEFAULT 'INSTALACION'; END IF; END $$`, 'instalaciones.tipo');
     await safe(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='instalaciones' AND column_name='duracion_dias') THEN ALTER TABLE instalaciones ADD COLUMN duracion_dias INTEGER DEFAULT 1; END IF; END $$`, 'instalaciones.duracion_dias');
+
+    // ── reclamos y devoluciones ──────────────────────────────────────────────
+    // Columnas que ensureColumns() de routes/reclamos.js agrega en runtime:
+    // aquí se crean desde el arranque para que una base existente (creada por
+    // el /setup o por la migración 006) quede completa sin depender de la
+    // primera petición al módulo. ADD COLUMN IF NOT EXISTS: no-op en base
+    // fresca (ya nacen en faseTablas) y en bases donde /setup ya las creó.
+    await safe(`ALTER TABLE reclamos_devoluciones ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'`, 'reclamos_devoluciones.items');
+    await safe(`ALTER TABLE reclamos_devoluciones ADD COLUMN IF NOT EXISTS fecha_revision TIMESTAMP`, 'reclamos_devoluciones.fecha_revision');
+    await safe(`ALTER TABLE reclamos_devoluciones ADD COLUMN IF NOT EXISTS responsable_revision VARCHAR(200) DEFAULT ''`, 'reclamos_devoluciones.responsable_revision');
+    await safe(`ALTER TABLE reclamos_devoluciones ADD COLUMN IF NOT EXISTS fecha_proceso TIMESTAMP`, 'reclamos_devoluciones.fecha_proceso');
+    await safe(`ALTER TABLE reclamos_devoluciones ADD COLUMN IF NOT EXISTS responsable_proceso VARCHAR(200) DEFAULT ''`, 'reclamos_devoluciones.responsable_proceso');
+    await safe(`ALTER TABLE reclamos_devoluciones ADD COLUMN IF NOT EXISTS fecha_fin TIMESTAMP`, 'reclamos_devoluciones.fecha_fin');
+    await safe(`ALTER TABLE reclamos_devoluciones ADD COLUMN IF NOT EXISTS responsable_fin VARCHAR(200) DEFAULT ''`, 'reclamos_devoluciones.responsable_fin');
+    await safe(`ALTER TABLE reclamos_devoluciones ADD COLUMN IF NOT EXISTS correo_electronico VARCHAR(255) DEFAULT ''`, 'reclamos_devoluciones.correo_electronico');
+    await safe(`ALTER TABLE reclamos_devoluciones ADD COLUMN IF NOT EXISTS costo_total NUMERIC DEFAULT 0`, 'reclamos_devoluciones.costo_total');
+
+    // fecha_ingreso: la migración 006 la creó como DATE y la app espera
+    // TIMESTAMP (DEFAULT NOW(), filtros por fecha-hora en routes/reclamos.js).
+    // Conversión condicional e idempotente (solo si sigue siendo 'date'): date
+    // -> timestamp es inyectiva, no se pierde ni redondea nada y el USING es
+    // explícito. En base fresca y en cada arranque posterior es no-op (mismo
+    // criterio que la conversión de espesores más arriba).
+    await safe(`DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reclamos_devoluciones' AND column_name='fecha_ingreso' AND data_type='date') THEN
+            ALTER TABLE reclamos_devoluciones ALTER COLUMN fecha_ingreso TYPE TIMESTAMP USING fecha_ingreso::timestamp;
+        END IF;
+    END $$`, 'reclamos_devoluciones.fecha_ingreso tipo date->timestamp');
+
+    // CHECK de dominio de reclamos_devoluciones.estado SOLO si los datos
+    // existentes respetan el vocabulario ('PENDIENTE' | 'EN REVISION' |
+    // 'EN PROCESO' | 'FINALIZADO', ver cabecera). Mismo patrón condicional que
+    // pedidos_estado_check: se verifican los valores ANTES de crearlo; si hay
+    // valores fuera del conjunto, NO se agrega el CHECK y se deja constancia
+    // en el log — el arranque nunca se rompe por datos históricos. Idempotente:
+    // el bloque DO solo crea la constraint si no existe.
+    const estadosReclamos = await q(`SELECT DISTINCT estado FROM reclamos_devoluciones WHERE estado IS NOT NULL`);
+    const estadosReclamosFuera = estadosReclamos.rows
+        .map((fila) => fila.estado)
+        .filter((valor) => !['PENDIENTE', 'EN REVISION', 'EN PROCESO', 'FINALIZADO'].includes(valor));
+    if (estadosReclamosFuera.length === 0) {
+        await safe(`DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint
+                WHERE conname = 'reclamos_devoluciones_estado_check' AND conrelid = 'reclamos_devoluciones'::regclass
+            ) THEN
+                ALTER TABLE reclamos_devoluciones ADD CONSTRAINT reclamos_devoluciones_estado_check
+                    CHECK (estado IN ('PENDIENTE', 'EN REVISION', 'EN PROCESO', 'FINALIZADO'));
+            END IF;
+        END $$`, 'reclamos_devoluciones.estado check');
+    } else {
+        console.warn(`[DB] reclamos_devoluciones.estado tiene ${estadosReclamosFuera.length} valor(es) fuera del vocabulario (${estadosReclamosFuera.join(', ')}); se OMITE el CHECK reclamos_devoluciones_estado_check hasta normalizar esos datos.`);
+    }
+
+    // CHECK de dominio de reclamos_devoluciones.resolucion con la misma
+    // salvaguarda: '' (sin resolver) | 'Aceptada Fabricacion nueva' |
+    // 'Aceptada Reproceso' | 'Rechazada' (ver cabecera). Ojo con el '': está en
+    // el vocabulario porque es el DEFAULT y el estado "sin resolver" que el
+    // reporte agrupa como 'Sin resolver' (routes/reclamos.js).
+    const resolucionesReclamos = await q(`SELECT DISTINCT resolucion FROM reclamos_devoluciones WHERE resolucion IS NOT NULL`);
+    const resolucionesReclamosFuera = resolucionesReclamos.rows
+        .map((fila) => fila.resolucion)
+        .filter((valor) => !['', 'Aceptada Fabricacion nueva', 'Aceptada Reproceso', 'Rechazada'].includes(valor));
+    if (resolucionesReclamosFuera.length === 0) {
+        await safe(`DO $$ BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint
+                WHERE conname = 'reclamos_devoluciones_resolucion_check' AND conrelid = 'reclamos_devoluciones'::regclass
+            ) THEN
+                ALTER TABLE reclamos_devoluciones ADD CONSTRAINT reclamos_devoluciones_resolucion_check
+                    CHECK (resolucion IN ('', 'Aceptada Fabricacion nueva', 'Aceptada Reproceso', 'Rechazada'));
+            END IF;
+        END $$`, 'reclamos_devoluciones.resolucion check');
+    } else {
+        console.warn(`[DB] reclamos_devoluciones.resolucion tiene ${resolucionesReclamosFuera.length} valor(es) fuera del vocabulario (${resolucionesReclamosFuera.join(', ')}); se OMITE el CHECK reclamos_devoluciones_resolucion_check hasta normalizar esos datos.`);
+    }
+
+    // reclamos_historial: la FK debe ser ON DELETE SET NULL (el /setup y
+    // ensureColumns() la crean con ON DELETE CASCADE, que destruía la auditoría
+    // al borrar el reclamo) y reclamo_id debe aceptar NULL para que la fila de
+    // historial sobreviva. Mismo bloque DO CONDICIONAL e idempotente que
+    // pedido_historial más arriba:
+    //  * busca la FK actual en pg_constraint por identidad de tablas (el nombre
+    //    autogenerado típico es reclamos_historial_reclamo_id_fkey, pero no se
+    //    depende del nombre);
+    //  * si no existe FK, la crea directo con ON DELETE SET NULL;
+    //  * si existe pero su ON DELETE no es SET NULL ('n'; 'c' es el CASCADE
+    //    heredado), la elimina y la recrea con SET NULL conservando su nombre
+    //    (ON DELETE no es modificable in place). DROP CONSTRAINT + ADD
+    //    CONSTRAINT idempotente: en corridas posteriores ya es 'n' y no hace
+    //    nada;
+    //  * por último quita el NOT NULL de reclamo_id (condicional sobre
+    //    information_schema; no falla si ya es anulable).
+    await safe(`DO $$
+    DECLARE
+        v_conname TEXT;
+        v_deltype TEXT;
+    BEGIN
+        SELECT con.conname, con.confdeltype::text
+          INTO v_conname, v_deltype
+        FROM pg_constraint con
+        WHERE con.conrelid = 'reclamos_historial'::regclass
+          AND con.confrelid = 'reclamos_devoluciones'::regclass
+          AND con.contype = 'f'
+        LIMIT 1;
+
+        IF v_conname IS NULL THEN
+            ALTER TABLE reclamos_historial
+                ADD CONSTRAINT reclamos_historial_reclamo_id_fkey
+                FOREIGN KEY (reclamo_id) REFERENCES reclamos_devoluciones(id) ON DELETE SET NULL;
+        ELSIF v_deltype <> 'n' THEN
+            EXECUTE format('ALTER TABLE reclamos_historial DROP CONSTRAINT %I', v_conname);
+            EXECUTE format('ALTER TABLE reclamos_historial ADD CONSTRAINT %I FOREIGN KEY (reclamo_id) REFERENCES reclamos_devoluciones(id) ON DELETE SET NULL', v_conname);
+        END IF;
+
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = 'reclamos_historial'
+              AND column_name = 'reclamo_id'
+              AND is_nullable = 'NO'
+        ) THEN
+            ALTER TABLE reclamos_historial ALTER COLUMN reclamo_id DROP NOT NULL;
+        END IF;
+    END $$`, 'reclamos_historial FK ON DELETE SET NULL + reclamo_id anulable');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -832,6 +1052,66 @@ async function faseIndices({ q, safe }) {
     await q('CREATE INDEX IF NOT EXISTS idx_ordenes_grupo ON produccion_ordenes(grupo)');
     await q('CREATE INDEX IF NOT EXISTS idx_ordenes_bom_padre ON produccion_ordenes(bom_padre_id)');
     await q('CREATE INDEX IF NOT EXISTS idx_prod_notas_usuario ON prod_notas(usuario_email)');
+
+    // ── reclamos y devoluciones ──────────────────────────────────────────────
+    // Índices pedidos por las queries reales de routes/reclamos.js:
+    //  - idx_reclamos_fecha: filtros del listado y todo el reporte anual
+    //    (WHERE fecha_ingreso >= / <=, EXTRACT(YEAR FROM fecha_ingreso)).
+    //  - idx_reclamos_estado: filtros por estado del listado y los
+    //    COUNT(*) FILTER (WHERE estado = ...) del dashboard/reporte.
+    //  - idx_reclamos_orden: búsquedas y referencias por numero_orden.
+    //  - idx_reclamos_historial_reclamo: historial de un reclamo
+    //    (WHERE reclamo_id = $1 ORDER BY created_at). El DESC cubre el orden
+    //    descendente y con backward scan también el ASC del endpoint actual.
+    await q('CREATE INDEX IF NOT EXISTS idx_reclamos_fecha ON reclamos_devoluciones(fecha_ingreso)');
+    await q('CREATE INDEX IF NOT EXISTS idx_reclamos_estado ON reclamos_devoluciones(estado)');
+    await q('CREATE INDEX IF NOT EXISTS idx_reclamos_orden ON reclamos_devoluciones(numero_orden)');
+    await q('CREATE INDEX IF NOT EXISTS idx_reclamos_historial_reclamo ON reclamos_historial(reclamo_id, created_at DESC)');
+    // Paridad con los índices que crea el /setup (routes/reclamos.js):
+    // idx_reclamos_cliente para el GROUP BY / top clientes del reporte y
+    // idx_reclamos_numero para el ORDER BY numero_reclamo DESC del listado
+    // (redundante con el UNIQUE de abajo cuando se crea, pero en una base con
+    // duplicados el UNIQUE se omite y este índice cubre igual el orden; es el
+    // mismo compromiso que idx_pedidos_numero + uq_pedidos_numero_pedido).
+    // idx_reclamos_hist_id NO se replica: lo cubre el prefijo de
+    // idx_reclamos_historial_reclamo.
+    await q('CREATE INDEX IF NOT EXISTS idx_reclamos_cliente ON reclamos_devoluciones(cliente)');
+    await q('CREATE INDEX IF NOT EXISTS idx_reclamos_numero ON reclamos_devoluciones(numero_reclamo)');
+
+    // ── unicidad de reclamos_devoluciones.numero_reclamo ─────────────────────
+    // numero_reclamo es el identificador visible del reclamo (se lista, busca
+    // y ordena por él) pero su unicidad era solo de facto (secuencia SERIAL
+    // propia). Mismo patrón condicional que pedidos.numero_pedido para
+    // agregar el UNIQUE sin romper una base existente con datos:
+    //  1) si YA existe un índice/constraint UNIQUE sobre solo numero_reclamo
+    //     (nacido del UNIQUE en línea del CREATE TABLE en base fresca, o de
+    //     una corrida anterior), no se hace nada (idempotente);
+    //  2) si no lo hay y HAY numero_reclamo duplicados, NO se rompe el
+    //     arranque: se deja constancia en el log con la cantidad y se OMITE
+    //     la creación del índice UNIQUE hasta normalizar los datos;
+    //  3) si no hay duplicados, se crea uq_reclamos_numero_reclamo (UNIQUE).
+    // En base fresca reclamos_devoluciones está vacía al llegar a esta fase
+    // (los seeds corren en faseDatos, después), así que el UNIQUE queda
+    // SIEMPRE. La creación va por safe(): si entre el conteo y el CREATE otro
+    // proceso inserta un duplicado, el error 23505 no revierte la fase entera
+    // ni rompe el arranque: solo se registra y el UNIQUE se re-intenta en el
+    // próximo arranque. (NULL también es admitido varias veces por el índice
+    // único, por si algún dato heredado quedó sin numero_reclamo.)
+    const uniqueReclamos = await q(`SELECT 1 FROM pg_indexes
+        WHERE schemaname = current_schema() AND tablename = 'reclamos_devoluciones'
+          AND indexdef LIKE 'CREATE UNIQUE%' AND indexdef LIKE '%(numero_reclamo)%'
+        LIMIT 1`);
+    if (uniqueReclamos.rows.length === 0) {
+        const duplicados = await q(`SELECT COUNT(*)::int AS c FROM (
+            SELECT numero_reclamo FROM reclamos_devoluciones GROUP BY numero_reclamo HAVING COUNT(*) > 1
+        ) d`);
+        const cantidad = Number(duplicados.rows[0].c);
+        if (cantidad > 0) {
+            console.warn(`[DB] reclamos_devoluciones.numero_reclamo tiene ${cantidad} valor(es) duplicados; se OMITE la creación del índice UNIQUE uq_reclamos_numero_reclamo hasta corregir los datos (el arranque continúa normal y el UNIQUE se re-intenta en el próximo arranque).`);
+        } else {
+            await safe(`CREATE UNIQUE INDEX IF NOT EXISTS uq_reclamos_numero_reclamo ON reclamos_devoluciones(numero_reclamo)`, 'uq_reclamos_numero_reclamo');
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -974,6 +1254,28 @@ async function faseDatos({ q, safe }) {
             }
         }
         console.log('[PROD] Días de instalaciones migrados:', instResult.rows.length);
+    }
+
+    // ── Reclamos: matriz de responsables y motivos ───────────────────────────
+    // Mismas parejas iniciales que siembra el /setup de routes/reclamos.js,
+    // para que una base fresca arranque con el módulo completo sin depender de
+    // esa llamada. Solo se siembra si la tabla está VACÍA: si el usuario ya
+    // administró la matriz, no se re-inserta nada. (No basta ON CONFLICT DO
+    // NOTHING: el índice único es parcial WHERE activo = TRUE, así que un
+    // INSERT tras un soft-delete "reviviría" la pareja desactivada.)
+    const matrizRespCount = await q('SELECT COUNT(*) as c FROM matriz_responsables_motivos');
+    if (Number(matrizRespCount.rows[0].c) === 0) {
+        await q(`INSERT INTO matriz_responsables_motivos (responsable, motivo) VALUES
+            ('CORTE', 'MAL CORTADO'), ('CORTE', 'DIMENSION INCORRECTA'), ('CORTE', 'ESQUINA ROTA'),
+            ('PULIDO', 'MAL PULIDO'), ('PULIDO', 'ESCALLA'), ('PULIDO', 'RAYA'), ('PULIDO', 'BORDE IRREGULAR'),
+            ('TEMPLE', 'ROTO EN TEMPLE'), ('TEMPLE', 'DEFORME'), ('TEMPLE', 'TENSION INCORRECTA'),
+            ('LAMINADO', 'BURBUJA'), ('LAMINADO', 'DELAMINACION'), ('LAMINADO', 'MAL ALINEADO'),
+            ('TRANSPORTE', 'GOLPE EN TRANSPORTE'), ('TRANSPORTE', 'RAYA EN TRANSPORTE'), ('TRANSPORTE', 'ROTO EN TRANSPORTE'),
+            ('INSTALACION', 'MAL INSTALADO'), ('INSTALACION', 'DAÑO EN OBRA'),
+            ('CLIENTE', 'ERROR DE MEDIDA CLIENTE'), ('CLIENTE', 'NO CONFORME CLIENTE'),
+            ('PRODUCCION', 'DEFECTO DE FABRICACION'), ('PRODUCCION', 'MATERIAL DEFECTUOSO')
+        `);
+        console.log('[RECLAMOS] Matriz de responsables y motivos inicial creada');
     }
 
     // ── Familias de producto por defecto ─────────────────────────────────────
@@ -1519,6 +1821,19 @@ async function resetSequences() {
         } catch (e) {
             console.warn(`[DB] resetSequences: no se pudo resetear la secuencia de ${tabla}: ${e.message}`);
         }
+    }
+
+    // Secuencias SERIAL "propias" (distintas del id) de las que este archivo
+    // exige unicidad: reclamos_devoluciones.numero_reclamo tiene su propia
+    // secuencia y ahora un índice UNIQUE (uq_reclamos_numero_reclamo). Si se
+    // restauran datos con numero_reclamo explícitos y la secuencia queda atrás,
+    // los INSERT fallarían con 23505; aquí se sincroniza igual que los id.
+    // Idempotente (solo lee MAX y hace setval) y tolerante: si la columna no
+    // tiene secuencia, se registra y el arranque continúa.
+    try {
+        await query(`SELECT setval(pg_get_serial_sequence('reclamos_devoluciones', 'numero_reclamo'), COALESCE((SELECT MAX(numero_reclamo) FROM reclamos_devoluciones), 1))`);
+    } catch (e) {
+        console.warn(`[DB] resetSequences: no se pudo resetear la secuencia de reclamos_devoluciones.numero_reclamo: ${e.message}`);
     }
 }
 
