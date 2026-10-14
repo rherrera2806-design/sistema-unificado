@@ -43,11 +43,11 @@ App.registerModule('reclamos_reporte', {
                 .rq-red{color:var(--invp-danger,#dc2626)!important}
                 .rq-grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-bottom:14px}
                 .rq-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
-                .rq-panel{background:#fff;border:1px solid var(--invp-line,#e4e9f0);border-radius:14px;overflow:hidden}
+                .rq-panel{background:#fff;border:1px solid var(--invp-line,#e4e9f0);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
                 .rq-p-head{padding:14px 18px 10px;display:flex;align-items:baseline;gap:8px;border-bottom:1px solid var(--invp-line,#e4e9f0)}
                 .rq-p-head h3{font-size:13px;font-weight:600;margin:0}
                 .rq-p-head .sub{font-size:10px;color:var(--invp-muted,#8494a8)}
-                .rq-p-body{padding:16px 18px}
+                .rq-p-body{padding:16px 18px;flex:1}
                 /* Gráficos que LLENAN la tarjeta: el área de barras se posiciona
                    absoluta dentro del cuerpo (altura definida) para que los
                    porcentajes de alto de las barras resuelvan siempre. */
@@ -76,7 +76,7 @@ App.registerModule('reclamos_reporte', {
                 .rq-lg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--invp-slate,#475569)}
                 .rq-lg .dot{width:8px;height:8px;border-radius:3px}
                 .rq-lg .n{margin-left:auto;font-weight:600;color:var(--invp-ink,#0f172a)}
-                .rq-rank{display:flex;flex-direction:column;gap:11px}
+                .rq-rank{display:flex;flex-direction:column;gap:11px;height:100%;justify-content:space-evenly}
                 .rq-ritem .top{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:4px}
                 .rq-ritem .nm{color:var(--invp-slate,#475569)}
                 .rq-ritem .vl{font-weight:600;color:var(--invp-ink,#0f172a)}
