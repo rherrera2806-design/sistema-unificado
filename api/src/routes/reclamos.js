@@ -256,6 +256,26 @@ async function migrarDatos() {
         WHERE (correo_electronico IS NULL OR correo_electronico = '')
           AND responsable_ingreso LIKE '%@%'
     `);
+    // 4) RAIZ: normaliza el catalogo matriz (responsables en Titulo, motivos en
+    // Frase). Los desplegables del formulario nacen de este catalogo: si esta en
+    // MAYUSCULAS, todo lo que se seleccione se guarda gritado. Los duplicados
+    // que quedan iguales tras normalizar se fusionan (se desactiva el repetido;
+    // el indice unico es parcial WHERE activo).
+    const matriz = await query('SELECT id, responsable, motivo FROM matriz_responsables_motivos');
+    for (const f of matriz.rows) {
+        const resp = tituloTexto(f.responsable || '');
+        const mot = fraseTexto(f.motivo || '');
+        if (resp === (f.responsable || '') && mot === (f.motivo || '')) continue;
+        const dup = await query(
+            'SELECT id FROM matriz_responsables_motivos WHERE LOWER(responsable) = LOWER($1) AND LOWER(motivo) = LOWER($2) AND id <> $3 AND activo = TRUE LIMIT 1',
+            [resp, mot, f.id]
+        );
+        if (dup.rows.length > 0) {
+            await query('UPDATE matriz_responsables_motivos SET activo = FALSE WHERE id = $1', [f.id]);
+        } else {
+            await query('UPDATE matriz_responsables_motivos SET responsable = $1, motivo = $2 WHERE id = $3', [resp, mot, f.id]);
+        }
+    }
 }
 
 async function ensureColumns() {
@@ -296,12 +316,16 @@ function textoDeBody(valor, campo, max, modo) {
     if (typeof valor !== 'string') return { ok: false, error: `El campo '${campo}' debe ser texto` };
     let t = valor.trim();
     if (t.length > max) return { ok: false, error: `El campo '${campo}' no puede superar ${max} caracteres` };
-    // Presentacion normalizada al guardar: los usuarios suelen escribir en
-    // MAYUSCULAS; se capitaliza SIN inventar acentos (modo 'titulo' | 'frase').
-    if (modo === 'titulo') t = t.toLowerCase().replace(/\b[a-záéíóúñü]/g, ch => ch.toUpperCase());
-    else if (modo === 'frase') { t = t.toLowerCase(); t = t.charAt(0).toUpperCase() + t.slice(1); }
+    if (modo === 'titulo') t = tituloTexto(t);
+    else if (modo === 'frase') t = fraseTexto(t);
     return { ok: true, valor: t };
 }
+
+// Presentacion normalizada SIN inventar acentos:
+//   tituloTexto('FABRICACION MALFRED') -> 'Fabricacion Malfred'
+//   fraseTexto('DEFECTO DE FABRICACION') -> 'Defecto de fabricacion'
+function tituloTexto(s) { return String(s || '').toLowerCase().replace(/\b[a-záéíóúñü]/g, ch => ch.toUpperCase()); }
+function fraseTexto(s) { const t = String(s || '').toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
 
 // Fecha de filtro (query string): string parseable o 400.
 function fechaDeQuery(valor, campo) {
@@ -617,7 +641,7 @@ router.get('/api/reclamos/matriz', perms.view, async (req, res, next) => {
 router.post('/api/reclamos/matriz', perms.create, async (req, res, next) => {
     try {
         await ensureColumns();
-        const responsable = textoDeBody((req.body || {}).responsable, 'responsable', LIM.resp_matriz);
+        const responsable = textoDeBody((req.body || {}).responsable, 'responsable', LIM.resp_matriz, 'titulo');
         const motivo = textoDeBody((req.body || {}).motivo, 'motivo', LIM.motivo_matriz, 'frase');
         for (const c of [responsable, motivo]) {
             if (!c.ok) return res.status(400).json({ error: c.error });
