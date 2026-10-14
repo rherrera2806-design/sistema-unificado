@@ -13,6 +13,7 @@ const Reclamos = {
     _busqTimer: null,        // Timer del debounce del buscador de la lista
     _docBound: false,        // Listener global de clic: se registra UNA sola vez
     _escBound: false,        // Listener de Escape: se registra UNA sola vez
+    _verCleanup: null,       // Limpieza de la ficha "Ver" abierta (overlay + Escape)
     _codBusqCache: {},       // Caché de códigos POR búsqueda (nunca una caché global)
 
     // ──────────────────────────── Helpers locales ────────────────────────────
@@ -98,6 +99,87 @@ const Reclamos = {
                 .rc-drop-danger{color:#dc2626}
                 .rc-drop-danger:hover{background:#fef2f2}
                 .rc-drop-sep{height:1px;background:#eef2f7;margin:5px 8px}
+                /*── Ficha "Ver" (solo lectura) — mockup diseno-reclamos-ver-v1 ──
+                   Prefijo rc-ver- (mapeo del mockup: .tl-step→.rc-ver-tl-step,
+                   .node→.rc-ver-node, .done→.rc-ver-done, .current→.rc-ver-current).
+                   Tipografía en escala del sistema: 15 títulos · 13 datos ·
+                   11 labels/chips · 10 notas. Sin monoespaciadas. */
+                .rc-ver-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px);z-index:100000;overflow-y:auto;padding:24px 12px;display:flex;align-items:flex-start;justify-content:center}
+                .rc-ver-modal{background:#fff;border-radius:16px;width:620px;max-width:95vw;box-shadow:0 25px 60px rgba(0,0,0,0.18);overflow:hidden;animation:rcVerIn 0.25s ease both}
+                @keyframes rcVerIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+                .rc-ver-head{padding:20px 24px;border-bottom:1px solid #e4e9f0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+                .rc-ver-head-ic{width:40px;height:40px;border-radius:10px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+                .rc-ver-head h3{margin:0;font-size:15px;font-weight:700;color:#0f172a}
+                .rc-ver-sub{font-size:11px;color:#8494a8;margin-top:1px}
+                .rc-ver-chips{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+                .rc-ver-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:0.3px;padding:3px 10px;border-radius:20px;text-transform:uppercase}
+                .rc-ver-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+                .rc-ver-chip-amber{color:#b45309;background:#fdf8f1;border:1px solid #f0d9b5}
+                .rc-ver-chip-amber .rc-ver-dot{background:#b45309}
+                .rc-ver-chip-blue{color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe}
+                .rc-ver-chip-blue .rc-ver-dot{background:#2563eb}
+                .rc-ver-chip-purple{color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe}
+                .rc-ver-chip-purple .rc-ver-dot{background:#7c3aed}
+                .rc-ver-chip-green{color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0}
+                .rc-ver-chip-green .rc-ver-dot{background:#15803d}
+                .rc-ver-chip-red{color:#dc2626;background:#fef2f2;border:1px solid #fecaca}
+                .rc-ver-chip-red .rc-ver-dot{background:#dc2626}
+                .rc-ver-body{padding:20px 24px}
+                .rc-ver-sec{margin-bottom:22px}
+                .rc-ver-sec:last-child{margin-bottom:0}
+                .rc-ver-sec-title{font-size:10px;font-weight:700;letter-spacing:0.9px;text-transform:uppercase;color:#8494a8;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+                .rc-ver-sec-title::after{content:'';flex:1;height:1px;background:#e4e9f0}
+                .rc-ver-kv-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
+                .rc-ver-kv .rc-ver-k{font-size:10px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;color:#8494a8;margin-bottom:2px}
+                .rc-ver-kv .rc-ver-v{font-size:13px;font-weight:600;color:#0f172a}
+                .rc-ver-kv .rc-ver-v-num{color:#2563eb}
+                .rc-ver-timeline{display:flex;gap:0;margin:6px 0 4px}
+                .rc-ver-tl-step{flex:1;text-align:center;position:relative;padding-top:26px}
+                .rc-ver-tl-step::before{content:'';position:absolute;top:8px;left:50%;right:-50%;height:3px;background:#e4e9f0}
+                .rc-ver-tl-step:last-child::before{display:none}
+                .rc-ver-node{position:absolute;top:0;left:50%;transform:translateX(-50%);width:19px;height:19px;border-radius:50%;background:#fff;border:3px solid #e4e9f0;z-index:1}
+                .rc-ver-tl-step.rc-ver-done .rc-ver-node{background:#15803d;border-color:#15803d}
+                .rc-ver-tl-step.rc-ver-done::before{background:#15803d}
+                .rc-ver-tl-step.rc-ver-current .rc-ver-node{background:#fff;border-color:#2563eb;box-shadow:0 0 0 4px #eff6ff}
+                .rc-ver-tl-t{font-size:11px;font-weight:700;color:#0f172a}
+                .rc-ver-tl-d{font-size:10px;color:#8494a8;margin-top:2px}
+                .rc-ver-items{width:100%;border-collapse:collapse}
+                .rc-ver-items th{font-size:10px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#8494a8;text-align:left;padding:8px 10px;border-bottom:1px solid #e4e9f0}
+                .rc-ver-items td{font-size:13px;padding:9px 10px;border-bottom:1px solid #eef2f7;color:#475569}
+                .rc-ver-items .rc-ver-num{text-align:right}
+                .rc-ver-items .rc-ver-cod{font-weight:600;color:#0f172a}
+                .rc-ver-items tfoot td{font-weight:700;color:#0f172a;border-bottom:none;background:#f8fafc}
+                .rc-ver-items-mov{display:none}
+                .rc-ver-texto{background:#f8fafc;border:1px solid #e4e9f0;border-radius:10px;padding:12px 14px;font-size:13px;color:#475569;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+                .rc-ver-fotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+                .rc-ver-foto{aspect-ratio:4/3;border-radius:10px;overflow:hidden;border:1px solid #e4e9f0;background:#f1f5f9;cursor:zoom-in}
+                .rc-ver-foto img{width:100%;height:100%;object-fit:cover;display:block}
+                .rc-ver-zoom{position:fixed;inset:0;background:rgba(15,23,42,0.82);z-index:100001;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:16px}
+                .rc-ver-zoom img{max-width:100%;max-height:90vh;border-radius:10px;box-shadow:0 25px 60px rgba(0,0,0,0.4)}
+                .rc-ver-res{border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:center}
+                .rc-ver-res-rechazada{border-color:#fecaca;background:#fef2f2}
+                .rc-ver-res-pendiente{border-color:#e4e9f0;background:#f8fafc}
+                .rc-ver-res-ic{width:36px;height:36px;border-radius:9px;background:#dcfce7;color:#15803d;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+                .rc-ver-res-rechazada .rc-ver-res-ic{background:#fee2e2;color:#dc2626}
+                .rc-ver-res-pendiente .rc-ver-res-ic{background:#eef2f7;color:#64748b}
+                .rc-ver-res-t{font-size:13px;font-weight:700;color:#0f172a}
+                .rc-ver-res-s{font-size:11px;color:#475569;margin-top:1px}
+                .rc-ver-foot{padding:14px 24px;border-top:1px solid #e4e9f0;display:flex;justify-content:flex-end;gap:8px;background:#f8fafc}
+                /*── Móvil (mockup 390px): timeline 2×2, fotos 2 columnas, kv 2 columnas,
+                   tabla compacta (código · descripción en una sola celda). ── */
+                @media(max-width:768px){
+                    .rc-ver-overlay{padding:12px 8px}
+                    .rc-ver-modal{width:100%}
+                    .rc-ver-sub-fecha{display:none}
+                    .rc-ver-kv-grid{grid-template-columns:1fr 1fr;gap:10px 12px}
+                    .rc-ver-timeline{flex-wrap:wrap;gap:8px}
+                    .rc-ver-tl-step{flex:1 1 45%;padding-top:24px}
+                    .rc-ver-tl-step::before{display:none}
+                    .rc-ver-tl-p{display:none}
+                    .rc-ver-items-full{display:none}
+                    .rc-ver-items-mov{display:table}
+                    .rc-ver-fotos{grid-template-columns:1fr 1fr}
+                }
             </style>
 
             <div class="rc-hero">
@@ -312,7 +394,7 @@ const Reclamos = {
     // ──────────────── Menú de acciones (patrón de pedidos.js) ────────────────
     // Acciones disponibles para un reclamo según su estado y los permisos del
     // usuario. Fuente única para el dropdown de la tabla y las cards móviles.
-    //   · Editar / Historial / Generar PDF / Enviar Mail → tono neutral
+    //   · Ver / Editar / Historial / Generar PDF / Enviar Mail → tono neutral
     //   · Eliminar → tono danger (único rojo, con separador antes)
     _acciones(r) {
         const id = Number(r.id) || 0;
@@ -320,6 +402,7 @@ const Reclamos = {
         const puedeEliminar = App.canDelete('reclamos');
         // Iconos SVG 15px, trazo 2
         const ico = {
+            eye: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
             edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>',
             clock: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
             doc: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
@@ -327,6 +410,8 @@ const Reclamos = {
             trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
         };
         const acc = [];
+        // "Ver": ficha de consulta en cualquier estado y sin exigir permisos
+        acc.push({ txt: 'Ver', fn: 'verReclamo(' + id + ')', icon: ico.eye, tone: '' });
         if (puedeEditar) acc.push({ txt: 'Editar', fn: 'showForm(' + id + ')', icon: ico.edit, tone: '' });
         acc.push({ txt: 'Historial', fn: 'showHistorial(' + id + ')', icon: ico.clock, tone: '' });
         if (r.estado === 'FINALIZADO') acc.push({ txt: 'Generar PDF', fn: 'generarPDF(' + id + ')', icon: ico.doc, tone: '' });
@@ -643,6 +728,240 @@ const Reclamos = {
         if (listEl) listEl.style.display = '';
         this._editingId = null;
         this._reclamoForm = null;
+    },
+
+    // ═══════════════════════════════════════════════════
+    // FICHA "VER" — consulta visual en solo lectura
+    // (mockup diseno-reclamos-ver-v1)
+    // ═══════════════════════════════════════════════════
+
+    // Nombre corto para la línea de tiempo: "Sergio Morales" → "S. Morales"
+    _nombreCorto(nombre) {
+        const partes = String(nombre || '').trim().split(/\s+/).filter(Boolean);
+        if (partes.length === 0) return '';
+        if (partes.length === 1) return partes[0];
+        return partes[0].charAt(0).toUpperCase() + '. ' + partes[partes.length - 1];
+    },
+
+    // Fecha corta para la línea de tiempo: dd-mm HH:mm
+    fmtDateCorta(d) {
+        const dt = this._parseFecha(d);
+        if (!dt) return '';
+        return String(dt.getDate()).padStart(2, '0') + '-' + String(dt.getMonth() + 1).padStart(2, '0')
+            + ' ' + String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0');
+    },
+
+    // Chip de estado de la cabecera (ámbar/azul/morado/verde según estado)
+    _chipEstado(estado) {
+        const tono = estado === 'FINALIZADO' ? 'green' : estado === 'EN REVISION' ? 'blue' : estado === 'EN PROCESO' ? 'purple' : 'amber';
+        return '<span class="rc-ver-chip rc-ver-chip-' + tono + '"><span class="rc-ver-dot"></span>' + escText(estado || 'PENDIENTE') + '</span>';
+    },
+
+    // Chip de resolución (verde si empieza por "Aceptada", rojo si "Rechazada")
+    _chipResolucion(resolucion) {
+        if (!resolucion) return '';
+        const tono = resolucion === 'Rechazada' ? 'red' : (String(resolucion).indexOf('Aceptada') === 0 ? 'green' : 'purple');
+        return '<span class="rc-ver-chip rc-ver-chip-' + tono + '"><span class="rc-ver-dot"></span>' + escText(resolucion) + '</span>';
+    },
+
+    // Abre la ficha "Ver": devolución completa en modo solo lectura.
+    async verReclamo(id) {
+        let r;
+        try {
+            r = await this._cargarReclamo(id);   // GET /:id con fotos e items
+        } catch (e) {
+            App.toast('Error al cargar el reclamo: ' + e.message, 'error');
+            return;
+        }
+        this.cerrarVer();   // por si quedara una ficha abierta
+
+        const overlay = document.createElement('div');
+        overlay.id = 'rcVerOverlay';
+        overlay.className = 'rc-ver-overlay';
+        overlay.innerHTML = '<div class="rc-ver-modal" role="dialog" aria-modal="true">' + this._verHtml(r) + '</div>';
+        document.body.appendChild(overlay);
+
+        // Cierre por clic fuera de la ficha (sobre el fondo del overlay)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) this.cerrarVer();
+        });
+        // Cierre con Escape (listener propio; se remueve al cerrar la ficha)
+        const onKey = (e) => { if (e.key === 'Escape') this.cerrarVer(); };
+        document.addEventListener('keydown', onKey);
+        this._verCleanup = () => {
+            document.removeEventListener('keydown', onKey);
+            overlay.remove();
+        };
+    },
+
+    cerrarVer() {
+        if (this._verCleanup) {
+            this._verCleanup();
+            this._verCleanup = null;
+        }
+        this.cerrarZoomVer();
+    },
+
+    // Cierra la ficha "Ver" y abre el formulario de edición.
+    editarDesdeVer(id) {
+        this.cerrarVer();
+        this.showForm(Number(id) || 0);
+    },
+
+    // Ampliación simple de una foto de la ficha (clic para cerrar).
+    ampliarFotoVer(el) {
+        const imgOrigen = el && el.querySelector ? el.querySelector('img') : null;
+        const src = imgOrigen ? imgOrigen.getAttribute('src') : '';
+        if (!src) return;
+        this.cerrarZoomVer();
+        const zoom = document.createElement('div');
+        zoom.id = 'rcVerZoom';
+        zoom.className = 'rc-ver-zoom';
+        const img = document.createElement('img');
+        img.alt = 'Foto adjunta';
+        img.src = src;   // por propiedad: sin riesgo de inyección de HTML
+        zoom.appendChild(img);
+        zoom.addEventListener('click', () => this.cerrarZoomVer());
+        document.body.appendChild(zoom);
+    },
+
+    cerrarZoomVer() {
+        const zoom = document.getElementById('rcVerZoom');
+        if (zoom) zoom.remove();
+    },
+
+    // HTML de la ficha "Ver" (estructura exacta del mockup, todo escapado).
+    _verHtml(r) {
+        const id = Number(r.id) || 0;
+        const items = Array.isArray(r.items) ? r.items : [];
+        const fotos = Array.isArray(r.fotos) ? r.fotos : [];
+        const estado = r.estado || 'PENDIENTE';
+        // Costo total: el del registro o el recalculado desde los items
+        const totalItems = items.reduce((s, it) => s + (Number(it.valor_unitario) || 0) * (Number(it.cantidad) || 1), 0);
+        const costoTotal = Number(r.costo_total) || totalItems;
+
+        // ── Cabecera: icono ojo + título + subtítulo + chips ──
+        let html = '<div class="rc-ver-head">'
+            + '<div class="rc-ver-head-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>'
+            + '<div><h3>Devolución #' + escText(r.numero_reclamo || id || '-') + '</h3>'
+            + '<div class="rc-ver-sub"><span class="rc-ver-sub-fecha">Ingreso ' + this.fmtDate(r.fecha_ingreso) + ' · </span>' + escText(r.cliente || '-') + ' · ' + escText(r.numero_orden || '-') + '</div></div>'
+            + '<div class="rc-ver-chips">' + this._chipEstado(estado) + this._chipResolucion(r.resolucion) + '</div>'
+            + '</div>';
+
+        html += '<div class="rc-ver-body">';
+
+        // ── Flujo de atención: línea de tiempo de 4 pasos ──
+        const pasos = [
+            { t: 'Pendiente', fecha: r.fecha_ingreso, resp: r.responsable_ingreso, estado: 'PENDIENTE' },
+            { t: 'En revisión', fecha: r.fecha_revision, resp: r.responsable_revision, estado: 'EN REVISION' },
+            { t: 'En proceso', fecha: r.fecha_proceso, resp: r.responsable_proceso, estado: 'EN PROCESO' },
+            { t: 'Finalizado', fecha: r.fecha_fin, resp: r.responsable_fin, estado: 'FINALIZADO' }
+        ];
+        const tlHtml = pasos.map(p => {
+            const cls = ['rc-ver-tl-step'];
+            if (p.fecha) cls.push('rc-ver-done');                // etapa completada → verde
+            if (p.estado === estado) cls.push('rc-ver-current');  // estado actual → azul + halo
+            const detalle = (p.fecha ? this.fmtDateCorta(p.fecha) : '—')
+                + (p.resp ? ' <span class="rc-ver-tl-p">· ' + escText(this._nombreCorto(p.resp)) + '</span>' : '');
+            return '<div class="' + cls.join(' ') + '"><div class="rc-ver-node"></div>'
+                + '<div class="rc-ver-tl-t">' + p.t + '</div>'
+                + '<div class="rc-ver-tl-d">' + detalle + '</div></div>';
+        }).join('');
+        html += '<div class="rc-ver-sec"><div class="rc-ver-sec-title">Flujo de atención</div>'
+            + '<div class="rc-ver-timeline">' + tlHtml + '</div></div>';
+
+        // ── Datos generales (ficha clave-valor a 2 columnas) ──
+        const kv = (k, v, extraClass) => '<div class="rc-ver-kv"><div class="rc-ver-k">' + k + '</div>'
+            + '<div class="rc-ver-v' + (extraClass ? ' ' + extraClass : '') + '">' + v + '</div></div>';
+        html += '<div class="rc-ver-sec"><div class="rc-ver-sec-title">Datos generales</div>'
+            + '<div class="rc-ver-kv-grid">'
+            + kv('Cliente', escText(r.cliente || '-'))
+            + kv('Orden de venta', escText(r.numero_orden || '-'))
+            + kv('Ingresado por', escText(r.responsable_ingreso || '-'))
+            + kv('Responsable de falla', escText(r.responsable_falla || '-'))
+            + kv('Motivo', escText(r.motivo || '-'))
+            + kv('Costo total', escText(this._fmtCLP(costoTotal)), 'rc-ver-v-num')
+            + '</div></div>';
+
+        // ── Productos de la devolución (5 columnas en desktop, compacta en móvil) ──
+        let filas = '';
+        let filasMov = '';
+        items.forEach(it => {
+            const cant = Number(it.cantidad) || 0;
+            const vu = Number(it.valor_unitario) || 0;
+            const tot = vu * cant;
+            filas += '<tr>'
+                + '<td class="rc-ver-cod">' + escText(it.codigo || it.item || '-') + '</td>'
+                + '<td>' + escText(it.descripcion || '-') + '</td>'
+                + '<td class="rc-ver-num">' + this._num(cant) + '</td>'
+                + '<td class="rc-ver-num">' + (vu ? escText(this._fmtCLP(vu)) : '-') + '</td>'
+                + '<td class="rc-ver-num">' + (tot ? escText(this._fmtCLP(tot)) : '-') + '</td>'
+                + '</tr>';
+            filasMov += '<tr>'
+                + '<td class="rc-ver-cod">' + escText(it.codigo || it.item || '-') + ' · ' + escText(it.descripcion || '-') + '</td>'
+                + '<td class="rc-ver-num">' + this._num(cant) + '</td>'
+                + '<td class="rc-ver-num">' + (tot ? escText(this._fmtCLP(tot)) : '-') + '</td>'
+                + '</tr>';
+        });
+        const tablaFull = '<table class="rc-ver-items rc-ver-items-full"><thead><tr>'
+            + '<th>Código</th><th>Descripción</th><th class="rc-ver-num">Cantidad</th><th class="rc-ver-num">Valor unit.</th><th class="rc-ver-num">Total</th>'
+            + '</tr></thead><tbody>'
+            + (items.length ? filas : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Sin productos registrados</td></tr>')
+            + '</tbody><tfoot><tr><td colspan="4" class="rc-ver-num">Total</td><td class="rc-ver-num">' + escText(this._fmtCLP(totalItems)) + '</td></tr></tfoot></table>';
+        const tablaMov = '<table class="rc-ver-items rc-ver-items-mov"><tbody>'
+            + (items.length ? filasMov : '<tr><td colspan="3" style="text-align:center;color:#94a3b8">Sin productos registrados</td></tr>')
+            + '</tbody><tfoot><tr><td>Total</td><td></td><td class="rc-ver-num">' + escText(this._fmtCLP(totalItems)) + '</td></tr></tfoot></table>';
+        html += '<div class="rc-ver-sec"><div class="rc-ver-sec-title">Productos de la devolución</div>' + tablaFull + tablaMov + '</div>';
+
+        // ── Detalle del reclamo ──
+        html += '<div class="rc-ver-sec"><div class="rc-ver-sec-title">Detalle del reclamo</div>'
+            + '<div class="rc-ver-texto">' + escText(r.detalle_reclamo || 'Sin detalle registrado') + '</div></div>';
+
+        // ── Fotos adjuntas (galería de 4 columnas) ──
+        const fotosHtml = fotos.length > 0
+            ? '<div class="rc-ver-fotos">' + fotos.map((f, i) =>
+                '<div class="rc-ver-foto" onclick="App.modules.reclamos.ampliarFotoVer(this)" title="Click para ampliar">'
+                + '<img src="' + escAttr(f) + '" alt="Foto ' + (i + 1) + '"></div>').join('') + '</div>'
+            : '<div class="rc-ver-texto" style="color:#94a3b8">Sin fotos adjuntas</div>';
+        html += '<div class="rc-ver-sec"><div class="rc-ver-sec-title">Fotos adjuntas (' + fotos.length + ')</div>' + fotosHtml + '</div>';
+
+        // ── Análisis y resolución ──
+        const icCheck = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+        const icX = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        const icClock = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        const resolucion = String(r.resolucion || '');
+        let resBox;
+        if (resolucion && estado === 'FINALIZADO') {
+            // Aceptada* → verde con check · Rechazada → roja con ×
+            const rechazada = resolucion === 'Rechazada';
+            const sub = 'Definida el ' + this.fmtDateTime(r.fecha_fin) + (r.responsable_fin ? ' por ' + escText(r.responsable_fin) : '');
+            resBox = '<div class="rc-ver-res' + (rechazada ? ' rc-ver-res-rechazada' : '') + '">'
+                + '<div class="rc-ver-res-ic">' + (rechazada ? icX : icCheck) + '</div>'
+                + '<div><div class="rc-ver-res-t">Resolución: ' + escText(resolucion) + '</div>'
+                + '<div class="rc-ver-res-s">' + sub + '</div></div></div>';
+        } else {
+            // Sin resolución o reclamo aún no finalizado → caja neutra
+            const sub = resolucion
+                ? 'Resolución seleccionada: ' + escText(resolucion) + ' · pendiente de cierre del reclamo'
+                : 'El reclamo aún no tiene resolución definida';
+            resBox = '<div class="rc-ver-res rc-ver-res-pendiente">'
+                + '<div class="rc-ver-res-ic">' + icClock + '</div>'
+                + '<div><div class="rc-ver-res-t">Pendiente de resolución</div>'
+                + '<div class="rc-ver-res-s">' + sub + '</div></div></div>';
+        }
+        html += '<div class="rc-ver-sec"><div class="rc-ver-sec-title">Análisis y resolución</div>'
+            + '<div class="rc-ver-texto" style="margin-bottom:10px">' + escText(r.observacion_analisis || 'Sin análisis registrado') + '</div>'
+            + resBox + '</div>';
+
+        html += '</div>';   // fin .rc-ver-body
+
+        // ── Footer: Cerrar / Editar ──
+        html += '<div class="rc-ver-foot">'
+            + '<button type="button" class="btn btn-outline" onclick="App.modules.reclamos.cerrarVer()">Cerrar</button>'
+            + (App.canEdit('reclamos') ? '<button type="button" class="btn btn-primary" onclick="App.modules.reclamos.editarDesdeVer(' + id + ')">Editar</button>' : '')
+            + '</div>';
+
+        return html;
     },
 
     async onResponsableChange() {
