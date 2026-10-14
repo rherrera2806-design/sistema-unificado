@@ -170,9 +170,31 @@ router.get('/api/pedidos', canView, async (req, res, next) => {
             v.nombre AS vendedor_nombre, r.nombre AS revisor_nombre
             FROM pedidos p LEFT JOIN usuarios v ON v.email = p.vendedor
             LEFT JOIN usuarios r ON r.email = p.revisado_por`;
-        const result = esVentas
-            ? await query(joinQuery + ' WHERE p.vendedor = $1 ORDER BY p.fecha_subida DESC', [userEmail])
-            : await query(joinQuery + ' ORDER BY p.fecha_subida DESC');
+        // Filtro opcional por rango de fechas (YYYY-MM-DD, fin inclusivo): el
+        // "Grafico por Dia" pide solo los ultimos 12 meses en vez de la tabla
+        // completa en cada navegacion.
+        const condiciones = [];
+        const params = [];
+        const esFecha = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+        if (esVentas) {
+            condiciones.push(`p.vendedor = $${params.length + 1}`);
+            params.push(userEmail);
+        }
+        if (req.query.inicio !== undefined || req.query.fin !== undefined) {
+            if ((req.query.inicio && !esFecha(req.query.inicio)) || (req.query.fin && !esFecha(req.query.fin))) {
+                return res.status(400).json({ error: 'Los filtros inicio/fin deben tener formato YYYY-MM-DD' });
+            }
+            if (req.query.inicio) {
+                condiciones.push(`p.fecha_subida >= $${params.length + 1}::date`);
+                params.push(req.query.inicio);
+            }
+            if (req.query.fin) {
+                condiciones.push(`p.fecha_subida < ($${params.length + 1}::date + 1)`);
+                params.push(req.query.fin);
+            }
+        }
+        const where = condiciones.length ? ' WHERE ' + condiciones.join(' AND ') : '';
+        const result = await query(joinQuery + where + ' ORDER BY p.fecha_subida DESC', params);
         res.json(result.rows);
     } catch (e) { next(e); }
 });
