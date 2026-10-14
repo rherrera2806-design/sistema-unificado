@@ -125,13 +125,24 @@ App.registerModule('pedidos', {
         const id = Number(p.id) || 0;
         const puedeEditar = App.canEdit('pedidos');
         const puedeEliminar = App.canDelete('pedidos');
+        // Iconos del menu (15px, trazo 2) y tono por significado:
+        // ok = aprobacion (verde) · warn = rechazo (ambar, NO destructivo) ·
+        // danger = eliminacion (rojo, la unica accion destructiva).
+        const ico = {
+            pdf: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+            ok: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+            warn: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+            clock: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+            edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>',
+            trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
+        };
         const acc = [];
-        if (p.estado === 'pendiente') acc.push({ txt: 'Ver PDF', fn: 'viewPdf(' + id + ')' });
-        if (puedeEditar && p.estado === 'pendiente') acc.push({ txt: 'Aprobar', fn: 'aprobarPedido(' + id + ')', ok: true });
-        if (puedeEditar && (p.estado === 'pendiente' || p.estado === 'aprobado')) acc.push({ txt: 'Rechazar', fn: 'showRechazoModal(' + id + ')', danger: true });
-        if (p.estado !== 'pendiente') acc.push({ txt: 'Historial', fn: 'showHistorial(' + id + ')' });
-        if (puedeEditar) acc.push({ txt: 'Editar', fn: 'showEditModal(' + id + ')' });
-        if (puedeEliminar) acc.push({ txt: 'Eliminar', fn: 'deletePedido(' + id + ',\'' + escJs(p.numero_pedido) + '\')', danger: true });
+        if (p.estado === 'pendiente') acc.push({ txt: 'Ver PDF', fn: 'viewPdf(' + id + ')', icon: ico.pdf, tone: '' });
+        if (puedeEditar && p.estado === 'pendiente') acc.push({ txt: 'Aprobar', fn: 'aprobarPedido(' + id + ')', icon: ico.ok, tone: 'ok' });
+        if (puedeEditar && (p.estado === 'pendiente' || p.estado === 'aprobado')) acc.push({ txt: 'Rechazar', fn: 'showRechazoModal(' + id + ')', icon: ico.warn, tone: 'warn' });
+        if (p.estado !== 'pendiente') acc.push({ txt: 'Historial', fn: 'showHistorial(' + id + ')', icon: ico.clock, tone: '' });
+        if (puedeEditar) acc.push({ txt: 'Editar', fn: 'showEditModal(' + id + ')', icon: ico.edit, tone: '' });
+        if (puedeEliminar) acc.push({ txt: 'Eliminar', fn: 'deletePedido(' + id + ',\'' + escJs(p.numero_pedido) + '\')', icon: ico.trash, tone: 'danger' });
         return acc;
     },
 
@@ -248,12 +259,18 @@ App.registerModule('pedidos', {
                 + '.ped-chip-btn{padding:7px 12px;font-size:11px}'
                 + '.ped-actions-btn{width:32px;height:32px;border-radius:8px;border:1px solid #e2e8f0;background:white;cursor:pointer;font-size:15px;color:#64748b;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s}'
                 + '.ped-actions-btn:hover{background:#f1f5f9;color:#0f172a;border-color:#cbd5e1}'
-                + '.ped-dropdown{display:none;background:white;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:9999;min-width:140px;padding:4px;overflow:hidden}'
+                + '.ped-dropdown{display:none;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 12px 32px rgba(15,23,42,0.16);z-index:9999;min-width:186px;padding:6px;overflow:hidden}'
                 + '.ped-dropdown.open{display:block}'
-                + '.ped-drop-item{padding:8px 12px;font-size:13px;color:#334155;cursor:pointer;border-radius:6px;transition:background 0.1s}'
+                + '.ped-drop-item{display:flex;align-items:center;gap:9px;min-height:38px;padding:8px 12px;font-size:13px;font-weight:500;color:#334155;cursor:pointer;border-radius:8px;transition:background 0.15s,color 0.15s}'
                 + '.ped-drop-item:hover{background:#f1f5f9}'
+                + '.ped-drop-item svg{flex-shrink:0;opacity:0.8}'
+                + '.ped-drop-ok{color:#15803d}'
+                + '.ped-drop-ok:hover{background:#f0fdf4}'
+                + '.ped-drop-warn{color:#b45309}'
+                + '.ped-drop-warn:hover{background:#fdf8f1}'
                 + '.ped-drop-danger{color:#dc2626}'
                 + '.ped-drop-danger:hover{background:#fef2f2}'
+                + '.ped-drop-sep{height:1px;background:#eef2f7;margin:5px 8px}'
                 + '</style>'
 
                 + '<div class="m-page">'
@@ -340,6 +357,10 @@ App.registerModule('pedidos', {
             if (!this._dropdownsGlobal) {
                 this._dropdownsGlobal = true;
                 document.addEventListener('click', () => this.closeAllDropdowns());
+                // Escape cierra el menú de acciones (accesibilidad por teclado)
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') this.closeAllDropdowns();
+                });
             }
         }
         await this.load();
@@ -558,8 +579,10 @@ App.registerModule('pedidos', {
         }
         tbody.innerHTML = pedidos.map(p => {
             const badge = this.badgeHtml(p.estado, p.motivo_rechazo);
-            const dropItems = this._acciones(p).map(a =>
-                '<div class="ped-drop-item' + (a.danger ? ' ped-drop-danger' : '') + '" onclick="event.stopPropagation();App.modules.pedidos.' + a.fn + '">' + a.txt + '</div>'
+            const accs = this._acciones(p);
+            const dropItems = accs.map((a, ix) =>
+                (a.tone === 'danger' && ix > 0 ? '<div class="ped-drop-sep"></div>' : '')
+                + '<div role="menuitem" tabindex="0" class="ped-drop-item' + (a.tone ? ' ped-drop-' + a.tone : '') + '" onclick="event.stopPropagation();App.modules.pedidos.' + a.fn + '">' + (a.icon || '') + '<span>' + a.txt + '</span></div>'
             ).join('');
             return '<tr class="ped-row" style="cursor:pointer">'
                 + '<td class="ped-td"><span class="ped-num">' + escText(p.numero_pedido) + '</span></td>'
@@ -591,9 +614,11 @@ App.registerModule('pedidos', {
                 ],
                 // Mismas acciones que el dropdown (incluye Eliminar, Historial y
                 // Rechazar aprobado, que antes faltaban en móvil).
-                actions: p => this._acciones(p).map(a =>
-                    '<button onclick="event.stopPropagation();App.modules.pedidos.' + a.fn + '" class="btn btn-sm ' + (a.danger ? 'btn-danger' : (a.ok ? 'btn-primary' : 'btn-outline')) + '" style="margin:2px">' + a.txt + '</button>'
-                ).join('')
+                actions: p => this._acciones(p).map(a => {
+                    const cls = a.tone === 'danger' ? 'btn-danger' : (a.tone === 'ok' ? 'btn-primary' : 'btn-outline');
+                    const est = a.tone === 'warn' ? ' style="margin:2px;color:#b45309;border-color:#f0d9b5;background:#fdf8f1"' : ' style="margin:2px"';
+                    return '<button onclick="event.stopPropagation();App.modules.pedidos.' + a.fn + '" class="btn btn-sm ' + cls + '"' + est + '>' + a.txt + '</button>';
+                }).join('')
             }, pedidos);
         }
 
