@@ -946,7 +946,7 @@ const Reclamos = {
         // ── Datos generales (ficha clave-valor a 2 columnas) ──
         // Presentacion normalizada: los datos suelen venir en MAYUSCULAS
         // (como se escribieron). Se capitaliza SIN inventar acentos.
-        const titulo = (s) => String(s || '').toLowerCase().replace(/\b[a-záéíóúñü]/g, ch => ch.toUpperCase());
+        const titulo = (s) => String(s || '').toLowerCase().split(' ').map(p => p ? p.charAt(0).toUpperCase() + p.slice(1) : p).join(' ');
         const frase = (s) => { const t = String(s || '').toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
         const kv = (k, v, extraClass) => '<div class="rc-ver-kv"><div class="rc-ver-k">' + k + '</div>'
             + '<div class="rc-ver-v' + (extraClass ? ' ' + extraClass : '') + '">' + v + '</div></div>';

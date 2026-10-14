@@ -13,7 +13,7 @@ App.registerModule('reclamos_reporte', {
     _fmtCLP(v) { return '$' + Number(Math.round(v || 0)).toLocaleString('es-CL'); },
     // Presentacion normalizada: los datos suelen venir en MAYUSCULAS
     // (como se escribieron). Se capitalizan SIN inventar acentos.
-    _titulo(s) { return String(s || '').toLowerCase().replace(/\\b[a-z\\u00e1\\u00e9\\u00ed\\u00f3\\u00fa\\u00f1\\u00fc]/g, ch => ch.toUpperCase()); },
+    _titulo(s) { return String(s || '').toLowerCase().split(' ').map(p => p ? p.charAt(0).toUpperCase() + p.slice(1) : p).join(' '); },
     _frase(s) { const t = String(s || '').toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); },
     _etiquetaResolucion(r) {
         const mapa = {
@@ -58,7 +58,7 @@ App.registerModule('reclamos_reporte', {
                 .rq-p-body.rq-chart-body{position:relative;min-height:210px}
                 .rq-chart-body .rq-bars-row{position:absolute;inset:16px 18px 38px;display:flex;gap:8px;align-items:stretch}
                 .rq-chart-body > .rq-bars{position:absolute;inset:16px 18px}
-                .rq-chart-body .rq-bars{flex:1;display:flex;align-items:flex-end;gap:8px}
+                .rq-chart-body .rq-bars{flex:1;height:auto;display:flex;align-items:flex-end;gap:8px}
                 .rq-chart-body .rq-yaxis{height:auto;align-self:stretch}
                 .rq-chart-body .rq-nota{position:absolute;left:18px;right:18px;bottom:12px;margin:0}
                 .rq-bars{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:14px;flex:1;min-width:0}
