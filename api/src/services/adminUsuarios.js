@@ -135,12 +135,12 @@ const setActivo = async (id, activo, actorEmail) => {
 const remove = async (id, actorEmail) => {
     const actual = await getOne(id);
     if (!actual) throw new Error('Usuario no encontrado');
-    if (actorEmail && actual.email && actual.email.toLowerCase() === String(actorEmail).toLowerCase()) {
-        throw new Error('No puedes eliminar tu propio usuario');
+    // Única red de seguridad: el sistema nunca puede quedarse sin administración.
+    if (actual.rol === 'admin' && actual.activo !== false && await esUltimoAdmin(id)) {
+        throw new Error('No se puede eliminar al último administrador activo. Otorga el rol admin a otra cuenta primero.');
     }
-    if (actual.rol === 'admin') throw new Error('No se pueden eliminar administradores');
     await query('DELETE FROM usuarios WHERE id = $1', [id]);
-    await auditar(actorEmail, 'eliminar', actual.email, '');
+    await auditar(actorEmail, 'eliminar', actual.email, actual.rol === 'admin' ? 'era administrador' : '');
     return { ok: true };
 };
 

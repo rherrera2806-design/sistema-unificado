@@ -304,9 +304,7 @@ App.registerModule('usuarios', {
                 + (u.activo !== false
                     ? `<button class="us-icon-btn warn" title="Desactivar" onclick="App.modules.usuarios.pedirActivo(${u.id},false)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>`
                     : `<button class="us-icon-btn ok" title="Activar" onclick="App.modules.usuarios.pedirActivo(${u.id},true)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>`)
-                + (u.rol !== 'admin'
-                    ? `<button class="us-icon-btn danger" title="Eliminar" onclick="App.modules.usuarios.pedirEliminar(${u.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`
-                    : '')
+                + `<button class="us-icon-btn danger" title="Eliminar" onclick="App.modules.usuarios.pedirEliminar(${u.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`
                 + '</td></tr>';
         }).join('');
 
@@ -327,8 +325,7 @@ App.registerModule('usuarios', {
                     + (u.activo !== false
                         ? `<button class="us-btn-ghost sm warn" onclick="App.modules.usuarios.pedirActivo(${u.id},false)">Desactivar</button>`
                         : `<button class="us-btn-ghost sm ok" onclick="App.modules.usuarios.pedirActivo(${u.id},true)">Activar</button>`)
-                    + (u.rol !== 'admin'
-                        ? `<button class="us-btn-ghost sm danger" onclick="App.modules.usuarios.pedirEliminar(${u.id})">Eliminar</button>` : '')
+                    + `<button class="us-btn-ghost sm danger" onclick="App.modules.usuarios.pedirEliminar(${u.id})">Eliminar</button>`
                     + '</div></div>';
             }).join('');
         }
@@ -504,11 +501,18 @@ App.registerModule('usuarios', {
     },
     closeConfirm() { document.getElementById('uConfirmOverlay').style.display = 'none'; },
 
+    _yoId() {
+        try { return JSON.parse(localStorage.getItem('unified_user') || '{}').id; } catch (e) { return null; }
+    },
+
     pedirEliminar(id) {
         const u = this.allUsers.find(x => x.id === id);
         if (!u) return;
+        const esYo = this._yoId() === u.id;
         this._confirmar('Eliminar usuario',
-            `Se eliminará <strong>${escapeHtml(u.nombre)}</strong> (${escapeHtml(u.email)}) de forma permanente. <br><br>Si solo quieres que no entre al sistema, es mejor <strong>desactivarlo</strong>.`,
+            `Se eliminará <strong>${escapeHtml(u.nombre)}</strong> (${escapeHtml(u.email)}) de forma permanente.`
+            + (esYo ? '<br><br>⚠️ <strong>Es la cuenta con la que entraste</strong>: al eliminarla se cerrará tu sesión.' : '')
+            + '<br><br>Si solo quieres que no entre al sistema, es mejor <strong>desactivarlo</strong>.',
             'Eliminar definitivamente', true,
             () => this.doEliminar(id));
     },
@@ -519,6 +523,12 @@ App.registerModule('usuarios', {
             const res = await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE', headers });
             const body = await res.json().catch(() => ({}));
             if (!res.ok) { App.showAlert(body.error || 'No se pudo eliminar', 'danger'); return; }
+            if (this._yoId() === id) {
+                // Se eliminó la cuenta propia: cerrar sesión y volver al login.
+                if (typeof doLogout === 'function') return doLogout();
+                localStorage.removeItem('unified_user');
+                return location.reload();
+            }
             App.showAlert('Usuario eliminado', 'success');
             await this.loadUsers();
         } catch (e) { App.showAlert('Error de conexión', 'danger'); }

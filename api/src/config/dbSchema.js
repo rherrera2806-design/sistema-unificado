@@ -1359,8 +1359,6 @@ async function faseDatos({ q, safe }) {
     `);
 
     // ── Usuario administrador y permisos ─────────────────────────────────────
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     const ALL_PERMS = [
         'asistencia','asistencia.agregar','asistencia.editar','asistencia.eliminar',
         'horas_extras','horas_extras.agregar','horas_extras.editar','horas_extras.eliminar',
@@ -1398,8 +1396,16 @@ async function faseDatos({ q, safe }) {
         'costeo','costeo.agregar','costeo.editar','costeo.eliminar',
         'usuarios'
     ];
-    const adminCheck = await q("SELECT id FROM usuarios WHERE email = $1", [adminEmail]);
-    if (adminCheck.rows.length === 0) {
+    // ── Usuario administrador inicial (solo instalación limpia) ──────────────
+    // OJO: antes este usuario se recreaba en CADA arranque si alguien lo había
+    // eliminado (y con contraseña por defecto admin123): por eso "vuelve a
+    // aparecer" siempre. Ahora solo se crea cuando la tabla usuarios está
+    // completamente vacía (primer arranque). Una vez que existe al menos un
+    // usuario, este sistema NUNCA vuelve a crear cuentas por su cuenta.
+    const totalUsuarios = await q("SELECT COUNT(*)::int AS n FROM usuarios");
+    if (totalUsuarios.rows[0].n === 0) {
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@vidrieria.com';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
         await q("INSERT INTO usuarios (nombre, email, password, rol, permisos) VALUES ($1, $2, $3, $4, $5)",
             ['Administrador', adminEmail, hashPassword(adminPassword), 'admin', ALL_PERMS]);
     } else {
