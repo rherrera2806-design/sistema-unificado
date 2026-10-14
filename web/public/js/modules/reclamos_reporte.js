@@ -48,7 +48,7 @@ App.registerModule('reclamos_reporte', {
                 .rq-p-head h3{font-size:13px;font-weight:600;margin:0}
                 .rq-p-head .sub{font-size:10px;color:var(--invp-muted,#8494a8)}
                 .rq-p-body{padding:16px 18px}
-                .rq-bars{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:14px}
+                .rq-bars{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:14px;flex:1;min-width:0}
                 .rq-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
                 .rq-bar{width:100%;max-width:34px;background:var(--invp-accent,#2563eb);border-radius:5px 5px 0 0;position:relative;min-height:2px}
                 .rq-bar.gris{background:#94a3b8}
