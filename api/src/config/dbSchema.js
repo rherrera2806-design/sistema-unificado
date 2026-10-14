@@ -559,6 +559,19 @@ async function faseColumnas({ q, safe }) {
     await safe(`DO $$ BEGIN ALTER TABLE usuarios ADD COLUMN permisos TEXT[] DEFAULT '{}'; EXCEPTION WHEN duplicate_column THEN null; END $$`, 'usuarios.permisos');
     await safe(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_plain TEXT DEFAULT ''`, 'usuarios.password_plain');
     await safe(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS area TEXT DEFAULT ''`, 'usuarios.area');
+    // Seguridad: las contraseñas NUNCA se guardan en texto plano. La columna
+    // password_plain era un resto histórico (el export antiguo la mostraba);
+    // aquí se vacía de raíz y ya nadie vuelve a escribir en ella.
+    await safe(`UPDATE usuarios SET password_plain = '' WHERE password_plain IS NOT NULL AND password_plain <> ''`, 'usuarios.password_plain limpio');
+    // Auditoría de administración de usuarios: quién creó/editó/desactivó/eliminó a quién.
+    await safe(`CREATE TABLE IF NOT EXISTS usuarios_audit (
+        id SERIAL PRIMARY KEY,
+        actor_email TEXT NOT NULL,
+        accion TEXT NOT NULL,
+        usuario_email TEXT NOT NULL,
+        detalle TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`, 'usuarios_audit');
 
     // ── catalogo_tipos_cristal ───────────────────────────────────────────────
     await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.stock_critico');

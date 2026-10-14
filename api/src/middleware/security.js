@@ -30,6 +30,39 @@ function checkGlobalRateLimit(ip) {
     return recent.length < GLOBAL_RATE_MAX;
 }
 
+// ── Bloqueo por intentos fallidos de login ──────────────────────────────────
+// 5 fallas en 10 minutos bloquean la clave (por email O por IP): sin esto,
+// /api/auth/login y /api/auth/verify-password son oráculos de fuerza bruta.
+const LOGIN_FAIL_MAX = 5;
+const LOGIN_FAIL_WINDOW = 10 * 60 * 1000;
+const loginFailures = new Map();   // clave -> [timestamps de fallas]
+
+function checkLoginAllowed(clave) {
+    const ahora = Date.now();
+    const fallas = (loginFailures.get(clave) || []).filter(t => ahora - t < LOGIN_FAIL_WINDOW);
+    loginFailures.set(clave, fallas);
+    return fallas.length < LOGIN_FAIL_MAX;
+}
+
+function recordLoginFailure(clave) {
+    const fallas = loginFailures.get(clave) || [];
+    fallas.push(Date.now());
+    loginFailures.set(clave, fallas);
+}
+
+function clearLoginFailures(clave) {
+    if (clave) loginFailures.delete(clave);
+}
+
+setInterval(() => {
+    const ahora = Date.now();
+    for (const [clave, fallas] of loginFailures) {
+        const recientes = fallas.filter(t => ahora - t < LOGIN_FAIL_WINDOW);
+        if (recientes.length === 0) loginFailures.delete(clave);
+        else loginFailures.set(clave, recientes);
+    }
+}, 5 * 60 * 1000);
+
 setInterval(() => {
     const now = Date.now();
     for (const [ip, requests] of globalRequests) {
@@ -83,6 +116,9 @@ module.exports = {
     checkRateLimit,
     recordLoginAttempt,
     checkGlobalRateLimit,
+    checkLoginAllowed,
+    recordLoginFailure,
+    clearLoginFailures,
     createSession,
     getSession,
     destroySession,

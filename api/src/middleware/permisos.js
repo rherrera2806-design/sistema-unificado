@@ -140,11 +140,14 @@ function getUserFromReq(req) {
 }
 
 /**
- * Solo el rol 'admin' de la sesión (o el permiso 'usuarios' otorgado en la BD)
- * otorga permisos de administrador. Los headers nunca definen el rol.
+ * Solo el rol 'admin' otorga permisos de administrador total. El permiso
+ * 'usuarios' da acceso a GESTIONAR USUARIOS (routes/adminUsuarios.js) pero ya
+ * no es un comodín: antes cualquier requireAnyPerm lo pasaba, así que quien
+ * tenía "solo gestión de usuarios" podía subirse a sí mismo a rol admin.
+ * Los headers nunca definen el rol.
  */
 function isAdmin(user) {
-    return user.rol === 'admin' || (user.permisos || []).includes('usuarios');
+    return user.rol === 'admin';
 }
 
 /**

@@ -1,107 +1,235 @@
+// ============================================================================
+// Administración → Usuarios (módulo sensible)
+//   · Formulario amigable: validación clara campo a campo, generador de
+//     contraseña, mostrar/ocultar, requisitos visibles, áreas con sugerencias.
+//   · Al crear: credenciales con botón "Copiar" (reemplaza al export con
+//     contraseñas en claro, que ya no existe).
+//   · Activar / Desactivar sin borrar (conserva historial) + Eliminar con
+//     confirmación en modal (sin confirm() nativo).
+//   · Bitácora visible: quién hizo qué y cuándo (usuarios_audit).
+//   · XSS: TODO dato del usuario pasa por escapeHtml (atributos incluidos).
+//   · Errores visibles (App.showAlert + res.ok en cada fetch).
+// Escala tipográfica 20/15/13/11/10 · fechas dd-mm-yyyy HH:mm · es-CL.
+// ============================================================================
 App.registerModule('usuarios', {
+    editingId: null,
+    allUsers: [],
+    selectedArea: null,
+
+    // Árbol de permisos (IDs EXACTOS que consume el backend)
+    SECTIONS: [
+        { key: 'asistencia', label: 'ASISTENCIA', subs: [
+            { id: 'asistencia', label: 'Ver' },
+            { id: 'asistencia.editar', label: 'Editar / Autorizar' }
+        ]},
+        { key: 'atencion', label: 'ATENCIÓN', subs: [
+            { id: 'turnos_recepcion', label: 'Recepción y Control' },
+            { id: 'turnos_bodega', label: 'Verificación Bodega' },
+            { id: 'turnos_almacen', label: 'Almacén' },
+            { id: 'turnos_facturar', label: 'Por Facturar' },
+            { id: 'turnos_qr', label: 'QR Clientes' },
+            { id: 'turnos_reporte', label: 'Reporte' }
+        ]},
+        { key: 'instalaciones', label: 'INSTALACIONES', subs: [
+            { id: 'instalaciones', label: 'Instalaciones' },
+            { id: 'inst_historial', label: 'Historial' }
+        ]},
+        { key: 'inventario', label: 'INVENTARIO', subs: [
+            { id: 'inv_dashboard', label: 'Dashboard Inventario' },
+            { id: 'inv_inventario', label: 'Inventario' },
+            { id: 'inv_inventario.sensible', label: 'Ver Sensible (costos/CPM)' },
+            { id: 'inv_movimientos', label: 'Movimientos' },
+            { id: 'inv_historial', label: 'Historial Inventario' },
+            { id: 'inv_consumo', label: 'Consumo por Meses' },
+            { id: 'inv_autonomia', label: 'Autonomía (proyección de stock)' },
+            { id: 'inv_catalogos', label: 'Catálogos (tipos de cristal / espesores)' }
+        ]},
+        { key: 'reclamos', label: 'RECLAMOS', subs: [
+            { id: 'reclamos', label: 'Reclamos y Devoluciones' }
+        ]},
+        { key: 'mantencion', label: 'MANTENCIÓN', subs: [
+            { id: 'dashboard', label: 'Dashboard' },
+            { id: 'machineTypes', label: 'Tipos de Área' },
+            { id: 'machines', label: 'Máquinas' },
+            { id: 'components', label: 'Componentes' },
+            { id: 'preventive', label: 'Preventivo' },
+            { id: 'corrective', label: 'Correctivo' },
+            { id: 'calendar', label: 'Calendario' },
+            { id: 'notas', label: 'Notas' },
+            { id: 'reports', label: 'Reportes' },
+            { id: 'history', label: 'Historial' },
+            { id: 'bitacora', label: 'Bitácora' },
+            { id: 'proveedores', label: 'Proveedores' }
+        ]},
+        { key: 'pedidos', label: 'PEDIDOS', subs: [
+            { id: 'pedidos', label: 'Pedidos / Órdenes' }
+        ]},
+        { key: 'produccion', label: 'PRODUCCIÓN', subs: [
+            { id: 'prod_ordenes', label: 'Producción' },
+            { id: 'prod_planificacion', label: 'Planificación' },
+            { id: 'prod_reportes', label: 'Reporte Fechas' },
+            { id: 'prod_prog_estacion', label: 'Programación Estación' },
+            { id: 'prod_notas', label: 'Mis Pendientes' },
+            { id: 'prod_config', label: 'Configuración' },
+            { id: 'taller', label: 'Taller' },
+            { id: 'bodega', label: 'Bodega' }
+        ]},
+        { key: 'costeo', label: 'COSTEO', subs: [
+            { id: 'costeo', label: 'Costeo' }
+        ]}
+    ],
+
     async render() {
         const el = document.getElementById('page-usuarios');
-        el.innerHTML = '<style>'
-            + '@keyframes usFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
-            + '.us-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
-            + '.us-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-2px)}'
-            + '.us-table tbody tr{transition:background 0.15s;border-bottom:1px solid #f1f5f9}'
-            + '.us-table tbody tr:hover{background:#f8fafc!important}'
-            + '#uSearch::placeholder{color:rgba(255,255,255,0.8)!important;opacity:1!important}'
-            + '.m-cards-mobile{display:none}'
-            + '.us-stats{grid-template-columns:repeat(4,1fr)}'
-            + '.us-stats .m-stat-card{flex-direction:row;align-items:center;gap:6px;padding:6px 10px;min-height:48px;overflow:hidden}'
-            + '.us-stats .m-stat-icon{width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center}'
-            + '.us-stats .m-stat-icon svg{width:12px;height:12px}'
-            + '.us-stats .m-stat-value{font-size:14px;font-weight:800;white-space:nowrap}'
-            + '.us-stats .m-stat-label{font-size:8px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase}'
-            + '@media(max-width:768px){.us-stats{grid-template-columns:repeat(2,1fr);gap:6px}.us-stats .m-stat-card{padding:5px 8px;min-height:42px;gap:5px}.us-stats .m-stat-icon{width:22px;height:22px}.us-stats .m-stat-icon svg{width:10px;height:10px}.us-stats .m-stat-value{font-size:12px}.us-stats .m-stat-label{font-size:7px}.m-cards-mobile{display:block!important;padding:12px}.m-table-wrap{display:none}.us-hero-mobile .m-hero-inner{flex-direction:row!important;align-items:center!important;gap:6px!important;padding:0!important}.us-hero-mobile .m-hero-title{flex:0 0 auto!important}.us-hero-mobile .m-hero-title h2{font-size:13px!important;margin:0!important}.us-hero-mobile .m-hero-title p{display:none!important}.us-hero-mobile .m-filters{flex:1 1 auto!important;width:auto!important;min-width:0}.us-hero-mobile #uSearch{width:100%!important;min-width:0!important;padding:8px 12px 8px 32px!important;font-size:11px!important;border:1px solid rgba(255,255,255,0.5)!important;border-radius:6px!important}}'
-            + '</style>'
+        el.innerHTML = this._estilos() + `
+            <div class="us-hero">
+                <div>
+                    <h2>Usuarios</h2>
+                    <p>Gestión de accesos y permisos del sistema · las contraseñas solo existen cifradas</p>
+                </div>
+                <div class="us-hero-actions">
+                    <button class="us-btn-hero" onclick="window.open('/api/admin/usuarios/export','_blank')" title="Descargar el listado (sin contraseñas)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Exportar
+                    </button>
+                    <button class="us-btn-hero" onclick="App.modules.usuarios.mostrarAuditoria()" title="Ver bitácora de cambios">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Bitácora
+                    </button>
+                    <button class="us-btn-hero solid" onclick="App.modules.usuarios.showForm()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Nuevo usuario
+                    </button>
+                </div>
+            </div>
 
-            + '<div class="m-page">'
-            + '<div class="m-hero us-hero-mobile">'
-            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div class="m-hero-inner"><div class="m-hero-title"><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Usuarios</h2>'
-            + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestionar usuarios y permisos del sistema</p></div>'
-            + '<div class="m-filters">'
-            + '<div style="position:relative"><svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="uSearch" placeholder="Buscar nombre, email o area..." oninput="App.modules.usuarios.filterUsers()" style="padding:8px 12px 8px 32px;border:1px solid rgba(255,255,255,0.5);border-radius:6px;background:rgba(255,255,255,0.35);color:white;font-size:11px;outline:none;width:200px" onfocus="this.style.background=\'rgba(255,255,255,0.45)\'" onblur="this.style.background=\'rgba(255,255,255,0.35)\'"></div>'
-            + '</div></div></div>'
+            <div class="us-stats" id="uStats"></div>
 
-            + '<div id="uStats" class="m-stats"></div>'
+            <div class="us-toolbar">
+                <div class="us-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8494a8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="uSearch" placeholder="Buscar por nombre, email o área..." oninput="App.modules.usuarios.filterUsers()">
+                </div>
+                <span class="us-count" id="uCount"></span>
+            </div>
 
-            + '<div class="m-actions">'
-            + '<button onclick="App.modules.usuarios.showForm()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
-            + '<button onclick="window.open(\'/api/admin/usuarios/export\',\'_blank\')" class="btn" style="background:#16a34a;color:white;white-space:nowrap;padding:8px 14px;font-size:12px;border:none;border-radius:8px;font-weight:600;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar</button>'
-            + '</div>'
+            <div class="us-panel">
+                <div class="us-table-wrap">
+                    <table class="us-table">
+                        <thead><tr>
+                            <th>Nombre</th><th>Email</th><th>Rol</th><th>Área</th><th>Permisos</th><th>Estado</th><th class="th-acc">Acciones</th>
+                        </tr></thead>
+                        <tbody id="uTableBody"><tr><td colspan="7" class="us-loading">Cargando usuarios...</td></tr></tbody>
+                    </table>
+                </div>
+                <div id="uCardsMobile" class="us-cards-mobile"></div>
+            </div>
 
-            + '<div class="m-card">'
-            + '<div class="m-card-header"><h3 style="margin:0;font-size:14px;font-weight:700;color:#1e293b">Listado <span id="uCount" style="color:#94a3b8;font-weight:400;font-size:12px"></span></h3></div>'
-            + '<div class="m-card-body">'
-            + '<div class="m-table-wrap"><table class="us-table" style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Nombre</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Email</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Rol</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Area</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0;min-width:320px">Permisos</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Estado</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Acciones</th>'
-            + '</tr></thead><tbody id="uTableBody"><tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><div>Cargando...</div></td></tr></tbody></table></div>'
-            + '<div id="uCardsMobile" class="m-cards-mobile"></div>'
-            + '</div></div></div>'
+            <!-- Modal formulario -->
+            <div id="uModalOverlay" class="us-overlay" onclick="if(event.target===this)App.modules.usuarios.closeModal()">
+                <div class="us-modal" onclick="event.stopPropagation()">
+                    <div class="us-modal-head">
+                        <h3 id="uModalTitle">Nuevo usuario</h3>
+                        <button class="us-x" onclick="App.modules.usuarios.closeModal()" aria-label="Cerrar">✕</button>
+                    </div>
+                    <div class="us-modal-body" id="uModalBody"></div>
+                    <div class="us-modal-foot">
+                        <button class="us-btn-ghost" onclick="App.modules.usuarios.closeModal()">Cancelar</button>
+                        <button class="us-btn-primary" id="uModalBtn" onclick="App.modules.usuarios.save()">Crear usuario</button>
+                    </div>
+                </div>
+            </div>
 
-            + '<div id="uModalOverlay" style="display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px)" onclick="if(event.target===this)App.modules.usuarios.closeModal()">'
-            + '<div onclick="event.stopPropagation()" style="background:white;border-radius:16px;width:90%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">'
-            + '<div style="padding:24px 28px;border-bottom:1px solid #e2e8f0"><div style="display:flex;align-items:center;justify-content:space-between"><h3 id="uModalTitle" style="margin:0;font-size:18px;font-weight:700;color:#0f172a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Nuevo Usuario</h3>'
-            + '<button class="modal-close" onclick="App.modules.usuarios.closeModal()"></button></div></div>'
-            + '<div style="padding:24px 28px" id="uModalBody"></div>'
-            + '<div id="uModalError" style="color:#ef4444;font-size:12px;padding:0 28px;display:none"></div>'
-            + '<div style="padding:16px 28px 24px;display:flex;gap:8px;justify-content:flex-end">'
-            + '<button onclick="App.modules.usuarios.closeModal()" class="btn btn-outline">Cancelar</button>'
-            + '<button onclick="App.modules.usuarios.save()" id="uModalBtn" class="btn btn-primary">Crear</button>'
-            + '</div></div></div>';
+            <!-- Modal confirmación -->
+            <div id="uConfirmOverlay" class="us-overlay" onclick="if(event.target===this)App.modules.usuarios.closeConfirm()">
+                <div class="us-modal us-modal-sm" onclick="event.stopPropagation()">
+                    <div class="us-modal-head"><h3 id="uConfirmTitle">Confirmar</h3>
+                        <button class="us-x" onclick="App.modules.usuarios.closeConfirm()" aria-label="Cerrar">✕</button></div>
+                    <div class="us-modal-body"><p id="uConfirmText" class="us-confirm-text"></p></div>
+                    <div class="us-modal-foot">
+                        <button class="us-btn-ghost" onclick="App.modules.usuarios.closeConfirm()">Cancelar</button>
+                        <button class="us-btn-danger" id="uConfirmBtn">Confirmar</button>
+                    </div>
+                </div>
+            </div>
 
+            <!-- Modal credenciales (tras crear) -->
+            <div id="uCredOverlay" class="us-overlay">
+                <div class="us-modal us-modal-sm" onclick="event.stopPropagation()">
+                    <div class="us-modal-head"><h3>✅ Usuario creado</h3>
+                        <button class="us-x" onclick="App.modules.usuarios.closeCred()" aria-label="Cerrar">✕</button></div>
+                    <div class="us-modal-body">
+                        <p class="us-confirm-text">Entrega estas credenciales. <strong>La contraseña no se puede volver a ver</strong> (solo se guarda cifrada).</p>
+                        <div class="us-cred">
+                            <div><span class="k">Email</span><span class="v" id="uCredEmail"></span></div>
+                            <div><span class="k">Contraseña</span><span class="v" id="uCredPass"></span></div>
+                        </div>
+                        <button class="us-btn-primary" style="width:100%;margin-top:10px" onclick="App.modules.usuarios.copyCred()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            Copiar credenciales
+                        </button>
+                    </div>
+                    <div class="us-modal-foot"><button class="us-btn-ghost" onclick="App.modules.usuarios.closeCred()">Cerrar</button></div>
+                </div>
+            </div>
+
+            <!-- Modal bitácora -->
+            <div id="uAuditOverlay" class="us-overlay" onclick="if(event.target===this)App.modules.usuarios.closeAuditoria()">
+                <div class="us-modal" onclick="event.stopPropagation()">
+                    <div class="us-modal-head"><h3>Bitácora de administración</h3>
+                        <button class="us-x" onclick="App.modules.usuarios.closeAuditoria()" aria-label="Cerrar">✕</button></div>
+                    <div class="us-modal-body" id="uAuditBody"></div>
+                    <div class="us-modal-foot"><button class="us-btn-ghost" onclick="App.modules.usuarios.closeAuditoria()">Cerrar</button></div>
+                </div>
+            </div>`;
         await this.loadUsers();
     },
 
-    editingId: null,
-    allUsers: [],
+    _fecha(s) {
+        if (!s) return '—';
+        const d = new Date(s);
+        if (isNaN(d)) return '—';
+        const p = n => String(n).padStart(2, '0');
+        return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    },
 
     async loadUsers() {
         try {
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch('/api/admin/usuarios', { headers });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                if (res.status === 401 || res.status === 403) {
+                    App.showAlert('No tienes permisos para ver usuarios o tu sesión expiró', 'danger');
+                } else {
+                    App.showAlert('Error al cargar usuarios: ' + (err.error || ('HTTP ' + res.status)), 'danger');
+                }
+                return;
+            }
             this.allUsers = await res.json();
+            if (!Array.isArray(this.allUsers)) this.allUsers = [];
             this.renderStats(this.allUsers);
             this.renderUsers(this.allUsers);
-        } catch(e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            App.showAlert('Error de conexión al cargar usuarios', 'danger');
+        }
     },
-
-    selectedArea: null,
 
     renderStats(users) {
         const stats = document.getElementById('uStats');
         if (!stats) return;
-        const colorMap = { blue: '#3b82f6', green: '#22c55e', amber: '#f59e0b', red: '#ef4444', purple: '#8b5cf6', cyan: '#0891b2' };
-        const colorClasses = ['blue', 'green', 'amber', 'red', 'purple', 'cyan'];
-        const iconUsers = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>';
         const areas = {};
         users.forEach(u => {
             const area = (u.area || '').trim() || 'Sin área';
             areas[area] = (areas[area] || 0) + 1;
         });
         const sorted = Object.entries(areas).sort((a, b) => b[1] - a[1]);
-        stats.className = 'm-stats us-stats';
-        stats.innerHTML = sorted.map(([area, count], i) => {
-            const cc = colorClasses[i % colorClasses.length];
-            const clr = colorMap[cc];
+        stats.innerHTML = sorted.map(([area, count]) => {
             const sel = this.selectedArea === area;
-            const style = 'cursor:pointer;opacity:' + (sel || !this.selectedArea ? '1' : '0.5') + ';transform:' + (sel ? 'scale(1.03)' : 'scale(1)') + ';box-shadow:' + (sel ? '0 4px 16px rgba(0,0,0,0.15)' : '0 1px 3px rgba(0,0,0,0.06)') + ';transition:all 0.2s';
-            return '<div class="m-stat-card stat-' + cc + '" onclick="App.modules.usuarios.filterByArea(\'' + area.replace(/'/g, "\\'") + '\')" style="' + style + '">'
-                + '<div class="m-stat-icon" style="background:linear-gradient(135deg,' + clr + '15,' + clr + '30)">' + iconUsers + '</div>'
-                + '<div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">'
-                + '<div class="m-stat-value" style="color:' + clr + '">' + count + '</div>'
-                + '<div class="m-stat-label">' + area + '</div>'
-                + '</div></div>';
+            return `<div class="us-stat ${sel ? 'sel' : ''}" data-area="${escapeHtml(area)}" onclick="App.modules.usuarios.filterByArea(this.dataset.area)">
+                <div class="v">${count}</div><div class="k">${escapeHtml(area)}</div>
+            </div>`;
         }).join('');
     },
 
@@ -109,227 +237,192 @@ App.registerModule('usuarios', {
         this.selectedArea = this.selectedArea === area ? null : area;
         this.renderStats(this.allUsers);
         if (!this.selectedArea) return this.renderUsers(this.allUsers);
-        const filtered = this.allUsers.filter(u => ((u.area || '').trim() || 'Sin área') === this.selectedArea);
-        this.renderUsers(filtered);
+        this.renderUsers(this.allUsers.filter(u => ((u.area || '').trim() || 'Sin área') === this.selectedArea));
     },
 
     filterUsers() {
         const q = (document.getElementById('uSearch')?.value || '').toLowerCase();
-        if (!q) return this.renderUsers(this.allUsers);
-        const filtered = this.allUsers.filter(u => u.nombre.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.area && u.area.toLowerCase().includes(q)));
-        this.renderUsers(filtered);
+        let list = this.allUsers;
+        if (this.selectedArea) list = list.filter(u => ((u.area || '').trim() || 'Sin área') === this.selectedArea);
+        if (q) {
+            list = list.filter(u =>
+                (u.nombre || '').toLowerCase().includes(q)
+                || (u.email || '').toLowerCase().includes(q)
+                || (u.area || '').toLowerCase().includes(q));
+        }
+        this.renderUsers(list);
+    },
+
+    // Etiquetas compactas de permisos (sincronizadas con el árbol del formulario)
+    _permBadges(up) {
+        const MAPA = [];
+        this.SECTIONS.forEach(sec => sec.subs.forEach(sub => MAPA.push({ id: sub.id, l: sub.label })));
+        let h = '<div class="us-perms">';
+        MAPA.forEach(sub => {
+            const hasVer = up.includes(sub.id);
+            const hasEd = up.includes(sub.id + '.editar');
+            const hasEl = up.includes(sub.id + '.eliminar');
+            const hasAg = up.includes(sub.id + '.agregar');
+            if (!hasVer && !hasEd && !hasEl && !hasAg) return;
+            const dots = [];
+            if (hasVer) dots.push('<span class="dot d-v" title="Ver"></span>');
+            if (hasAg) dots.push('<span class="dot d-a" title="Agregar"></span>');
+            if (hasEd) dots.push('<span class="dot d-e" title="Editar"></span>');
+            if (hasEl) dots.push('<span class="dot d-x" title="Eliminar"></span>');
+            h += `<span class="us-perm" title="${escapeHtml(sub.l)}">${escapeHtml(sub.l)} ${dots.join('')}</span>`;
+        });
+        return h + '</div>';
     },
 
     renderUsers(users) {
         const tbody = document.getElementById('uTableBody');
         const cards = document.getElementById('uCardsMobile');
         const count = document.getElementById('uCount');
-        if (count) count.textContent = '(' + users.length + ')';
+        if (count) count.textContent = '(' + users.length + ' usuario' + (users.length === 1 ? '' : 's') + ')';
         if (!tbody) return;
         if (users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8">Sin resultados</td></tr>';
-            if (cards) cards.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8">Sin resultados</div>';
+            tbody.innerHTML = '<tr><td colspan="7" class="us-loading">Sin resultados</td></tr>';
+            if (cards) cards.innerHTML = '<div class="us-loading">Sin resultados</div>';
             return;
         }
-        const MOD_SUBS = {
-            asistencia: [{id:'asistencia',l:'ASIST'}],
-            atencion: [{id:'turnos_recepcion',l:'Recep'},{id:'turnos_bodega',l:'Bodega'},{id:'turnos_almacen',l:'Almacen'},{id:'turnos_facturar',l:'Facturar'},{id:'turnos_qr',l:'QR'},{id:'turnos_reporte',l:'Reporte'}],
-            instalaciones: [{id:'instalaciones',l:'Inst'},{id:'inst_historial',l:'Historial'}],
-            inventario: [{id:'inv_dashboard',l:'Dashboard'},{id:'inv_inventario',l:'Inv'},{id:'inv_inventario.sensible',l:'Sensible'},{id:'inv_movimientos',l:'Mov'},{id:'inv_historial',l:'Historial'},{id:'inv_consumo',l:'Consumo'},{id:'inv_autonomia',l:'Autonomía'},{id:'inv_catalogos',l:'Catalogos'}],
-            reclamos: [{id:'reclamos',l:'Reclamos'}],
-            mantencion: [{id:'dashboard',l:'Dash'},{id:'machineTypes',l:'Areas'},{id:'machines',l:'Maq'},{id:'components',l:'Comp'},{id:'preventive',l:'Prev'},{id:'corrective',l:'Correc'},{id:'calendar',l:'Cal'},{id:'notas',l:'Notas'},{id:'reports',l:'Rep'},{id:'history',l:'Hist'},{id:'bitacora',l:'Bitac'},{id:'proveedores',l:'Prov'}],
-            pedidos: [{id:'pedidos',l:'Pedidos'}],
-            produccion: [{id:'prod_ordenes',l:'Prod'},{id:'prod_planificacion',l:'Plan'},{id:'prod_reportes',l:'Reportes'},{id:'prod_prog_estacion',l:'Prog.Estacion'},{id:'prod_notas',l:'Pend'},{id:'prod_config',l:'Config'},{id:'taller',l:'Taller'},{id:'bodega',l:'Bodega'}]
-        };
-        function permCell(up) {
-            let h = '<div style="display:flex;flex-wrap:wrap;gap:3px">';
-            Object.keys(MOD_SUBS).forEach(mod => {
-                MOD_SUBS[mod].forEach(sub => {
-                    const hasVer = up.includes(sub.id);
-                    const hasEd = up.includes(sub.id+'.editar');
-                    const hasEl = up.includes(sub.id+'.eliminar');
-                    if (!hasVer && !hasEd && !hasEl) return;
-                    const dots = [];
-                    if (hasVer) dots.push('<span title="Ver" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block"></span>');
-                    if (hasEd) dots.push('<span title="Editar" style="width:6px;height:6px;border-radius:50%;background:#3b82f6;display:inline-block"></span>');
-                    if (hasEl) dots.push('<span title="Eliminar" style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block"></span>');
-                    h += '<span title="' + sub.l + '" style="display:inline-flex;align-items:center;gap:2px;padding:2px 5px;border-radius:5px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:8px;font-weight:700;color:#475569">' + sub.l + ' ' + dots.join('') + '</span>';
-                });
-            });
-            h += '</div>';
-            return h;
-        }
         tbody.innerHTML = users.map(u => {
-                const up = Array.isArray(u.permisos) ? u.permisos : [];
-                const rolBadge = u.rol === 'admin'
-                    ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed">admin</span>'
-                    : '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#f1f5f9;color:#64748b">usuario</span>';
-                const estadoBadge = u.activo !== false
-                    ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#dcfce7;color:#16a34a"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Activo</span>'
-                    : '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#fee2e2;color:#ef4444"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Inactivo</span>';
-                return '<tr>'
-                    + '<td style="padding:12px"><strong style="color:#0f172a">' + escapeHtml(u.nombre) + '</strong></td>'
-                    + '<td style="padding:12px;font-size:13px;color:#64748b">' + escapeHtml(u.email) + '</td>'
-                    + '<td style="padding:12px">' + rolBadge + '</td>'
-                    + '<td style="padding:12px;font-size:12px;color:#475569">' + (u.area ? escapeHtml(u.area) : '<span style="color:#cbd5e1">-</span>') + '</td>'
-                    + '<td style="padding:12px">' + permCell(up) + '</td>'
-                    + '<td style="padding:12px">' + estadoBadge + '</td>'
-                    + '<td style="padding:12px;white-space:nowrap">'
-                    + '<div style="display:flex;gap:6px;align-items:center">'
-                    + '<button onclick="App.modules.usuarios.showForm(' + u.id + ')" title="Editar" class="btn btn-sm btn-outline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                    + (u.rol !== 'admin' ? '<button onclick="App.modules.usuarios.remove(' + u.id + ')" title="Eliminar" class="btn btn-sm btn-danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '')
-                    + '</div></td></tr>';
-            }).join('');
+            const rolBadge = u.rol === 'admin'
+                ? '<span class="us-badge b-admin">admin</span>'
+                : '<span class="us-badge b-user">usuario</span>';
+            const estadoBadge = u.activo !== false
+                ? '<span class="us-badge b-on">● Activo</span>'
+                : '<span class="us-badge b-off">● Inactivo</span>';
+            return '<tr>'
+                + `<td class="c-nom">${escapeHtml(u.nombre)}</td>`
+                + `<td class="c-email">${escapeHtml(u.email)}</td>`
+                + `<td>${rolBadge}</td>`
+                + `<td class="c-area">${u.area ? escapeHtml(u.area) : '<span class="us-none">—</span>'}</td>`
+                + `<td>${this._permBadges(Array.isArray(u.permisos) ? u.permisos : [])}</td>`
+                + `<td>${estadoBadge}</td>`
+                + '<td class="c-acc">'
+                + `<button class="us-icon-btn" title="Editar" onclick="App.modules.usuarios.showForm(${u.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`
+                + (u.activo !== false
+                    ? `<button class="us-icon-btn warn" title="Desactivar" onclick="App.modules.usuarios.pedirActivo(${u.id},false)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>`
+                    : `<button class="us-icon-btn ok" title="Activar" onclick="App.modules.usuarios.pedirActivo(${u.id},true)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>`)
+                + (u.rol !== 'admin'
+                    ? `<button class="us-icon-btn danger" title="Eliminar" onclick="App.modules.usuarios.pedirEliminar(${u.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`
+                    : '')
+                + '</td></tr>';
+        }).join('');
 
         if (cards) {
             cards.innerHTML = users.map(u => {
-                const up = Array.isArray(u.permisos) ? u.permisos : [];
                 const rolBadge = u.rol === 'admin'
-                    ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#7c3aed">admin</span>'
-                    : '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:600;background:#f1f5f9;color:#64748b">usuario</span>';
+                    ? '<span class="us-badge b-admin">admin</span>'
+                    : '<span class="us-badge b-user">usuario</span>';
                 const estado = u.activo !== false
-                    ? '<span style="color:#16a34a;font-size:10px;font-weight:600">Activo</span>'
-                    : '<span style="color:#ef4444;font-size:10px;font-weight:600">Inactivo</span>';
-                return '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px">'
-                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-                    + '<strong style="font-size:13px;color:#0f172a">' + escapeHtml(u.nombre) + '</strong>'
-                    + '<div style="display:flex;gap:4px">' + rolBadge + estado + '</div></div>'
-                    + '<div style="font-size:11px;color:#64748b;margin-bottom:4px">' + escapeHtml(u.email) + '</div>'
-                    + '<div style="font-size:11px;color:#475569;margin-bottom:6px">' + (u.area ? escapeHtml(u.area) : '<span style="color:#cbd5e1">Sin área</span>') + '</div>'
-                    + '<div style="display:flex;gap:4px">'
-                    + '<button onclick="App.modules.usuarios.showForm(' + u.id + ')" style="flex:1;padding:6px;font-size:11px;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#475569;cursor:pointer">Editar</button>'
-                    + (u.rol !== 'admin' ? '<button onclick="App.modules.usuarios.remove(' + u.id + ')" style="padding:6px 10px;font-size:11px;border:1px solid #fecaca;border-radius:6px;background:#fef2f2;color:#ef4444;cursor:pointer">Eliminar</button>' : '')
+                    ? '<span class="us-badge b-on">● Activo</span>'
+                    : '<span class="us-badge b-off">● Inactivo</span>';
+                return '<div class="us-mcard">'
+                    + '<div class="top"><strong>' + escapeHtml(u.nombre) + '</strong><div class="b">' + rolBadge + estado + '</div></div>'
+                    + '<div class="meta">' + escapeHtml(u.email) + '</div>'
+                    + '<div class="meta">' + (u.area ? escapeHtml(u.area) : 'Sin área') + '</div>'
+                    + '<div class="acc">'
+                    + `<button class="us-btn-ghost sm" onclick="App.modules.usuarios.showForm(${u.id})">Editar</button>`
+                    + (u.activo !== false
+                        ? `<button class="us-btn-ghost sm warn" onclick="App.modules.usuarios.pedirActivo(${u.id},false)">Desactivar</button>`
+                        : `<button class="us-btn-ghost sm ok" onclick="App.modules.usuarios.pedirActivo(${u.id},true)">Activar</button>`)
+                    + (u.rol !== 'admin'
+                        ? `<button class="us-btn-ghost sm danger" onclick="App.modules.usuarios.pedirEliminar(${u.id})">Eliminar</button>` : '')
                     + '</div></div>';
             }).join('');
         }
     },
 
-    async showForm(id) {
+    // ---------------- Formulario ----------------
+    showForm(id) {
         this.editingId = id || null;
-        let user = { nombre: '', email: '', password: '', rol: 'usuario', area: '', permisos: [] };
-        if (id) {
-            try {
-                const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
-                const res = await fetch('/api/admin/usuarios', { headers });
-                const all = await res.json();
-                user = Array.isArray(all) ? (all.find(u => u.id === id) || user) : user;
-            } catch(e) {}
-        }
+        const user = id
+            ? (this.allUsers.find(u => u.id === id) || { nombre: '', email: '', rol: 'usuario', area: '', permisos: [] })
+            : { nombre: '', email: '', rol: 'usuario', area: '', permisos: [], activo: true };
         const up = Array.isArray(user.permisos) ? user.permisos : [];
-
-        const SECTIONS = [
-            { key: 'asistencia', label: 'ASISTENCIA', subs: [
-                { id: 'asistencia', label: 'Ver' },
-                { id: 'asistencia.editar', label: 'Editar / Autorizar' }
-            ]},
-            { key: 'atencion', label: 'ATENCION', subs: [
-                { id: 'turnos_recepcion', label: 'Recepcion y Control' },
-                { id: 'turnos_bodega', label: 'Verificación Bodega' },
-                { id: 'turnos_almacen', label: 'Almacén' },
-                { id: 'turnos_facturar', label: 'Por Facturar' },
-                { id: 'turnos_qr', label: 'QR Clientes' },
-                { id: 'turnos_reporte', label: 'Reporte' }
-            ]},
-            { key: 'instalaciones', label: 'INSTALACIONES', subs: [
-                { id: 'instalaciones', label: 'Instalaciones' },
-                { id: 'inst_historial', label: 'Historial' }
-            ]},
-            { key: 'inventario', label: 'INVENTARIO', subs: [
-                { id: 'inv_dashboard', label: 'Dashboard Inventario' },
-                { id: 'inv_inventario', label: 'Inventario' },
-                { id: 'inv_inventario.sensible', label: 'Ver Sensible (costos/CPM)' },
-                { id: 'inv_movimientos', label: 'Movimientos' },
-                { id: 'inv_historial', label: 'Historial Inventario' },
-                { id: 'inv_consumo', label: 'Consumo por Meses' },
-                { id: 'inv_autonomia', label: 'Autonomía (proyección de stock)' },
-                { id: 'inv_catalogos', label: 'Catalogos (tipos de cristal / espesores)' }
-            ]},
-            { key: 'reclamos', label: 'RECLAMOS', subs: [
-                { id: 'reclamos', label: 'Reclamos y Devoluciones' }
-            ]},
-            { key: 'mantencion', label: 'MANTENCION', subs: [
-                { id: 'dashboard', label: 'Dashboard' },
-                { id: 'machineTypes', label: 'Tipos de Area' },
-                { id: 'machines', label: 'Maquinas' },
-                { id: 'components', label: 'Componentes' },
-                { id: 'preventive', label: 'Preventivo' },
-                { id: 'corrective', label: 'Correctivo' },
-                { id: 'calendar', label: 'Calendario' },
-                { id: 'notas', label: 'Notas' },
-                { id: 'reports', label: 'Reportes' },
-                { id: 'history', label: 'Historial' },
-                { id: 'bitacora', label: 'Bitacora' },
-                { id: 'proveedores', label: 'Proveedores' }
-            ]},
-            { key: 'pedidos', label: 'PEDIDOS', subs: [
-                { id: 'pedidos', label: 'Pedidos / Ordenes' }
-            ]},
-            { key: 'produccion', label: 'PRODUCCION', subs: [
-                { id: 'prod_ordenes', label: 'Produccion' },
-                { id: 'prod_planificacion', label: 'Planificacion' },
-                { id: 'prod_reportes', label: 'Reporte Fechas' },
-                { id: 'prod_notas', label: 'Mis Pendientes' },
-                { id: 'prod_config', label: 'Configuracion' },
-                { id: 'taller', label: 'Taller' },
-                { id: 'bodega', label: 'Bodega' }
-            ]},
-            { key: 'costeo', label: 'COSTEO', subs: [
-                { id: 'costeo', label: 'Costeo' }
-            ]}
-        ];
+        const areasExistentes = [...new Set(this.allUsers.map(u => (u.area || '').trim()).filter(Boolean))];
 
         let permTreeHtml = '';
-        SECTIONS.forEach(sec => {
+        this.SECTIONS.forEach(sec => {
             const allSubKeys = sec.subs.map(s => s.id);
-            const allVer = allSubKeys.every(k => up.includes(k));
-            const allAg = allSubKeys.every(k => up.includes(k + '.agregar'));
-            const allEd = allSubKeys.every(k => up.includes(k + '.editar'));
-            const allEl = allSubKeys.every(k => up.includes(k + '.eliminar'));
-            permTreeHtml += '<div style="margin-bottom:10px;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">';
-            permTreeHtml += '<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc">';
-            permTreeHtml += '<span style="font-size:12px;font-weight:700;color:#334155;letter-spacing:0.5px">' + sec.label + '</span>';
-            permTreeHtml += '<label style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allVer ? 'checked' : '') + ' style="accent-color:#22c55e" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'ver\',this.checked)"> Todo Ver</label>';
-            permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allAg ? 'checked' : '') + ' style="accent-color:#f59e0b" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'agregar\',this.checked)"> Todo Agregar</label>';
-            permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allEd ? 'checked' : '') + ' style="accent-color:#3b82f6" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'editar\',this.checked)"> Todo Editar</label>';
-            permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;cursor:pointer"><input type="checkbox" ' + (allEl ? 'checked' : '') + ' style="accent-color:#ef4444" onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'eliminar\',this.checked)"> Todo Eliminar</label>';
-            permTreeHtml += '</div>';
+            const allVer = allSubKeys.length > 0 && allSubKeys.every(k => up.includes(k));
+            const allAg = allSubKeys.length > 0 && allSubKeys.every(k => up.includes(k + '.agregar'));
+            const allEd = allSubKeys.length > 0 && allSubKeys.every(k => up.includes(k + '.editar'));
+            const allEl = allSubKeys.length > 0 && allSubKeys.every(k => up.includes(k + '.eliminar'));
+            permTreeHtml += '<div class="us-permsec">';
+            permTreeHtml += '<div class="us-permsec-head"><span class="t">' + escapeHtml(sec.label) + '</span>'
+                + '<label><input type="checkbox" ' + (allVer ? 'checked' : '') + ' onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'ver\',this.checked)"> Ver todo</label>'
+                + '<label><input type="checkbox" ' + (allAg ? 'checked' : '') + ' onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'agregar\',this.checked)"> Agregar todo</label>'
+                + '<label><input type="checkbox" ' + (allEd ? 'checked' : '') + ' onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'editar\',this.checked)"> Editar todo</label>'
+                + '<label><input type="checkbox" ' + (allEl ? 'checked' : '') + ' onchange="App.modules.usuarios.toggleSubPerm(\'' + sec.key + '\',\'eliminar\',this.checked)"> Eliminar todo</label>'
+                + '</div>';
             sec.subs.forEach(sub => {
-                const hasVer = up.includes(sub.id);
-                const hasAg = up.includes(sub.id + '.agregar');
-                const hasEd = up.includes(sub.id + '.editar');
-                const hasEl = up.includes(sub.id + '.eliminar');
-                permTreeHtml += '<div style="display:flex;align-items:center;gap:10px;padding:8px 14px 8px 28px;border-top:1px solid #f1f5f9">';
-                permTreeHtml += '<span style="font-size:12px;color:#475569;min-width:160px">' + sub.label + '</span>';
-                permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="ver" ' + (hasVer ? 'checked' : '') + ' style="accent-color:#22c55e"> Ver</label>';
-                permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="agregar" ' + (hasAg ? 'checked' : '') + ' style="accent-color:#f59e0b"> Agregar</label>';
-                permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="editar" ' + (hasEd ? 'checked' : '') + ' style="accent-color:#3b82f6"> Editar</label>';
-                permTreeHtml += '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;color:#475569"><input type="checkbox" class="perm-sub-check" data-section="' + sec.key + '" data-sub="' + sub.id + '" data-type="eliminar" ' + (hasEl ? 'checked' : '') + ' style="accent-color:#ef4444"> Eliminar</label>';
-                permTreeHtml += '</div>';
+                permTreeHtml += '<div class="us-permrow">'
+                    + '<span class="s">' + escapeHtml(sub.label) + '</span>'
+                    + `<label><input type="checkbox" class="perm-sub-check" data-section="${sec.key}" data-sub="${sub.id}" data-type="ver" ${up.includes(sub.id) ? 'checked' : ''}> Ver</label>`
+                    + `<label><input type="checkbox" class="perm-sub-check" data-section="${sec.key}" data-sub="${sub.id}" data-type="agregar" ${up.includes(sub.id + '.agregar') ? 'checked' : ''}> Agregar</label>`
+                    + `<label><input type="checkbox" class="perm-sub-check" data-section="${sec.key}" data-sub="${sub.id}" data-type="editar" ${up.includes(sub.id + '.editar') ? 'checked' : ''}> Editar</label>`
+                    + `<label><input type="checkbox" class="perm-sub-check" data-section="${sec.key}" data-sub="${sub.id}" data-type="eliminar" ${up.includes(sub.id + '.eliminar') ? 'checked' : ''}> Eliminar</label>`
+                    + '</div>';
             });
             permTreeHtml += '</div>';
         });
-        permTreeHtml += '</div>';
 
-        document.getElementById('uModalTitle').innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' + (id ? 'Editar Usuario' : 'Nuevo Usuario');
-        document.getElementById('uModalError').style.display = 'none';
+        document.getElementById('uModalTitle').textContent = id ? 'Editar usuario' : 'Nuevo usuario';
         document.getElementById('uModalBody').innerHTML = ''
-            + '<div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">Nombre</label>'
-            + '<input id="fUNombre" type="text" autocomplete="off" value="' + user.nombre + '" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">Email</label>'
-            + '<input id="fUEmail" type="email" autocomplete="off" value="' + user.email + '" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">' + (id ? 'Nueva contrasena (dejar vacio para no cambiar)' : 'Contrasena') + '</label>'
-            + '<input id="fUPassword" type="password" autocomplete="new-password" ' + (id ? '' : 'required') + ' style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">Rol</label>'
-            + '<select id="fURol" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">'
-            + '<option value="usuario" ' + (user.rol === 'usuario' ? 'selected' : '') + '>Usuario</option>'
-            + '<option value="admin" ' + (user.rol === 'admin' ? 'selected' : '') + '>Administrador</option></select></div>'
-            + '<div style="margin-bottom:14px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#334155">Area</label>'
-            + '<input id="fUArea" type="text" autocomplete="off" value="' + escapeHtml(user.area || '') + '" placeholder="Ej: Mantencion, Produccion, Ventas..." style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<div style="margin-bottom:4px"><label style="display:block;font-size:13px;font-weight:600;margin-bottom:8px;color:#334155">Permisos del sistema</label>'
-            + permTreeHtml
-            + '</div>';
-        document.getElementById('uModalBtn').textContent = id ? 'Actualizar' : 'Crear';
+            + '<div class="us-field"><label>Nombre completo</label>'
+            + `<input id="fUNombre" type="text" autocomplete="off" value="${escapeHtml(user.nombre)}" placeholder="Ej: María Pérez">`
+            + '<div class="us-err" id="eUNombre"></div></div>'
+
+            + '<div class="us-field"><label>Email</label>'
+            + `<input id="fUEmail" type="email" autocomplete="off" value="${escapeHtml(user.email)}" placeholder="nombre@empresa.cl">`
+            + '<div class="us-err" id="eUEmail"></div></div>'
+
+            + '<div class="us-field"><label>' + (id ? 'Nueva contraseña' : 'Contraseña') + '</label>'
+            + '<div class="us-pass-row">'
+            + '<input id="fUPassword" type="password" autocomplete="new-password" placeholder="' + (id ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres') + '">'
+            + '<button type="button" class="us-btn-ghost sm" onclick="App.modules.usuarios.togglePass()">Mostrar</button>'
+            + '<button type="button" class="us-btn-ghost sm" onclick="App.modules.usuarios.generarPass()">Generar</button>'
+            + '</div>'
+            + '<div class="us-hint" id="hintPass">' + (id ? 'Solo se cambia si escribes una nueva.' : 'Se guarda cifrada: nadie puede volver a verla.') + '</div>'
+            + '<div class="us-err" id="eUPassword"></div></div>'
+
+            + '<div class="us-field"><label>Rol</label>'
+            + '<select id="fURol">'
+            + '<option value="usuario" ' + (user.rol !== 'admin' ? 'selected' : '') + '>Usuario — solo los módulos que le asignes</option>'
+            + '<option value="admin" ' + (user.rol === 'admin' ? 'selected' : '') + '>Administrador — acceso total</option>'
+            + '</select><div class="us-err" id="eURol"></div></div>'
+
+            + '<div class="us-field"><label>Área</label>'
+            + `<input id="fUArea" type="text" list="usAreas" autocomplete="off" value="${escapeHtml(user.area || '')}" placeholder="Ej: Mantención, Producción, Ventas...">`
+            + '<datalist id="usAreas">' + areasExistentes.map(a => '<option value="' + escapeHtml(a) + '">').join('') + '</datalist>'
+            + '<div class="us-hint">Aparece como filtro en el listado.</div></div>'
+
+            + '<div class="us-field"><label>Permisos del sistema</label>'
+            + '<div class="us-hint">Marca qué puede hacer. El permiso "Ver" habilita el módulo; Agregar / Editar / Eliminar son acciones sueltas.</div>'
+            + '<div class="us-permtree">' + permTreeHtml + '</div></div>';
+
+        document.getElementById('uModalBtn').textContent = id ? 'Guardar cambios' : 'Crear usuario';
         document.getElementById('uModalOverlay').style.display = 'flex';
+        setTimeout(() => document.getElementById('fUNombre')?.focus(), 60);
+    },
+
+    togglePass() {
+        const inp = document.getElementById('fUPassword');
+        if (!inp) return;
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+    },
+
+    generarPass() {
+        const inp = document.getElementById('fUPassword');
+        if (!inp) return;
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%';
+        const arr = new Uint32Array(14);
+        (window.crypto || window.msCrypto).getRandomValues(arr);
+        inp.value = Array.from(arr).map(n => chars[n % chars.length]).join('');
+        inp.type = 'text';
+        App.showAlert('Contraseña generada: cópiala antes de guardar', 'success');
     },
 
     toggleSubPerm(sectionKey, type, checked) {
@@ -338,46 +431,293 @@ App.registerModule('usuarios', {
 
     closeModal() { document.getElementById('uModalOverlay').style.display = 'none'; },
 
+    _fieldError(id, msg) {
+        const el = document.getElementById('eU' + id);
+        if (el) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+    },
+
     async save() {
         const id = this.editingId;
-        const subPerms = Array.from(document.querySelectorAll('.perm-sub-check:checked')).map(c => {
-            const sub = c.dataset.sub;
-            const type = c.dataset.type;
-            if (type === 'ver') return sub;
-            return sub + '.' + type;
-        });
-        const data = {
-            nombre: document.getElementById('fUNombre').value.trim(),
-            email: document.getElementById('fUEmail').value.trim(),
-            rol: document.getElementById('fURol').value,
-            area: document.getElementById('fUArea').value.trim(),
-            permisos: [...new Set(subPerms)]
-        };
+        const nombre = document.getElementById('fUNombre').value.trim();
+        const email = document.getElementById('fUEmail').value.trim();
         const pw = document.getElementById('fUPassword').value;
+        const rol = document.getElementById('fURol').value;
+        const area = document.getElementById('fUArea').value.trim();
+        const subPerms = Array.from(document.querySelectorAll('.perm-sub-check:checked')).map(c =>
+            c.dataset.type === 'ver' ? c.dataset.sub : c.dataset.sub + '.' + c.dataset.type
+        );
+
+        // Validación amigable, campo por campo
+        ['Nombre', 'Email', 'Password'].forEach(f => this._fieldError(f, ''));
+        let invalido = false;
+        if (!nombre) { this._fieldError('Nombre', 'Escribe el nombre completo'); invalido = true; }
+        if (!email) { this._fieldError('Email', 'Escribe el email'); invalido = true; }
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this._fieldError('Email', 'El email no tiene un formato válido (ej: nombre@empresa.cl)'); invalido = true; }
+        if (!id && !pw) { this._fieldError('Password', 'Escribe una contraseña (o presiona "Generar")'); invalido = true; }
+        else if (pw && pw.length < 6) { this._fieldError('Password', 'La contraseña debe tener al menos 6 caracteres'); invalido = true; }
+        if (invalido) return;
+
+        const data = { nombre, email, rol, area, permisos: [...new Set(subPerms)] };
         if (pw) data.password = pw;
-        const err = document.getElementById('uModalError');
-        if (!data.nombre || !data.email) { err.textContent = 'Nombre y email son requeridos'; err.style.display = 'block'; return; }
-        if (!id && !pw) { err.textContent = 'La contrasena es requerida'; err.style.display = 'block'; return; }
+
         const btn = document.getElementById('uModalBtn');
-        btn.disabled = true; btn.textContent = id ? 'Actualizando...' : 'Creando...';
+        btn.disabled = true; btn.textContent = id ? 'Guardando...' : 'Creando...';
         try {
             const url = id ? `/api/admin/usuarios/${id}` : '/api/admin/usuarios';
             const method = id ? 'PUT' : 'POST';
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch(url, { method, headers, body: JSON.stringify(data) });
-            if (!res.ok) { const e = await res.json(); err.textContent = e.error || 'Error'; err.style.display = 'block'; btn.disabled = false; btn.textContent = id ? 'Actualizar' : 'Crear'; return; }
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg = body.error || ('Error al guardar (HTTP ' + res.status + ')');
+                // Errores conocidos → campo correspondiente
+                if (/email/i.test(msg) && /registrado|válido|formato/i.test(msg)) this._fieldError('Email', msg);
+                else if (/contrase/i.test(msg)) this._fieldError('Password', msg);
+                else App.showAlert(msg, 'danger');
+                btn.disabled = false; btn.textContent = id ? 'Guardar cambios' : 'Crear usuario';
+                return;
+            }
             this.closeModal();
             await this.loadUsers();
-        } catch(e) { err.textContent = 'Error de conexion'; err.style.display = 'block'; }
-        btn.disabled = false; btn.textContent = id ? 'Actualizar' : 'Crear';
+            if (!id && pw) {
+                this._cred = { email, pass: pw };
+                document.getElementById('uCredEmail').textContent = email;
+                document.getElementById('uCredPass').textContent = pw;
+                document.getElementById('uCredOverlay').style.display = 'flex';
+            }
+            App.showAlert(id ? 'Usuario actualizado' : 'Usuario creado', 'success');
+        } catch (e) {
+            App.showAlert('Error de conexión al guardar', 'danger');
+        }
+        btn.disabled = false; btn.textContent = id ? 'Guardar cambios' : 'Crear usuario';
     },
 
-    async remove(id) {
-        if (!confirm('Eliminar este usuario?')) return;
+    // ---------------- Confirmaciones (modal, sin confirm() nativo) ----------------
+    _confirmar(titulo, texto, textoBoton, esRojo, accion) {
+        document.getElementById('uConfirmTitle').textContent = titulo;
+        document.getElementById('uConfirmText').innerHTML = texto;
+        const btn = document.getElementById('uConfirmBtn');
+        btn.textContent = textoBoton;
+        btn.className = esRojo ? 'us-btn-danger' : 'us-btn-primary';
+        btn.onclick = () => { this.closeConfirm(); accion(); };
+        document.getElementById('uConfirmOverlay').style.display = 'flex';
+    },
+    closeConfirm() { document.getElementById('uConfirmOverlay').style.display = 'none'; },
+
+    pedirEliminar(id) {
+        const u = this.allUsers.find(x => x.id === id);
+        if (!u) return;
+        this._confirmar('Eliminar usuario',
+            `Se eliminará <strong>${escapeHtml(u.nombre)}</strong> (${escapeHtml(u.email)}) de forma permanente. <br><br>Si solo quieres que no entre al sistema, es mejor <strong>desactivarlo</strong>.`,
+            'Eliminar definitivamente', true,
+            () => this.doEliminar(id));
+    },
+
+    async doEliminar(id) {
         try {
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
-            await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE', headers });
+            const res = await fetch(`/api/admin/usuarios/${id}`, { method: 'DELETE', headers });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) { App.showAlert(body.error || 'No se pudo eliminar', 'danger'); return; }
+            App.showAlert('Usuario eliminado', 'success');
             await this.loadUsers();
-        } catch(e) { alert('Error'); }
+        } catch (e) { App.showAlert('Error de conexión', 'danger'); }
+    },
+
+    pedirActivo(id, activo) {
+        const u = this.allUsers.find(x => x.id === id);
+        if (!u) return;
+        this._confirmar(activo ? 'Activar usuario' : 'Desactivar usuario',
+            activo
+                ? `Se activará <strong>${escapeHtml(u.nombre)}</strong> y podrá entrar al sistema nuevamente.`
+                : `Se desactivará <strong>${escapeHtml(u.nombre)}</strong>: no podrá entrar, pero se conserva su historial.`,
+            activo ? 'Activar' : 'Desactivar', !activo,
+            () => this.doActivo(id, activo));
+    },
+
+    async doActivo(id, activo) {
+        try {
+            const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            const res = await fetch(`/api/admin/usuarios/${id}/activo`, { method: 'PATCH', headers, body: JSON.stringify({ activo }) });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) { App.showAlert(body.error || 'No se pudo cambiar el estado', 'danger'); return; }
+            App.showAlert(activo ? 'Usuario activado' : 'Usuario desactivado', 'success');
+            await this.loadUsers();
+        } catch (e) { App.showAlert('Error de conexión', 'danger'); }
+    },
+
+    // ---------------- Credenciales / bitácora ----------------
+    closeCred() { document.getElementById('uCredOverlay').style.display = 'none'; },
+    copyCred() {
+        const txt = 'Email: ' + (this._cred?.email || '') + '\nContraseña: ' + (this._cred?.pass || '');
+        const done = () => App.showAlert('Credenciales copiadas', 'success');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(done).catch(() => window.prompt('Copia las credenciales:', txt));
+        } else {
+            window.prompt('Copia las credenciales:', txt);
+        }
+    },
+
+    async mostrarAuditoria() {
+        const body = document.getElementById('uAuditBody');
+        body.innerHTML = '<div class="us-loading">Cargando bitácora...</div>';
+        document.getElementById('uAuditOverlay').style.display = 'flex';
+        try {
+            const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
+            const res = await fetch('/api/admin/usuarios/auditoria', { headers });
+            if (!res.ok) { body.innerHTML = '<div class="us-loading">No se pudo cargar la bitácora</div>'; return; }
+            const rows = await res.json();
+            if (!Array.isArray(rows) || rows.length === 0) {
+                body.innerHTML = '<div class="us-loading">Sin registros todavía</div>';
+                return;
+            }
+            body.innerHTML = '<div class="us-audit">' + rows.map(r => {
+                const col = r.accion === 'eliminar' ? 'danger' : (r.accion === 'crear' ? 'ok' : 'info');
+                return `<div class="us-audit-row">
+                    <span class="us-badge b-${col}">${escapeHtml(r.accion)}</span>
+                    <span class="who">${escapeHtml(r.actor_email)} → ${escapeHtml(r.usuario_email)}</span>
+                    <span class="det">${escapeHtml(r.detalle || '')}</span>
+                    <span class="f">${this._fecha(r.created_at)}</span>
+                </div>`;
+            }).join('') + '</div>';
+        } catch (e) {
+            body.innerHTML = '<div class="us-loading">Error de conexión</div>';
+        }
+    },
+    closeAuditoria() { document.getElementById('uAuditOverlay').style.display = 'none'; },
+
+    // ---------------- Estilos (escala 20/15/13/11/10) ----------------
+    _estilos() {
+        return `<style>
+            .us-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%);border-radius:16px;padding:20px 26px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;margin-bottom:16px}
+            .us-hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.55),transparent)}
+            .us-hero h2{color:#fff;font-size:20px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
+            .us-hero p{color:rgba(255,255,255,.62);font-size:11px;margin:4px 0 0}
+            .us-hero-actions{margin-left:auto;display:flex;gap:8px}
+            .us-btn-hero{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}
+            .us-btn-hero:hover{background:rgba(255,255,255,.2)}
+            .us-btn-hero.solid{background:#fff;color:#1e3a5f;border-color:#fff}
+            .us-btn-hero.solid:hover{background:#e8eefb}
+
+            .us-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+            .us-stat{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;cursor:pointer;transition:all .2s;min-width:96px}
+            .us-stat:hover{box-shadow:0 4px 14px rgba(15,23,42,.08);transform:translateY(-1px)}
+            .us-stat.sel{border-color:#1e3a5f;box-shadow:0 4px 16px rgba(15,23,42,.16)}
+            .us-stat .v{font-size:20px;font-weight:700;color:#0f172a}
+            .us-stat .k{font-size:10px;font-weight:600;color:#8494a8;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis}
+
+            .us-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+            .us-search{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:0 12px;flex:1;max-width:380px}
+            .us-search input{border:none;outline:none;padding:10px 0;font-size:13px;width:100%;background:transparent;color:#0f172a}
+            .us-count{font-size:11px;color:#8494a8;font-weight:600}
+
+            .us-panel{background:#fff;border:1px solid #e4e9f0;border-radius:14px;overflow:hidden}
+            .us-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+            .us-table{width:100%;border-collapse:collapse;min-width:900px}
+            .us-table th{padding:11px 14px;text-align:left;font-size:10px;font-weight:700;color:#8494a8;text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid #e4e9f0;background:#f8fafc}
+            .us-table td{padding:11px 14px;font-size:13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+            .us-table tbody tr:hover{background:#f8fafc}
+            .us-table .c-nom{font-weight:600;color:#0f172a}
+            .us-table .c-email,.us-table .c-area{color:#475569;font-size:11px}
+            .us-table .th-acc{text-align:right}
+            .us-table .c-acc{text-align:right;white-space:nowrap}
+            .us-loading{text-align:center;padding:34px;color:#8494a8;font-size:13px}
+            .us-none{color:#cbd5e1}
+
+            .us-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+            .b-admin{background:#ede9fe;color:#7c3aed}
+            .b-user{background:#f1f5f9;color:#64748b}
+            .b-on{background:#dcfce7;color:#15803d}
+            .b-off{background:#fee2e2;color:#dc2626}
+            .b-ok{background:#dcfce7;color:#15803d}
+            .b-danger{background:#fee2e2;color:#dc2626}
+            .b-info{background:#e0e7ff;color:#4338ca}
+
+            .us-perms{display:flex;flex-wrap:wrap;gap:3px}
+            .us-perm{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:5px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:10px;font-weight:600;color:#475569}
+            .us-perm .dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+            .d-v{background:#22c55e}.d-a{background:#f59e0b}.d-e{background:#3b82f6}.d-x{background:#ef4444}
+
+            .us-icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+            .us-icon-btn:hover{background:#f1f5f9}
+            .us-icon-btn.warn{color:#b45309;border-color:#fde68a}.us-icon-btn.ok{color:#15803d;border-color:#bbf7d0}.us-icon-btn.danger{color:#dc2626;border-color:#fecaca}
+
+            .us-cards-mobile{display:none}
+
+            .us-overlay{display:none;position:fixed;inset:0;z-index:40;align-items:center;justify-content:center;background:rgba(15,23,42,.5);backdrop-filter:blur(4px)}
+            .us-modal{background:#fff;border-radius:16px;width:92%;max-width:560px;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(15,23,42,.3)}
+            .us-modal-sm{max-width:420px}
+            .us-modal-head{padding:18px 24px;border-bottom:1px solid #e4e9f0;display:flex;align-items:center;justify-content:space-between}
+            .us-modal-head h3{margin:0;font-size:15px;font-weight:700;color:#0f172a}
+            .us-x{width:28px;height:28px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;cursor:pointer;font-size:13px}
+            .us-x:hover{background:#e2e8f0}
+            .us-modal-body{padding:20px 24px;overflow-y:auto}
+            .us-modal-foot{padding:14px 24px 20px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #e4e9f0}
+
+            .us-btn-primary,.us-btn-ghost,.us-btn-danger{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent}
+            .us-btn-primary{background:#1e40af;color:#fff}.us-btn-primary:hover{background:#1e3a8a}
+            .us-btn-primary:disabled{opacity:.6;cursor:default}
+            .us-btn-ghost{background:#fff;color:#475569;border-color:#e2e8f0}
+            .us-btn-ghost:hover{background:#f8fafc}
+            .us-btn-danger{background:#dc2626;color:#fff}.us-btn-danger:hover{background:#b91c1c}
+            .us-btn-ghost.sm{padding:5px 10px;font-size:11px}
+            .us-btn-ghost.sm.warn{color:#b45309;border-color:#fde68a}
+            .us-btn-ghost.sm.ok{color:#15803d;border-color:#bbf7d0}
+            .us-btn-ghost.sm.danger{color:#dc2626;border-color:#fecaca}
+
+            .us-field{margin-bottom:14px}
+            .us-field > label{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#475569;margin-bottom:6px}
+            .us-field input[type=text],.us-field input[type=email],.us-field input[type=password],.us-field select{width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;color:#0f172a;background:#fff}
+            .us-field input:focus,.us-field select:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+            .us-pass-row{display:flex;gap:8px}
+            .us-pass-row input{flex:1}
+            .us-hint{font-size:11px;color:#8494a8;margin-top:5px}
+            .us-err{display:none;color:#dc2626;font-size:11px;font-weight:600;margin-top:5px}
+
+            .us-permtree{border:1px solid #e4e9f0;border-radius:10px;overflow:hidden;max-height:320px;overflow-y:auto}
+            .us-permsec{border-bottom:1px solid #f1f5f9}
+            .us-permsec:last-child{border-bottom:none}
+            .us-permsec-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;background:#f8fafc}
+            .us-permsec-head .t{font-size:11px;font-weight:700;color:#334155;letter-spacing:.7px}
+            .us-permsec-head label{font-size:10px;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:4px}
+            .us-permrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:7px 14px 7px 26px;border-top:1px solid #f1f5f9}
+            .us-permrow .s{font-size:13px;color:#475569;min-width:180px}
+            .us-permrow label{font-size:11px;color:#475569;cursor:pointer;display:flex;align-items:center;gap:4px}
+            .us-permsec input,.us-permrow input{accent-color:#3b82f6}
+
+            .us-confirm-text{font-size:13px;color:#475569;line-height:1.6;margin:0}
+            .us-cred{background:#f8fafc;border:1px solid #e4e9f0;border-radius:10px;padding:14px;margin-top:12px}
+            .us-cred > div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:5px 0}
+            .us-cred .k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#8494a8}
+            .us-cred .v{font-size:13px;font-weight:700;color:#0f172a;user-select:all}
+
+            .us-audit{display:flex;flex-direction:column;gap:8px}
+            .us-audit-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:9px 12px;border:1px solid #e4e9f0;border-radius:9px;font-size:11px}
+            .us-audit-row .who{font-weight:600;color:#334155}
+            .us-audit-row .det{color:#64748b;flex:1;min-width:120px}
+            .us-audit-row .f{color:#8494a8;font-size:10px;white-space:nowrap}
+
+            @media(max-width:768px){
+                .us-hero{flex-direction:column;align-items:flex-start;padding:16px}
+                .us-hero h2{font-size:15px}
+                .us-hero-actions{margin-left:0;width:100%}
+                .us-btn-hero{flex:1;justify-content:center}
+                .us-stats{gap:8px}
+                .us-stat{min-width:80px;padding:8px 12px}
+                .us-stat .v{font-size:15px}
+                .us-stat .k{font-size:10px}
+                .us-toolbar{flex-direction:column;align-items:stretch}
+                .us-search{max-width:none}
+                .us-table-wrap{display:none}
+                .us-cards-mobile{display:block;padding:12px}
+                .us-mcard{background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:12px;margin-bottom:8px}
+                .us-mcard .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;font-size:13px}
+                .us-mcard .top .b{display:flex;gap:4px}
+                .us-mcard .meta{font-size:11px;color:#64748b;margin-bottom:3px}
+                .us-mcard .acc{display:flex;gap:6px;margin-top:8px}
+                .us-modal{width:96%}
+                .us-permrow .s{min-width:120px}
+            }
+        </style>`;
     }
 });
