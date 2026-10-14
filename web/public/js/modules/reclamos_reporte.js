@@ -48,6 +48,12 @@ App.registerModule('reclamos_reporte', {
                 .rq-p-head h3{font-size:13px;font-weight:600;margin:0}
                 .rq-p-head .sub{font-size:10px;color:var(--invp-muted,#8494a8)}
                 .rq-p-body{padding:16px 18px}
+                /* Gráficos que LLENAN la tarjeta (las filas de grid igualan alturas:
+                   sin esto, la tarjeta más baja dejaba un hueco vacío debajo) */
+                .rq-p-body.rq-chart-body{display:flex;flex-direction:column}
+                .rq-chart-body .rq-bars-row{flex:1}
+                .rq-chart-body .rq-bars{flex:1;height:auto;min-height:150px}
+                .rq-chart-body .rq-yaxis{height:auto;align-self:stretch}
                 .rq-bars{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:14px;flex:1;min-width:0}
                 .rq-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
                 .rq-bar{width:100%;max-width:34px;background:var(--invp-accent,#2563eb);border-radius:5px 5px 0 0;position:relative;min-height:2px}
@@ -91,7 +97,7 @@ App.registerModule('reclamos_reporte', {
                     .rq-kpi{padding:12px 14px}
                     .rq-kpi .v{font-size:15px}
                     .rq-grid2,.rq-grid3{grid-template-columns:1fr}
-                    .rq-bars{height:130px}
+                    .rq-chart-body .rq-bars{min-height:110px}
                     .rq-mes th,.rq-mes td{padding:7px 8px}
                 }
             </style>
@@ -112,7 +118,7 @@ App.registerModule('reclamos_reporte', {
             <div class="rq-grid2">
                 <div class="rq-panel">
                     <div class="rq-p-head"><h3>Reclamos por mes</h3><span class="sub">${this.anio} · conteo de ingresos</span></div>
-                    <div class="rq-p-body" id="rrChartMes"></div>
+                    <div class="rq-p-body rq-chart-body" id="rrChartMes"></div>
                 </div>
                 <div class="rq-panel">
                     <div class="rq-p-head"><h3>Por estado</h3><span class="sub">situación actual</span></div>
@@ -140,7 +146,7 @@ App.registerModule('reclamos_reporte', {
                 </div>
                 <div class="rq-panel">
                     <div class="rq-p-head"><h3>Ingresos por día de semana</h3><span class="sub">cuándo se reportan los reclamos</span></div>
-                    <div class="rq-p-body" id="rrDias"></div>
+                    <div class="rq-p-body rq-chart-body" id="rrDias"></div>
                 </div>
             </div>
             <div class="rq-panel">
@@ -298,7 +304,7 @@ App.registerModule('reclamos_reporte', {
         const dias = d.diasSemana || [];
         const maxDia = Math.max(...dias.map(x => x.total || 0), 1);
         const esFinde = (n) => /^s[aá]b|^dom/i.test(n || '');
-        document.getElementById('rrDias').innerHTML = '<div class="rq-bars" style="height:140px">'
+        document.getElementById('rrDias').innerHTML = '<div class="rq-bars">'
             + dias.map(x => {
                 const h = Math.max(2, Math.round((x.total / maxDia) * 100));
                 return '<div class="rq-bar-col"><div class="rq-bar' + (esFinde(x.nombre) ? ' gris' : '') + '" style="height:' + h + '%"><div class="n">' + this._fmtNum(x.total) + '</div></div>'
