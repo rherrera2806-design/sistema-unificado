@@ -449,7 +449,9 @@ const SQL_COSTO_ITEM =
 const SQL_COSTO_LATERAL =
     'LEFT JOIN LATERAL (' +
     ` SELECT COALESCE(SUM(${SQL_COSTO_ITEM}), 0) AS costo` +
-    " FROM jsonb_array_elements(COALESCE(r.items, '[]'::jsonb)) AS item" +
+    // jsonb_array_elements EXIGE un arreglo: filas legadas con items que no son
+    // arreglo (objeto/string) reventaban el reporte completo. El CASE las vuelve '[]'.
+    " FROM jsonb_array_elements(CASE WHEN jsonb_typeof(r.items) = 'array' THEN r.items ELSE '[]'::jsonb END) AS item" +
     ') calc ON TRUE';
 
 // Identidad SIEMPRE desde la sesión (req.user lo deja el middleware de
@@ -711,7 +713,9 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
         // EXTRACT(YEAR FROM fecha_ingreso) = $1 (no usa índices).
         const desde = `${anio}-01-01`;
         const hasta = `${anio + 1}-01-01`;
-        const rango = 'r.fecha_ingreso >= $1::date AND r.fecha_ingreso < $2::date';
+        // Filas legadas pueden tener fecha_ingreso NULL: se considera created_at
+    // como respaldo (cada rama mantiene el rango sargable por índice).
+    const rango = '((r.fecha_ingreso >= $1::date AND r.fecha_ingreso < $2::date) OR (r.fecha_ingreso IS NULL AND r.created_at >= $1::date AND r.created_at < $2::date))';
         const params = [desde, hasta];
 
         // El costo se calcula desde los items en la MISMA query (fórmula
@@ -719,7 +723,7 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
         // TODA la tabla y reescribía costo_total en cada request del reporte.
         const result = await query(`
             SELECT
-                EXTRACT(MONTH FROM r.fecha_ingreso)::int as mes,
+                EXTRACT(MONTH FROM COALESCE(r.fecha_ingreso, r.created_at))::int as mes,
                 COUNT(*)::int as total,
                 COUNT(*) FILTER (WHERE r.estado = 'PENDIENTE')::int as pendientes,
                 COUNT(*) FILTER (WHERE r.estado = 'EN REVISION')::int as en_revision,
@@ -733,7 +737,7 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
                 COALESCE(NULLIF(COALESCE(r.responsable_falla,''), ''), 'Sin asignar') as responsable
             FROM reclamos_devoluciones r
             WHERE ${rango}
-            GROUP BY EXTRACT(MONTH FROM r.fecha_ingreso), r.responsable_falla
+            GROUP BY EXTRACT(MONTH FROM COALESCE(r.fecha_ingreso, r.created_at)), r.responsable_falla
             ORDER BY mes
         `, params);
 
@@ -755,12 +759,12 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
 
         // Costo por mes, calculado desde los items en la query
         const costoResult = await query(`
-            SELECT EXTRACT(MONTH FROM r.fecha_ingreso)::int as mes,
+            SELECT EXTRACT(MONTH FROM COALESCE(r.fecha_ingreso, r.created_at))::int as mes,
                    SUM(calc.costo)::numeric as costo_total
             FROM reclamos_devoluciones r
             ${SQL_COSTO_LATERAL}
             WHERE ${rango}
-            GROUP BY EXTRACT(MONTH FROM r.fecha_ingreso) ORDER BY mes
+            GROUP BY EXTRACT(MONTH FROM COALESCE(r.fecha_ingreso, r.created_at)) ORDER BY mes
         `, params);
 
         // Top clientes
@@ -783,10 +787,10 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
 
         // Reclamos por día de semana (0=Dom, 1=Lun...)
         const diaSemanaResult = await query(`
-            SELECT EXTRACT(DOW FROM r.fecha_ingreso)::int as dia, COUNT(*)::int as total
+            SELECT EXTRACT(DOW FROM COALESCE(r.fecha_ingreso, r.created_at))::int as dia, COUNT(*)::int as total
             FROM reclamos_devoluciones r
             WHERE ${rango}
-            GROUP BY EXTRACT(DOW FROM r.fecha_ingreso)
+            GROUP BY EXTRACT(DOW FROM COALESCE(r.fecha_ingreso, r.created_at))
             ORDER BY dia
         `, params);
 

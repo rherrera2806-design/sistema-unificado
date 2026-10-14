@@ -72,13 +72,21 @@ App.registerModule('reclamos_reporte', {
         try {
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch(`/api/reclamos/reporte?anio=${this.anio}`, { headers });
-            if (!res.ok) { console.error('API error:', res.status); this.reportData = { meses: Array(12).fill(null).map(() => ({ total:0,pendientes:0,en_revision:0,en_proceso:0,finalizados:0,fab_nueva:0,reproceso:0,rechazadas:0,costo:0 })), responsables: [], motivos: [], resoluciones: [], clientes: [], costoPorResponsable: [], diasSemana: [], totalGeneral: 0, totalFinalizados: 0, costoTotal: 0 }; }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                // Error VISIBLE: antes se mostraban ceros en silencio y parecía "sin datos"
+                App.showAlert('Error al cargar el reporte: ' + (err.error || ('HTTP ' + res.status)), 'danger');
+                this.reportData = { meses: Array(12).fill(null).map(() => ({ total:0,pendientes:0,en_revision:0,en_proceso:0,finalizados:0,fab_nueva:0,reproceso:0,rechazadas:0,costo:0 })), responsables: [], motivos: [], resoluciones: [], clientes: [], costoPorResponsable: [], diasSemana: [], totalGeneral: 0, totalFinalizados: 0, costoTotal: 0 };
+            }
             else { this.reportData = await res.json(); }
             this.renderKpis();
             this.renderTabla();
             if (this._chartTimer) clearTimeout(this._chartTimer);
             this._chartTimer = setTimeout(() => this.renderCharts(), 100);
-        } catch (e) { console.error('Error reporte reclamos:', e); }
+        } catch (e) {
+            console.error('Error reporte reclamos:', e);
+            App.showAlert('Error al cargar el reporte: ' + e.message, 'danger');
+        }
     },
 
     renderKpis() {
