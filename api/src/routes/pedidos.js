@@ -245,7 +245,27 @@ router.post('/api/pedidos', canCreate, subirArchivoPdf, async (req, res, next) =
 // Reporte de pedidos por anio
 router.get('/api/pedidos/reporte', canView, async (req, res, next) => {
     try {
-        const anio = parseInt(req.query.anio) || new Date().getFullYear();
+        // Año validado (2000-2100) o el actual
+        let anio;
+        if (req.query.anio !== undefined) {
+            anio = parseInt(req.query.anio, 10);
+            if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) {
+                return res.status(400).json({ error: 'El filtro anio debe ser un año entre 2000 y 2100' });
+            }
+        } else {
+            anio = new Date().getFullYear();
+        }
+        // Rango sargable [año-01-01, año+1-01-01) en vez de
+        // EXTRACT(YEAR FROM fecha_subida) = $1 (no usa índices).
+        const desde = `${anio}-01-01`;
+        const hasta = `${anio + 1}-01-01`;
+        // VISIBILIDAD: mismo criterio que el listado (ventas → solo lo propio).
+        // OJO: filtroVisibilidad referencia $2 y aquí el rango usa $1/$2,
+        // así que se re-numera a $3. Sin esto, un vendedor veía las ventas
+        // de TODA la empresa en el reporte mientras el listado era "lo mío".
+        const vis = filtroVisibilidad(req.user);
+        const visWhere = vis.where ? vis.where.replace('$2', '$3') : '';
+        const visParams = vis.params || [];
         const result = await query(`
             SELECT
                 EXTRACT(MONTH FROM p.fecha_subida)::int as mes,
@@ -258,16 +278,16 @@ router.get('/api/pedidos/reporte', canView, async (req, res, next) => {
                 COALESCE(NULLIF(p.tipo_ov,''), 'Normal') as tipo_ov
             FROM pedidos p
             LEFT JOIN usuarios u ON u.email = p.vendedor
-            WHERE EXTRACT(YEAR FROM p.fecha_subida) = $1
+            WHERE p.fecha_subida >= $1::date AND p.fecha_subida < $2::date${visWhere}
             GROUP BY EXTRACT(MONTH FROM p.fecha_subida), u.nombre, p.vendedor, p.cliente, p.tipo_ov
             ORDER BY mes
-        `, [anio]);
+        `, [desde, hasta, ...visParams]);
 
         const motivoResult = await query(`
             SELECT COALESCE(NULLIF(motivo_rechazo,''), 'Sin motivo') as motivo, COUNT(*)::int as total
-            FROM pedidos WHERE EXTRACT(YEAR FROM fecha_subida) = $1 AND estado = 'rechazado' AND motivo_rechazo IS NOT NULL AND motivo_rechazo != ''
+            FROM pedidos WHERE fecha_subida >= $1::date AND fecha_subida < $2::date${visWhere} AND estado = 'rechazado' AND motivo_rechazo IS NOT NULL AND motivo_rechazo != ''
             GROUP BY motivo_rechazo ORDER BY total DESC LIMIT 8
-        `, [anio]);
+        `, [desde, hasta, ...visParams]);
 
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const porMes = {};

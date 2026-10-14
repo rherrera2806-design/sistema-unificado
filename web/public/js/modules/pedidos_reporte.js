@@ -1,62 +1,141 @@
+// ============================================================================
+// Reporte de Pedidos — lenguaje visual del sistema (mismo diseño que el
+// reporte de Reclamos): hero azul, KPIs neutros con color SOLO de significado
+// (verde = aprobado, rojo = rechazado, ámbar = pendiente), gráficos CSS que
+// llenan sus tarjetas, ejes en unidades enteras. Escala 20/15/13/11/10,
+// números es-CL (miles con punto), textos con acentos.
+// ============================================================================
 App.registerModule('pedidos_reporte', {
     reportData: null,
-    charts: {},
     anio: new Date().getFullYear(),
-    _chartTimer: null,
+
+    _fmtNum(v) { return Number(v || 0).toLocaleString('es-CL'); },
+    _fmtDec1(v) { return Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); },
+    // Presentacion normalizada (sin inventar acentos): 'FABRICACION MALFRED' -> 'Fabricacion Malfred'
+    _titulo(s) { return String(s || '').toLowerCase().split(' ').map(p => p ? p.charAt(0).toUpperCase() + p.slice(1) : p).join(' '); },
+    _frase(s) { const t = String(s || '').toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); },
 
     async render() {
         const el = document.getElementById('page-pedidos_reporte');
-        el.innerHTML = '<style>'
-            + '.pr-section{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}'
-            + '.pr-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}'
-            + '.pr-kpi{background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center;position:relative;overflow:hidden}'
-            + '.pr-kpi::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%;border-radius:4px 0 0 4px}'
-            + '.pr-kpi.kpi-blue::before{background:#3b82f6}'
-            + '.pr-kpi.kpi-green::before{background:#16a34a}'
-            + '.pr-kpi.kpi-red::before{background:#dc2626}'
-            + '.pr-kpi.kpi-amber::before{background:#f59e0b}'
-            + '.pr-kpi.kpi-purple::before{background:#8b5cf6}'
-            + '.pr-kpi-value{font-size:28px;font-weight:800;color:#1e293b;line-height:1.1}'
-            + '.pr-kpi-label{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px}'
-            + '.pr-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}'
-            + '.pr-chart-box{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}'
-            + '.pr-chart-title{font-size:13px;font-weight:700;color:#1e293b;margin-bottom:12px;display:flex;align-items:center;gap:6px}'
-            + '.pr-chart-title svg{width:16px;height:16px;flex-shrink:0}'
-            + '.pr-table-wrap{overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px}'
-            + '.pr-table{width:100%;border-collapse:collapse;font-size:12px}'
-            + '.pr-table th{background:#f8fafc;padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0}'
-            + '.pr-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#334155}'
-            + '.pr-table tr:hover td{background:#f8fafc}'
-            + '.pr-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}'
-            + '@media(max-width:768px){.pr-chart-row{grid-template-columns:1fr;overflow-x:auto}.pr-kpi-row{grid-template-columns:repeat(2,1fr)}.pr-kpi-value{font-size:20px}.pr-chart-box{padding:8px;overflow:hidden}.pr-section{padding:10px}.pr-table{font-size:11px}.pr-table th{font-size:9px}.pr-chart-row canvas{height:180px!important}.pr-hero{padding:12px!important;border-radius:12px!important;margin-bottom:16px!important}}'
-            + '</style>'
+        el.innerHTML = `
+            <style>
+                .rq-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%);border-radius:16px;padding:20px 26px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;margin-bottom:18px}
+                .rq-hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.55),transparent)}
+                .rq-hero h2{color:#fff;font-size:15px;font-weight:700;margin:0}
+                .rq-hero p{color:rgba(255,255,255,.62);font-size:11px;margin:2px 0 0}
+                .rq-anio{margin-left:auto;display:flex;align-items:center;gap:10px}
+                .rq-anio .lbl{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:rgba(255,255,255,.6);text-align:center}
+                .rq-anio .val{font-size:20px;font-weight:700;color:#fff}
+                .rq-nav{width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:13px}
+                .rq-nav:hover{background:rgba(255,255,255,.2)}
+                .rq-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+                .rq-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:16px 18px}
+                .rq-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
+                .rq-kpi .v{font-size:20px;font-weight:700;margin-top:6px;color:#0f172a}
+                .rq-kpi .s{font-size:10px;color:#8494a8;margin-top:3px}
+                .rq-green{color:#15803d!important}
+                .rq-red{color:#dc2626!important}
+                .rq-amber{color:#b45309!important}
+                .rq-grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-bottom:14px}
+                .rq-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+                .rq-panel{background:#fff;border:1px solid #e4e9f0;border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+                .rq-p-head{padding:14px 18px 10px;display:flex;align-items:baseline;gap:8px;border-bottom:1px solid #e4e9f0}
+                .rq-p-head h3{font-size:13px;font-weight:600;margin:0}
+                .rq-p-head .sub{font-size:10px;color:#8494a8}
+                .rq-p-body{padding:16px 18px;flex:1}
+                .rq-p-body.rq-chart-body{position:relative;min-height:210px}
+                .rq-chart-body .rq-bars{position:absolute;inset:16px 18px;display:flex;align-items:flex-end;gap:8px}
+                .rq-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+                .rq-bar{width:100%;max-width:34px;background:#2563eb;border-radius:5px 5px 0 0;position:relative;min-height:2px}
+                .rq-bar.gris{background:#94a3b8}
+                .rq-bar.oscuro{background:#1e3a5f}
+                .rq-bar .n{position:absolute;top:-17px;left:0;right:0;text-align:center;font-size:10px;font-weight:600;color:#475569}
+                .rq-bar-col .m{font-size:10px;color:#8494a8}
+                .rq-donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap;height:100%}
+                .rq-donut{width:150px;height:150px;border-radius:50%;position:relative;flex-shrink:0}
+                .rq-donut::after{content:'';position:absolute;inset:26px;background:#fff;border-radius:50%}
+                .rq-donut .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1}
+                .rq-donut .c .n{font-size:20px;font-weight:700}
+                .rq-donut .c .l{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:#8494a8}
+                .rq-legend{display:flex;flex-direction:column;gap:9px;flex:1;min-width:170px}
+                .rq-lg{display:flex;align-items:center;gap:8px;font-size:13px;color:#475569}
+                .rq-lg .dot{width:8px;height:8px;border-radius:3px}
+                .rq-lg .n{margin-left:auto;font-weight:600;color:#0f172a}
+                .rq-rank{display:flex;flex-direction:column;gap:11px;height:100%;justify-content:space-evenly}
+                .rq-rank.cols2{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;align-content:space-evenly}
+                .rq-ritem .top{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:4px}
+                .rq-ritem .nm{color:#475569}
+                .rq-ritem .vl{font-weight:600;color:#0f172a}
+                .rq-track{height:7px;border-radius:6px;background:#f1f5f9;overflow:hidden}
+                .rq-fill{height:100%;border-radius:6px;background:#2563eb}
+                .rq-fill.green{background:#15803d}.rq-fill.amber{background:#b45309}.rq-fill.red{background:#dc2626}.rq-fill.slate{background:#94a3b8}
+                .rq-mes{width:100%;border-collapse:collapse}
+                .rq-mes th{font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#8494a8;text-align:left;padding:8px 12px;border-bottom:1px solid #e4e9f0;background:#fbfcfe}
+                .rq-mes td{font-size:13px;padding:9px 12px;border-bottom:1px solid #eef2f7;color:#475569}
+                .rq-mes th.num,.rq-mes td.num{text-align:right}
+                .rq-mes td.mes-n{font-weight:600;color:#0f172a}
+                .rq-mes tfoot td{font-weight:700;color:#0f172a;background:#f8fafc;border-bottom:none}
+                .rq-badge{display:inline-flex;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+                .rq-b-amber{color:#b45309;background:#fdf8f1}
+                .rq-b-green{color:#15803d;background:#f0fdf4}
+                .rq-b-red{color:#dc2626;background:#fef2f2}
+                @media(max-width:768px){
+                    .rq-hero{padding:16px}
+                    .rq-hero h2{font-size:13px}
+                    .rq-kpis{grid-template-columns:1fr 1fr;gap:8px}
+                    .rq-kpi{padding:12px 14px}
+                    .rq-kpi .v{font-size:15px}
+                    .rq-grid2,.rq-grid3{grid-template-columns:1fr}
+                    .rq-rank.cols2{grid-template-columns:1fr}
+                    .rq-mes th,.rq-mes td{padding:7px 8px}
+                }
+            </style>
 
-            + '<div class="pr-hero" style="background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#3b82f6 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(30,58,95,0.3)">'
-            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">'
-            + '<div><h2 style="margin:0;font-size:18px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Reporte de Pedidos</h2>'
-            + '<p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.7)">Analisis mensual de pedidos y ordenes de venta</p></div>'
-            + '<div style="display:flex;gap:6px;align-items:center">'
-            + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.pedidos_reporte.cambiarAnio(-1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>'
-            + '<span id="prAnioLabel" style="color:white;font-size:16px;font-weight:700;min-width:60px;text-align:center">' + this.anio + '</span>'
-            + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.pedidos_reporte.cambiarAnio(1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>'
-            + '</div></div></div>'
+            <div class="rq-hero">
+                <div>
+                    <h2>Reporte de Pedidos</h2>
+                    <p>Análisis mensual de pedidos y órdenes</p>
+                </div>
+                <div class="rq-anio">
+                    <button class="rq-nav" onclick="App.modules.pedidos_reporte.cambiarAnio(-1)" aria-label="Año anterior">‹</button>
+                    <div><div class="lbl">Año</div><div class="val" id="prAnioLabel">${this.anio}</div></div>
+                    <button class="rq-nav" onclick="App.modules.pedidos_reporte.cambiarAnio(1)" aria-label="Año siguiente">›</button>
+                </div>
+            </div>
 
-            + '<div id="prKpis" class="pr-kpi-row"></div>'
-            + '<div class="pr-chart-row">'
-            + '<div class="pr-chart-box"><div class="pr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>Pedidos por Mes</div><div style="position:relative;height:280px"><canvas id="prChartMes"></canvas></div></div>'
-            + '<div class="pr-chart-box"><div class="pr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20" fill="#8b5cf6" opacity="0.2"/></svg>Por Estado</div><div style="position:relative;height:280px;display:flex;justify-content:center"><canvas id="prChartEstado"></canvas></div></div>'
-            + '</div>'
-            + '<div class="pr-chart-row">'
-            + '<div class="pr-chart-box"><div class="pr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Por Vendedor</div><div style="position:relative;height:280px"><canvas id="prChartVendedor"></canvas></div></div>'
-            + '<div class="pr-chart-box"><div class="pr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Por Tipo de OV</div><div style="position:relative;height:280px;display:flex;justify-content:center"><canvas id="prChartTipo"></canvas></div></div>'
-            + '</div>'
-            + '<div class="pr-chart-row">'
-            + '<div class="pr-chart-box"><div class="pr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Tendencia Mensual</div><div style="position:relative;height:280px"><canvas id="prChartTendencia"></canvas></div></div>'
-            + '<div class="pr-chart-box"><div class="pr-chart-title"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Top Clientes</div><div style="position:relative;height:280px"><canvas id="prChartCliente"></canvas></div></div>'
-            + '</div>'
-            + '<div id="prRankingTipo" style="margin-bottom:16px"></div>'
-            + '<div class="pr-section"><div class="pr-chart-title" style="margin-bottom:12px"><svg viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" width="16" height="16"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>Detalle Mensual</div><div id="prTabla" class="pr-table-wrap"></div></div>';
+            <div class="rq-kpis" id="prKpis"></div>
+            <div class="rq-grid2">
+                <div class="rq-panel">
+                    <div class="rq-p-head"><h3>Pedidos por mes</h3><span class="sub">${this.anio} · conteo de ingresos</span></div>
+                    <div class="rq-p-body rq-chart-body" id="prChartMes"></div>
+                </div>
+                <div class="rq-panel">
+                    <div class="rq-p-head"><h3>Por estado</h3><span class="sub">situación actual</span></div>
+                    <div class="rq-p-body" id="prChartEstado"></div>
+                </div>
+            </div>
+            <div class="rq-grid3">
+                <div class="rq-panel">
+                    <div class="rq-p-head"><h3>Tipos de OV</h3><span class="sub">distribución por tipo</span></div>
+                    <div class="rq-p-body"><div class="rq-rank" id="prTipos"></div></div>
+                </div>
+                <div class="rq-panel">
+                    <div class="rq-p-head"><h3>Principales motivos de rechazo</h3></div>
+                    <div class="rq-p-body"><div class="rq-rank" id="prMotivos"></div></div>
+                </div>
+                <div class="rq-panel">
+                    <div class="rq-p-head"><h3>Clientes con más pedidos</h3></div>
+                    <div class="rq-p-body"><div class="rq-rank" id="prClientes"></div></div>
+                </div>
+            </div>
+            <div class="rq-panel" style="margin-bottom:14px">
+                <div class="rq-p-head"><h3>Pedidos por vendedor</h3><span class="sub">ranking del año</span></div>
+                <div class="rq-p-body"><div class="rq-rank cols2" id="prVendedores"></div></div>
+            </div>
+            <div class="rq-panel">
+                <div class="rq-p-head"><h3>Detalle mensual</h3><span class="sub">resumen por mes</span></div>
+                <div id="prTabla"></div>
+            </div>`;
 
         await this.loadData();
     },
@@ -65,144 +144,161 @@ App.registerModule('pedidos_reporte', {
         try {
             const headers = typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' };
             const res = await fetch(`/api/pedidos/reporte?anio=${this.anio}`, { headers });
-            if (!res.ok) { this.reportData = { meses: Array(12).fill(null).map(() => ({ total:0,pendientes:0,aprobados:0,rechazados:0 })), vendedores: [], clientes: [], tipos: [], motivos: [], totalGeneral: 0, totalAprobados: 0, totalRechazados: 0 }; }
-            else { this.reportData = await res.json(); }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                // Error VISIBLE: antes se mostraban ceros en silencio y parecía "sin datos"
+                App.showAlert('Error al cargar el reporte: ' + (err.error || ('HTTP ' + res.status)), 'danger');
+                this.reportData = { meses: [], vendedores: [], clientes: [], tipos: [], motivos: [], totalGeneral: 0, totalAprobados: 0, totalRechazados: 0 };
+            } else {
+                this.reportData = await res.json();
+            }
             this.renderKpis();
+            this.renderChartMes();
+            this.renderChartEstado();
+            this.renderRankings();
             this.renderTabla();
-            this.renderRankingTipo();
-            if (this._chartTimer) clearTimeout(this._chartTimer);
-            this._chartTimer = setTimeout(() => this.renderCharts(), 100);
-        } catch (e) { console.error('Error reporte pedidos:', e); }
+        } catch (e) {
+            console.error('Error reporte pedidos:', e);
+            App.showAlert('Error al cargar el reporte: ' + e.message, 'danger');
+        }
     },
 
     renderKpis() {
         const d = this.reportData;
-        const pendientes = d.meses.reduce((s, m) => s + m.pendientes, 0);
-        const tasaAprob = d.totalGeneral > 0 ? Math.round((d.totalAprobados / d.totalGeneral) * 100) : 0;
-        const mesesConActividad = d.meses.filter(m => m.total > 0).length;
-        const promedioMensual = mesesConActividad > 0 ? Math.round(d.totalGeneral / mesesConActividad) : 0;
-
+        const total = d.totalGeneral || 0;
+        const aprobados = d.totalAprobados || 0;
+        const rechazados = d.totalRechazados || 0;
+        const tasa = total > 0 ? Math.round((aprobados / total) * 100) : 0;
+        const mesesActivos = (d.meses || []).filter(m => m.total > 0).length;
+        const promedio = mesesActivos > 0 ? Math.round(total / mesesActivos) : 0;
         document.getElementById('prKpis').innerHTML = ''
-            + '<div class="pr-kpi kpi-blue"><div class="pr-kpi-value">' + d.totalGeneral + '</div><div class="pr-kpi-label">Total ' + this.anio + '</div></div>'
-            + '<div class="pr-kpi kpi-green"><div class="pr-kpi-value">' + d.totalAprobados + '</div><div class="pr-kpi-label">Aprobados</div></div>'
-            + '<div class="pr-kpi kpi-red"><div class="pr-kpi-value">' + d.totalRechazados + '</div><div class="pr-kpi-label">Rechazados</div></div>'
-            + '<div class="pr-kpi kpi-amber"><div class="pr-kpi-value">' + tasaAprob + '%</div><div class="pr-kpi-label">Tasa Aprobacion</div></div>'
-            + '<div class="pr-kpi kpi-purple"><div class="pr-kpi-value">' + promedioMensual + '</div><div class="pr-kpi-label">Promedio Mensual</div></div>';
+            + this._kpi('Total ' + this.anio, this._fmtNum(total), 'pedidos ingresados', '')
+            + this._kpi('Aprobados', this._fmtNum(aprobados), 'listos para producción', 'rq-green')
+            + this._kpi('Rechazados', this._fmtNum(rechazados), 'observados', 'rq-red')
+            + this._kpi('Tasa de aprobación', tasa + '%', 'del total del año', 'rq-green')
+            + this._kpi('Promedio mensual', this._fmtNum(promedio), 'en meses activos', '');
+    },
+    _kpi(k, v, s, cls) {
+        return '<div class="rq-kpi"><div class="k">' + escText(k) + '</div><div class="v ' + cls + '">' + escText(v) + '</div><div class="s">' + escText(s) + '</div></div>';
     },
 
-    renderCharts() {
-        if (typeof Chart === 'undefined') return;
-        Object.values(this.charts).forEach(c => c.destroy());
-        this.charts = {};
-
+    renderChartMes() {
         const d = this.reportData;
-        const mesesCortos = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-        const labels = d.meses.map((m, i) => mesesCortos[i]);
-        const defaults = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: false } } };
+        const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const totales = (d.meses || []).map(m => m.total || 0);
+        const maxDato = Math.max(...totales, 1);
+        const maxEje = Math.ceil(maxDato / 4) * 4 || 4;
+        const hoy = new Date();
+        const esMesActual = (i) => (i === hoy.getMonth() && this.anio === hoy.getFullYear());
+        const bars = totales.map((t, i) => {
+            const h = Math.max(2, Math.round((t / maxEje) * 100));
+            return '<div class="rq-bar-col">'
+                + '<div class="rq-bar' + (esMesActual(i) ? ' oscuro' : '') + '" style="height:' + h + '%"><div class="n">' + this._fmtNum(t) + '</div></div>'
+                + '<div class="m">' + mesesCortos[i] + '</div></div>';
+        }).join('');
+        document.getElementById('prChartMes').innerHTML = '<div class="rq-bars">' + bars + '</div>';
+    },
 
-        this.charts.mes = new Chart(document.getElementById('prChartMes'), {
-            type: 'bar',
-            data: { labels, datasets: [{ data: d.meses.map(m => m.total), backgroundColor: d.meses.map((m, i) => { const h = new Date(); return (i === h.getMonth() && this.anio === h.getFullYear()) ? '#3b82f6' : '#93c5fd'; }), borderRadius: 6, borderSkipped: false }] },
-            options: { ...defaults, layout: { padding: { top: 30 } }, scales: { y: { beginAtZero: true, suggestedMax: Math.max(...d.meses.map(m => m.total), 1) * 1.15, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'top', color: '#475569', font: { size: 11, weight: '700' } } } },
-            plugins: [ChartDataLabels]
+    renderChartEstado() {
+        const d = this.reportData;
+        const meses = d.meses || [];
+        const sum = (campo) => meses.reduce((s, m) => s + (m[campo] || 0), 0);
+        const aprobados = sum('aprobados');
+        const rechazados = sum('rechazados');
+        const pendientes = sum('pendientes');
+        const total = aprobados + rechazados + pendientes;
+        const partes = [
+            { n: 'Aprobados', v: aprobados, c: '#15803d' },
+            { n: 'Rechazados', v: rechazados, c: '#dc2626' },
+            { n: 'Pendientes', v: pendientes, c: '#b45309' }
+        ].filter(p => p.v > 0);
+        let grados = 0;
+        const tramos = partes.map(p => {
+            const ini = grados;
+            grados += total > 0 ? (p.v / total) * 360 : 0;
+            return p.c + ' ' + ini + 'deg ' + grados + 'deg';
         });
+        const fondo = total > 0 ? 'conic-gradient(' + tramos.join(',') + ')' : '#e4e9f0';
+        document.getElementById('prChartEstado').innerHTML = ''
+            + '<div class="rq-donut-wrap">'
+            + '<div class="rq-donut" style="background:' + fondo + '"><div class="c"><div class="n">' + this._fmtNum(total) + '</div><div class="l">Total</div></div></div>'
+            + '<div class="rq-legend">'
+            + partes.map(p => '<div class="rq-lg"><span class="dot" style="background:' + p.c + '"></span>' + escText(p.n) + '<span class="n">' + this._fmtNum(p.v) + '</span></div>').join('')
+            + '</div></div>';
+    },
 
-        const estadoTotal = [d.meses.reduce((s,m)=>s+m.pendientes,0), d.totalAprobados, d.totalRechazados];
-        this.charts.estado = new Chart(document.getElementById('prChartEstado'), {
-            type: 'doughnut',
-            data: { labels: ['Pendiente','Aprobado','Rechazado'], datasets: [{ data: estadoTotal, backgroundColor: ['#f59e0b','#16a34a','#dc2626'], borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }] },
-            options: { ...defaults, cutout: '60%', plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#fff', font: { size: 10, weight: '700' }, formatter: (v, ctx) => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0); return t > 0 ? Math.round((v/t)*100)+'%' : ''; } } } },
-            plugins: [ChartDataLabels]
-        });
+    renderRankings() {
+        const d = this.reportData;
 
-        const vendedores = d.vendedores.slice(0, 10);
-        this.charts.vendedor = new Chart(document.getElementById('prChartVendedor'), {
-            type: 'bar',
-            data: { labels: vendedores.map(v => v.nombre.length > 14 ? v.nombre.substring(0,14)+'.' : v.nombre), datasets: [{ data: vendedores.map(v => v.total), backgroundColor: ['#3b82f6','#8b5cf6','#06b6d4','#16a34a','#f59e0b','#ef4444','#ec4899','#6366f1','#14b8a6','#f97316'], borderRadius: 6, borderSkipped: false }] },
-            options: { ...defaults, indexAxis: 'y', layout: { padding: { right: 30 } }, scales: { x: { beginAtZero: true, suggestedMax: Math.max(...vendedores.map(v => v.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } } },
-            plugins: [ChartDataLabels]
-        });
+        // Tipos de OV: barras azules
+        const tipos = (d.tipos || []).slice(0, 6);
+        const maxTipo = Math.max(...tipos.map(t => t.total || 0), 1);
+        document.getElementById('prTipos').innerHTML = this._rank(
+            tipos.map(t => ({ nom: this._titulo(t.nombre), val: t.total, w: (t.total / maxTipo) * 100, cls: '' }))
+        );
 
-        const tipos = d.tipos || [];
-        this.charts.tipo = new Chart(document.getElementById('prChartTipo'), {
-            type: 'doughnut',
-            data: { labels: tipos.map(t => t.nombre), datasets: [{ data: tipos.map(t => t.total), backgroundColor: ['#3b82f6','#f97316','#8b5cf6','#ef4444','#16a34a'], borderWidth: 2, borderColor: '#fff', hoverOffset: 8 }] },
-            options: { ...defaults, cutout: '60%', plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } }, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#fff', font: { size: 10, weight: '700' }, formatter: (v, ctx) => { const t = ctx.dataset.data.reduce((a,b)=>a+b,0); return t > 0 ? Math.round((v/t)*100)+'%' : ''; } } } },
-            plugins: [ChartDataLabels]
-        });
+        // Motivos de rechazo: barras rojas (el tono cuenta el significado)
+        const motivos = (d.motivos || []).slice(0, 5);
+        const maxMot = Math.max(...motivos.map(m => m.total || 0), 1);
+        document.getElementById('prMotivos').innerHTML = this._rank(
+            motivos.map((m, i) => ({ nom: this._frase(m.motivo), val: m.total, w: (m.total / maxMot) * 100, cls: 'red', op: i === 0 ? '' : 'opacity:.75' }))
+        );
 
-        this.charts.tendencia = new Chart(document.getElementById('prChartTendencia'), {
-            type: 'line',
-            data: { labels, datasets: [
-                { label: 'Total', data: d.meses.map(m => m.total), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#3b82f6', pointBorderColor: '#fff', pointBorderWidth: 2 },
-                { label: 'Aprobados', data: d.meses.map(m => m.aprobados), borderColor: '#16a34a', backgroundColor: 'transparent', fill: false, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#16a34a', pointBorderColor: '#fff', pointBorderWidth: 2 }
-            ] },
-            options: { ...defaults, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, legend: { display: true, position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, font: { size: 10 } } } } }
-        });
+        // Clientes
+        const clientes = (d.clientes || []).slice(0, 5);
+        const maxCli = Math.max(...clientes.map(c => c.total || 0), 1);
+        document.getElementById('prClientes').innerHTML = this._rank(
+            clientes.map(c => ({ nom: this._titulo(c.nombre), val: c.total, w: (c.total / maxCli) * 100, cls: '' }))
+        );
 
-        const clientes = (d.clientes || []).slice(0, 8);
-        this.charts.cliente = new Chart(document.getElementById('prChartCliente'), {
-            type: 'bar',
-            data: { labels: clientes.map(c => c.nombre.length > 16 ? c.nombre.substring(0,16)+'.' : c.nombre), datasets: [{ data: clientes.map(c => c.total), backgroundColor: ['#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#22c55e','#14b8a6','#06b6d4'], borderRadius: 6, borderSkipped: false }] },
-            options: { ...defaults, indexAxis: 'y', layout: { padding: { right: 30 } }, scales: { x: { beginAtZero: true, suggestedMax: Math.max(...clientes.map(c => c.total), 1) * 1.2, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }, y: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } } }, plugins: { ...defaults.plugins, datalabels: { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, anchor: 'end', align: 'right', color: '#475569', font: { size: 10, weight: '700' }, padding: { left: 4 } } } },
-            plugins: [ChartDataLabels]
-        });
+        // Vendedores (2 columnas)
+        const vendedores = (d.vendedores || []).slice(0, 10);
+        const maxVend = Math.max(...vendedores.map(v => v.total || 0), 1);
+        document.getElementById('prVendedores').innerHTML = vendedores.length
+            ? this._rank(vendedores.map((v, i) => ({ nom: this._titulo(v.nombre), val: v.total, w: (v.total / maxVend) * 100, cls: i === 0 ? '' : 'slate', op: i === 0 ? '' : 'opacity:.75' })), true)
+            : '<div style="text-align:center;padding:26px 10px;color:#8494a8;font-size:11px">Sin vendedores con pedidos este año</div>';
+    },
+    _rank(items, cols2) {
+        if (!items.length) return '<div style="text-align:center;padding:26px 10px;color:#8494a8;font-size:11px">Sin datos para este año</div>';
+        return '<div class="rq-rank' + (cols2 ? ' cols2' : '') + '">' + items.map(it =>
+            '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(it.nom) + '</span><span class="vl">' + this._fmtNum(it.val) + '</span></div>'
+            + '<div class="rq-track"><div class="rq-fill ' + (it.cls || '') + '" style="width:' + Math.max(2, Math.round(it.w)) + '%;' + (it.op || '') + '"></div></div></div>'
+        ).join('') + '</div>';
     },
 
     renderTabla() {
         const d = this.reportData;
-        const mesesCortos = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-        const badge = (v, color) => `<span class="pr-badge" style="background:${color}15;color:${color}">${v}</span>`;
+        const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const badge = (v, cls) => '<span class="rq-badge ' + cls + '">' + this._fmtNum(v) + '</span>';
         let rows = '';
-        for (let i = 0; i < 12; i++) {
-            const m = d.meses[i];
-            if (m.total === 0) continue;
-            const tasa = m.total > 0 ? Math.round((m.aprobados / m.total) * 100) : 0;
-            rows += `<tr>
-                <td style="font-weight:700">${mesesCortos[i]}</td>
-                <td>${m.total}</td>
-                <td>${badge(m.pendientes, '#f59e0b')}</td>
-                <td>${badge(m.aprobados, '#16a34a')}</td>
-                <td>${badge(m.rechazados, '#dc2626')}</td>
-                <td style="font-weight:600">${tasa}%</td>
-            </tr>`;
-        }
-        if (!rows) rows = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Sin datos para este anio</td></tr>';
-        document.getElementById('prTabla').innerHTML = '<table class="pr-table">'
-            + '<thead><tr><th>Mes</th><th>Total</th><th>Pend.</th><th>Aprobados</th><th>Rechazados</th><th>% Aprobacion</th></tr></thead>'
-            + '<tbody>' + rows + '</tbody></table>';
-    },
-
-    renderRankingTipo() {
-        const d = this.reportData;
-        const tipos = d.tipos || [];
-        if (tipos.length === 0) return;
-        const total = d.totalGeneral || 1;
-        const colores = { Normal: '#3b82f6', Urgencia: '#f97316', 'Vta. Region': '#8b5cf6', Express: '#f59e0b', Reposicion: '#ef4444' };
-        const medals = ['🥇','🥈','🥉'];
-
-        let html = '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">'
-            + '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:14px;display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Ranking por Tipo</div>';
-
-        tipos.forEach((tipo, i) => {
-            const pct = Math.round((tipo.total / total) * 100);
-            const color = colores[tipo.nombre] || '#64748b';
-            const medal = medals[i] || '';
-            html += '<div style="margin-bottom:12px">'
-                + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
-                + '<span style="font-size:12px;font-weight:600;color:#1e293b">' + medal + ' ' + tipo.nombre + '</span>'
-                + '<span style="font-size:12px;font-weight:700;color:' + color + '">' + tipo.total + ' <span style="font-weight:400;color:#94a3b8;font-size:10px">(' + pct + '%)</span></span></div>'
-                + '<div style="height:10px;background:#f1f5f9;border-radius:5px;overflow:hidden">'
-                + '<div style="width:' + pct + '%;background:' + color + ';height:100%;border-radius:5px;transition:width 0.5s ease"></div></div></div>';
+        let tot = { total: 0, pendientes: 0, aprobados: 0, rechazados: 0 };
+        (d.meses || []).forEach((m, i) => {
+            tot.total += m.total || 0;
+            tot.pendientes += m.pendientes || 0;
+            tot.aprobados += m.aprobados || 0;
+            tot.rechazados += m.rechazados || 0;
+            if (!m.total) return;
+            const tasa = m.total > 0 ? Math.round(((m.aprobados || 0) / m.total) * 100) : 0;
+            rows += '<tr>'
+                + '<td class="mes-n">' + mesesCortos[i] + '</td>'
+                + '<td class="num">' + this._fmtNum(m.total) + '</td>'
+                + '<td class="num">' + badge(m.pendientes || 0, 'rq-b-amber') + '</td>'
+                + '<td class="num">' + badge(m.aprobados || 0, 'rq-b-green') + '</td>'
+                + '<td class="num">' + badge(m.rechazados || 0, 'rq-b-red') + '</td>'
+                + '<td class="num">' + tasa + '%</td>'
+                + '</tr>';
         });
-
-        html += '</div>';
-        document.getElementById('prRankingTipo').innerHTML = html;
+        const tasaGen = tot.total > 0 ? Math.round((tot.aprobados / tot.total) * 100) : 0;
+        const tfoot = '<tfoot><tr><td>Total</td><td class="num">' + this._fmtNum(tot.total) + '</td><td class="num">' + this._fmtNum(tot.pendientes) + '</td><td class="num">' + this._fmtNum(tot.aprobados) + '</td><td class="num">' + this._fmtNum(tot.rechazados) + '</td><td class="num">' + tasaGen + '%</td></tr></tfoot>';
+        document.getElementById('prTabla').innerHTML = rows
+            ? '<table class="rq-mes"><thead><tr><th>Mes</th><th class="num">Total</th><th class="num">Pendientes</th><th class="num">Aprobados</th><th class="num">Rechazados</th><th class="num">Tasa aprob.</th></tr></thead><tbody>' + rows + '</tbody>' + tfoot + '</table>'
+            : '<div style="text-align:center;padding:26px 10px;color:#8494a8;font-size:11px">Sin datos para este año</div>';
     },
 
     cambiarAnio(dir) {
         this.anio += dir;
-        document.getElementById('prAnioLabel').textContent = this.anio;
+        const lbl = document.getElementById('prAnioLabel');
+        if (lbl) lbl.textContent = this.anio;
         this.loadData();
     }
 });
