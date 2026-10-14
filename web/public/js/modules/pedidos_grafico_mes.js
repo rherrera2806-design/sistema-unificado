@@ -5,7 +5,7 @@
 //   · Comparativo por mes (últimos 12 meses)
 //   · Distribución por etiqueta (conteo y %)
 // Paleta de etiquetas refinada (mismos tonos, sin chillón):
-//   Normal #2563eb · Express #ca8a04 · Vta. Region #7c3aed · Reposicion #b91c1c · Urgencia #c2410c
+//   Normal #2563eb · Express #fde047 (amarillo etiqueta) · Vta. Region #7c3aed · Reposicion #b91c1c · Urgencia #16a34a (verde etiqueta)
 // NO existe etiqueta "Rechazado": los rechazados se excluyen y el subtítulo lo dice.
 // Escala tipográfica 20/15/13/11/10 · números es-CL · gráficos CSS.
 // ============================================================================
@@ -18,10 +18,10 @@ App.registerModule('pedidos_grafico_mes', {
     // Paleta de ETIQUETAS (coherente con las etiquetas físicas de planta)
     _ETIQUETAS: {
         'Normal': '#2563eb',
-        'Express': '#ca8a04',
+        'Express': '#fde047',
         'Vta. Region': '#7c3aed',
         'Reposicion': '#b91c1c',
-        'Urgencia': '#c2410c'
+        'Urgencia': '#16a34a'
     },
     _ETIQUETAS_COLOR_FALLBACK: '#64748b',
 
