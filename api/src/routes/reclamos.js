@@ -439,20 +439,6 @@ function costoTotalDeItems(items) {
 // Equivalente SQL de la fórmula canónica para UN item. El regexp evita que una
 // fila vieja con basura no numérica reviente el cast a numeric (en ese caso el
 // valor cuenta como 0 / cantidad 1, igual que en JS).
-const SQL_COSTO_ITEM =
-    "(CASE WHEN item->>'valor_unitario' ~ '^[0-9]+([.][0-9]+)?$' THEN (item->>'valor_unitario')::numeric ELSE 0 END" +
-    " * COALESCE(NULLIF(CASE WHEN item->>'cantidad' ~ '^[0-9]+([.][0-9]+)?$' THEN (item->>'cantidad')::numeric END, 0), 1))";
-
-// Costo total de cada reclamo calculado desde su JSON de items en la MISMA
-// query del reporte (no desde la columna costo_total, que puede estar vacía en
-// filas antiguas). Se usa como LATERAL junto al alias de tabla 'r'.
-const SQL_COSTO_LATERAL =
-    'LEFT JOIN LATERAL (' +
-    ` SELECT COALESCE(SUM(${SQL_COSTO_ITEM}), 0) AS costo` +
-    // jsonb_array_elements EXIGE un arreglo: filas legadas con items que no son
-    // arreglo (objeto/string) reventaban el reporte completo. El CASE las vuelve '[]'.
-    " FROM jsonb_array_elements(CASE WHEN jsonb_typeof(r.items) = 'array' THEN r.items ELSE '[]'::jsonb END) AS item" +
-    ') calc ON TRUE';
 
 // Identidad SIEMPRE desde la sesión (req.user lo deja el middleware de
 // permisos). Los headers X-User-* y el body son controlados por el cliente y
@@ -757,15 +743,29 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
             GROUP BY r.resolucion
         `, params);
 
-        // Costo por mes, calculado desde los items en la query
-        const costoResult = await query(`
+        // Costo calculado en JS desde los items: tolera CUALQUIER formato de la
+        // columna items (arreglo jsonb, objeto o string legado). Las queries SQL
+        // con jsonb_array_elements reventaban con items no-arreglo y con la
+        // columna de tipo texto ("character varying ->> unknown") -> reporte vacio.
+        const costoRows = await query(`
             SELECT EXTRACT(MONTH FROM COALESCE(r.fecha_ingreso, r.created_at))::int as mes,
-                   SUM(calc.costo)::numeric as costo_total
+                   COALESCE(NULLIF(COALESCE(r.responsable_falla,''), ''), 'Sin asignar') as responsable,
+                   r.items
             FROM reclamos_devoluciones r
-            ${SQL_COSTO_LATERAL}
             WHERE ${rango}
-            GROUP BY EXTRACT(MONTH FROM COALESCE(r.fecha_ingreso, r.created_at)) ORDER BY mes
         `, params);
+        const costoPorMes = {};
+        const costoPorResp = {};
+        let costoTotalNum = 0;
+        for (const row of costoRows.rows) {
+            const costo = Number(costoTotalDeItems(parseItems(row.items))) || 0;
+            if (!costo) continue;
+            costoTotalNum += costo;
+            const idx = (row.mes || 1) - 1;
+            costoPorMes[idx] = (costoPorMes[idx] || 0) + costo;
+            const respCosto = (row.responsable || '').trim() || 'Sin asignar';
+            costoPorResp[respCosto] = (costoPorResp[respCosto] || 0) + costo;
+        }
 
         // Top clientes
         const clienteResult = await query(`
@@ -775,15 +775,7 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
             GROUP BY r.cliente ORDER BY total DESC LIMIT 8
         `, params);
 
-        // Costo por responsable
-        const costoRespResult = await query(`
-            SELECT COALESCE(NULLIF(COALESCE(r.responsable_falla,''), ''), 'Sin asignar') as responsable,
-                   SUM(calc.costo)::numeric as costo_total
-            FROM reclamos_devoluciones r
-            ${SQL_COSTO_LATERAL}
-            WHERE ${rango}
-            GROUP BY r.responsable_falla ORDER BY costo_total DESC LIMIT 8
-        `, params);
+        // (El costo por responsable se agrega en JS junto al costo por mes.)
 
         // Reclamos por día de semana (0=Dom, 1=Lun...)
         const diaSemanaResult = await query(`
@@ -814,9 +806,8 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
             porResponsable[resp] = (porResponsable[resp] || 0) + row.total;
         }
 
-        for (const row of costoResult.rows) {
-            const idx = row.mes - 1;
-            if (porMes[idx]) porMes[idx].costo = parseFloat(row.costo_total) || 0;
+        for (const [idxMes, costoMes] of Object.entries(costoPorMes)) {
+            if (porMes[idxMes]) porMes[idxMes].costo = costoMes;
         }
 
         const mesesData = meses.map((nombre, i) => ({
@@ -826,7 +817,7 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
 
         const totalGeneral = result.rows.reduce((s, r) => s + r.total, 0);
         const totalFinalizados = mesesData.reduce((s, m) => s + m.finalizados, 0);
-        const costoTotal = costoResult.rows.reduce((s, r) => s + (parseFloat(r.costo_total) || 0), 0);
+        const costoTotal = costoTotalNum;
 
         // Mapear días de semana
         const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
@@ -842,7 +833,7 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
             motivos: motivoResult.rows,
             resoluciones: resolucionResult.rows,
             clientes: clienteResult.rows,
-            costoPorResponsable: costoRespResult.rows.map(r => ({ nombre: r.responsable, total: parseFloat(r.costo_total) || 0 })),
+            costoPorResponsable: Object.entries(costoPorResp).map(([nombre, total]) => ({ nombre, total })).sort((a, b) => b.total - a.total).slice(0, 8),
             diasSemana: diasData,
             totalGeneral,
             totalFinalizados,
