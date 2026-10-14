@@ -45,6 +45,58 @@ const pedidosSchema = z.object({
     vendedor: z.string().max(200).optional()
 });
 
+/**
+ * CONTRATO REAL de /api/reclamos (esquema de REFERENCIA, no se conecta como
+ * middleware de validación).
+ *
+ * ¿Por qué no se conecta tal cual? Porque el PUT /api/reclamos/:id es PARCIAL
+ * (solo cambia los campos que llegan) y un schema zod completo exigiría todos
+ * los campos requeridos. La validación efectiva vive en routes/reclamos.js y
+ * replica a mano estas mismas reglas (límites de texto, items, fotos base64 y
+ * máquina de estados), igual que en pedidos.
+ *
+ * Reglas que NO se ven aquí (validadas a mano en routes/reclamos.js):
+ *   - items: máx. 100; 'cantidad' entera > 0 o ausente; 'valor_unitario' >= 0;
+ *     costo_total = cantidad * valor_unitario (fórmula canónica, calculada por
+ *     el backend: lo que mande el body se ignora).
+ *   - fotos: máx. 10 data-URLs data:image/(jpeg|png|webp);base64 de <= 5 MB
+ *     cada una y <= 15 MB en total.
+ *   - 'estado', 'resolucion', 'responsable_falla' y 'responsable_ingreso' NO se
+ *     aceptan en PUT /:id (400): el estado/análisis van por PUT /:id/estado con
+ *     historial y la identidad se toma de la sesión (req.user).
+ *   - Máquina de estados de PUT /:id/estado (ver TRANSICIONES en reclamos.js):
+ *     PENDIENTE → EN REVISION → EN PROCESO → FINALIZADO, con retrocesos
+ *     EN REVISION → PENDIENTE, EN PROCESO → EN REVISION y reabrir
+ *     FINALIZADO → EN REVISION. Transición inválida → 409. 'resolucion' es
+ *     requerida y solo permitida al FINALIZADO.
+ */
+const reclamosSchema = z.object({
+    cliente: z.string().max(200).optional().default(''),
+    numero_orden: z.string().max(50).optional().default(''),
+    items: z.array(z.object({
+        item: z.string().max(50).optional().default(''),
+        codigo: z.string().max(50).optional().default(''),
+        descripcion: z.string().max(500).optional().default(''),
+        cantidad: z.number().int().positive().max(1000000).optional().default(1),
+        ancho: z.number().min(0).optional().default(0),
+        alto: z.number().min(0).optional().default(0),
+        espesor: z.number().min(0).optional().default(0),
+        m2: z.number().min(0).optional().default(0),
+        kg: z.number().min(0).optional().default(0),
+        valor_unitario: z.number().min(0).optional().default(0)
+    })).max(100).optional().default([]),
+    descripcion: z.string().max(2000).optional().default(''),
+    detalle_reclamo: z.string().max(5000).optional().default(''),
+    fotos: z.array(z.string().regex(/^data:image\/(jpeg|png|webp);base64,/)).max(10).optional().default([]),
+    motivo: z.string().max(200).optional().default(''),
+    observacion_analisis: z.string().max(2000).optional().default(''),
+    // Solo válidos en PUT /:id/estado (en PUT /:id devuelven 400):
+    estado: z.enum(['PENDIENTE', 'EN REVISION', 'EN PROCESO', 'FINALIZADO']).optional(),
+    resolucion: z.enum(['', 'Aceptada Fabricacion nueva', 'Aceptada Reproceso', 'Rechazada']).optional(),
+    responsable_falla: z.string().max(100).optional(),
+    observacion: z.string().max(2000).optional()
+});
+
 const produccionOrdenSchema = z.object({
     pedido_sap_id: z.string().max(30).optional(),
     cliente: z.string().max(100).optional(),
@@ -112,6 +164,7 @@ module.exports = {
     turnosSchema,
     entregasSchema,
     pedidosSchema,
+    reclamosSchema,
     produccionOrdenSchema,
     movimientosSchema,
     instalacionesSchema,

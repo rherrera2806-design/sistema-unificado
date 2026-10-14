@@ -1,159 +1,455 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
-const { crudPerms } = require('../middleware/permisos');
+// transaction() vive en dbPool (mismo pool que query): el INSERT/UPDATE de un
+// reclamo y su fila en reclamos_historial se escriben dentro de la MISMA
+// transacción para que, si algo falla, no quede el reclamo cambiado sin su
+// traza (o al revés). Antes el historial era un .catch(()=>{}) "fire and forget".
+const { transaction } = require('../config/dbPool');
+const { crudPerms, requireAdmin } = require('../middleware/permisos');
 
 const MOD = 'reclamos';
 const perms = crudPerms(MOD);
 
-// Auto-migración: asegurar columnas existen
-let _migrated = false;
-async function ensureColumns() {
-    try {
-        // Asegurar tabla matriz_responsables_motivos
-        await query(`
-            CREATE TABLE IF NOT EXISTS matriz_responsables_motivos (
-                id SERIAL PRIMARY KEY,
-                responsable VARCHAR(100) NOT NULL,
-                motivo VARCHAR(200) NOT NULL,
-                activo BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT NOW()
-            )`);
-        await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_resp_motivo_unique
-            ON matriz_responsables_motivos(responsable, motivo) WHERE activo = TRUE`);
+// ═══════════════════════════════════════════════════════
+// DOMINIO: estados, resoluciones y máquina de estados
+// ═══════════════════════════════════════════════════════
 
-        const cols = await query(`SELECT column_name FROM information_schema.columns WHERE table_name='reclamos_devoluciones'`);
-        const existing = cols.rows.map(r => r.column_name);
-        if (!existing.includes('items')) {
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
-        }
-        if (!existing.includes('fecha_revision')) {
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_revision TIMESTAMP`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_revision VARCHAR(200) DEFAULT ''`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_proceso TIMESTAMP`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_proceso VARCHAR(200) DEFAULT ''`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
-        }
-        if (!existing.includes('correo_electronico')) {
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN correo_electronico VARCHAR(255) DEFAULT ''`);
-        }
-        if (!existing.includes('costo_total')) {
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN costo_total NUMERIC DEFAULT 0`);
-        }
-        // Siempre recalcular costo_total desde items
+const ESTADOS = ['PENDIENTE', 'EN REVISION', 'EN PROCESO', 'FINALIZADO'];
+// resolucion: '' = sin resolver todavía. Solo se permite (y se exige) al FINALIZADO.
+const RESOLUCIONES = ['Aceptada Fabricacion nueva', 'Aceptada Reproceso', 'Rechazada'];
+
+// ── Máquina de estados de PUT /api/reclamos/:id/estado ───────────────────────
+//   PENDIENTE   → EN REVISION    pasar a revisión
+//   EN REVISION → EN PROCESO     con el análisis cargado (responsable_falla/motivo)
+//   EN REVISION → FINALIZADO     resolución directa (requiere 'resolucion')
+//   EN REVISION → PENDIENTE      devolver a pendiente (limpia la etapa revisión)
+//   EN PROCESO  → FINALIZADO     cerrar el reclamo (requiere 'resolucion')
+//   EN PROCESO  → EN REVISION    retroceder a revisión (limpia la etapa proceso)
+//   FINALIZADO  → EN REVISION    REABRIR un reclamo cerrado (limpia proceso/fin
+//                                y la resolución: vuelve a quedar sin resolver)
+// Cualquier otra transición (incluido "cambiar" al mismo estado) → 409.
+// Estado desconocido o NULL (en la BD o en el body) → 400.
+const TRANSICIONES = {
+    'PENDIENTE':   ['EN REVISION'],
+    'EN REVISION': ['EN PROCESO', 'FINALIZADO', 'PENDIENTE'],
+    'EN PROCESO':  ['FINALIZADO', 'EN REVISION'],
+    'FINALIZADO':  ['EN REVISION'],
+};
+
+// Columnas de tracking por etapa. Al llegar a una etapa se sella su fecha y su
+// responsable; al RETROCEDER se limpian las etapas posteriores al destino (y la
+// resolución, que solo vive en FINALIZADO) para no dejar marcas de pasos que ya
+// no son ciertos.
+const ETAPAS = {
+    'EN REVISION': { orden: 1, fecha: 'fecha_revision', resp: 'responsable_revision' },
+    'EN PROCESO':  { orden: 2, fecha: 'fecha_proceso',  resp: 'responsable_proceso' },
+    'FINALIZADO':  { orden: 3, fecha: 'fecha_fin',      resp: 'responsable_fin' },
+};
+
+// ═══════════════════════════════════════════════════════
+// COLUMNAS EXPUESTAS EN JSON
+// ═══════════════════════════════════════════════════════
+// El listado (GET /api/reclamos) y las mutaciones NO traen 'fotos': son JSONB
+// base64 de hasta 15 MB y arrastrarlos en cada listado mataba el rendimiento.
+// Solo GET /api/reclamos/:id (edición) devuelve el reclamo completo con fotos.
+const COLS_RECLAMO =
+    'id, numero_reclamo, fecha_ingreso, responsable_ingreso, correo_electronico, ' +
+    'cliente, numero_orden, items, descripcion, detalle_reclamo, estado, ' +
+    'responsable_falla, motivo, observacion_analisis, resolucion, ' +
+    'fecha_revision, responsable_revision, fecha_proceso, responsable_proceso, ' +
+    'fecha_fin, responsable_fin, costo_total, created_at, updated_at';
+const COLS_RECLAMO_DETALLE = COLS_RECLAMO + ', fotos';
+
+// Límites de los campos de texto (antes un valor largo desbordaba VARCHAR(n) y
+// terminaba en un 500 de PostgreSQL).
+const LIM = {
+    cliente: 200,
+    numero_orden: 50,
+    descripcion: 2000,
+    detalle_reclamo: 5000,
+    motivo: 200,
+    observacion_analisis: 2000,
+    responsable_falla: 100,
+    observacion: 2000,
+    buscar: 200,
+    resp_matriz: 100,
+    motivo_matriz: 200,
+    item_texto: 50,
+    item_descripcion: 500
+};
+const MAX_ITEMS = 100;
+const MAX_CANTIDAD = 1000000;
+const MAX_FOTOS = 10;
+const MAX_FOTO_BYTES = 5 * 1024 * 1024;   // 5 MB por foto (binario decodificado)
+const MAX_FOTOS_BYTES = 15 * 1024 * 1024; // 15 MB en total
+
+// Foto válida: data URL de imagen jpeg/png/webp con payload base64.
+const FOTO_RE = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
+
+// ═══════════════════════════════════════════════════════
+// MIGRACIÓN DE ESQUEMA (una sola vez por proceso)
+// ═══════════════════════════════════════════════════════
+// ANTES ensureColumns() corría DDL + varios UPDATE masivos sobre TODA la tabla
+// en cada request de ~13 endpoints (y el UPDATE masivo de costo_total además
+// pisaba el costo en cada listado). Ahora:
+//   - la migración corre UNA vez por proceso (flag _esquemaListo),
+//   - los ALTER solo se ejecutan si falta la columna (chequeo barato),
+//   - el UPDATE masivo de costo_total quedó ELIMINADO: el costo se calcula con
+//     la fórmula canónica al guardar y en la propia query del reporte.
+let _esquemaListo = false;
+
+// Tablas base del módulo. IF NOT EXISTS: idempotente. OJO: reclamos_historial
+// se crea con ON DELETE SET NULL (reclamo_id NULLABLE) para que la fila final
+// 'Eliminación' sobreviva al borrado del reclamo; si la tabla ya existe con
+// ON DELETE CASCADE (esquema viejo), la convierte el agente de esquema
+// (dbSchema.js) — aquí no se toca una tabla ya creada.
+async function asegurarTablas() {
+    await query(`
+        CREATE TABLE IF NOT EXISTS matriz_responsables_motivos (
+            id SERIAL PRIMARY KEY,
+            responsable VARCHAR(100) NOT NULL,
+            motivo VARCHAR(200) NOT NULL,
+            activo BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+    await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_resp_motivo_unique
+        ON matriz_responsables_motivos(responsable, motivo) WHERE activo = TRUE`);
+
+    await query(`
+        CREATE TABLE IF NOT EXISTS reclamos_devoluciones (
+            id SERIAL PRIMARY KEY,
+            numero_reclamo SERIAL,
+            fecha_ingreso TIMESTAMP DEFAULT NOW(),
+            responsable_ingreso VARCHAR(200) DEFAULT '',
+            cliente VARCHAR(200) DEFAULT '',
+            numero_orden VARCHAR(50) DEFAULT '',
+            items JSONB DEFAULT '[]',
+            descripcion TEXT DEFAULT '',
+            detalle_reclamo TEXT DEFAULT '',
+            fotos JSONB DEFAULT '[]',
+            estado VARCHAR(30) DEFAULT 'PENDIENTE',
+            responsable_falla VARCHAR(100) DEFAULT '',
+            motivo VARCHAR(200) DEFAULT '',
+            observacion_analisis TEXT DEFAULT '',
+            resolucion VARCHAR(50) DEFAULT '',
+            fecha_revision TIMESTAMP,
+            responsable_revision VARCHAR(200) DEFAULT '',
+            fecha_proceso TIMESTAMP,
+            responsable_proceso VARCHAR(200) DEFAULT '',
+            fecha_fin TIMESTAMP,
+            responsable_fin VARCHAR(200) DEFAULT '',
+            correo_electronico VARCHAR(255) DEFAULT '',
+            costo_total NUMERIC DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_reclamos_estado ON reclamos_devoluciones(estado)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_reclamos_fecha ON reclamos_devoluciones(fecha_ingreso)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_reclamos_cliente ON reclamos_devoluciones(cliente)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_reclamos_numero ON reclamos_devoluciones(numero_reclamo)`);
+
+    await query(`
+        CREATE TABLE IF NOT EXISTS reclamos_historial (
+            id SERIAL PRIMARY KEY,
+            reclamo_id INTEGER REFERENCES reclamos_devoluciones(id) ON DELETE SET NULL,
+            accion VARCHAR(100) NOT NULL,
+            estado_antes VARCHAR(30),
+            estado_despues VARCHAR(30),
+            responsable VARCHAR(200) DEFAULT '',
+            observacion TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT NOW()
+        )`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_reclamos_hist_id ON reclamos_historial(reclamo_id)`);
+}
+
+// Columnas agregadas a lo largo del tiempo: solo se ALTERea lo que falta.
+async function migrarColumnas() {
+    const cols = await query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name='reclamos_devoluciones'`
+    );
+    const existing = cols.rows.map(r => r.column_name);
+    if (existing.length === 0) return; // la tabla no existe todavía: la crea asegurarTablas()
+    if (!existing.includes('items')) {
+        await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
+    }
+    if (!existing.includes('fecha_revision')) {
+        await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_revision TIMESTAMP`);
+        await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_revision VARCHAR(200) DEFAULT ''`);
+        await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_proceso TIMESTAMP`);
+        await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_proceso VARCHAR(200) DEFAULT ''`);
+        await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
+        await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
+    }
+    if (!existing.includes('correo_electronico')) {
+        await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN correo_electronico VARCHAR(255) DEFAULT ''`);
+    }
+    if (!existing.includes('costo_total')) {
+        await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN costo_total NUMERIC DEFAULT 0`);
+    }
+}
+
+// Migraciones perezosas de DATOS. Son UPDATEs con condición (idempotentes) y
+// corren UNA vez por proceso; en cada request era un ataque a la tabla.
+// IMPORTANTE: ya NO se recalcula costo_total masivamente aquí.
+async function migrarDatos() {
+    // 1) responsable_ingreso guardado como email → nombre del usuario
+    const tableCheck = await query(
+        `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='usuarios')`
+    );
+    if (tableCheck.rows[0].exists) {
         await query(`
-            UPDATE reclamos_devoluciones SET costo_total = COALESCE(
-                (SELECT SUM((item->>'valor_unitario')::numeric * COALESCE((item->>'cantidad')::numeric, 1))
-                 FROM jsonb_array_elements(COALESCE(items, '[]'::jsonb)) AS item), 0
-            )
+            UPDATE reclamos_devoluciones r
+            SET responsable_ingreso = u.nombre
+            FROM usuarios u
+            WHERE r.responsable_ingreso = u.email
+              AND r.responsable_ingreso LIKE '%@%'
+              AND u.nombre IS NOT NULL
+              AND u.nombre != ''
         `);
-        const histCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')`);
-        if (!histCheck.rows[0].exists) {
-            await query(`CREATE TABLE IF NOT EXISTS reclamos_historial (
-                id SERIAL PRIMARY KEY, reclamo_id INTEGER NOT NULL REFERENCES reclamos_devoluciones(id) ON DELETE CASCADE,
-                accion VARCHAR(100) NOT NULL, estado_antes VARCHAR(30), estado_despues VARCHAR(30),
-                responsable VARCHAR(200) DEFAULT '', observacion TEXT DEFAULT '', created_at TIMESTAMP DEFAULT NOW()
-            )`);
-        }
+        // 2) backfill de correo_electronico para registros existentes
+        await query(`
+            UPDATE reclamos_devoluciones r
+            SET correo_electronico = u.email
+            FROM usuarios u
+            WHERE r.responsable_ingreso = u.nombre
+              AND (r.correo_electronico IS NULL OR r.correo_electronico = '')
+              AND u.email IS NOT NULL
+              AND u.email != ''
+        `);
+    }
+    // 3) si responsable_ingreso aún tiene un email directo, usarlo como correo
+    await query(`
+        UPDATE reclamos_devoluciones
+        SET correo_electronico = responsable_ingreso
+        WHERE (correo_electronico IS NULL OR correo_electronico = '')
+          AND responsable_ingreso LIKE '%@%'
+    `);
+}
 
-        // Migrar emails a nombres una sola vez
-        if (!_migrated) {
-            _migrated = true;
-            const tableCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='usuarios')`);
-            if (tableCheck.rows[0].exists) {
-                await query(`
-                    UPDATE reclamos_devoluciones r
-                    SET responsable_ingreso = u.nombre
-                    FROM usuarios u
-                    WHERE r.responsable_ingreso = u.email
-                      AND r.responsable_ingreso LIKE '%@%'
-                      AND u.nombre IS NOT NULL
-                      AND u.nombre != ''
-                `);
-            }
-        }
-        // Migrar correo_electronico para registros existentes (se ejecuta hasta que todos tengan email)
-        if (existing.includes('correo_electronico')) {
-            // 1) Mapear por nombre en usuarios
-            await query(`
-                UPDATE reclamos_devoluciones r
-                SET correo_electronico = u.email
-                FROM usuarios u
-                WHERE r.responsable_ingreso = u.nombre
-                  AND (r.correo_electronico IS NULL OR r.correo_electronico = '')
-                  AND u.email IS NOT NULL
-                  AND u.email != ''
-            `);
-            // 2) Si responsable_ingreso aún tiene un email directo, usarlo
-            await query(`
-                UPDATE reclamos_devoluciones
-                SET correo_electronico = responsable_ingreso
-                WHERE (correo_electronico IS NULL OR correo_electronico = '')
-                  AND responsable_ingreso LIKE '%@%'
-            `);
-        }
-    } catch(e) { console.error('ensureColumns error:', e.message); }
+async function ensureColumns() {
+    if (_esquemaListo) return;
+    try {
+        await asegurarTablas();
+        await migrarColumnas();
+        await migrarDatos();
+        _esquemaListo = true;
+    } catch (e) {
+        // Si falla (BD caída, permisos) NO se marca como listo: se reintenta en el
+        // próximo request. La migración nunca rompe el request.
+        console.error('ensureColumns error:', e.message);
+    }
 }
 
 // ═══════════════════════════════════════════════════════
-// SETUP - Ejecutar una vez para crear tablas
+// HELPERS DE VALIDACIÓN (manual, al estilo pedidos.js)
+// El schema zod de validate.js (reclamosSchema) es solo de REFERENCIA: el PUT
+// es parcial y aquí se validan únicamente los campos que llegan.
 // ═══════════════════════════════════════════════════════
-router.get('/api/reclamos/setup', async (req, res) => {
+
+// Id de la URL: entero positivo o 400 (antes un id no numérico llegaba a la
+// query como NaN y terminaba en un 500 de PostgreSQL).
+function parseIdReclamo(req, res) {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({ error: 'Id de reclamo invalido' });
+        return null;
+    }
+    return id;
+}
+
+// Campo de texto del body: null/undefined = ausente, string = trim + largo
+// máximo, cualquier otro tipo = error de validación.
+function textoDeBody(valor, campo, max) {
+    if (valor === undefined || valor === null) return { ok: true, valor: undefined };
+    if (typeof valor !== 'string') return { ok: false, error: `El campo '${campo}' debe ser texto` };
+    const t = valor.trim();
+    if (t.length > max) return { ok: false, error: `El campo '${campo}' no puede superar ${max} caracteres` };
+    return { ok: true, valor: t };
+}
+
+// Fecha de filtro (query string): string parseable o 400.
+function fechaDeQuery(valor, campo) {
+    if (typeof valor !== 'string' || valor.length > 30 || Number.isNaN(Date.parse(valor))) {
+        return { ok: false, error: `El filtro '${campo}' debe ser una fecha valida (ej: 2026-01-31)` };
+    }
+    return { ok: true, valor };
+}
+
+// Número de un item (dimensiones): ausente → porDefecto, numérico finito en
+// [0, MAX_CANTIDAD] o error.
+function numeroDeItem(valor, campo, n, porDefecto) {
+    if (valor === undefined || valor === null || valor === '') return { ok: true, valor: porDefecto };
+    const num = Number(valor);
+    if (!Number.isFinite(num) || num < 0 || num > MAX_CANTIDAD) {
+        return { ok: false, error: `Item ${n}: '${campo}' debe ser un numero entre 0 y ${MAX_CANTIDAD}` };
+    }
+    return { ok: true, valor: num };
+}
+
+// items: array de máximo MAX_ITEMS objetos. Cada item puede traer
+// { item, codigo, descripcion, cantidad, ancho, alto, espesor, m2, kg,
+//   valor_unitario } y se reconstruye SOLO con esas claves (sin basura).
+//   cantidad         entera > 0 o ausente (ausente → 1)
+//   valor_unitario   numérico >= 0 o ausente (ausente → 0)
+//   textos           con largo máximo
+function validarItems(valor) {
+    if (valor === undefined || valor === null) return { ok: true, items: undefined };
+    if (!Array.isArray(valor)) return { ok: false, error: "El campo 'items' debe ser un arreglo" };
+    if (valor.length > MAX_ITEMS) {
+        return { ok: false, error: `El campo 'items' no puede tener mas de ${MAX_ITEMS} elementos` };
+    }
+    const items = [];
+    for (let i = 0; i < valor.length; i++) {
+        const it = valor[i];
+        const n = i + 1;
+        if (!it || typeof it !== 'object' || Array.isArray(it)) {
+            return { ok: false, error: `Item ${n}: debe ser un objeto` };
+        }
+        const txt = [
+            textoDeBody(it.item, `item ${n}: item`, LIM.item_texto),
+            textoDeBody(it.codigo, `item ${n}: codigo`, LIM.item_texto),
+            textoDeBody(it.descripcion, `item ${n}: descripcion`, LIM.item_descripcion)
+        ];
+        for (const c of txt) if (!c.ok) return c;
+
+        // cantidad: entera > 0 o ausente
+        let cantidad = 1;
+        if (it.cantidad !== undefined && it.cantidad !== null && it.cantidad !== '') {
+            const c = Number(it.cantidad);
+            if (!Number.isInteger(c) || c <= 0 || c > MAX_CANTIDAD) {
+                return { ok: false, error: `Item ${n}: 'cantidad' debe ser un entero mayor que 0` };
+            }
+            cantidad = c;
+        }
+        // valor_unitario: numérico >= 0 o ausente (0)
+        let valorUnitario = 0;
+        if (it.valor_unitario !== undefined && it.valor_unitario !== null && it.valor_unitario !== '') {
+            const v = Number(it.valor_unitario);
+            if (!Number.isFinite(v) || v < 0) {
+                return { ok: false, error: `Item ${n}: 'valor_unitario' debe ser un numero mayor o igual a 0` };
+            }
+            valorUnitario = v;
+        }
+        const dims = {};
+        for (const campo of ['ancho', 'alto', 'espesor', 'm2', 'kg']) {
+            const d = numeroDeItem(it[campo], campo, n, 0);
+            if (!d.ok) return d;
+            dims[campo] = d.valor;
+        }
+        items.push({
+            item: txt[0].valor || '',
+            codigo: txt[1].valor || '',
+            descripcion: txt[2].valor || '',
+            cantidad,
+            ancho: dims.ancho,
+            alto: dims.alto,
+            espesor: dims.espesor,
+            m2: dims.m2,
+            kg: dims.kg,
+            valor_unitario: valorUnitario
+        });
+    }
+    return { ok: true, items };
+}
+
+// Tamaño aproximado en bytes del payload base64 de una foto.
+function bytesDeBase64(b64) {
+    const padding = b64.endsWith('==') ? 2 : (b64.endsWith('=') ? 1 : 0);
+    return Math.floor((b64.length * 3) / 4) - padding;
+}
+
+// fotos: array de máximo MAX_FOTOS data-URLs de imagen (jpeg/png/webp) en
+// base64, cada una <= 5 MB y el total <= 15 MB. Antes entraba cualquier string.
+function validarFotos(valor) {
+    if (valor === undefined || valor === null) return { ok: true, fotos: undefined };
+    if (!Array.isArray(valor)) return { ok: false, error: "El campo 'fotos' debe ser un arreglo" };
+    if (valor.length > MAX_FOTOS) {
+        return { ok: false, error: `El campo 'fotos' no puede tener mas de ${MAX_FOTOS} imagenes` };
+    }
+    let total = 0;
+    for (let i = 0; i < valor.length; i++) {
+        const f = valor[i];
+        const n = i + 1;
+        if (typeof f !== 'string') return { ok: false, error: `Foto ${n}: debe ser texto base64` };
+        const m = FOTO_RE.exec(f);
+        if (!m) {
+            return { ok: false, error: `Foto ${n}: formato invalido; se aceptan solo imagenes data:image/(jpeg|png|webp);base64,...` };
+        }
+        const bytes = bytesDeBase64(m[2]);
+        if (bytes > MAX_FOTO_BYTES) return { ok: false, error: `Foto ${n}: supera el maximo de 5 MB` };
+        total += bytes;
+    }
+    if (total > MAX_FOTOS_BYTES) {
+        return { ok: false, error: 'El total de las fotos no puede superar 15 MB' };
+    }
+    return { ok: true, fotos: valor };
+}
+
+// ═══════════════════════════════════════════════════════
+// COSTO TOTAL - FÓRMULA CANÓNICA (única en todo el módulo)
+//   costo_total = cantidad * valor_unitario
+//   cantidad       NULL o 0 (o no numérica) → 1
+//   valor_unitario no numérico → 0
+// Se aplica al INSERT (POST), al UPDATE (PUT) y su equivalente SQL en el
+// reporte. ANTES había 3 fórmulas distintas (JS con ||, SQL con COALESCE y un
+// backfill N+1 "fire and forget" en el reporte).
+// ═══════════════════════════════════════════════════════
+function costoTotalDeItems(items) {
+    return (Array.isArray(items) ? items : []).reduce((sum, it) => {
+        const vu = Number(it && it.valor_unitario);
+        const valorUnitario = Number.isFinite(vu) ? vu : 0;
+        const c = Number(it && it.cantidad);
+        const cantidad = (Number.isFinite(c) && c !== 0) ? c : 1;
+        return sum + valorUnitario * cantidad;
+    }, 0);
+}
+
+// Equivalente SQL de la fórmula canónica para UN item. El regexp evita que una
+// fila vieja con basura no numérica reviente el cast a numeric (en ese caso el
+// valor cuenta como 0 / cantidad 1, igual que en JS).
+const SQL_COSTO_ITEM =
+    "(CASE WHEN item->>'valor_unitario' ~ '^[0-9]+([.][0-9]+)?$' THEN (item->>'valor_unitario')::numeric ELSE 0 END" +
+    " * COALESCE(NULLIF(CASE WHEN item->>'cantidad' ~ '^[0-9]+([.][0-9]+)?$' THEN (item->>'cantidad')::numeric END, 0), 1))";
+
+// Costo total de cada reclamo calculado desde su JSON de items en la MISMA
+// query del reporte (no desde la columna costo_total, que puede estar vacía en
+// filas antiguas). Se usa como LATERAL junto al alias de tabla 'r'.
+const SQL_COSTO_LATERAL =
+    'LEFT JOIN LATERAL (' +
+    ` SELECT COALESCE(SUM(${SQL_COSTO_ITEM}), 0) AS costo` +
+    " FROM jsonb_array_elements(COALESCE(r.items, '[]'::jsonb)) AS item" +
+    ') calc ON TRUE';
+
+// Identidad SIEMPRE desde la sesión (req.user lo deja el middleware de
+// permisos). Los headers X-User-* y el body son controlados por el cliente y
+// permitirían firmar un reclamo como otra persona.
+function identidad(req) {
+    const email = (req.user && req.user.email) || '';
+    const nombre = (req.user && req.user.nombre) || email;
+    return { email, nombre };
+}
+
+// items JSONB puede venir como string según el driver: lo normaliza a arreglo.
+function parseItems(valor) {
+    if (typeof valor === 'string') {
+        try { return JSON.parse(valor); } catch (e) { return []; }
+    }
+    return Array.isArray(valor) ? valor : [];
+}
+
+// ═══════════════════════════════════════════════════════
+// SETUP - endpoint de MANTENIMIENTO (solo admin)
+// Crea tablas, índices y carga la matriz inicial. ANTES estaba SIN
+// autenticación: cualquiera podía ejecutar DDL y UPDATEs masivos contra la BD.
+// Ahora exige rol admin (requireAdmin) y ya no hace UPDATE masivo de
+// costo_total. No forma parte del flujo normal del módulo.
+// ═══════════════════════════════════════════════════════
+router.get('/api/reclamos/setup', requireAdmin, async (req, res, next) => {
     try {
+        await asegurarTablas();
+        await migrarColumnas();
         await query(`
-            CREATE TABLE IF NOT EXISTS matriz_responsables_motivos (
-                id SERIAL PRIMARY KEY,
-                responsable VARCHAR(100) NOT NULL,
-                motivo VARCHAR(200) NOT NULL,
-                activo BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_resp_motivo_unique
-                ON matriz_responsables_motivos(responsable, motivo) WHERE activo = TRUE;
-
-            CREATE TABLE IF NOT EXISTS reclamos_devoluciones (
-                id SERIAL PRIMARY KEY,
-                numero_reclamo SERIAL,
-                fecha_ingreso TIMESTAMP DEFAULT NOW(),
-                responsable_ingreso VARCHAR(200) DEFAULT '',
-                cliente VARCHAR(200) DEFAULT '',
-                numero_orden VARCHAR(50) DEFAULT '',
-                items JSONB DEFAULT '[]',
-                descripcion TEXT DEFAULT '',
-                detalle_reclamo TEXT DEFAULT '',
-                fotos JSONB DEFAULT '[]',
-                estado VARCHAR(30) DEFAULT 'PENDIENTE',
-                responsable_falla VARCHAR(100) DEFAULT '',
-                motivo VARCHAR(200) DEFAULT '',
-                observacion_analisis TEXT DEFAULT '',
-                resolucion VARCHAR(50) DEFAULT '',
-                fecha_revision TIMESTAMP,
-                responsable_revision VARCHAR(200) DEFAULT '',
-                fecha_proceso TIMESTAMP,
-                responsable_proceso VARCHAR(200) DEFAULT '',
-                fecha_fin TIMESTAMP,
-                responsable_fin VARCHAR(200) DEFAULT '',
-                created_at TIMESTAMP DEFAULT NOW(),
-                updated_at TIMESTAMP DEFAULT NOW()
-            );
-            CREATE INDEX IF NOT EXISTS idx_reclamos_estado ON reclamos_devoluciones(estado);
-            CREATE INDEX IF NOT EXISTS idx_reclamos_fecha ON reclamos_devoluciones(fecha_ingreso);
-            CREATE INDEX IF NOT EXISTS idx_reclamos_cliente ON reclamos_devoluciones(cliente);
-            CREATE INDEX IF NOT EXISTS idx_reclamos_numero ON reclamos_devoluciones(numero_reclamo);
-
-            CREATE TABLE IF NOT EXISTS reclamos_historial (
-                id SERIAL PRIMARY KEY,
-                reclamo_id INTEGER NOT NULL REFERENCES reclamos_devoluciones(id) ON DELETE CASCADE,
-                accion VARCHAR(100) NOT NULL,
-                estado_antes VARCHAR(30),
-                estado_despues VARCHAR(30),
-                responsable VARCHAR(200) DEFAULT '',
-                observacion TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-            CREATE INDEX IF NOT EXISTS idx_reclamos_hist_id ON reclamos_historial(reclamo_id);
-
             INSERT INTO matriz_responsables_motivos (responsable, motivo) VALUES
                 ('CORTE', 'MAL CORTADO'), ('CORTE', 'DIMENSION INCORRECTA'), ('CORTE', 'ESQUINA ROTA'),
                 ('PULIDO', 'MAL PULIDO'), ('PULIDO', 'ESCALLA'), ('PULIDO', 'RAYA'), ('PULIDO', 'BORDE IRREGULAR'),
@@ -163,110 +459,56 @@ router.get('/api/reclamos/setup', async (req, res) => {
                 ('INSTALACION', 'MAL INSTALADO'), ('INSTALACION', 'DAÑO EN OBRA'),
                 ('CLIENTE', 'ERROR DE MEDIDA CLIENTE'), ('CLIENTE', 'NO CONFORME CLIENTE'),
                 ('PRODUCCION', 'DEFECTO DE FABRICACION'), ('PRODUCCION', 'MATERIAL DEFECTUOSO')
-            ON CONFLICT DO NOTHING;
+            ON CONFLICT DO NOTHING
         `);
-
-        // Agregar columnas de workflow si no existen
-        const cols = await query(`
-            SELECT column_name FROM information_schema.columns WHERE table_name='reclamos_devoluciones'
-        `);
-        const existing = cols.rows.map(r => r.column_name);
-
-        if (!existing.includes('items')) {
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN items JSONB DEFAULT '[]'`);
-        }
-        if (!existing.includes('fecha_revision')) {
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_revision TIMESTAMP`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_revision VARCHAR(200) DEFAULT ''`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_proceso TIMESTAMP`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_proceso VARCHAR(200) DEFAULT ''`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN fecha_fin TIMESTAMP`);
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN responsable_fin VARCHAR(200) DEFAULT ''`);
-        }
-        if (!existing.includes('correo_electronico')) {
-            await query(`ALTER TABLE reclamos_devoluciones ADD COLUMN correo_electronico VARCHAR(255) DEFAULT ''`);
-        }
-
-        // Migrar correo_electronico para registros existentes
-        if (existing.includes('correo_electronico')) {
-            await query(`
-                UPDATE reclamos_devoluciones r
-                SET correo_electronico = u.email
-                FROM usuarios u
-                WHERE r.responsable_ingreso = u.nombre
-                  AND (r.correo_electronico IS NULL OR r.correo_electronico = '')
-                  AND u.email IS NOT NULL
-                  AND u.email != ''
-            `);
-            await query(`
-                UPDATE reclamos_devoluciones
-                SET correo_electronico = responsable_ingreso
-                WHERE (correo_electronico IS NULL OR correo_electronico = '')
-                  AND responsable_ingreso LIKE '%@%'
-            `);
-        }
-
-        // Migrar fecha_ingreso de DATE a TIMESTAMP si es necesario
-        const colType = await query(`
-            SELECT data_type FROM information_schema.columns WHERE table_name='reclamos_devoluciones' AND column_name='fecha_ingreso'
-        `);
-        if (colType.rows[0] && colType.rows[0].data_type === 'date') {
-            await query(`ALTER TABLE reclamos_devoluciones ALTER COLUMN fecha_ingreso TYPE TIMESTAMP USING fecha_ingreso::timestamp`);
-        }
-
-        // Crear tabla historial si no existe
-        const histCheck = await query(`
-            SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='reclamos_historial')
-        `);
-        if (!histCheck.rows[0].exists) {
-            await query(`
-                CREATE TABLE IF NOT EXISTS reclamos_historial (
-                    id SERIAL PRIMARY KEY,
-                    reclamo_id INTEGER NOT NULL REFERENCES reclamos_devoluciones(id) ON DELETE CASCADE,
-                    accion VARCHAR(100) NOT NULL,
-                    estado_antes VARCHAR(30),
-                    estado_despues VARCHAR(30),
-                    responsable VARCHAR(200) DEFAULT '',
-                    observacion TEXT DEFAULT '',
-                    created_at TIMESTAMP DEFAULT NOW()
-                );
-                CREATE INDEX IF NOT EXISTS idx_reclamos_hist_id ON reclamos_historial(reclamo_id);
-            `);
-        }
-
         res.json({ ok: true, message: 'Tablas creadas, workflow configurado' });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
 // ═══════════════════════════════════════════════════════
 // RECLAMOS Y DEVOLUCIONES
 // ═══════════════════════════════════════════════════════
 
-// Listar todos (con filtros opcionales)
-router.get('/api/reclamos', perms.view, async (req, res) => {
+// Listar todos (con filtros opcionales). SIN fotos (ver COLS_RECLAMO).
+router.get('/api/reclamos', perms.view, async (req, res, next) => {
     try {
         await ensureColumns();
         const { estado, buscar, fecha_inicio, fecha_fin } = req.query;
-        let sql = 'SELECT * FROM reclamos_devoluciones';
+        for (const [campo, valor] of Object.entries({ estado, buscar, fecha_inicio, fecha_fin })) {
+            if (valor !== undefined && typeof valor !== 'string') {
+                return res.status(400).json({ error: `El filtro '${campo}' debe ser texto` });
+            }
+        }
+        let sql = `SELECT ${COLS_RECLAMO} FROM reclamos_devoluciones`;
         const conditions = [];
         const params = [];
         let idx = 1;
 
         if (estado && estado !== 'TODOS') {
+            if (!ESTADOS.includes(estado)) {
+                return res.status(400).json({ error: `Estado de filtro invalido '${estado}'. Estados validos: ${ESTADOS.join(', ')} (o TODOS)` });
+            }
             conditions.push(`estado = $${idx++}`);
             params.push(estado);
         }
         if (fecha_inicio) {
-            conditions.push(`fecha_ingreso >= $${idx++}`);
-            params.push(fecha_inicio);
+            const f = fechaDeQuery(fecha_inicio, 'fecha_inicio');
+            if (!f.ok) return res.status(400).json({ error: f.error });
+            conditions.push(`fecha_ingreso >= $${idx++}::date`);
+            params.push(f.valor);
         }
         if (fecha_fin) {
-            conditions.push(`fecha_ingreso <= $${idx++}`);
-            params.push(fecha_fin);
+            const f = fechaDeQuery(fecha_fin, 'fecha_fin');
+            if (!f.ok) return res.status(400).json({ error: f.error });
+            // El rango es INCLUSIVO hasta el final del día: con
+            // 'fecha_ingreso <= fecha_fin' (medianoche) se perdía el día final.
+            conditions.push(`fecha_ingreso < ($${idx++}::date + INTERVAL '1 day')`);
+            params.push(f.valor);
         }
         if (buscar) {
+            if (buscar.length > LIM.buscar) {
+                return res.status(400).json({ error: `El filtro 'buscar' no puede superar ${LIM.buscar} caracteres` });
+            }
             conditions.push(`(cliente ILIKE $${idx} OR numero_orden ILIKE $${idx} OR descripcion ILIKE $${idx} OR CAST(numero_reclamo AS TEXT) ILIKE $${idx} OR items::text ILIKE $${idx})`);
             params.push('%' + buscar + '%');
             idx++;
@@ -276,25 +518,17 @@ router.get('/api/reclamos', perms.view, async (req, res) => {
         sql += ' ORDER BY numero_reclamo DESC';
 
         const result = await query(sql, params);
-        // Parsear items JSONB
-        const rows = result.rows.map(r => {
-            if (typeof r.items === 'string') {
-                try { r.items = JSON.parse(r.items); } catch(e) { r.items = []; }
-            }
-            return r;
-        });
+        const rows = result.rows.map(r => { r.items = parseItems(r.items); return r; });
         res.json(rows);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
 // Dashboard stats
-router.get('/api/reclamos/dashboard/stats', perms.view, async (req, res) => {
+router.get('/api/reclamos/dashboard/stats', perms.view, async (req, res, next) => {
     try {
         await ensureColumns();
         const result = await query(`
-            SELECT 
+            SELECT
                 COUNT(*) as total,
                 COUNT(*) FILTER (WHERE estado = 'PENDIENTE') as pendientes,
                 COUNT(*) FILTER (WHERE estado = 'EN REVISION') as en_revision,
@@ -305,214 +539,220 @@ router.get('/api/reclamos/dashboard/stats', perms.view, async (req, res) => {
             FROM reclamos_devoluciones
         `);
         res.json(result.rows[0]);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
 // ═══════════════════════════════════════════════════════
 // MATRIZ DE RESPONSABLES Y MOTIVOS
+// PERMISOS (documentado): la matriz reutiliza los permisos del módulo
+// 'reclamos' (reclamos.agregar para crear, reclamos.eliminar para quitar,
+// reclamos para leer). No tiene permisos propios.
 // ═══════════════════════════════════════════════════════
 
 // Listar todos los responsables únicos
-router.get('/api/reclamos/responsables/lista', perms.view, async (req, res) => {
+router.get('/api/reclamos/responsables/lista', perms.view, async (req, res, next) => {
     try {
         await ensureColumns();
         const result = await query(
             "SELECT DISTINCT responsable FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable"
         );
         res.json(result.rows.map(r => r.responsable));
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
 // Listar motivos por responsable
-router.get('/api/reclamos/motivos/:responsable', perms.view, async (req, res) => {
+router.get('/api/reclamos/motivos/:responsable', perms.view, async (req, res, next) => {
     try {
         await ensureColumns();
+        const responsable = String(req.params.responsable || '');
+        if (responsable.length > LIM.resp_matriz) {
+            return res.status(400).json({ error: `El responsable no puede superar ${LIM.resp_matriz} caracteres` });
+        }
         const result = await query(
             "SELECT id, motivo FROM matriz_responsables_motivos WHERE responsable = $1 AND activo = TRUE ORDER BY motivo",
-            [req.params.responsable]
+            [responsable]
         );
         res.json(result.rows);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
 // Listar toda la matriz
-router.get('/api/reclamos/matriz', perms.view, async (req, res) => {
+router.get('/api/reclamos/matriz', perms.view, async (req, res, next) => {
     try {
         await ensureColumns();
         const result = await query(
             "SELECT * FROM matriz_responsables_motivos WHERE activo = TRUE ORDER BY responsable, motivo"
         );
         res.json(result.rows);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
 // Agregar responsable/motivo
-router.post('/api/reclamos/matriz', perms.create, async (req, res) => {
+router.post('/api/reclamos/matriz', perms.create, async (req, res, next) => {
     try {
         await ensureColumns();
-        const { responsable, motivo } = req.body;
-        if (!responsable || !motivo) return res.status(400).json({ error: 'Responsable y motivo requeridos' });
+        const responsable = textoDeBody((req.body || {}).responsable, 'responsable', LIM.resp_matriz);
+        const motivo = textoDeBody((req.body || {}).motivo, 'motivo', LIM.motivo_matriz);
+        for (const c of [responsable, motivo]) {
+            if (!c.ok) return res.status(400).json({ error: c.error });
+        }
+        if (!responsable.valor || !motivo.valor) {
+            return res.status(400).json({ error: 'Responsable y motivo requeridos' });
+        }
         const result = await query(
             'INSERT INTO matriz_responsables_motivos (responsable, motivo) VALUES ($1, $2) RETURNING *',
-            [responsable.toUpperCase().trim(), motivo.toUpperCase().trim()]
+            [responsable.valor.toUpperCase(), motivo.valor.toUpperCase()]
         );
         res.json(result.rows[0]);
     } catch (e) {
-        if (e.code === '23505') return res.status(400).json({ error: 'Ya existe esta combinación' });
-        res.status(500).json({ error: e.message });
+        // 23505 = duplicado en el índice único (responsable, motivo)
+        if (e && e.code === '23505') return res.status(400).json({ error: 'Ya existe esta combinación' });
+        next(e);
     }
 });
 
 // Eliminar responsable/motivo (soft delete)
-router.delete('/api/reclamos/matriz/:id', perms.delete, async (req, res) => {
+router.delete('/api/reclamos/matriz/:id', perms.delete, async (req, res, next) => {
     try {
         await ensureColumns();
+        const id = parseIdReclamo(req, res);
+        if (id === null) return;
         const result = await query(
             'UPDATE matriz_responsables_motivos SET activo = FALSE WHERE id = $1 RETURNING id',
-            [req.params.id]
+            [id]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
         res.json({ ok: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
 // Buscar códigos de producción (para autocomplete en items)
-router.get('/api/reclamos/codigos', perms.view, async (req, res) => {
+router.get('/api/reclamos/codigos', perms.view, async (req, res, next) => {
     try {
-        const search = req.query.search || '';
-
-        // Verificar que la tabla exista
-        const tableCheck = await query(`SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='produccion_codigos')`);
-        if (!tableCheck.rows[0].exists) {
-            return res.json([]);
+        const search = req.query.search;
+        if (search !== undefined && typeof search !== 'string') {
+            return res.status(400).json({ error: "El filtro 'search' debe ser texto" });
         }
+        const term = (search || '').trim();
+        if (term.length > LIM.buscar) {
+            return res.status(400).json({ error: `El filtro 'search' no puede superar ${LIM.buscar} caracteres` });
+        }
+
+        // Si la tabla de producción no existe todavía, el autocomplete se queda
+        // sin sugerencias (no es un error del módulo de reclamos).
+        const tableCheck = await query(
+            `SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='produccion_codigos')`
+        );
+        if (!tableCheck.rows[0].exists) return res.json([]);
 
         let sql = 'SELECT * FROM produccion_codigos';
         const params = [];
-        if (search) {
+        if (term) {
             sql += ' WHERE codigo ILIKE $1 OR descripcion ILIKE $1 OR grupo ILIKE $1';
-            params.push('%' + search + '%');
+            params.push('%' + term + '%');
             sql += ' ORDER BY codigo LIMIT 50';
         } else {
-            sql += ' ORDER BY codigo';
+            // Sin búsqueda, un tope: antes devolvía TODA la tabla.
+            sql += ' ORDER BY codigo LIMIT 200';
         }
         const result = await query(sql, params);
         res.json(result.rows);
-    } catch (e) {
-        console.error('reclamos/codigos error:', e.message);
-        res.json([]);
-    }
+    } catch (e) { next(e); }
 });
 
-// Reporte de reclamos por anio
-router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
+// Reporte de reclamos por año
+router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
     try {
         await ensureColumns();
-        const anio = parseInt(req.query.anio) || new Date().getFullYear();
+        let anio;
+        if (req.query.anio !== undefined) {
+            anio = Number(req.query.anio);
+            if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) {
+                return res.status(400).json({ error: 'El filtro anio debe ser un año entre 2000 y 2100' });
+            }
+        } else {
+            anio = new Date().getFullYear();
+        }
+        // Rango sargable [año-01-01, año+1-01-01) en vez de
+        // EXTRACT(YEAR FROM fecha_ingreso) = $1 (no usa índices).
+        const desde = `${anio}-01-01`;
+        const hasta = `${anio + 1}-01-01`;
+        const rango = 'r.fecha_ingreso >= $1::date AND r.fecha_ingreso < $2::date';
+        const params = [desde, hasta];
 
-        // Forzar recálculo de costo_total desde items (en background, no bloquea)
-        (async () => {
-            try {
-                const allRows = await query('SELECT id, items, costo_total FROM reclamos_devoluciones');
-                for (const row of allRows.rows) {
-                    let items = row.items;
-                    if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
-                    if (!Array.isArray(items)) items = [];
-                    const costo = items.reduce((sum, it) => {
-                        const vu = parseFloat(it.valor_unitario) || 0;
-                        const cant = parseFloat(it.cantidad) || 1;
-                        return sum + vu * cant;
-                    }, 0);
-                    if (Math.abs(costo - (parseFloat(row.costo_total) || 0)) > 0.01) {
-                        await query('UPDATE reclamos_devoluciones SET costo_total = $1 WHERE id = $2', [costo, row.id]);
-                    }
-                }
-            } catch(e) { console.error('[RECLAMOS] Backfill cost error:', e.message); }
-        })();
-
+        // El costo se calcula desde los items en la MISMA query (fórmula
+        // canónica). ANTES había un backfill N+1 "fire and forget" que recorría
+        // TODA la tabla y reescribía costo_total en cada request del reporte.
         const result = await query(`
             SELECT
-                EXTRACT(MONTH FROM fecha_ingreso)::int as mes,
+                EXTRACT(MONTH FROM r.fecha_ingreso)::int as mes,
                 COUNT(*)::int as total,
-                COUNT(*) FILTER (WHERE estado = 'PENDIENTE')::int as pendientes,
-                COUNT(*) FILTER (WHERE estado = 'EN REVISION')::int as en_revision,
-                COUNT(*) FILTER (WHERE estado = 'EN PROCESO')::int as en_proceso,
-                COUNT(*) FILTER (WHERE estado = 'FINALIZADO')::int as finalizados,
-                COUNT(*) FILTER (WHERE resolucion = 'Aceptada Fabricacion nueva')::int as fab_nueva,
-                COUNT(*) FILTER (WHERE resolucion = 'Aceptada Reproceso')::int as reproceso,
-                COUNT(*) FILTER (WHERE resolucion = 'Rechazada')::int as rechazadas,
-                COALESCE(NULLIF(COALESCE(responsable_falla,''), ''), 'Sin asignar') as responsable
-            FROM reclamos_devoluciones
-            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-            GROUP BY EXTRACT(MONTH FROM fecha_ingreso), responsable_falla
+                COUNT(*) FILTER (WHERE r.estado = 'PENDIENTE')::int as pendientes,
+                COUNT(*) FILTER (WHERE r.estado = 'EN REVISION')::int as en_revision,
+                COUNT(*) FILTER (WHERE r.estado = 'EN PROCESO')::int as en_proceso,
+                COUNT(*) FILTER (WHERE r.estado = 'FINALIZADO')::int as finalizados,
+                COUNT(*) FILTER (WHERE r.resolucion = 'Aceptada Fabricacion nueva')::int as fab_nueva,
+                COUNT(*) FILTER (WHERE r.resolucion = 'Aceptada Reproceso')::int as reproceso,
+                COUNT(*) FILTER (WHERE r.resolucion = 'Rechazada')::int as rechazadas,
+                COALESCE(NULLIF(COALESCE(r.responsable_falla,''), ''), 'Sin asignar') as responsable
+            FROM reclamos_devoluciones r
+            WHERE ${rango}
+            GROUP BY EXTRACT(MONTH FROM r.fecha_ingreso), r.responsable_falla
             ORDER BY mes
-        `, [anio]);
+        `, params);
 
         const motivoResult = await query(`
-            SELECT motivo, COUNT(*)::int as total
-            FROM reclamos_devoluciones
-            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1 AND motivo != ''
-            GROUP BY motivo ORDER BY total DESC LIMIT 10
-        `, [anio]);
+            SELECT r.motivo as motivo, COUNT(*)::int as total
+            FROM reclamos_devoluciones r
+            WHERE ${rango} AND r.motivo != ''
+            GROUP BY r.motivo ORDER BY total DESC LIMIT 10
+        `, params);
 
         const resolucionResult = await query(`
-            SELECT 
-                COALESCE(NULLIF(resolucion,''), 'Sin resolver') as resolucion,
+            SELECT
+                COALESCE(NULLIF(r.resolucion,''), 'Sin resolver') as resolucion,
                 COUNT(*)::int as total
-            FROM reclamos_devoluciones
-            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-            GROUP BY resolucion
-        `, [anio]);
+            FROM reclamos_devoluciones r
+            WHERE ${rango}
+            GROUP BY r.resolucion
+        `, params);
 
-        // Costo por mes (desde columna calculada)
-        let costoResult = { rows: [] };
-        try {
-            costoResult = await query(`
-                SELECT EXTRACT(MONTH FROM fecha_ingreso)::int as mes, COALESCE(SUM(costo_total), 0)::numeric as costo_total
-                FROM reclamos_devoluciones
-                WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-                GROUP BY EXTRACT(MONTH FROM fecha_ingreso) ORDER BY mes
-            `, [anio]);
-        } catch(cErr) { console.error('[RECLAMOS] Error costo query:', cErr.message); }
+        // Costo por mes, calculado desde los items en la query
+        const costoResult = await query(`
+            SELECT EXTRACT(MONTH FROM r.fecha_ingreso)::int as mes,
+                   SUM(calc.costo)::numeric as costo_total
+            FROM reclamos_devoluciones r
+            ${SQL_COSTO_LATERAL}
+            WHERE ${rango}
+            GROUP BY EXTRACT(MONTH FROM r.fecha_ingreso) ORDER BY mes
+        `, params);
 
         // Top clientes
         const clienteResult = await query(`
-            SELECT COALESCE(NULLIF(cliente,''), 'Sin cliente') as cliente, COUNT(*)::int as total
-            FROM reclamos_devoluciones
-            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-            GROUP BY cliente ORDER BY total DESC LIMIT 8
-        `, [anio]);
+            SELECT COALESCE(NULLIF(r.cliente,''), 'Sin cliente') as cliente, COUNT(*)::int as total
+            FROM reclamos_devoluciones r
+            WHERE ${rango}
+            GROUP BY r.cliente ORDER BY total DESC LIMIT 8
+        `, params);
 
         // Costo por responsable
-        let costoRespResult = { rows: [] };
-        try {
-            costoRespResult = await query(`
-                SELECT COALESCE(NULLIF(COALESCE(responsable_falla,''), ''), 'Sin asignar') as responsable,
-                       COALESCE(SUM(costo_total), 0)::numeric as costo_total
-                FROM reclamos_devoluciones
-                WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-                GROUP BY responsable_falla ORDER BY costo_total DESC LIMIT 8
-            `, [anio]);
-        } catch(cErr) { console.error('[RECLAMOS] Error costo responsable:', cErr.message); }
+        const costoRespResult = await query(`
+            SELECT COALESCE(NULLIF(COALESCE(r.responsable_falla,''), ''), 'Sin asignar') as responsable,
+                   SUM(calc.costo)::numeric as costo_total
+            FROM reclamos_devoluciones r
+            ${SQL_COSTO_LATERAL}
+            WHERE ${rango}
+            GROUP BY r.responsable_falla ORDER BY costo_total DESC LIMIT 8
+        `, params);
 
-        // Reclamos por dia de semana (0=Dom, 1=Lun...)
+        // Reclamos por día de semana (0=Dom, 1=Lun...)
         const diaSemanaResult = await query(`
-            SELECT EXTRACT(DOW FROM fecha_ingreso)::int as dia, COUNT(*)::int as total
-            FROM reclamos_devoluciones
-            WHERE EXTRACT(YEAR FROM fecha_ingreso) = $1
-            GROUP BY EXTRACT(DOW FROM fecha_ingreso)
+            SELECT EXTRACT(DOW FROM r.fecha_ingreso)::int as dia, COUNT(*)::int as total
+            FROM reclamos_devoluciones r
+            WHERE ${rango}
+            GROUP BY EXTRACT(DOW FROM r.fecha_ingreso)
             ORDER BY dia
-        `, [anio]);
+        `, params);
 
         const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
         const porMes = {};
@@ -548,7 +788,7 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
         const totalFinalizados = mesesData.reduce((s, m) => s + m.finalizados, 0);
         const costoTotal = costoResult.rows.reduce((s, r) => s + (parseFloat(r.costo_total) || 0), 0);
 
-        // Mapear dias de semana
+        // Mapear días de semana
         const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
         const diasData = diasSemana.map((nombre, i) => {
             const found = diaSemanaResult.rows.find(r => r.dia === i);
@@ -568,188 +808,382 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res) => {
             totalFinalizados,
             costoTotal: Math.round(costoTotal)
         });
-    } catch (e) {
-        console.error('[RECLAMOS REPORTE ERROR]', e.message);
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
 // ═══════════════════════════════════════════════════════
 // RECLAMOS - CRUD (después de rutas nombradas)
 // ═══════════════════════════════════════════════════════
 
-// Obtener uno por ID
-router.get('/api/reclamos/:id', perms.view, async (req, res) => {
-    try {
-        const result = await query('SELECT * FROM reclamos_devoluciones WHERE id = $1', [req.params.id]);
-        if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
-        res.json(result.rows[0]);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Crear nuevo reclamo
-router.post('/api/reclamos', perms.create, async (req, res) => {
+// Obtener uno por ID. ÚNICO endpoint que incluye fotos (el frontend las pide
+// al editar); el listado no las trae.
+router.get('/api/reclamos/:id', perms.view, async (req, res, next) => {
     try {
         await ensureColumns();
-        const d = req.body;
-        const user = req.headers['x-user-email'] || '';
-        const userName = req.headers['x-user-name'] || user;
-        const items = Array.isArray(d.items) ? d.items : [];
-        const costoTotal = items.reduce((sum, it) => sum + (it.valor_unitario || 0) * (it.cantidad || 1), 0);
-        const result = await query(
-            `INSERT INTO reclamos_devoluciones (
-                responsable_ingreso, correo_electronico, cliente, numero_orden, items,
-                descripcion, detalle_reclamo, fotos, estado, costo_total
-            ) VALUES (
-                $1, $2, $3, $4, $5,
-                $6, $7, $8, 'PENDIENTE', $9
-            ) RETURNING *`,
-            [
-                userName || user, user, d.cliente || '', d.numero_orden || '',
-                JSON.stringify(items), d.descripcion || '', d.detalle_reclamo || '',
-                JSON.stringify(d.fotos || []), costoTotal
-            ]
-        );
-        // Registrar en historial
-        const reclamo = result.rows[0];
-        await query(
-            'INSERT INTO reclamos_historial (reclamo_id, accion, estado_despues, responsable) VALUES ($1, $2, $3, $4)',
-            [reclamo.id, 'Creación', 'PENDIENTE', userName || user]
-        ).catch(() => {});
-        res.json(reclamo);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+        const id = parseIdReclamo(req, res);
+        if (id === null) return;
+        const result = await query(`SELECT ${COLS_RECLAMO_DETALLE} FROM reclamos_devoluciones WHERE id = $1`, [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
+        const row = result.rows[0];
+        row.items = parseItems(row.items);
+        res.json(row);
+    } catch (e) { next(e); }
 });
 
-// Actualizar reclamo
-router.put('/api/reclamos/:id', perms.update, async (req, res) => {
+// Crear nuevo reclamo. El reclamo nace siempre en PENDIENTE y sin resolver:
+// 'estado', 'resolucion', 'fecha_ingreso', 'costo_total' e identidad que lleguen
+// en el body se IGNORAN (el estado/resolución se manejan en PUT /:id/estado,
+// el costo se calcula con la fórmula canónica y la identidad viene de la sesión).
+router.post('/api/reclamos', perms.create, async (req, res, next) => {
     try {
         await ensureColumns();
-        const d = req.body;
-        const items = Array.isArray(d.items) ? d.items : undefined;
-        const costoTotal = items ? items.reduce((sum, it) => sum + (it.valor_unitario || 0) * (it.cantidad || 1), 0) : undefined;
-        const result = await query(
-            `UPDATE reclamos_devoluciones SET
-                fecha_ingreso = COALESCE($1, fecha_ingreso),
-                responsable_ingreso = COALESCE($2, responsable_ingreso),
-                cliente = COALESCE($3, cliente),
-                numero_orden = COALESCE($4, numero_orden),
-                items = COALESCE($5, items),
-                descripcion = COALESCE($6, descripcion),
-                detalle_reclamo = COALESCE($7, detalle_reclamo),
-                fotos = COALESCE($8, fotos),
-                estado = COALESCE($9, estado),
-                responsable_falla = COALESCE($10, responsable_falla),
-                motivo = COALESCE($11, motivo),
-                observacion_analisis = COALESCE($12, observacion_analisis),
-                resolucion = COALESCE($13, resolucion),
-                costo_total = COALESCE($15, costo_total),
-                updated_at = NOW()
-            WHERE id = $14 RETURNING *`,
-            [
-                d.fecha_ingreso, d.responsable_ingreso, d.cliente, d.numero_orden,
-                items !== undefined ? JSON.stringify(items) : null, d.descripcion,
-                d.detalle_reclamo, d.fotos ? JSON.stringify(d.fotos) : null, d.estado,
-                d.responsable_falla, d.motivo, d.observacion_analisis, d.resolucion,
-                req.params.id, costoTotal
-            ]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
-        res.json(result.rows[0]);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+        const d = req.body || {};
+        const { email, nombre } = identidad(req);
+
+        const cliente = textoDeBody(d.cliente, 'cliente', LIM.cliente);
+        const numeroOrden = textoDeBody(d.numero_orden, 'numero_orden', LIM.numero_orden);
+        const descripcion = textoDeBody(d.descripcion, 'descripcion', LIM.descripcion);
+        const detalle = textoDeBody(d.detalle_reclamo, 'detalle_reclamo', LIM.detalle_reclamo);
+        const respFalla = textoDeBody(d.responsable_falla, 'responsable_falla', LIM.responsable_falla);
+        const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo);
+        const obsAnalisis = textoDeBody(d.observacion_analisis, 'observacion_analisis', LIM.observacion_analisis);
+        for (const c of [cliente, numeroOrden, descripcion, detalle, respFalla, motivo, obsAnalisis]) {
+            if (!c.ok) return res.status(400).json({ error: c.error });
+        }
+        const items = validarItems(d.items);
+        if (!items.ok) return res.status(400).json({ error: items.error });
+        const fotos = validarFotos(d.fotos);
+        if (!fotos.ok) return res.status(400).json({ error: fotos.error });
+
+        const itemsFinal = items.items || [];
+        const costoTotal = costoTotalDeItems(itemsFinal);
+
+        // INSERT + fila 'Creación' del historial en la MISMA transacción
+        const resultado = await transaction(async (tx) => {
+            const ins = await tx.query(
+                `INSERT INTO reclamos_devoluciones (
+                    responsable_ingreso, correo_electronico, cliente, numero_orden, items,
+                    descripcion, detalle_reclamo, fotos, estado, costo_total,
+                    responsable_falla, motivo, observacion_analisis
+                ) VALUES (
+                    $1, $2, $3, $4, $5,
+                    $6, $7, $8, 'PENDIENTE', $9,
+                    $10, $11, $12
+                ) RETURNING ${COLS_RECLAMO}`,
+                [
+                    nombre, email, cliente.valor || '', numeroOrden.valor || '',
+                    JSON.stringify(itemsFinal), descripcion.valor || '', detalle.valor || '',
+                    JSON.stringify(fotos.fotos || []), costoTotal,
+                    respFalla.valor || '', motivo.valor || '', obsAnalisis.valor || ''
+                ]
+            );
+            const reclamo = ins.rows[0];
+            await tx.query(
+                'INSERT INTO reclamos_historial (reclamo_id, accion, estado_despues, responsable) VALUES ($1, $2, $3, $4)',
+                [reclamo.id, 'Creación', 'PENDIENTE', nombre]
+            );
+            return reclamo;
+        });
+        res.status(201).json(resultado);
+    } catch (e) { next(e); }
 });
 
-// Eliminar reclamo
-router.delete('/api/reclamos/:id', perms.delete, async (req, res) => {
-    try {
-        const result = await query('DELETE FROM reclamos_devoluciones WHERE id = $1 RETURNING id', [req.params.id]);
-        if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
-        res.json({ ok: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Cambiar estado rápido
-router.put('/api/reclamos/:id/estado', perms.update, async (req, res) => {
+// Actualizar datos de un reclamo (edición de campos, SIN cambio de estado).
+// RECHAZA con 400 los campos que pertenecen al flujo de estado:
+//   'estado', 'resolucion', 'responsable_falla', 'responsable_ingreso'
+// → los cambios de estado/análisis van por PUT /:id/estado (con historial) y la
+// identidad se toma de la sesión. 'fecha_ingreso' y 'costo_total' del body se
+// ignoran (el costo se recalcula SIEMPRE desde items con la fórmula canónica).
+router.put('/api/reclamos/:id', perms.update, async (req, res, next) => {
     try {
         await ensureColumns();
-        const { estado, observacion } = req.body;
-        const user = req.headers['x-user-email'] || '';
-        const userName = req.headers['x-user-name'] || user;
+        const id = parseIdReclamo(req, res);
+        if (id === null) return;
+        const d = req.body || {};
 
-        // Obtener estado actual
-        const before = await query('SELECT estado FROM reclamos_devoluciones WHERE id = $1', [req.params.id]);
-        if (before.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
-        const estadoAntes = before.rows[0].estado;
-
-        // Mapear estado a columnas de tracking
-        const columnMap = {
-            'EN REVISION': { col: 'fecha_revision', colR: 'responsable_revision' },
-            'EN PROCESO': { col: 'fecha_proceso', colR: 'responsable_proceso' },
-            'FINALIZADO': { col: 'fecha_fin', colR: 'responsable_fin' }
-        };
-
-        let sql = 'UPDATE reclamos_devoluciones SET estado = $1, updated_at = NOW()';
-        const params = [estado];
-        let idx = 2;
-
-        if (columnMap[estado]) {
-            sql += `, ${columnMap[estado].col} = NOW()`;
-            sql += `, ${columnMap[estado].colR} = $${idx++}`;
-            params.push(userName || user);
+        const prohibidos = ['estado', 'resolucion', 'responsable_falla', 'responsable_ingreso']
+            .filter(c => d[c] !== undefined);
+        if (prohibidos.length > 0) {
+            return res.status(400).json({
+                error: `Los campos ${prohibidos.map(c => `'${c}'`).join(', ')} no se editan por aqui: ` +
+                    'el estado, la resolución y el análisis se cambian con PUT /api/reclamos/:id/estado ' +
+                    '(queda en el historial) y la identidad se toma de la sesión'
+            });
         }
 
-        sql += ` WHERE id = $${idx} RETURNING *`;
-        params.push(req.params.id);
+        const cliente = textoDeBody(d.cliente, 'cliente', LIM.cliente);
+        const numeroOrden = textoDeBody(d.numero_orden, 'numero_orden', LIM.numero_orden);
+        const descripcion = textoDeBody(d.descripcion, 'descripcion', LIM.descripcion);
+        const detalle = textoDeBody(d.detalle_reclamo, 'detalle_reclamo', LIM.detalle_reclamo);
+        const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo);
+        const obsAnalisis = textoDeBody(d.observacion_analisis, 'observacion_analisis', LIM.observacion_analisis);
+        for (const c of [cliente, numeroOrden, descripcion, detalle, motivo, obsAnalisis]) {
+            if (!c.ok) return res.status(400).json({ error: c.error });
+        }
+        const items = validarItems(d.items);
+        if (!items.ok) return res.status(400).json({ error: items.error });
+        const fotos = validarFotos(d.fotos);
+        if (!fotos.ok) return res.status(400).json({ error: fotos.error });
 
-        const result = await query(sql, params);
+        const cambios = {
+            cliente: cliente.valor,
+            numero_orden: numeroOrden.valor,
+            items: items.items,
+            descripcion: descripcion.valor,
+            detalle_reclamo: detalle.valor,
+            fotos: fotos.fotos,
+            motivo: motivo.valor,
+            observacion_analisis: obsAnalisis.valor
+        };
+        const hayDatos = Object.values(cambios).some(v => v !== undefined);
+        if (!hayDatos) return res.status(400).json({ error: 'No hay datos para actualizar' });
 
-        // Registrar en historial
-        await query(
-            'INSERT INTO reclamos_historial (reclamo_id, accion, estado_antes, estado_despues, responsable, observacion) VALUES ($1, $2, $3, $4, $5, $6)',
-            [req.params.id, `Cambio a ${estado}`, estadoAntes, estado, userName || user, observacion || '']
-        );
+        const { nombre } = identidad(req);
 
-        res.json(result.rows[0]);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+        // UPDATE + historial 'Edición' en la MISMA transacción
+        const resultado = await transaction(async (tx) => {
+            const sel = await tx.query(
+                `SELECT ${COLS_RECLAMO} FROM reclamos_devoluciones WHERE id = $1 FOR UPDATE`,
+                [id]
+            );
+            if (sel.rows.length === 0) return { codigo: 404, error: 'No encontrado' };
+            const before = sel.rows[0];
+
+            // Costo canónico: con los items nuevos si vienen, o con los
+            // guardados si solo se editan otros campos (nunca se toma del body).
+            const itemsFinales = cambios.items !== undefined ? cambios.items : parseItems(before.items);
+            const costoTotal = costoTotalDeItems(itemsFinales);
+
+            const fields = [];
+            const params = [];
+            let idx = 1;
+            for (const [campo, valor] of Object.entries(cambios)) {
+                if (valor === undefined) continue;
+                const serializado = (campo === 'items' || campo === 'fotos') ? JSON.stringify(valor) : valor;
+                fields.push(`${campo} = $${idx++}`);
+                params.push(serializado);
+            }
+            fields.push(`costo_total = $${idx++}`);
+            params.push(costoTotal);
+            fields.push('updated_at = NOW()');
+            params.push(id);
+
+            const upd = await tx.query(
+                `UPDATE reclamos_devoluciones SET ${fields.join(', ')} WHERE id = $${idx} RETURNING ${COLS_RECLAMO}`,
+                params
+            );
+            const after = upd.rows[0];
+
+            // Traza de lo editado (solo los campos que cambiaron)
+            const tocados = Object.keys(cambios).filter(c => {
+                if (c === 'items' || c === 'fotos') {
+                    return JSON.stringify(parseItems(before[c])) !== JSON.stringify(cambios[c]);
+                }
+                return (before[c] || '') !== (cambios[c] || '');
+            });
+            if (tocados.length > 0) {
+                await tx.query(
+                    'INSERT INTO reclamos_historial (reclamo_id, accion, estado_antes, estado_despues, responsable, observacion) VALUES ($1, $2, $3, $4, $5, $6)',
+                    [id, 'Edición', after.estado, after.estado, nombre, 'Campos modificados: ' + tocados.join(', ')]
+                );
+            }
+            return { codigo: 200, reclamo: after };
+        });
+        if (resultado.error) return res.status(resultado.codigo).json({ error: resultado.error });
+        res.json(resultado.reclamo);
+    } catch (e) { next(e); }
 });
 
-// Registrar envío por mail
-router.post('/api/reclamos/:id/enviar-mail', perms.update, async (req, res) => {
+// Eliminar reclamo (hard delete). ANTES el delete borraba también el historial
+// por el ON DELETE CASCADE: ahora se registra la fila final 'Eliminación' en
+// reclamos_historial dentro de la MISMA transacción. Con la FK en SET NULL del
+// esquema esa fila SOBREVIVE al borrado (queda como traza de auditoría, con
+// reclamo_id = NULL); con el esquema viejo (ON DELETE CASCADE) se borra junto
+// con el reclamo.
+router.delete('/api/reclamos/:id', perms.delete, async (req, res, next) => {
     try {
-        await ensureColumns();
-        const user = req.headers['x-user-email'] || '';
-        const userName = req.headers['x-user-name'] || user;
-        await query(
-            'INSERT INTO reclamos_historial (reclamo_id, accion, responsable, observacion) VALUES ($1, $2, $3, $4)',
-            [req.params.id, 'Envío por mail', userName || user, 'Informe enviado por correo electrónico']
-        );
+        const id = parseIdReclamo(req, res);
+        if (id === null) return;
+        const { nombre } = identidad(req);
+        const resultado = await transaction(async (tx) => {
+            const sel = await tx.query(
+                `SELECT ${COLS_RECLAMO} FROM reclamos_devoluciones WHERE id = $1 FOR UPDATE`,
+                [id]
+            );
+            if (sel.rows.length === 0) return { codigo: 404, error: 'No encontrado' };
+            const antes = sel.rows[0];
+            await tx.query(
+                'INSERT INTO reclamos_historial (reclamo_id, accion, estado_antes, responsable, observacion) VALUES ($1, $2, $3, $4, $5)',
+                [id, 'Eliminación', antes.estado, nombre,
+                 `Reclamo #${antes.numero_reclamo} (id ${id}) eliminado (cliente: ${antes.cliente || 's/n'}, estado: ${antes.estado || 's/e'})`]
+            );
+            await tx.query('DELETE FROM reclamos_devoluciones WHERE id = $1', [id]);
+            return { codigo: 200, ok: true };
+        });
+        if (resultado.error) return res.status(resultado.codigo).json({ error: resultado.error });
         res.json({ ok: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
-// Historial de un reclamo
-router.get('/api/reclamos/:id/historial', perms.view, async (req, res) => {
+// Cambiar estado (máquina de estados + historial).
+//   - estado: requerido, del catálogo ESTADOS (NULL o desconocido → 400)
+//   - transición fuera del árbol TRANSICIONES → 409 con mensaje claro
+//   - resolucion: REQUERIDA y solo permitida al pasar a FINALIZADO (decisión
+//     documentada: un reclamo cerrado sin resolución deja el reporte sin
+//     clasificar; al retroceder/reabrir se limpia)
+//   - responsable_falla / motivo / observacion_analisis: análisis del reclamo,
+//     opcionales (se validan y quedan junto al cambio de estado en historial)
+//   - sella fecha/responsable de la etapa destino y limpia las etapas
+//     posteriores al retroceder
+router.put('/api/reclamos/:id/estado', perms.update, async (req, res, next) => {
     try {
         await ensureColumns();
+        const id = parseIdReclamo(req, res);
+        if (id === null) return;
+        const d = req.body || {};
+        const { email, nombre } = identidad(req);
+
+        // Estado destino: requerido y del catálogo. Nunca NULL.
+        const estadoBody = textoDeBody(d.estado, 'estado', 30);
+        if (!estadoBody.ok) return res.status(400).json({ error: estadoBody.error });
+        const estado = estadoBody.valor;
+        if (!estado) return res.status(400).json({ error: 'El campo estado es requerido' });
+        if (!ESTADOS.includes(estado)) {
+            return res.status(400).json({ error: `Estado invalido '${estado}'. Estados validos: ${ESTADOS.join(', ')}` });
+        }
+
+        const observacion = textoDeBody(d.observacion, 'observacion', LIM.observacion);
+        const respFalla = textoDeBody(d.responsable_falla, 'responsable_falla', LIM.responsable_falla);
+        const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo);
+        const obsAnalisis = textoDeBody(d.observacion_analisis, 'observacion_analisis', LIM.observacion_analisis);
+        for (const c of [observacion, respFalla, motivo, obsAnalisis]) {
+            if (!c.ok) return res.status(400).json({ error: c.error });
+        }
+
+        // resolucion: solo al FINALIZADO y obligatoria ahí.
+        let resolucion;
+        if (d.resolucion !== undefined && d.resolucion !== null) {
+            const r = textoDeBody(d.resolucion, 'resolucion', 50);
+            if (!r.ok) return res.status(400).json({ error: r.error });
+            resolucion = r.valor;
+        }
+        if (estado === 'FINALIZADO') {
+            if (!resolucion || !RESOLUCIONES.includes(resolucion)) {
+                return res.status(400).json({
+                    error: `Para FINALIZAR el reclamo debe indicar la resolucion (${RESOLUCIONES.join(', ')})`
+                });
+            }
+        } else if (resolucion) {
+            return res.status(400).json({ error: 'La resolucion solo se permite al pasar a FINALIZADO' });
+        }
+
+        const resultado = await transaction(async (tx) => {
+            const before = await tx.query(
+                'SELECT estado FROM reclamos_devoluciones WHERE id = $1 FOR UPDATE',
+                [id]
+            );
+            if (before.rows.length === 0) return { codigo: 404, error: 'No encontrado' };
+            const estadoAntes = before.rows[0].estado;
+            if (!estadoAntes || !ESTADOS.includes(estadoAntes)) {
+                return { codigo: 400, error: `El reclamo tiene un estado invalido '${estadoAntes}'; corrijalo antes de operar` };
+            }
+
+            // ── Máquina de estados ──
+            const permitidas = TRANSICIONES[estadoAntes] || [];
+            if (!permitidas.includes(estado)) {
+                if (estadoAntes === estado) {
+                    return { codigo: 409, error: `El reclamo ya esta en estado '${estadoAntes}'` };
+                }
+                return { codigo: 409, error: `Transicion no permitida: ${estadoAntes} -> ${estado}. Desde '${estadoAntes}' solo: ${permitidas.join(', ')}` };
+            }
+
+            // ── UPDATE según el destino ──
+            const sets = ['estado = $1', 'updated_at = NOW()'];
+            const params = [estado];
+            let idx = 2;
+
+            // Etapa destino: sellar fecha y responsable (quién pasó el reclamo)
+            const etapaDestino = ETAPAS[estado];
+            const ordenDestino = etapaDestino ? etapaDestino.orden : 0;
+            if (etapaDestino) {
+                sets.push(`${etapaDestino.fecha} = NOW()`, `${etapaDestino.resp} = $${idx++}`);
+                params.push(nombre);
+            }
+            // Al retroceder se limpian las etapas POSTERIORES al destino (no
+            // dejar marcas de pasos que ya no son ciertos)
+            for (const etapa of Object.values(ETAPAS)) {
+                if (etapa.orden > ordenDestino) {
+                    sets.push(`${etapa.fecha} = NULL`, `${etapa.resp} = ''`);
+                }
+            }
+            // resolucion: se define al FINALIZADO y se limpia al salir de él
+            if (estado === 'FINALIZADO') {
+                sets.push(`resolucion = $${idx++}`);
+                params.push(resolucion);
+            } else {
+                sets.push(`resolucion = ''`);
+            }
+            // Campos de análisis (opcionales: solo se tocan si vienen)
+            if (respFalla.valor !== undefined) { sets.push(`responsable_falla = $${idx++}`); params.push(respFalla.valor); }
+            if (motivo.valor !== undefined) { sets.push(`motivo = $${idx++}`); params.push(motivo.valor); }
+            if (obsAnalisis.valor !== undefined) { sets.push(`observacion_analisis = $${idx++}`); params.push(obsAnalisis.valor); }
+
+            params.push(id);
+            const result = await tx.query(
+                `UPDATE reclamos_devoluciones SET ${sets.join(', ')} WHERE id = $${idx} RETURNING ${COLS_RECLAMO}`,
+                params
+            );
+
+            // Historial del cambio (misma transacción que el UPDATE)
+            await tx.query(
+                'INSERT INTO reclamos_historial (reclamo_id, accion, estado_antes, estado_despues, responsable, observacion) VALUES ($1, $2, $3, $4, $5, $6)',
+                [id, `Cambio a ${estado}`, estadoAntes, estado, nombre, observacion.valor || '']
+            );
+            return { codigo: 200, reclamo: result.rows[0] };
+        });
+        if (resultado.error) return res.status(resultado.codigo).json({ error: resultado.error });
+        res.json(resultado.reclamo);
+    } catch (e) { next(e); }
+});
+
+// Registrar envío por mail (solo la traza: el envío lo hace el frontend)
+router.post('/api/reclamos/:id/enviar-mail', perms.update, async (req, res, next) => {
+    try {
+        await ensureColumns();
+        const id = parseIdReclamo(req, res);
+        if (id === null) return;
+        const { nombre } = identidad(req);
+        const resultado = await transaction(async (tx) => {
+            const sel = await tx.query(
+                'SELECT id FROM reclamos_devoluciones WHERE id = $1 FOR UPDATE',
+                [id]
+            );
+            if (sel.rows.length === 0) return { codigo: 404, error: 'No encontrado' };
+            await tx.query(
+                'INSERT INTO reclamos_historial (reclamo_id, accion, responsable, observacion) VALUES ($1, $2, $3, $4)',
+                [id, 'Envío por mail', nombre, 'Informe enviado por correo electrónico']
+            );
+            return { codigo: 200, ok: true };
+        });
+        if (resultado.error) return res.status(resultado.codigo).json({ error: resultado.error });
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
+
+// Historial de un reclamo. Sin chequeo de existencia del reclamo: una consulta
+// vacía no es un error (tras un DELETE el historial queda como traza huérfana
+// con reclamo_id = NULL y ya no es consultable por este endpoint).
+router.get('/api/reclamos/:id/historial', perms.view, async (req, res, next) => {
+    try {
+        await ensureColumns();
+        const id = parseIdReclamo(req, res);
+        if (id === null) return;
         const result = await query(
-            'SELECT * FROM reclamos_historial WHERE reclamo_id = $1 ORDER BY created_at ASC',
-            [req.params.id]
+            'SELECT id, reclamo_id, accion, estado_antes, estado_despues, responsable, observacion, created_at FROM reclamos_historial WHERE reclamo_id = $1 ORDER BY created_at ASC, id ASC',
+            [id]
         );
         res.json(result.rows);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { next(e); }
 });
 
 module.exports = router;
