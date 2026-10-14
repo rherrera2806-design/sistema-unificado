@@ -15,37 +15,68 @@ const perms = crudPerms(MOD);
 // DOMINIO: estados, resoluciones y máquina de estados
 // ═══════════════════════════════════════════════════════
 
-const ESTADOS = ['PENDIENTE', 'EN REVISION', 'EN PROCESO', 'FINALIZADO'];
+// Estados REALES del negocio: SOLO 3. 'EN PROCESO' NO existe en el flujo
+// (pertenecía al vocabulario anterior; ver ESTADOS_LEGACY).
+const ESTADOS = ['PENDIENTE', 'EN REVISION', 'FINALIZADO'];
+
+// LEGACY: estado del vocabulario anterior que puede seguir existiendo en filas
+// viejas de la BD. Se acepta SOLO como estado de ORIGEN (para no romper la
+// operación de esos reclamos) y como valor de FILTRO del listado (para poder
+// ubicarlos); NUNCA como destino nuevo.
+// OJO: el CHECK de dominio de la BD (dbSchema.js) incluye 'EN PROCESO' y está
+// bien así: un CHECK amplio no invalida filas legadas al migrar. El vocabulario
+// de la APP es más estricto (3 estados) y se valida aquí, en la capa de
+// aplicación. No tocar dbSchema.js por esto.
+const ESTADOS_LEGACY = ['EN PROCESO'];
+const ESTADOS_TODOS = [...ESTADOS, ...ESTADOS_LEGACY];
+
 // resolucion: '' = sin resolver todavía. Solo se permite (y se exige) al FINALIZADO.
 const RESOLUCIONES = ['Aceptada Fabricacion nueva', 'Aceptada Reproceso', 'Rechazada'];
 
 // ── Máquina de estados de PUT /api/reclamos/:id/estado ───────────────────────
-//   PENDIENTE   → EN REVISION    pasar a revisión
-//   EN REVISION → EN PROCESO     con el análisis cargado (responsable_falla/motivo)
-//   EN REVISION → FINALIZADO     resolución directa (requiere 'resolucion')
-//   EN REVISION → PENDIENTE      devolver a pendiente (limpia la etapa revisión)
-//   EN PROCESO  → FINALIZADO     cerrar el reclamo (requiere 'resolucion')
-//   EN PROCESO  → EN REVISION    retroceder a revisión (limpia la etapa proceso)
-//   FINALIZADO  → EN REVISION    REABRIR un reclamo cerrado (limpia proceso/fin
-//                                y la resolución: vuelve a quedar sin resolver)
+//   PENDIENTE   → EN REVISION    pasar a revisión (sella fecha_revision)
+//   EN REVISION → FINALIZADO     cerrar el reclamo (requiere 'resolucion',
+//                                sella fecha_fin)
+//   EN REVISION → PENDIENTE      devolver a pendiente (limpia las etapas)
+//   FINALIZADO  → EN REVISION    REABRIR un reclamo cerrado (limpia fecha_fin,
+//                                las marcas LEGACY de proceso y la resolución:
+//                                vuelve a quedar sin resolver)
+//   LEGACY (solo como ORIGEN): una fila antigua con estado 'EN PROCESO' puede
+//   transicionar a EN REVISION, PENDIENTE o FINALIZADO; pero 'EN PROCESO' NUNCA
+//   se acepta como destino (400).
 // Cualquier otra transición (incluido "cambiar" al mismo estado) → 409.
-// Estado desconocido o NULL (en la BD o en el body) → 400.
+// Estado destino desconocido o NULL → 400. Estado actual desconocido (fuera de
+// ESTADOS_TODOS) o NULL → 400.
 const TRANSICIONES = {
     'PENDIENTE':   ['EN REVISION'],
-    'EN REVISION': ['EN PROCESO', 'FINALIZADO', 'PENDIENTE'],
-    'EN PROCESO':  ['FINALIZADO', 'EN REVISION'],
+    'EN REVISION': ['FINALIZADO', 'PENDIENTE'],
     'FINALIZADO':  ['EN REVISION'],
+    // LEGACY: solo como estado de origen (nunca como destino)
+    'EN PROCESO':  ['EN REVISION', 'PENDIENTE', 'FINALIZADO'],
 };
 
-// Columnas de tracking por etapa. Al llegar a una etapa se sella su fecha y su
-// responsable; al RETROCEDER se limpian las etapas posteriores al destino (y la
-// resolución, que solo vive en FINALIZADO) para no dejar marcas de pasos que ya
-// no son ciertos.
+// Orden cronológico de las etapas (incluye la LEGACY) SOLO para saber qué
+// limpiar al retroceder:
+//   PENDIENTE=0, EN REVISION=1, EN PROCESO(legacy)=2, FINALIZADO=3
+const ORDEN_ESTADO = { 'PENDIENTE': 0, 'EN REVISION': 1, 'EN PROCESO': 2, 'FINALIZADO': 3 };
+
+// Columnas de tracking por etapa que se SELLAN al llegar (las del flujo real).
+// Al llegar a una etapa se sella su fecha y su responsable; al retroceder se
+// limpian las etapas posteriores al destino (y la resolución, que solo vive en
+// FINALIZADO) para no dejar marcas de pasos que ya no son ciertos. La limpieza
+// cubre las 3 etapas del flujo nuevo (PENDIENTE=0 → se limpia todo al volver).
 const ETAPAS = {
     'EN REVISION': { orden: 1, fecha: 'fecha_revision', resp: 'responsable_revision' },
-    'EN PROCESO':  { orden: 2, fecha: 'fecha_proceso',  resp: 'responsable_proceso' },
     'FINALIZADO':  { orden: 3, fecha: 'fecha_fin',      resp: 'responsable_fin' },
 };
+
+// LEGACY: columnas de la etapa 'EN PROCESO' del vocabulario anterior. Siguen
+// EXISTIENDO en la BD (no se borran) pero dejan de POBLARSE: solo se LIMPIAN
+// junto a las demás etapas al retroceder, para no dejar marcas de un paso que
+// ya no existe en el flujo.
+const ETAPAS_LEGACY = [
+    { orden: 2, fecha: 'fecha_proceso', resp: 'responsable_proceso' }
+];
 
 // ═══════════════════════════════════════════════════════
 // COLUMNAS EXPUESTAS EN JSON
@@ -485,8 +516,11 @@ router.get('/api/reclamos', perms.view, async (req, res, next) => {
         let idx = 1;
 
         if (estado && estado !== 'TODOS') {
-            if (!ESTADOS.includes(estado)) {
-                return res.status(400).json({ error: `Estado de filtro invalido '${estado}'. Estados validos: ${ESTADOS.join(', ')} (o TODOS)` });
+            // El filtro ACEPTA también el estado legacy 'EN PROCESO' (solo para
+            // poder ubicar filas antiguas); el vocabulario estricto de 3 estados
+            // se aplica a los DESTINOS de PUT /:id/estado.
+            if (!ESTADOS_TODOS.includes(estado)) {
+                return res.status(400).json({ error: `Estado de filtro invalido '${estado}'. Estados validos: ${ESTADOS_TODOS.join(', ')} (o TODOS; 'EN PROCESO' solo como filtro de datos legados)` });
             }
             conditions.push(`estado = $${idx++}`);
             params.push(estado);
@@ -689,6 +723,8 @@ router.get('/api/reclamos/reporte', perms.view, async (req, res, next) => {
                 COUNT(*)::int as total,
                 COUNT(*) FILTER (WHERE r.estado = 'PENDIENTE')::int as pendientes,
                 COUNT(*) FILTER (WHERE r.estado = 'EN REVISION')::int as en_revision,
+                -- LEGACY: cuenta las filas antiguas con estado 'EN PROCESO'
+                -- (vocabulario anterior) para que los totales por mes cuadren
                 COUNT(*) FILTER (WHERE r.estado = 'EN PROCESO')::int as en_proceso,
                 COUNT(*) FILTER (WHERE r.estado = 'FINALIZADO')::int as finalizados,
                 COUNT(*) FILTER (WHERE r.resolucion = 'Aceptada Fabricacion nueva')::int as fab_nueva,
@@ -1026,7 +1062,8 @@ router.delete('/api/reclamos/:id', perms.delete, async (req, res, next) => {
 });
 
 // Cambiar estado (máquina de estados + historial).
-//   - estado: requerido, del catálogo ESTADOS (NULL o desconocido → 400)
+//   - estado: requerido, del catálogo ESTADOS de 3 estados (NULL, desconocido o
+//     el legacy 'EN PROCESO' como destino → 400)
 //   - transición fuera del árbol TRANSICIONES → 409 con mensaje claro
 //   - resolucion: REQUERIDA y solo permitida al pasar a FINALIZADO (decisión
 //     documentada: un reclamo cerrado sin resolución deja el reporte sin
@@ -1034,7 +1071,7 @@ router.delete('/api/reclamos/:id', perms.delete, async (req, res, next) => {
 //   - responsable_falla / motivo / observacion_analisis: análisis del reclamo,
 //     opcionales (se validan y quedan junto al cambio de estado en historial)
 //   - sella fecha/responsable de la etapa destino y limpia las etapas
-//     posteriores al retroceder
+//     posteriores al retroceder (incluidas las columnas LEGACY de proceso)
 router.put('/api/reclamos/:id/estado', perms.update, async (req, res, next) => {
     try {
         await ensureColumns();
@@ -1043,13 +1080,14 @@ router.put('/api/reclamos/:id/estado', perms.update, async (req, res, next) => {
         const d = req.body || {};
         const { email, nombre } = identidad(req);
 
-        // Estado destino: requerido y del catálogo. Nunca NULL.
+        // Estado destino: requerido y del catálogo estricto de 3 estados. Nunca
+        // NULL y nunca el legacy 'EN PROCESO' (ese solo puede ser origen).
         const estadoBody = textoDeBody(d.estado, 'estado', 30);
         if (!estadoBody.ok) return res.status(400).json({ error: estadoBody.error });
         const estado = estadoBody.valor;
         if (!estado) return res.status(400).json({ error: 'El campo estado es requerido' });
         if (!ESTADOS.includes(estado)) {
-            return res.status(400).json({ error: `Estado invalido '${estado}'. Estados validos: ${ESTADOS.join(', ')}` });
+            return res.status(400).json({ error: `Estado invalido '${estado}'. Estados validos: ${ESTADOS.join(', ')} (el estado legacy 'EN PROCESO' no se acepta como destino)` });
         }
 
         const observacion = textoDeBody(d.observacion, 'observacion', LIM.observacion);
@@ -1084,7 +1122,9 @@ router.put('/api/reclamos/:id/estado', perms.update, async (req, res, next) => {
             );
             if (before.rows.length === 0) return { codigo: 404, error: 'No encontrado' };
             const estadoAntes = before.rows[0].estado;
-            if (!estadoAntes || !ESTADOS.includes(estadoAntes)) {
+            // El estado ACTUAL puede ser el legacy 'EN PROCESO' (ESTADOS_TODOS):
+            // esos reclamos se dejan operar para no romper su flujo.
+            if (!estadoAntes || !ESTADOS_TODOS.includes(estadoAntes)) {
                 return { codigo: 400, error: `El reclamo tiene un estado invalido '${estadoAntes}'; corrijalo antes de operar` };
             }
 
@@ -1102,16 +1142,21 @@ router.put('/api/reclamos/:id/estado', perms.update, async (req, res, next) => {
             const params = [estado];
             let idx = 2;
 
-            // Etapa destino: sellar fecha y responsable (quién pasó el reclamo)
+            // Etapa destino: sellar fecha y responsable (quién pasó el reclamo).
+            // Solo el flujo nuevo de 3 estados tiene etapa sellable; 'EN PROCESO'
+            // nunca es destino, así que sus columnas ya no se pueblan.
             const etapaDestino = ETAPAS[estado];
-            const ordenDestino = etapaDestino ? etapaDestino.orden : 0;
+            const ordenDestino = ORDEN_ESTADO[estado] || 0; // PENDIENTE = 0
             if (etapaDestino) {
                 sets.push(`${etapaDestino.fecha} = NOW()`, `${etapaDestino.resp} = $${idx++}`);
                 params.push(nombre);
             }
             // Al retroceder se limpian las etapas POSTERIORES al destino (no
-            // dejar marcas de pasos que ya no son ciertos)
-            for (const etapa of Object.values(ETAPAS)) {
+            // dejar marcas de pasos que ya no son ciertos). La limpieza cubre
+            // las etapas del flujo nuevo (revision/fin) y las columnas LEGACY
+            // de 'EN PROCESO' (fecha_proceso/responsable_proceso), que ya no se
+            // poblans pero siguen existiendo en la BD.
+            for (const etapa of [...Object.values(ETAPAS), ...ETAPAS_LEGACY]) {
                 if (etapa.orden > ordenDestino) {
                     sets.push(`${etapa.fecha} = NULL`, `${etapa.resp} = ''`);
                 }

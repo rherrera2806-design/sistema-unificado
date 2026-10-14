@@ -57,14 +57,15 @@ const Reclamos = {
                 .rc-badge-pendiente{background:#fef3c7;color:#92400e}
                 .rc-badge-revision{background:#dbeafe;color:#1e40af}
                 .rc-badge-finalizado{background:#d1fae5;color:#059669}
+                .rc-badge-neutral{background:#f1f5f9;color:#64748b}
                 .rc-stat-card{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;transition:all 0.2s}
                 .rc-stat-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
                 .rc-stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
                 .rc-stat-value{font-size:20px;font-weight:800;line-height:1}
                 .rc-stat-label{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px}
-                .rc-fotos-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-                .rc-foto-thumb{width:60px;height:60px;border-radius:8px;object-fit:cover;border:2px solid #e2e8f0;cursor:pointer;transition:all 0.15s}
-                .rc-foto-thumb:hover{border-color:#3b82f6;transform:scale(1.05)}
+                .rc-fotos-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+                .rc-foto-thumb{width:100%;aspect-ratio:4/3;border-radius:9px;object-fit:cover;border:1px solid #e4e9f0;cursor:pointer;transition:all 0.15s;display:block}
+                .rc-foto-thumb:hover{border-color:#2563eb}
                 @media(max-width:768px){
                     .rc-form-grid{grid-template-columns:1fr}
                     .rc-hero-inner{flex-direction:column;align-items:stretch}
@@ -124,6 +125,8 @@ const Reclamos = {
                 .rc-ver-chip-green .rc-ver-dot{background:#15803d}
                 .rc-ver-chip-red{color:#dc2626;background:#fef2f2;border:1px solid #fecaca}
                 .rc-ver-chip-red .rc-ver-dot{background:#dc2626}
+                .rc-ver-chip-gray{color:#64748b;background:#f1f5f9;border:1px solid #e2e8f0}
+                .rc-ver-chip-gray .rc-ver-dot{background:#94a3b8}
                 .rc-ver-body{padding:20px 24px}
                 .rc-ver-sec{margin-bottom:22px}
                 .rc-ver-sec:last-child{margin-bottom:0}
@@ -150,6 +153,7 @@ const Reclamos = {
                 .rc-ver-items .rc-ver-cod{font-weight:600;color:#0f172a}
                 .rc-ver-items tfoot td{font-weight:700;color:#0f172a;border-bottom:none;background:#f8fafc}
                 .rc-ver-items-mov{display:none}
+                .rc-ver-mov-d{font-size:10px;color:#8494a8;margin-top:2px}
                 .rc-ver-texto{background:#f8fafc;border:1px solid #e4e9f0;border-radius:10px;padding:12px 14px;font-size:13px;color:#475569;line-height:1.6;white-space:pre-wrap;word-break:break-word}
                 .rc-ver-fotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
                 .rc-ver-foto{aspect-ratio:4/3;border-radius:10px;overflow:hidden;border:1px solid #e4e9f0;background:#f1f5f9;cursor:zoom-in}
@@ -165,6 +169,65 @@ const Reclamos = {
                 .rc-ver-res-t{font-size:13px;font-weight:700;color:#0f172a}
                 .rc-ver-res-s{font-size:11px;color:#475569;margin-top:1px}
                 .rc-ver-foot{padding:14px 24px;border-top:1px solid #e4e9f0;display:flex;justify-content:flex-end;gap:8px;background:#f8fafc}
+                /*── Formulario Nueva / Editar Devolución — mockup diseno-reclamos-form-v1 ──
+                   Mismo lenguaje que la ficha "Ver": limpio, sin gradientes ni
+                   iconos cuadrados de sección. Escala 20/15/13/11/10. Prefijo rc-form-. */
+                .rc-form-card{background:#fff;border:1px solid #e4e9f0;border-radius:16px;margin-bottom:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.06)}
+                .rc-form-head{padding:18px 24px;border-bottom:1px solid #e4e9f0;display:flex;align-items:center;gap:12px}
+                .rc-form-head-ic{width:40px;height:40px;border-radius:10px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+                .rc-form-head h3{margin:0;font-size:15px;font-weight:700;color:#0f172a}
+                .rc-form-sub{font-size:11px;color:#8494a8;margin-top:1px}
+                .rc-form-head-close{margin-left:auto}
+                .rc-form-body{padding:22px 24px}
+                .rc-form-sec{margin-bottom:24px}
+                .rc-form-sec-title{font-size:10px;font-weight:700;letter-spacing:0.9px;text-transform:uppercase;color:#8494a8;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+                .rc-form-sec-title::after{content:'';flex:1;height:1px;background:#e4e9f0}
+                /* Información no editable: pills, nunca inputs grises */
+                .rc-form-info-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+                .rc-form-pill{display:flex;align-items:center;gap:7px;background:#f8fafc;border:1px solid #e4e9f0;border-radius:20px;padding:6px 13px}
+                .rc-form-pill-k{font-size:10px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:#8494a8}
+                .rc-form-pill-v{font-size:13px;font-weight:600;color:#0f172a}
+                .rc-form-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:0.3px;padding:3px 10px;border-radius:20px;text-transform:uppercase}
+                /* Campos */
+                .rc-form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+                .rc-form-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 14px}
+                .rc-form-fld label{display:block;font-size:10px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:#8494a8;margin-bottom:4px}
+                .rc-form-fld input,.rc-form-fld select,.rc-form-fld textarea{width:100%;box-sizing:border-box;padding:10px 12px;font-size:13px;border:1px solid #e4e9f0;border-radius:8px;font-family:inherit;color:#0f172a;background:#fff}
+                .rc-form-fld input:focus,.rc-form-fld select:focus,.rc-form-fld textarea:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1)}
+                .rc-form-fld input[readonly],.rc-form-fld textarea[readonly],.rc-form-fld select:disabled{background:#f8fafc;color:#64748b}
+                .rc-form-fld textarea{resize:vertical;line-height:1.6}
+                .rc-form-req{color:#dc2626}
+                /* Items en TARJETAS (reemplaza la tabla de 13 columnas) */
+                .rc-form-item-card{border:1px solid #e4e9f0;border-radius:12px;padding:14px 16px;margin-bottom:12px;background:#fff}
+                .rc-form-item-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+                .rc-form-item-num{width:26px;height:26px;border-radius:8px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+                .rc-form-item-title{font-size:13px;font-weight:700;color:#0f172a}
+                .rc-form-item-ref{display:flex;align-items:center;gap:6px}
+                .rc-form-item-ref span{font-size:10px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:#8494a8}
+                .rc-form-item-ref input{width:76px;box-sizing:border-box;padding:5px 8px;font-size:13px;border:1px solid #e4e9f0;border-radius:8px;font-family:inherit;color:#0f172a}
+                .rc-form-item-del{margin-left:auto;display:flex;align-items:center;gap:4px;color:#dc2626;font-size:11px;font-weight:600;cursor:pointer;background:none;border:none;font-family:inherit;padding:5px 8px;border-radius:6px}
+                .rc-form-item-del:hover{background:#fef2f2}
+                .rc-form-item-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:10px 12px}
+                .rc-form-item-grid .rc-form-span2{grid-column:span 2}
+                .rc-form-calc{padding:9px 12px;background:#f8fafc;border:1px solid #e4e9f0;border-radius:8px}
+                .rc-form-calc-sub{display:block;font-size:10px;color:#8494a8;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:2px}
+                .rc-form-calc input{width:100%;box-sizing:border-box;border:none;background:transparent;padding:0;font-size:13px;font-weight:700;color:#0f172a;outline:none;font-family:inherit}
+                .rc-form-items-vacio{padding:18px;text-align:center;color:#94a3b8;font-size:13px;border:1px dashed #e4e9f0;border-radius:12px;background:#fbfcfe}
+                /* "+ Agregar producto" y barra de totales */
+                .rc-form-add-item{width:100%;padding:11px 14px;border:1.5px dashed #cbd5e1;border-radius:10px;background:#fbfcfe;color:#475569;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s}
+                .rc-form-add-item:hover{border-color:#2563eb;color:#2563eb;background:#eff6ff}
+                .rc-form-totales{display:flex;justify-content:flex-end;gap:22px;align-items:center;background:#f8fafc;border:1px solid #e4e9f0;border-radius:10px;padding:12px 18px;margin-top:12px}
+                .rc-form-tot-k{font-size:10px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:#8494a8}
+                .rc-form-tot-n{font-size:15px;font-weight:700;color:#0f172a}
+                .rc-form-tot-v{width:170px;box-sizing:border-box;border:none;background:transparent;padding:0;outline:none;font-family:inherit;font-size:20px;font-weight:700;color:#2563eb;text-align:right}
+                /* Fotos: dropzone dashed + miniaturas */
+                .rc-form-drop{border:2px dashed #e4e9f0;border-radius:12px;padding:22px;text-align:center;background:#fbfcfe;cursor:pointer;transition:all 0.15s}
+                .rc-form-drop:hover{border-color:#2563eb;background:#eff6ff}
+                .rc-form-drop-t{font-size:13px;font-weight:600;color:#475569;display:flex;align-items:center;justify-content:center;gap:8px}
+                .rc-form-drop-s{font-size:11px;color:#8494a8;margin-top:3px}
+                .rc-form-fotos-count{font-size:11px;color:#8494a8;margin-top:8px}
+                /* Footer del formulario */
+                .rc-form-foot{padding:16px 24px;border-top:1px solid #e4e9f0;display:flex;justify-content:flex-end;gap:8px;background:#f8fafc}
                 /*── Móvil (mockup 390px): timeline 2×2, fotos 2 columnas, kv 2 columnas,
                    tabla compacta (código · descripción en una sola celda). ── */
                 @media(max-width:768px){
@@ -179,6 +242,19 @@ const Reclamos = {
                     .rc-ver-items-full{display:none}
                     .rc-ver-items-mov{display:table}
                     .rc-ver-fotos{grid-template-columns:1fr 1fr}
+                    /* Formulario: grids a 2 columnas, fotos 3 columnas, footer a ancho completo */
+                    .rc-form-sub-a{display:none}
+                    .rc-form-head{padding:14px 16px}
+                    .rc-form-body{padding:16px}
+                    .rc-form-sec{margin-bottom:18px}
+                    .rc-form-foot{padding:12px 16px;flex-direction:column}
+                    .rc-form-foot-btn{width:100%}
+                    .rc-form-grid2,.rc-form-grid3,.rc-form-item-grid{grid-template-columns:1fr 1fr}
+                    .rc-form-item-grid .rc-form-span2{grid-column:span 2}
+                    .rc-form-calc-sub{display:none}
+                    .rc-form-totales{flex-direction:column;align-items:stretch;gap:10px}
+                    .rc-form-tot-v{width:100%}
+                    .rc-fotos-grid{grid-template-columns:repeat(3,1fr)}
                 }
             </style>
 
@@ -332,7 +408,9 @@ const Reclamos = {
 
         data.forEach(r => {
             const id = Number(r.id) || 0;
-            const badge = r.estado === 'PENDIENTE' ? 'rc-badge-pendiente' : r.estado === 'EN REVISION' ? 'rc-badge-revision' : 'rc-badge-finalizado';
+            // Badges: PENDIENTE ámbar · EN REVISION azul · FINALIZADO verde ·
+            // estado legado/desconocido (ej. 'EN PROCESO') → neutro
+            const badge = r.estado === 'PENDIENTE' ? 'rc-badge-pendiente' : r.estado === 'EN REVISION' ? 'rc-badge-revision' : r.estado === 'FINALIZADO' ? 'rc-badge-finalizado' : 'rc-badge-neutral';
             const resColor = r.resolucion === 'Rechazada' ? '#ef4444' : r.resolucion ? '#22c55e' : '#94a3b8';
             // Acciones desde _acciones (fuente única) → menú dropdown estilo pedidos
             const accs = this._acciones(r);
@@ -361,7 +439,9 @@ const Reclamos = {
         // Cards móvil (mismas acciones que el dropdown, con tonos de pedidos)
         html += '<div class="m-cards-mobile" style="display:none">';
         data.forEach(r => {
-            const badge = r.estado === 'PENDIENTE' ? 'rc-badge-pendiente' : r.estado === 'EN REVISION' ? 'rc-badge-revision' : 'rc-badge-finalizado';
+            // Badges: PENDIENTE ámbar · EN REVISION azul · FINALIZADO verde ·
+            // estado legado/desconocido (ej. 'EN PROCESO') → neutro
+            const badge = r.estado === 'PENDIENTE' ? 'rc-badge-pendiente' : r.estado === 'EN REVISION' ? 'rc-badge-revision' : r.estado === 'FINALIZADO' ? 'rc-badge-finalizado' : 'rc-badge-neutral';
             const borderColor = r.estado === 'PENDIENTE' ? '#f59e0b' : r.estado === 'EN REVISION' ? '#3b82f6' : '#22c55e';
             const items = Array.isArray(r.items) ? r.items : [];
             const itemsCount = items.length;
@@ -373,7 +453,12 @@ const Reclamos = {
             html += '<div style="font-weight:700;color:#0f172a;font-size:13px;margin-bottom:4px">' + escText(r.cliente || '-') + '</div>';
             html += '<div style="font-size:11px;color:#64748b;margin-bottom:6px">OV: ' + escText(r.numero_orden || '-') + ' · ' + itemsCount + ' item(s)</div>';
             if (items.length > 0) {
-                html += '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + items.map(it => escText(it.codigo || it.descripcion)).filter(Boolean).join(', ') + '</div>';
+                // Resumen de items fuera del editor: código + medida (si está)
+                html += '<div style="font-size:11px;color:#64748b;margin-bottom:6px">' + items.map(it => {
+                    const base = it.codigo || it.descripcion || '';
+                    const medida = this._medidaItem(it);
+                    return escText(base ? (medida ? base + ' · ' + medida : base) : '');
+                }).filter(Boolean).join(', ') + '</div>';
             }
             if (r.resolucion) html += '<div style="font-size:11px;font-weight:600;color:' + (r.resolucion === 'Rechazada' ? '#ef4444' : '#22c55e') + ';margin-bottom:8px">Resolución: ' + escText(r.resolucion) + '</div>';
             // Botones desde _acciones (fuente única): danger→btn-danger, ok→btn-primary,
@@ -542,153 +627,116 @@ const Reclamos = {
         }
 
 
+        // Pills de información no editable (en vez de inputs grises)
+        const fechaIngreso = id ? this.fmtDate(r.fecha_ingreso) : this.fmtDate(new Date());
+        const responsableIngreso = (id ? (r.responsable_ingreso || '') : (this._user().nombre || this._user().email || '')) || '-';
+        const estadoForm = r.estado || 'PENDIENTE';
+
         container.innerHTML = `
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:16px;overflow:hidden">
-                <div style="padding:14px 18px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">
-                    <div style="display:flex;align-items:center;gap:10px">
-                        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#6d28d9);display:flex;align-items:center;justify-content:center">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        </div>
-                        <h3 style="margin:0;font-size:15px;font-weight:700;color:#1e293b">${id ? 'Editar Reclamo #' + escText(r.numero_reclamo || '') : 'Nuevo Reclamo / Devolución'}</h3>
+            <div class="rc-form-card">
+                <!-- Cabecera limpia: icono azul suave + título + ayuda + Cerrar -->
+                <div class="rc-form-head">
+                    <div class="rc-form-head-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>
+                    <div>
+                        <h3>${id ? 'Editar devolución #' + escText(r.numero_reclamo || '') : 'Nueva devolución'}</h3>
+                        <div class="rc-form-sub"><span class="rc-form-sub-a">Completa los datos del reclamo · </span>los campos con * son obligatorios</div>
                     </div>
-                    <button onclick="App.modules.reclamos.hideForm()" class="btn btn-sm btn-outline">Cerrar</button>
+                    <button type="button" onclick="App.modules.reclamos.hideForm()" class="btn btn-sm btn-outline rc-form-head-close">Cerrar</button>
                 </div>
 
-                <form onsubmit="App.modules.reclamos.guardar(event)" style="padding:16px">
-                    <!-- SECCIÓN VENTAS (APERTURA) -->
-                    <div class="rc-section">
-                        <div class="rc-section-header" style="background:linear-gradient(135deg,#eff6ff,#dbeafe)">
-                            <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#3b82f6,#2563eb);display:flex;align-items:center;justify-content:center">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-                            </div>
-                            <div>
-                                <h4 style="margin:0;font-size:13px;font-weight:700;color:#1e40af">Sección Ventas (Apertura)</h4>
-                                <p style="margin:0;font-size:10px;color:#64748b">${canCreate ? 'Datos del cliente y detalle del reclamo' : 'Solo lectura — requiere permiso Agregar'}</p>
+                <form onsubmit="App.modules.reclamos.guardar(event)">
+                    <div class="rc-form-body">
+                        <!-- Información no editable: pills informativas -->
+                        <div class="rc-form-info-row">
+                            <div class="rc-form-pill"><span class="rc-form-pill-k">Ingreso</span><span class="rc-form-pill-v">${escAttr(fechaIngreso)}</span></div>
+                            <div class="rc-form-pill"><span class="rc-form-pill-k">Responsable</span><span class="rc-form-pill-v">${escAttr(responsableIngreso)}</span></div>
+                            <div class="rc-form-pill">${this._formChipEstado(estadoForm)}</div>
+                        </div>
+
+                        ${id && canEdit ? this._renderWorkflowBar(r) : ''}
+
+                        <!-- DATOS GENERALES -->
+                        <div class="rc-form-sec">
+                            <div class="rc-form-sec-title">Datos generales</div>
+                            <div class="rc-form-grid2">
+                                <div class="rc-form-fld">
+                                    <label>Cliente <span class="rc-form-req">*</span></label>
+                                    <input type="text" id="rcCliente" value="${escAttr(r.cliente || '')}" required placeholder="Nombre del cliente" ${!canCreate ? 'readonly' : ''}>
+                                </div>
+                                <div class="rc-form-fld">
+                                    <label>N° Orden de Venta (OV) <span class="rc-form-req">*</span></label>
+                                    <input type="text" id="rcOrden" value="${escAttr(r.numero_orden || '')}" required placeholder="Ej: OV-12345" ${!canCreate ? 'readonly' : ''}>
+                                </div>
                             </div>
                         </div>
-                        <div class="rc-section-body">
-                            ${id ? '<div class="rc-form-grid" style="margin-bottom:10px">'
-                                + '<div><label>Fecha Ingreso</label><input type="text" value="' + escAttr(this.fmtDateTime(r.fecha_ingreso)) + '" readonly style="background:#f8fafc;color:#64748b"></div>'
-                                + '<div><label>Responsable Ingreso</label><input type="text" value="' + escAttr(r.responsable_ingreso || '') + '" readonly style="background:#f8fafc;color:#64748b"></div>'
-                                + '<div><label>Estado</label><input type="text" value="' + escAttr(r.estado || 'PENDIENTE') + '" readonly style="background:#f8fafc;color:#64748b;font-weight:600"></div>'
-                                + '</div>' : '<div class="rc-form-grid" style="margin-bottom:10px">'
-                                + '<div><label>Fecha Ingreso</label><input type="text" value="' + escAttr(new Date().toLocaleString('es-CL')) + '" readonly style="background:#f8fafc;color:#64748b"></div>'
-                                + '<div><label>Responsable Ingreso</label><input type="text" value="' + escAttr(this._user().nombre || this._user().email || '') + '" readonly style="background:#f8fafc;color:#64748b"></div>'
-                                + '<div><label>Estado</label><input type="text" value="PENDIENTE" readonly style="background:#f8fafc;color:#64748b;font-weight:600"></div>'
-                                + '</div>'}
-                            <div class="rc-form-grid">
-                                <div>
-                                    <label>Cliente *</label>
-                                    <input type="text" id="rcCliente" value="${escAttr(r.cliente || '')}" required placeholder="Nombre del cliente" ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>
-                                </div>
-                                <div>
-                                    <label>N° Orden de Venta (OV) *</label>
-                                    <input type="text" id="rcOrden" value="${escAttr(r.numero_orden || '')}" required placeholder="Ej: OV-12345" ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>
-                                </div>
-                                <div></div>
-                            </div>
 
-                            <!-- TABLA DE ITEMS -->
-                            <div style="margin-top:14px">
-                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                                    <label style="margin:0;font-size:11px;font-weight:700;color:#1e293b">Items del Reclamo *</label>
-                                    ${canCreate ? '<button type="button" onclick="App.modules.reclamos.addItem()" class="btn btn-accent" style="padding:5px 12px;font-size:11px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar Item</button>' : ''}
-                                </div>
-                                <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px">
-                                    <table style="width:100%;border-collapse:collapse;font-size:11px" id="rcItemsTable">
-                                        <thead>
-                                            <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
-                                                <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:30px">#</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:50px">Item</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;min-width:70px">Código</th>
-                                                <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b">Descripción</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">Cant.</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:48px">Ancho</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">Alto</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">Espesor</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">m²</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:42px">Kg</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">V. Unit.</th>
-                                                <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#64748b;min-width:60px">Costo Total</th>
-                                                <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:700;color:#64748b;min-width:30px"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="rcItemsBody"></tbody>
-                                    </table>
-                                </div>
-                                <input type="hidden" id="rcItemsData" value='${escAttr(JSON.stringify(r.items || []))}'>
-                            </div>
-
-                            <div class="rc-form-grid" style="margin-top:10px">
-                                <div style="grid-column:1 / -1">
-                                    <label>Costo Total ($)</label>
-                                    <input type="text" id="rcCostoTotal" value="${escAttr(r.costo_total ? '$' + Number(r.costo_total).toLocaleString('es-CL') : '$0')}" readonly style="background:#f8fafc;color:#64748b;font-weight:600">
-                                </div>
-                            </div>
-                            <div style="margin-top:10px">
-                                <label>Detalle del Reclamo *</label>
-                                <textarea id="rcDetalle" rows="3" required placeholder="Describe el problema reportado por el cliente..." ${!canCreate ? 'readonly style="background:#f8fafc"' : ''}>${escText(r.detalle_reclamo || '')}</textarea>
-                            </div>
-                            <div style="margin-top:10px">
-                                <label>Fotos Adjuntas</label>
-                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                                    <input type="file" id="rcFotosInput" accept="image/*" multiple style="display:none" onchange="App.modules.reclamos.handleFotos(this)">
-                                    <button type="button" onclick="document.getElementById('rcFotosInput').click()" class="btn btn-sm btn-outline" style="font-size:11px">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                                        Adjuntar Fotos
-                                    </button>
-                                    <span id="rcFotosCount" style="font-size:11px;color:#64748b">${(r.fotos || []).length} foto(s) adjunta(s)</span>
-                                </div>
-                                <div id="rcFotosPreview" class="rc-fotos-grid"></div>
-                                <input type="hidden" id="rcFotosData" value='${escAttr(JSON.stringify(r.fotos || []))}'>
+                        <!-- PRODUCTOS: tarjetas por producto (las pinta renderItems) -->
+                        <div class="rc-form-sec">
+                            <div class="rc-form-sec-title">Productos de la devolución</div>
+                            <div id="rcItemsBody"></div>
+                            <input type="hidden" id="rcItemsData" value='${escAttr(JSON.stringify(r.items || []))}'>
+                            ${canCreate ? '<button type="button" class="rc-form-add-item" onclick="App.modules.reclamos.addItem()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar producto</button>' : ''}
+                            <div class="rc-form-totales">
+                                <div class="rc-form-tot"><div class="rc-form-tot-k">Productos</div><div class="rc-form-tot-n" id="rcItemsCount">0</div></div>
+                                <div class="rc-form-tot"><div class="rc-form-tot-k">Costo total</div><input type="text" id="rcCostoTotal" class="rc-form-tot-v" value="${escAttr(r.costo_total ? '$' + Number(r.costo_total).toLocaleString('es-CL') : '$0')}" readonly></div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- SECCIÓN CALIDAD / RESOLUCIÓN -->
-                    <div class="rc-section">
-                        <div class="rc-section-header" style="background:linear-gradient(135deg,#faf5ff,#f3e8ff)">
-                            <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#a855f7,#7c3aed);display:flex;align-items:center;justify-content:center">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                            </div>
-                            <div>
-                                <h4 style="margin:0;font-size:13px;font-weight:700;color:#6d28d9">Sección Calidad / Resolución</h4>
-                                <p style="margin:0;font-size:10px;color:#64748b">${canEdit ? 'Análisis técnico y resolución del reclamo' : 'Solo lectura — requiere permiso Editar'}</p>
+                        <!-- DETALLE DEL RECLAMO -->
+                        <div class="rc-form-sec">
+                            <div class="rc-form-sec-title">Detalle del reclamo</div>
+                            <div class="rc-form-fld">
+                                <textarea id="rcDetalle" rows="4" required placeholder="Describe el problema reportado por el cliente...">${escText(r.detalle_reclamo || '')}</textarea>
                             </div>
                         </div>
-                        <div class="rc-section-body">
-                            <div class="rc-form-grid">
-                                <div>
+
+                        <!-- FOTOS -->
+                        <div class="rc-form-sec">
+                            <div class="rc-form-sec-title">Fotos adjuntas</div>
+                            <input type="file" id="rcFotosInput" accept="image/*" multiple style="display:none" onchange="App.modules.reclamos.handleFotos(this)">
+                            <div class="rc-form-drop" onclick="document.getElementById('rcFotosInput').click()">
+                                <div class="rc-form-drop-t"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Agregar fotos del producto</div>
+                                <div class="rc-form-drop-s">JPG o PNG · desde galería o cámara · máx. 10 fotos</div>
+                            </div>
+                            <div id="rcFotosPreview" class="rc-fotos-grid"></div>
+                            <div class="rc-form-fotos-count" id="rcFotosCount">${(r.fotos || []).length} foto(s) adjunta(s)</div>
+                            <input type="hidden" id="rcFotosData" value='${escAttr(JSON.stringify(r.fotos || []))}'>
+                        </div>
+
+                        <!-- ANÁLISIS Y RESOLUCIÓN -->
+                        <div class="rc-form-sec" style="margin-bottom:0">
+                            <div class="rc-form-sec-title">Análisis y resolución</div>
+                            <div class="rc-form-grid3">
+                                <div class="rc-form-fld">
                                     <label>Responsable de Falla</label>
                                     <select id="rcResponsableFalla" onchange="App.modules.reclamos.onResponsableChange()" ${!canEdit ? 'disabled' : ''}>
                                         <option value="">Seleccionar...</option>
                                         ${respOptions}
                                     </select>
                                 </div>
-                                <div>
+                                <div class="rc-form-fld">
                                     <label>Motivo</label>
                                     <select id="rcMotivo" ${!canEdit ? 'disabled' : ''}>
                                         <option value="">Seleccionar responsable primero...</option>
                                     </select>
                                 </div>
-                                <div>
+                                <div class="rc-form-fld">
                                     <label>Resolución</label>
                                     <select id="rcResolucion" ${!canEdit ? 'disabled' : ''}>${resolucionOptions}</select>
                                 </div>
                             </div>
-                            <div style="margin-top:10px">
+                            <div class="rc-form-fld" style="margin-top:12px">
                                 <label>Observación / Análisis Técnico</label>
-                                <textarea id="rcObservacion" rows="4" placeholder="Análisis técnico del problema, respuesta al cliente, acciones correctivas..." ${!canEdit ? 'readonly style="background:#f8fafc"' : ''}>${escText(r.observacion_analisis || '')}</textarea>
+                                <textarea id="rcObservacion" rows="4" placeholder="Análisis técnico del problema, respuesta al cliente, acciones correctivas..." ${!canEdit ? 'readonly' : ''}>${escText(r.observacion_analisis || '')}</textarea>
                             </div>
                         </div>
                     </div>
 
-                    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #f1f5f9">
-                        <button type="button" onclick="App.modules.reclamos.hideForm()" class="btn btn-outline">Cancelar</button>
-                        ${(canCreate || canEdit) ? '<button type="submit" class="btn btn-primary" style="padding:10px 28px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar</button>' : ''}
+                    <!-- FOOTER -->
+                    <div class="rc-form-foot">
+                        <button type="button" onclick="App.modules.reclamos.hideForm()" class="btn btn-outline rc-form-foot-btn">Cancelar</button>
+                        ${(canCreate || canEdit) ? '<button type="submit" class="btn btn-primary rc-form-foot-btn">' + (id ? 'Guardar cambios' : 'Guardar devolución') + '</button>' : ''}
                     </div>
-
-                    ${id && canEdit ? this._renderWorkflowBar(r) : ''}
                 </form>
             </div>
         `;
@@ -751,10 +799,33 @@ const Reclamos = {
             + ' ' + String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0');
     },
 
-    // Chip de estado de la cabecera (ámbar/azul/morado/verde según estado)
+    // Medida de un item en formato "ancho×alto" (mm). Vacío si falta alguno.
+    // Sin separador de miles: "3600×2500" (el punto decimal sería ambiguo).
+    _medidaItem(it) {
+        const ancho = Number(it && it.ancho) || 0;
+        const alto = Number(it && it.alto) || 0;
+        return (ancho && alto) ? (ancho + '×' + alto) : '';
+    },
+
+    // Tono del chip según la máquina de estados real (SOLO 3 estados):
+    //   PENDIENTE → ámbar · EN REVISION → azul · FINALIZADO → verde.
+    // Cualquier valor legado (ej. 'EN PROCESO') o desconocido → neutro (gris),
+    // para no romper la ficha con datos antiguos.
+    _tonoEstado(estado) {
+        if (estado === 'FINALIZADO') return 'green';
+        if (estado === 'EN REVISION') return 'blue';
+        if (estado === 'PENDIENTE') return 'amber';
+        return 'gray';
+    },
+
+    // Chip de estado de la cabecera de la ficha "Ver"
     _chipEstado(estado) {
-        const tono = estado === 'FINALIZADO' ? 'green' : estado === 'EN REVISION' ? 'blue' : estado === 'EN PROCESO' ? 'purple' : 'amber';
-        return '<span class="rc-ver-chip rc-ver-chip-' + tono + '"><span class="rc-ver-dot"></span>' + escText(estado || 'PENDIENTE') + '</span>';
+        return '<span class="rc-ver-chip rc-ver-chip-' + this._tonoEstado(estado) + '"><span class="rc-ver-dot"></span>' + escText(estado || 'PENDIENTE') + '</span>';
+    },
+
+    // Chip de estado del formulario (mismo look; reutiliza los tonos rc-ver-chip-*)
+    _formChipEstado(estado) {
+        return '<span class="rc-form-chip rc-ver-chip-' + this._tonoEstado(estado) + '"><span class="rc-ver-dot"></span>' + escText(estado || 'PENDIENTE') + '</span>';
     },
 
     // Chip de resolución (verde si empieza por "Aceptada", rojo si "Rechazada")
@@ -850,11 +921,13 @@ const Reclamos = {
 
         html += '<div class="rc-ver-body">';
 
-        // ── Flujo de atención: línea de tiempo de 4 pasos ──
+        // ── Flujo de atención: línea de tiempo de 3 pasos ──
+        // Máquina de estados real: PENDIENTE → EN REVISION → FINALIZADO.
+        // NO existe "En proceso": los datos legados con ese estado se muestran
+        // (chip neutro) pero sin paso propio en la línea de tiempo.
         const pasos = [
             { t: 'Pendiente', fecha: r.fecha_ingreso, resp: r.responsable_ingreso, estado: 'PENDIENTE' },
             { t: 'En revisión', fecha: r.fecha_revision, resp: r.responsable_revision, estado: 'EN REVISION' },
-            { t: 'En proceso', fecha: r.fecha_proceso, resp: r.responsable_proceso, estado: 'EN PROCESO' },
             { t: 'Finalizado', fecha: r.fecha_fin, resp: r.responsable_fin, estado: 'FINALIZADO' }
         ];
         const tlHtml = pasos.map(p => {
@@ -883,34 +956,40 @@ const Reclamos = {
             + kv('Costo total', escText(this._fmtCLP(costoTotal)), 'rc-ver-v-num')
             + '</div></div>';
 
-        // ── Productos de la devolución (5 columnas en desktop, compacta en móvil) ──
+        // ── Productos de la devolución ──
+        // Desktop: Ítem · Código · Descripción · Medida (ancho×alto mm) ·
+        // Cantidad · Valor unit. · Total. Móvil: compacto a 2 líneas
+        // ("1 · 658 · TEMP.6 MM" / "794×265 · Cant 8" | $58.968).
         let filas = '';
         let filasMov = '';
         items.forEach(it => {
             const cant = Number(it.cantidad) || 0;
             const vu = Number(it.valor_unitario) || 0;
             const tot = vu * cant;
+            const medida = this._medidaItem(it) || '-';
             filas += '<tr>'
-                + '<td class="rc-ver-cod">' + escText(it.codigo || it.item || '-') + '</td>'
+                + '<td class="rc-ver-num rc-ver-cod">' + escText(it.item || '-') + '</td>'
+                + '<td class="rc-ver-cod">' + escText(it.codigo || '-') + '</td>'
                 + '<td>' + escText(it.descripcion || '-') + '</td>'
+                + '<td>' + escText(medida) + '</td>'
                 + '<td class="rc-ver-num">' + this._num(cant) + '</td>'
                 + '<td class="rc-ver-num">' + (vu ? escText(this._fmtCLP(vu)) : '-') + '</td>'
                 + '<td class="rc-ver-num">' + (tot ? escText(this._fmtCLP(tot)) : '-') + '</td>'
                 + '</tr>';
             filasMov += '<tr>'
-                + '<td class="rc-ver-cod">' + escText(it.codigo || it.item || '-') + ' · ' + escText(it.descripcion || '-') + '</td>'
-                + '<td class="rc-ver-num">' + this._num(cant) + '</td>'
+                + '<td class="rc-ver-cod"><div>' + escText(it.item || '-') + ' · ' + escText(it.codigo || '-') + ' · ' + escText(it.descripcion || '-') + '</div>'
+                + '<div class="rc-ver-mov-d">' + escText(medida) + ' · Cant ' + this._num(cant) + '</div></td>'
                 + '<td class="rc-ver-num">' + (tot ? escText(this._fmtCLP(tot)) : '-') + '</td>'
                 + '</tr>';
         });
         const tablaFull = '<table class="rc-ver-items rc-ver-items-full"><thead><tr>'
-            + '<th>Código</th><th>Descripción</th><th class="rc-ver-num">Cantidad</th><th class="rc-ver-num">Valor unit.</th><th class="rc-ver-num">Total</th>'
+            + '<th class="rc-ver-num">Ítem</th><th>Código</th><th>Descripción</th><th>Medida</th><th class="rc-ver-num">Cantidad</th><th class="rc-ver-num">Valor unit.</th><th class="rc-ver-num">Total</th>'
             + '</tr></thead><tbody>'
-            + (items.length ? filas : '<tr><td colspan="5" style="text-align:center;color:#94a3b8">Sin productos registrados</td></tr>')
-            + '</tbody><tfoot><tr><td colspan="4" class="rc-ver-num">Total</td><td class="rc-ver-num">' + escText(this._fmtCLP(totalItems)) + '</td></tr></tfoot></table>';
+            + (items.length ? filas : '<tr><td colspan="7" style="text-align:center;color:#94a3b8">Sin productos registrados</td></tr>')
+            + '</tbody><tfoot><tr><td colspan="6" class="rc-ver-num">Total</td><td class="rc-ver-num">' + escText(this._fmtCLP(totalItems)) + '</td></tr></tfoot></table>';
         const tablaMov = '<table class="rc-ver-items rc-ver-items-mov"><tbody>'
-            + (items.length ? filasMov : '<tr><td colspan="3" style="text-align:center;color:#94a3b8">Sin productos registrados</td></tr>')
-            + '</tbody><tfoot><tr><td>Total</td><td></td><td class="rc-ver-num">' + escText(this._fmtCLP(totalItems)) + '</td></tr></tfoot></table>';
+            + (items.length ? filasMov : '<tr><td colspan="2" style="text-align:center;color:#94a3b8">Sin productos registrados</td></tr>')
+            + '</tbody><tfoot><tr><td>Total</td><td class="rc-ver-num">' + escText(this._fmtCLP(totalItems)) + '</td></tr></tfoot></table>';
         html += '<div class="rc-ver-sec"><div class="rc-ver-sec-title">Productos de la devolución</div>' + tablaFull + tablaMov + '</div>';
 
         // ── Detalle del reclamo ──
@@ -1299,51 +1378,61 @@ const Reclamos = {
         }
     },
 
+    // Pinta los productos como TARJETAS (mockup diseno-reclamos-form-v1),
+    // reemplazando la tabla de 13 columnas. Se conservan EXACTAMENTE los IDs
+    // y handlers por fila (rcItem_/rcCodigo_/rcDesc_/rcCantidad_/rcAncho_/
+    // rcAlto_/rcEspesor_/rcM2_/rcKg_/rcValor_/rcCostoTotal_), de modo que
+    // _getItems/_syncItemFromRow/_calcItem/etc. siguen funcionando sin cambios.
     renderItems() {
-        const tbody = document.getElementById('rcItemsBody');
-        if (!tbody) return;
+        const cont = document.getElementById('rcItemsBody');
+        if (!cont) return;
         const items = this._getItems();
 
-        const thBase = 'padding:6px 8px;font-size:10px;font-weight:700;color:#64748b;';
-        const tdBase = 'padding:0;';
-        const inpBase = 'width:100%;box-sizing:border-box;padding:6px 8px;font-size:11px;border:1px solid #e2e8f0;border-radius:5px;outline:none;font-family:inherit;';
-
-        if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="13" style="padding:16px;text-align:center;color:#94a3b8;font-size:11px">Sin items. Haz clic en "Agregar Item" para comenzar.</td></tr>';
-            return;
-        }
-
         const canCreate = this._canCreate !== false;
-        const ro = canCreate ? '' : 'readonly style="background:#f8fafc"';
         const roInp = canCreate ? '' : 'readonly';
 
-        tbody.innerHTML = items.map((it, i) => {
-            const v = (x) => (x || x === 0) ? x : '';
-            const onCalc = 'App.modules.reclamos._calcItem(' + i + ')';
-            const onSync = 'App.modules.reclamos._syncItemFromRow(' + i + ')';
-            const onCodigo = 'App.modules.reclamos._onCodigoInput(' + i + ')';
-            const onValorIn = 'App.modules.reclamos._onValorInput(' + i + ')';
-            const onValorBl = 'App.modules.reclamos._onValorBlur(' + i + ')';
-            const onDimBl = 'App.modules.reclamos._onDimBlur(' + i + ')';
-            const costoTotal = (it.valor_unitario || 0) * (it.cantidad || 1);
-            return '<tr style="border-bottom:1px solid #f1f5f9">'
-                + '<td style="' + tdBase + 'text-align:center;padding:6px 4px;font-weight:700;color:#7c3aed;font-size:11px">' + (i + 1) + '</td>'
-                + '<td style="' + tdBase + '"><input id="rcItem_' + i + '" value="' + escAttr(v(it.item)) + '" style="' + inpBase + '" placeholder="#" oninput="' + onSync + '" ' + roInp + '></td>'
-                + '<td style="' + tdBase + '"><input id="rcCodigo_' + i + '" value="' + escAttr(v(it.codigo)) + '" style="' + inpBase + 'cursor:pointer" placeholder="🔍 Código SAP" readonly onclick="App.modules.reclamos._openCodigoSearch(' + i + ')"></td>'
-                + '<td style="' + tdBase + '"><input id="rcDesc_' + i + '" value="' + escAttr(v(it.descripcion)) + '" style="' + inpBase + 'background:#f8fafc" placeholder="Descripción" readonly></td>'
-                + '<td style="' + tdBase + '"><input id="rcCantidad_' + i + '" type="text" inputmode="numeric" value="' + escAttr(v(it.cantidad || 1)) + '" style="' + inpBase + 'text-align:right" placeholder="1" oninput="' + onCalc + '" ' + roInp + '></td>'
-                + '<td style="' + tdBase + '"><input id="rcAncho_' + i + '" type="text" inputmode="numeric" value="' + escAttr(v(this._fmt(it.ancho))) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
-                + '<td style="' + tdBase + '"><input id="rcAlto_' + i + '" type="text" inputmode="numeric" value="' + escAttr(v(this._fmt(it.alto))) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
-                + '<td style="' + tdBase + '"><input id="rcEspesor_' + i + '" type="text" inputmode="decimal" value="' + escAttr(v(it.espesor || '')) + '" style="' + inpBase + 'text-align:right" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '></td>'
-                + '<td style="' + tdBase + '"><input id="rcM2_' + i + '" type="text" value="' + escAttr(v(it.m2 || '')) + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
-                + '<td style="' + tdBase + '"><input id="rcKg_' + i + '" type="text" value="' + escAttr(v(it.kg || '')) + '" style="' + inpBase + 'text-align:right;background:#f8fafc" readonly placeholder="0"></td>'
-                + '<td style="' + tdBase + '"><input id="rcValor_' + i + '" type="text" inputmode="numeric" value="' + escAttr(v(it.valor_unitario ? this._fmtCLP(it.valor_unitario) : '')) + '" style="' + inpBase + 'text-align:right" placeholder="$0" oninput="' + onValorIn + '" onblur="' + onValorBl + '" ' + roInp + '></td>'
-                + '<td style="' + tdBase + '"><input id="rcCostoTotal_' + i + '" type="text" value="' + escAttr(v(costoTotal ? this._fmtCLP(costoTotal) : '')) + '" style="' + inpBase + 'text-align:right;background:#f0fdf4;font-weight:600;color:#16a34a" readonly placeholder="$0"></td>'
-                + (canCreate ? '<td style="padding:4px 6px;text-align:center"><button type="button" onclick="App.modules.reclamos.removeItem(' + i + ')" style="background:none;border:none;cursor:pointer;color:#ef4444;padding:2px" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></td>' : '<td></td>')
-                + '</tr>';
-        }).join('');
+        if (items.length === 0) {
+            cont.innerHTML = '<div class="rc-form-items-vacio">Sin productos todavía · usa "+ Agregar producto" para comenzar.</div>';
+        } else {
+            // Campo editable normal
+            const fld = (label, inner, span) => '<div class="rc-form-fld' + (span ? ' rc-form-span2' : '') + '"><label>' + label + '</label>' + inner + '</div>';
+            // Caja "auto": valor derivado con input readonly (conserva su id)
+            const calc = (label, inner) => '<div class="rc-form-fld"><label>' + label + '</label><div class="rc-form-calc"><span class="rc-form-calc-sub">auto</span>' + inner + '</div></div>';
 
-        // Auto-calcular costo total desde items
+            cont.innerHTML = items.map((it, i) => {
+                const v = (x) => (x || x === 0) ? x : '';
+                const onCalc = 'App.modules.reclamos._calcItem(' + i + ')';
+                const onSync = 'App.modules.reclamos._syncItemFromRow(' + i + ')';
+                const onValorIn = 'App.modules.reclamos._onValorInput(' + i + ')';
+                const onValorBl = 'App.modules.reclamos._onValorBlur(' + i + ')';
+                const onDimBl = 'App.modules.reclamos._onDimBlur(' + i + ')';
+                const costoTotal = (it.valor_unitario || 0) * (it.cantidad || 1);
+                return '<div class="rc-form-item-card">'
+                    + '<div class="rc-form-item-head">'
+                    + '<div class="rc-form-item-num">' + (i + 1) + '</div>'
+                    + '<div class="rc-form-item-title">Producto ' + (i + 1) + '</div>'
+                    + '<div class="rc-form-item-ref"><span>Ítem</span><input id="rcItem_' + i + '" value="' + escAttr(v(it.item)) + '" placeholder="#" oninput="' + onSync + '" ' + roInp + '></div>'
+                    + (canCreate ? '<button type="button" class="rc-form-item-del" onclick="App.modules.reclamos.removeItem(' + i + ')" title="Quitar producto"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Quitar</button>' : '')
+                    + '</div>'
+                    + '<div class="rc-form-item-grid">'
+                    + fld('Código', '<input id="rcCodigo_' + i + '" value="' + escAttr(v(it.codigo)) + '" style="cursor:pointer" placeholder="Código SAP" readonly onclick="App.modules.reclamos._openCodigoSearch(' + i + ')">')
+                    + fld('Descripción', '<input id="rcDesc_' + i + '" value="' + escAttr(v(it.descripcion)) + '" placeholder="Descripción" readonly>', true)
+                    + fld('Cantidad', '<input id="rcCantidad_' + i + '" type="text" inputmode="numeric" value="' + escAttr(v(it.cantidad || 1)) + '" placeholder="1" oninput="' + onCalc + '" ' + roInp + '>')
+                    + fld('Ancho (mm)', '<input id="rcAncho_' + i + '" type="text" inputmode="numeric" value="' + escAttr(v(this._fmt(it.ancho))) + '" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '>')
+                    + fld('Alto (mm)', '<input id="rcAlto_' + i + '" type="text" inputmode="numeric" value="' + escAttr(v(this._fmt(it.alto))) + '" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '>')
+                    + fld('Espesor (mm)', '<input id="rcEspesor_' + i + '" type="text" inputmode="decimal" value="' + escAttr(v(it.espesor || '')) + '" placeholder="0" oninput="' + onCalc + '" onblur="' + onDimBl + '" ' + roInp + '>')
+                    + calc('M²', '<input id="rcM2_' + i + '" type="text" value="' + escAttr(v(it.m2 || '')) + '" readonly>')
+                    + calc('Kg', '<input id="rcKg_' + i + '" type="text" value="' + escAttr(v(it.kg || '')) + '" readonly>')
+                    + fld('Valor unitario', '<input id="rcValor_' + i + '" type="text" inputmode="numeric" value="' + escAttr(v(it.valor_unitario ? this._fmtCLP(it.valor_unitario) : '')) + '" placeholder="$0" oninput="' + onValorIn + '" onblur="' + onValorBl + '" ' + roInp + '>')
+                    + calc('Costo total', '<input id="rcCostoTotal_' + i + '" type="text" value="' + escAttr(v(costoTotal ? this._fmtCLP(costoTotal) : '')) + '" readonly>')
+                    + '</div></div>';
+            }).join('');
+        }
+
+        // Barra de totales: "Productos: N" + "Costo total: $X" (formato es-CL).
+        // El costo sigue viviendo en #rcCostoTotal (lo lee guardar()).
+        const countEl = document.getElementById('rcItemsCount');
+        if (countEl) countEl.textContent = String(items.length);
         const costoInput = document.getElementById('rcCostoTotal');
         if (costoInput && !costoInput._userEdited) {
             const totalItems = items.reduce((sum, it) => sum + (it.valor_unitario || 0) * (it.cantidad || 1), 0);
@@ -1589,6 +1678,10 @@ const Reclamos = {
             '': 'border-color:#e2e8f0;background:white;color:#334155'
         };
 
+        // Máquina de estados real (SOLO 3 estados): PENDIENTE → EN REVISION →
+        // FINALIZADO. Estas son las ÚNICAS transiciones válidas; ningún texto
+        // menciona "En proceso" (ese estado ya no existe). Un estado legado
+        // como 'EN PROCESO' no tiene transiciones y no muestra acciones.
         const transitions = {
             'PENDIENTE': [
                 { next: 'EN REVISION', label: 'Iniciar Revisión', icon: ico.buscar, tone: '' }
@@ -1603,8 +1696,10 @@ const Reclamos = {
         const actions = transitions[estado] || [];
         if (actions.length === 0) return '';
 
-        let html = '<div style="margin-top:16px;padding:14px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-radius:10px;border:1px solid #e2e8f0">';
-        html += '<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px;letter-spacing:0.5px">Acciones de Flujo</div>';
+        // Sección con el estilo nuevo del formulario (título + línea divisora,
+        // sin gradientes ni iconos cuadrados)
+        let html = '<div class="rc-form-sec" style="margin-bottom:0">';
+        html += '<div class="rc-form-sec-title">Flujo de atención</div>';
         html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
 
         actions.forEach(a => {
@@ -1617,7 +1712,7 @@ const Reclamos = {
             + 'style="padding:8px 16px;font-size:13px;font-weight:600;border-radius:8px;border:1px solid;' + tonos[''] + ';cursor:pointer;display:flex;align-items:center;gap:6px">'
             + ico.clock + ' Historial</button>';
 
-        html += '</div></div>';
+        html += '</div>';
 
         // Timeline de estados
         const timestamps = [
@@ -1636,7 +1731,8 @@ const Reclamos = {
             html += '</div>';
         }
 
-        return html;
+        // Cierra .rc-form-sec (la sección envuelve botones + timeline)
+        return html + '</div>';
     },
 
     async cambiarEstado(id, nuevoEstado) {

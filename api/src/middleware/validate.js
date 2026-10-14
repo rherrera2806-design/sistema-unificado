@@ -65,10 +65,11 @@ const pedidosSchema = z.object({
  *     aceptan en PUT /:id (400): el estado/análisis van por PUT /:id/estado con
  *     historial y la identidad se toma de la sesión (req.user).
  *   - Máquina de estados de PUT /:id/estado (ver TRANSICIONES en reclamos.js):
- *     PENDIENTE → EN REVISION → EN PROCESO → FINALIZADO, con retrocesos
- *     EN REVISION → PENDIENTE, EN PROCESO → EN REVISION y reabrir
- *     FINALIZADO → EN REVISION. Transición inválida → 409. 'resolucion' es
- *     requerida y solo permitida al FINALIZADO.
+ *     PENDIENTE → EN REVISION → FINALIZADO, con retrocesos EN REVISION →
+ *     PENDIENTE y reabrir FINALIZADO → EN REVISION. Transición inválida → 409.
+ *     'resolucion' es requerida y solo permitida al FINALIZADO. El estado
+ *     legacy 'EN PROCESO' (vocabulario anterior) solo se acepta como ORIGEN de
+ *     filas antiguas y como filtro del listado, nunca como destino.
  */
 const reclamosSchema = z.object({
     cliente: z.string().max(200).optional().default(''),
@@ -90,8 +91,10 @@ const reclamosSchema = z.object({
     fotos: z.array(z.string().regex(/^data:image\/(jpeg|png|webp);base64,/)).max(10).optional().default([]),
     motivo: z.string().max(200).optional().default(''),
     observacion_analisis: z.string().max(2000).optional().default(''),
-    // Solo válidos en PUT /:id/estado (en PUT /:id devuelven 400):
-    estado: z.enum(['PENDIENTE', 'EN REVISION', 'EN PROCESO', 'FINALIZADO']).optional(),
+    // Solo válidos en PUT /:id/estado (en PUT /:id devuelven 400).
+    // 'EN PROCESO' NO es estado válido: solo existe como origen legacy de
+    // filas antiguas (ver ESTADOS_LEGACY en routes/reclamos.js).
+    estado: z.enum(['PENDIENTE', 'EN REVISION', 'FINALIZADO']).optional(),
     resolucion: z.enum(['', 'Aceptada Fabricacion nueva', 'Aceptada Reproceso', 'Rechazada']).optional(),
     responsable_falla: z.string().max(100).optional(),
     observacion: z.string().max(2000).optional()
