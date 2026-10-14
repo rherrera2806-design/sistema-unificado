@@ -48,16 +48,20 @@ App.registerModule('reclamos_reporte', {
                 .rq-p-head h3{font-size:13px;font-weight:600;margin:0}
                 .rq-p-head .sub{font-size:10px;color:var(--invp-muted,#8494a8)}
                 .rq-p-body{padding:16px 18px}
-                /* Gráficos que LLENAN la tarjeta (las filas de grid igualan alturas:
-                   sin esto, la tarjeta más baja dejaba un hueco vacío debajo) */
-                .rq-p-body.rq-chart-body{display:flex;flex-direction:column}
-                .rq-chart-body .rq-bars-row{flex:1}
-                .rq-chart-body .rq-bars{flex:1;height:auto;min-height:150px}
+                /* Gráficos que LLENAN la tarjeta: el área de barras se posiciona
+                   absoluta dentro del cuerpo (altura definida) para que los
+                   porcentajes de alto de las barras resuelvan siempre. */
+                .rq-p-body.rq-chart-body{position:relative;min-height:210px}
+                .rq-chart-body .rq-bars-row{position:absolute;inset:16px 18px 38px;display:flex;gap:8px;align-items:stretch}
+                .rq-chart-body > .rq-bars{position:absolute;inset:16px 18px}
+                .rq-chart-body .rq-bars{flex:1;display:flex;align-items:flex-end;gap:8px}
                 .rq-chart-body .rq-yaxis{height:auto;align-self:stretch}
+                .rq-chart-body .rq-nota{position:absolute;left:18px;right:18px;bottom:12px;margin:0}
                 .rq-bars{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:14px;flex:1;min-width:0}
                 .rq-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
                 .rq-bar{width:100%;max-width:34px;background:var(--invp-accent,#2563eb);border-radius:5px 5px 0 0;position:relative;min-height:2px}
                 .rq-bar.gris{background:#94a3b8}
+                .rq-bar.oscuro{background:#1e3a5f}
                 .rq-bar .n{position:absolute;top:-17px;left:0;right:0;text-align:center;font-size:10px;font-weight:600;color:var(--invp-slate,#475569)}
                 .rq-bar-col .m{font-size:10px;color:var(--invp-muted,#8494a8)}
                 .rq-bars-row{display:flex;gap:8px}
@@ -97,7 +101,7 @@ App.registerModule('reclamos_reporte', {
                     .rq-kpi{padding:12px 14px}
                     .rq-kpi .v{font-size:15px}
                     .rq-grid2,.rq-grid3{grid-template-columns:1fr}
-                    .rq-chart-body .rq-bars{min-height:110px}
+                    .rq-p-body.rq-chart-body{min-height:180px}
                     .rq-mes th,.rq-mes td{padding:7px 8px}
                 }
             </style>
@@ -214,8 +218,9 @@ App.registerModule('reclamos_reporte', {
         for (let v = maxEje; v >= 0; v -= paso) axis += '<span>' + v + '</span>';
         const bars = totales.map((t, i) => {
             const h = Math.max(2, Math.round((t / maxEje) * 100));
+            // Mes en curso destacado en azul fuerte; el resto en azul del sistema
             return '<div class="rq-bar-col">'
-                + '<div class="rq-bar' + (esMesActual(i) ? '' : ' gris') + '" style="height:' + h + '%"><div class="n">' + t + '</div></div>'
+                + '<div class="rq-bar' + (esMesActual(i) ? ' oscuro' : '') + '" style="height:' + h + '%"><div class="n">' + t + '</div></div>'
                 + '<div class="m">' + mesesCortos[i] + '</div></div>';
         }).join('');
         document.getElementById('rrChartMes').innerHTML = ''
