@@ -944,15 +944,19 @@ const Reclamos = {
             + '<div class="rc-ver-timeline">' + tlHtml + '</div></div>';
 
         // ── Datos generales (ficha clave-valor a 2 columnas) ──
+        // Presentacion normalizada: los datos suelen venir en MAYUSCULAS
+        // (como se escribieron). Se capitaliza SIN inventar acentos.
+        const titulo = (s) => String(s || '').toLowerCase().replace(/\b[a-záéíóúñü]/g, ch => ch.toUpperCase());
+        const frase = (s) => { const t = String(s || '').toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
         const kv = (k, v, extraClass) => '<div class="rc-ver-kv"><div class="rc-ver-k">' + k + '</div>'
             + '<div class="rc-ver-v' + (extraClass ? ' ' + extraClass : '') + '">' + v + '</div></div>';
         html += '<div class="rc-ver-sec"><div class="rc-ver-sec-title">Datos generales</div>'
             + '<div class="rc-ver-kv-grid">'
-            + kv('Cliente', escText(r.cliente || '-'))
+            + kv('Cliente', escText(r.cliente ? titulo(r.cliente) : '-'))
             + kv('Orden de venta', escText(r.numero_orden || '-'))
             + kv('Ingresado por', escText(r.responsable_ingreso || '-'))
-            + kv('Responsable de falla', escText(r.responsable_falla || '-'))
-            + kv('Motivo', escText(r.motivo || '-'))
+            + kv('Responsable de falla', escText(r.responsable_falla ? titulo(r.responsable_falla) : '-'))
+            + kv('Motivo', escText(r.motivo ? frase(r.motivo) : '-'))
             + kv('Costo total', escText(this._fmtCLP(costoTotal)), 'rc-ver-v-num')
             + '</div></div>';
 

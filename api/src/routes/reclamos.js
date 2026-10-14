@@ -291,11 +291,15 @@ function parseIdReclamo(req, res) {
 
 // Campo de texto del body: null/undefined = ausente, string = trim + largo
 // máximo, cualquier otro tipo = error de validación.
-function textoDeBody(valor, campo, max) {
+function textoDeBody(valor, campo, max, modo) {
     if (valor === undefined || valor === null) return { ok: true, valor: undefined };
     if (typeof valor !== 'string') return { ok: false, error: `El campo '${campo}' debe ser texto` };
-    const t = valor.trim();
+    let t = valor.trim();
     if (t.length > max) return { ok: false, error: `El campo '${campo}' no puede superar ${max} caracteres` };
+    // Presentacion normalizada al guardar: los usuarios suelen escribir en
+    // MAYUSCULAS; se capitaliza SIN inventar acentos (modo 'titulo' | 'frase').
+    if (modo === 'titulo') t = t.toLowerCase().replace(/\b[a-záéíóúñü]/g, ch => ch.toUpperCase());
+    else if (modo === 'frase') { t = t.toLowerCase(); t = t.charAt(0).toUpperCase() + t.slice(1); }
     return { ok: true, valor: t };
 }
 
@@ -614,7 +618,7 @@ router.post('/api/reclamos/matriz', perms.create, async (req, res, next) => {
     try {
         await ensureColumns();
         const responsable = textoDeBody((req.body || {}).responsable, 'responsable', LIM.resp_matriz);
-        const motivo = textoDeBody((req.body || {}).motivo, 'motivo', LIM.motivo_matriz);
+        const motivo = textoDeBody((req.body || {}).motivo, 'motivo', LIM.motivo_matriz, 'frase');
         for (const c of [responsable, motivo]) {
             if (!c.ok) return res.status(400).json({ error: c.error });
         }
@@ -871,12 +875,12 @@ router.post('/api/reclamos', perms.create, async (req, res, next) => {
         const d = req.body || {};
         const { email, nombre } = identidad(req);
 
-        const cliente = textoDeBody(d.cliente, 'cliente', LIM.cliente);
+        const cliente = textoDeBody(d.cliente, 'cliente', LIM.cliente, 'titulo');
         const numeroOrden = textoDeBody(d.numero_orden, 'numero_orden', LIM.numero_orden);
         const descripcion = textoDeBody(d.descripcion, 'descripcion', LIM.descripcion);
         const detalle = textoDeBody(d.detalle_reclamo, 'detalle_reclamo', LIM.detalle_reclamo);
-        const respFalla = textoDeBody(d.responsable_falla, 'responsable_falla', LIM.responsable_falla);
-        const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo);
+        const respFalla = textoDeBody(d.responsable_falla, 'responsable_falla', LIM.responsable_falla, 'titulo');
+        const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo, 'frase');
         const obsAnalisis = textoDeBody(d.observacion_analisis, 'observacion_analisis', LIM.observacion_analisis);
         for (const c of [cliente, numeroOrden, descripcion, detalle, respFalla, motivo, obsAnalisis]) {
             if (!c.ok) return res.status(400).json({ error: c.error });
@@ -942,11 +946,11 @@ router.put('/api/reclamos/:id', perms.update, async (req, res, next) => {
             });
         }
 
-        const cliente = textoDeBody(d.cliente, 'cliente', LIM.cliente);
+        const cliente = textoDeBody(d.cliente, 'cliente', LIM.cliente, 'titulo');
         const numeroOrden = textoDeBody(d.numero_orden, 'numero_orden', LIM.numero_orden);
         const descripcion = textoDeBody(d.descripcion, 'descripcion', LIM.descripcion);
         const detalle = textoDeBody(d.detalle_reclamo, 'detalle_reclamo', LIM.detalle_reclamo);
-        const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo);
+        const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo, 'frase');
         const obsAnalisis = textoDeBody(d.observacion_analisis, 'observacion_analisis', LIM.observacion_analisis);
         for (const c of [cliente, numeroOrden, descripcion, detalle, motivo, obsAnalisis]) {
             if (!c.ok) return res.status(400).json({ error: c.error });
@@ -1086,8 +1090,8 @@ router.put('/api/reclamos/:id/estado', perms.update, async (req, res, next) => {
         }
 
         const observacion = textoDeBody(d.observacion, 'observacion', LIM.observacion);
-        const respFalla = textoDeBody(d.responsable_falla, 'responsable_falla', LIM.responsable_falla);
-        const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo);
+        const respFalla = textoDeBody(d.responsable_falla, 'responsable_falla', LIM.responsable_falla, 'titulo');
+        const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo, 'frase');
         const obsAnalisis = textoDeBody(d.observacion_analisis, 'observacion_analisis', LIM.observacion_analisis);
         for (const c of [observacion, respFalla, motivo, obsAnalisis]) {
             if (!c.ok) return res.status(400).json({ error: c.error });

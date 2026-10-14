@@ -11,6 +11,10 @@ App.registerModule('reclamos_reporte', {
 
     _fmtNum(v) { return Number(v || 0).toLocaleString('es-CL'); },
     _fmtCLP(v) { return '$' + Number(Math.round(v || 0)).toLocaleString('es-CL'); },
+    // Presentacion normalizada: los datos suelen venir en MAYUSCULAS
+    // (como se escribieron). Se capitalizan SIN inventar acentos.
+    _titulo(s) { return String(s || '').toLowerCase().replace(/\\b[a-z\\u00e1\\u00e9\\u00ed\\u00f3\\u00fa\\u00f1\\u00fc]/g, ch => ch.toUpperCase()); },
+    _frase(s) { const t = String(s || '').toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); },
     _etiquetaResolucion(r) {
         const mapa = {
             'Aceptada Fabricacion nueva': 'Aceptada · Fabricación nueva',
@@ -284,7 +288,7 @@ App.registerModule('reclamos_reporte', {
         const maxMot = Math.max(...motivos.map(m => m.total || 0), 1);
         document.getElementById('rrMotivos').innerHTML = motivos.length ? '<div class="rq-rank">' + motivos.map((m, i) => {
             const color = /otro/i.test(m.motivo || '') ? 'slate' : '';
-            return '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(m.motivo || 'Sin motivo') + '</span><span class="vl">' + this._fmtNum(m.total) + '</span></div>'
+            return '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(this._frase(m.motivo || 'Sin motivo')) + '</span><span class="vl">' + this._fmtNum(m.total) + '</span></div>'
                 + '<div class="rq-track"><div class="rq-fill ' + color + '" style="width:' + Math.round((m.total / maxMot) * 100) + '%;' + (i === 0 ? '' : 'opacity:.75') + '"></div></div></div>';
         }).join('') + '</div>' : this._vacio('Sin motivos registrados');
 
@@ -292,7 +296,7 @@ App.registerModule('reclamos_reporte', {
         const clientes = (d.clientes || []).slice(0, 5);
         const maxCli = Math.max(...clientes.map(c => c.total || 0), 1);
         document.getElementById('rrClientes').innerHTML = clientes.length ? '<div class="rq-rank">' + clientes.map(c => {
-            return '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(c.cliente || 'Sin cliente') + '</span><span class="vl">' + this._fmtNum(c.total) + '</span></div>'
+            return '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(this._titulo(c.cliente || 'Sin cliente')) + '</span><span class="vl">' + this._fmtNum(c.total) + '</span></div>'
                 + '<div class="rq-track"><div class="rq-fill" style="width:' + Math.round((c.total / maxCli) * 100) + '%"></div></div></div>';
         }).join('') + '</div>' : this._vacio('Sin clientes con reclamos este año');
 
@@ -301,7 +305,7 @@ App.registerModule('reclamos_reporte', {
         const maxCosto = Math.max(...costos.map(c => c.total || 0), 1);
         document.getElementById('rrCostoResp').innerHTML = costos.length ? '<div class="rq-rank">' + costos.map((c, i) => {
             const color = i === 0 ? 'red' : i < 3 ? 'amber' : 'slate';
-            return '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(c.nombre || 'Sin asignar') + '</span><span class="vl">' + this._fmtCLP(c.total) + '</span></div>'
+            return '<div class="rq-ritem"><div class="top"><span class="nm">' + escText(this._titulo(c.nombre || 'Sin asignar')) + '</span><span class="vl">' + this._fmtCLP(c.total) + '</span></div>'
                 + '<div class="rq-track"><div class="rq-fill ' + color + '" style="width:' + Math.round((c.total / maxCosto) * 100) + '%"></div></div></div>';
         }).join('') + '</div>' : this._vacio('Sin costos registrados');
 
