@@ -177,7 +177,7 @@ App.registerModule('prod_config', {
                             <tbody>${this._estaciones.map(e => {
                                 return `<tr>
                                 <td><strong style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px">${e.orden_secuencia_defecto}</strong></td>
-                                <td>${escapeHtml(e.nombre_estacion)}</td>
+                                <td>${escapeHtml(e.nombre_estacion)}${e.letra ? ' <span title="Letra para la lista de corte (Optiway)" style="background:#0f172a;color:#fff;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escText(e.letra) + '</span>' : ''}</td>
                                 <td><strong>${Number(e.cap_max || 100).toFixed(0)}</strong> m²</td>
                                 <td>${e.cuello_botella ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#fee2e2;color:#991b1b">Cuello de Botella</span>' : '<span style="color:var(--text-light);font-size:11px">No</span>'}</td>
                                 <td>${e.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
@@ -210,7 +210,7 @@ App.registerModule('prod_config', {
                     <div style="display:flex;align-items:center;gap:8px">
                         <span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px;font-weight:700;font-size:11px">${e.orden_secuencia_defecto}</span>
                         <div>
-                            <div style="font-weight:700;font-size:13px">${escapeHtml(e.nombre_estacion)}</div>
+                            <div style="font-weight:700;font-size:13px">${escapeHtml(e.nombre_estacion)}${e.letra ? ' <span title="Letra para la lista de corte (Optiway)" style="background:#0f172a;color:#fff;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">' + escText(e.letra) + '</span>' : ''}</div>
                             <div style="font-size:10px;color:#64748b">${Number(e.cap_max || 100).toFixed(0)} m²/dia</div>
                         </div>
                     </div>
@@ -232,16 +232,20 @@ App.registerModule('prod_config', {
             <div class="m-card" style="margin-bottom:10px">
                 <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600">Datos de estación</div>
                 <div class="m-card-body" style="padding:8px 12px">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 100px;gap:6px 10px">
                         <div class="form-group" style="margin:0">
                             <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Nombre de Estacion *</label>
-                            <input class="form-control" id="estNombre" value="${est ? escAttr(est.nombre_estacion) : ''}" placeholder="Ej: Corte, Pulido" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
-                        </div>
+                            <input class="form-control" id="estNombre" value="${est ? escAttr(est.nombre_estacion) : ''}" placeholder="Ej: Corte, Pulido" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">                        </div>
                         <div class="form-group" style="margin:0">
                             <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Orden de Secuencia *</label>
                             <input type="number" class="form-control" id="estOrden" value="${est ? est.orden_secuencia_defecto : (this._estaciones.length + 1)}" min="1" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
                         </div>
+                        <div class="form-group" style="margin:0">
+                            <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b" title="Letra que aparece en el campo Procesos de la lista de corte (Optiway 8)">Letra corte</label>
+                            <input class="form-control" id="estLetra" value="${est ? escAttr(est.letra || '') : ''}" maxlength="2" placeholder="Ej: S" style="padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px;text-transform:uppercase">
+                        </div>
                     </div>
+                    <div style="font-size:10px;color:#94a3b8;margin-top:6px">La letra se usa en el campo <strong>Procesos</strong> de la lista de corte (ej: Pintado = S, Mecanizado = F). Si queda vacía, se usa la inicial del nombre.</div>
                 </div>
             </div>
             <div class="m-card" style="margin-bottom:10px">
@@ -277,6 +281,7 @@ App.registerModule('prod_config', {
         const data = {
             nombre_estacion: document.getElementById('estNombre').value.trim(),
             orden_secuencia_defecto: parseInt(document.getElementById('estOrden').value),
+            letra: document.getElementById('estLetra').value.trim().toUpperCase(),
             cap_max: parseFloat(document.getElementById('estCapacidad').value) || 100,
             cuello_botella: document.getElementById('estCuelloBotella').checked,
             activa: document.getElementById('estActiva').checked

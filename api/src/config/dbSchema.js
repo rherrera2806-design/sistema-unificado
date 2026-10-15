@@ -575,6 +575,8 @@ async function faseColumnas({ q, safe }) {
     // Índices para catálogo de códigos y recetas BOM (búsquedas/orden frecuentes)
     await safe(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_codigo ON recetas_bom (codigo_sap_padre)`, 'recetas_bom.idx_codigo');
     await safe(`CREATE INDEX IF NOT EXISTS idx_produccion_codigos_codigo ON produccion_codigos (codigo)`, 'produccion_codigos.idx_codigo');
+    // Letra de estación para la lista de corte (Optiway 8): ej. Pintado = S
+    await safe(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS letra VARCHAR(2) DEFAULT ''`, 'estaciones_maestras.letra');
     // Planos de códigos de carrocería (PDF o imagen, en memoria → BYTEA,
     // mismo patrón que los PDF de pedidos)
     await safe(`CREATE TABLE IF NOT EXISTS codigo_planos (

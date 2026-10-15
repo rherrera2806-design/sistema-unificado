@@ -206,15 +206,15 @@ const getEstaciones = async () => {
     return result.rows;
 };
 
-const crearEstacion = async ({ nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella }) => {
+const crearEstacion = async ({ nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella, letra }) => {
     const result = await query(
-        'INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [nombre_estacion.trim(), orden_secuencia_defecto, activa !== false, cap_max || 100, cuello_botella || false]
+        'INSERT INTO estaciones_maestras (nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella, letra) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [nombre_estacion.trim(), orden_secuencia_defecto, activa !== false, cap_max || 100, cuello_botella || false, String(letra || '').trim().toUpperCase().slice(0, 2)]
     );
     return result.rows[0];
 };
 
-const editarEstacion = async (id, { nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella }) => {
+const editarEstacion = async (id, { nombre_estacion, orden_secuencia_defecto, activa, cap_max, cuello_botella, letra }) => {
     // Actualización parcial: solo se modifican los campos presentes en el body
     const fields = [];
     const params = [];
@@ -224,6 +224,7 @@ const editarEstacion = async (id, { nombre_estacion, orden_secuencia_defecto, ac
     if (activa !== undefined) { fields.push(`activa = $${idx++}`); params.push(activa !== false); }
     if (cap_max !== undefined) { fields.push(`cap_max = $${idx++}`); params.push(cap_max || 100); }
     if (cuello_botella !== undefined) { fields.push(`cuello_botella = $${idx++}`); params.push(cuello_botella || false); }
+    if (letra !== undefined) { fields.push(`letra = $${idx++}`); params.push(String(letra || '').trim().toUpperCase().slice(0, 2)); }
     if (fields.length === 0) throw new Error('Sin campos para actualizar');
     params.push(id);
     const result = await query(
