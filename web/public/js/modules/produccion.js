@@ -133,9 +133,10 @@ App.registerModule('produccion', {
                         </div>
                         <input type="file" id="prodImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.produccion.handleImportFile(event)">
                         <div class="po-info">
-                            <strong>Columnas esperadas:</strong><br>
-                            codigo, pedido, item, cliente, descripcion, cantidad, ancho, alto, perforaciones, pintado, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>
-                            <em>Filas iguales (pedido+item+codigo) se fusionan sumando cantidad.</em>
+                            <strong>Columnas de la plantilla:</strong><br>
+                            <strong>Obligatoria:</strong> codigo<br>
+                            <strong>Opcionales:</strong> pedido, item, cliente, descripcion, cantidad, ancho, alto, kilos, precio, familia, perforaciones, mecanizado, destaje, sacado, radio, pulido, ventana, pintado, pintado car, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>
+                            <em>Las flags (perforaciones, mecanizado, destaje, sacado, radio, pulido, ventana, pintado, pintado car) van con 0 o 1. Si falta ancho/alto se toman del BOM del código. Filas iguales (pedido+item+codigo) se fusionan sumando cantidad.</em>
                             <div style="margin-top:10px"><button class="po-btn ghost sm" onclick="window.open('/api/produccion/importar/template')">⬇ Descargar Plantilla</button></div>
                         </div>
                         <div id="prodImportPreview" class="po-preview"></div>
