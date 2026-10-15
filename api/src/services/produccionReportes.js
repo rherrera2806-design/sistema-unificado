@@ -170,4 +170,45 @@ function _buildProceso(r) {
     return parts.join('-');
 }
 
-module.exports = { getReporteFechas, _buildProceso };
+// ===== Lista de corte: órdenes ingresadas y programadas para corte =====
+// Cada línea trae sus materias primas (hasta 2, del BOM del código) y la ruta
+// de procesos como iniciales (C-M-F-T), para el Excel de corte de planta.
+const getExportarCorte = async () => {
+    const result = await query(`
+        SELECT
+            o.cantidad AS fabric,
+            mp1.nombre AS mp1_nombre, mp1.espesor_mm AS mp1_espesor,
+            mp2.nombre AS mp2_nombre, mp2.espesor_mm AS mp2_espesor,
+            o.ancho, o.alto,
+            o.tipo_venta AS prioridad,
+            o.item_numero AS item,
+            o.pedido_sap_id AS ov,
+            o.fecha_entrega_pactada::text AS f_termino,
+            o.codigo_producto AS id_sap,
+            o.cliente, o.descripcion AS detalle_sap,
+            o.tipo_entrega AS ruta,
+            o.orden_compra AS oc,
+            (SELECT string_agg(SUBSTRING(em.nombre_estacion, 1, 1), '-' ORDER BY cp.orden_secuencia)
+             FROM cola_produccion_pasos cp
+             JOIN estaciones_maestras em ON cp.estacion_id = em.id
+             WHERE cp.orden_produccion_id = o.id) AS procesos
+        FROM produccion_ordenes o
+        LEFT JOIN LATERAL (
+            SELECT m.nombre, m.espesor_mm
+            FROM recetas_bom rb JOIN materias_primas m ON m.id = rb.materia_prima_id
+            WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
+            ORDER BY rb.id LIMIT 1
+        ) mp1 ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT m.nombre, m.espesor_mm
+            FROM recetas_bom rb JOIN materias_primas m ON m.id = rb.materia_prima_id
+            WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
+            ORDER BY rb.id LIMIT 1 OFFSET 1
+        ) mp2 ON TRUE
+        WHERE o.estado_programacion IN ('PENDIENTE', 'PROGRAMADO', 'EN_PROCESO')
+        ORDER BY LOWER(COALESCE(mp1.nombre, '')), o.pedido_sap_id, o.item_numero
+    `);
+    return result.rows;
+};
+
+module.exports = { getReporteFechas, getExportarCorte, _buildProceso };
