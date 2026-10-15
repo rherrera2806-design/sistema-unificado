@@ -1,7 +1,26 @@
+// ============================================================================
+// Producción · Órdenes — rediseño "menos engorroso"
+//   · Tabla de 8 columnas esenciales; TODO lo demás vive en el panel de detalle
+//     lateral (click en la fila), con los pasos de producción ahí mismo.
+//   · Vista Tablero por estados para el día a día (Pendientes → Programadas →
+//     En proceso → Terminadas).
+//   · Cantidad editable inline · menú de Acciones con texto · confirmaciones en
+//     modal (sin confirm()/prompt() nativos).
+//   · Colores de PRIORIDAD con el idioma de las etiquetas físicas:
+//     Normal azul · Express amarillo · Urgencia verde · Reposición rojo.
+//   · Números es-CL (coma decimal) · fechas dd-mm-yyyy · escala 20/15/13/11/10.
+//   · "Zona de mantenimiento" aparte: Reprogramar Todo / Limpiar Todo.
+// Mantiene TODO el flujo API del módulo original (importar SAP, pasos, BOM,
+// prioridades, reprogramación, cierre con motivo).
+// ============================================================================
 App.registerModule('produccion', {
     ordenes: [],
     maquinas: [],
     recetas: [],
+    _vista: 'tabla',
+    _drawerId: null,
+    _cerrarId: null,
+    _editCantId: null,
 
     async render() {
         const el = document.getElementById('page-produccion');
@@ -11,145 +30,221 @@ App.registerModule('produccion', {
         const esAdmin = permisos.includes('usuarios');
         const puedeImportar = esAdmin || permisos.includes('produccion');
 
-        el.innerHTML = '<style>'
-            + '@keyframes poFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
-            + '.po-table tbody tr{transition:background 0.15s}'
-            + '.po-table tbody tr:hover{background:#f8fafc!important}'
-            + '.po-table-wrapper{overflow:auto;max-height:calc(100vh - 280px);position:relative}'
-            + '.po-table thead th{position:sticky;top:0;z-index:10;background:#f8fafc;border-bottom:2px solid #e2e8f0}'
-            // Formularios compactos (patron MODULE_RESPONSIVE_V1 / inv-form-grid)
-            + '.inv-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;align-items:end}'
-            + '.inv-form-grid>div{min-width:0;margin:0}'
-            + '.inv-form-grid input,.inv-form-grid select{width:100%;box-sizing:border-box;padding:10px 12px;font-size:13px;border:1px solid #e2e8f0;border-radius:8px}'
-            + '.inv-form-grid label{font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b}'
-            + '@media(max-width:768px){.inv-form-grid{grid-template-columns:1fr}}'
-            // Botones de cabecera del hero (patron del doc)
-            + '.m-hero-btns{display:flex;gap:8px;flex-wrap:wrap}'
-            + '@media(max-width:768px){.m-hero-btns .btn{height:40px;min-height:40px;flex:1}}'
-            + '</style>'
+        el.innerHTML = this._estilos() + `
+            <div class="po-hero">
+                <div>
+                    <h2>Producción · Órdenes</h2>
+                    <p>Click en cualquier fila para ver su detalle y pasos · números es-CL · colores según etiquetas</p>
+                </div>
+                ${puedeImportar ? `<div class="po-hero-actions">
+                    <button class="po-hbtn" onclick="App.modules.produccion.showImportModal()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Importar SAP
+                    </button>
+                    <button class="po-hbtn solid" onclick="App.modules.produccion.showNewOrderModal()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Nueva Orden
+                    </button>
+                    <div class="po-mant">
+                        <button class="po-hbtn ghost-danger" id="reprogBtn" onclick="App.modules.produccion.toggleMant(event)">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            Zona de mantenimiento
+                            <span id="reprogBadge" class="po-reprog-badge">!</span>
+                        </button>
+                        <div class="po-mant-drop" id="poMantDrop">
+                            <div class="it" onclick="App.modules.produccion.reprogramarTodo()">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                Reprogramar Todo (por prioridad)
+                            </div>
+                            <div class="sep"></div>
+                            <div class="it danger" onclick="App.modules.produccion.eliminarTodas()">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                Limpiar Todo (eliminar todas las órdenes)
+                            </div>
+                        </div>
+                    </div>
+                </div>` : ''}
+            </div>
 
-            + '<div class="m-hero" style="padding:10px 14px">'
-            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div class="m-hero-inner"><div><h2 class="m-hero-title" style="font-size:15px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>Produccion</h2>'
-            + '<p class="m-hero-sub" style="font-size:10px">Gestion de ordenes de produccion y planificacion</p></div>'
-            + (puedeImportar ? '<div class="m-hero-btns">'
-            + '<button class="btn btn-primary" onclick="App.modules.produccion.showImportModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar SAP</button>'
-            + '<button id="reprogBtn" class="btn btn-danger" style="background:#ef4444;border-color:#ef4444;color:white;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px" onclick="App.modules.produccion.reprogramarTodo()" title="Libera PROGRAMADO y re-asigna por prioridad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reprogramar Todo<span id="reprogBadge" style="display:none;background:white;color:#ef4444;border-radius:50%;width:18px;height:18px;font-size:11px;font-weight:800;align-items:center;justify-content:center;margin-left:4px">!</span></button>'
-            + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.produccion.eliminarTodas()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Limpiar Todo</button>'
-            + '<button class="btn btn-outline" style="color:white;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1)" onclick="App.modules.produccion.showNewOrderModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nueva Orden</button>'
-            + '</div>' : '')
-            + '</div></div>'
+            <div class="po-kpis">
+                <div class="po-kpi"><div class="k">Total órdenes</div><div class="v" id="prodTotal">0</div><div class="s" id="prodTotalSub">—</div></div>
+                <div class="po-kpi"><div class="k">Pendientes</div><div class="v c-pend" id="prodPendientes">0</div><div class="s">sin fecha asignada</div></div>
+                <div class="po-kpi"><div class="k">Programadas</div><div class="v c-prog" id="prodProgramadas">0</div><div class="s">con fecha asignada</div></div>
+                <div class="po-kpi"><div class="k">En proceso</div><div class="v c-proceso" id="prodProceso">0</div><div class="s">en estación ahora</div></div>
+                <div class="po-kpi"><div class="k">Terminadas</div><div class="v c-term" id="prodTerminadas">0</div><div class="s">este período</div></div>
+            </div>
 
-            + '<div class="m-stats">'
-            + '<div class="m-stat-card stat-blue" style="animation:poFadeUp 0.5s ease both"><div class="m-stat-label">Total Ordenes</div><div class="m-stat-value" style="color:#0f172a" id="prodTotal">0</div></div>'
-            + '<div class="m-stat-card stat-amber" style="animation:poFadeUp 0.5s ease 0.05s both"><div class="m-stat-label">Pendientes</div><div class="m-stat-value" style="color:#f59e0b" id="prodPendientes">0</div></div>'
-            + '<div class="m-stat-card stat-info" style="animation:poFadeUp 0.5s ease 0.1s both"><div class="m-stat-label">Programadas</div><div class="m-stat-value" style="color:#3b82f6" id="prodProgramadas">0</div></div>'
-            + '<div class="m-stat-card stat-purple" style="animation:poFadeUp 0.5s ease 0.15s both"><div class="m-stat-label">En Proceso</div><div class="m-stat-value" style="color:#8b5cf6" id="prodProceso">0</div></div>'
-            + '<div class="m-stat-card stat-green" style="animation:poFadeUp 0.5s ease 0.2s both"><div class="m-stat-label">Terminadas</div><div class="m-stat-value" style="color:#22c55e" id="prodTerminadas">0</div></div>'
-            + '</div>'
+            <div class="po-toolbar">
+                <div class="po-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8494a8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="prodFilterSearch" placeholder="Buscar pedido, código o cliente..." oninput="App.modules.produccion.filter()">
+                </div>
+                <select id="prodFilterEstado" onchange="App.modules.produccion.filter()">
+                    <option value="todos">Todos los estados</option><option value="PENDIENTE">Pendientes</option><option value="PROGRAMADO">Programadas</option><option value="EN_PROCESO">En Proceso</option><option value="TERMINADO">Terminadas</option><option value="MERMADO">Mermadas</option><option value="CERRADO">Cerradas</option>
+                </select>
+                <select id="prodFilterGrupo" onchange="App.modules.produccion.filter()"><option value="todos">Todos los grupos</option></select>
+                <select id="prodFilterFamilia" onchange="App.modules.produccion.filter()"><option value="todas">Todas las familias</option></select>
+                <select id="prodFilterEstacion" onchange="App.modules.produccion.filter()"><option value="todas">Todas las estaciones</option></select>
+                <input type="date" id="prodFilterFecha" onchange="App.modules.produccion.filter()" title="Filtrar por fecha programada">
+                <span class="po-flimpiar" onclick="App.modules.produccion.limpiarFiltros()">Limpiar filtros</span>
+            </div>
 
-            + '<div style="background:white;border-radius:14px;padding:24px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:poFadeUp 0.5s ease 0.25s both">'
-            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">'
-            + '<div style="display:flex;align-items:center;gap:12px"><h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a">Ordenes de Produccion</h3><span id="prodTotales" style="display:inline-flex;gap:8px;font-size:12px;font-weight:500"></span></div>'
-            + '<div class="m-filters">'
-            + '<div style="position:relative;flex:1 1 180px;min-width:150px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="prodFilterSearch" placeholder="Buscar codigo, pedido..." oninput="App.modules.produccion.filter()" style="width:100%;padding:10px 10px 10px 32px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div>'
-            + '<input type="date" id="prodFilterFecha" onchange="App.modules.produccion.filter()" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none" title="Filtrar por fecha programada">'
-            + '<select id="prodFilterGrupo" onchange="App.modules.produccion.filter()" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todos">Todos Grupos</option></select>'
-            + '<select id="prodFilterFamilia" onchange="App.modules.produccion.filter()" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todas">Todas Familias</option></select>'
-            + '<select id="prodFilterEstacion" onchange="App.modules.produccion.filter()" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todas">Todas Estaciones</option></select>'
-            + '<select id="prodFilterEstado" onchange="App.modules.produccion.filter()" style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;outline:none;background:white"><option value="todos">Todos</option><option value="PENDIENTE">Pendientes</option><option value="PROGRAMADO">Programadas</option><option value="EN_PROCESO">En Proceso</option><option value="TERMINADO">Terminados</option><option value="CERRADO">Cerrados</option></select>'
-            + '</div></div>'
+            <div class="po-tabs">
+                <div class="po-tab on" id="poTabTabla" onclick="App.modules.produccion.setVista('tabla')">☰ &nbsp;Tabla</div>
+                <div class="po-tab" id="poTabTablero" onclick="App.modules.produccion.setVista('tablero')">▦ &nbsp;Tablero por estados</div>
+            </div>
 
-            + '<div class="po-table-wrapper m-table-wrap"><table class="po-table" style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Pedido</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Item</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cliente</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cod. Padre</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Codigo</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Nombre MP</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Dimensiones</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">m2</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Kilos</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Cant.</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Prioridad</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Programado</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">F. Termino</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Ruta</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Reglas</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">C. Botella</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Estado</th>'
-            + '<th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e2e8f0">Acciones</th>'
-            + '</tr></thead><tbody id="prodTable"><tr><td colspan="18" style="text-align:center;padding:40px;color:#94a3b8"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div>Cargando...</div></td></tr></tbody></table></div>'
-            + '<div class="m-cards-mobile" id="prodCardsMobile" style="display:none;padding:12px"></div></div>'
+            <div id="poPanelTabla" class="po-panel">
+                <div class="po-p-head">
+                    <h3>Órdenes de producción</h3>
+                    <span class="sub">click en la fila → detalle y pasos</span>
+                    <div class="po-tot" id="prodTotales"></div>
+                </div>
+                <div class="po-table-wrap">
+                    <table class="po-table">
+                        <thead><tr>
+                            <th>Pedido · Item</th><th>Cliente</th><th>Código</th><th>Dimensiones</th>
+                            <th class="num">Cant.</th><th>Prioridad</th><th>Estado</th><th class="th-acc">Acciones</th>
+                        </tr></thead>
+                        <tbody id="prodTable"><tr><td colspan="8" class="po-loading">Cargando órdenes...</td></tr></tbody>
+                    </table>
+                </div>
+                <div id="prodCardsMobile" class="po-cards-mobile"></div>
+            </div>
 
-            + '<div class="modal-overlay" id="prodImportModal">'
-            + '<div class="modal" style="max-width:500px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
-            + '<div class="modal-header"><h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Importar desde Excel</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hideImportModal()">&times;</button></div>'
-            + '<div class="modal-body" style="padding:24px">'
-            + '<div class="inv-form-grid"><div class="form-group" style="grid-column:1/-1"><label style="font-weight:600;color:#334155;font-size:13px">Archivo Excel</label>'
-            + '<div id="prodImportArea" style="border:2px dashed #cbd5e1;border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:#f8fafc"'
-            + ' onclick="document.getElementById(\'prodImportFile\').click()">'
-            + '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
-            + '<div style="color:#64748b;font-size:13px">Arrastra un Excel o haz clic para seleccionar</div>'
-            + '<div id="prodImportName" style="color:#22c55e;font-weight:600;margin-top:8px;display:none;font-size:13px"></div></div>'
-            + '<input type="file" id="prodImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.produccion.handleImportFile(event)">'
-            + '</div></div>'
-            + '<div style="background:#f1f5f9;border-radius:10px;padding:14px;margin-top:12px;font-size:12px;color:#64748b;line-height:1.6">'
-            + '<strong style="color:#334155">Columnas esperadas:</strong><br>'
-            + 'codigo, pedido, item, cliente, descripcion, cantidad, ancho, alto, perforaciones, pintado, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>'
-            + '<em style="color:#94a3b8">Filas iguales (pedido+item+codigo) se fusionan sumando cantidad.</em>'
-            + '<div style="margin-top:10px"><button class="btn btn-sm btn-outline" onclick="window.open(\'/api/produccion/importar/template\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar Plantilla</button></div></div>'
-            + '<div id="prodImportPreview" style="max-height:200px;overflow-y:auto;margin-top:12px"></div></div>'
-            + '<div class="modal-footer">'
-            + '<button class="btn btn-outline" onclick="App.modules.produccion.hideImportModal()">Cancelar</button>'
-            + '<button class="btn btn-primary" id="prodImportBtn" onclick="App.modules.produccion.importar()" disabled>Importar</button></div></div></div>'
+            <div id="poPanelTablero" class="po-panel" style="display:none;padding:14px">
+                <div class="po-board" id="poBoard"></div>
+            </div>
 
-            + '<div class="modal-overlay" id="prodPasosModal">'
-            + '<div class="modal" style="max-width:600px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
-            + '<div class="modal-header"><h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Pasos de Produccion</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hidePasosModal()">&times;</button></div>'
-            + '<div class="modal-body" id="prodPasosBody" style="padding:24px"></div></div></div>'
+            <!-- Panel de detalle lateral -->
+            <div class="po-dim" id="poDim" onclick="App.modules.produccion.cerrarDrawer()"></div>
+            <div class="po-drawer" id="poDrawer"></div>
 
-            + '<div class="modal-overlay" id="prodNewOrderModal">'
-            + '<div class="modal" style="max-width:500px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
-            + '<div class="modal-header"><h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nueva Orden Manual</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hideNewOrderModal()">&times;</button></div>'
-            + '<div class="modal-body" style="padding:24px">'
-            + '<div class="inv-form-grid">'
-            + '<div class="form-group"><label>Pedido *</label><input class="form-control" id="newOrdPedido" placeholder="Ej: 100500"></div>'
-            + '<div class="form-group"><label>Item</label><input class="form-control" id="newOrdItem" type="number" value="1" min="1"></div>'
-            + '<div class="form-group"><label>Cliente</label><input class="form-control" id="newOrdCliente" placeholder="NOMBRE DEL CLIENTE" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>'
-            + '<div class="form-group"><label>Codigo Producto *</label><input class="form-control" id="newOrdCodigo" placeholder="Ej: 1240, 730"></div>'
-            + '<div class="form-group"><label>Ancho (mm) *</label><input class="form-control" id="newOrdAncho" type="number" value="0"></div>'
-            + '<div class="form-group"><label>Alto (mm) *</label><input class="form-control" id="newOrdAlto" type="number" value="0"></div>'
-            + '<div class="form-group"><label>Perforaciones</label><select class="form-control" id="newOrdPerforaciones"><option value="0">No</option><option value="1">Si</option></select></div>'
-            + '<div class="form-group"><label>Pintado</label><select class="form-control" id="newOrdPintado"><option value="0">No (0)</option><option value="1">Si (1)</option></select></div>'
-            + '<div class="form-group"><label>Tipo de Venta</label><select class="form-control" id="newOrdTipoVenta"><option value="Normal">Normal</option><option value="Express">Express</option><option value="Vta Region">Vta Region</option><option value="Urgencia">Urgencia</option></select></div>'
-            + '<div class="form-group"><label>Cantidad</label><input class="form-control" id="newOrdCantidad" type="number" value="1" min="1"></div>'
-            + '<div class="form-group"><label>Tipo de Entrega</label><select class="form-control" id="newOrdTipoEntrega"><option value="Despacho">Despacho</option><option value="Retira">Retira</option></select></div>'
-            + '<div class="form-group"><label>Orden de Compra</label><input class="form-control" id="newOrdOC" placeholder="OC-001"></div>'
-            + '<div class="form-group"><label>Posicion</label><input class="form-control" id="newOrdPosicion" placeholder="Ej: 1, 2, A1"></div>'
-            + '<div class="form-group"><label>Fecha Creacion</label><input class="form-control" id="newOrdFechaCreacion" type="date"></div>'
-            + '<div class="form-group" style="grid-column:1/-1"><label>Nota</label><textarea class="form-control" id="newOrdNota" rows="2" placeholder="Observaciones..." style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical"></textarea></div>'
-            + '</div></div>'
-            + '<div class="modal-footer">'
-            + '<button class="btn btn-outline" onclick="App.modules.produccion.hideNewOrderModal()">Cancelar</button>'
-            + '<button class="btn btn-primary" onclick="App.modules.produccion.saveNewOrder()">Crear Orden</button></div></div></div>'
+            <!-- Modal importar -->
+            <div class="po-overlay" id="prodImportModal">
+                <div class="po-modal" onclick="event.stopPropagation()">
+                    <div class="po-modal-head"><h3>Importar desde Excel (SAP)</h3><button class="po-x" onclick="App.modules.produccion.hideImportModal()">✕</button></div>
+                    <div class="po-modal-body">
+                        <label class="po-label">Archivo Excel</label>
+                        <div id="prodImportArea" class="po-drop" onclick="document.getElementById('prodImportFile').click()">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <div class="t">Arrastra un Excel o haz clic para seleccionar</div>
+                            <div id="prodImportName" class="ok"></div>
+                        </div>
+                        <input type="file" id="prodImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="App.modules.produccion.handleImportFile(event)">
+                        <div class="po-info">
+                            <strong>Columnas esperadas:</strong><br>
+                            codigo, pedido, item, cliente, descripcion, cantidad, ancho, alto, perforaciones, pintado, tipo de venta, fecha_creacion, nota, posicion, orden de compra, tipo de entrega<br>
+                            <em>Filas iguales (pedido+item+codigo) se fusionan sumando cantidad.</em>
+                            <div style="margin-top:10px"><button class="po-btn ghost sm" onclick="window.open('/api/produccion/importar/template')">⬇ Descargar Plantilla</button></div>
+                        </div>
+                        <div id="prodImportPreview" class="po-preview"></div>
+                    </div>
+                    <div class="po-modal-foot">
+                        <button class="po-btn ghost" onclick="App.modules.produccion.hideImportModal()">Cancelar</button>
+                        <button class="po-btn primary" id="prodImportBtn" onclick="App.modules.produccion.importar()" disabled>Importar</button>
+                    </div>
+                </div>
+            </div>
 
-            + '<div class="modal-overlay" id="prodCerrarModal">'
-            + '<div class="modal" style="max-width:400px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">'
-            + '<div class="modal-header"><h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Cerrar Orden</h3><button class="modal-close" title="Cerrar" onclick="App.modules.produccion.hideCerrarModal()">&times;</button></div>'
-            + '<div class="modal-body" style="padding:24px">'
-            + '<p style="font-size:13px;color:#64748b;margin-bottom:12px">Indica el motivo por el cual se cierra esta linea:</p>'
-            + '<div class="inv-form-grid"><div class="form-group" style="grid-column:1/-1"><textarea class="form-control" id="cerrarNota" rows="3" placeholder="Ej: Cliente cancelo el pedido..." style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical"></textarea></div></div></div>'
-            + '<div class="modal-footer">'
-            + '<button class="btn btn-outline" onclick="App.modules.produccion.hideCerrarModal()">Cancelar</button>'
-            + '<button class="btn btn-danger" onclick="App.modules.produccion.confirmCerrar()">Cerrar Orden</button></div></div></div>';
+            <!-- Modal nueva orden -->
+            <div class="po-overlay" id="prodNewOrderModal">
+                <div class="po-modal" onclick="event.stopPropagation()">
+                    <div class="po-modal-head"><h3>Nueva Orden Manual</h3><button class="po-x" onclick="App.modules.produccion.hideNewOrderModal()">✕</button></div>
+                    <div class="po-modal-body">
+                        <div class="po-form-grid">
+                            <div class="po-field"><label>Pedido *</label><input id="newOrdPedido" placeholder="Ej: 100500"></div>
+                            <div class="po-field"><label>Item</label><input id="newOrdItem" type="number" value="1" min="1"></div>
+                            <div class="po-field"><label>Cliente</label><input id="newOrdCliente" placeholder="NOMBRE DEL CLIENTE" oninput="this.value=this.value.toUpperCase()"></div>
+                            <div class="po-field"><label>Código producto *</label><input id="newOrdCodigo" placeholder="Ej: 1240, 730"></div>
+                            <div class="po-field"><label>Ancho (mm) *</label><input id="newOrdAncho" type="number" value="0"></div>
+                            <div class="po-field"><label>Alto (mm) *</label><input id="newOrdAlto" type="number" value="0"></div>
+                            <div class="po-field"><label>Perforaciones</label><select id="newOrdPerforaciones"><option value="0">No</option><option value="1">Sí</option></select></div>
+                            <div class="po-field"><label>Pintado</label><select id="newOrdPintado"><option value="0">No (0)</option><option value="1">Sí (1)</option></select></div>
+                            <div class="po-field"><label>Tipo de venta</label><select id="newOrdTipoVenta"><option value="Normal">Normal</option><option value="Express">Express</option><option value="Vta Region">Vta Region</option><option value="Urgencia">Urgencia</option></select></div>
+                            <div class="po-field"><label>Cantidad</label><input id="newOrdCantidad" type="number" value="1" min="1"></div>
+                            <div class="po-field"><label>Tipo de entrega</label><select id="newOrdTipoEntrega"><option value="Despacho">Despacho</option><option value="Retira">Retira</option></select></div>
+                            <div class="po-field"><label>Orden de compra</label><input id="newOrdOC" placeholder="OC-001"></div>
+                            <div class="po-field"><label>Posición</label><input id="newOrdPosicion" placeholder="Ej: 1, 2, A1"></div>
+                            <div class="po-field"><label>Fecha creación</label><input id="newOrdFechaCreacion" type="date"></div>
+                            <div class="po-field" style="grid-column:1/-1"><label>Nota</label><textarea id="newOrdNota" rows="2" placeholder="Observaciones..."></textarea></div>
+                        </div>
+                    </div>
+                    <div class="po-modal-foot">
+                        <button class="po-btn ghost" onclick="App.modules.produccion.hideNewOrderModal()">Cancelar</button>
+                        <button class="po-btn primary" onclick="App.modules.produccion.saveNewOrder()">Crear Orden</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal cerrar orden -->
+            <div class="po-overlay" id="prodCerrarModal">
+                <div class="po-modal sm" onclick="event.stopPropagation()">
+                    <div class="po-modal-head"><h3>Cerrar Orden</h3><button class="po-x" onclick="App.modules.produccion.hideCerrarModal()">✕</button></div>
+                    <div class="po-modal-body">
+                        <p class="po-confirm-text">Indica el motivo por el cual se cierra esta línea:</p>
+                        <textarea id="cerrarNota" rows="3" placeholder="Ej: Cliente canceló el pedido..."></textarea>
+                    </div>
+                    <div class="po-modal-foot">
+                        <button class="po-btn ghost" onclick="App.modules.produccion.hideCerrarModal()">Cancelar</button>
+                        <button class="po-btn danger" onclick="App.modules.produccion.confirmCerrar()">Cerrar Orden</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal editar cantidad -->
+            <div class="po-overlay" id="poCantModal">
+                <div class="po-modal sm" onclick="event.stopPropagation()">
+                    <div class="po-modal-head"><h3>Editar cantidad</h3><button class="po-x" onclick="App.modules.produccion.hideEditCantidad()">✕</button></div>
+                    <div class="po-modal-body">
+                        <div class="po-field"><label>Nueva cantidad</label><input id="poCantInput" type="number" min="1" value="1"></div>
+                        <div class="po-hint" id="poCantM2"></div>
+                    </div>
+                    <div class="po-modal-foot">
+                        <button class="po-btn ghost" onclick="App.modules.produccion.hideEditCantidad()">Cancelar</button>
+                        <button class="po-btn primary" onclick="App.modules.produccion.confirmEditCantidad()">Guardar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal confirmación genérico -->
+            <div class="po-overlay" id="poConfirmOverlay">
+                <div class="po-modal sm" onclick="event.stopPropagation()">
+                    <div class="po-modal-head"><h3 id="poConfirmTitle">Confirmar</h3><button class="po-x" onclick="App.modules.produccion.closeConfirm()">✕</button></div>
+                    <div class="po-modal-body"><p class="po-confirm-text" id="poConfirmText"></p></div>
+                    <div class="po-modal-foot">
+                        <button class="po-btn ghost" onclick="App.modules.produccion.closeConfirm()">Cancelar</button>
+                        <button class="po-btn danger" id="poConfirmBtn">Confirmar</button>
+                    </div>
+                </div>
+            </div>`;
 
         await this.load();
         this.setupDragDrop();
         this._setupPrioridadEvents();
-        this.checkReprogramacionPendiente();
     },
 
+    // ---------------- Helpers de formato (es-CL / dd-mm-yyyy) ----------------
+    _fmt(v, dec) {
+        const n = Number(v || 0);
+        return n.toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    },
+    _fecha(f) {
+        if (!f) return '—';
+        const d = new Date(f);
+        if (isNaN(d.getTime())) return '—';
+        const p = n => String(n).padStart(2, '0');
+        return `${p(d.getUTCDate())}-${p(d.getUTCMonth() + 1)}-${d.getUTCFullYear()}`;
+    },
+    _fechaHora(f) {
+        if (!f) return '—';
+        const d = new Date(f);
+        if (isNaN(d.getTime())) return '—';
+        const p = n => String(n).padStart(2, '0');
+        return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    },
+
+    // ---------------- Carga ----------------
     async load() {
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
@@ -159,194 +254,66 @@ App.registerModule('produccion', {
                 fetch('/api/produccion/maquinas', { headers }),
                 fetch('/api/produccion/recetas', { headers })
             ]);
+            if (!ordenesRes.ok) throw new Error('HTTP ' + ordenesRes.status);
             this.ordenes = await ordenesRes.json();
             this.maquinas = await maquinasRes.json();
             this.recetas = await recetasRes.json();
             this.renderStats();
             this.populateFilters();
-            // Respetar filtros activos: si hay filtros, repinta la tabla filtrada
-            if (this._hayFiltrosActivos()) this.filter();
-            else this.renderTable(this.ordenes);
-        } catch(e) {
+            this.filter();
+        } catch (e) {
             console.error('Error loading produccion:', e);
             const tbody = document.getElementById('prodTable');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:24px;color:#ef4444">Error: ' + escText(e.message || 'No se pudo cargar') + '</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="po-loading" style="color:#dc2626">Error al cargar: ' + escText(e.message || 'No se pudo cargar') + '</td></tr>';
+            App.showAlert('Error al cargar órdenes: ' + (e.message || ''), 'danger');
         }
     },
 
-    // True si el usuario tiene algun filtro de la tabla activo
-    _hayFiltrosActivos() {
-        if ((document.getElementById('prodFilterSearch')?.value || '').trim()) return true;
-        if (document.getElementById('prodFilterFecha')?.value) return true;
-        const g = document.getElementById('prodFilterGrupo')?.value;
-        if (g && g !== 'todos') return true;
-        const f = document.getElementById('prodFilterFamilia')?.value;
-        if (f && f !== 'todas') return true;
-        const es = document.getElementById('prodFilterEstacion')?.value;
-        if (es && es !== 'todas') return true;
-        const st = document.getElementById('prodFilterEstado')?.value;
-        if (st && st !== 'todos') return true;
-        return false;
+    limpiarFiltros() {
+        const s = document.getElementById('prodFilterSearch'); if (s) s.value = '';
+        ['prodFilterEstado', 'prodFilterGrupo', 'prodFilterFamilia', 'prodFilterEstacion'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.selectedIndex = 0;
+        });
+        const f = document.getElementById('prodFilterFecha'); if (f) f.value = '';
+        this.filter();
+    },
+
+    setVista(v) {
+        this._vista = v;
+        document.getElementById('poTabTabla').classList.toggle('on', v === 'tabla');
+        document.getElementById('poTabTablero').classList.toggle('on', v === 'tablero');
+        document.getElementById('poPanelTabla').style.display = v === 'tabla' ? '' : 'none';
+        document.getElementById('poPanelTablero').style.display = v === 'tablero' ? '' : 'none';
+        if (v === 'tablero') this.renderBoard(this._filtradas || this.ordenes);
     },
 
     populateFilters() {
         const grupos = [...new Set(this.ordenes.map(o => o.grupo).filter(Boolean))].sort();
         const familias = [...new Set(this.ordenes.map(o => o.familia_nombre).filter(Boolean))].sort();
         const estaciones = [...new Set(this.ordenes.flatMap(o => o.estaciones || []).filter(Boolean))].sort();
-        const gSel = document.getElementById('prodFilterGrupo');
-        const fSel = document.getElementById('prodFilterFamilia');
-        const eSel = document.getElementById('prodFilterEstacion');
-        if (gSel) { const cur = gSel.value; gSel.innerHTML = '<option value="todos">Todos Grupos</option>' + grupos.map(g => `<option value="${escAttr(g)}" ${g===cur?'selected':''}>${escText(g)}</option>`).join(''); }
-        if (fSel) { const cur = fSel.value; fSel.innerHTML = '<option value="todas">Todas Familias</option>' + familias.map(f => `<option value="${escAttr(f)}" ${f===cur?'selected':''}>${escText(f)}</option>`).join(''); }
-        if (eSel) { const cur = eSel.value; eSel.innerHTML = '<option value="todas">Todas Estaciones</option>' + estaciones.map(e => `<option value="${escAttr(e)}" ${e===cur?'selected':''}>${escText(e)}</option>`).join(''); }
+        const fill = (id, opciones, textoTodos, valTodos) => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            const cur = sel.value;
+            sel.innerHTML = `<option value="${valTodos}">${textoTodos}</option>` + opciones.map(o => `<option value="${escAttr(o)}" ${o === cur ? 'selected' : ''}>${escText(o)}</option>`).join('');
+        };
+        fill('prodFilterGrupo', grupos, 'Todos los grupos', 'todos');
+        fill('prodFilterFamilia', familias, 'Todas las familias', 'todas');
+        fill('prodFilterEstacion', estaciones, 'Todas las estaciones', 'todas');
     },
 
     renderStats() {
         const total = this.ordenes.length;
-        const pendientes = this.ordenes.filter(o => o.estado_programacion === 'PENDIENTE').length;
-        const programadas = this.ordenes.filter(o => o.estado_programacion === 'PROGRAMADO').length;
-        const enProceso = this.ordenes.filter(o => o.estado_programacion === 'EN_PROCESO').length;
-        const terminadas = this.ordenes.filter(o => o.estado_programacion === 'TERMINADO').length;
+        const c = e => this.ordenes.filter(o => o.estado_programacion === e).length;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set('prodTotal', total);
-        set('prodPendientes', pendientes);
-        set('prodProgramadas', programadas);
-        set('prodProceso', enProceso);
-        set('prodTerminadas', terminadas);
-    },
-
-    renderTable(ordenes) {
-        const tbody = document.getElementById('prodTable');
-        const cardsMobile = document.getElementById('prodCardsMobile');
-        this.renderTotales(ordenes);
-        if (!ordenes.length) {
-            tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;padding:48px;color:#94a3b8"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><div style="font-size:14px;font-weight:500">No hay ordenes de produccion</div></td></tr>';
-            if (cardsMobile) cardsMobile.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8">No hay ordenes de produccion</div>';
-            return;
-        }
-
-        const estadoBadge = (e) => {
-            if (e === 'TERMINADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534">TERMINADO</span>';
-            if (e === 'PROGRAMADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dbeafe;color:#1e40af">PROGRAMADO</span>';
-            if (e === 'EN_PROCESO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#dbeafe;color:#1e40af">EN PROCESO</span>';
-            if (e === 'MERMADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fee2e2;color:#991b1b">MERMADO</span>';
-            if (e === 'CERRADO') return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#e5e7eb;color:#374151">CERRADO</span>';
-            return '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;background:#fef9c3;color:#854d0e">PENDIENTE</span>';
-        };
-
-        const prioridadBadge = (nivel, ordenId) => {
-            const n = Number(nivel) || 1;
-            const map = {
-                4: { label: 'Reposicion', bg: '#fef2f2', color: '#991b1b', border: '#ef4444', icon: '&#128293;' },
-                3: { label: 'Urgencia', bg: '#fff7ed', color: '#9a3412', border: '#f97316', icon: '&#9889;' },
-                2: { label: 'Express', bg: '#fefce8', color: '#854d0e', border: '#eab308', icon: '&#9889;' },
-                1: { label: 'Normal', bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', icon: '' }
-            };
-            const m = map[n] || map[1];
-            const iconHtml = m.icon ? '<span style="font-size:10px">' + m.icon + '</span> ' : '';
-            return '<div style="position:relative;display:inline-block">'
-                + '<span class="prio-toggle" data-orden="' + ordenId + '" '
-                + 'style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;'
-                + 'border:1px solid ' + m.border + ';background:' + m.bg + ';color:' + m.color
-                + ';cursor:pointer;display:inline-block;white-space:nowrap" '
-                + 'title="Click para cambiar prioridad">'
-                + iconHtml + m.label + ' &#9662;</span>'
-                + '<div class="prioridad-dropdown" id="prioDrop_' + ordenId + '" '
-                + 'style="display:none;position:absolute;top:100%;left:0;z-index:999;'
-                + 'background:white;border:1px solid #e2e8f0;border-radius:8px;padding:4px;'
-                + 'min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,0.15);margin-top:4px">'
-                + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="1" '
-                + 'style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px">'
-                + '<span style="color:#94a3b8">&#9679;</span> 1 - Normal</div>'
-                + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="2" '
-                + 'style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px">'
-                + '<span style="color:#eab308">&#9889;</span> 2 - Express</div>'
-                + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="3" '
-                + 'style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px">'
-                + '<span style="color:#f97316">&#9889;</span> 3 - Urgencia</div>'
-                + '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="4" '
-                + 'style="padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;color:#334155;display:flex;align-items:center;gap:6px">'
-                + '<span style="color:#ef4444">&#128293;</span> 4 - Reposicion</div>'
-                + '</div></div>';
-        };
-
-        tbody.innerHTML = ordenes.map(o => {
-            const progreso = o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos : '-';
-            return '<tr style="line-height:1.3;border-bottom:1px solid #f1f5f9">'
-                + '<td style="padding:10px 12px"><strong style="color:#0f172a">' + escapeHtml(o.pedido_sap_id || '-') + '</strong></td>'
-                + '<td style="padding:10px 12px;color:#475569">' + escText(o.item_numero || '-') + '</td>'
-                + '<td style="padding:10px 12px;color:#475569">' + escapeHtml((o.cliente || '-').toUpperCase()) + '</td>'
-                + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (o.codigo_padre ? escapeHtml(o.codigo_padre) + (o.nombre_codigo_padre ? ' - ' + escapeHtml(o.nombre_codigo_padre) : '') : '-') + '</td>'
-                + '<td style="padding:10px 12px"><strong style="color:#0f172a">' + escapeHtml(o.codigo_producto) + '</strong>'
-                + (o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed;font-weight:600">BOM</span>' : ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin receta BOM">SIN BOM</span>')
-                + '</td>'
-                + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + escapeHtml(o.nombre_mp || o.descripcion || '-') + '</td>'
-                + '<td style="padding:10px 12px;color:#475569">' + o.ancho + ' x ' + o.alto + ' mm</td>'
-                + '<td style="padding:10px 12px;color:#475569">' + (o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-') + '</td>'
-                + '<td style="padding:10px 12px;font-weight:600;color:#0f172a">' + (o.kilos ? Number(o.kilos).toFixed(1) : '-') + '</td>'
-                + '<td style="padding:10px 12px;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(' + o.id + ', ' + (o.cantidad || 1) + ')"><strong style="color:#3b82f6">' + (o.cantidad || 1) + '</strong></td>'
-                + '<td style="padding:10px 12px">' + prioridadBadge(o.nivel_prioridad, o.id) + '</td>'
-                + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_programada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
-                + '<td style="padding:10px 12px;font-size:11px;color:#94a3b8">' + (() => { const f = o.fecha_entrega_pactada; if (!f) return '<span style="color:#cbd5e1">-</span>'; const d = new Date(f); if (isNaN(d.getTime())) return '<span style="color:#cbd5e1">-</span>'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); })() + '</td>'
-                + '<td style="padding:10px 12px;color:#475569">' + (o.total_pasos === 0 ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin estaciones asociadas">SIN RUTA</span>' : progreso) + '</td>'
-                + '<td style="padding:10px 12px">' + (() => {
-                    let reglas = o.reglas_extras_json;
-                    if (typeof reglas === 'string') { try { reglas = JSON.parse(reglas); } catch(e) { reglas = []; } }
-                    if (!reglas || !reglas.length) return '<span style="color:#cbd5e1">-</span>';
-                    const colors = { 'Radio': '#8b5cf6', 'Pulido': '#6366f1', 'Perforado': '#f59e0b', 'Destaje': '#ef4444', 'Sacado': '#ec4899', 'Ventana': '#14b8a6', 'Pintado': '#3b82f6', 'Pintado Car': '#0ea5e9' };
-                    return reglas.map(r => '<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;background:' + (colors[r] || '#94a3b8') + ';color:white;margin:1px;font-weight:600">' + escText(r) + '</span>').join('');
-                })() + '</td>'
-                + '<td style="padding:10px 12px">' + (o.cuello_botella ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600">' + escapeHtml(o.cuello_botella) + '</span>' : '<span style="color:#cbd5e1">-</span>') + '</td>'
-                + '<td style="padding:10px 12px">' + estadoBadge(o.estado_programacion) + (o.cerrado_nota ? ' <span title="' + escAttr(o.cerrado_nota) + '" style="cursor:pointer;font-size:10px;color:#94a3b8"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>' : '') + '</td>'
-                + '<td style="padding:10px 12px;white-space:nowrap">'
-                + '<button class="btn btn-sm btn-info" title="Ver pasos" onclick="App.modules.produccion.verPasos(' + o.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>'
-                + (o.estado_programacion !== 'CERRADO' ? ' <button class="btn btn-sm btn-outline" title="Cerrar orden" onclick="App.modules.produccion.cerrarOrden(' + o.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>' : '')
-                + ' <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.produccion.eliminarOrden(' + o.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
-                + '</td></tr>';
-        }).join('');
-
-        // Cards movil (patron MODULE_RESPONSIVE_V1): una card por orden con campos clave + acciones
-        if (cardsMobile) {
-            const fechaCorta = (f) => { if (!f) return '-'; const d = new Date(f); if (isNaN(d.getTime())) return '-'; return String(d.getUTCDate()).padStart(2,'0') + '/' + String(d.getUTCMonth()+1).padStart(2,'0'); };
-            cardsMobile.innerHTML = ordenes.map(o => {
-                const progreso = o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos : '-';
-                const reglas = (() => {
-                    let r = o.reglas_extras_json;
-                    if (typeof r === 'string') { try { r = JSON.parse(r); } catch(e) { r = []; } }
-                    return Array.isArray(r) ? r : [];
-                })();
-                return '<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">'
-                    + '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">'
-                    + '<div style="min-width:0">'
-                    + '<div style="font-weight:700;font-size:13px;color:#0f172a">' + escapeHtml(o.pedido_sap_id || '-') + ' <span style="font-weight:500;font-size:11px;color:#64748b">Item ' + escText(o.item_numero || '-') + '</span></div>'
-                    + '<div style="font-size:11px;color:#475569;margin-top:2px">' + escapeHtml((o.cliente || '-').toUpperCase()) + '</div>'
-                    + '</div>'
-                    + '<div style="flex-shrink:0">' + estadoBadge(o.estado_programacion) + '</div>'
-                    + '</div>'
-                    + '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px">'
-                    + '<strong style="color:#0f172a;font-size:12px">' + escapeHtml(o.codigo_producto) + '</strong>'
-                    + (o.es_compuesto ? ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed;font-weight:600">BOM</span>' : ' <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin receta BOM">SIN BOM</span>')
-                    + '<span style="font-size:11px;color:#94a3b8">' + escapeHtml(o.nombre_mp || o.descripcion || '-') + '</span>'
-                    + '</div>'
-                    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">'
-                    + '<div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">' + escText(o.ancho) + ' x ' + escText(o.alto) + ' mm</span></div>'
-                    + '<div><span style="color:#94a3b8">Cant:</span> <strong style="color:#3b82f6;cursor:pointer" title="Click para editar" onclick="App.modules.produccion.editCantidad(' + o.id + ', ' + (o.cantidad || 1) + ')">' + (o.cantidad || 1) + '</strong></div>'
-                    + '<div><span style="color:#94a3b8">M2:</span> <span style="color:#475569">' + (o.metros_cuadrados ? Number(o.metros_cuadrados).toFixed(2) : '-') + '</span> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">' + (o.kilos ? Number(o.kilos).toFixed(1) : '-') + '</strong></div>'
-                    + '<div><span style="color:#94a3b8">F.Prog:</span> <span style="color:#475569">' + fechaCorta(o.fecha_programada) + '</span> <span style="color:#94a3b8">F.Term:</span> <span style="color:#475569">' + fechaCorta(o.fecha_entrega_pactada) + '</span></div>'
-                    + '<div><span style="color:#94a3b8">Ruta:</span> ' + (o.total_pasos === 0 ? '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#fef2f2;color:#ef4444;font-weight:600" title="Sin estaciones asociadas">SIN RUTA</span>' : '<span style="color:#475569">' + progreso + '</span>') + '</div>'
-                    + '<div>' + (reglas.length ? reglas.map(r => '<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;background:#94a3b8;color:white;margin:1px;font-weight:600">' + escText(r) + '</span>').join('') : '<span style="color:#cbd5e1">-</span>') + '</div>'
-                    + '</div>'
-                    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">'
-                    + prioridadBadge(o.nivel_prioridad, o.id)
-                    + '<span style="display:flex;gap:4px">'
-                    + '<button class="btn btn-sm btn-info" title="Ver pasos" onclick="App.modules.produccion.verPasos(' + o.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>'
-                    + (o.estado_programacion !== 'CERRADO' ? ' <button class="btn btn-sm btn-outline" title="Cerrar orden" onclick="App.modules.produccion.cerrarOrden(' + o.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>' : '')
-                    + ' <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.produccion.eliminarOrden(' + o.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
-                    + '</span>'
-                    + '</div>'
-                    + '</div>';
-            }).join('');
-        }
+        set('prodPendientes', c('PENDIENTE'));
+        set('prodProgramadas', c('PROGRAMADO'));
+        set('prodProceso', c('EN_PROCESO'));
+        set('prodTerminadas', c('TERMINADO'));
+        const totalCant = this.ordenes.reduce((s, o) => s + Number(o.cantidad || 0), 0);
+        const totalM2 = this.ordenes.reduce((s, o) => s + Number(o.metros_cuadrados || 0), 0);
+        set('prodTotalSub', this._fmt(totalCant, 0) + ' und · ' + this._fmt(totalM2, 2) + ' m²');
     },
 
     filter() {
@@ -357,13 +324,104 @@ App.registerModule('produccion', {
         const familia = document.getElementById('prodFilterFamilia')?.value || 'todas';
         const estacion = document.getElementById('prodFilterEstacion')?.value || 'todas';
         let filtered = this.ordenes;
-        if (search) filtered = filtered.filter(o => (o.codigo_producto || '').toLowerCase().includes(search) || (o.pedido_sap_id || '').toLowerCase().includes(search) || (o.cliente || '').toLowerCase().includes(search) || (o.nombre_codigo_padre || '').toLowerCase().includes(search) || (o.nombre_mp || '').toLowerCase().includes(search));
+        if (search) filtered = filtered.filter(o =>
+            (o.codigo_producto || '').toLowerCase().includes(search)
+            || (o.pedido_sap_id || '').toLowerCase().includes(search)
+            || (o.cliente || '').toLowerCase().includes(search)
+            || (o.nombre_codigo_padre || '').toLowerCase().includes(search)
+            || (o.nombre_mp || '').toLowerCase().includes(search));
         if (estado !== 'todos') filtered = filtered.filter(o => o.estado_programacion === estado);
-        if (fechaFilter) filtered = filtered.filter(o => { const f = o.fecha_programada; if (!f) return false; const d = new Date(f); const fs = d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); return fs === fechaFilter; });
+        if (fechaFilter) filtered = filtered.filter(o => { const f = o.fecha_programada; if (!f) return false; const d = new Date(f); const fs = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); return fs === fechaFilter; });
         if (grupo !== 'todos') filtered = filtered.filter(o => o.grupo === grupo);
         if (familia !== 'todas') filtered = filtered.filter(o => o.familia_nombre === familia);
         if (estacion !== 'todas') filtered = filtered.filter(o => (o.estaciones || []).includes(estacion));
+        this._filtradas = filtered;
         this.renderTable(filtered);
+        if (this._vista === 'tablero') this.renderBoard(filtered);
+    },
+
+    // ---------------- Badges (idioma de etiquetas) ----------------
+    _estadoBadge(e) {
+        const map = {
+            'PENDIENTE': ['s-pend', 'Pendiente'],
+            'PROGRAMADO': ['s-prog', 'Programada'],
+            'EN_PROCESO': ['s-proceso', 'En proceso'],
+            'TERMINADO': ['s-term', 'Terminada'],
+            'MERMADO': ['s-merm', 'Mermada'],
+            'CERRADO': ['s-cerr', 'Cerrada']
+        };
+        const [cls, txt] = map[e] || ['s-pend', e || '—'];
+        return '<span class="po-st ' + cls + '">● ' + escText(txt) + '</span>';
+    },
+    _prioBadge(nivel, ordenId, conMenu) {
+        const map = {
+            1: { label: 'Normal', cls: 'p-normal', dot: '#2563eb' },
+            2: { label: 'Express', cls: 'p-express', dot: '#eab308' },
+            3: { label: 'Urgencia', cls: 'p-urgencia', dot: '#16a34a' },
+            4: { label: 'Reposición', cls: 'p-reposicion', dot: '#b91c1c' }
+        };
+        const n = Number(nivel) || 1;
+        const m = map[n] || map[1];
+        if (!conMenu) return '<span class="po-prio ' + m.cls + '">● ' + m.label + '</span>';
+        let opts = '';
+        for (let i = 1; i <= 4; i++) {
+            opts += '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="' + i + '">'
+                + '<span class="po-prio ' + map[i].cls + '">● ' + map[i].label + '</span></div>';
+        }
+        return '<div class="po-prio-wrap">'
+            + '<span class="prio-toggle po-prio ' + m.cls + '" data-orden="' + ordenId + '" title="Click para cambiar prioridad">● ' + m.label + ' ▾</span>'
+            + '<div class="prioridad-dropdown" id="prioDrop_' + ordenId + '">' + opts + '</div>'
+            + '</div>';
+    },
+
+    // ---------------- Tabla ----------------
+    renderTable(ordenes) {
+        const tbody = document.getElementById('prodTable');
+        const cardsMobile = document.getElementById('prodCardsMobile');
+        this.renderTotales(ordenes);
+        if (!ordenes.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="po-loading">No hay órdenes con los filtros actuales</td></tr>';
+            if (cardsMobile) cardsMobile.innerHTML = '<div class="po-loading">No hay órdenes con los filtros actuales</div>';
+            return;
+        }
+        tbody.innerHTML = ordenes.map(o => {
+            const progreso = o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos : '';
+            return '<tr onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
+                + '<td><strong>' + escText(o.pedido_sap_id || '-') + '</strong><div class="sub2">Item ' + escText(o.item_numero || '-') + '</div></td>'
+                + '<td>' + escText((o.cliente || '-').toUpperCase()) + (o.tipo_venta ? '<div class="sub2">' + escText(o.tipo_venta) + '</div>' : '') + '</td>'
+                + '<td><strong>' + escText(o.codigo_producto) + '</strong> '
+                + (o.es_compuesto ? '<span class="po-bom">BOM</span>' : '<span class="po-sinbom" title="Sin receta BOM">SIN BOM</span>')
+                + '<div class="sub2">' + escText(o.nombre_mp || o.descripcion || '-') + '</div></td>'
+                + '<td>' + this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0) + ' mm</td>'
+                + '<td class="num"><span class="po-cant" title="Click para editar" onclick="event.stopPropagation();App.modules.produccion.showEditCantidad(' + o.id + ')">' + this._fmt(o.cantidad || 1, 0) + '</span></td>'
+                + '<td>' + this._prioBadge(o.nivel_prioridad, o.id, true) + '</td>'
+                + '<td>' + this._estadoBadge(o.estado_programacion) + (progreso ? '<div class="sub2">' + progreso + ' pasos</div>' : (o.total_pasos === 0 ? '<div class="sub2" style="color:#dc2626">Sin ruta</div>' : '')) + '</td>'
+                + '<td class="c-acc" onclick="event.stopPropagation()">'
+                + '<div class="po-amenu"><button class="po-amenu-btn" onclick="App.modules.produccion.toggleAcciones(event,' + o.id + ')">Acciones ▾</button>'
+                + '<div class="po-amenu-drop" id="poAcc_' + o.id + '">'
+                + '<div class="it" onclick="App.modules.produccion.verDetalle(' + o.id + ')">👁 Ver detalle y pasos</div>'
+                + '<div class="it" onclick="App.modules.produccion.showEditCantidad(' + o.id + ')">✏️ Editar cantidad</div>'
+                + (o.estado_programacion !== 'CERRADO' ? '<div class="it" onclick="App.modules.produccion.cerrarOrden(' + o.id + ')">⛔ Cerrar orden</div>' : '')
+                + '<div class="sep"></div>'
+                + '<div class="it danger" onclick="App.modules.produccion.eliminarOrden(' + o.id + ')">🗑 Eliminar</div>'
+                + '</div></div></td></tr>';
+        }).join('');
+
+        if (cardsMobile) {
+            cardsMobile.innerHTML = ordenes.map(o => {
+                const progreso = o.total_pasos > 0 ? ' · ' + o.pasos_terminados + '/' + o.total_pasos + ' pasos' : '';
+                return '<div class="po-mcard">'
+                    + '<div class="t1"><strong>' + escText(o.pedido_sap_id || '-') + ' · It ' + escText(o.item_numero || '-') + '</strong>' + this._estadoBadge(o.estado_programacion) + '</div>'
+                    + '<div class="sub2">' + escText((o.cliente || '-').toUpperCase()) + ' · ' + escText(o.codigo_producto) + '</div>'
+                    + '<div class="t2">' + this._prioBadge(o.nivel_prioridad, o.id, true)
+                    + '<span class="sub2">' + this._fmt(o.cantidad || 1, 0) + ' und · ' + this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0) + progreso + '</span></div>'
+                    + '<div class="acc">'
+                    + '<button class="po-btn primary sm" style="flex:1" onclick="App.modules.produccion.verDetalle(' + o.id + ')">Ver detalle</button>'
+                    + (o.estado_programacion !== 'CERRADO' ? '<button class="po-btn ghost sm" onclick="App.modules.produccion.cerrarOrden(' + o.id + ')">Cerrar</button>' : '')
+                    + '<button class="po-btn danger sm" onclick="App.modules.produccion.eliminarOrden(' + o.id + ')">Eliminar</button>'
+                    + '</div></div>';
+            }).join('');
+        }
     },
 
     renderTotales(ordenes) {
@@ -372,249 +430,159 @@ App.registerModule('produccion', {
         const totalM2 = ordenes.reduce((s, o) => s + Number(o.metros_cuadrados || 0), 0);
         const totalKg = ordenes.reduce((s, o) => s + Number(o.kilos || 0), 0);
         const totalCant = ordenes.reduce((s, o) => s + Number(o.cantidad || 0), 0);
-        el.innerHTML = `
-            <span style="padding:3px 8px;border-radius:4px;background:#dbeafe;color:#1e40af">${ordenes.length} ordenes</span>
-            <span style="padding:3px 8px;border-radius:4px;background:#fef3c7;color:#854d0e">${totalCant} und</span>
-            <span style="padding:3px 8px;border-radius:4px;background:#e0e7ff;color:#3730a3">${totalM2.toLocaleString('es-CL', {maximumFractionDigits:2})} m²</span>
-            <span style="padding:3px 8px;border-radius:4px;background:#dcfce7;color:#166534"><strong>${totalKg.toLocaleString('es-CL', {maximumFractionDigits:1})} kg</strong></span>
-        `;
+        el.innerHTML = ''
+            + '<span>' + this._fmt(ordenes.length, 0) + ' órdenes</span>'
+            + '<span>' + this._fmt(totalCant, 0) + ' und</span>'
+            + '<span>' + this._fmt(totalM2, 2) + ' m²</span>'
+            + '<span><strong>' + this._fmt(totalKg, 1) + ' kg</strong></span>';
     },
 
-    setupDragDrop() {
-        const area = document.getElementById('prodImportArea');
-        if (!area) return;
-        area.addEventListener('dragover', e => { e.preventDefault(); area.style.borderColor = '#3b82f6'; area.style.background = '#eff6ff'; });
-        area.addEventListener('dragleave', () => { area.style.borderColor = '#cbd5e1'; area.style.background = ''; });
-        area.addEventListener('drop', e => { e.preventDefault(); area.style.borderColor = '#cbd5e1'; area.style.background = ''; if (e.dataTransfer.files.length) this.handleImportFile({ target: { files: e.dataTransfer.files } }); });
+    // ---------------- Tablero por estados ----------------
+    renderBoard(ordenes) {
+        const board = document.getElementById('poBoard');
+        if (!board) return;
+        const grupos = [
+            { e: 'PENDIENTE', cls: 's-pend', t: 'Pendientes' },
+            { e: 'PROGRAMADO', cls: 's-prog', t: 'Programadas' },
+            { e: 'EN_PROCESO', cls: 's-proceso', t: 'En proceso' },
+            { e: 'TERMINADO', cls: 's-term', t: 'Terminadas' }
+        ];
+        if (ordenes.some(o => o.estado_programacion === 'MERMADO')) grupos.push({ e: 'MERMADO', cls: 's-merm', t: 'Mermadas' });
+        if (ordenes.some(o => o.estado_programacion === 'CERRADO')) grupos.push({ e: 'CERRADO', cls: 's-cerr', t: 'Cerradas' });
+        board.innerHTML = grupos.map(g => {
+            const lista = ordenes.filter(o => o.estado_programacion === g.e);
+            const cards = lista.map(o => {
+                const meta = g.e === 'EN_PROCESO' || g.e === 'TERMINADO'
+                    ? (o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos + ' pasos' : '')
+                    : this._fecha(o.fecha_programada);
+                return '<div class="po-bcard" onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
+                    + '<div class="t1"><span class="ped">' + escText(o.pedido_sap_id || '-') + ' · It ' + escText(o.item_numero || '-') + '</span>' + this._prioBadge(o.nivel_prioridad, o.id, false) + '</div>'
+                    + '<div class="cli">' + escText((o.cliente || '-').toUpperCase()) + '</div>'
+                    + '<div class="t2"><span class="cod">' + escText(o.codigo_producto) + ' · ' + this._fmt(o.cantidad || 1, 0) + ' und</span>'
+                    + '<span class="dim2">' + escText(meta || this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0)) + '</span></div>'
+                    + '</div>';
+            }).join('');
+            return '<div class="po-col"><div class="po-col-head"><span class="po-st ' + g.cls + '">●</span><span class="t">' + g.t + '</span><span class="c">' + lista.length + '</span></div>'
+                + (cards || '<div class="po-loading" style="padding:18px 6px">Sin órdenes</div>') + '</div>';
+        }).join('');
     },
 
-    selectedImportFile: null,
-
-    handleImportFile(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        this.selectedImportFile = file;
-        document.getElementById('prodImportName').textContent = file.name;
-        document.getElementById('prodImportName').style.display = 'block';
-        document.getElementById('prodImportBtn').disabled = false;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            try {
-                const wb = XLSX.read(ev.target.result, { type: 'array' });
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(ws);
-                this._importRows = rows;
-                const preview = document.getElementById('prodImportPreview');
-                preview.innerHTML = `<div style="font-size:12px;margin-bottom:4px"><strong>${rows.length}</strong> items encontrados</div>
-                    <table style="width:100%;font-size:11px"><thead><tr><th style="padding:4px 8px">Codigo</th><th style="padding:4px 8px">Pedido</th><th style="padding:4px 8px">Item</th><th style="padding:4px 8px">Cliente</th><th style="padding:4px 8px">Cant</th><th style="padding:4px 8px">Ancho</th><th style="padding:4px 8px">Alto</th><th style="padding:4px 8px">Pint</th><th style="padding:4px 8px">Tipo Venta</th><th style="padding:4px 8px">Fecha</th></tr></thead><tbody>
-                    ${rows.slice(0, 10).map(r => {
-                        const cod = r.codigo || r.Codigo || r.CODIGO || '';
-                        const ped = r.pedido || r.Pedido || r.PEDIDO || '';
-                        const it = r.item || r.Item || r.ITEM || '';
-                        const cli = r.cliente || r.Cliente || '';
-                        const cant = r.cantidad || r.Cantidad || 1;
-                        const ancho = r.anho || r.ancho || r.Ancho || r.ANCHO || 0;
-                        const alto = r.alto || r.Alto || r.ALTO || 0;
-                        const pint = r.pintado || r.Pintado || r.PINTADO || 0;
-                        const tipo = r['tipo de venta'] || r.tipo_de_venta || r.TipoVenta || 'Normal';
-                        const fecha = r.fecha_creacion || r.FechaCreacion || r.fecha || r.Fecha || '';
-                        return `<tr><td style="padding:4px 8px">${escText(cod)}</td><td style="padding:4px 8px">${escText(ped)}</td><td style="padding:4px 8px">${escText(it)}</td><td style="padding:4px 8px">${escText(cli)}</td><td style="padding:4px 8px">${escText(cant)}</td><td style="padding:4px 8px">${escText(ancho)}</td><td style="padding:4px 8px">${escText(alto)}</td><td style="padding:4px 8px">${escText(pint)}</td><td style="padding:4px 8px">${escText(tipo)}</td><td style="padding:4px 8px">${escText(fecha)}</td></tr>`;
-                    }).join('')}
-                    ${rows.length > 10 ? `<tr><td colspan="10" style="text-align:center;padding:4px;color:var(--text-light)">... y ${rows.length - 10} mas</td></tr>` : ''}
-                    </tbody></table>`;
-            } catch(err) { document.getElementById('prodImportPreview').innerHTML = '<span style="color:red">Error al leer archivo</span>'; }
-        };
-        reader.readAsArrayBuffer(file);
-    },
-
-    async importar() {
-        if (!this.selectedImportFile) return;
-        const btn = document.getElementById('prodImportBtn');
-        btn.textContent = 'Procesando...';
-        btn.disabled = true;
-
-        try {
-            const data = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    try {
-                        const wb = XLSX.read(reader.result, { type: 'array' });
-                        const ws = wb.Sheets[wb.SheetNames[0]];
-                        const rows = XLSX.utils.sheet_to_json(ws);
-                        resolve(rows);
-                    } catch(e) { reject(e); }
-                };
-                reader.onerror = () => reject(new Error('Error al leer archivo'));
-                reader.readAsArrayBuffer(this.selectedImportFile);
-            });
-
-            if (!data.length) { alert('El archivo esta vacio'); btn.textContent = 'Importar'; btn.disabled = false; return; }
-
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const payload = JSON.stringify({ rows: data });
-            const res = await fetch('/api/produccion/importar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
-                body: payload
-            });
-
-            const result = await res.json();
-            if (res.ok) {
-                this.showImportResult(result);
-                this.hideImportModal();
-                await this.load();
-            } else {
-                alert(result.error || 'Error al importar');
-            }
-        } catch(e) { alert('Error: ' + e.message); }
-
-        btn.textContent = 'Importar';
-        btn.disabled = false;
-    },
-
-    showImportResult(result) {
-        const hayErrores = result.errores && result.errores.length > 0;
-
-        const errBom = (result.errores || []).filter(e => e.error && e.error.includes('receta BOM'));
-        const errDim = (result.errores || []).filter(e => e.error && e.error.includes('dimensiones'));
-        const errTipo = (result.errores || []).filter(e => e.error && e.error.includes('invalid input'));
-        const errOtros = (result.errores || []).filter(e => e.error && !e.error.includes('receta BOM') && !e.error.includes('dimensiones') && !e.error.includes('invalid input'));
-
-        const errUnicos = {};
-        (result.errores || []).forEach(e => {
-            const key = e.error || 'desc';
-            if (!errUnicos[key]) errUnicos[key] = { ...e, count: 0, codigos: [] };
-            errUnicos[key].count++;
-            if (e.codigo && !errUnicos[key].codigos.includes(e.codigo)) errUnicos[key].codigos.push(e.codigo);
-        });
-        const errLista = Object.values(errUnicos);
-
-        const overlay = document.createElement('div');
-        overlay.id = 'importResultModal';
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px)';
-
-        let errRows = '';
-        if (errLista.length) {
-            errLista.forEach(e => {
-                const codigos = e.codigos.length > 0 ? escText(e.codigos.slice(0, 5).join(', ')) + (e.codigos.length > 5 ? ` +${e.codigos.length - 5} mas` : '-') : '-';
-                const repeatBadge = e.count > 1 ? `<span style="background:#fee2e2;color:#991b1b;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px">${e.count}x</span>` : '';
-                errRows += `<tr>
-                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:#1e293b;font-size:11px">${codigos}</td>
-                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#ef4444;font-size:12px">${escText(e.error)}${repeatBadge}</td>
-                </tr>`;
-            });
-        }
-
-        let errTitle = 'Errores encontrados';
-        let errSolution = '';
-        if (errBom.length > 0 && errTipo.length === 0 && errDim.length === 0) {
-            errTitle = 'Códigos sin receta BOM configurada';
-            errSolution = `<strong>Solución:</strong> Ve a <strong>Configuración → Recetas BOM</strong> y crea la receta para cada código. Define la materia prima, cantidad y dimensiones antes de volver a importar.`;
-        } else if (errTipo.length > 0) {
-            errTitle = 'Errores de formato en los datos';
-            errSolution = `<strong>Solución:</strong> Revisa el archivo SAP. Algunos valores no son compatibles con la base de datos (ej: números decimales donde se espera entero). Verifica las columnas de item, cantidad y dimensiones.`;
-        } else if (errDim.length > 0) {
-            errTitle = 'Códigos sin dimensiones';
-            errSolution = `<strong>Solución:</strong> Ve a <strong>Configuración → Recetas BOM</strong> y define el ancho y alto para cada código listado.`;
-        } else {
-            errSolution = `<strong>Solución:</strong> Revisa los errores listados y corrige los datos en el archivo SAP o en la configuración del sistema.`;
-        }
-
-        overlay.innerHTML = `
-        <div style="background:white;border-radius:16px;max-width:640px;width:95%;max-height:85vh;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.3);display:flex;flex-direction:column">
-            <div style="padding:20px 24px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#f8fafc,#f1f5f9)">
-                <div>
-                    <div style="font-size:18px;font-weight:800;color:#0f172a">Resultado de Importación</div>
-                    <div style="font-size:12px;color:#64748b;margin-top:2px">Resumen del procesamiento del archivo SAP</div>
-                </div>
-                <button onclick="document.getElementById('importResultModal').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#94a3b8;padding:4px 8px;border-radius:6px" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">✕</button>
-            </div>
-            <div style="padding:20px 24px;overflow-y:auto;flex:1">
-                <div class="m-stats" style="gap:10px">
-                    <div class="m-stat-card stat-green"><div class="m-stat-label">Importadas</div><div class="m-stat-value" style="color:#16a34a">${result.importadas || 0}</div></div>
-                    <div class="m-stat-card stat-blue"><div class="m-stat-label">Pasos</div><div class="m-stat-value" style="color:#2563eb">${result.pasos_creados || 0}</div></div>
-                    <div class="m-stat-card stat-amber"><div class="m-stat-label">Costos</div><div class="m-stat-value" style="color:#ca8a04">${result.costos_calculados || 0}</div></div>
-                    <div class="m-stat-card ${hayErrores ? 'stat-red' : 'stat-green'}"><div class="m-stat-label">Errores</div><div class="m-stat-value" style="color:${hayErrores ? '#dc2626' : '#16a34a'}">${(result.errores || []).length}</div></div>
-                </div>
-                ${result.fusiones > 0 ? `<div style="background:#f8fafc;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#475569;border:1px solid #e2e8f0">🔗 <strong>${result.fusiones}</strong> filas duplicadas se fusionaron automáticamente</div>` : ''}
-                ${hayErrores ? `
-                <div style="margin-bottom:8px">
-                    <div style="font-size:13px;font-weight:700;color:#991b1b;margin-bottom:8px;display:flex;align-items:center;gap:6px">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
-                        ${errTitle}
-                    </div>
-                    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
-                        <table style="width:100%;border-collapse:collapse;font-size:12px">
-                            <thead><tr style="background:#f8fafc">
-                                <th style="padding:8px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0">Códigos</th>
-                                <th style="padding:8px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0">Detalle del error</th>
-                            </tr></thead>
-                            <tbody>${errRows}</tbody>
-                        </table>
-                    </div>
-                    <div style="margin-top:10px;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:12px;color:#9a3412">
-                        ${errSolution}
-                    </div>
-                </div>
-                ` : `
-                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center">
-                    <div style="font-size:28px;margin-bottom:6px">✓</div>
-                    <div style="font-size:14px;font-weight:700;color:#166534">Importación exitosa</div>
-                    <div style="font-size:12px;color:#16a34a;margin-top:4px">Todas las órdenes se procesaron correctamente</div>
-                </div>
-                `}
-            </div>
-            <div style="padding:14px 24px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;background:#f8fafc">
-                <button onclick="document.getElementById('importResultModal').remove()" style="background:#3b82f6;color:white;border:none;padding:8px 20px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Cerrar</button>
-            </div>
-        </div>`;
-
-        document.body.appendChild(overlay);
-    },
-
-    async verPasos(ordenId) {
+    // ---------------- Panel de detalle (drawer) ----------------
+    async verDetalle(ordenId) {
         try {
             const [pasosRes, estacionesRes] = await Promise.all([
                 fetch(`/api/produccion/ordenes/${ordenId}/pasos`),
                 fetch('/api/produccion/estaciones')
             ]);
+            if (!pasosRes.ok) throw new Error('HTTP ' + pasosRes.status);
             const pasos = await pasosRes.json();
             const todasEstaciones = await estacionesRes.json();
-            const orden = this.ordenes.find(o => o.id === ordenId);
-            const body = document.getElementById('prodPasosBody');
-            const estadoEstilo = { PENDIENTE: 'background:#fef9c3;color:#854d0e', EN_PROCESO: 'background:#dbeafe;color:#1e40af', TERMINADO: 'background:#dcfce7;color:#166534', MERMADO: 'background:#fee2e2;color:#991b1b' };
+            const o = this.ordenes.find(x => x.id === ordenId);
+            if (!o) return;
+            this._drawerId = ordenId;
+
             const estIdsActuales = pasos.map(p => p.estacion_id);
             const estDisponibles = todasEstaciones.filter(e => e.activa && !estIdsActuales.includes(e.id));
-            const padInfo = orden?.codigo_padre ? ` | <strong>Padre:</strong> ${escText(orden.codigo_padre)}${orden?.nombre_codigo_padre ? ' (' + escText(orden.nombre_codigo_padre) + ')' : ''}` : '';
-            const famInfo = orden?.familia_nombre ? ` | <strong>Familia:</strong> ${escText(orden.familia_nombre)}` : '';
-            const grupoInfo = orden?.grupo ? ` | <strong>Grupo:</strong> ${escText(orden.grupo)}` : '';
-            body.innerHTML = `
-                <div style="margin-bottom:12px"><strong>Pedido:</strong> ${escText(orden?.pedido_sap_id || '-')} | <strong>Codigo:</strong> ${escText(orden?.codigo_producto)} | <strong>${escText(orden?.ancho)}x${escText(orden?.alto)}mm</strong>${padInfo}${famInfo}${grupoInfo}</div>
-                ${pasos.length === 0 ? '<div style="color:var(--text-light);text-align:center;padding:20px">Sin pasos definidos</div>' :
-                `<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Estacion</th><th>Estado</th><th>Inicio</th><th>Fin</th><th></th></tr></thead><tbody>${pasos.map(p => {
-                    return `<tr>
-                        <td>${p.orden_secuencia}</td>
-                        <td><strong>${escText(p.nombre_estacion || p.estacion_nombre)}</strong></td>
-                        <td><span style="padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;${estadoEstilo[p.estado] || ''}">${escText(p.estado)}</span></td>
-                        <td>${p.hora_inicio ? new Date(p.hora_inicio).toLocaleString('es-CL') : '-'}</td>
-                        <td>${p.hora_fin ? new Date(p.hora_fin).toLocaleString('es-CL') : '-'}</td>
-                        <td>${p.estado === 'PENDIENTE' ? `<button class="btn btn-sm btn-danger" onclick="App.modules.produccion.eliminarPaso(${p.id}, ${ordenId})" title="Quitar estacion"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}</td>
-                    </tr>`;
-                }).join('')}</tbody></table></div>`}
-                ${estDisponibles.length > 0 ? `
-                <div class="m-filters" style="margin-top:12px">
-                    <select id="addEstacion_${ordenId}" class="form-control" style="flex:1;padding:10px 12px;font-size:12px">
-                        <option value="">-- Agregar estacion --</option>
-                        ${estDisponibles.map(e => `<option value="${e.id}">${e.orden_secuencia_defecto || '?'}° ${escText(e.nombre_estacion)}</option>`).join('')}
-                    </select>
-                    <button class="btn btn-sm btn-primary" onclick="App.modules.produccion.agregarPaso(${ordenId})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar</button>
-                </div>` : ''}
-            `;
-            document.getElementById('prodPasosModal').classList.add('show');
-        } catch(e) { alert('Error al cargar pasos: ' + e.message); }
+            const progreso = o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos : '—';
+
+            let reglas = o.reglas_extras_json;
+            if (typeof reglas === 'string') { try { reglas = JSON.parse(reglas); } catch (e) { reglas = []; } }
+            reglas = Array.isArray(reglas) ? reglas : [];
+            const coloresRegla = { 'Radio': '#8b5cf6', 'Pulido': '#6366f1', 'Perforado': '#f59e0b', 'Destaje': '#ef4444', 'Sacado': '#ec4899', 'Ventana': '#14b8a6', 'Pintado': '#3b82f6', 'Pintado Car': '#0ea5e9' };
+
+            const pasosHtml = pasos.length === 0
+                ? '<div class="po-loading" style="padding:14px">Sin pasos definidos (sin ruta)</div>'
+                : pasos.map(p => `
+                    <div class="po-paso">
+                        <div class="n">${p.orden_secuencia}</div>
+                        <div class="e">${escText(p.nombre_estacion || p.estacion_nombre || '—')}</div>
+                        ${this._estadoBadge(p.estado === 'EN_PROCESO' ? 'EN_PROCESO' : p.estado === 'TERMINADO' ? 'TERMINADO' : p.estado === 'MERMADO' ? 'MERMADO' : 'PENDIENTE')}
+                        <div class="f">${p.hora_inicio ? this._fechaHora(p.hora_inicio) : '—'}${p.hora_fin ? ' → ' + this._fechaHora(p.hora_fin) : ''}</div>
+                        ${p.estado === 'PENDIENTE' ? `<button class="po-x-sm" title="Quitar estación" onclick="App.modules.produccion.eliminarPaso(${p.id},${ordenId})">✕</button>` : ''}
+                    </div>`).join('');
+
+            document.getElementById('poDrawer').innerHTML = `
+                <div class="po-dr-head">
+                    <div>
+                        <h3>Pedido ${escText(o.pedido_sap_id || '-')} · Item ${escText(o.item_numero || '-')}</h3>
+                        <div class="sub2">${escText((o.cliente || '-').toUpperCase())}${o.orden_compra ? ' · OC ' + escText(o.orden_compra) : ''}${o.posicion ? ' · Pos. ' + escText(o.posicion) : ''}</div>
+                    </div>
+                    <div class="po-dr-head-right">
+                        ${this._prioBadge(o.nivel_prioridad, o.id, true)}
+                        <button class="po-x" onclick="App.modules.produccion.cerrarDrawer()">✕</button>
+                    </div>
+                </div>
+                <div class="po-dr-body">
+                    <div class="po-dr-sec">Datos de la orden</div>
+                    <div class="po-dr-grid">
+                        <div class="po-kv"><div class="k">Código</div><div class="v">${escText(o.codigo_producto)} ${o.es_compuesto ? '<span class="po-bom">BOM</span>' : '<span class="po-sinbom">SIN BOM</span>'}</div></div>
+                        <div class="po-kv"><div class="k">Dimensiones</div><div class="v">${this._fmt(o.ancho, 0)} × ${this._fmt(o.alto, 0)} mm</div></div>
+                        <div class="po-kv"><div class="k">Cantidad</div><div class="v">${this._fmt(o.cantidad || 1, 0)} und</div></div>
+                        <div class="po-kv"><div class="k">Superficie</div><div class="v">${this._fmt(o.metros_cuadrados, 2)} m²</div></div>
+                        <div class="po-kv"><div class="k">Peso</div><div class="v">${this._fmt(o.kilos, 1)} kg</div></div>
+                        <div class="po-kv"><div class="k">Cuello botella</div><div class="v">${o.cuello_botella ? '<span style="color:#dc2626">' + escText(o.cuello_botella) + '</span>' : '—'}</div></div>
+                        <div class="po-kv"><div class="k">F. programada</div><div class="v">${this._fecha(o.fecha_programada)}</div></div>
+                        <div class="po-kv"><div class="k">F. término</div><div class="v">${this._fecha(o.fecha_entrega_pactada)}</div></div>
+                        <div class="po-kv"><div class="k">Entrega</div><div class="v">${escText(o.tipo_entrega || '—')}</div></div>
+                        ${o.codigo_padre ? '<div class="po-kv"><div class="k">Cód. padre</div><div class="v">' + escText(o.codigo_padre) + (o.nombre_codigo_padre ? ' (' + escText(o.nombre_codigo_padre) + ')' : '') + '</div></div>' : ''}
+                        ${o.familia_nombre ? '<div class="po-kv"><div class="k">Familia</div><div class="v">' + escText(o.familia_nombre) + '</div></div>' : ''}
+                        ${o.grupo ? '<div class="po-kv"><div class="k">Grupo</div><div class="v">' + escText(o.grupo) + '</div></div>' : ''}
+                    </div>
+
+                    ${reglas.length ? '<div class="po-dr-sec">Reglas extra</div><div class="po-reglas">' + reglas.map(r => '<span class="po-regla" style="background:' + (coloresRegla[r] || '#94a3b8') + '">' + escText(r) + '</span>').join('') + '</div>' : ''}
+
+                    <div class="po-dr-sec">Pasos de producción · ${escText(progreso)}</div>
+                    ${pasosHtml}
+                    ${estDisponibles.length > 0 ? `
+                    <div class="po-addpaso">
+                        <select id="addEstacion_${ordenId}">
+                            <option value="">-- Agregar estación a la ruta --</option>
+                            ${estDisponibles.map(e => `<option value="${e.id}">${e.orden_secuencia_defecto || '?'}° ${escText(e.nombre_estacion)}</option>`).join('')}
+                        </select>
+                        <button class="po-btn primary sm" onclick="App.modules.produccion.agregarPaso(${ordenId})">＋ Agregar</button>
+                    </div>` : ''}
+
+                    ${o.nota || o.cerrado_nota ? `
+                    <div class="po-dr-sec">${o.cerrado_nota ? 'Motivo de cierre' : 'Nota'}</div>
+                    <div class="po-nota">${escText(o.cerrado_nota || o.nota)}</div>` : ''}
+                </div>
+                <div class="po-dr-foot">
+                    ${o.estado_programacion !== 'CERRADO' ? `<button class="po-btn primary" onclick="App.modules.produccion.marcarSiguientePaso()">Marcar paso siguiente</button>
+                    <button class="po-btn ghost" onclick="App.modules.produccion.cerrarOrden(${o.id})">Cerrar orden</button>` : ''}
+                    <button class="po-btn danger" style="margin-left:auto" onclick="App.modules.produccion.eliminarOrden(${o.id})">Eliminar</button>
+                </div>`;
+
+            document.getElementById('poDim').style.display = 'block';
+            document.getElementById('poDrawer').style.display = 'flex';
+        } catch (e) {
+            App.showAlert('Error al cargar el detalle: ' + e.message, 'danger');
+        }
     },
 
-    hidePasosModal() { document.getElementById('prodPasosModal').classList.remove('show'); },
+    cerrarDrawer() {
+        document.getElementById('poDim').style.display = 'none';
+        document.getElementById('poDrawer').style.display = 'none';
+        this._drawerId = null;
+    },
+
+    // Compat: el modal de pasos quedó reemplazado por el panel lateral
+    verPasos(ordenId) { return this.verDetalle(ordenId); },
+    hidePasosModal() {},
+
+    // Avanza UN paso: primer paso PENDIENTE → EN_PROCESO, o EN_PROCESO → TERMINADO
+    async marcarSiguientePaso() {
+        const ordenId = this._drawerId;
+        if (!ordenId) return;
+        try {
+            const res = await fetch(`/api/produccion/ordenes/${ordenId}/pasos`);
+            const pasos = await res.json();
+            const enProceso = pasos.find(p => p.estado === 'EN_PROCESO');
+            const pendiente = pasos.find(p => p.estado === 'PENDIENTE');
+            const objetivo = enProceso || pendiente;
+            if (!objetivo) { App.showAlert('No hay pasos pendientes ni en proceso en esta ruta', 'info'); return; }
+            await this.updatePaso(objetivo.id, enProceso ? 'TERMINADO' : 'EN_PROCESO', ordenId);
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+    },
 
     async updatePaso(pasoId, nuevoEstado, ordenId) {
         try {
@@ -625,10 +593,11 @@ App.registerModule('produccion', {
             });
             const data = await res.json();
             if (res.ok) {
-                await this.verPasos(ordenId);
+                App.toast(nuevoEstado === 'TERMINADO' ? 'Paso terminado' : 'Paso en proceso');
+                await this.verDetalle(ordenId);
                 await this.load();
-            } else { alert(data.error || 'Error al actualizar'); }
-        } catch(e) { alert('Error: ' + e.message); }
+            } else { App.showAlert(data.error || 'Error al actualizar', 'danger'); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     async agregarPaso(ordenId) {
@@ -643,29 +612,192 @@ App.registerModule('produccion', {
             });
             const data = await res.json();
             if (res.ok) {
-                App.toast('Estacion agregada');
-                await this.verPasos(ordenId);
+                App.toast('Estación agregada');
+                await this.verDetalle(ordenId);
                 await this.load();
-            } else { alert(data.error || 'Error al agregar'); }
-        } catch(e) { alert('Error: ' + e.message); }
+            } else { App.showAlert(data.error || 'Error al agregar', 'danger'); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
-    async eliminarPaso(pasoId, ordenId) {
-        if (!confirm('Quitar esta estacion de la ruta?')) return;
+    eliminarPaso(pasoId, ordenId) {
+        this._confirmar('Quitar estación', '¿Quitar esta estación de la ruta de la orden?', 'Quitar estación', true, async () => {
+            try {
+                const res = await fetch(`/api/produccion/pasos/${pasoId}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (res.ok) {
+                    App.toast('Estación eliminada');
+                    await this.verDetalle(ordenId);
+                    await this.load();
+                } else { App.showAlert(data.error || 'Error al eliminar', 'danger'); }
+            } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+        });
+    },
+
+    // ---------------- Importar SAP ----------------
+    setupDragDrop() {
+        const area = document.getElementById('prodImportArea');
+        if (!area) return;
+        area.addEventListener('dragover', e => { e.preventDefault(); area.style.borderColor = '#3b82f6'; area.style.background = '#eff6ff'; });
+        area.addEventListener('dragleave', () => { area.style.borderColor = '#cbd5e1'; area.style.background = ''; });
+        area.addEventListener('drop', e => { e.preventDefault(); area.style.borderColor = '#cbd5e1'; area.style.background = ''; if (e.dataTransfer.files.length) this.handleImportFile({ target: { files: e.dataTransfer.files } }); });
+    },
+
+    selectedImportFile: null,
+
+    handleImportFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        this.selectedImportFile = file;
+        const nameEl = document.getElementById('prodImportName');
+        nameEl.textContent = '✓ ' + file.name;
+        nameEl.style.display = 'block';
+        document.getElementById('prodImportBtn').disabled = false;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const wb = XLSX.read(ev.target.result, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(ws);
+                this._importRows = rows;
+                const preview = document.getElementById('prodImportPreview');
+                preview.innerHTML = `<div class="po-hint"><strong>${rows.length}</strong> items encontrados</div>
+                    <table class="po-mini"><thead><tr><th>Código</th><th>Pedido</th><th>Item</th><th>Cliente</th><th>Cant</th><th>Ancho</th><th>Alto</th><th>Pint</th><th>Tipo Venta</th><th>Fecha</th></tr></thead><tbody>
+                    ${rows.slice(0, 10).map(r => {
+                        const cod = r.codigo || r.Codigo || r.CODIGO || '';
+                        const ped = r.pedido || r.Pedido || r.PEDIDO || '';
+                        const it = r.item || r.Item || r.ITEM || '';
+                        const cli = r.cliente || r.Cliente || '';
+                        const cant = r.cantidad || r.Cantidad || 1;
+                        const ancho = r.anho || r.ancho || r.Ancho || r.ANCHO || 0;
+                        const alto = r.alto || r.Alto || r.ALTO || 0;
+                        const pint = r.pintado || r.Pintado || r.PINTADO || 0;
+                        const tipo = r['tipo de venta'] || r.tipo_de_venta || r.TipoVenta || 'Normal';
+                        const fecha = r.fecha_creacion || r.FechaCreacion || r.fecha || r.Fecha || '';
+                        return `<tr><td>${escText(cod)}</td><td>${escText(ped)}</td><td>${escText(it)}</td><td>${escText(cli)}</td><td>${escText(cant)}</td><td>${escText(ancho)}</td><td>${escText(alto)}</td><td>${escText(pint)}</td><td>${escText(tipo)}</td><td>${escText(fecha)}</td></tr>`;
+                    }).join('')}
+                    ${rows.length > 10 ? `<tr><td colspan="10" style="text-align:center;color:#8494a8">... y ${rows.length - 10} más</td></tr>` : ''}
+                    </tbody></table>`;
+            } catch (err) { preview.innerHTML = '<span style="color:#dc2626;font-size:11px">Error al leer el archivo</span>'; }
+        };
+        reader.readAsArrayBuffer(file);
+    },
+
+    showImportModal() { document.getElementById('prodImportModal').style.display = 'flex'; this.selectedImportFile = null; },
+    hideImportModal() {
+        document.getElementById('prodImportModal').style.display = 'none';
+        this.selectedImportFile = null;
+        const n = document.getElementById('prodImportName'); if (n) n.style.display = 'none';
+        const b = document.getElementById('prodImportBtn'); if (b) b.disabled = true;
+        const p = document.getElementById('prodImportPreview'); if (p) p.innerHTML = '';
+    },
+
+    async importar() {
+        if (!this.selectedImportFile) return;
+        const btn = document.getElementById('prodImportBtn');
+        btn.textContent = 'Procesando...';
+        btn.disabled = true;
         try {
-            const res = await fetch(`/api/produccion/pasos/${pasoId}`, { method: 'DELETE' });
-            const data = await res.json();
+            const data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        const wb = XLSX.read(reader.result, { type: 'array' });
+                        const ws = wb.Sheets[wb.SheetNames[0]];
+                        resolve(XLSX.utils.sheet_to_json(ws));
+                    } catch (e) { reject(e); }
+                };
+                reader.onerror = () => reject(new Error('Error al leer archivo'));
+                reader.readAsArrayBuffer(this.selectedImportFile);
+            });
+            if (!data.length) { App.showAlert('El archivo está vacío', 'danger'); btn.textContent = 'Importar'; btn.disabled = false; return; }
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            const res = await fetch('/api/produccion/importar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ rows: data })
+            });
+            const result = await res.json();
             if (res.ok) {
-                App.toast('Estacion eliminada');
-                await this.verPasos(ordenId);
+                this.showImportResult(result);
+                this.hideImportModal();
                 await this.load();
-            } else { alert(data.error || 'Error al eliminar'); }
-        } catch(e) { alert('Error: ' + e.message); }
+            } else {
+                App.showAlert(result.error || 'Error al importar', 'danger');
+            }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+        btn.textContent = 'Importar';
+        btn.disabled = false;
     },
 
-    showImportModal() { document.getElementById('prodImportModal').classList.add('show'); this.selectedImportFile = null; },
-    hideImportModal() { document.getElementById('prodImportModal').classList.remove('show'); this.selectedImportFile = null; document.getElementById('prodImportName').style.display = 'none'; document.getElementById('prodImportBtn').disabled = true; },
+    showImportResult(result) {
+        const hayErrores = result.errores && result.errores.length > 0;
+        const errBom = (result.errores || []).filter(e => e.error && e.error.includes('receta BOM'));
+        const errDim = (result.errores || []).filter(e => e.error && e.error.includes('dimensiones'));
+        const errTipo = (result.errores || []).filter(e => e.error && e.error.includes('invalid input'));
 
+        const errUnicos = {};
+        (result.errores || []).forEach(e => {
+            const key = e.error || 'desc';
+            if (!errUnicos[key]) errUnicos[key] = { ...e, count: 0, codigos: [] };
+            errUnicos[key].count++;
+            if (e.codigo && !errUnicos[key].codigos.includes(e.codigo)) errUnicos[key].codigos.push(e.codigo);
+        });
+        const errLista = Object.values(errUnicos);
+
+        let errRows = '';
+        errLista.forEach(e => {
+            const codigos = e.codigos.length > 0 ? escText(e.codigos.slice(0, 5).join(', ')) + (e.codigos.length > 5 ? ` +${e.codigos.length - 5} más` : '') : '-';
+            const repeatBadge = e.count > 1 ? `<span class="po-repeat">${e.count}x</span>` : '';
+            errRows += `<tr><td class="cod">${codigos}</td><td class="err">${escText(e.error)}${repeatBadge}</td></tr>`;
+        });
+
+        let errTitle = 'Errores encontrados';
+        let errSolution = '';
+        if (errBom.length > 0 && errTipo.length === 0 && errDim.length === 0) {
+            errTitle = 'Códigos sin receta BOM configurada';
+            errSolution = '<strong>Solución:</strong> Ve a <strong>Configuración → Recetas BOM</strong> y crea la receta para cada código. Define la materia prima, cantidad y dimensiones antes de volver a importar.';
+        } else if (errTipo.length > 0) {
+            errTitle = 'Errores de formato en los datos';
+            errSolution = '<strong>Solución:</strong> Revisa el archivo SAP. Algunos valores no son compatibles con la base de datos (ej: números decimales donde se espera entero). Verifica las columnas de item, cantidad y dimensiones.';
+        } else if (errDim.length > 0) {
+            errTitle = 'Códigos sin dimensiones';
+            errSolution = '<strong>Solución:</strong> Ve a <strong>Configuración → Recetas BOM</strong> y define el ancho y alto para cada código listado.';
+        } else {
+            errSolution = '<strong>Solución:</strong> Revisa los errores listados y corrige los datos en el archivo SAP o en la configuración del sistema.';
+        }
+
+        const overlay = document.createElement('div');
+        overlay.id = 'importResultModal';
+        overlay.className = 'po-overlay';
+        overlay.style.display = 'flex';
+        overlay.innerHTML = `
+        <div class="po-modal" onclick="event.stopPropagation()">
+            <div class="po-modal-head">
+                <div><h3>Resultado de Importación</h3><div class="sub2">Resumen del procesamiento del archivo SAP</div></div>
+                <button class="po-x" onclick="document.getElementById('importResultModal').remove()">✕</button>
+            </div>
+            <div class="po-modal-body">
+                <div class="po-kpis" style="grid-template-columns:repeat(4,1fr)">
+                    <div class="po-kpi"><div class="k">Importadas</div><div class="v c-term">${result.importadas || 0}</div></div>
+                    <div class="po-kpi"><div class="k">Pasos</div><div class="v c-prog">${result.pasos_creados || 0}</div></div>
+                    <div class="po-kpi"><div class="k">Costos</div><div class="v" style="color:#b45309">${result.costos_calculados || 0}</div></div>
+                    <div class="po-kpi"><div class="k">Errores</div><div class="v" style="color:${hayErrores ? '#dc2626' : '#15803d'}">${(result.errores || []).length}</div></div>
+                </div>
+                ${result.fusiones > 0 ? `<div class="po-info">🔗 <strong>${result.fusiones}</strong> filas duplicadas se fusionaron automáticamente</div>` : ''}
+                ${hayErrores ? `
+                <div class="po-dr-sec" style="color:#b91c1c">${errTitle}</div>
+                <div class="po-err-wrap"><table class="po-mini"><thead><tr><th>Códigos</th><th>Detalle del error</th></tr></thead><tbody>${errRows}</tbody></table></div>
+                <div class="po-solution">${errSolution}</div>
+                ` : `
+                <div class="po-ok-box"><div class="big">✓</div><div class="t">Importación exitosa</div><div class="s">Todas las órdenes se procesaron correctamente</div></div>
+                `}
+            </div>
+            <div class="po-modal-foot"><button class="po-btn primary" onclick="document.getElementById('importResultModal').remove()">Cerrar</button></div>
+        </div>`;
+        document.body.appendChild(overlay);
+    },
+
+    // ---------------- Nueva orden ----------------
     showNewOrderModal() {
         document.getElementById('newOrdPedido').value = '';
         document.getElementById('newOrdItem').value = '1';
@@ -682,9 +814,9 @@ App.registerModule('produccion', {
         document.getElementById('newOrdPosicion').value = '';
         document.getElementById('newOrdNota').value = '';
         document.getElementById('newOrdFechaCreacion').value = new Date().toISOString().split('T')[0];
-        document.getElementById('prodNewOrderModal').classList.add('show');
+        document.getElementById('prodNewOrderModal').style.display = 'flex';
     },
-    hideNewOrderModal() { document.getElementById('prodNewOrderModal').classList.remove('show'); },
+    hideNewOrderModal() { document.getElementById('prodNewOrderModal').style.display = 'none'; },
 
     async saveNewOrder() {
         const pedido = document.getElementById('newOrdPedido').value.trim();
@@ -702,7 +834,10 @@ App.registerModule('produccion', {
         const orden_compra = document.getElementById('newOrdOC').value.trim();
         const posicion = document.getElementById('newOrdPosicion').value.trim();
         const nota = document.getElementById('newOrdNota').value.trim();
-        if (!pedido || !codigo || !ancho || !alto) { alert('Pedido, codigo, ancho y alto son requeridos'); return; }
+        if (!pedido || !codigo || !ancho || !alto) {
+            App.showAlert('Pedido, código, ancho y alto son requeridos', 'danger');
+            return;
+        }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
@@ -712,34 +847,50 @@ App.registerModule('produccion', {
             });
             const data = await res.json();
             if (res.ok) {
-                const msg = data.ordenes_creadas > 1 ? `${data.ordenes_creadas} ordenes creadas (explosion BOM)` : `Orden creada: ${codigo}`;
+                const msg = data.ordenes_creadas > 1 ? `${data.ordenes_creadas} órdenes creadas (explosión BOM)` : `Orden creada: ${codigo}`;
                 App.toast(msg);
                 this.hideNewOrderModal();
                 await this.load();
-            } else { alert(data.error || 'Error al crear orden'); }
-        } catch(e) { alert('Error: ' + e.message); }
+            } else { App.showAlert(data.error || 'Error al crear la orden', 'danger'); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
-    async editCantidad(id, current) {
-        const nueva = prompt('Nueva cantidad:', current);
-        if (nueva === null || isNaN(Number(nueva)) || Number(nueva) < 1) return;
-        const cant = Number(nueva);
+    // ---------------- Editar cantidad (modal, sin prompt()) ----------------
+    showEditCantidad(id) {
+        const o = this.ordenes.find(x => x.id === id);
+        if (!o) return;
+        this._editCantId = id;
+        const input = document.getElementById('poCantInput');
+        input.value = o.cantidad || 1;
+        document.getElementById('poCantM2').textContent = 'Actual: ' + this._fmt(o.cantidad || 1, 0) + ' und · ' + this._fmt(o.metros_cuadrados, 2) + ' m²';
+        document.getElementById('poCantModal').style.display = 'flex';
+        setTimeout(() => { input.focus(); input.select(); }, 60);
+    },
+    hideEditCantidad() { document.getElementById('poCantModal').style.display = 'none'; this._editCantId = null; },
+
+    async confirmEditCantidad() {
+        const id = this._editCantId;
+        const cant = Number(document.getElementById('poCantInput').value);
+        if (!id || !cant || cant < 1) { App.showAlert('Ingresa una cantidad válida (mínimo 1)', 'danger'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const orden = this.ordenes.find(o => o.id === id);
-            const ancho = orden?.ancho || 0;
-            const alto = orden?.alto || 0;
-            const m2 = ((ancho * alto) / 1000000) * cant;
+            const m2 = ((Number(orden?.ancho || 0) * Number(orden?.alto || 0)) / 1000000) * cant;
             const res = await fetch(`/api/produccion/ordenes/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
                 body: JSON.stringify({ cantidad: cant, metros_cuadrados: m2 })
             });
-            if (res.ok) { App.toast('Cantidad actualizada'); await this.load(); }
-            else { const d = await res.json(); alert(d.error || 'Error'); }
-        } catch(e) { alert('Error: ' + e.message); }
+            if (res.ok) {
+                App.toast('Cantidad actualizada');
+                this.hideEditCantidad();
+                if (this._drawerId === id) await this.verDetalle(id);
+                await this.load();
+            } else { const d = await res.json(); App.showAlert(d.error || 'Error al actualizar', 'danger'); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
+    // ---------------- Prioridades (delegación) ----------------
     async cambiarPrioridad(id, nuevoNivel) {
         document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
         if (![1, 2, 3, 4].includes(nuevoNivel)) return;
@@ -750,14 +901,12 @@ App.registerModule('produccion', {
                 headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
                 body: JSON.stringify({ nivel_prioridad: nuevoNivel })
             });
-            if (res.ok) { App.toast('Prioridad actualizada'); await this.load(); this.checkReprogramacionPendiente(); }
-            else { const d = await res.json(); alert(d.error || 'Error'); }
-        } catch(e) { alert('Error: ' + e.message); }
+            if (res.ok) { App.toast('Prioridad actualizada'); await this.load(); this.checkReprogramacionPendiente(); if (this._drawerId === id) await this.verDetalle(id); }
+            else { const d = await res.json(); App.showAlert(d.error || 'Error al actualizar', 'danger'); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     _setupPrioridadEvents() {
-        // Delegacion en document: registrar UNA sola vez (antes se sumaba un listener por render
-        // y cada clic disparaba N PATCH de prioridad)
         if (this._prioridadBound) return;
         this._prioridadBound = true;
         document.addEventListener('click', (e) => {
@@ -765,11 +914,10 @@ App.registerModule('produccion', {
             if (toggle) {
                 e.stopPropagation();
                 const ordenId = toggle.dataset.orden;
-                // Dropdown hermano primero: la tabla y las cards movil renderizan la misma orden
                 const menu = toggle.parentElement.querySelector('.prioridad-dropdown') || document.getElementById('prioDrop_' + ordenId);
                 if (!menu) return;
                 const wasVisible = menu.style.display === 'block';
-                document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
+                document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
                 if (!wasVisible) menu.style.display = 'block';
                 return;
             }
@@ -778,14 +926,32 @@ App.registerModule('produccion', {
                 e.stopPropagation();
                 const ordenId = Number(option.dataset.orden);
                 const nivel = Number(option.dataset.nivel);
-                document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
+                document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
                 if (ordenId && nivel) this.cambiarPrioridad(ordenId, nivel);
                 return;
             }
-            document.querySelectorAll('.prioridad-dropdown').forEach(d => d.style.display = 'none');
+            document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
         });
     },
 
+    toggleAcciones(e, id) {
+        e.stopPropagation();
+        const menu = document.getElementById('poAcc_' + id);
+        if (!menu) return;
+        const wasVisible = menu.style.display === 'block';
+        document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
+        if (!wasVisible) menu.style.display = 'block';
+    },
+
+    toggleMant(e) {
+        e.stopPropagation();
+        const drop = document.getElementById('poMantDrop');
+        const wasVisible = drop.style.display === 'block';
+        document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
+        if (!wasVisible) drop.style.display = 'block';
+    },
+
+    // ---------------- Reprogramación ----------------
     async checkReprogramacionPendiente() {
         try {
             const res = await fetch('/api/produccion/reprogramar/pendientes');
@@ -795,54 +961,55 @@ App.registerModule('produccion', {
             if (badge && btn) {
                 if (data.pendientes) {
                     badge.style.display = 'inline-flex';
-                    btn.style.background = '#dc2626';
+                    btn.classList.add('alerta');
                     btn.title = data.count + ' cambio(s) de prioridad pendientes de reprogramar';
                 } else {
                     badge.style.display = 'none';
-                    btn.style.background = '#ef4444';
-                    btn.title = 'Libera PROGRAMADO y re-asigna por prioridad';
+                    btn.classList.remove('alerta');
+                    btn.title = 'Zona de mantenimiento';
                 }
             }
-        } catch(e) {}
+        } catch (e) { /* no bloquear la pantalla por esto */ }
     },
 
     async reprogramarTodo() {
-        if (!confirm('REPROGRAMAR TODO:\n\nSe liberaran TODAS las ordenes PROGRAMADO (se devuelven a PENDIENTE) y se re-asignaran automaticamente por prioridad (Reposicion > Urgencia > Express > Normal).\n\nLas ordenes EN PROCESO, MERMADAS y TERMINADAS NO seran tocadas.\n\nContinuar?')) return;
-        try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            App.toast('Reprogramando... espere', 'info');
-            const res = await fetch('/api/produccion/reprogramar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
-                body: JSON.stringify({ dias: 21, inicio: new Date().toISOString().split('T')[0] })
+        this._confirmar('Reprogramar Todo',
+            'Se liberarán <strong>todas las órdenes PROGRAMADO</strong> (vuelven a PENDIENTE) y se re-asignarán automáticamente por prioridad: <strong>Reposición → Urgencia → Express → Normal</strong>.<br><br>Las órdenes EN PROCESO, MERMADAS y TERMINADAS no serán tocadas.',
+            'Reprogramar todo', true, async () => {
+                try {
+                    const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+                    App.toast('Reprogramando... espere', 'info');
+                    const res = await fetch('/api/produccion/reprogramar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
+                        body: JSON.stringify({ dias: 21, inicio: new Date().toISOString().split('T')[0] })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        const lib = data.ordenes_liberadas || 0;
+                        const asig = Array.isArray(data.asignados) ? data.asignados.length : 0;
+                        App.toast(`Reprogramado: ${lib} liberadas, ${asig} re-asignadas`);
+                        await this.load();
+                        this.checkReprogramacionPendiente();
+                    } else { App.showAlert(data.error || 'Error al reprogramar', 'danger'); }
+                } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
             });
-            const data = await res.json();
-            if (res.ok) {
-                const lib = data.ordenes_liberadas || 0;
-                const asig = Array.isArray(data.asignados) ? data.asignados.length : 0;
-                App.toast(`Reprogramado: ${lib} liberadas, ${asig} re-asignadas`);
-                await this.load();
-                this.checkReprogramacionPendiente();
-            } else { alert(data.error || 'Error al reprogramar'); }
-        } catch(e) { alert('Error: ' + e.message); }
     },
 
-    _cerrarId: null,
-
+    // ---------------- Cerrar / eliminar ----------------
     cerrarOrden(id) {
         this._cerrarId = id;
+        document.querySelectorAll('.po-amenu-drop').forEach(d => d.style.display = 'none');
         document.getElementById('cerrarNota').value = '';
-        document.getElementById('prodCerrarModal').classList.add('show');
+        document.getElementById('prodCerrarModal').style.display = 'flex';
     },
-
     hideCerrarModal() {
-        document.getElementById('prodCerrarModal').classList.remove('show');
+        document.getElementById('prodCerrarModal').style.display = 'none';
         this._cerrarId = null;
     },
-
     async confirmCerrar() {
         const nota = document.getElementById('cerrarNota').value.trim();
-        if (!nota) { alert('Debes indicar el motivo del cierre'); return; }
+        if (!nota) { App.showAlert('Debes indicar el motivo del cierre', 'danger'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const res = await fetch(`/api/produccion/ordenes/${this._cerrarId}/cerrar`, {
@@ -853,48 +1020,274 @@ App.registerModule('produccion', {
             if (res.ok) {
                 App.toast('Orden cerrada');
                 this.hideCerrarModal();
+                if (this._drawerId) this.cerrarDrawer();
                 await this.load();
-            } else { alert(data.error || 'Error al cerrar'); }
-        } catch(e) { alert('Error: ' + e.message); }
+            } else { App.showAlert(data.error || 'Error al cerrar', 'danger'); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
-    async eliminarOrden(id) {
-        if (!confirm('Eliminar esta orden de produccion? Esta accion no se puede deshacer.')) return;
-        try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            await apiJson(await fetch(`/api/produccion/ordenes/${id}`, {
-                method: 'DELETE', headers: { 'X-User-Email': user.email || '' }
-            }));
-            App.toast('Orden eliminada');
-            await this.load();
-        } catch(e) { alert('Error: ' + e.message); }
+    eliminarOrden(id) {
+        const o = this.ordenes.find(x => x.id === id);
+        const etiqueta = o ? `${o.pedido_sap_id || ''} · Item ${o.item_numero || '-'} (${o.codigo_producto})` : 'esta orden';
+        this._confirmar('Eliminar orden', `Se eliminará la orden <strong>${escText(etiqueta)}</strong> de forma permanente. Esta acción no se puede deshacer.`, 'Eliminar definitivamente', true, async () => {
+            try {
+                const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+                await apiJson(await fetch(`/api/produccion/ordenes/${id}`, {
+                    method: 'DELETE', headers: { 'X-User-Email': user.email || '' }
+                }));
+                App.toast('Orden eliminada');
+                if (this._drawerId === id) this.cerrarDrawer();
+                await this.load();
+            } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+        });
     },
 
-    async eliminarTodas() {
-        if (!confirm('ELIMINAR TODAS las ordenes de produccion? Esta accion no se puede deshacer.')) return;
-        if (!confirm('Se eliminaran todas las ordenes, pasos y datos de produccion. Continuar?')) return;
-        try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            const res = await fetch('/api/produccion/ordenes/all', {
-                method: 'DELETE', headers: { 'X-User-Email': user.email || '' }
+    eliminarTodas() {
+        this._confirmar('Limpiar TODO',
+            'Se eliminarán <strong>TODAS las órdenes de producción</strong>, sus pasos y datos asociados. <strong>Esta acción no se puede deshacer.</strong><br><br>¿Deseas continuar?',
+            'Eliminar todas las órdenes', true, async () => {
+                try {
+                    const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+                    const res = await fetch('/api/produccion/ordenes/all', {
+                        method: 'DELETE', headers: { 'X-User-Email': user.email || '' }
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        App.toast(`${data.eliminadas} órdenes eliminadas`);
+                        this.cerrarDrawer();
+                        await this.load();
+                    } else { App.showAlert(data.error || 'Error al eliminar', 'danger'); }
+                } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
             });
-            const data = await res.json();
-            if (data.ok) {
-                App.toast(`${data.eliminadas} ordenes eliminadas`);
-                await this.load();
-            } else { alert(data.error || 'Error al eliminar'); }
-        } catch(e) { alert('Error: ' + e.message); }
     },
 
     async deleteReceta(id) {
-        if (!confirm('Eliminar esta receta BOM?')) return;
-        try {
-            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-            await apiJson(await fetch(`/api/produccion/recetas/${id}`, {
-                method: 'DELETE', headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
-            }));
-            App.toast('Receta eliminada');
-            await this.load();
-        } catch(e) { alert('Error: ' + e.message); }
+        this._confirmar('Eliminar receta BOM', '¿Eliminar esta receta BOM? Esta acción no se puede deshacer.', 'Eliminar receta', true, async () => {
+            try {
+                const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+                await apiJson(await fetch(`/api/produccion/recetas/${id}`, {
+                    method: 'DELETE', headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
+                }));
+                App.toast('Receta eliminada');
+                await this.load();
+            } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+        });
+    },
+
+    // ---------------- Confirmación genérica (sin confirm() nativo) ----------------
+    _confirmar(titulo, html, textoBoton, peligro, accion) {
+        document.getElementById('poConfirmTitle').textContent = titulo;
+        document.getElementById('poConfirmText').innerHTML = html;
+        const btn = document.getElementById('poConfirmBtn');
+        btn.textContent = textoBoton;
+        btn.className = 'po-btn ' + (peligro ? 'danger' : 'primary');
+        btn.onclick = () => { this.closeConfirm(); accion(); };
+        document.getElementById('poConfirmOverlay').style.display = 'flex';
+    },
+    closeConfirm() { document.getElementById('poConfirmOverlay').style.display = 'none'; },
+
+    // ---------------- Estilos (escala 20/15/13/11/10) ----------------
+    _estilos() {
+        return `<style>
+            .po-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%);border-radius:16px;padding:20px 26px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;margin-bottom:16px}
+            .po-hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.55),transparent)}
+            .po-hero h2{color:#fff;font-size:20px;font-weight:700;margin:0}
+            .po-hero p{color:rgba(255,255,255,.62);font-size:11px;margin:4px 0 0}
+            .po-hero-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+            .po-hbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}
+            .po-hbtn:hover{background:rgba(255,255,255,.2)}
+            .po-hbtn.solid{background:#fff;color:#1e3a5f;border-color:#fff}
+            .po-hbtn.solid:hover{background:#e8eefb}
+            .po-hbtn.ghost-danger{border-color:rgba(248,113,113,.5);color:#fca5a5}
+            .po-hbtn.alerta{background:#dc2626;border-color:#dc2626;color:#fff}
+            .po-reprog-badge{display:none;background:#fff;color:#dc2626;border-radius:50%;width:18px;height:18px;font-size:11px;font-weight:800;align-items:center;justify-content:center}
+            .po-mant{position:relative}
+            .po-mant-drop{display:none;position:absolute;right:0;top:110%;background:#fff;border:1px solid #e4e9f0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.16);min-width:250px;padding:5px;z-index:60}
+            .po-mant-drop .it{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:7px;font-size:11px;font-weight:600;color:#475569;cursor:pointer}
+            .po-mant-drop .it:hover{background:#f8fafc}
+            .po-mant-drop .it.danger{color:#dc2626}
+            .po-mant-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}
+
+            .po-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
+            .po-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}
+            .po-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
+            .po-kpi .v{font-size:20px;font-weight:700;margin-top:4px;color:#0f172a}
+            .po-kpi .s{font-size:10px;color:#8494a8;margin-top:2px}
+            .c-pend{color:#b45309!important}.c-prog{color:#2563eb!important}.c-proceso{color:#7c3aed!important}.c-term{color:#15803d!important}
+
+            .po-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+            .po-search{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:0 12px;flex:1;min-width:220px;max-width:340px}
+            .po-search input{border:none;outline:none;padding:10px 0;font-size:13px;width:100%;background:transparent;color:#0f172a}
+            .po-toolbar select,.po-toolbar input[type=date]{padding:10px 12px;border:1px solid #e4e9f0;border-radius:10px;font-size:11px;font-weight:600;background:#fff;color:#475569;outline:none}
+            .po-flimpiar{font-size:11px;font-weight:600;color:#b45309;cursor:pointer;padding:8px 10px}
+            .po-flimpiar:hover{text-decoration:underline}
+
+            .po-tabs{display:flex;gap:4px;background:#e2e8f0;padding:4px;border-radius:10px;width:max-content;margin-bottom:12px}
+            .po-tab{padding:8px 18px;border-radius:8px;font-size:11px;font-weight:700;color:#475569;cursor:pointer}
+            .po-tab.on{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(15,23,42,.1)}
+
+            .po-panel{background:#fff;border:1px solid #e4e9f0;border-radius:14px;overflow:hidden}
+            .po-p-head{padding:13px 18px;display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #e4e9f0;flex-wrap:wrap}
+            .po-p-head h3{font-size:13px;font-weight:600;margin:0}
+            .po-p-head .sub{font-size:10px;color:#8494a8}
+            .po-tot{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+            .po-tot span{padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;background:#f1f5f9;color:#475569}
+            .po-tot span strong{color:#0f172a}
+
+            .po-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+            .po-table{width:100%;border-collapse:collapse;min-width:860px}
+            .po-table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0;white-space:nowrap}
+            .po-table td{padding:11px 14px;font-size:13px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+            .po-table tbody tr{cursor:pointer}
+            .po-table tbody tr:hover{background:#f8fafc}
+            .po-table .num{text-align:right;font-variant-numeric:tabular-nums}
+            .po-table .th-acc{text-align:right}
+            .po-table .c-acc{text-align:right;white-space:nowrap}
+            .sub2{font-size:10px;color:#8494a8;margin-top:1px}
+            .po-loading{text-align:center;padding:34px;color:#8494a8;font-size:13px}
+
+            .po-cant{color:#2563eb;font-weight:700;cursor:pointer;border-bottom:1px dashed #93c5fd}
+            .po-cant:hover{background:#eff6ff;border-radius:5px}
+
+            .po-bom{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed}
+            .po-sinbom{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#fee2e2;color:#dc2626}
+
+            .po-st{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+            .s-pend{background:#fef3c7;color:#b45309}
+            .s-prog{background:#dbeafe;color:#2563eb}
+            .s-proceso{background:#ede9fe;color:#7c3aed}
+            .s-term{background:#dcfce7;color:#15803d}
+            .s-merm{background:#fee2e2;color:#dc2626}
+            .s-cerr{background:#f1f5f9;color:#475569}
+
+            .po-prio-wrap{position:relative;display:inline-block}
+            .po-prio{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+            .prio-toggle{cursor:pointer}
+            .p-normal{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+            .p-express{background:#fef9c3;color:#854d0e;border:1px solid #fde047}
+            .p-urgencia{background:#dcfce7;color:#15803d;border:1px solid #86efac}
+            .p-reposicion{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+            .prioridad-dropdown{display:none;position:absolute;top:110%;left:0;z-index:50;background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:5px;min-width:150px;box-shadow:0 12px 32px rgba(15,23,42,.16)}
+            .prio-option{padding:5px 8px;border-radius:7px;cursor:pointer}
+            .prio-option:hover{background:#f8fafc}
+
+            .po-amenu{position:relative;display:inline-block}
+            .po-amenu-btn{padding:6px 11px;border-radius:7px;border:1px solid #e4e9f0;background:#fff;color:#475569;font-size:10px;font-weight:700;cursor:pointer}
+            .po-amenu-btn:hover{background:#f8fafc}
+            .po-amenu-drop{display:none;position:absolute;right:0;top:110%;background:#fff;border:1px solid #e4e9f0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.16);min-width:190px;padding:5px;z-index:50;text-align:left}
+            .po-amenu-drop .it{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;white-space:nowrap}
+            .po-amenu-drop .it:hover{background:#f8fafc}
+            .po-amenu-drop .it.danger{color:#dc2626}
+            .po-amenu-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}
+
+            .po-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+            .po-col{background:#f8fafc;border:1px solid #e4e9f0;border-radius:12px;padding:10px}
+            .po-col-head{display:flex;align-items:center;gap:8px;padding:4px 6px 10px}
+            .po-col-head .t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#334155}
+            .po-col-head .c{margin-left:auto;font-size:10px;font-weight:700;background:#fff;border:1px solid #e4e9f0;border-radius:20px;padding:2px 8px;color:#475569}
+            .po-bcard{background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:11px 12px;margin-bottom:8px;cursor:pointer}
+            .po-bcard:hover{box-shadow:0 4px 14px rgba(15,23,42,.08)}
+            .po-bcard .t1{display:flex;justify-content:space-between;align-items:center;gap:6px}
+            .po-bcard .ped{font-size:13px;font-weight:700}
+            .po-bcard .cli{font-size:11px;color:#475569;margin:3px 0}
+            .po-bcard .t2{display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:6px}
+            .po-bcard .cod{font-size:11px;font-weight:600;color:#0f172a}
+            .po-bcard .dim2{font-size:10px;color:#8494a8}
+
+            .po-dim{display:none;position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:70}
+            .po-drawer{display:none;position:fixed;top:0;right:0;bottom:0;width:430px;max-width:94vw;background:#fff;box-shadow:-16px 0 48px rgba(15,23,42,.2);z-index:71;flex-direction:column}
+            .po-dr-head{padding:16px 20px;border-bottom:1px solid #e4e9f0;display:flex;align-items:flex-start;gap:10px;background:linear-gradient(135deg,#f8fafc,#fff)}
+            .po-dr-head h3{font-size:15px;margin:0}
+            .po-dr-head-right{margin-left:auto;display:flex;gap:6px;align-items:center}
+            .po-dr-body{padding:16px 20px;overflow-y:auto;flex:1}
+            .po-dr-sec{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#8494a8;margin:14px 0 8px}
+            .po-dr-sec:first-child{margin-top:0}
+            .po-dr-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+            .po-kv .k{font-size:10px;color:#8494a8;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+            .po-kv .v{font-size:13px;font-weight:600;margin-top:2px}
+            .po-reglas{display:flex;flex-wrap:wrap;gap:4px}
+            .po-regla{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;color:#fff}
+            .po-paso{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #e4e9f0;border-radius:9px;margin-bottom:6px}
+            .po-paso .n{width:22px;height:22px;border-radius:50%;background:#f1f5f9;color:#475569;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+            .po-paso .e{flex:1;font-size:13px;font-weight:600}
+            .po-paso .f{font-size:10px;color:#8494a8;white-space:nowrap}
+            .po-x-sm{width:22px;height:22px;border-radius:6px;border:none;background:#fee2e2;color:#dc2626;font-size:10px;cursor:pointer;flex-shrink:0}
+            .po-addpaso{display:flex;gap:8px;margin-top:8px}
+            .po-addpaso select{flex:1;padding:9px 12px;border:1px solid #e4e9f0;border-radius:8px;font-size:11px;color:#475569;background:#fff}
+            .po-nota{font-size:13px;color:#475569;background:#f8fafc;border:1px solid #e4e9f0;border-radius:9px;padding:10px 12px}
+            .po-dr-foot{padding:12px 20px;border-top:1px solid #e4e9f0;display:flex;gap:8px}
+
+            .po-overlay{display:none;position:fixed;inset:0;z-index:80;align-items:center;justify-content:center;background:rgba(15,23,42,.5);backdrop-filter:blur(4px)}
+            .po-modal{background:#fff;border-radius:16px;width:92%;max-width:560px;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(15,23,42,.3)}
+            .po-modal.sm{max-width:420px}
+            .po-modal-head{padding:18px 24px;border-bottom:1px solid #e4e9f0;display:flex;align-items:center;justify-content:space-between;gap:10px}
+            .po-modal-head h3{margin:0;font-size:15px;font-weight:700}
+            .po-modal-body{padding:20px 24px;overflow-y:auto}
+            .po-modal-foot{padding:14px 24px 20px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #e4e9f0}
+            .po-x{width:28px;height:28px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;cursor:pointer;font-size:13px}
+            .po-x:hover{background:#e2e8f0}
+
+            .po-btn{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent}
+            .po-btn.primary{background:#1e40af;color:#fff}
+            .po-btn.primary:hover{background:#1e3a8a}
+            .po-btn.primary:disabled{opacity:.6;cursor:default}
+            .po-btn.ghost{background:#fff;color:#475569;border-color:#e4e9f0}
+            .po-btn.ghost:hover{background:#f8fafc}
+            .po-btn.danger{background:#dc2626;color:#fff}
+            .po-btn.danger:hover{background:#b91c1c}
+            .po-btn.sm{padding:7px 12px;font-size:11px}
+
+            .po-field{margin-bottom:0}
+            .po-field label,.po-label{display:block;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#475569;margin-bottom:5px}
+            .po-field input,.po-field select,.po-field textarea,.po-modal-body textarea{width:100%;padding:10px 12px;border:1px solid #e4e9f0;border-radius:8px;font-size:13px;outline:none;color:#0f172a;background:#fff}
+            .po-field input:focus,.po-field select:focus,.po-field textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+            .po-form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+            .po-hint{font-size:11px;color:#8494a8;margin-top:6px}
+            .po-confirm-text{font-size:13px;color:#475569;line-height:1.6;margin:0}
+
+            .po-drop{border:2px dashed #cbd5e1;border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:#f8fafc}
+            .po-drop .t{color:#64748b;font-size:13px}
+            .po-drop .ok{color:#15803d;font-weight:600;margin-top:8px;display:none;font-size:11px}
+            .po-info{background:#f8fafc;border:1px solid #e4e9f0;border-radius:10px;padding:14px;margin-top:12px;font-size:11px;color:#64748b;line-height:1.6}
+            .po-info strong{color:#334155}
+            .po-info em{color:#94a3b8}
+            .po-preview{max-height:200px;overflow-y:auto;margin-top:12px}
+            .po-mini{width:100%;border-collapse:collapse;font-size:11px}
+            .po-mini th{padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#64748b;background:#f8fafc;border-bottom:1px solid #e4e9f0;position:sticky;top:0}
+            .po-mini td{padding:6px 8px;border-bottom:1px solid #f1f5f9;color:#475569}
+            .po-mini td.cod{font-weight:600;color:#1e293b}
+            .po-mini td.err{color:#dc2626}
+            .po-repeat{background:#fee2e2;color:#991b1b;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px}
+            .po-err-wrap{border:1px solid #e4e9f0;border-radius:10px;overflow:hidden;max-height:220px;overflow-y:auto}
+            .po-solution{margin-top:10px;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:11px;color:#9a3412}
+            .po-ok-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center}
+            .po-ok-box .big{font-size:20px;color:#15803d;font-weight:700}
+            .po-ok-box .t{font-size:13px;font-weight:700;color:#166534;margin-top:4px}
+            .po-ok-box .s{font-size:11px;color:#16a34a;margin-top:4px}
+
+            .po-cards-mobile{display:none}
+            .po-mcard{border:1px solid #e4e9f0;border-radius:12px;padding:12px 14px;margin-bottom:8px;background:#fff}
+            .po-mcard .t1{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;font-size:13px}
+            .po-mcard .t2{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+            .po-mcard .acc{display:flex;gap:6px;margin-top:8px}
+
+            @media(max-width:768px){
+                .po-hero{flex-direction:column;align-items:flex-start;padding:16px}
+                .po-hero h2{font-size:15px}
+                .po-hero-actions{margin-left:0;width:100%;flex-wrap:wrap}
+                .po-kpis{grid-template-columns:1fr 1fr;gap:8px}
+                .po-kpi .v{font-size:15px}
+                .po-toolbar{flex-direction:column;align-items:stretch}
+                .po-search{max-width:none}
+                .po-table-wrap{display:none}
+                .po-cards-mobile{display:block;padding:12px}
+                .po-tabs{width:100%}
+                .po-tab{flex:1;text-align:center}
+                .po-form-grid{grid-template-columns:1fr 1fr}
+                .po-dr-grid{grid-template-columns:1fr 1fr}
+                .po-drawer{width:100%}
+                .po-kpis[style*="repeat(4"]{grid-template-columns:1fr 1fr!important}
+            }
+        </style>`;
     }
 });
