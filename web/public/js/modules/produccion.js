@@ -388,7 +388,7 @@ App.registerModule('produccion', {
         tbody.innerHTML = ordenes.map(o => {
             const progreso = o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos : '';
             return '<tr onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
-                + '<td><strong>' + escText(o.pedido_sap_id || '-') + '</strong><div class="sub2">Item ' + escText(o.item_numero || '-') + '</div></td>'
+                + '<td><strong>' + escText(o.pedido_sap_id || '-') + '</strong><div class="sub2">Item ' + escText(o.item_numero || '-') + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div></td>'
                 + '<td>' + escText((o.cliente || '-').toUpperCase()) + (o.tipo_venta ? '<div class="sub2">' + escText(o.tipo_venta) + '</div>' : '') + '</td>'
                 + '<td><strong>' + escText(o.codigo_producto) + '</strong> '
                 + (o.es_compuesto ? '<span class="po-bom">BOM</span>' : '<span class="po-sinbom" title="Sin receta BOM">SIN BOM</span>')
@@ -413,7 +413,7 @@ App.registerModule('produccion', {
                 const progreso = o.total_pasos > 0 ? ' · ' + o.pasos_terminados + '/' + o.total_pasos + ' pasos' : '';
                 return '<div class="po-mcard">'
                     + '<div class="t1"><strong>' + escText(o.pedido_sap_id || '-') + ' · It ' + escText(o.item_numero || '-') + '</strong>' + this._estadoBadge(o.estado_programacion) + '</div>'
-                    + '<div class="sub2">' + escText((o.cliente || '-').toUpperCase()) + ' · ' + escText(o.codigo_producto) + '</div>'
+                    + '<div class="sub2">' + escText((o.cliente || '-').toUpperCase()) + ' · ' + escText(o.codigo_producto) + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div>'
                     + '<div class="t2">' + this._prioBadge(o.nivel_prioridad, o.id, true)
                     + '<span class="sub2">' + this._fmt(o.cantidad || 1, 0) + ' und · ' + this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0) + progreso + '</span></div>'
                     + '<div class="acc">'
@@ -662,11 +662,12 @@ App.registerModule('produccion', {
                 this._importRows = rows;
                 const preview = document.getElementById('prodImportPreview');
                 preview.innerHTML = `<div class="po-hint"><strong>${rows.length}</strong> items encontrados</div>
-                    <table class="po-mini"><thead><tr><th>Código</th><th>Pedido</th><th>Item</th><th>Cliente</th><th>Cant</th><th>Ancho</th><th>Alto</th><th>Pint</th><th>Tipo Venta</th><th>Fecha</th></tr></thead><tbody>
+                    <table class="po-mini"><thead><tr><th>Código</th><th>Pedido</th><th>Item</th><th>OC</th><th>Cliente</th><th>Cant</th><th>Ancho</th><th>Alto</th><th>Pint</th><th>Tipo Venta</th><th>Fecha</th></tr></thead><tbody>
                     ${rows.slice(0, 10).map(r => {
                         const cod = r.codigo || r.Codigo || r.CODIGO || '';
                         const ped = r.pedido || r.Pedido || r.PEDIDO || '';
                         const it = r.item || r.Item || r.ITEM || '';
+                        const oc = r['orden de compra'] || r['orden_compra'] || r.OrdenCompra || r['ORDEN DE COMPRA'] || r.OC || r.oc || '';
                         const cli = r.cliente || r.Cliente || '';
                         const cant = r.cantidad || r.Cantidad || 1;
                         const ancho = r.anho || r.ancho || r.Ancho || r.ANCHO || 0;
@@ -674,9 +675,9 @@ App.registerModule('produccion', {
                         const pint = r.pintado || r.Pintado || r.PINTADO || 0;
                         const tipo = r['tipo de venta'] || r.tipo_de_venta || r.TipoVenta || 'Normal';
                         const fecha = r.fecha_creacion || r.FechaCreacion || r.fecha || r.Fecha || '';
-                        return `<tr><td>${escText(cod)}</td><td>${escText(ped)}</td><td>${escText(it)}</td><td>${escText(cli)}</td><td>${escText(cant)}</td><td>${escText(ancho)}</td><td>${escText(alto)}</td><td>${escText(pint)}</td><td>${escText(tipo)}</td><td>${escText(fecha)}</td></tr>`;
+                        return `<tr><td>${escText(cod)}</td><td>${escText(ped)}</td><td>${escText(it)}</td><td>${escText(oc) || '<span style="color:#cbd5e1">—</span>'}</td><td>${escText(cli)}</td><td>${escText(cant)}</td><td>${escText(ancho)}</td><td>${escText(alto)}</td><td>${escText(pint)}</td><td>${escText(tipo)}</td><td>${escText(fecha)}</td></tr>`;
                     }).join('')}
-                    ${rows.length > 10 ? `<tr><td colspan="10" style="text-align:center;color:#8494a8">... y ${rows.length - 10} más</td></tr>` : ''}
+                    ${rows.length > 10 ? `<tr><td colspan="11" style="text-align:center;color:#8494a8">... y ${rows.length - 10} más</td></tr>` : ''}
                     </tbody></table>`;
             } catch (err) { preview.innerHTML = '<span style="color:#dc2626;font-size:11px">Error al leer el archivo</span>'; }
         };

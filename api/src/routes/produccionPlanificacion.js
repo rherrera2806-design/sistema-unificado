@@ -33,7 +33,7 @@ router.get('/api/produccion/importar/template', canView, (req, res) => {
     // (ver services/produccionImportar.js). Las flags son 0/1; solo "codigo"
     // es obligatoria — el resto tiene valores por defecto.
     const headers = ['codigo', 'pedido', 'item', 'cliente', 'descripcion', 'cantidad', 'ancho', 'alto', 'kilos', 'precio', 'familia', 'perforaciones', 'mecanizado', 'destaje', 'sacado', 'radio', 'pulido', 'ventana', 'pintado', 'pintado car', 'tipo de venta', 'fecha_creacion', 'nota', 'posicion', 'orden de compra', 'tipo de entrega'];
-    const example = ['VT-001', 'PED-2026-001', 1, 'VIDRIERIA LOS ANDES', 'Vidrio templado 8mm', 10, 1500, 1000, 0, 0, 'TEMPLADOS', 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Normal', '2026-08-07', '', '', '', 'Despacho'];
+    const example = ['VT-001', 'PED-2026-001', 1, 'VIDRIERIA LOS ANDES', 'Vidrio templado 8mm', 10, 1500, 1000, 0, 0, 'TEMPLADOS', 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Normal', '2026-08-07', '', '', 'OC-2026-001', 'Despacho'];
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     ws['!cols'] = headers.map(() => ({ wch: 20 }));
