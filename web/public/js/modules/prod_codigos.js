@@ -132,6 +132,7 @@ App.registerModule('prod_codigos', {
             </div>`;
         await this.load();
         this.setupDragDrop();
+        this._setupMenus();
     },
 
     // ---------------- Carga (una sola vez; el filtro es local) ----------------
@@ -257,8 +258,12 @@ App.registerModule('prod_codigos', {
             return '<span class="pc-badge-sin" title="Sin Receta BOM: la importación SAP rechazará este código hasta que cree su receta en Configuración → Recetas BOM">⚠ Sin receta</span>';
         };
         const acciones = (c) => puedeEditar ? `
-            <button class="pc-icon-btn" title="Editar" onclick="App.modules.prod_codigos.edit(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button class="pc-icon-btn danger" title="Eliminar" onclick="App.modules.prod_codigos.delete(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : '';
+            <div class="pc-amenu"><button class="pc-amenu-btn" onclick="App.modules.prod_codigos.toggleAcciones(event)">Acciones ▾</button>
+            <div class="pc-amenu-drop">
+                <div class="it" onclick="App.modules.prod_codigos.edit(${c.id})">✏️ Editar código</div>
+                <div class="sep"></div>
+                <div class="it danger" onclick="App.modules.prod_codigos.delete(${c.id})">🗑 Eliminar código</div>
+            </div></div>` : '';
 
         tbody.innerHTML = codigos.map(c => `
             <tr>
@@ -575,6 +580,35 @@ App.registerModule('prod_codigos', {
         }, 300);
     },
 
+    // ---------------- Menú de acciones (popover fijo, patrón del sistema) ----------------
+    toggleAcciones(e) {
+        e.stopPropagation();
+        const wrap = e.currentTarget.parentElement;
+        const menu = wrap.querySelector('.pc-amenu-drop');
+        if (!menu) return;
+        const wasVisible = menu.style.display === 'block';
+        this._cerrarMenus();
+        if (wasVisible) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        menu.style.display = 'block';
+        menu.style.top = '0px';
+        menu.style.left = '0px';
+        const mh = menu.offsetHeight, mw = menu.offsetWidth;
+        const espacioAbajo = window.innerHeight - rect.bottom;
+        menu.style.top = (espacioAbajo < mh + 12 ? Math.max(8, rect.top - mh - 6) : rect.bottom + 6) + 'px';
+        menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - mw - 8)) + 'px';
+    },
+    _cerrarMenus() {
+        document.querySelectorAll('.pc-amenu-drop').forEach(d => d.style.display = 'none');
+    },
+    _setupMenus() {
+        if (this._menusBound) return;
+        this._menusBound = true;
+        document.addEventListener('click', () => this._cerrarMenus());
+        window.addEventListener('scroll', () => this._cerrarMenus(), true);
+        window.addEventListener('resize', () => this._cerrarMenus());
+    },
+
     // ---------------- Zona de mantenimiento ----------------
     toggleMant(e) {
         e.stopPropagation();
@@ -642,6 +676,15 @@ App.registerModule('prod_codigos', {
             .pc-icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
             .pc-icon-btn:hover{background:#f1f5f9}
             .pc-icon-btn.danger{color:#dc2626;border-color:#fecaca}
+
+            .pc-amenu{position:relative;display:inline-block}
+            .pc-amenu-btn{padding:6px 11px;border-radius:7px;border:1px solid #e4e9f0;background:#fff;color:#475569;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+            .pc-amenu-btn:hover{background:#f8fafc}
+            .pc-amenu-drop{display:none;position:fixed;z-index:95;background:#fff;border:1px solid #e4e9f0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.16);min-width:190px;padding:5px}
+            .pc-amenu-drop .it{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;white-space:nowrap}
+            .pc-amenu-drop .it:hover{background:#f8fafc}
+            .pc-amenu-drop .it.danger{color:#dc2626}
+            .pc-amenu-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}
 
             .pc-overlay{display:none;position:fixed;inset:0;z-index:80;align-items:center;justify-content:center;background:rgba(15,23,42,.5);backdrop-filter:blur(4px)}
             .pc-modal{background:#fff;border-radius:16px;width:92%;max-width:560px;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(15,23,42,.3)}

@@ -20,7 +20,6 @@ App.registerModule('prod_config', {
         const tabs = [
             { id: 'codigos', label: 'Códigos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
             { id: 'recetas', label: 'Recetas BOM', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>' },
-            { id: 'carroceria', label: 'Carrocería', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' },
             { id: 'estaciones', label: 'Estaciones', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>' },
             { id: 'maquinas', label: 'Maquinas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a2.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' },
             { id: 'grupos', label: 'Grupos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
@@ -62,7 +61,7 @@ App.registerModule('prod_config', {
         const token = ++this._tabToken; // id de esta carga: si cambia el tab, la respuesta se descarta
         container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light)">Cargando...</div>';
         // Tabs que delegan a modulos originales (Codigos, Maquinas, Recetas, Carroceria)
-        if (this._tab === 'codigos' || this._tab === 'maquinas' || this._tab === 'recetas' || this._tab === 'carroceria') {
+        if (this._tab === 'codigos' || this._tab === 'maquinas' || this._tab === 'recetas') {
             await this.loadDelegated(this._tab, token);
             return;
         }
@@ -80,7 +79,7 @@ App.registerModule('prod_config', {
         if (token != null && token !== this._tabToken) return; // respuesta de un tab viejo: descartar
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = '';
-        const moduleMap = { codigos: 'prod_codigos', maquinas: 'prod_maquinas', recetas: 'prod_recetas', carroceria: 'prod_carroceria' };
+        const moduleMap = { codigos: 'prod_codigos', maquinas: 'prod_maquinas', recetas: 'prod_recetas' };
         const moduleName = moduleMap[tab];
         const pageId = 'page-' + moduleName;
         // Crear page temporal para que el modulo original pueda renderizar
