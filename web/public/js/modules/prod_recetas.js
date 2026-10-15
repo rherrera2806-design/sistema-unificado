@@ -39,57 +39,106 @@ App.registerModule('prod_recetas', {
                 .rec-filecard .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
                 .rec-filecard .info strong{font-size:13px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
                 .rec-filecard .info span{font-size:10px;color:#8494a8}
+                /* ── Estilo unificado con Códigos (hero, KPIs, toolbar, panel) ── */
+                .rec-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%);border-radius:16px;padding:20px 26px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;margin-bottom:16px}
+                .rec-hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.55),transparent)}
+                .rec-hero h2{color:#fff;font-size:20px;font-weight:700;margin:0}
+                .rec-hero p{color:rgba(255,255,255,.62);font-size:11px;margin:4px 0 0}
+                .rec-hero-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+                .rec-hbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}
+                .rec-hbtn:hover{background:rgba(255,255,255,.2)}
+                .rec-hbtn.solid{background:#fff;color:#1e3a5f;border-color:#fff}
+                .rec-hbtn.solid:hover{background:#e8eefb}
+                .rec-hbtn.ghost-danger{border-color:rgba(248,113,113,.5);color:#fca5a5}
+                .rec-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+                .rec-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}
+                .rec-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
+                .rec-kpi .v{font-size:20px;font-weight:700;margin-top:4px;color:#0f172a}
+                .rec-kpi .s{font-size:10px;color:#8494a8;margin-top:2px}
+                .rec-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+                .rec-search{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:0 12px;flex:1;min-width:220px;max-width:340px}
+                .rec-search input{border:none;outline:none;padding:10px 0;font-size:13px;width:100%;background:transparent;color:#0f172a}
+                .rec-toolbar select{padding:10px 12px;border:1px solid #e4e9f0;border-radius:10px;font-size:11px;font-weight:600;background:#fff;color:#475569;outline:none}
+                .rec-flimpiar{font-size:11px;font-weight:600;color:#b45309;cursor:pointer;padding:8px 10px}
+                .rec-flimpiar:hover{text-decoration:underline}
+                .rec-count{font-size:11px;color:#8494a8;font-weight:600}
+                .rec-panel{background:#fff;border:1px solid #e4e9f0;border-radius:14px;overflow:hidden}
+                .rec-p-head{padding:13px 18px;display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #e4e9f0}
+                .rec-p-head h3{font-size:13px;font-weight:600;margin:0}
+                .rec-p-head .sub{font-size:10px;color:#8494a8}
+                .rec-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+                .rec-table{width:100%;border-collapse:collapse;min-width:860px}
+                .rec-table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0;white-space:nowrap}
+                .rec-table td{padding:10px 14px;font-size:13px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+                .rec-table tbody tr:hover{background:#f8fafc}
+                .rec-table .num{text-align:right;font-variant-numeric:tabular-nums}
+                .rec-table .th-acc{text-align:right}
+                .rec-cards-mobile{display:none;padding:12px}
+                .rec-mcard{border:1px solid #e4e9f0;border-radius:12px;padding:12px 14px;margin-bottom:8px;background:#fff}
+                @media(max-width:768px){
+                    .rec-hero{flex-direction:column;align-items:flex-start;padding:16px}
+                    .rec-hero h2{font-size:15px}
+                    .rec-hero-actions{margin-left:0;width:100%}
+                    .rec-hbtn{flex:1;justify-content:center}
+                    .rec-kpis{grid-template-columns:1fr;gap:8px}
+                    .rec-kpi .v{font-size:15px}
+                    .rec-toolbar{flex-direction:column;align-items:stretch}
+                    .rec-search{max-width:none}
+                    .rec-table-wrap{display:none}
+                    .rec-cards-mobile{display:block}
+                }
             </style>
             <div class="m-page">
-                <div class="m-hero">
+                <div class="rec-hero">
                     <div>
-                        <h2 class="m-hero-title">Recetas BOM · Modelo Híbrido</h2>
-                        <p class="m-hero-sub">Materia prima + ruta de procesos opcional para códigos estandarizados (Carroceros)</p>
+                        <h2>Recetas BOM · Modelo Híbrido</h2>
+                        <p>Materia prima + ruta de procesos opcional para códigos estandarizados (Carroceros)</p>
                     </div>
+                    ${puedeEditar ? `<div class="rec-hero-actions">
+                        <button class="rec-hbtn" onclick="App.modules.prod_recetas.showImportModal()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Importar
+                        </button>
+                        <button class="rec-hbtn solid" onclick="App.modules.prod_recetas.showCreateModal()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Nueva Receta
+                        </button>
+                        ${permisos.includes('usuarios') ? `<div class="rec-amenu"><button class="rec-hbtn ghost-danger" onclick="App.modules.prod_recetas.toggleAcciones(event)">⚠ Zona de mantenimiento ▾</button><div class="rec-amenu-drop"><div class="it danger" onclick="App.modules.prod_recetas.deleteAll()">🗑 Limpiar Todo (eliminar todas las recetas)</div></div></div>` : ''}
+                    </div>` : ''}
                 </div>
 
-                <div class="m-stats">
-                    <div class="m-stat-card stat-blue">
-                        <div class="m-stat-label">Total Recetas</div>
-                        <div class="m-stat-value" id="recTotalStat">0</div>
-                    </div>
-                    <div class="m-stat-card stat-purple">
-                        <div class="m-stat-label">Ruta Custom</div>
-                        <div class="m-stat-value" id="recCustomStat">0</div>
-                    </div>
-                    <div class="m-stat-card stat-amber">
-                        <div class="m-stat-label">Códigos únicos</div>
-                        <div class="m-stat-value" id="recCodigosStat">0</div>
-                    </div>
+                <div class="rec-kpis">
+                    <div class="rec-kpi"><div class="k">Total recetas</div><div class="v" id="recTotalStat">0</div><div class="s">en el catálogo BOM</div></div>
+                    <div class="rec-kpi"><div class="k">Ruta custom</div><div class="v" id="recCustomStat">0</div><div class="s">con ruta de procesos propia</div></div>
+                    <div class="rec-kpi"><div class="k">Códigos únicos</div><div class="v" id="recCodigosStat">0</div><div class="s">cubiertos por recetas</div></div>
                 </div>
 
-                <div class="m-actions">
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                        <select class="form-control" id="recFilterRuta" style="width:auto;min-width:120px;padding:10px 12px;font-size:13px" onchange="App.modules.prod_recetas.filter()">
-                            <option value="">Todas las rutas</option>
-                            <option value="custom">Con ruta custom</option>
-                        </select>
-                        <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar código o material..." oninput="App.modules.prod_recetas.filter()" style="flex:1;min-width:150px;padding:10px 12px;font-size:13px">
-                        ${puedeEditar ? `
-                            <button class="btn btn-info" onclick="App.modules.prod_recetas.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar</button>
-                            <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_recetas.showCreateModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
-                            ${permisos.includes('usuarios') ? `<div class="rec-amenu"><button class="btn btn-sm" style="background:#fff;color:#dc2626;border:1px solid #fecaca;font-weight:600" onclick="App.modules.prod_recetas.toggleAcciones(event)">⚠ Zona de mantenimiento ▾</button><div class="rec-amenu-drop"><div class="it danger" onclick="App.modules.prod_recetas.deleteAll()">🗑 Limpiar Todo (eliminar todas las recetas)</div></div></div>` : ''}
-                        ` : ''}
+                <div class="rec-toolbar">
+                    <div class="rec-search">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8494a8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="recFilterSearch" placeholder="Buscar código o material..." oninput="App.modules.prod_recetas.filter()">
                     </div>
+                    <select id="recFilterRuta" onchange="App.modules.prod_recetas.filter()">
+                        <option value="">Todas las rutas</option>
+                        <option value="custom">Con ruta custom</option>
+                    </select>
+                    <span class="rec-flimpiar" onclick="App.modules.prod_recetas.limpiarFiltros()">Limpiar filtros</span>
+                    <span class="rec-count" id="recCount"></span>
                 </div>
 
-                <div class="m-card">
-                    <div class="m-table-wrap">
-                        <table class="m-table">
+                <div class="rec-panel">
+                    <div class="rec-p-head"><h3>Recetas BOM</h3><span class="sub">agrupadas por código SAP</span></div>
+                    <div class="rec-table-wrap">
+                        <table class="rec-table">
                             <thead>
                                 <tr>
                                     <th>Código SAP</th>
                                     <th>Materia Prima</th>
                                     <th>Ruta de procesos</th>
-                                    <th>Cant.</th>
-                                    <th>Ancho</th>
-                                    <th>Alto</th>
-                                    <th>Acciones</th>
+                                    <th class="num">Cant.</th>
+                                    <th class="num">Ancho</th>
+                                    <th class="num">Alto</th>
+                                    <th class="th-acc">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="recTable">
@@ -97,7 +146,7 @@ App.registerModule('prod_recetas', {
                             </tbody>
                         </table>
                     </div>
-                    <div class="m-cards-mobile" id="recCardsMobile"></div>
+                    <div class="rec-cards-mobile" id="recCardsMobile"></div>
                 </div>
             </div>
 
@@ -283,9 +332,20 @@ App.registerModule('prod_recetas', {
         this.renderTable(filtered);
     },
 
+    limpiarFiltros() {
+        const s = document.getElementById('recFilterSearch'); if (s) s.value = '';
+        const r = document.getElementById('recFilterRuta'); if (r) r.value = '';
+        this.renderTable(this.recetas);
+    },
+
     renderTable(recetas) {
         const tbody = document.getElementById('recTable');
         const cardsMobile = document.getElementById('recCardsMobile');
+        const count = document.getElementById('recCount');
+        if (count) {
+            const grupos = new Set(recetas.map(r => r.codigo_sap_padre)).size;
+            count.textContent = '(' + recetas.length + ' receta' + (recetas.length === 1 ? '' : 's') + ' · ' + grupos + ' código' + (grupos === 1 ? '' : 's') + ')';
+        }
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         const puedeEditar = user.permisos?.includes('usuarios') || user.permisos?.includes('produccion');
 
@@ -362,7 +422,7 @@ App.registerModule('prod_recetas', {
                         </div></div>` : ''}</td>
                 </tr>`;
 
-                cardsHtml += `<div class="m-card-header m-table-row">
+                cardsHtml += `<div class="rec-mcard">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%">
                         <div style="flex:1">
                             <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">
