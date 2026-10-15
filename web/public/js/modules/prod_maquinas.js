@@ -328,7 +328,7 @@ App.registerModule('prod_maquinas', {
                 this.hideImportModal();
                 await this.load();
             } else {
-                alert('Error: ' + (result.error || 'Error desconocido'));
+                App.showAlert('Error: ' + (result.error || 'Error desconocido'), 'danger');
             }
         } catch(e) { App.showAlert('Error al importar: ' + e.message, 'danger'); }
         btn.disabled = false;
