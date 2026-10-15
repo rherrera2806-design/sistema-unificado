@@ -15,11 +15,21 @@ App.registerModule('prod_recetas', {
         const puedeEditar = permisos.includes('usuarios') || permisos.includes('produccion');
 
         el.innerHTML = `
+            <style>
+                .rec-amenu{position:relative;display:inline-block}
+                .rec-amenu-btn{padding:6px 11px;border-radius:7px;border:1px solid #e4e9f0;background:#fff;color:#475569;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+                .rec-amenu-btn:hover{background:#f8fafc}
+                .rec-amenu-drop{display:none;position:fixed;z-index:95;background:#fff;border:1px solid #e4e9f0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.16);min-width:190px;padding:5px}
+                .rec-amenu-drop .it{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;white-space:nowrap}
+                .rec-amenu-drop .it:hover{background:#f8fafc}
+                .rec-amenu-drop .it.danger{color:#dc2626}
+                .rec-amenu-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}
+            </style>
             <div class="m-page">
                 <div class="m-hero">
                     <div>
-                        <h2 class="m-hero-title">Recetas BOM · Modelo Hibrido</h2>
-                        <p class="m-hero-sub">Materia prima + ruta de procesos opcional para codigos estandarizados (Carroceros)</p>
+                        <h2 class="m-hero-title">Recetas BOM · Modelo Híbrido</h2>
+                        <p class="m-hero-sub">Materia prima + ruta de procesos opcional para códigos estandarizados (Carroceros)</p>
                     </div>
                 </div>
 
@@ -48,7 +58,7 @@ App.registerModule('prod_recetas', {
                         ${puedeEditar ? `
                             <button class="btn btn-info" onclick="App.modules.prod_recetas.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar</button>
                             <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.prod_recetas.showCreateModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
-                            ${permisos.includes('usuarios') ? '<button class="btn btn-danger btn-sm" onclick="App.modules.prod_recetas.deleteAll()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Eliminar</button>' : ''}
+                            ${permisos.includes('usuarios') ? `<div class="rec-amenu"><button class="btn btn-sm" style="background:#fff;color:#dc2626;border:1px solid #fecaca;font-weight:600" onclick="App.modules.prod_recetas.toggleAcciones(event)">⚠ Zona de mantenimiento ▾</button><div class="rec-amenu-drop"><div class="it danger" onclick="App.modules.prod_recetas.deleteAll()">🗑 Limpiar Todo (eliminar todas las recetas)</div></div></div>` : ''}
                         ` : ''}
                     </div>
                 </div>
@@ -179,6 +189,7 @@ App.registerModule('prod_recetas', {
             </div>
         `;
         await this.load();
+        this._setupMenus();
     },
 
     _headers() {
@@ -302,13 +313,19 @@ App.registerModule('prod_recetas', {
             items.forEach(r => {
                 const rutaHtml = getRutaHtml(r);
                 html += `<tr class="prec-row" style="line-height:1.3">
-                    <td style="padding:6px 12px"><strong style="font-family:monospace;font-size:12px">${escapeHtml(padre)}</strong></td>
+                    <td style="padding:6px 12px"><strong style="font-size:13px;font-weight:700">${escapeHtml(padre)}</strong></td>
                     <td style="padding:6px 12px"><span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${escapeHtml(r.codigo_mp || '-')}</span> ${r.mp_nombre ? '<span style="color:#64748b;font-size:11px">· ' + escapeHtml(r.mp_nombre) + '</span>' : ''}</td>
                     <td style="padding:6px 12px;max-width:340px">${rutaHtml}</td>
                     <td style="padding:6px 12px;text-align:center"><strong>${Math.round(r.cantidad || 1)}</strong></td>
                     <td style="padding:6px 12px;text-align:right">${r.ancho ? '<span style="background:#f3e8ff;color:#7c3aed;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + Math.round(r.ancho) + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
                     <td style="padding:6px 12px;text-align:right">${r.alto ? '<span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + Math.round(r.alto) + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
-                    <td style="padding:6px 12px;white-space:nowrap">${puedeEditar ? `<button onclick="App.modules.prod_recetas.edit(${r.id})" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button onclick="App.modules.prod_recetas.delete(${r.id})" class="btn btn-sm btn-danger" title="Eliminar" style="margin-left:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
+                    <td style="padding:6px 12px;white-space:nowrap">${puedeEditar ? `
+                        <div class="rec-amenu"><button class="rec-amenu-btn" onclick="App.modules.prod_recetas.toggleAcciones(event)">Acciones ▾</button>
+                        <div class="rec-amenu-drop">
+                            <div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>
+                            <div class="sep"></div>
+                            <div class="it danger" onclick="App.modules.prod_recetas.delete(${r.id})">🗑 Eliminar receta</div>
+                        </div></div>` : ''}</td>
                 </tr>`;
 
                 cardsHtml += `<div class="m-card-header m-table-row">
@@ -326,7 +343,13 @@ App.registerModule('prod_recetas', {
                             </div>
                         </div>
                         <div style="display:flex;gap:4px;flex-shrink:0">
-                            ${puedeEditar ? `<button onclick="App.modules.prod_recetas.edit(${r.id})" class="btn btn-sm btn-outline" title="Editar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> <button onclick="App.modules.prod_recetas.delete(${r.id})" class="btn btn-sm btn-danger" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
+                            ${puedeEditar ? `
+                            <div class="rec-amenu"><button class="rec-amenu-btn" onclick="App.modules.prod_recetas.toggleAcciones(event)">Acciones ▾</button>
+                            <div class="rec-amenu-drop">
+                                <div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>
+                                <div class="sep"></div>
+                                <div class="it danger" onclick="App.modules.prod_recetas.delete(${r.id})">🗑 Eliminar receta</div>
+                            </div></div>` : ''}
                         </div>
                     </div>
                 </div>`;
@@ -355,6 +378,63 @@ App.registerModule('prod_recetas', {
     },
 
     hideCreateModal() { document.getElementById('recCreateModal').classList.remove('show'); },
+
+    // ── Menú de acciones (popover fijo: se sale del recorte de la tabla) ──
+    toggleAcciones(e) {
+        e.stopPropagation();
+        const wrap = e.currentTarget.parentElement;
+        const menu = wrap.querySelector('.rec-amenu-drop');
+        if (!menu) return;
+        const wasVisible = menu.style.display === 'block';
+        this._cerrarMenus();
+        if (wasVisible) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        menu.style.display = 'block';
+        menu.style.top = '0px';
+        menu.style.left = '0px';
+        const mh = menu.offsetHeight, mw = menu.offsetWidth;
+        const espacioAbajo = window.innerHeight - rect.bottom;
+        menu.style.top = (espacioAbajo < mh + 12 ? Math.max(8, rect.top - mh - 6) : rect.bottom + 6) + 'px';
+        menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - mw - 8)) + 'px';
+    },
+    _cerrarMenus() {
+        document.querySelectorAll('.rec-amenu-drop').forEach(d => d.style.display = 'none');
+    },
+    _setupMenus() {
+        if (this._menusBound) return;
+        this._menusBound = true;
+        document.addEventListener('click', () => this._cerrarMenus());
+        window.addEventListener('scroll', () => this._cerrarMenus(), true);
+        window.addEventListener('resize', () => this._cerrarMenus());
+    },
+
+    // ── Confirmación en modal (sin confirm() nativo) ──
+    _confirmar(titulo, html, textoBoton, accion) {
+        let overlay = document.getElementById('recConfirmOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'recConfirmOverlay';
+            overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:99;align-items:center;justify-content:center;background:rgba(15,23,42,.5);backdrop-filter:blur(4px)';
+            overlay.innerHTML = `
+                <div style="background:#fff;border-radius:16px;width:92%;max-width:420px;box-shadow:0 20px 60px rgba(15,23,42,.3)" onclick="event.stopPropagation()">
+                    <div style="padding:18px 24px;border-bottom:1px solid #e4e9f0;display:flex;align-items:center;justify-content:space-between">
+                        <h3 id="recConfirmTitle" style="margin:0;font-size:15px;font-weight:700"></h3>
+                        <button onclick="document.getElementById('recConfirmOverlay').style.display='none'" style="width:28px;height:28px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;cursor:pointer">✕</button>
+                    </div>
+                    <div style="padding:20px 24px"><p id="recConfirmText" style="font-size:13px;color:#475569;line-height:1.6;margin:0"></p></div>
+                    <div style="padding:14px 24px 20px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #e4e9f0">
+                        <button onclick="document.getElementById('recConfirmOverlay').style.display='none'" style="padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #e4e9f0;background:#fff;color:#475569">Cancelar</button>
+                        <button id="recConfirmBtn" style="padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#dc2626;color:#fff">Confirmar</button>
+                    </div>
+                </div>`;
+            overlay.addEventListener('click', () => { overlay.style.display = 'none'; });
+            document.body.appendChild(overlay);
+        }
+        document.getElementById('recConfirmTitle').textContent = titulo;
+        document.getElementById('recConfirmText').innerHTML = html;
+        document.getElementById('recConfirmBtn').onclick = () => { overlay.style.display = 'none'; accion(); };
+        overlay.style.display = 'flex';
+    },
 
     toggleRutaCustom() {
         const checked = document.getElementById('recUsarRutaCustom').checked;
@@ -422,8 +502,8 @@ App.registerModule('prod_recetas', {
             sels.forEach(s => { const v = parseInt(s.value, 10); if (Number.isFinite(v) && v > 0) procs.push(v); });
             procesos_especificos_json = procs.length > 0 ? procs : null;
         }
-        if (!codigo_sap_padre) { alert('Codigo SAP requerido'); return; }
-        if (!materia_prima_id) { alert('Materia prima requerida'); return; }
+        if (!codigo_sap_padre) { App.showAlert('El código SAP es requerido', 'danger'); return; }
+        if (!materia_prima_id) { App.showAlert('La materia prima es requerida', 'danger'); return; }
         const ancho = Number(document.getElementById('recAncho').value) || null;
         const alto = Number(document.getElementById('recAlto').value) || null;
         try {
@@ -441,29 +521,35 @@ App.registerModule('prod_recetas', {
             this.hideCreateModal();
             App.toast(id ? 'Receta actualizada' : 'Receta creada');
             await this.load();
-        } catch (e) { alert('Error: ' + e.message); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
-    async delete(id) {
-        if (!confirm('Eliminar esta receta BOM?')) return;
-        try {
-            await apiJson(await fetch('/api/produccion/recetas-bom/' + id, { method: 'DELETE', headers: this._headers() }));
-            App.toast('Receta eliminada');
-            await this.load();
-        } catch (e) { alert('Error: ' + e.message); }
+    delete(id) {
+        const r = (this.recetas || []).find(x => x.id === id);
+        this._confirmar('Eliminar receta',
+            `Se eliminará esta receta BOM${r ? ' de <strong>' + escapeHtml(r.codigo_sap_padre) + '</strong>' : ''}.<br><br>Si era la única del código, la importación SAP volverá a rechazarlo.`,
+            'Eliminar', async () => {
+                try {
+                    await apiJson(await fetch('/api/produccion/recetas-bom/' + id, { method: 'DELETE', headers: this._headers() }));
+                    App.toast('Receta eliminada');
+                    await this.load();
+                } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+            });
     },
 
-    async deleteAll() {
-        if (!confirm('ELIMINAR TODAS las recetas BOM? Esta accion no se puede deshacer.')) return;
-        if (!confirm('Seguro? Se borrarán TODOS los registros de recetas_bom.')) return;
-        try {
-            const r = await fetch('/api/produccion/recetas-bom/all', { method: 'DELETE', headers: this._headers() });
-            const data = await r.json();
-            if (r.ok) {
-                App.toast(data.eliminados + ' recetas eliminadas');
-                await this.load();
-            } else { alert(data.error || 'Error al eliminar'); }
-        } catch (e) { alert('Error: ' + e.message); }
+    deleteAll() {
+        this._confirmar('Eliminar todas las recetas',
+            'Se eliminarán <strong>TODAS las recetas BOM</strong>. <strong>Esta acción no se puede deshacer.</strong><br><br>La importación SAP dejará de reconocer todos los códigos hasta recrear sus recetas.',
+            'Eliminar todas', async () => {
+                try {
+                    const r = await fetch('/api/produccion/recetas-bom/all', { method: 'DELETE', headers: this._headers() });
+                    const data = await r.json();
+                    if (r.ok) {
+                        App.toast(data.eliminados + ' recetas eliminadas');
+                        await this.load();
+                    } else { App.showAlert(data.error || 'Error al eliminar', 'danger'); }
+                } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+            });
     },
 
     showImportModal() {
@@ -486,7 +572,7 @@ App.registerModule('prod_recetas', {
                     body: JSON.stringify({ excel_data: base64 })
                 });
                 const data = await r.json();
-                if (!r.ok) { alert(data.error || 'Error al leer archivo'); return; }
+                if (!r.ok) { App.showAlert(data.error || 'Error al leer el archivo', 'danger'); return; }
                 const preview = document.getElementById('recImportPreview');
                 preview.style.display = 'block';
                 document.getElementById('recImportBtn').disabled = data.validas === 0;
@@ -512,17 +598,17 @@ App.registerModule('prod_recetas', {
 
                 let tableHtml = '';
                 data.sample.forEach(s => {
-                    tableHtml += '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace">' + escText(s.codigo_sap || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + escText(s.codigo_mp || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center">' + escText(s.cantidad || 1) + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + escText(s.estaciones || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + escText(s.ancho || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + escText(s.alto || '-') + '</td></tr>';
+                    tableHtml += '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-weight:700">' + escText(s.codigo_sap || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + escText(s.codigo_mp || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center">' + escText(s.cantidad || 1) + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9">' + escText(s.estaciones || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + escText(s.ancho || '-') + '</td><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:right">' + escText(s.alto || '-') + '</td></tr>';
                 });
                 document.getElementById('recImportTable').innerHTML = tableHtml;
-            } catch (err) { alert('Error al procesar archivo: ' + err.message); }
+            } catch (err) { App.showAlert('Error al procesar el archivo: ' + err.message, 'danger'); }
         };
         reader.readAsDataURL(file);
     },
 
     async doImport() {
         const fileInput = document.getElementById('recImportFile');
-        if (!fileInput.files.length) { alert('Selecciona un archivo primero'); return; }
+        if (!fileInput.files.length) { App.showAlert('Selecciona un archivo primero', 'danger'); return; }
         const file = fileInput.files[0];
         const btn = document.getElementById('recImportBtn');
         if (btn) { btn.disabled = true; btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10"/></svg> Importando...'; }
@@ -545,14 +631,14 @@ App.registerModule('prod_recetas', {
                     if (data.errores.length > 0) {
                         let errMsg = data.errores.slice(0, 5).map(e => 'Fila ' + e.fila + ': ' + e.error).join('\n');
                         if (data.errores.length > 5) errMsg += '\n... +' + (data.errores.length - 5) + ' mas';
-                        alert('Algunas filas tuvieron errores:\n' + errMsg);
+                        App.showAlert('Algunas filas tuvieron errores: ' + errMsg.replace(/\n/g, ' · ').slice(0, 220), 'danger');
                     }
                     this.hideImportModal();
                     await this.load();
-                } else { alert(data.error || 'Error al importar: ' + r.status); }
+                } else { App.showAlert(data.error || 'Error al importar (HTTP ' + r.status + ')', 'danger'); }
             } catch (err) {
-                if (err.name === 'AbortError') { alert('La importacion tardo demasiado (>2min). Intenta con menos filas.'); }
-                else { alert('Error: ' + err.message); }
+                if (err.name === 'AbortError') { App.showAlert('La importación tardó demasiado (>2 min). Intenta con menos filas.', 'danger'); }
+                else { App.showAlert('Error: ' + err.message, 'danger'); }
             }
             if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar'; }
         };

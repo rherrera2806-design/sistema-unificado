@@ -572,6 +572,9 @@ async function faseColumnas({ q, safe }) {
         detalle TEXT DEFAULT '',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`, 'usuarios_audit');
+    // Índices para catálogo de códigos y recetas BOM (búsquedas/orden frecuentes)
+    await safe(`CREATE INDEX IF NOT EXISTS idx_recetas_bom_codigo ON recetas_bom (codigo_sap_padre)`, 'recetas_bom.idx_codigo');
+    await safe(`CREATE INDEX IF NOT EXISTS idx_produccion_codigos_codigo ON produccion_codigos (codigo)`, 'produccion_codigos.idx_codigo');
 
     // ── catalogo_tipos_cristal ───────────────────────────────────────────────
     await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.stock_critico');

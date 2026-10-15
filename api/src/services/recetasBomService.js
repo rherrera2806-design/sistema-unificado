@@ -21,7 +21,9 @@ const getRecetasBom = async () => {
 };
 
 const resolverFamilia = async (codigo) => {
-    const codInfo = await query('SELECT familia FROM produccion_codigos WHERE codigo = $1', [codigo]);
+    // Comparación sin distinguir mayúsculas/espacios: si el código está como
+    // "V4761" y la receta se guarda como "v4761", antes no resolvía la familia.
+    const codInfo = await query('SELECT familia FROM produccion_codigos WHERE LOWER(TRIM(codigo)) = LOWER(TRIM($1))', [codigo]);
     if (!codInfo.rows.length || !codInfo.rows[0].familia) return null;
     const nombreFam = codInfo.rows[0].familia;
     const famRes = await query(
