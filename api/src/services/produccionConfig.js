@@ -64,9 +64,15 @@ const eliminarMaquina = async (id) => {
 // ============ CÓDIGOS SAP ============
 
 const getCodigos = async (search, limit) => {
-    let sql = `SELECT c.*, 
-        (SELECT COUNT(*) FROM recetas_bom rb WHERE rb.codigo_sap_padre = c.codigo) as recetas_count
-        FROM produccion_codigos c`;
+    // JOIN agregado en vez de subconsulta correlacionada por fila: antes cada
+    // código ejecutaba su propio COUNT contra recetas_bom (lento con catálogos
+    // grandes). Además el conteo ahora ignora mayúsculas/espacios.
+    let sql = `SELECT c.*, COALESCE(rb.recetas_count, 0) AS recetas_count
+        FROM produccion_codigos c
+        LEFT JOIN (
+            SELECT LOWER(TRIM(codigo_sap_padre)) AS k, COUNT(*)::int AS recetas_count
+            FROM recetas_bom GROUP BY 1
+        ) rb ON rb.k = LOWER(TRIM(c.codigo))`;
     const params = [];
     if (search) {
         sql += ' WHERE c.codigo ILIKE $1 OR c.descripcion ILIKE $1 OR c.grupo ILIKE $1 OR c.familia ILIKE $1';

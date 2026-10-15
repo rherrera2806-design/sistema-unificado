@@ -1,6 +1,10 @@
 const { query } = require('../config/database');
 const { explosionBOM, crearOrdenSimple } = require('./produccionBomExplosion');
 
+// Normaliza claves de código para comparar SIN distinguir mayúsculas ni
+// espacios: "V4761", "v4761 " y "V4761" deben encontrar la misma receta.
+const ck = (codigo) => String(codigo || '').trim().toLowerCase();
+
 const cargarDatosMaestros = async () => {
     const [estacionesRes, familiasRes, reglasRes, recetasBomRes, materiasRes, oldRecetasRes] = await Promise.all([
         query('SELECT * FROM estaciones_maestras WHERE activa = TRUE'),
@@ -23,16 +27,20 @@ const cargarDatosMaestros = async () => {
     const reglaMap = {};
     reglasRes.rows.forEach(r => { reglaMap[r.nombre_flag] = r; });
 
+    // Claves de receta normalizadas (trim + minúsculas): si la receta se guardó
+    // como "v4761" y el Excel SAP trae "V4761", antes jamás coincidían y el
+    // sistema decía "no tiene receta BOM" aunque existiera.
     const recetaBomMap = {};
     recetasBomRes.rows.forEach(r => {
-        if (!recetaBomMap[r.codigo_sap_padre]) recetaBomMap[r.codigo_sap_padre] = [];
-        recetaBomMap[r.codigo_sap_padre].push(r);
+        const key = ck(r.codigo_sap_padre);
+        if (!recetaBomMap[key]) recetaBomMap[key] = [];
+        recetaBomMap[key].push(r);
     });
 
     if (Object.keys(recetaBomMap).length === 0 && oldRecetasRes.rows.length > 0) {
         console.log('[PROD] Usando recetas de produccion_recetas_bom (tabla antigua)');
         oldRecetasRes.rows.forEach(r => {
-            const codigo = r.codigo_sap_padre;
+            const codigo = ck(r.codigo_sap_padre);
             if (!recetaBomMap[codigo]) recetaBomMap[codigo] = [];
             recetaBomMap[codigo].push({
                 codigo_sap_padre: codigo,
@@ -59,7 +67,7 @@ const cargarDatosMaestros = async () => {
 
     const recetaProcesosMap = {};
     recetasBomRes.rows.forEach(r => {
-        const key = String(r.codigo_sap_padre).trim();
+        const key = ck(r.codigo_sap_padre);
         let procs = [];
         try {
             const raw = r.procesos_especificos_json;
@@ -310,7 +318,7 @@ const convertirOrdenAEstacion = (estaciones, estacionesMaestras, ordenToEstacion
 
 const calcularEstaciones = async (r, familia, maestros) => {
     const { estacionesMaestras, estacionMap, reglaMap, familiaEstacionesMap, recetaBomMap, recetaProcesosMap, ordenToEstacionId } = maestros;
-    const codigoKey = String(r.codigo || '').trim();
+    const codigoKey = ck(r.codigo);
 
     // 1. Buscar ruta custom
     let estacionesFinales = buscarRutaCustom(codigoKey, recetaProcesosMap);
@@ -372,14 +380,20 @@ const importarOrdenes = async (rows) => {
 
     for (const key of mergeOrder) {
         const r = merged[key];
-        const tieneBOM = recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0;
+        const tieneBOM = recetaBomMap[ck(r.codigo)] && recetaBomMap[ck(r.codigo)].length > 0;
 
         if (!tieneBOM) {
+            // Distinguir el caso real para que el usuario sepa QUÉ crear:
+            // ¿el código no existe en Configuración → Códigos, o solo le falta la receta?
+            const codDb = await query('SELECT 1 FROM produccion_codigos WHERE LOWER(TRIM(codigo)) = $1 LIMIT 1', [ck(r.codigo)]);
+            const existeCodigo = codDb.rows.length > 0;
             errores.push({
                 fila: key,
                 codigo: r.codigo,
                 pedido: r.pedido,
-                error: `Código "${r.codigo}" no tiene receta BOM configurada. Configure la receta en Configuración → Recetas BOM antes de importar.`
+                error: existeCodigo
+                    ? `El código "${r.codigo}" existe en Configuración → Códigos pero le falta la RECETA BOM (materia prima + medidas). Créela en Configuración → Recetas BOM y vuelva a importar.`
+                    : `El código "${r.codigo}" no existe en el sistema. Créelo en Configuración → Códigos y además defina su Receta BOM en Configuración → Recetas BOM.`
             });
             continue;
         }
@@ -387,7 +401,7 @@ const importarOrdenes = async (rows) => {
         let ancho = r.ancho;
         let alto = r.alto;
         if (!ancho || !alto) {
-            const receta = recetaBomMap[r.codigo].find(rc => rc.ancho && rc.alto) || recetaBomMap[r.codigo][0];
+            const receta = recetaBomMap[ck(r.codigo)].find(rc => rc.ancho && rc.alto) || recetaBomMap[ck(r.codigo)][0];
             if (!ancho && receta.ancho) ancho = Number(receta.ancho);
             if (!alto && receta.alto) alto = Number(receta.alto);
         }
@@ -414,14 +428,14 @@ const importarOrdenes = async (rows) => {
     for (const key of mergeOrder) {
         try {
             const r = merged[key];
-            const tieneBOM = recetaBomMap[r.codigo] && recetaBomMap[r.codigo].length > 0;
+            const tieneBOM = recetaBomMap[ck(r.codigo)] && recetaBomMap[ck(r.codigo)].length > 0;
 
             if (!tieneBOM) continue;
 
             const m2 = ((r.ancho / 1000) * (r.alto / 1000)) * r.cantidad;
 
             if (!r.kilos || r.kilos === 0) {
-                const recetas = recetaBomMap[r.codigo] || [];
+                const recetas = recetaBomMap[ck(r.codigo)] || [];
                 for (const rec of recetas) {
                     const mp = rec.materia_prima_id ? materiaPrimaMap[rec.materia_prima_id] : null;
                     if (mp && mp.espesor_mm) {

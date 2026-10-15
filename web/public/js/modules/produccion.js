@@ -733,9 +733,9 @@ App.registerModule('produccion', {
 
     showImportResult(result) {
         const hayErrores = result.errores && result.errores.length > 0;
-        const errBom = (result.errores || []).filter(e => e.error && e.error.includes('receta BOM'));
-        const errDim = (result.errores || []).filter(e => e.error && e.error.includes('dimensiones'));
-        const errTipo = (result.errores || []).filter(e => e.error && e.error.includes('invalid input'));
+        const errBom = (result.errores || []).filter(e => e.error && e.error.toLowerCase().includes('receta bom'));
+        const errDim = (result.errores || []).filter(e => e.error && e.error.toLowerCase().includes('dimensiones'));
+        const errTipo = (result.errores || []).filter(e => e.error && e.error.toLowerCase().includes('invalid input'));
 
         const errUnicos = {};
         (result.errores || []).forEach(e => {

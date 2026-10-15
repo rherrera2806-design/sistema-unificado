@@ -14,7 +14,7 @@ const buildReglasExtras = (r) => {
 };
 
 const explosionBOM = async (r, recetaBomMap, materiaPrimaMap, materiasPrimas, familia, estacionesFinales, m2, resultados, mecanizadoOperaciones, ordenToEstacionId) => {
-    for (const comp of recetaBomMap[r.codigo]) {
+    for (const comp of recetaBomMap[String(r.codigo || '').trim().toLowerCase()] || []) {
         let mp = comp.materia_prima_id ? materiaPrimaMap[comp.materia_prima_id] : null;
         if (!mp && comp.old_codigo) mp = materiasPrimas.find(m => m.codigo_mp === comp.old_codigo);
         if (!mp) continue;

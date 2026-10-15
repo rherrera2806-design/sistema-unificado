@@ -93,7 +93,7 @@ const getEstacionesBase = async (familia, perforaciones, pintado, codigoSap) => 
         const custRes = await query(
             `SELECT r.procesos_especificos_json, r.familia_id
              FROM recetas_bom r
-             WHERE r.codigo_sap_padre = $1
+             WHERE LOWER(TRIM(r.codigo_sap_padre)) = LOWER(TRIM($1))
                AND r.procesos_especificos_json IS NOT NULL
              LIMIT 1`,
             [String(codigoSap).trim()]
@@ -131,7 +131,7 @@ const getEstacionesBase = async (familia, perforaciones, pintado, codigoSap) => 
     if (ids.length === 0 && codigoSap) {
         const bomFamRes = await query(
             `SELECT DISTINCT r.familia_id FROM recetas_bom r
-             WHERE r.codigo_sap_padre = $1 AND r.familia_id IS NOT NULL`,
+             WHERE LOWER(TRIM(r.codigo_sap_padre)) = LOWER(TRIM($1)) AND r.familia_id IS NOT NULL`,
             [String(codigoSap).trim()]
         );
         for (const row of bomFamRes.rows) {
@@ -183,14 +183,14 @@ const buscarRecetasBom = async (codigo) => {
         SELECT rb.*, mp.codigo_mp, mp.nombre as mp_nombre
         FROM recetas_bom rb
         LEFT JOIN materias_primas mp ON rb.materia_prima_id = mp.id
-        WHERE rb.codigo_sap_padre = $1
+        WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM($1))
     `, [codigo]);
 
     if (bomNew.rows.length > 0) return bomNew.rows;
 
     const bomOld = await query(`
         SELECT *, codigo_materia_prima as codigo_mp, descripcion as mp_nombre
-        FROM produccion_recetas_bom WHERE codigo_sap_padre = $1
+        FROM produccion_recetas_bom WHERE LOWER(TRIM(codigo_sap_padre)) = LOWER(TRIM($1))
     `, [codigo]);
     return bomOld.rows;
 };
@@ -228,9 +228,9 @@ const crearOrden = async (body) => {
                 espesor_mm = COALESCE(o.espesor_mm,
                     (SELECT NULLIF(mp.espesor_mm, 0) FROM materias_primas mp WHERE mp.codigo_mp = o.codigo_producto),
                     (SELECT NULLIF(mp.espesor_mm, 0) FROM recetas_bom rb JOIN materias_primas mp ON mp.id = rb.materia_prima_id
-                     WHERE rb.codigo_sap_padre = COALESCE(o.codigo_padre, o.codigo_producto) LIMIT 1),
+                     WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto))) LIMIT 1),
                     (SELECT NULLIF(rb_old.espesor, 0) FROM produccion_recetas_bom rb_old
-                     WHERE rb_old.codigo_sap_padre = COALESCE(o.codigo_padre, o.codigo_producto) LIMIT 1),
+                     WHERE LOWER(TRIM(rb_old.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto))) LIMIT 1),
                     6),
                 grupo = COALESCE(o.grupo,
                     (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),

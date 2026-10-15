@@ -133,6 +133,13 @@
     width: 100%;
 }
 
+/* Cards móviles: OCULTAS en escritorio (solo se muestran en el media query
+   de abajo). Sin esta regla base, algunos módulos mostraban la tabla Y las
+   cards a la vez en pantalla grande (información duplicada). */
+.m-cards-mobile {
+    display: none;
+}
+
 /* ── Cards Grid ── */
 /* ===== Utilidad compartida: encabezado de tabla FIJO al hacer scroll =====
    Uso: envolver la tabla en <div class="... inv-table-scroll">. El fondo lo

@@ -13,14 +13,14 @@ App.registerModule('prod_codigos', {
             <div class="m-page">
                 <div class="m-hero">
                     <div>
-                        <h2 class="m-hero-title">Codigos de Producto</h2>
-                        <p class="m-hero-sub">Catalogo maestro de codigos SAP - Grupo, Familia, Bloque de Tela</p>
+                        <h2 class="m-hero-title">Códigos de Producto</h2>
+                        <p class="m-hero-sub">Catálogo maestro de códigos SAP · Grupo, Familia, Bloque de Tela</p>
                     </div>
                 </div>
 
                 <div class="m-stats">
                     <div class="m-stat-card stat-blue">
-                        <div class="m-stat-label">Total Codigos</div>
+                        <div class="m-stat-label">Total Códigos</div>
                         <div class="m-stat-value" id="codTotal">0</div>
                     </div>
                     <div class="m-stat-card stat-purple">
@@ -225,7 +225,7 @@ App.registerModule('prod_codigos', {
             if (rc > 0) {
                 return `<span onclick="App.modules.prod_codigos.verRecetas('${escJs(c.codigo)}')" style="cursor:pointer;background:#7c3aed15;color:#7c3aed;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px" title="Ver ${rc} receta(s)"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>${rc}</span>`;
             }
-            return '<span style="color:#cbd5e1;font-size:11px">-</span>';
+            return '<span style="background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;cursor:help" title="Sin Receta BOM: la importación SAP rechazará este código hasta que cree su receta en Configuración → Recetas BOM">⚠ Sin receta</span>';
         };
 
         const getAcciones = (c) => {
@@ -268,24 +268,26 @@ App.registerModule('prod_codigos', {
 
     _filterTimer: null,
     filter() {
+        // Filtrado 100% local: antes cada tecla (>=2 chars) volvía a consultar
+        // el servidor y re-renderizaba todo (de ahí la lentitud del menú).
         clearTimeout(this._filterTimer);
         this._filterTimer = setTimeout(() => {
-            const search = (document.getElementById('codFilterSearch')?.value || '').trim();
             const grupo = document.getElementById('codFilterGrupo')?.value || '';
             const familia = document.getElementById('codFilterFamilia')?.value || '';
-
-            if (search.length >= 2) {
-                this.load(search).then(() => this._applyFilters(grupo, familia));
-            } else {
-                this._applyFilters(grupo, familia);
-            }
-        }, 300);
+            this._applyFilters(grupo, familia);
+        }, 120);
     },
 
     _applyFilters(grupo, familia) {
+        const search = (document.getElementById('codFilterSearch')?.value || '').trim().toLowerCase();
         let filtered = this.codigos;
         if (grupo) filtered = filtered.filter(c => c.grupo === grupo);
         if (familia) filtered = filtered.filter(c => c.familia === familia);
+        if (search) {
+            filtered = filtered.filter(c =>
+                (c.codigo || '').toLowerCase().includes(search)
+                || (c.descripcion || '').toLowerCase().includes(search));
+        }
         this.renderTable(filtered);
     },
 
@@ -384,7 +386,7 @@ App.registerModule('prod_codigos', {
         const descripcion = document.getElementById('codDescripcion').value.trim();
         const grupo = document.getElementById('codGrupo').value.trim();
         const familia = document.getElementById('codFamilia').value.trim();
-        if (!codigo) { alert('Codigo requerido'); return; }
+        if (!codigo) { App.showAlert('El código es requerido', 'danger'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
@@ -407,11 +409,11 @@ App.registerModule('prod_codigos', {
                 const grupo = document.getElementById('codFilterGrupo')?.value || '';
                 const familia = document.getElementById('codFilterFamilia')?.value || '';
                 const search = document.getElementById('codFilterSearch')?.value || '';
-                await this.load(search);
+                await this.load();
                 this._applyFilters(grupo, familia);
             }
-            else { alert(data.error || 'Error al guardar'); }
-        } catch(e) { alert('Error: ' + e.message); }
+            else { App.showAlert(data.error || 'Error al guardar', 'danger'); }
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     async delete(id) {
@@ -427,7 +429,7 @@ App.registerModule('prod_codigos', {
             const search = document.getElementById('codFilterSearch')?.value || '';
             await this.load(search);
             this._applyFilters(grupo, familia);
-        } catch(e) { alert('Error: ' + e.message); }
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     async deleteAll() {
