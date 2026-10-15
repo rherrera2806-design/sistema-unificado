@@ -917,8 +917,8 @@ App.registerModule('produccion', {
                 const menu = toggle.parentElement.querySelector('.prioridad-dropdown') || document.getElementById('prioDrop_' + ordenId);
                 if (!menu) return;
                 const wasVisible = menu.style.display === 'block';
-                document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
-                if (!wasVisible) menu.style.display = 'block';
+                this._cerrarDrops();
+                if (!wasVisible) this._abrirDrop(menu, toggle);
                 return;
             }
             const option = e.target.closest('.prio-option');
@@ -926,12 +926,38 @@ App.registerModule('produccion', {
                 e.stopPropagation();
                 const ordenId = Number(option.dataset.orden);
                 const nivel = Number(option.dataset.nivel);
-                document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
+                this._cerrarDrops();
                 if (ordenId && nivel) this.cambiarPrioridad(ordenId, nivel);
                 return;
             }
-            document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
+            this._cerrarDrops();
         });
+        // Un popover fijo debe esconderse si la página se mueve
+        window.addEventListener('scroll', () => this._cerrarDrops(), true);
+        window.addEventListener('resize', () => this._cerrarDrops());
+    },
+
+    // Menú popover: se posiciona FIXED respecto al botón para SALIRSE del
+    // recorte del contenedor de la tabla (overflow del wrapper cortaba los
+    // menús absolutos: se abrían pero no se veían).
+    _abrirDrop(menu, anchor) {
+        const rect = anchor.getBoundingClientRect();
+        menu.style.display = 'block';
+        menu.style.position = 'fixed';
+        menu.style.right = 'auto';
+        menu.style.left = '0px';
+        menu.style.top = '0px';
+        const mh = menu.offsetHeight;
+        const mw = menu.offsetWidth;
+        const espacioAbajo = window.innerHeight - rect.bottom;
+        const top = espacioAbajo < mh + 12 ? Math.max(8, rect.top - mh - 6) : rect.bottom + 6;
+        const left = Math.max(8, Math.min(rect.left, window.innerWidth - mw - 8));
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+    },
+
+    _cerrarDrops() {
+        document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
     },
 
     toggleAcciones(e, id) {
@@ -939,16 +965,16 @@ App.registerModule('produccion', {
         const menu = document.getElementById('poAcc_' + id);
         if (!menu) return;
         const wasVisible = menu.style.display === 'block';
-        document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
-        if (!wasVisible) menu.style.display = 'block';
+        this._cerrarDrops();
+        if (!wasVisible) this._abrirDrop(menu, e.currentTarget || e.target);
     },
 
     toggleMant(e) {
         e.stopPropagation();
         const drop = document.getElementById('poMantDrop');
         const wasVisible = drop.style.display === 'block';
-        document.querySelectorAll('.prioridad-dropdown,.po-amenu-drop,.po-mant-drop').forEach(d => d.style.display = 'none');
-        if (!wasVisible) drop.style.display = 'block';
+        this._cerrarDrops();
+        if (!wasVisible) this._abrirDrop(drop, e.currentTarget || e.target);
     },
 
     // ---------------- Reprogramación ----------------
