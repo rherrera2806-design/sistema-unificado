@@ -24,6 +24,21 @@ App.registerModule('prod_recetas', {
                 .rec-amenu-drop .it:hover{background:#f8fafc}
                 .rec-amenu-drop .it.danger{color:#dc2626}
                 .rec-amenu-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}
+                .rec-drop{border:2px dashed #cbd5e1;border-radius:14px;padding:26px 18px;text-align:center;cursor:pointer;transition:all .2s;background:#f8fafc}
+                .rec-drop:hover{border-color:#93c5fd;background:#eff6ff}
+                .rec-drop.over{border-color:#3b82f6;background:#eff6ff}
+                .rec-drop .ic{width:52px;height:52px;border-radius:12px;background:#dbeafe;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+                .rec-drop .t{font-size:13px;font-weight:600;color:#334155}
+                .rec-drop .s{font-size:10px;color:#94a3b8;margin-top:4px}
+                .rec-filecard{display:flex;align-items:center;gap:10px;border:1px solid #e4e9f0;border-radius:12px;padding:10px 14px;background:#fff}
+                .rec-filecard.ok{background:#f0fdf4;border-color:#bbf7d0}
+                .rec-filecard.warn{background:#fff7ed;border-color:#fed7aa}
+                .rec-filecard .fic{width:34px;height:34px;border-radius:9px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+                .rec-filecard.ok .fic{background:#dcfce7}
+                .rec-filecard.warn .fic{background:#ffedd5}
+                .rec-filecard .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+                .rec-filecard .info strong{font-size:13px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+                .rec-filecard .info span{font-size:10px;color:#8494a8}
             </style>
             <div class="m-page">
                 <div class="m-hero">
@@ -182,14 +197,16 @@ App.registerModule('prod_recetas', {
                         </div>
                     </div>
                     <div class="form-group" style="margin-top:14px">
-                        <label style="font-weight:600;color:#334155;font-size:13px;display:block;margin-bottom:6px">Plano del código (PDF o imagen)</label>
-                        <div id="recPlanoEstado" style="font-size:11px;color:#64748b;margin-bottom:8px">Sin plano adjunto.</div>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                            <input type="file" id="recPlanoFile" accept=".pdf,image/png,image/jpeg,image/webp" style="font-size:11px" onchange="App.modules.prod_recetas.onPlanoFile(this)">
-                            <button type="button" class="btn btn-outline btn-sm" id="recPlanoVer" style="display:none" onclick="App.modules.prod_recetas.verPlano()">👁 Ver plano</button>
-                            <button type="button" class="btn btn-outline btn-sm" id="recPlanoQuitar" style="display:none;color:#dc2626;border-color:#fecaca" onclick="App.modules.prod_recetas.quitarPlano()">Quitar plano</button>
+                        <label style="font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#64748b;display:block;margin-bottom:6px">Plano del código (PDF o imagen)</label>
+                        <div id="recPlanoDrop" class="rec-drop" onclick="document.getElementById('recPlanoFile').click()">
+                            <div class="ic">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+                            </div>
+                            <div class="t">Arrastra un archivo aquí o haz clic para seleccionar</div>
+                            <div class="s">PDF o imágenes (PNG, JPG, WEBP) · máximo 20 MB</div>
                         </div>
-                        <div style="font-size:10px;color:#94a3b8;margin-top:6px">Se guarda asociado al CÓDIGO SAP (todos sus ítems lo comparten). PDF, PNG, JPG o WEBP · máximo 20 MB.</div>
+                        <input type="file" id="recPlanoFile" accept=".pdf,image/png,image/jpeg,image/webp" style="display:none" onchange="App.modules.prod_recetas.onPlanoFile(this)">
+                        <div id="recPlanoEstado" style="margin-top:10px"></div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.prod_recetas.hideCreateModal()">Cancelar</button>
@@ -200,6 +217,7 @@ App.registerModule('prod_recetas', {
         `;
         await this.load();
         this._setupMenus();
+        this._setupPlanoDrop();
     },
 
     _headers() {
@@ -407,20 +425,42 @@ App.registerModule('prod_recetas', {
     },
     _renderPlanoEstado() {
         const el = document.getElementById('recPlanoEstado');
-        const btnVer = document.getElementById('recPlanoVer');
-        const btnQuitar = document.getElementById('recPlanoQuitar');
         if (!el) return;
+        const drop = document.getElementById('recPlanoDrop');
+        if (drop) drop.classList.toggle('over', !!this._planoFile);
         if (this._planoFile) {
-            el.innerHTML = '📎 <strong>' + escText(this._planoFile.name) + '</strong> — se guardará al pulsar Guardar';
+            const kb = Math.max(1, Math.round(this._planoFile.size / 1024));
+            el.innerHTML = `<div class="rec-filecard">
+                <div class="fic">📄</div>
+                <div class="info"><strong>${escText(this._planoFile.name)}</strong><span>Listo para guardar · ${kb.toLocaleString('es-CL')} KB · se asocia al CÓDIGO SAP</span></div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="App.modules.prod_recetas.quitarPlano()">Quitar</button>
+            </div>`;
         } else if (this._planoQuitar) {
-            el.innerHTML = '🗑 El plano actual <strong>se quitará</strong> al pulsar Guardar';
+            el.innerHTML = `<div class="rec-filecard warn">
+                <div class="fic">🗑</div>
+                <div class="info"><strong>El plano actual se quitará</strong><span>Se elimina del código al pulsar Guardar</span></div>
+            </div>`;
         } else if (this._planoTiene) {
-            el.innerHTML = '📎 Este código tiene plano adjunto';
+            el.innerHTML = `<div class="rec-filecard ok">
+                <div class="fic">📎</div>
+                <div class="info"><strong>Este código tiene plano adjunto</strong><span>Verlo o reemplazarlo subiendo otro archivo</span></div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="App.modules.prod_recetas.verPlano()">👁 Ver plano</button>
+                <button type="button" class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#fecaca" onclick="App.modules.prod_recetas.quitarPlano()">Quitar</button>
+            </div>`;
         } else {
-            el.textContent = 'Sin plano adjunto.';
+            el.innerHTML = '';
         }
-        if (btnVer) btnVer.style.display = (this._planoTiene && !this._planoQuitar) ? '' : 'none';
-        if (btnQuitar) btnQuitar.style.display = (this._planoTiene && !this._planoQuitar) ? '' : 'none';
+    },
+    _setupPlanoDrop() {
+        const area = document.getElementById('recPlanoDrop');
+        if (!area) return;
+        area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('over'); });
+        area.addEventListener('dragleave', () => area.classList.remove('over'));
+        area.addEventListener('drop', e => {
+            e.preventDefault();
+            area.classList.remove('over');
+            if (e.dataTransfer.files.length) this.onPlanoFile({ target: { files: e.dataTransfer.files } });
+        });
     },
     onPlanoFile(input) {
         const file = input.files[0];
