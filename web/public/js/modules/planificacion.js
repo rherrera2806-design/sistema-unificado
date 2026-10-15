@@ -1,74 +1,238 @@
+// ============================================================================
+// Planificación — rediseño "menos engorroso"
+//   · 3 pestañas en vez de scroll infinito: Vista por Grupo (capacidad + trabajo
+//     pendiente) · Carga por Grupo (gráfico) · Carga por Estaciones (matriz).
+//   · Rangos INDEPENDIENTES por pestaña: navegar el calendario de estaciones ya
+//     no mueve el rango del gráfico ni la vista de grupo (bug corregido).
+//   · Acciones reales por fila en pendientes (Asignar a la fecha elegida).
+//   · Sin alert() nativos · los resultados de Auto-Asignar/Reprogramar NUNCA se
+//     cierran solos (botón Cerrar) · sin doble carga recursiva (Fase C).
+//   · Números es-CL · fechas dd-mm-yyyy · escala 20/15/13/11/10 · acentos.
+// Mantiene TODA la API del módulo original (planificacion-grupo, capacidad,
+// auto-asignar, reprogramar, carga-por-grupo, carga-estaciones, detalle-día).
+// ============================================================================
 App.modules.planificacion = {
-    nombre: 'Planificacion',
-    cargaSemanal: [],
-    cargaGrupoSemana: [],
-    pendientes: [],
-    semanaInicio: null,
-    semanaFin: null,
+    nombre: 'Planificación',
+
+    // Vistas
+    _vista: 'grupo',
+
+    // Vista por Grupo
+    fechaGrupo: null,
     capacidadGrupo: [],
     cargaGrupo: [],
     pendientesGrupo: [],
-    fechaGrupo: null,
+
+    // Gráfico de carga (rango propio)
+    chartInicio: null,
+    chartModo: 'inicio',
     cargaPorGrupo: null,
     cargaPorGrupoFinales: null,
-    chartModo: 'inicio',
     _chartInstance: null,
-    semanaEstaciones: null,
+
+    // Estaciones (rango propio, independiente)
+    estacInicio: null,
     diasEstaciones: 15,
 
+    // ---------------- Formato ----------------
     fmtDate(d) {
-        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    },
+    _fmt(v, dec) {
+        return Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    },
+    _fecha(f) {
+        if (!f) return '—';
+        const d = typeof f === 'string' ? new Date(f + 'T12:00:00') : new Date(f);
+        if (isNaN(d.getTime())) return '—';
+        const p = n => String(n).padStart(2, '0');
+        return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()}`;
+    },
+    _fechaCorta(f) {
+        if (!f) return '—';
+        const d = typeof f === 'string' ? new Date(f + 'T12:00:00') : new Date(f);
+        if (isNaN(d.getTime())) return '—';
+        const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const p = n => String(n).padStart(2, '0');
+        return `${dias[d.getDay()]} ${p(d.getDate())}-${p(d.getMonth() + 1)}`;
+    },
+    _nombreDia(f) {
+        const d = new Date(f + 'T12:00:00');
+        const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        return dias[d.getDay()];
     },
 
-    // ── Vista por GRUPO (kg/dia) ──
+    // ---------------- Render principal ----------------
+    async render() {
+        const hoy = new Date();
+        if (!this.fechaGrupo) this.fechaGrupo = this.fmtDate(hoy);
+        if (!this.chartInicio) this.chartInicio = this.fmtDate(hoy);
+        if (!this.estacInicio) this.estacInicio = this.fmtDate(hoy);
+
+        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+        const puedeEditar = (user.permisos || []).includes('usuarios') || (user.permisos || []).includes('produccion');
+        const page = document.getElementById('page-planificacion');
+        if (!page) return;
+
+        page.innerHTML = this._estilos() + `
+            <div class="pln-hero">
+                <div>
+                    <h2>Planificación</h2>
+                    <p>Capacidad por grupo (kg/día) · carga por estación (m²) · programación de pendientes</p>
+                </div>
+            </div>
+
+            <div class="pln-kpis" id="plnKpis"></div>
+
+            <div class="pln-tabs">
+                <div class="pln-tab on" id="plnTabGrupo" onclick="App.modules.planificacion.setVista('grupo')">⚖️ &nbsp;Vista por Grupo</div>
+                <div class="pln-tab" id="plnTabChart" onclick="App.modules.planificacion.setVista('chart')">📊 &nbsp;Carga por Grupo</div>
+                <div class="pln-tab" id="plnTabEstac" onclick="App.modules.planificacion.setVista('estaciones')">🏭 &nbsp;Carga por Estaciones</div>
+            </div>
+
+            <!-- ══════════ VISTA POR GRUPO ══════════ -->
+            <div id="plnPanelGrupo">
+                <div class="pln-panel">
+                    <div class="pln-p-head">
+                        <h3>Capacidad por grupo (kg/día)</h3>
+                        <div class="pln-nav">
+                            <button class="pln-navbtn" onclick="App.modules.planificacion.cambiarFechaGrupo(-1)">◀</button>
+                            <input type="date" id="planGrupoFecha" value="${this.fechaGrupo}" onchange="App.modules.planificacion.cambiarFechaGrupo()">
+                            <button class="pln-navbtn" onclick="App.modules.planificacion.cambiarFechaGrupo(1)">▶</button>
+                            ${puedeEditar ? `
+                            <button class="pln-btn ghost sm" onclick="App.modules.planificacion.showCapacidadGrupo()" title="Configurar capacidad">⚙ Capacidad</button>
+                            <button class="pln-btn primary sm" onclick="App.modules.planificacion.showAutoAsignarGrupo()" title="Repartir pendientes respetando capacidad">⚡ Auto-Asignar</button>
+                            <button class="pln-btn warn sm" onclick="App.modules.planificacion.showReprogramar()" title="Libera PROGRAMADO y re-asigna por prioridad">↻ Reprogramar</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="pln-p-body">
+                        <div class="pln-cards" id="planGrupoCards"><div class="pln-loading">Cargando grupos...</div></div>
+                    </div>
+                </div>
+
+                <div class="pln-panel" style="margin-top:14px">
+                    <div class="pln-p-head">
+                        <h3>Pendientes sin asignar</h3>
+                        <span class="sub" id="plnPendSub">órdenes que aún no tienen día programado</span>
+                    </div>
+                    <div class="pln-p-body" id="planGrupoPendientes"><div class="pln-loading">Cargando pendientes...</div></div>
+                </div>
+            </div>
+
+            <!-- ══════════ CARGA POR GRUPO (CHART) ══════════ -->
+            <div id="plnPanelChart" style="display:none">
+                <div class="pln-panel">
+                    <div class="pln-p-head">
+                        <h3>Carga por grupo</h3>
+                        <span class="sub">kg por día · línea roja = capacidad de producción · click en una barra → detalle</span>
+                        <div class="pln-nav">
+                            <button class="pln-navbtn" onclick="App.modules.planificacion.cambiarChart(-1)">◀</button>
+                            <span class="pln-rango" id="plnChartRango"></span>
+                            <button class="pln-navbtn" onclick="App.modules.planificacion.cambiarChart(1)">▶</button>
+                            <button class="pln-btn ghost sm" id="plnModoInicio" onclick="App.modules.planificacion.cambiarModoChart('inicio')">F. Inicio</button>
+                            <button class="pln-btn ghost sm" id="plnModoFinales" onclick="App.modules.planificacion.cambiarModoChart('finales')">F. Término</button>
+                        </div>
+                    </div>
+                    <div class="pln-p-body">
+                        <div class="pln-chart-row">
+                            <div class="pln-legend" id="plnChartLegend"></div>
+                            <div class="pln-chart-box"><canvas id="chartCargaGrupo"></canvas></div>
+                        </div>
+                        <div class="pln-capinfo" id="plnCapProm"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════ CARGA POR ESTACIONES ══════════ -->
+            <div id="plnPanelEstac" style="display:none">
+                <div class="pln-panel">
+                    <div class="pln-p-head">
+                        <h3>Carga por estaciones (m²/día)</h3>
+                        <span class="sub">solo días hábiles · CB = cuello de botella</span>
+                        <div class="pln-nav">
+                            <label class="pln-lbl">Días</label>
+                            <input type="number" min="1" max="60" value="${this.diasEstaciones}" onchange="App.modules.planificacion.cambiarDiasEstaciones(this.value)">
+                            <button class="pln-navbtn" onclick="App.modules.planificacion.cambiarSemanaEstaciones(-1)">◀</button>
+                            <span class="pln-rango" id="plnEstacRango"></span>
+                            <button class="pln-navbtn" onclick="App.modules.planificacion.cambiarSemanaEstaciones(1)">▶</button>
+                        </div>
+                    </div>
+                    <div class="pln-p-body">
+                        <div class="pln-matriz-wrap"><div id="planEstaciones"><div class="pln-loading">Cargando estaciones...</div></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detalle grupo + día (click en el gráfico) -->
+            <div id="planDetalleGrupoDia"></div>
+        `;
+
+        await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
+        this.cargarEstaciones();
+    },
+
+    setVista(v) {
+        this._vista = v;
+        const map = { grupo: 'plnTabGrupo', chart: 'plnTabChart', estaciones: 'plnTabEstac' };
+        Object.entries(map).forEach(([k, id]) => {
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('on', k === v);
+        });
+        document.getElementById('plnPanelGrupo').style.display = v === 'grupo' ? '' : 'none';
+        document.getElementById('plnPanelChart').style.display = v === 'chart' ? '' : 'none';
+        document.getElementById('plnPanelEstac').style.display = v === 'estaciones' ? '' : 'none';
+        if (v === 'chart' && (this.cargaPorGrupo || this.cargaPorGrupoFinales)) this.renderChart();
+    },
+
+    // ---------------- Vista por Grupo ----------------
     async cargarGrupo() {
         try {
             const res = await fetch(`/api/produccion/planificacion-grupo?fecha=${this.fechaGrupo}`);
             if (!res.ok) {
-                const txt = await res.text();
-                console.error('planificacion-grupo error:', res.status, txt);
                 const elC = document.getElementById('planGrupoCards');
-                if (elC) elC.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:12px;color:#991b1b;font-size:13px">Error ${res.status} al cargar planificacion-grupo. Revisa la consola.</div>`;
+                if (elC) elC.innerHTML = '<div class="pln-error">Error ' + res.status + ' al cargar la planificación por grupo</div>';
                 return;
             }
             const data = await res.json();
             this.capacidadGrupo = data.capacidad || [];
             this.cargaGrupo = data.carga || [];
             this.pendientesGrupo = data.pendientes || [];
-            this.renderGrupoResumen();
+            this.renderKpis();
             this.renderGrupoCards();
             this.renderGrupoPendientes();
-            if (this.cargaPorGrupo || this.cargaPorGrupoFinales) this.renderChart();
-        } catch(e) {
+        } catch (e) {
             console.error('Error cargarGrupo:', e);
             const elC = document.getElementById('planGrupoCards');
-            if (elC) elC.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:12px;color:#991b1b;font-size:13px">Error: ${escText(e.message)}</div>`;
+            if (elC) elC.innerHTML = '<div class="pln-error">Error: ' + escText(e.message) + '</div>';
         }
     },
 
-    renderGrupoResumen() {
-        const el = document.getElementById('planGrupoResumen');
+    renderKpis() {
+        const el = document.getElementById('plnKpis');
         if (!el) return;
         const totalCap = this.capacidadGrupo.reduce((s, c) => s + Number(c.capacidad_kg_dia), 0);
         const totalUsado = this.cargaGrupo.reduce((s, c) => s + Number(c.kg_total), 0);
         const totalOrdenes = this.cargaGrupo.reduce((s, c) => s + Number(c.ordenes), 0);
         const pct = totalCap > 0 ? Math.round((totalUsado / totalCap) * 100) : 0;
-        const color = pct > 100 ? '#ef4444' : pct > 85 ? '#f59e0b' : '#10b981';
-        el.innerHTML = `
-            <div class="m-stats" style="margin-bottom:16px">
-                <div class="m-stat-card stat-blue"><div class="m-stat-label">Capacidad (kg/dia)</div><div class="m-stat-value" style="color:var(--primary)">${totalCap.toLocaleString('es-CL')}</div></div>
-                <div class="m-stat-card stat-purple"><div class="m-stat-label">Kg Asignados</div><div class="m-stat-value" style="color:${color}">${totalUsado.toLocaleString('es-CL', {maximumFractionDigits:1})}</div></div>
-                <div class="m-stat-card stat-amber"><div class="m-stat-label">Ocupacion</div><div class="m-stat-value" style="color:${color}">${pct}%</div></div>
-                <div class="m-stat-card stat-info"><div class="m-stat-label">Ordenes Asignadas</div><div class="m-stat-value" style="color:var(--info)">${totalOrdenes}</div></div>
-            </div>
-        `;
+        const pend = this.pendientesGrupo.length;
+        const kgPend = this.pendientesGrupo.reduce((s, o) => s + Number(o.kilos || 0), 0);
+        const color = pct > 100 ? '#dc2626' : pct > 85 ? '#b45309' : '#15803d';
+        el.innerHTML = ''
+            + this._kpi('Capacidad', this._fmt(totalCap, 0), 'kg/día configurados', '')
+            + this._kpi('Kg asignados', this._fmt(totalUsado, 1), 'en ' + this._fecha(this.fechaGrupo), '')
+            + this._kpi('Ocupación', pct + '%', pct > 100 ? '¡sobre la capacidad!' : 'de la capacidad total', color)
+            + this._kpi('Órdenes asignadas', this._fmt(totalOrdenes, 0), 'programadas este día', '')
+            + this._kpi('Pendientes', this._fmt(pend, 0), this._fmt(kgPend, 1) + ' kg sin asignar', pend > 0 ? '#b45309' : '#15803d');
+    },
+    _kpi(k, v, s, color) {
+        return '<div class="pln-kpi"><div class="k">' + escText(k) + '</div><div class="v"' + (color ? ' style="color:' + color + '"' : '') + '>' + escText(v) + '</div><div class="s">' + escText(s) + '</div></div>';
     },
 
     renderGrupoCards() {
         const el = document.getElementById('planGrupoCards');
         if (!el) return;
         if (!this.capacidadGrupo.length) {
-            el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-light)">No hay grupos configurados</div>';
+            el.innerHTML = '<div class="pln-loading">No hay grupos configurados (revise Configuración → Grupos)</div>';
             return;
         }
         el.innerHTML = this.capacidadGrupo.map(c => {
@@ -78,166 +242,86 @@ App.modules.planificacion = {
             const cap = Number(c.capacidad_kg_dia) || 0;
             const libre = cap - usado;
             const pct = cap > 0 ? Math.round((usado / cap) * 100) : 0;
-            const colorBar = pct > 100 ? '#ef4444' : pct > 85 ? '#f59e0b' : (c.color || '#3b82f6');
-            const status = pct > 100 ? 'SOBRECARGADO' : pct > 85 ? 'CASI LLENO' : pct > 0 ? 'OK' : 'VACIO';
+            const estado = pct > 100 ? ['SOBRECARGADO', 'red'] : pct > 85 ? ['CASI LLENO', 'amber'] : pct > 0 ? ['OK', 'green'] : ['SIN CARGA', 'gray'];
+            const colorBar = estado[1] === 'red' ? '#dc2626' : estado[1] === 'amber' ? '#d97706' : estado[1] === 'gray' ? '#94a3b8' : (c.color || '#2563eb');
             return `
-                <div class="card plan-card" style="border-left:4px solid ${escAttr(c.color || '#3b82f6')}">
-                    <div class="card-body" style="padding:12px">
-                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
-                            <div>
-                                <div style="font-size:10px;color:var(--text-light);text-transform:uppercase;font-weight:600">${escText(c.grupo)}</div>
-                                <div style="font-size:18px;font-weight:700;color:${escAttr(c.color || '#3b82f6')}">${usado.toLocaleString('es-CL', {maximumFractionDigits:1})} <span style="font-size:11px;color:var(--text-light);font-weight:500">/ ${cap.toLocaleString('es-CL')}</span></div>
-                            </div>
-                            <div style="text-align:right">
-                                <div style="font-size:18px;font-weight:700;color:${colorBar}">${pct}%</div>
-                                <div style="font-size:9px;padding:1px 6px;border-radius:3px;background:${pct > 100 ? '#fee2e2' : pct > 85 ? '#fef3c7' : '#dcfce7'};color:${pct > 100 ? '#991b1b' : pct > 85 ? '#854d0e' : '#166534'};font-weight:600">${status}</div>
-                            </div>
+                <div class="pln-card" style="border-left:4px solid ${escAttr(c.color || '#2563eb')}">
+                    <div class="top">
+                        <div>
+                            <div class="gname">${escText(c.grupo)}</div>
+                            <div class="gval" style="color:${escAttr(c.color || '#2563eb')}">${this._fmt(usado, 1)} <span class="cap">/ ${this._fmt(cap, 0)} kg</span></div>
                         </div>
-                        <div style="background:#f1f5f9;border-radius:4px;height:8px;overflow:hidden;margin-bottom:6px">
-                            <div style="height:100%;width:${Math.min(pct,100)}%;background:${colorBar};transition:width .3s"></div>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-light)">
-                            <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> ${ordenes} ord.</span>
-                            <span>Libre: <strong style="color:${libre < 0 ? '#ef4444' : '#10b981'}">${libre.toLocaleString('es-CL', {maximumFractionDigits:1})} kg</strong></span>
+                        <div class="right">
+                            <div class="pct" style="color:${colorBar}">${pct}%</div>
+                            <div class="chip b-${estado[1]}">${estado[0]}</div>
                         </div>
                     </div>
-                </div>
-            `;
+                    <div class="track"><div class="fill" style="width:${Math.min(pct, 100)}%;background:${colorBar}"></div></div>
+                    <div class="foot">
+                        <span>${ordenes} órdenes</span>
+                        <span>Libre: <strong style="color:${libre < 0 ? '#dc2626' : '#15803d'}">${this._fmt(libre, 1)} kg</strong></span>
+                    </div>
+                </div>`;
         }).join('');
     },
 
     renderGrupoPendientes() {
         const el = document.getElementById('planGrupoPendientes');
+        const sub = document.getElementById('plnPendSub');
         if (!el) return;
         const sinAsignar = this.pendientesGrupo;
+        if (sub) sub.textContent = sinAsignar.length + ' órdenes · ' + this._fecha(this.fechaGrupo);
         if (!sinAsignar.length) {
-            el.innerHTML = '<div style="background:#dcfce7;border-radius:8px;padding:12px;text-align:center;color:#166534;font-size:13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg> No hay ordenes pendientes sin asignar</div>';
+            el.innerHTML = '<div class="pln-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> No hay órdenes pendientes sin asignar</div>';
             return;
         }
         const kgTotal = sinAsignar.reduce((s, o) => s + Number(o.kilos || 0), 0);
         const sinGrupo = sinAsignar.filter(o => !o.grupo).length;
-        const td = 'padding:5px 8px';
-        let html = `<div style="background:#fef3c7;padding:8px 12px;font-size:12px;display:flex;justify-content:space-between;border-radius:8px 8px 0 0">
-            <strong>${sinAsignar.length} pendientes sin asignar · ${kgTotal.toLocaleString('es-CL', {maximumFractionDigits:1})} kg${sinGrupo ? ` · <span style="color:#ef4444">${sinGrupo} sin grupo</span>` : ''}</strong>
-            <span>Usa <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar para programar todas</span>
-        </div>`;
-        html += `<div style="max-height:300px;overflow-y:auto"><div class="m-table-wrap"><table style="width:100%;font-size:12px"><thead><tr style="background:#f8fafc">
-            <th style="${td}">Pedido</th><th style="${td}">Cliente</th><th style="${td}">Codigo</th>
-            <th style="${td}">Padre</th><th style="${td}">Producto</th>
-            <th style="${td}">Dim</th><th style="${td}">Cant</th><th style="${td}">kg</th><th style="${td}">Grupo</th><th style="${td}">Accion</th>
-        </tr></thead><tbody>`;
-        html += sinAsignar.map(o => {
-            const grupoColor = o.grupo ? '#dcfce7' : '#fee2e2';
-            const grupoText = o.grupo ? '#166534' : '#991b1b';
-            return `<tr class="plan-row" style="line-height:1.3;border-bottom:1px solid var(--border)">
-                <td style="${td}"><strong>${escapeHtml(o.pedido_sap_id || '-')}</strong></td>
-                <td style="${td}">${escapeHtml(o.cliente || '-')}</td>
-                <td style="${td}"><strong>${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>
-                <td style="${td};font-size:11px"><strong>${escapeHtml(o.codigo_padre || '-')}</strong></td>
-                <td style="${td};font-size:11px;color:#6b7280">${escapeHtml(o.nombre_padre || '-')}</td>
-                <td style="${td}">${o.ancho}x${o.alto}</td>
-                <td style="${td}">${o.cantidad || 1}</td>
-                <td style="${td}"><strong>${Number(o.kilos || 0).toFixed(1)}</strong></td>
-                <td style="${td}"><span style="padding:1px 6px;border-radius:3px;font-size:10px;background:${grupoColor};color:${grupoText}">${escText(o.grupo || 'sin grupo')}</span></td>
-                <td style="${td}">${o.grupo ? `<span style="font-size:10px;color:#6b7280">usa <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar</span>` : '<span style="font-size:10px;color:#ef4444">requiere grupo</span>'}</td>
-            </tr>`;
+
+        const filas = sinAsignar.map(o => {
+            return '<tr>'
+                + '<td class="c-ped"><strong>' + escText(o.pedido_sap_id || '-') + '</strong><div class="sub2">Item ' + escText(o.item_numero || '-') + '</div></td>'
+                + '<td>' + escText(o.cliente || '-') + '</td>'
+                + '<td><strong>' + escText(o.codigo_producto) + '</strong>' + (o.es_compuesto ? ' <span class="pln-bom">BOM</span>' : '') + '<div class="sub2">' + escText(o.nombre_padre || o.descripcion || '-') + '</div></td>'
+                + '<td class="num">' + this._fmt(Number(o.ancho), 0) + ' × ' + this._fmt(Number(o.alto), 0) + ' mm</td>'
+                + '<td class="num">' + this._fmt(o.cantidad || 1, 0) + '</td>'
+                + '<td class="num"><strong>' + this._fmt(o.kilos, 1) + '</strong></td>'
+                + '<td>' + (o.grupo
+                    ? '<span class="chip b-green">' + escText(o.grupo) + '</span>'
+                    : '<span class="chip b-red">sin grupo</span>') + '</td>'
+                + '<td class="c-acc">' + (o.grupo
+                    ? '<button class="pln-btn primary sm" onclick="App.modules.planificacion.asignarGrupo(' + o.id + ')">Asignar al ' + this._fecha(this.fechaGrupo) + '</button>'
+                    : '<span class="pln-hint-danger">Requiere grupo en Configuración</span>') + '</td>'
+                + '</tr>';
         }).join('');
 
-        // Cards movil (patron MODULE_RESPONSIVE_V1): una card por pendiente sin asignar
-        const cardsHtml = sinAsignar.map(o => {
-            const grupoColor = o.grupo ? '#dcfce7' : '#fee2e2';
-            const grupoText = o.grupo ? '#166534' : '#991b1b';
-            return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
-                <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
-                    <div style="font-weight:700;font-size:13px;color:#0f172a;min-width:0">${escapeHtml(o.pedido_sap_id || '-')}</div>
-                    <span style="flex-shrink:0;padding:1px 6px;border-radius:3px;font-size:10px;background:${grupoColor};color:${grupoText}">${escText(o.grupo || 'sin grupo')}</span>
-                </div>
-                <div style="font-size:11px;color:#475569;margin-bottom:4px">${escapeHtml(o.cliente || '-')}</div>
-                <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px">
-                    <strong style="font-size:12px;color:#0f172a">${escapeHtml(o.codigo_producto)}</strong>${o.es_compuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}
-                    <span style="font-size:10px;color:#6b7280">${escapeHtml(o.codigo_padre || '-')} · ${escapeHtml(o.nombre_padre || '-')}</span>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px;margin-bottom:6px">
-                    <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${o.ancho}x${o.alto}</span></div>
-                    <div><span style="color:#94a3b8">Cant:</span> <span style="color:#475569">${o.cantidad || 1}</span></div>
-                    <div><span style="color:#94a3b8">kg:</span> <strong style="color:#0f172a">${Number(o.kilos || 0).toFixed(1)}</strong></div>
-                </div>
-                <div style="font-size:10px;color:${o.grupo ? '#6b7280' : '#ef4444'}">${o.grupo ? 'Usa Auto-Asignar para programar' : 'Requiere grupo'}</div>
-            </div>`;
+        const cards = sinAsignar.map(o => {
+            return '<div class="pln-mcard">'
+                + '<div class="t1"><strong>' + escText(o.pedido_sap_id || '-') + '</strong>' + (o.grupo ? '<span class="chip b-green">' + escText(o.grupo) + '</span>' : '<span class="chip b-red">sin grupo</span>') + '</div>'
+                + '<div class="sub2">' + escText(o.cliente || '-') + ' · ' + escText(o.codigo_producto) + ' · ' + this._fmt(o.kilos, 1) + ' kg</div>'
+                + '<div class="acc">' + (o.grupo
+                    ? '<button class="pln-btn primary sm" style="flex:1" onclick="App.modules.planificacion.asignarGrupo(' + o.id + ')">Asignar al ' + this._fecha(this.fechaGrupo) + '</button>'
+                    : '<span class="pln-hint-danger">Requiere grupo en Configuración</span>') + '</div>'
+                + '</div>';
         }).join('');
 
-        html += '</tbody></table></div><div class="m-cards-mobile" style="display:none;padding:12px">' + cardsHtml + '</div></div>';
-        el.innerHTML = html;
-    },
-
-    async detalleGrupoDia(grupo, fecha) {
-        const el = document.getElementById('planDetalleGrupoDia');
-        if (!el) return;
-        el.style.display = 'block';
-        el.innerHTML = '<div style="padding:16px;text-align:center;color:#64748b;background:var(--card-bg);border-radius:12px;border:1px solid var(--border)">Cargando detalle...</div>';
-        try {
-            const res = await fetch(`/api/produccion/planificacion/detalle-grupo-dia?grupo=${encodeURIComponent(grupo)}&fecha=${fecha}`);
-            if (!res.ok) throw new Error('Error ' + res.status);
-            const ordenes = await res.json();
-            const d = new Date(fecha + 'T12:00:00');
-            const dias = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
-            const fechaLabel = dias[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1);
-            const totalM2 = ordenes.reduce((s, o) => s + (Number(o.metros_cuadrados) || 0), 0);
-            const totalKg = ordenes.reduce((s, o) => s + (Number(o.kilos) || 0), 0);
-
-            let rows = '';
-            ordenes.forEach(o => {
-                const esCompuesto = o.es_compuesto;
-                rows += `<tr style="border-bottom:1px solid #f1f5f9">
-                    <td style="padding:6px 10px;font-weight:600">${escText(o.pedido_sap_id)}</td>
-                    <td style="padding:6px 10px">${escText(o.item_numero)}</td>
-                    <td style="padding:6px 10px">${escText(o.codigo_producto)}${esCompuesto ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span>' : ''}</td>
-                    <td style="padding:6px 10px;color:#64748b;font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escText(o.descripcion || '-')}</td>
-                    <td style="padding:6px 10px">${o.ancho}×${o.alto}</td>
-                    <td style="padding:6px 10px;text-align:right">${(Number(o.metros_cuadrados)||0).toFixed(2)}</td>
-                    <td style="padding:6px 10px;text-align:right">${(Number(o.kilos)||0).toFixed(1)}</td>
-                    <td style="padding:6px 10px;font-size:11px;color:#7c3aed">${escText(o.ruta || '-')}</td>
-                </tr>`;
-            });
-
-            el.innerHTML = `
-                <div style="background:var(--card-bg);border-radius:12px;border:1px solid var(--border);padding:16px;margin-top:16px">
-                    <div style="display:flex;justify-between;align-items:center;margin-bottom:12px">
-                        <div>
-                            <span style="font-size:14px;font-weight:700;color:#0f172a">${escText(grupo)} — ${fechaLabel}</span>
-                            <span style="font-size:12px;color:#64748b;margin-left:12px">${ordenes.length} ordenes · ${totalM2.toFixed(1)} m² · ${totalKg.toFixed(0)} kg</span>
-                        </div>
-                        <button onclick="document.getElementById('planDetalleGrupoDia').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:#94a3b8;padding:2px 6px">✕</button>
-                    </div>
-                    <div style="overflow-x:auto;max-height:300px;overflow-y:auto">
-                        <table style="width:100%;border-collapse:collapse;font-size:12px">
-                            <thead><tr style="background:#f8fafc;position:sticky;top:0">
-                                <th style="padding:6px 10px;text-align:left">Pedido</th>
-                                <th style="padding:6px 10px;text-align:left">Item</th>
-                                <th style="padding:6px 10px;text-align:left">Codigo</th>
-                                <th style="padding:6px 10px;text-align:left">Descripcion</th>
-                                <th style="padding:6px 10px;text-align:left">Dim</th>
-                                <th style="padding:6px 10px;text-align:right">M²</th>
-                                <th style="padding:6px 10px;text-align:right">Kg</th>
-                                <th style="padding:6px 10px;text-align:left">Ruta</th>
-                            </tr></thead>
-                            <tbody>${rows}</tbody>
-                        </table>
-                    </div>
-                </div>`;
-            el.scrollIntoView({ behavior: 'smooth' });
-        } catch(e) {
-            el.innerHTML = `<div style="padding:16px;background:#fee2e2;border-radius:12px;color:#991b1b;font-size:13px">Error: ${escText(e.message)}</div>`;
-        }
+        el.innerHTML = ''
+            + '<div class="pln-pend-resumen"><strong>' + sinAsignar.length + ' pendientes · ' + this._fmt(kgTotal, 1) + ' kg</strong>'
+            + (sinGrupo ? ' · <span style="color:#dc2626">' + sinGrupo + ' sin grupo</span>' : '')
+            + '<span class="tip">Usa ⚡ Auto-Asignar para programarlas todas respetando la capacidad</span></div>'
+            + '<div class="pln-table-wrap"><table class="pln-table"><thead><tr>'
+            + '<th>Pedido</th><th>Cliente</th><th>Código</th><th class="num">Dimensiones</th><th class="num">Cant.</th><th class="num">Kg</th><th>Grupo</th><th class="th-acc">Acción</th>'
+            + '</tr></thead><tbody>' + filas + '</tbody></table></div>'
+            + '<div class="pln-cards-mobile">' + cards + '</div>';
     },
 
     cambiarFechaGrupo(delta) {
         if (delta === undefined) {
             this.fechaGrupo = document.getElementById('planGrupoFecha').value;
         } else {
-            const d = new Date(this.fechaGrupo + 'T00:00:00');
+            const d = new Date(this.fechaGrupo + 'T12:00:00');
             d.setDate(d.getDate() + delta);
-            this.fechaGrupo = d.toISOString().split('T')[0];
+            this.fechaGrupo = this.fmtDate(d);
         }
         const fEl = document.getElementById('planGrupoFecha');
         if (fEl) fEl.value = this.fechaGrupo;
@@ -252,32 +336,73 @@ App.modules.planificacion = {
                 body: JSON.stringify({ orden_id: ordenId, fecha: this.fechaGrupo })
             });
             if (res.ok) {
-                App.toast('Orden asignada');
-        await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
+                App.toast('Orden asignada al ' + this._fecha(this.fechaGrupo));
+                await this.cargarGrupo();
             } else {
-                // Sin este else un fallo de la API parecia exitoso en silencio
                 const d = await res.json().catch(() => ({}));
-                alert(d.error || 'Error al asignar la orden');
+                App.showAlert(d.error || 'Error al asignar la orden', 'danger');
             }
-        } catch(e) { alert('Error: ' + e.message); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
+    // Detalle de un grupo en un día (click en el gráfico)
+    async detalleGrupoDia(grupo, fecha) {
+        const el = document.getElementById('planDetalleGrupoDia');
+        if (!el) return;
+        el.style.display = 'block';
+        el.innerHTML = '<div class="pln-panel" style="margin-top:14px"><div class="pln-p-body"><div class="pln-loading">Cargando detalle...</div></div></div>';
+        try {
+            const res = await fetch(`/api/produccion/planificacion/detalle-grupo-dia?grupo=${encodeURIComponent(grupo)}&fecha=${fecha}`);
+            if (!res.ok) throw new Error('Error ' + res.status);
+            const ordenes = await res.json();
+            const totalM2 = ordenes.reduce((s, o) => s + (Number(o.metros_cuadrados) || 0), 0);
+            const totalKg = ordenes.reduce((s, o) => s + (Number(o.kilos) || 0), 0);
+            const rows = ordenes.map(o => '<tr>'
+                + '<td class="c-ped">' + escText(o.pedido_sap_id) + '</td>'
+                + '<td>' + escText(o.item_numero) + '</td>'
+                + '<td><strong>' + escText(o.codigo_producto) + '</strong>' + (o.es_compuesto ? ' <span class="pln-bom">MP</span>' : '') + '</td>'
+                + '<td class="sub2">' + escText(o.descripcion || '-') + '</td>'
+                + '<td class="num">' + this._fmt(Number(o.ancho), 0) + ' × ' + this._fmt(Number(o.alto), 0) + '</td>'
+                + '<td class="num">' + this._fmt(o.metros_cuadrados, 2) + '</td>'
+                + '<td class="num">' + this._fmt(o.kilos, 1) + '</td>'
+                + '<td class="sub2">' + escText(o.ruta || '-') + '</td>'
+                + '</tr>').join('');
+            el.innerHTML = `
+                <div class="pln-panel" style="margin-top:14px">
+                    <div class="pln-p-head">
+                        <h3>${escText(grupo)} — ${this._nombreDia(fecha)} ${this._fecha(fecha)}</h3>
+                        <span class="sub">${ordenes.length} órdenes · ${this._fmt(totalM2, 1)} m² · ${this._fmt(totalKg, 0)} kg</span>
+                        <div class="pln-nav"><button class="pln-navbtn" onclick="document.getElementById('planDetalleGrupoDia').style.display='none'">✕</button></div>
+                    </div>
+                    <div class="pln-p-body">
+                        <div class="pln-table-wrap"><table class="pln-table"><thead><tr>
+                            <th>Pedido</th><th>Item</th><th>Código</th><th>Descripción</th><th class="num">Dim.</th><th class="num">M²</th><th class="num">Kg</th><th>Ruta</th>
+                        </tr></thead><tbody>${rows}</tbody></table></div>
+                    </div>
+                </div>`;
+            el.scrollIntoView({ behavior: 'smooth' });
+        } catch (e) {
+            el.innerHTML = '<div class="pln-panel" style="margin-top:14px"><div class="pln-p-body"><div class="pln-error">Error: ' + escText(e.message) + '</div></div></div>';
+        }
+    },
+
+    // ---------------- Capacidad por grupo ----------------
     showCapacidadGrupo() {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         if (!(user.permisos || []).includes('usuarios') && !(user.permisos || []).includes('produccion')) {
-            alert('Sin permiso para editar capacidad'); return;
+            App.showAlert('Sin permiso para editar la capacidad', 'danger'); return;
         }
         const html = `
-            <p style="font-size:12px;color:var(--text-light);margin-bottom:12px">Capacidad maxima en kg por dia para cada grupo:</p>
+            <p style="font-size:13px;color:#64748b;margin-bottom:12px">Capacidad máxima en kg por día para cada grupo:</p>
             ${this.capacidadGrupo.map(c => `
-                <div style="display:grid;grid-template-columns:1fr 120px 60px;gap:8px;align-items:center;margin-bottom:8px">
-                    <div style="font-weight:500"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${escAttr(c.color)};margin-right:6px"></span>${escText(c.grupo)}</div>
-                    <input type="number" class="form-control" value="${c.capacidad_kg_dia}" id="planCapG_${c.id}" min="0" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-                    <button class="btn btn-sm btn-primary" title="Guardar capacidad" onclick="App.modules.planificacion.guardarCapacidadGrupo(${c.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
+                <div style="display:grid;grid-template-columns:1fr 130px 60px;gap:8px;align-items:center;margin-bottom:8px">
+                    <div style="font-weight:600;font-size:13px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${escAttr(c.color)};margin-right:6px"></span>${escText(c.grupo)}</div>
+                    <input type="number" value="${c.capacidad_kg_dia}" id="planCapG_${c.id}" min="0" style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+                    <button class="pln-btn primary sm" title="Guardar capacidad" onclick="App.modules.planificacion.guardarCapacidadGrupo(${c.id})">Guardar</button>
                 </div>
             `).join('')}
         `;
-        App.showModalInv('Capacidad por Grupo (kg/dia)', html, '<button class="btn btn-outline" onclick="App.hideModal()">Cerrar</button>');
+        App.showModalInv('Capacidad por Grupo (kg/día)', html, '<button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>');
     },
 
     async guardarCapacidadGrupo(id) {
@@ -290,42 +415,38 @@ App.modules.planificacion = {
             });
             if (res.ok) { App.toast('Capacidad actualizada'); await this.cargarGrupo(); }
             else {
-                // Sin este else un fallo de la API parecia exitoso en silencio
                 const d = await res.json().catch(() => ({}));
-                alert(d.error || 'Error al guardar la capacidad');
+                App.showAlert(d.error || 'Error al guardar la capacidad', 'danger');
             }
-        } catch(e) { alert('Error: ' + e.message); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
+    // ---------------- Auto-Asignar ----------------
     showAutoAsignarGrupo() {
         const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
         if (!(user.permisos || []).includes('usuarios') && !(user.permisos || []).includes('produccion')) {
-            alert('Sin permiso'); return;
+            App.showAlert('Sin permiso para auto-asignar', 'danger'); return;
         }
         const html = `
-            <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">Reparte las ordenes PENDIENTES a los proximos dias respetando la capacidad maxima por grupo (kg/dia). Solo dias habiles.</p>
-            <div class="form-group">
-                <label style="font-weight:500">Desde</label>
-                <input type="date" class="form-control" id="planAutoGInicio" value="${this.fechaGrupo}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-            </div>
-            <div class="form-group">
-                <label style="font-weight:500">Cantidad de dias habiles a buscar</label>
-                <input type="number" class="form-control" id="planAutoGDias" value="14" min="1" max="60" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-            </div>
+            <p style="font-size:13px;color:#64748b;margin-bottom:12px">Reparte las órdenes <strong>pendientes</strong> en los próximos días respetando la capacidad máxima por grupo (kg/día). Solo días hábiles.</p>
+            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde</label>
+            <input type="date" id="planAutoGInicio" value="${this.fechaGrupo}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Cantidad de días hábiles a buscar</label>
+            <input type="number" id="planAutoGDias" value="14" min="1" max="60" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
             <div id="planAutoGResultado" style="margin-top:12px"></div>
         `;
         const footer = `
-            <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
-            <button class="btn btn-primary" onclick="App.modules.planificacion.ejecutarAutoAsignarGrupo()">Asignar</button>
+            <button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>
+            <button class="pln-btn primary" onclick="App.modules.planificacion.ejecutarAutoAsignarGrupo()">Asignar pendientes</button>
         `;
-        App.showModalInv('<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar Pendientes', html, footer);
+        App.showModalInv('⚡ Auto-Asignar Pendientes', html, footer);
     },
 
     async ejecutarAutoAsignarGrupo() {
         const inicio = document.getElementById('planAutoGInicio').value;
         const dias = Number(document.getElementById('planAutoGDias').value) || 14;
         const resEl = document.getElementById('planAutoGResultado');
-        resEl.innerHTML = '<div style="text-align:center;padding:12px">Asignando...</div>';
+        resEl.innerHTML = '<div class="pln-loading">Asignando...</div>';
         try {
             const res = await fetch('/api/produccion/planificacion-grupo/auto-asignar', {
                 method: 'POST',
@@ -336,69 +457,57 @@ App.modules.planificacion = {
             if (res.ok) {
                 const numAsignados = Array.isArray(data.asignados) ? data.asignados.length : 0;
                 const numNoAsignados = Array.isArray(data.noAsignados) ? data.noAsignados.length : 0;
-                const esExito = numAsignados > 0;
-                let html = `<div style="background:${esExito ? '#dcfce7' : '#fef2f2'};border-radius:8px;padding:12px;font-size:13px">
-                    <div><strong>${esExito ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'} Asignadas: ${numAsignados}</strong></div>`;
+                let html = `<div class="pln-ok" style="margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> <strong>Asignadas: ${numAsignados}</strong></div>`;
                 if (numNoAsignados > 0) {
-                    html += `<div style="margin-top:8px;color:#991b1b;font-weight:600">Sin capacidad (${numNoAsignados}):</div>`;
-                    const muestra = data.noAsignados.slice(0, 20);
-                    html += muestra.map(n => 
-                        `<div style="margin-top:4px;padding:6px 8px;background:#fef2f2;border-radius:6px;border-left:3px solid #ef4444">
-                            <div><strong>${escapeHtml(n.pedido || n.id || n.orden_id)}</strong> — ${escapeHtml(n.motivo)}</div>
-                            <div style="font-size:11px;color:#6b7280">Grupo: ${escapeHtml(n.grupo || '?')} | ${Number(n.m2_total || 0).toFixed(1)} m² | ${Number(n.kg_total || 0).toFixed(0)} kg</div>
-                        </div>`
+                    html += `<div style="color:#b91c1c;font-weight:700;font-size:13px;margin-bottom:6px">Sin capacidad (${numNoAsignados}):</div>`;
+                    html += data.noAsignados.slice(0, 20).map(n =>
+                        `<div class="pln-sincupo"><strong>${escapeHtml(n.pedido || n.id || n.orden_id)}</strong> — ${escapeHtml(n.motivo)}
+                         <div class="sub2">Grupo: ${escapeHtml(n.grupo || '?')} · ${Number(n.m2_total || 0).toFixed(1)} m² · ${Number(n.kg_total || 0).toFixed(0)} kg</div></div>`
                     ).join('');
-                    if (numNoAsignados > 20) html += `<div style="margin-top:4px;font-size:11px;color:#6b7280">... y ${numNoAsignados - 20} mas</div>`;
+                    if (numNoAsignados > 20) html += `<div class="sub2" style="margin-top:4px">... y ${numNoAsignados - 20} más</div>`;
                 }
-                html += '</div>';
                 resEl.innerHTML = html;
-                if (esExito) {
-                    setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); await this.cargarEstaciones(); }, 1500);
-                }
+                await this.cargarGrupo();
+                App.showAlert('Auto-asignación completada', 'success');
             } else {
-                resEl.innerHTML = `<div style="color:#ef4444">${data.error || 'Error'}</div>`;
+                resEl.innerHTML = '<div class="pln-error">' + escText(data.error || 'Error') + '</div>';
             }
-        } catch(e) {
-            resEl.innerHTML = `<div style="color:#ef4444">Error: ${e.message}</div>`;
+        } catch (e) {
+            resEl.innerHTML = '<div class="pln-error">Error: ' + escText(e.message) + '</div>';
         }
     },
 
+    // ---------------- Reprogramar ----------------
     showReprogramar() {
         const html = `
-            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:#991b1b">
-                <strong>Atencion:</strong> Esta accion liberara TODAS las ordenes en estado PROGRAMADO (las devolvera a PENDIENTE) y luego re-asignaran automaticamente respetando la prioridad:
+            <div class="pln-warnbox">
+                <strong>Atención:</strong> esta acción liberará TODAS las órdenes en estado PROGRAMADO (vuelven a PENDIENTE) y las re-asignará automáticamente respetando la prioridad:
                 <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fef2f2;color:#991b1b;border:1px solid #ef4444">4. Reposicion</span>
-                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fff7ed;color:#9a3412;border:1px solid #f97316">3. Urgencia</span>
-                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#fefce8;color:#854d0e;border:1px solid #eab308">2. Express</span>
-                    <span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0">1. Normal</span>
+                    <span class="pln-prio p-reposicion">4. Reposición</span>
+                    <span class="pln-prio p-urgencia">3. Urgencia</span>
+                    <span class="pln-prio p-express">2. Express</span>
+                    <span class="pln-prio p-normal">1. Normal</span>
                 </div>
-                <div style="margin-top:8px;font-size:12px;color:#6b7280">
-                    <strong>Protegidos:</strong> Ordenes EN PROCESO, MERMADAS y TERMINADAS NO seran tocadas.
-                </div>
+                <div class="sub2" style="margin-top:8px"><strong>Protegidas:</strong> las órdenes EN PROCESO, MERMADAS y TERMINADAS no serán tocadas.</div>
             </div>
-            <div class="form-group">
-                <label style="font-weight:500">Desde (fecha inicio busqueda)</label>
-                <input type="date" class="form-control" id="reprogInicio" value="${this.fechaGrupo}" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-            </div>
-            <div class="form-group">
-                <label style="font-weight:500">Dias habiles a buscar capacidad</label>
-                <input type="number" class="form-control" id="reprogDias" value="21" min="1" max="60" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-            </div>
+            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde (fecha inicio búsqueda)</label>
+            <input type="date" id="reprogInicio" value="${this.fechaGrupo}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Días hábiles a buscar capacidad</label>
+            <input type="number" id="reprogDias" value="21" min="1" max="60" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
             <div id="reprogResultado" style="margin-top:12px"></div>
         `;
         const footer = `
-            <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
-            <button class="btn btn-danger" style="background:#ef4444;border-color:#ef4444;color:white" onclick="App.modules.planificacion.ejecutarReprogramar()">Reprogramar Todo</button>
+            <button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>
+            <button class="pln-btn danger" onclick="App.modules.planificacion.ejecutarReprogramar()">Reprogramar Todo</button>
         `;
-        App.showModalInv('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reprogramar Pendientes', html, footer);
+        App.showModalInv('↻ Reprogramar Pendientes', html, footer);
     },
 
     async ejecutarReprogramar() {
         const inicio = document.getElementById('reprogInicio').value;
         const dias = Number(document.getElementById('reprogDias').value) || 21;
         const resEl = document.getElementById('reprogResultado');
-        resEl.innerHTML = '<div style="text-align:center;padding:12px;color:#64748b">Reprogramando... liberando y re-asignando por prioridad...</div>';
+        resEl.innerHTML = '<div class="pln-loading">Reprogramando: liberando y re-asignando por prioridad...</div>';
         try {
             const res = await fetch('/api/produccion/reprogramar', {
                 method: 'POST',
@@ -410,207 +519,65 @@ App.modules.planificacion = {
                 const numLiberadas = data.ordenes_liberadas || 0;
                 const numAsignados = Array.isArray(data.asignados) ? data.asignados.length : 0;
                 const numNoAsignados = Array.isArray(data.noAsignados) ? data.noAsignados.length : 0;
-                let html = `<div style="background:#dcfce7;border-radius:8px;padding:12px;font-size:13px">
-                    <div style="font-weight:700;color:#166534;margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg> Reprogramacion completada</div>
+                let html = `<div class="pln-ok" style="margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> <strong>Reprogramación completada</strong></div>
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
-                        <div style="background:white;border-radius:6px;padding:8px"><div style="font-size:18px;font-weight:800;color:#f59e0b">${numLiberadas}</div><div style="font-size:10px;color:#64748b">Liberadas</div></div>
-                        <div style="background:white;border-radius:6px;padding:8px"><div style="font-size:18px;font-weight:800;color:#22c55e">${numAsignados}</div><div style="font-size:10px;color:#64748b">Re-asignadas</div></div>
-                        <div style="background:white;border-radius:6px;padding:8px"><div style="font-size:18px;font-weight:800;color:#ef4444">${numNoAsignados}</div><div style="font-size:10px;color:#64748b">Sin cupo</div></div>
+                        <div class="pln-stat"><div class="v" style="color:#b45309">${numLiberadas}</div><div class="k">Liberadas</div></div>
+                        <div class="pln-stat"><div class="v" style="color:#15803d">${numAsignados}</div><div class="k">Re-asignadas</div></div>
+                        <div class="pln-stat"><div class="v" style="color:#dc2626">${numNoAsignados}</div><div class="k">Sin cupo</div></div>
                     </div>`;
                 if (numNoAsignados > 0) {
-                    html += `<div style="margin-top:10px;color:#991b1b;font-weight:600">Sin capacidad (${numNoAsignados}):</div>`;
-                    data.noAsignados.slice(0, 15).forEach(n => {
-                        html += `<div style="margin-top:3px;padding:4px 8px;background:#fef2f2;border-radius:4px;border-left:3px solid #ef4444;font-size:12px">
-                            <strong>${escapeHtml(n.pedido || n.orden_id)}</strong> — ${escapeHtml(n.motivo)} (${escapeHtml(n.grupo || '?')})
-                        </div>`;
-                    });
+                    html += `<div style="margin-top:10px;color:#b91c1c;font-weight:700;font-size:13px">Sin capacidad (${numNoAsignados}):</div>`;
+                    html += data.noAsignados.slice(0, 15).map(n =>
+                        `<div class="pln-sincupo"><strong>${escapeHtml(n.pedido || n.orden_id)}</strong> — ${escapeHtml(n.motivo)} (${escapeHtml(n.grupo || '?')})</div>`
+                    ).join('');
                 }
-                html += '</div>';
                 resEl.innerHTML = html;
-                setTimeout(async () => { App.hideModal(); await this.cargarGrupo(); await this.cargarDatos(); await this.cargarEstaciones(); }, 2000);
+                await this.cargarGrupo();
+                App.showAlert('Reprogramación completada', 'success');
             } else {
-                resEl.innerHTML = `<div style="color:#ef4444">${data.error || 'Error'}</div>`;
+                resEl.innerHTML = '<div class="pln-error">' + escText(data.error || 'Error') + '</div>';
             }
-        } catch(e) {
-            resEl.innerHTML = `<div style="color:#ef4444">Error: ${e.message}</div>`;
+        } catch (e) {
+            resEl.innerHTML = '<div class="pln-error">Error: ' + escText(e.message) + '</div>';
         }
     },
 
-    calcSemana(fecha) {
-        const d = new Date(fecha);
-        if (isNaN(d.getTime())) { d = new Date(); }
-        const dia = d.getDay();
-        const diffLunes = dia === 0 ? -6 : 1 - dia;
-        this.semanaInicio = new Date(d);
-        this.semanaInicio.setDate(d.getDate() + diffLunes);
-        this.semanaFin = new Date(this.semanaInicio);
-        this.semanaFin.setDate(this.semanaFin.getDate() + 9);
-    },
-
-    async render() {
-        if (!this.semanaInicio) this.calcSemana(new Date());
-        if (!this.fechaGrupo) this.fechaGrupo = new Date().toISOString().split('T')[0];
-        const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-        const puedeEditar = (user.permisos || []).includes('usuarios') || (user.permisos || []).includes('produccion');
-        const page = document.getElementById('page-planificacion');
-        if (!page) return;
-        page.innerHTML = `
-            <div class="m-hero" style="padding:10px 14px">
-<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>
-<div class="m-hero-inner"><div><h2 class="m-hero-title" style="font-size:15px">Planificacion</h2>
-<p class="m-hero-sub" style="font-size:10px">Carga por grupo (kg) + calendario por estacion (m2)</p></div>
-</div></div>
-
-<style>
-@keyframes plan_fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.plan-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
-.plan-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-3px)}
-.plan-row{transition:all 0.2s}
-.plan-row:hover{transform:translateX(2px);background:#f8fafc!important}
-/* Patron MODULE_RESPONSIVE_V1: botones de cabecera y chart movil */
-.m-hero-btns{display:flex;gap:8px;flex-wrap:wrap}
-.plan-chart-row{display:flex;gap:16px;align-items:center}
-.plan-chart-box{position:relative;height:300px;flex:1;min-width:0}
-@media(max-width:768px){
-    .m-hero-btns .btn{height:40px;min-height:40px;flex:1}
-    .plan-chart-row{flex-direction:column;align-items:stretch}
-    .plan-chart-box{height:180px}
-}
-</style>
-
-            <!-- VISTA POR GRUPO (kg/dia) - nueva -->
-            <div class="card plan-card" style="margin-bottom:20px;border:2px solid #3b82f6">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#eff6ff,#fff)">
-                    <div>
-                        <h3 style="margin:0;font-size:16px">⚖️ Vista por Grupo (kg/dia)</h3>
-                        <div style="font-size:12px;color:var(--text-light)">Capacidad maxima diaria por grupo de productos</div>
-                    </div>
-                    <div class="m-filters">
-                        <label style="font-size:12px;color:var(--text-light)">Fecha:</label>
-                        <input type="date" class="form-control" id="planGrupoFecha" value="${this.fechaGrupo}" onchange="App.modules.planificacion.cambiarFechaGrupo()" style="width:140px;flex:0 0 auto;padding:4px 8px;font-size:12px" onfocus="this.style.borderColor='#3b82f6';this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'" onblur="this.style.borderColor='#e2e8f0';this.style.boxShadow='none'">
-                        <div class="m-hero-btns">
-                        <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(-1)">◀</button>
-                        <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarFechaGrupo(1)">▶</button>
-                        ${puedeEditar ? '<button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.showCapacidadGrupo()" title="Configurar capacidad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51l.06.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Capacidad</button>' : ''}
-                        ${puedeEditar ? '<button class="btn btn-primary" style="padding:4px 12px;font-size:12px" onclick="App.modules.planificacion.showAutoAsignarGrupo()" title="Auto-asignar"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Auto-Asignar</button>' : ''}
-                        ${puedeEditar ? '<button class="btn btn-danger" style="padding:4px 12px;font-size:12px;background:#ef4444;border-color:#ef4444;color:white" onclick="App.modules.planificacion.showReprogramar()" title="Reprogramar: libera PROGRAMADO y re-asigna por prioridad"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reprogramar</button>' : ''}
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body" style="padding:16px">
-                    <div id="planGrupoResumen"></div>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px" id="planGrupoCards">
-                        <div style="text-align:center;padding:20px;color:#64748b">Cargando...</div>
-                    </div>
-                    <h4 style="margin:16px 0 8px;font-size:14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" style="vertical-align:-2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Pendientes sin Asignar</h4>
-                    <div id="planGrupoPendientes"><div style="text-align:center;padding:12px;color:#64748b">Cargando...</div></div>
-                </div>
-            </div>
-
-            <!-- CHART: Carga por Grupo -->
-            <div id="planChart" style="margin-top:24px"></div>
-
-            <!-- CARGA POR ESTACIONES -->
-            <div class="card plan-card" style="margin-top:24px;border:2px solid #f59e0b">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#fffbeb,#fff)">
-                    <div>
-                        <h3 style="margin:0;font-size:16px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg> Carga por Estaciones</h3>
-                        <div style="font-size:12px;color:var(--text-light)">Ocupacion de m2 por estacion y dia - <span id="planDiasLabel">${this.diasEstaciones}</span> dias corridos</div>
-                    </div>
-                    <div class="m-filters">
-                        <label style="font-size:12px;color:var(--text-light)">Dias:</label>
-                        <input type="number" min="1" max="60" value="${this.diasEstaciones}" onchange="App.modules.planificacion.cambiarDiasEstaciones(this.value)" style="width:56px;flex:0 0 auto;padding:4px 6px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;text-align:center">
-                        <label style="font-size:12px;color:var(--text-light)">Periodo:</label>
-                        <div class="m-hero-btns">
-                        <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarSemanaEstaciones(-1)">◀</button>
-                        <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="App.modules.planificacion.cambiarSemanaEstaciones(1)">▶</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body" style="padding:16px">
-                    <div id="planEstaciones"><div style="text-align:center;padding:20px;color:#64748b">Cargando...</div></div>
-                </div>
-            </div>
-
-            <!-- DETALLE GRUPO + DIA (click en chart) -->
-            <div id="planDetalleGrupoDia" style="display:none"></div>
-
-            <div class="modal-overlay" id="planAsignarModal">
-                <div class="modal" style="max-width:500px">
-                    <div class="modal-header"><h3>Asignar Fecha de Entrega</h3><button class="modal-close" title="Cerrar" onclick="App.modules.planificacion.cerrarModal()">&times;</button></div>
-                    <div class="modal-body" id="planAsignarBody"></div>
-                </div>
-            </div>
-        `;
-        await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
-        await this.cargarEstaciones().catch(e => console.error('cargarEstaciones:', e));
-        if (this.capacidadGrupo.length && (this.cargaPorGrupo || this.cargaPorGrupoFinales)) this.renderChart();
-    },
-
+    // ---------------- Gráfico de carga (rango propio) ----------------
     async cargarDatos() {
-        const inicio = this.fmtDate(this.semanaInicio);
-        const fin = this.fmtDate(this.semanaFin);
-        const chartFin = new Date(this.semanaInicio);
-        chartFin.setDate(chartFin.getDate() + 30);
-        const chartFinStr = this.fmtDate(chartFin);
+        const inicio = this.chartInicio;
+        const finD = new Date(this.chartInicio + 'T12:00:00');
+        finD.setDate(finD.getDate() + 35);
+        const fin = this.fmtDate(finD);
         try {
-            const [cargaGrupoRes, pendRes, cargaEstRes, grupoChartRes, grupoFinalesRes] = await Promise.all([
-                fetch(`/api/produccion/planificacion-grupo/semana?inicio=${inicio}&fin=${fin}`),
-                fetch('/api/produccion/planificacion/pendientes'),
-                fetch(`/api/produccion/planificacion/carga-semanal?inicio=${inicio}&fin=${fin}`),
-                fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${chartFinStr}`),
-                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${chartFinStr}`)
+            const [grupoChartRes, grupoFinalesRes] = await Promise.all([
+                fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${fin}`),
+                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${fin}`)
             ]);
-            if (cargaGrupoRes.ok) {
-                // planificacion-grupo/semana responde { grupos: [{ grupo, dias: [{fecha, kilos}] }], dias, calendario }
-                const semana = await cargaGrupoRes.json();
-                this.cargaGrupoSemana = semana.grupos || [];
-            }
-            else { console.error('planificacion-grupo/semana error:', cargaGrupoRes.status); this.cargaGrupoSemana = []; }
-            if (pendRes.ok) this.pendientes = await pendRes.json();
-            else { console.error('pendientes error:', pendRes.status); this.pendientes = []; }
-            if (cargaEstRes.ok) this.cargaSemanal = await cargaEstRes.json();
-            else { console.error('carga-semanal error:', cargaEstRes.status); this.cargaSemanal = []; }
-            if (grupoChartRes.ok) this.cargaPorGrupo = await grupoChartRes.json();
-            else { console.error('carga-por-grupo error:', grupoChartRes.status); this.cargaPorGrupo = null; }
-            if (grupoFinalesRes.ok) this.cargaPorGrupoFinales = await grupoFinalesRes.json();
-            else { console.error('carga-por-grupo-finales error:', grupoFinalesRes.status); this.cargaPorGrupoFinales = null; }
-
-            // Primera carga: ajustar rango al primer dia con carga + 10 dias
-            if (!this._dataLoaded) {
-                this._dataLoaded = true;
-                const primerDia = this._findFirstDayWithData();
-                if (primerDia) {
-                    const d = new Date(primerDia + 'T00:00:00');
-                    const curInicio = new Date(this.semanaInicio);
-                    if (d.getTime() !== curInicio.getTime()) {
-                        this.semanaInicio = d;
-                        this.semanaFin = new Date(d);
-                        this.semanaFin.setDate(this.semanaFin.getDate() + 14);
-                        await this.cargarDatos();
-                        return;
-                    }
-                }
-            }
-        } catch(e) {
-            console.error('Error cargando planificacion:', e);
+            this.cargaPorGrupo = grupoChartRes.ok ? await grupoChartRes.json() : null;
+            this.cargaPorGrupoFinales = grupoFinalesRes.ok ? await grupoFinalesRes.json() : null;
+        } catch (e) {
+            console.error('Error cargando gráfico:', e);
+            this.cargaPorGrupo = null;
+            this.cargaPorGrupoFinales = null;
         }
-        this.cargarEstaciones();
-        if (this.capacidadGrupo.length) this.renderChart();
+        this._actualizarRangoChart();
+        if (this._vista === 'chart') this.renderChart();
     },
 
-    _findFirstDayWithData() {
-        // Buscar en cargaGrupoSemana el primer dia con kilos > 0
-        // (antes se iteraba this.gruposSemana, que no existia y lanzaba TypeError en cada carga)
-        for (const g of (this.cargaGrupoSemana || [])) {
-            for (const d of (g.dias || [])) {
-                if ((d.kilos || 0) > 0) return d.fecha;
-            }
-        }
-        return null;
+    _actualizarRangoChart() {
+        const el = document.getElementById('plnChartRango');
+        if (!el) return;
+        const finD = new Date(this.chartInicio + 'T12:00:00');
+        finD.setDate(finD.getDate() + 30);
+        el.textContent = this._fecha(this.chartInicio) + ' → ' + this._fecha(this.fmtDate(finD));
     },
 
-    cerrarModal() { document.getElementById('planAsignarModal').classList.remove('show'); },
+    cambiarChart(delta) {
+        const d = new Date(this.chartInicio + 'T12:00:00');
+        d.setDate(d.getDate() + delta * 30);
+        this.chartInicio = this.fmtDate(d);
+        this.cargarDatos();
+    },
 
     cambiarModoChart(modo) {
         this.chartModo = modo;
@@ -618,16 +585,28 @@ App.modules.planificacion = {
     },
 
     renderChart() {
-        const div = document.getElementById('planChart');
+        const div = document.getElementById('chartCargaGrupo');
         if (!div) return;
         const data = this.chartModo === 'finales' ? this.cargaPorGrupoFinales : this.cargaPorGrupo;
+        const btnI = document.getElementById('plnModoInicio');
+        const btnF = document.getElementById('plnModoFinales');
+        if (btnI) { btnI.className = 'pln-btn ' + (this.chartModo === 'inicio' ? 'primary' : 'ghost') + ' sm'; }
+        if (btnF) { btnF.className = 'pln-btn ' + (this.chartModo === 'finales' ? 'primary' : 'ghost') + ' sm'; }
+        this._actualizarRangoChart();
+
+        const legend = document.getElementById('plnChartLegend');
+        const capProm = document.getElementById('plnCapProm');
+
         if (!data || !data.familias || data.familias.length === 0) {
-            div.innerHTML = '';
+            if (legend) legend.innerHTML = '';
+            if (capProm) capProm.innerHTML = '';
+            div.innerHTML = '<div class="pln-loading">Sin datos de carga en este período</div>';
             return;
         }
+
         const coloresMap = {};
-        for (const g of this.capacidadGrupo) { coloresMap[g.grupo.toLowerCase()] = g.color || '#3b82f6'; }
-        const fallbackColors = ['#22c55e','#06b6d4','#1e3a8a','#1e293b','#f97316','#fde047','#8b5cf6','#ef4444'];
+        for (const g of this.capacidadGrupo) { coloresMap[g.grupo.toLowerCase()] = g.color || '#2563eb'; }
+        const fallbackColors = ['#2563eb', '#7c3aed', '#0d9488', '#d97706', '#db2777', '#64748b', '#0ea5e9', '#b91c1c'];
         const findColor = (fam) => {
             const f = fam.toLowerCase();
             if (coloresMap[f]) return coloresMap[f];
@@ -638,22 +617,19 @@ App.modules.planificacion = {
         };
         const colores = data.familias.map((fam, i) => {
             const hex = findColor(fam) || fallbackColors[i % fallbackColors.length];
-            const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
             return { bg: `rgba(${r},${g},${b},0.85)`, border: `rgba(${r},${g},${b},1)` };
         });
 
         const fechasConData = data.fechas.filter(f => data.familias.some(fam => (data.datos[fam][f] || 0) > 0));
-        if (fechasConData.length === 0) { div.innerHTML = ''; return; }
+        if (fechasConData.length === 0) {
+            if (legend) legend.innerHTML = '';
+            if (capProm) capProm.innerHTML = '';
+            div.innerHTML = '<div class="pln-loading">Sin carga programada en este período. Use ◀ ▶ para moverse.</div>';
+            return;
+        }
 
-        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
-        const labels = fechasConData.map(f => {
-            const d = new Date(f + 'T12:00:00');
-            const nombreDia = diasSemana[d.getDay()];
-            const dia = d.getDate();
-            const mes = d.getMonth() + 1;
-            return `${nombreDia}, ${dia}/${mes}`;
-        });
-
+        const labels = fechasConData.map(f => this._fechaCorta(f));
         const datasets = data.familias.map((fam, i) => ({
             label: fam,
             data: fechasConData.map(f => data.datos[fam][f] || 0),
@@ -666,10 +642,10 @@ App.modules.planificacion = {
         const capacidades = fechasConData.map(f => data.capacidad_por_dia[f] || 0);
         const capacidadPromedio = capacidades.reduce((a, b) => a + b, 0) / capacidades.length;
         datasets.push({
-            label: 'Capacidad Produccion',
+            label: 'Capacidad Producción',
             data: fechasConData.map(() => Math.round(capacidadPromedio * 100) / 100),
             type: 'line',
-            borderColor: 'rgba(239,68,68,1)',
+            borderColor: 'rgba(220,38,38,1)',
             borderWidth: 2,
             borderDash: [6, 3],
             pointRadius: 0,
@@ -677,27 +653,14 @@ App.modules.planificacion = {
             order: -1
         });
 
-        div.innerHTML = `
-            <div style="background:var(--card-bg);border-radius:12px;padding:16px;border:1px solid var(--border)">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                    <h3 style="margin:0;font-size:16px">Carga por Grupo</h3>
-                    <div style="display:flex;gap:6px;align-items:center">
-                        <button onclick="App.modules.planificacion.cambiarModoChart('inicio')" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${this.chartModo === 'inicio' ? '#3b82f6' : '#e2e8f0'};background:${this.chartModo === 'inicio' ? '#3b82f6' : 'transparent'};color:${this.chartModo === 'inicio' ? 'white' : '#64748b'}">F. Inicio</button>
-                        <button onclick="App.modules.planificacion.cambiarModoChart('finales')" style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid ${this.chartModo === 'finales' ? '#8b5cf6' : '#e2e8f0'};background:${this.chartModo === 'finales' ? '#8b5cf6' : 'transparent'};color:${this.chartModo === 'finales' ? 'white' : '#64748b'}">F. Termino</button>
-                        <span style="font-size:12px;color:var(--text-light);margin-left:8px">Capacidad promedio: <strong>${Math.round(capacidadPromedio).toLocaleString('es-CL')} kg/día</strong></span>
-                    </div>
-                </div>
-                <div class="plan-chart-row">
-                    <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--text-light);min-width:120px">
-                        <div style="font-weight:600;font-size:12px;margin-bottom:4px">Grupo</div>
-                        ${data.familias.map((fam, i) => `<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colores[i % colores.length].bg};vertical-align:middle"></span> ${escText(fam)}</span>`).join('')}
-                    </div>
-                    <div class="plan-chart-box">
-                        <canvas id="chartCargaGrupo"></canvas>
-                    </div>
-                </div>
-            </div>
-        `;
+        if (legend) {
+            legend.innerHTML = '<div class="ttl">Grupos</div>' + data.familias.map((fam, i) =>
+                '<span class="lg"><span class="dot" style="background:' + colores[i % colores.length].bg + '"></span>' + escText(fam) + '</span>'
+            ).join('');
+        }
+        if (capProm) {
+            capProm.innerHTML = 'Capacidad promedio de producción: <strong>' + this._fmt(capacidadPromedio, 0) + ' kg/día</strong>';
+        }
 
         if (this._chartInstance) { this._chartInstance.destroy(); this._chartInstance = null; }
         const ctx = document.getElementById('chartCargaGrupo');
@@ -709,26 +672,24 @@ App.modules.planificacion = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 100 } },
                 onClick: (evt, elements, chart) => {
                     if (!elements.length) return;
                     const el = elements[0];
                     const fam = chart.data.datasets[el.datasetIndex].label;
-                    if (fam === 'Capacidad Produccion') return;
-                    const fecha = fechasConData[el.index];
-                    this.detalleGrupoDia(fam, fecha);
+                    if (fam === 'Capacidad Producción') return;
+                    this.detalleGrupoDia(fam, fechasConData[el.index]);
                 },
                 plugins: {
                     legend: { display: false },
                     datalabels: {
-                        display: function(ctx) {
+                        display: function (ctx) {
                             if (ctx.dataset.type === 'line') return false;
                             const val = ctx.dataset.data[ctx.dataIndex];
                             return val > 0;
                         },
                         color: '#fff',
                         font: { size: 10, weight: 'bold' },
-                        formatter: function(value) {
+                        formatter: function (value) {
                             if (!value || value <= 0) return '';
                             return value >= 1000 ? (value / 1000).toFixed(1) + 'k' : Math.round(value);
                         },
@@ -737,10 +698,10 @@ App.modules.planificacion = {
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(ctx) {
+                            label: function (ctx) {
                                 const val = ctx.parsed ? ctx.parsed.y : ctx.raw;
                                 if (ctx.dataset.type === 'line') return `Capacidad: ${Number(val).toLocaleString('es-CL')} kg`;
-                                return `${ctx.dataset.label}: ${Number(val).toLocaleString('es-CL', {maximumFractionDigits:1})} kg`;
+                                return `${ctx.dataset.label}: ${Number(val).toLocaleString('es-CL', { maximumFractionDigits: 1 })} kg`;
                             }
                         }
                     }
@@ -756,40 +717,53 @@ App.modules.planificacion = {
                         beginAtZero: true,
                         grid: { color: 'rgba(148,163,184,0.15)' },
                         title: { display: false },
-                        ticks: { display: false }
+                        ticks: {
+                            font: { size: 10 },
+                            callback: (v) => Number(v).toLocaleString('es-CL')
+                        }
                     }
                 }
             }
         });
     },
 
-    // ── CARGA POR ESTACIONES ──
+    // ---------------- Carga por Estaciones (rango propio) ----------------
     cambiarDiasEstaciones(valor) {
         const n = parseInt(valor);
         if (!n || n < 1 || n > 60) return;
         this.diasEstaciones = n;
-        const lbl = document.getElementById('planDiasLabel');
-        if (lbl) lbl.textContent = n;
         this.cargarEstaciones();
     },
 
     cambiarSemanaEstaciones(delta) {
-        this.semanaInicio.setDate(this.semanaInicio.getDate() + delta * this.diasEstaciones);
+        // SOLO mueve el rango de estaciones (antes mutaba semanaInicio y
+        // arrastraba al gráfico y al resto del módulo).
+        const d = new Date(this.estacInicio + 'T12:00:00');
+        d.setDate(d.getDate() + delta * this.diasEstaciones);
+        this.estacInicio = this.fmtDate(d);
         this.cargarEstaciones();
     },
 
     async cargarEstaciones() {
-        const inicio = this.fmtDate(this.semanaInicio);
-        const finD = new Date(this.semanaInicio);
+        const inicio = this.estacInicio;
+        const finD = new Date(this.estacInicio + 'T12:00:00');
         finD.setDate(finD.getDate() + this.diasEstaciones - 1);
         const fin = this.fmtDate(finD);
-
+        const rango = document.getElementById('plnEstacRango');
+        if (rango) rango.textContent = this._fecha(inicio) + ' → ' + this._fecha(fin);
         try {
             const res = await fetch(`/api/produccion/planificacion/carga-estaciones?inicio=${inicio}&fin=${fin}`);
-            if (!res.ok) return;
-            const data = await res.json();
-            this.renderEstaciones(data);
-        } catch(e) { console.error('cargarEstaciones:', e); }
+            if (!res.ok) {
+                const el = document.getElementById('planEstaciones');
+                if (el) el.innerHTML = '<div class="pln-error">Error ' + res.status + ' al cargar las estaciones</div>';
+                return;
+            }
+            this.renderEstaciones(await res.json());
+        } catch (e) {
+            console.error('cargarEstaciones:', e);
+            const el = document.getElementById('planEstaciones');
+            if (el) el.innerHTML = '<div class="pln-error">Error: ' + escText(e.message) + '</div>';
+        }
     },
 
     renderEstaciones(data) {
@@ -798,83 +772,179 @@ App.modules.planificacion = {
         const { estaciones, carga, calendario } = data;
 
         if (!estaciones || estaciones.length === 0) {
-            el.innerHTML = '<div style="text-align:center;padding:20px;color:#64748b">No hay estaciones configuradas</div>';
+            el.innerHTML = '<div class="pln-loading">No hay estaciones configuradas</div>';
             return;
         }
 
-        // Generar dias corridos desde semanaInicio, filtrando solo dias laborales
+        // Días corridos desde estacInicio, filtrando días hábiles
         const todosDias = [];
         for (let i = 0; i < this.diasEstaciones; i++) {
-            const d = new Date(this.semanaInicio);
+            const d = new Date(this.estacInicio + 'T12:00:00');
             d.setDate(d.getDate() + i);
             const fs = this.fmtDate(d);
             const cal = calendario ? calendario[fs] : null;
-            const es_laboral = cal ? cal.es_laboral : (d.getDay() !== 0 && d.getDay() !== 6);
-            if (es_laboral) todosDias.push(fs);
+            const esLaboral = cal ? cal.es_laboral : (d.getDay() !== 0 && d.getDay() !== 6);
+            if (esLaboral) todosDias.push(fs);
         }
-
-        // Encontrar primer dia con carga (>0 m2 en alguna estacion)
-        let primerDiaConCarga = null;
-        for (const f of todosDias) {
-            const diaCarga = carga[f] || {};
-            const tieneCarga = Object.values(diaCarga).some(est => (est.m2 || 0) > 0);
-            if (tieneCarga) { primerDiaConCarga = f; break; }
-        }
-
-        // Filtrar: solo desde el primer dia con carga
-        const dias = primerDiaConCarga
-            ? todosDias.filter(f => f >= primerDiaConCarga)
-            : todosDias;
-
-        const nombreDia = (f) => {
-            const d = new Date(f + 'T12:00:00');
-            const diasSemana = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
-            return diasSemana[d.getDay()] + ', ' + d.getDate() + '/' + (d.getMonth() + 1);
-        };
 
         const pct = (usado, cap) => cap > 0 ? Math.round((usado / cap) * 100) : 0;
-        const barColor = (p) => p >= 100 ? '#ef4444' : p >= 85 ? '#f59e0b' : p >= 50 ? '#3b82f6' : '#22c55e';
+        const barColor = (p) => p >= 100 ? '#dc2626' : p >= 85 ? '#d97706' : p >= 50 ? '#2563eb' : '#16a34a';
 
-        let html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
-        html += '<colgroup><col style="width:180px"><col style="width:70px">';
-        dias.forEach(() => { html += '<col>'; });
-        html += '</colgroup>';
-        // Header
-        html += '<thead><tr style="border-bottom:2px solid var(--border)">';
-        html += '<th style="padding:8px;text-align:left">Estacion</th>';
-        html += '<th style="padding:6px 2px 6px 0;text-align:left">Cap</th>';
-        dias.forEach(f => {
-            html += `<th style="padding:6px;text-align:center;min-width:90px;white-space:nowrap">${nombreDia(f)}</th>`;
+        let html = '<table class="pln-matriz"><colgroup><col class="c-est"><col class="c-cap">';
+        todosDias.forEach(() => { html += '<col>'; });
+        html += '</colgroup><thead><tr><th>Estación</th><th class="num">Cap.</th>';
+        todosDias.forEach(f => {
+            html += '<th>' + this._fechaCorta(f) + '</th>';
         });
         html += '</tr></thead><tbody>';
 
         estaciones.forEach(est => {
-            html += '<tr class="plan-row" style="border-bottom:1px solid var(--border)">';
-            html += `<td style="padding:8px;font-weight:600;white-space:nowrap">${escText(est.nombre)}${est.cuello_botella ? ' <span style="font-size:9px;padding:1px 4px;border-radius:3px;background:#fef2f2;color:#ef4444">CB</span>' : ''}</td>`;
-            html += `<td style="padding:6px 2px 6px 0;text-align:left;font-size:11px;color:var(--text-light)">${est.capacidad_m2_dia}</td>`;
-
-            dias.forEach(f => {
+            html += '<tr>';
+            html += '<td class="c-est">' + escText(est.nombre) + (est.cuello_botella ? ' <span class="pln-cb" title="Cuello de botella">CB</span>' : '') + '</td>';
+            html += '<td class="num cap">' + this._fmt(est.capacidad_m2_dia, 0) + '</td>';
+            todosDias.forEach(f => {
                 const datos = (carga[f] && carga[f][est.id]) || { m2: 0, ordenes: 0 };
                 const p = pct(datos.m2, est.capacidad_m2_dia);
-                html += `<td style="padding:6px;text-align:center">
-                    <div style="margin-bottom:3px;font-weight:600;color:${barColor(p)}">${datos.m2.toFixed(1)}</div>
-                    <div style="background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden">
-                        <div style="background:${barColor(p)};height:100%;width:${Math.min(p, 100)}%;transition:width 0.3s"></div>
-                    </div>
-                    <div style="font-size:10px;color:#6b7280;margin-top:2px">${p}% · ${datos.ordenes} ord</div>
-                </td>`;
+                html += '<td><div class="m2" style="color:' + barColor(p) + '">' + this._fmt(datos.m2, 1) + '</div>'
+                    + '<div class="track"><div class="fill" style="width:' + Math.min(p, 100) + '%;background:' + barColor(p) + '"></div></div>'
+                    + '<div class="sub2">' + p + '% · ' + datos.ordenes + ' ord</div></td>';
             });
-
             html += '</tr>';
         });
-
-        html += '</tbody></table></div>';
-
-        // Leyenda
-        html += '<div style="margin-top:10px;display:flex;gap:16px;font-size:11px;color:#6b7280">';
-        html += '<span><svg width="14" height="14" viewBox="0 0 24 24" fill="#22c55e" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> &lt;50%</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="#3b82f6" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> 50-84%</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> 85-99%</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="#ef4444" style="vertical-align:-2px"><circle cx="12" cy="12" r="6"/></svg> ≥100%</span>';
-        html += '<span style="margin-left:auto">CB = Cuello de Botella</span></div>';
-
+        html += '</tbody></table>';
         el.innerHTML = html;
+    },
+
+    // ---------------- Estilos (escala 20/15/13/11/10) ----------------
+    _estilos() {
+        return `<style>
+            .pln-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%);border-radius:16px;padding:20px 26px;position:relative;overflow:hidden;margin-bottom:14px}
+            .pln-hero::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.55),transparent)}
+            .pln-hero h2{color:#fff;font-size:20px;font-weight:700;margin:0}
+            .pln-hero p{color:rgba(255,255,255,.62);font-size:11px;margin:4px 0 0}
+
+            .pln-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
+            .pln-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}
+            .pln-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
+            .pln-kpi .v{font-size:20px;font-weight:700;margin-top:4px;color:#0f172a}
+            .pln-kpi .s{font-size:10px;color:#8494a8;margin-top:2px}
+
+            .pln-tabs{display:flex;gap:4px;background:#e2e8f0;padding:4px;border-radius:10px;width:max-content;margin-bottom:12px}
+            .pln-tab{padding:8px 18px;border-radius:8px;font-size:11px;font-weight:700;color:#475569;cursor:pointer;white-space:nowrap}
+            .pln-tab.on{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(15,23,42,.1)}
+
+            .pln-panel{background:#fff;border:1px solid #e4e9f0;border-radius:14px;overflow:hidden}
+            .pln-p-head{padding:13px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e4e9f0;flex-wrap:wrap}
+            .pln-p-head h3{font-size:13px;font-weight:600;margin:0}
+            .pln-p-head .sub{font-size:10px;color:#8494a8}
+            .pln-p-body{padding:16px 18px}
+            .pln-nav{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+            .pln-navbtn{width:30px;height:30px;border-radius:8px;border:1px solid #e4e9f0;background:#fff;color:#475569;cursor:pointer;font-size:13px}
+            .pln-navbtn:hover{background:#f8fafc}
+            .pln-rango{font-size:11px;font-weight:700;color:#334155;white-space:nowrap}
+            .pln-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#8494a8}
+            .pln-nav input[type=date],.pln-nav input[type=number]{padding:8px 10px;border:1px solid #e4e9f0;border-radius:8px;font-size:13px;color:#0f172a}
+
+            .pln-btn{padding:9px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap}
+            .pln-btn.primary{background:#1e40af;color:#fff}
+            .pln-btn.primary:hover{background:#1e3a8a}
+            .pln-btn.ghost{background:#fff;color:#475569;border-color:#e4e9f0}
+            .pln-btn.ghost:hover{background:#f8fafc}
+            .pln-btn.warn{background:#fff;color:#b45309;border-color:#fde68a}
+            .pln-btn.danger{background:#dc2626;color:#fff}
+            .pln-btn.danger:hover{background:#b91c1c}
+            .pln-btn.sm{padding:7px 12px;font-size:11px}
+
+            .pln-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+            .pln-card{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 15px}
+            .pln-card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
+            .pln-card .gname{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8494a8}
+            .pln-card .gval{font-size:20px;font-weight:700;margin-top:2px}
+            .pln-card .gval .cap{font-size:11px;color:#8494a8;font-weight:500}
+            .pln-card .right{text-align:right}
+            .pln-card .pct{font-size:20px;font-weight:700}
+            .pln-card .track{height:8px;border-radius:6px;background:#f1f5f9;overflow:hidden;margin-bottom:8px}
+            .pln-card .fill{height:100%;border-radius:6px;transition:width .3s}
+            .pln-card .foot{display:flex;justify-content:space-between;font-size:11px;color:#8494a8}
+
+            .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+            .b-red{background:#fee2e2;color:#b91c1c}
+            .b-amber{background:#fef3c7;color:#b45309}
+            .b-green{background:#dcfce7;color:#15803d}
+            .b-gray{background:#f1f5f9;color:#64748b}
+
+            .pln-pend-resumen{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#f8fafc;border:1px solid #e4e9f0;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px}
+            .pln-pend-resumen .tip{font-size:11px;color:#8494a8}
+            .pln-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+            .pln-table{width:100%;border-collapse:collapse;min-width:820px}
+            .pln-table th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0;white-space:nowrap}
+            .pln-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+            .pln-table tbody tr:hover{background:#f8fafc}
+            .pln-table .num{text-align:right;font-variant-numeric:tabular-nums}
+            .pln-table .th-acc{text-align:right}
+            .pln-table .c-acc{text-align:right;white-space:nowrap}
+            .pln-table .c-ped strong{color:#0f172a}
+            .sub2{font-size:10px;color:#8494a8;margin-top:1px}
+            .pln-bom{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#7c3aed}
+            .pln-hint-danger{font-size:11px;color:#dc2626;font-weight:600}
+
+            .pln-chart-row{display:flex;gap:16px;align-items:stretch}
+            .pln-legend{display:flex;flex-direction:column;gap:6px;font-size:11px;color:#475569;min-width:130px}
+            .pln-legend .ttl{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;margin-bottom:2px}
+            .pln-legend .lg{display:flex;align-items:center;gap:6px}
+            .pln-legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+            .pln-chart-box{position:relative;height:320px;flex:1;min-width:0}
+            .pln-capinfo{font-size:11px;color:#8494a8;margin-top:10px}
+            .pln-capinfo strong{color:#334155}
+
+            .pln-matriz-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+            .pln-matriz{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;min-width:900px}
+            .pln-matriz .c-est{width:190px}
+            .pln-matriz .c-cap{width:70px}
+            .pln-matriz th{padding:8px 10px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0;white-space:nowrap}
+            .pln-matriz th:first-child{text-align:left}
+            .pln-matriz td{padding:8px 10px;text-align:center;border-bottom:1px solid #f1f5f9}
+            .pln-matriz td.c-est{text-align:left;font-weight:600;white-space:nowrap}
+            .pln-matriz td.cap{color:#8494a8;font-size:11px}
+            .pln-matriz .m2{font-weight:700;margin-bottom:3px}
+            .pln-matriz .track{background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden}
+            .pln-matriz .fill{height:100%;transition:width .3s}
+            .pln-cb{font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fee2e2;color:#dc2626;cursor:help}
+
+            .pln-ok{background:#dcfce7;border:1px solid #bbf7d0;border-radius:9px;padding:11px 14px;font-size:13px;color:#166534;display:flex;align-items:center;gap:8px}
+            .pln-error{background:#fee2e2;border:1px solid #fecaca;border-radius:9px;padding:11px 14px;font-size:13px;color:#991b1b}
+            .pln-warnbox{background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:12px 14px;font-size:13px;color:#991b1b;line-height:1.6}
+            .pln-sincupo{margin-top:4px;padding:7px 10px;background:#fef2f2;border-radius:7px;border-left:3px solid #dc2626;font-size:13px;color:#7f1d1d}
+            .pln-stat{background:#f8fafc;border:1px solid #e4e9f0;border-radius:8px;padding:10px}
+            .pln-stat .v{font-size:20px;font-weight:700}
+            .pln-stat .k{font-size:10px;color:#8494a8;text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+
+            .pln-prio{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+            .p-normal{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+            .p-express{background:#fef9c3;color:#854d0e;border:1px solid #fde047}
+            .p-urgencia{background:#dcfce7;color:#15803d;border:1px solid #86efac}
+            .p-reposicion{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
+
+            .pln-loading{text-align:center;padding:30px;color:#8494a8;font-size:13px}
+            .pln-cards-mobile{display:none}
+            .pln-mcard{border:1px solid #e4e9f0;border-radius:12px;padding:12px 14px;margin-bottom:8px;background:#fff}
+            .pln-mcard .t1{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;font-size:13px}
+            .pln-mcard .acc{display:flex;gap:6px;margin-top:8px}
+
+            @media(max-width:768px){
+                .pln-hero{padding:16px}
+                .pln-hero h2{font-size:15px}
+                .pln-kpis{grid-template-columns:1fr 1fr;gap:8px}
+                .pln-kpi .v{font-size:15px}
+                .pln-tabs{width:100%}
+                .pln-tab{flex:1;text-align:center;padding:8px 6px}
+                .pln-p-head{flex-direction:column;align-items:flex-start}
+                .pln-nav{margin-left:0;width:100%}
+                .pln-chart-row{flex-direction:column}
+                .pln-chart-box{height:200px}
+                .pln-table-wrap{display:none}
+                .pln-cards-mobile{display:block}
+            }
+        </style>`;
     }
 };
