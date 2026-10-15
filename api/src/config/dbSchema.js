@@ -577,6 +577,21 @@ async function faseColumnas({ q, safe }) {
     await safe(`CREATE INDEX IF NOT EXISTS idx_produccion_codigos_codigo ON produccion_codigos (codigo)`, 'produccion_codigos.idx_codigo');
     // Letra de estación para la lista de corte (Optiway 8): ej. Pintado = S
     await safe(`ALTER TABLE estaciones_maestras ADD COLUMN IF NOT EXISTS letra VARCHAR(2) DEFAULT ''`, 'estaciones_maestras.letra');
+    // Normalizar rutas de receta: procesos_especificos_json a veces quedó con
+    // números de ORDEN (resabio de la migración de Carrocería) en vez de ids de
+    // estación. Se convierte a id real (id primero; si no, por orden_secuencia).
+    await safe(`UPDATE recetas_bom rb SET procesos_especificos_json = (
+        SELECT COALESCE(jsonb_agg(
+            COALESCE((SELECT e.id FROM estaciones_maestras e
+                      WHERE e.id::text = v.val OR e.orden_secuencia_defecto::text = v.val
+                      ORDER BY (e.id::text = v.val) DESC, e.id
+                      LIMIT 1), 0)
+            ORDER BY v.ord), '[]'::jsonb)
+        FROM jsonb_array_elements_text(rb.procesos_especificos_json) WITH ORDINALITY AS v(val, ord)
+    ) WHERE rb.procesos_especificos_json IS NOT NULL
+        AND jsonb_typeof(rb.procesos_especificos_json) = 'array'
+        AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(rb.procesos_especificos_json) vv
+                    WHERE vv::text NOT IN (SELECT id::text FROM estaciones_maestras))`, 'recetas_bom.procesos normalizados');
     // Planos de códigos de carrocería (PDF o imagen, en memoria → BYTEA,
     // mismo patrón que los PDF de pedidos)
     await safe(`CREATE TABLE IF NOT EXISTS codigo_planos (

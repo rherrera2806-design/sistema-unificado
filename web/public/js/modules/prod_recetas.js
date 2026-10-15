@@ -352,7 +352,11 @@ App.registerModule('prod_recetas', {
         const descMap = {};
         (this.codigos || []).forEach(c => { descMap[String(c.codigo)] = c.descripcion; });
         const estMap = {};
-        this.estaciones.forEach(e => { estMap[e.id] = e; });
+        this.estaciones.forEach(e => {
+            estMap[e.id] = e;
+            // Respaldo: algunas recetas viejas guardan el ORDEN en vez del id
+            if (e.orden_secuencia_defecto != null) estMap['o' + e.orden_secuencia_defecto] = e;
+        });
 
         const grupos = {};
         recetas.forEach(r => {
@@ -371,7 +375,7 @@ App.registerModule('prod_recetas', {
             const procs = Array.isArray(r.procesos_especificos_json) ? r.procesos_especificos_json : [];
             if (procs.length > 0) {
                 const chips = procs.map((id, idx) => {
-                    const e = estMap[id];
+                    const e = estMap[id] || estMap['o' + id];
                     const nombre = e ? e.nombre_estacion : ('#' + id);
                     return '<span style="display:inline-flex;align-items:center;gap:3px;background:#7c3aed15;color:#7c3aed;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-right:3px"><span style="font-size:10px;opacity:0.7">' + (idx + 1) + '</span>' + escapeHtml(nombre) + '</span>';
                 }).join('');
@@ -415,6 +419,7 @@ App.registerModule('prod_recetas', {
                     <td style="padding:6px 12px;white-space:nowrap">${puedeEditar ? `
                         <div class="rec-amenu"><button class="rec-amenu-btn" onclick="App.modules.prod_recetas.toggleAcciones(event)">Acciones ▾</button>
                         <div class="rec-amenu-drop">
+                            <div class="it" onclick="App.modules.prod_recetas.verReceta(${r.id})">👁 Ver receta</div>
                             <div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>
                             ${tienePlano ? `<div class="it" onclick="App.modules.prod_recetas.verPlanoCodigo('${escJs(r.codigo_sap_padre)}')">👁 Ver plano del código</div>` : ''}
                             <div class="sep"></div>
@@ -441,6 +446,7 @@ App.registerModule('prod_recetas', {
                             ${puedeEditar ? `
                             <div class="rec-amenu"><button class="rec-amenu-btn" onclick="App.modules.prod_recetas.toggleAcciones(event)">Acciones ▾</button>
                             <div class="rec-amenu-drop">
+                                <div class="it" onclick="App.modules.prod_recetas.verReceta(${r.id})">👁 Ver receta</div>
                                 <div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>
                                 ${tienePlano ? `<div class="it" onclick="App.modules.prod_recetas.verPlanoCodigo('${escJs(r.codigo_sap_padre)}')">👁 Ver plano del código</div>` : ''}
                                 <div class="sep"></div>
@@ -644,7 +650,7 @@ App.registerModule('prod_recetas', {
         const list = document.getElementById('recProcesosList');
         if (!list) return;
         const orden = list.children.length + 1;
-        const estOpts = '<option value="">Seleccionar estación...</option>' + this.estaciones.map(e => `<option value="${e.id}" ${e.id === estId ? 'selected' : ''}>${escapeHtml(e.nombre_estacion)} (#${e.id} · orden ${e.orden_secuencia_defecto || '-'})</option>`).join('');
+        const estOpts = '<option value="">Seleccionar estación...</option>' + this.estaciones.map(e => `<option value="${e.id}" ${String(e.id) === String(estId) || String(e.orden_secuencia_defecto) === String(estId) ? 'selected' : ''}>${escapeHtml(e.nombre_estacion)} (#${e.id} · orden ${e.orden_secuencia_defecto || '-'})</option>`).join('');
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;gap:6px;align-items:center';
         row.innerHTML = `<span style="background:#7c3aed;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${orden}</span>
@@ -661,6 +667,20 @@ App.registerModule('prod_recetas', {
             const badge = row.querySelector('span');
             if (badge) badge.textContent = i + 1;
         });
+    },
+
+    async verReceta(id) {
+        // Modo lectura: mismo formulario pero deshabilitado y sin botón guardar
+        await this.edit(id);
+        document.getElementById('recModalTitle').textContent = 'Ver receta';
+        const body = document.querySelector('#recCreateModal .modal-body');
+        if (body) {
+            body.querySelectorAll('input, select, textarea').forEach(i => { i.disabled = true; });
+        }
+        const footer = document.querySelector('#recCreateModal .modal-footer');
+        if (footer) {
+            footer.innerHTML = '<button class="btn btn-outline" onclick="App.modules.prod_recetas.hideCreateModal()">Cerrar</button>';
+        }
     },
 
     async edit(id) {
