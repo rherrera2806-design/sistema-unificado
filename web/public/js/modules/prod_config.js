@@ -25,7 +25,7 @@ App.registerModule('prod_config', {
             { id: 'grupos', label: 'Grupos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
             { id: 'familias', label: 'Familias', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' },
             { id: 'reglas', label: 'Reglas Extras', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
-            { id: 'materias', label: 'Materias Primas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>' },
+            { id: 'materias', label: 'Materias primas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>' },
             { id: 'calendario', label: 'Calendario', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' }
         ];
         el.innerHTML = '<style>'
@@ -33,12 +33,20 @@ App.registerModule('prod_config', {
             + '.pc-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
             + '.pc-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important}'
             + '.pc-tab{transition:all 0.15s}'
+            + '.cfg-amenu{position:relative;display:inline-block}'
+            + '.cfg-amenu-btn{padding:6px 11px;border-radius:7px;border:1px solid #e4e9f0;background:#fff;color:#475569;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}'
+            + '.cfg-amenu-btn:hover{background:#f8fafc}'
+            + '.cfg-amenu-drop{display:none;position:fixed;z-index:95;background:#fff;border:1px solid #e4e9f0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.16);min-width:190px;padding:5px}'
+            + '.cfg-amenu-drop .it{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;white-space:nowrap}'
+            + '.cfg-amenu-drop .it:hover{background:#f8fafc}'
+            + '.cfg-amenu-drop .it.danger{color:#dc2626}'
+            + '.cfg-amenu-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}'
             + '</style>'
 
             + '<div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border);padding-bottom:0;flex-wrap:wrap">'
             + tabs.map(t => {
                 const active = this._tab === t.id;
-                return '<button class="btn ' + (active ? 'btn-primary' : 'btn-ghost') + '" style="border-bottom:2px solid ' + (active ? 'var(--glass)' : 'transparent') + ';margin-bottom:-2px;border-radius:var(--radius-md) var(--radius-md) 0 0;padding:6px 12px;font-size:12px" onclick="App.modules.prod_config.switchTab(\'' + t.id + '\')">' + t.svg + ' ' + t.label + '</button>';
+                return '<button class="btn ' + (active ? 'btn-primary' : 'btn-ghost') + '" style="border-bottom:2px solid ' + (active ? 'var(--glass)' : 'transparent') + ';margin-bottom:-2px;border-radius:var(--radius-md) var(--radius-md) 0 0;padding:6px 12px;font-size:11px" onclick="App.modules.prod_config.switchTab(\'' + t.id + '\')">' + t.svg + ' ' + t.label + '</button>';
             }).join('')
             + '</div>'
             + '<div id="prodConfigContent"></div>';
@@ -54,6 +62,44 @@ App.registerModule('prod_config', {
             const container = document.getElementById('prodConfigContent');
             if (container) container.innerHTML = '<div style="background:#fee2e2;border-radius:8px;padding:12px;color:#991b1b">Error al cargar: ' + escText(e.message) + '</div>';
         }
+    },
+
+    // ── Menú de acciones (popover fijo, patrón del sistema) ──
+    menuAcciones(tipo, id) {
+        return `<div class="cfg-amenu"><button class="cfg-amenu-btn" onclick="App.modules.prod_config.toggleAcciones(event)">Acciones ▾</button>
+        <div class="cfg-amenu-drop">
+            <div class="it" onclick="App.modules.prod_config.show${tipo}Form(${id})">✏️ Editar</div>
+            <div class="sep"></div>
+            <div class="it danger" onclick="App.modules.prod_config.delete${tipo}(${id})">🗑 Eliminar</div>
+        </div></div>`;
+    },
+    toggleAcciones(e) {
+        e.stopPropagation();
+        this._setupMenus();
+        const wrap = e.currentTarget.parentElement;
+        const menu = wrap.querySelector('.cfg-amenu-drop');
+        if (!menu) return;
+        const wasVisible = menu.style.display === 'block';
+        this._cerrarMenus();
+        if (wasVisible) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        menu.style.display = 'block';
+        menu.style.top = '0px';
+        menu.style.left = '0px';
+        const mh = menu.offsetHeight, mw = menu.offsetWidth;
+        const espacioAbajo = window.innerHeight - rect.bottom;
+        menu.style.top = (espacioAbajo < mh + 12 ? Math.max(8, rect.top - mh - 6) : rect.bottom + 6) + 'px';
+        menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - mw - 8)) + 'px';
+    },
+    _cerrarMenus() {
+        document.querySelectorAll('.cfg-amenu-drop').forEach(d => d.style.display = 'none');
+    },
+    _setupMenus() {
+        if (this._menusBound) return;
+        this._menusBound = true;
+        document.addEventListener('click', () => this._cerrarMenus());
+        window.addEventListener('scroll', () => this._cerrarMenus(), true);
+        window.addEventListener('resize', () => this._cerrarMenus());
     },
 
     async loadTab() {
@@ -110,13 +156,13 @@ App.registerModule('prod_config', {
             <div class="m-page">
                 <div class="m-hero" style="padding:10px 14px">
                     <div style="position:relative;z-index:1">
-                        <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Estaciones Maestras</h2>
+                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white">Estaciones Maestras</h2>
                         <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Secuencia de planta y capacidad</p>
                     </div>
                 </div>
 
                 <div class="m-actions">
-                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.prod_config.showEstacionForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_config.showEstacionForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                 </div>
 
                 <div class="m-card">
@@ -126,7 +172,7 @@ App.registerModule('prod_config', {
                     <div class="m-card-body" style="padding:0">
                         <div class="m-table-wrap">
                             <table><thead><tr>
-                                <th>Orden</th><th>Nombre</th><th>Cap. Max</th><th>Cuello Botella</th><th>Estado</th><th>Acciones</th>
+                                <th>Orden</th><th>Nombre</th><th>Cap. Max</th><th>Cuello de botella</th><th>Estado</th><th>Acciones</th>
                             </tr></thead>
                             <tbody>${this._estaciones.map(e => {
                                 return `<tr>
@@ -136,8 +182,7 @@ App.registerModule('prod_config', {
                                 <td>${e.cuello_botella ? '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#fee2e2;color:#991b1b">Cuello de Botella</span>' : '<span style="color:var(--text-light);font-size:11px">No</span>'}</td>
                                 <td>${e.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
                                 <td class="table-actions">
-                                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showEstacionForm(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteEstacion(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                    ${this.menuAcciones('Estacion', e.id)}
                                 </td>
                             </tr>`;
                             }).join('')}</tbody></table>
@@ -155,23 +200,22 @@ App.registerModule('prod_config', {
         if (!cardsMobile) return;
         cardsMobile.innerHTML = this._estaciones.length ? this._estaciones.map(e => {
             const statusBadge = e.activa 
-                ? '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Activa</span>'
-                : '<span style="background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Inactiva</span>';
+                ? '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">Activa</span>'
+                : '<span style="background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">Inactiva</span>';
             const cuelloBadge = e.cuello_botella 
-                ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Cuello Botella</span>'
+                ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">Cuello de botella</span>'
                 : '';
             return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
                 <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
                     <div style="display:flex;align-items:center;gap:8px">
-                        <span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px;font-weight:700;font-size:12px">${e.orden_secuencia_defecto}</span>
+                        <span style="background:var(--primary);color:#fff;padding:4px 10px;border-radius:4px;font-weight:700;font-size:11px">${e.orden_secuencia_defecto}</span>
                         <div>
                             <div style="font-weight:700;font-size:13px">${escapeHtml(e.nombre_estacion)}</div>
                             <div style="font-size:10px;color:#64748b">${Number(e.cap_max || 100).toFixed(0)} m²/dia</div>
                         </div>
                     </div>
                     <div style="display:flex;gap:4px">
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showEstacionForm(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                        <button class="btn btn-sm btn-danger" onclick="App.modules.prod_config.deleteEstacion(${e.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        ${this.menuAcciones('Estacion', e.id)}
                     </div>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -186,7 +230,7 @@ App.registerModule('prod_config', {
         const est = id ? this._estaciones.find(e => e.id === id) : null;
         App.showModal(`
             <div class="m-card" style="margin-bottom:10px">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos de Estacion</div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600">Datos de estación</div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">
                         <div class="form-group" style="margin:0">
@@ -201,7 +245,7 @@ App.registerModule('prod_config', {
                 </div>
             </div>
             <div class="m-card" style="margin-bottom:10px">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="color:#166534">Capacidad</span></div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="color:#166534">Capacidad</span></div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div class="form-group" style="margin:0">
                         <label style="font-size:10px;margin-bottom:2px;display:block;font-weight:600;color:#64748b">Capacidad Maxima (m²/dia) *</label>
@@ -212,18 +256,18 @@ App.registerModule('prod_config', {
             <div class="m-card">
                 <div class="m-card-body" style="padding:8px 12px">
                     <div style="display:flex;flex-direction:column;gap:8px">
-                        <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer">
                             <input type="checkbox" id="estCuelloBotella" ${est && est.cuello_botella ? 'checked' : ''} style="width:16px;height:16px">
                             <span>Cuello de Botella (limita capacidad diaria)</span>
                         </label>
-                        <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer">
                             <input type="checkbox" id="estActiva" ${!est || est.activa ? 'checked' : ''} style="width:16px;height:16px">
                             <span>Activa</span>
                         </label>
                     </div>
                 </div>
             </div>
-        `, { title: est ? 'Editar Estacion' : 'Nueva Estacion' });
+        `, { title: est ? 'Editar Estacion' : 'Nueva estación' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.prod_config.saveEstacion(${id || 0})">${est ? 'Actualizar' : 'Guardar'}</button>`;
@@ -250,7 +294,7 @@ App.registerModule('prod_config', {
     },
 
     async deleteEstacion(id) {
-        if (!await App.confirm('¿Eliminar esta estacion?')) return;
+        if (!await App.confirm('¿Eliminar esta estación?')) return;
         try {
             await apiJson(await fetch(`/api/produccion/estaciones/${id}`, { method:'DELETE', headers:this._headers() }));
         } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); return; }
@@ -274,13 +318,13 @@ App.registerModule('prod_config', {
             <div class="m-page">
                 <div class="m-hero" style="padding:10px 14px">
                     <div style="position:relative;z-index:1">
-                        <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Familias de Producto</h2>
+                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white">Familias de Producto</h2>
                         <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Configuracion de costos y estaciones base</p>
                     </div>
                 </div>
 
                 <div class="m-actions">
-                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.prod_config.showFamiliaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_config.showFamiliaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                 </div>
 
                 <div class="m-card">
@@ -301,8 +345,7 @@ App.registerModule('prod_config', {
                                     <td>$${Number(f.costo_energia).toLocaleString('es-CL')}</td>
                                     <td>${estNames || '<span class="text-muted">Sin asignar</span>'}</td>
                                     <td class="table-actions">
-                                        <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showFamiliaForm(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                        <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteFamilia(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                        ${this.menuAcciones('Familia', f.id)}
                                     </td>
                                 </tr>`;
                             }).join('')}</tbody></table>
@@ -327,8 +370,7 @@ App.registerModule('prod_config', {
                         <div style="font-size:11px;color:#64748b">${escapeHtml(f.nombre_familia)}</div>
                     </div>
                     <div style="display:flex;gap:4px">
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showFamiliaForm(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                        <button class="btn btn-sm btn-danger" onclick="App.modules.prod_config.deleteFamilia(${f.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        ${this.menuAcciones('Familia', f.id)}
                     </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;margin-bottom:6px">
@@ -365,7 +407,7 @@ App.registerModule('prod_config', {
         
         App.showModal(`
             <div class="m-card" style="margin-bottom:10px">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos de Familia</div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600">Datos de Familia</div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div class="fam-form-grid">
                         <div class="form-group"><label>Codigo Familia *</label><input class="form-control" id="famCodigo" value="${fam ? escAttr(fam.codigo_familia) : ''}" placeholder="Ej: TEMPLADO"></div>
@@ -374,7 +416,7 @@ App.registerModule('prod_config', {
                 </div>
             </div>
             <div class="m-card" style="margin-bottom:10px">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="color:#166534">Costos</span></div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="color:#166534">Costos</span></div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div class="fam-form-grid">
                         <div class="form-group"><label>Costo Hora Hombre ($/m2)</label><input type="number" class="form-control" id="famHH" value="${fam ? fam.costo_hh : 0}" min="0"></div>
@@ -383,16 +425,16 @@ App.registerModule('prod_config', {
                 </div>
             </div>
             <div class="m-card">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#eff6ff;border-bottom:1px solid #bfdbfe"><span style="color:#1e40af">Estaciones Base del Proceso</span></div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600;background:#eff6ff;border-bottom:1px solid #bfdbfe"><span style="color:#1e40af">Estaciones Base del Proceso</span></div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div style="display:flex;flex-wrap:wrap;gap:4px 12px">
-                        ${this._estaciones.filter(e => e.activa).map(e => `<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+                        ${this._estaciones.filter(e => e.activa).map(e => `<label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer">
                             <input type="checkbox" class="fam-est-check" value="${e.id}" ${estIds.includes(e.id) ? 'checked' : ''}> ${e.orden_secuencia_defecto}. ${escText(e.nombre_estacion)}
                         </label>`).join('')}
                     </div>
                 </div>
             </div>
-        `, { title: fam ? 'Editar Familia' : 'Nueva Familia', lg: true });
+        `, { title: fam ? 'Editar Familia' : 'Nueva familia', lg: true });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.prod_config.saveFamilia(${id || 0})">${fam ? 'Actualizar' : 'Guardar'}</button>`;
@@ -439,13 +481,13 @@ App.registerModule('prod_config', {
             <div class="m-page">
                 <div class="m-hero" style="padding:10px 14px">
                     <div style="position:relative;z-index:1">
-                        <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Grupos de Produccion</h2>
+                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white">Grupos de Producción</h2>
                         <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Capacidad por grupo en kg/dia</p>
                     </div>
                 </div>
 
                 <div class="m-actions">
-                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.prod_config.showGrupoForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_config.showGrupoForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                 </div>
 
                 <div class="m-card">
@@ -463,8 +505,7 @@ App.registerModule('prod_config', {
                                 <td>${Number(g.capacidad_kg_dia).toLocaleString('es-CL')} kg</td>
                                 <td>${g.activo ? '<span class="status-badge status-terminado">Activo</span>' : '<span class="status-badge status-mermado">Inactivo</span>'}</td>
                                 <td class="table-actions">
-                                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showGrupoForm(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteGrupo(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                    ${this.menuAcciones('Grupo', g.id)}
                                 </td>
                             </tr>`).join('')}</tbody>
                         </table>
@@ -482,8 +523,8 @@ App.registerModule('prod_config', {
         if (!cardsMobile) return;
         cardsMobile.innerHTML = this._grupos.length ? this._grupos.map(g => {
             const statusBadge = g.activo 
-                ? '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Activo</span>'
-                : '<span style="background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Inactivo</span>';
+                ? '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">Activo</span>'
+                : '<span style="background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">Inactivo</span>';
             return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
                 <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
                     <div style="display:flex;align-items:center;gap:8px">
@@ -494,8 +535,7 @@ App.registerModule('prod_config', {
                         </div>
                     </div>
                     <div style="display:flex;gap:4px">
-                        <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showGrupoForm(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                        <button class="btn btn-sm btn-danger" onclick="App.modules.prod_config.deleteGrupo(${g.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        ${this.menuAcciones('Grupo', g.id)}
                     </div>
                 </div>
                 <div>${statusBadge}</div>
@@ -509,7 +549,7 @@ App.registerModule('prod_config', {
         
         App.showModal(`
             <div class="m-card" style="margin-bottom:10px">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos del Grupo</div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600">Datos del Grupo</div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">
                         <div class="form-group" style="margin:0">
@@ -524,7 +564,7 @@ App.registerModule('prod_config', {
                 </div>
             </div>
             <div class="m-card" style="margin-bottom:10px">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#f0f9ff;border-bottom:1px solid #bae6fd"><span style="color:#0369a1">Color</span></div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600;background:#f0f9ff;border-bottom:1px solid #bae6fd"><span style="color:#0369a1">Color</span></div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div style="display:flex;gap:8px;flex-wrap:wrap" id="grupoColorPicker">
                         ${colores.map(c => `<div onclick="document.getElementById('grupoColor').value='${c}';document.querySelectorAll('#grupoColorPicker div').forEach(d=>d.style.outline='none');this.style.outline='3px solid #3b82f6'" style="width:32px;height:32px;border-radius:8px;background:${c};cursor:pointer;border:2px solid rgba(0,0,0,0.1);${g && g.color === c ? 'outline:3px solid #3b82f6' : ''}"></div>`).join('')}
@@ -534,13 +574,13 @@ App.registerModule('prod_config', {
             </div>
             <div class="m-card">
                 <div class="m-card-body" style="padding:8px 12px">
-                    <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer">
                         <input type="checkbox" id="grupoActivo" ${!g || g.activo ? 'checked' : ''} style="width:16px;height:16px">
                         <span>Activo</span>
                     </label>
                 </div>
             </div>
-        `, { title: g ? 'Editar Grupo' : 'Nuevo Grupo' });
+        `, { title: g ? 'Editar Grupo' : 'Nuevo grupo' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.prod_config.saveGrupo(${id || 0})">${g ? 'Actualizar' : 'Guardar'}</button>`;
@@ -597,18 +637,18 @@ App.registerModule('prod_config', {
             <div class="m-page">
                 <div class="m-hero" style="padding:10px 14px">
                     <div style="position:relative;z-index:1">
-                        <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Materias Primas (Vidrios)</h2>
-                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestion de costos y datos de vidrios</p>
+                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white">Materias primas (Vidrios)</h2>
+                        <p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Gestión de costos y datos de vidrios</p>
                     </div>
                 </div>
 
                 <div class="m-actions">
                     <div class="m-filters">
-                        <div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-control" id="mpSearch" placeholder="Buscar codigo, nombre..." oninput="App.modules.prod_config._filterMaterias()" style="width:200px;padding:6px 8px 6px 32px;font-size:12px"></div>
+                        <div style="position:relative"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" class="form-control" id="mpSearch" placeholder="Buscar código, nombre..." oninput="App.modules.prod_config._filterMaterias()" style="width:200px;padding:6px 8px 6px 32px;font-size:11px"></div>
                     </div>
                     <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar</button>
                     <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.exportarExcel()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Exportar</button>
-                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.prod_config.showMateriaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_config.showMateriaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                 </div>
 
                 <div class="m-card">
@@ -617,7 +657,7 @@ App.registerModule('prod_config', {
                     </div>
                     <div class="m-card-body" style="padding:0;overflow:scroll;max-height:825px">
                         <div class="m-table-wrap">
-                            <table style="font-size:12px"><thead style="position:sticky;top:0;z-index:1"><tr>
+                            <table style="font-size:11px"><thead style="position:sticky;top:0;z-index:1"><tr>
                                 <th>Codigo</th><th>Nombre</th><th>Esp.</th>
                                 <th style="background:#f0fdf4">Costo Nac</th>
                                 <th style="background:#eff6ff">Costo Imp</th>
@@ -679,8 +719,7 @@ App.registerModule('prod_config', {
                 <td style="background:#fce7f3;text-align:right">${mpa.toFixed(2)}%</td>
                 <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${obs}</td>
                 <td class="table-actions" style="white-space:nowrap">
-                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                    ${this.menuAcciones('Materia', m.id)}
                 </td>
             </tr>`}).join('') : '<tr><td colspan="10" style="text-align:center;padding:24px;color:#64748b">No se encontraron materias primas</td></tr>';
         }
@@ -696,8 +735,8 @@ App.registerModule('prod_config', {
                 const col = (v) => v > 0 ? '#dc2626' : v < 0 ? '#16a34a' : '#64748b';
                 let badge = '';
                 if (cn > 0 && ci > 0) {
-                    if (diffM2 > 0) badge = '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Nac ' + fmt(Math.abs(diffM2)) + '</span>';
-                    else if (diffM2 < 0) badge = '<span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:600">Imp ' + fmt(Math.abs(diffM2)) + '</span>';
+                    if (diffM2 > 0) badge = '<span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">Nac ' + fmt(Math.abs(diffM2)) + '</span>';
+                    else if (diffM2 < 0) badge = '<span style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">Imp ' + fmt(Math.abs(diffM2)) + '</span>';
                 }
                 return `<div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
                     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
@@ -706,8 +745,7 @@ App.registerModule('prod_config', {
                             <div style="font-size:11px;color:#64748b">${escapeHtml(m.nombre)} - ${m.espesor_mm}mm</div>
                         </div>
                         <div style="display:flex;gap:4px">
-                            <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.showMateriaForm(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                            <button class="btn btn-sm btn-danger" onclick="App.modules.prod_config.deleteMateria(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                            ${this.menuAcciones('Materia', m.id)}
                         </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:10px">
@@ -743,7 +781,7 @@ App.registerModule('prod_config', {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                     <strong style="color:#0c4a6e;font-size:13px">Formato requerido</strong>
                 </div>
-                <p style="margin:0 0 8px;font-size:12px;color:#075985">El archivo Excel debe contener las siguientes columnas:</p>
+                <p style="margin:0 0 8px;font-size:11px;color:#075985">El archivo Excel debe contener las siguientes columnas:</p>
                 <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
                     <span style="background:#0ea5e9;color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Codigo MP *</span>
                     <span style="background:#0ea5e9;color:white;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Nombre *</span>
@@ -770,10 +808,10 @@ App.registerModule('prod_config', {
             <div id="mpImportPreview" style="display:none;margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
                 <div style="display:flex;align-items:center;gap:6px">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    <span id="mpImportInfo" style="font-size:12px;color:#166534"></span>
+                    <span id="mpImportInfo" style="font-size:11px;color:#166534"></span>
                 </div>
             </div>
-        `, { title: 'Importar Materias Primas desde Excel' });
+        `, { title: 'Importar Materias primas desde Excel' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" id="mpImportBtn" onclick="App.modules.prod_config._doImportMaterias()" disabled>Importar</button>`;
@@ -787,16 +825,16 @@ App.registerModule('prod_config', {
         reader.onload = (ev) => {
             try {
                 const XLSXLib = window.XLSX;
-                if (!XLSXLib) { alert('Libreria XLSX no cargada'); return; }
+                if (!XLSXLib) { App.showAlert('Librería XLSX no cargada', 'danger'); return; }
                 const wb = XLSXLib.read(ev.target.result, { type: 'array' });
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 const rows = XLSXLib.utils.sheet_to_json(ws, { defval: '' });
-                if (!rows.length) { alert('Archivo vacio'); return; }
+                if (!rows.length) { App.showAlert('Archivo vacío', 'danger'); return; }
                 this._mpImportData = rows;
                 document.getElementById('mpImportPreview').style.display = 'block';
                 document.getElementById('mpImportInfo').textContent = rows.length + ' registros encontrados';
                 document.getElementById('mpImportBtn').disabled = false;
-            } catch (err) { alert('Error leyendo archivo: ' + err.message); }
+            } catch (err) { App.showAlert('Error leyendo archivo: ' + err.message, 'danger'); }
         };
         reader.readAsArrayBuffer(file);
     },
@@ -817,10 +855,10 @@ App.registerModule('prod_config', {
                 App.hideModal();
                 this.loadMaterias();
             } else {
-                alert('Error: ' + (result.error || 'Desconocido'));
+                App.showAlert('Error: ' + (result.error || 'Desconocido'), 'danger');
                 btn.textContent = 'Importar'; btn.disabled = false;
             }
-        } catch (err) { alert('Error: ' + err.message); btn.textContent = 'Importar'; btn.disabled = false; }
+        } catch (err) { App.showAlert('Error: ' + err.message, 'danger'); btn.textContent = 'Importar'; btn.disabled = false; }
     },
 
     exportarExcel() {
@@ -837,10 +875,10 @@ App.registerModule('prod_config', {
             'Observacion': m.observacion || ''
         }));
         const XLSXLib = window.XLSX;
-        if (!XLSXLib) { alert('Libreria XLSX no cargada'); return; }
+        if (!XLSXLib) { App.showAlert('Librería XLSX no cargada', 'danger'); return; }
         const ws = XLSXLib.utils.json_to_sheet(rows);
         const wb = XLSXLib.utils.book_new();
-        XLSXLib.utils.book_append_sheet(wb, ws, 'Materias Primas');
+        XLSXLib.utils.book_append_sheet(wb, ws, 'Materias primas');
         XLSXLib.writeFile(wb, 'materias_primas.xlsx');
     },
 
@@ -867,7 +905,7 @@ App.registerModule('prod_config', {
         
         App.showModal(`
             <div class="m-card" style="margin-bottom:10px">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Datos Basicos</div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600">Datos básicos</div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div class="mp-form-grid">
                         <div class="form-group"><label>Codigo MP *</label><input class="form-control" id="mpCodigo" value="${m ? escAttr(m.codigo_mp) : ''}" placeholder="SKU interno"></div>
@@ -878,7 +916,7 @@ App.registerModule('prod_config', {
             </div>
             <div class="mp-form-section" style="margin-bottom:10px">
                 <div class="m-card">
-                    <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="color:#166534">Datos Nacional</span></div>
+                    <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600;background:#f0fdf4;border-bottom:1px solid #bbf7d0"><span style="color:#166534">Datos Nacional</span></div>
                     <div class="m-card-body" style="padding:8px 12px">
                         <div class="mp-form-grid" style="grid-template-columns:1fr 1fr">
                             <div class="form-group"><label>Costo ($/m2)</label><input type="number" class="form-control mp-nal" id="mpCostoNal" value="${v('costo_unitario_mp', true)}" min="0" step="1"></div>
@@ -892,7 +930,7 @@ App.registerModule('prod_config', {
                     </div>
                 </div>
                 <div class="m-card">
-                    <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#eff6ff;border-bottom:1px solid #bfdbfe"><span style="color:#1e40af">Datos Importado</span></div>
+                    <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600;background:#eff6ff;border-bottom:1px solid #bfdbfe"><span style="color:#1e40af">Datos Importado</span></div>
                     <div class="m-card-body" style="padding:8px 12px">
                         <div class="mp-form-grid" style="grid-template-columns:1fr 1fr">
                             <div class="form-group"><label>Costo ($/m2)</label><input type="number" class="form-control mp-imp" id="mpCostoImp" value="${v('costo_unitario_importado', true)}" min="0" step="1"></div>
@@ -907,7 +945,7 @@ App.registerModule('prod_config', {
                 </div>
             </div>
             <div class="m-card" style="margin-bottom:10px">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600;background:#fefce8;border-bottom:1px solid #fde68a"><span style="color:#854d0e">Resumen (calculado)</span></div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600;background:#fefce8;border-bottom:1px solid #fde68a"><span style="color:#854d0e">Resumen (calculado)</span></div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div class="mp-form-grid" style="grid-template-columns:1fr 1fr 1fr">
                         <div class="form-group"><label>Diferencia $/m2</label><input type="text" class="form-control" id="mpDiffM2" readonly style="background:#fff;font-weight:600"></div>
@@ -917,7 +955,7 @@ App.registerModule('prod_config', {
                 </div>
             </div>
             <div class="m-card" style="margin-bottom:10px">
-                <div class="m-card-header" style="padding:6px 12px;font-size:12px;font-weight:600">Observaciones</div>
+                <div class="m-card-header" style="padding:6px 12px;font-size:11px;font-weight:600">Observaciones</div>
                 <div class="m-card-body" style="padding:8px 12px">
                     <div class="form-group"><textarea class="form-control" id="mpObs" rows="2" placeholder="Notas adicionales...">${m ? escText(m.observacion || '') : ''}</textarea></div>
                 </div>
@@ -940,13 +978,13 @@ App.registerModule('prod_config', {
 
             const el = document.getElementById('mpAnalisis');
             if (cn === 0 && ci === 0) {
-                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span style="color:#64748b;font-size:12px">Ingrese costos para ver analisis</span>';
+                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span style="color:#64748b;font-size:11px">Ingrese costos para ver análisis</span>';
             } else if (diffM2 > 0) {
-                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span style="color:#166534;font-size:12px;font-weight:600">Conviene Nacional</span><span style="color:#166534;font-size:11px"> — Ahorro de ' + fmt(Math.abs(diffM2)) + '/m2</span>';
+                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span style="color:#166534;font-size:11px;font-weight:600">Conviene Nacional</span><span style="color:#166534;font-size:11px"> — Ahorro de ' + fmt(Math.abs(diffM2)) + '/m2</span>';
             } else if (diffM2 < 0) {
-                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span style="color:#166534;font-size:12px;font-weight:600">Conviene Importado</span><span style="color:#166534;font-size:11px"> — Ahorro de ' + fmt(Math.abs(diffM2)) + '/m2</span>';
+                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span style="color:#166534;font-size:11px;font-weight:600">Conviene Importado</span><span style="color:#166534;font-size:11px"> — Ahorro de ' + fmt(Math.abs(diffM2)) + '/m2</span>';
             } else {
-                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span style="color:#64748b;font-size:12px">Precios iguales</span>';
+                el.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span style="color:#64748b;font-size:11px">Precios iguales</span>';
             }
         };
 
@@ -1036,7 +1074,7 @@ App.registerModule('prod_config', {
                 </div>
 
                 <div class="m-actions">
-                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.prod_config.showReglaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                    <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_config.showReglaForm()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                 </div>
 
                 <div class="m-card">
@@ -1057,8 +1095,7 @@ App.registerModule('prod_config', {
                                 <td>${r.orden_secuencia_defecto || '-'}</td>
                                 <td>${r.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}</td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showReglaForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteRegla(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                    ${this.menuAcciones('Regla', r.id)}
                                 </td>
                             </tr>`).join('')}</tbody>
                         </table>
@@ -1067,16 +1104,15 @@ App.registerModule('prod_config', {
                         <div class="m-card-header m-table-row">
                             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%">
                                 <div style="flex:1">
-                                    <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px"><code style="background:#f1f5f9;padding:2px 8px;border-radius:4px">${escapeHtml(r.nombre_flag)}</code></div>
-                                    <div style="font-size:12px;color:#64748b;margin-bottom:4px">${escapeHtml(r.nombre_estacion || '-')}</div>
+                                    <div style="font-weight:700;font-size:15px;color:#0f172a;margin-bottom:4px"><code style="background:#f1f5f9;padding:2px 8px;border-radius:4px">${escapeHtml(r.nombre_flag)}</code></div>
+                                    <div style="font-size:11px;color:#64748b;margin-bottom:4px">${escapeHtml(r.nombre_estacion || '-')}</div>
                                     <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
                                         <span style="font-size:11px;color:#64748b">Orden: ${r.orden_secuencia_defecto || '-'}</span>
                                         ${r.activa ? '<span class="status-badge status-realizada">Activa</span>' : '<span class="status-badge status-vencida">Inactiva</span>'}
                                     </div>
                                 </div>
                                 <div style="display:flex;gap:4px;flex-shrink:0">
-                                    <button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_config.showReglaForm(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                    <button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_config.deleteRegla(${r.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                    ${this.menuAcciones('Regla', r.id)}
                                 </div>
                             </div>
                         </div>
@@ -1096,7 +1132,7 @@ App.registerModule('prod_config', {
                 </select>
             </div>
             <div class="form-group"><label><input type="checkbox" id="regActiva" ${!r || r.activa ? 'checked' : ''}> Activa</label></div>
-        `, { title: r ? 'Editar Regla' : 'Nueva Regla' });
+        `, { title: r ? 'Editar Regla' : 'Nueva regla' });
         document.querySelector('#modalOverlay .modal-footer').innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
             <button class="btn btn-primary" onclick="App.modules.prod_config.saveRegla(${id || 0})">${r ? 'Actualizar' : 'Guardar'}</button>`;
@@ -1182,14 +1218,14 @@ App.registerModule('prod_config', {
                 <div class="m-actions">
                     <div style="display:flex;gap:8px;align-items:center">
                         <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(-1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
-                        <strong style="font-size:14px">${monthNames[month]} ${year}</strong>
+                        <strong style="font-size:15px">${monthNames[month]} ${year}</strong>
                         <button class="btn btn-sm btn-outline" onclick="App.modules.prod_config.calCambiar(1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
                     </div>
                 </div>
 
                 <div class="m-card">
                     <div class="m-card-body" style="padding:12px">
-                        <div style="display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--text-light)">
+                        <div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px;color:var(--text-light)">
                             <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dcfce7;vertical-align:middle"></span> Laboral</span>
                             <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fee2e2;vertical-align:middle"></span> No Laboral</span>
                         </div>

@@ -9,16 +9,26 @@ App.registerModule('prod_maquinas', {
         const puedeEditar = esAdmin || permisos.includes('produccion');
 
         el.innerHTML = `
+            <style>
+                .maq-amenu{position:relative;display:inline-block}
+                .maq-amenu-btn{padding:6px 11px;border-radius:7px;border:1px solid #e4e9f0;background:#fff;color:#475569;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+                .maq-amenu-btn:hover{background:#f8fafc}
+                .maq-amenu-drop{display:none;position:fixed;z-index:95;background:#fff;border:1px solid #e4e9f0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.16);min-width:190px;padding:5px}
+                .maq-amenu-drop .it{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;white-space:nowrap}
+                .maq-amenu-drop .it:hover{background:#f8fafc}
+                .maq-amenu-drop .it.danger{color:#dc2626}
+                .maq-amenu-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}
+            </style>
             <div class="m-page">
                 <div class="m-hero" style="padding:10px 14px">
                     <div style="position:relative;z-index:1">
-                        <h2 style="margin:0;font-size:14px;font-weight:800;color:white">Maquinas de Produccion</h2>
+                        <h2 style="margin:0;font-size:15px;font-weight:800;color:white">Maquinas de Produccion</h2>
                     </div>
                 </div>
 
                 <div class="m-actions">
                     ${puedeEditar ? `
-                        <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.prod_maquinas.showCreateModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                        <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_maquinas.showCreateModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                         <button class="btn btn-sm btn-outline" onclick="App.modules.prod_maquinas.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Importar</button>
                     ` : ''}
                 </div>
@@ -29,7 +39,7 @@ App.registerModule('prod_maquinas', {
                     </div>
                     <div class="m-card-body" style="padding:0">
                         <div class="m-table-wrap">
-                            <table style="font-size:12px"><thead><tr>
+                            <table style="font-size:11px"><thead><tr>
                                 <th>Codigo</th><th>Nombre</th><th>Estacion</th><th>Estado</th><th>Acciones</th>
                             </tr></thead><tbody id="mqTable">
                                 <tr><td colspan="5" style="text-align:center;padding:24px;color:#64748b">Cargando...</td></tr>
@@ -112,8 +122,7 @@ App.registerModule('prod_maquinas', {
                 <td style="${td}">${escText(m.estacion_nombre || '-')}</td>
                 <td style="${td}">${estadoBadge(m.estado)}</td>
                 <td style="${td}">
-                    ${puedeEditar ? `<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_maquinas.edit(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                    <button class="btn btn-sm btn-danger" title="Eliminar" style="margin-left:4px" onclick="App.modules.prod_maquinas.delete(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}
+                    ${puedeEditar ? this.menuAcciones(m.id) : ''}
                 </td>
             </tr>`).join('');
         }
@@ -128,8 +137,7 @@ App.registerModule('prod_maquinas', {
                         </div>
                         <div style="display:flex;gap:4px">
                             ${puedeEditar ? `
-                                <button class="btn btn-sm btn-outline" onclick="App.modules.prod_maquinas.edit(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                <button class="btn btn-sm btn-danger" onclick="App.modules.prod_maquinas.delete(${m.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                ${this.menuAcciones(m.id)}
                             ` : ''}
                         </div>
                     </div>
@@ -154,6 +162,44 @@ App.registerModule('prod_maquinas', {
         document.getElementById('mqCreateModal').classList.add('show');
     },
 
+    // ── Menú de acciones (popover fijo, patrón del sistema) ──
+    menuAcciones(id) {
+        return `<div class="maq-amenu"><button class="maq-amenu-btn" onclick="App.modules.prod_maquinas.toggleAcciones(event)">Acciones ▾</button>
+        <div class="maq-amenu-drop">
+            <div class="it" onclick="App.modules.prod_maquinas.edit(${id})">✏️ Editar máquina</div>
+            <div class="sep"></div>
+            <div class="it danger" onclick="App.modules.prod_maquinas.delete(${id})">🗑 Eliminar máquina</div>
+        </div></div>`;
+    },
+    toggleAcciones(e) {
+        e.stopPropagation();
+        this._setupMenus();
+        const wrap = e.currentTarget.parentElement;
+        const menu = wrap.querySelector('.maq-amenu-drop');
+        if (!menu) return;
+        const wasVisible = menu.style.display === 'block';
+        this._cerrarMenus();
+        if (wasVisible) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        menu.style.display = 'block';
+        menu.style.top = '0px';
+        menu.style.left = '0px';
+        const mh = menu.offsetHeight, mw = menu.offsetWidth;
+        const espacioAbajo = window.innerHeight - rect.bottom;
+        menu.style.top = (espacioAbajo < mh + 12 ? Math.max(8, rect.top - mh - 6) : rect.bottom + 6) + 'px';
+        menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - mw - 8)) + 'px';
+    },
+    _cerrarMenus() {
+        document.querySelectorAll('.maq-amenu-drop').forEach(d => d.style.display = 'none');
+    },
+    _setupMenus() {
+        if (this._menusBound) return;
+        this._menusBound = true;
+        document.addEventListener('click', () => this._cerrarMenus());
+        window.addEventListener('scroll', () => this._cerrarMenus(), true);
+        window.addEventListener('resize', () => this._cerrarMenus());
+    },
+
     edit(id) {
         const m = this.maquinas.find(x => x.id === id);
         if (!m) return;
@@ -173,7 +219,7 @@ App.registerModule('prod_maquinas', {
         const codigo = document.getElementById('mqCodigo').value.trim();
         const estado = document.getElementById('mqEstado').value;
         const estacion_id = document.getElementById('mqEstacion').value || null;
-        if (!nombre || !codigo) { alert('Nombre y codigo requeridos'); return; }
+        if (!nombre || !codigo) { App.showAlert('Nombre y codigo requeridos', 'danger'); return; }
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             const headers = { 'Content-Type': 'application/json', 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' };
@@ -184,21 +230,21 @@ App.registerModule('prod_maquinas', {
                 await apiJson(await fetch('/api/produccion/maquinas', { method: 'POST', headers, body: JSON.stringify(data) }));
             }
             this.hideCreateModal();
-            App.toast(this.editingId ? 'Maquina actualizada' : 'Maquina creada');
+            App.toast(this.editingId ? 'Máquina actualizada' : 'Máquina creada');
             await this.load();
-        } catch(e) { alert('Error: ' + e.message); }
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     async delete(id) {
-        if (!confirm('Eliminar esta maquina?')) return;
+        if (!(await App.confirm('¿Eliminar esta máquina?'))) return;
         try {
             const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
             await apiJson(await fetch(`/api/produccion/maquinas/${id}`, {
                 method: 'DELETE', headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' }
             }));
-            App.toast('Maquina eliminada');
+            App.toast('Máquina eliminada');
             await this.load();
-        } catch(e) { alert('Error: ' + e.message); }
+        } catch(e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     showImportModal() {
@@ -212,7 +258,7 @@ App.registerModule('prod_maquinas', {
                     <div class="modal-header"><h3>Importar Maquinas desde Excel</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_maquinas.hideImportModal()">&times;</button></div>
                     <div class="modal-body">
                         <p style="color:var(--text-light);font-size:13px;margin-bottom:12px">El archivo debe tener columnas: <strong>Codigo, Nombre, Tipo_proceso, n_operacion, cap_max, Estado</strong></p>
-                        <p style="color:var(--text-light);font-size:12px;margin-bottom:16px">Los codigos duplicados seran omitidos. Estado puede ser: ACTIVA, INACTIVA, MANTENCION</p>
+                        <p style="color:var(--text-light);font-size:11px;margin-bottom:16px">Los codigos duplicados seran omitidos. Estado puede ser: ACTIVA, INACTIVA, MANTENCION</p>
                         <input type="file" id="mqImportFile" accept=".xlsx,.xls,.csv" style="margin-bottom:12px" onchange="App.modules.prod_maquinas.previewImport(event)">
                         <div id="mqImportPreview" style="max-height:250px;overflow-y:auto"></div>
                     </div>
@@ -246,7 +292,7 @@ App.registerModule('prod_maquinas', {
                 const wb = XLSX.read(e.target.result, { type: 'array' });
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 const rows = XLSX.utils.sheet_to_json(ws);
-                if (rows.length === 0) { alert('El archivo esta vacio'); return; }
+                if (rows.length === 0) { App.showAlert('El archivo esta vacio', 'danger'); return; }
                 this._importData = rows.map(r => ({
                     codigo: (r.Codigo || r.codigo || r.CODIGO || r.Código || '').toString().trim(),
                     nombre: (r.Nombre || r.nombre || r.NOMBRE || '').toString().trim(),
@@ -257,12 +303,12 @@ App.registerModule('prod_maquinas', {
                 })).filter(m => m.codigo && m.nombre);
                 const preview = document.getElementById('mqImportPreview');
                 preview.innerHTML = `<div style="margin-bottom:8px;font-size:13px"><strong>${this._importData.length}</strong> maquinas encontradas</div>
-                    <table style="width:100%;font-size:12px"><thead><tr><th>Codigo</th><th>Nombre</th><th>Tipo Proceso</th><th>N° Op</th><th>Capacidad</th><th>Estado</th></tr></thead><tbody>
+                    <table style="width:100%;font-size:11px"><thead><tr><th>Codigo</th><th>Nombre</th><th>Tipo Proceso</th><th>N° Op</th><th>Capacidad</th><th>Estado</th></tr></thead><tbody>
                     ${this._importData.slice(0, 20).map(m => `<tr><td>${escText(m.codigo)}</td><td>${escText(m.nombre)}</td><td>${escText(m.tipo_proceso)}</td><td>${escText(m.num_operacion || '-')}</td><td>${escText(m.cap_max)}</td><td>${escText(m.estado)}</td></tr>`).join('')}
                     ${this._importData.length > 20 ? `<tr><td colspan="6" style="text-align:center;color:var(--text-light)">... y ${this._importData.length - 20} mas</td></tr>` : ''}
                     </tbody></table>`;
                 document.getElementById('mqImportBtn').disabled = this._importData.length === 0;
-            } catch(err) { alert('Error al leer el archivo: ' + err.message); }
+            } catch(err) { App.showAlert('Error al leer el archivo: ' + err.message, 'danger'); }
         };
         reader.readAsArrayBuffer(file);
     },
@@ -284,7 +330,7 @@ App.registerModule('prod_maquinas', {
             } else {
                 alert('Error: ' + (result.error || 'Error desconocido'));
             }
-        } catch(e) { alert('Error al importar: ' + e.message); }
+        } catch(e) { App.showAlert('Error al importar: ' + e.message, 'danger'); }
         btn.disabled = false;
         btn.textContent = 'Importar';
     }
