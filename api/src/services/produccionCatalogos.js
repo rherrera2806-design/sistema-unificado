@@ -34,6 +34,10 @@ module.exports = {
     eliminarRecetaAntigua: recetasBom.eliminarRecetaAntigua,
     eliminarTodasRecetasAntiguas: recetasBom.eliminarTodasRecetasAntiguas,
     importarRecetasAntiguas: recetasBom.importarRecetasAntiguas,
+    guardarPlano: recetasBom.guardarPlano,
+    obtenerPlano: recetasBom.obtenerPlano,
+    eliminarPlano: recetasBom.eliminarPlano,
+    getPlanos: recetasBom.getPlanos,
     
     // Reglas extras
     getReglasExtras: auxiliares.getReglasExtras,

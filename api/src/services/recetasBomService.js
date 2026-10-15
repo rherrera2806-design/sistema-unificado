@@ -33,6 +33,37 @@ const resolverFamilia = async (codigo) => {
     return famRes.rows.length > 0 ? famRes.rows[0].id : null;
 };
 
+// ============ PLANOS DE CÓDIGO (PDF o imagen) ============
+
+const guardarPlano = async (codigo, buffer, tipo, nombre) => {
+    await query(`
+        INSERT INTO codigo_planos (codigo_sap_padre, plano, plano_tipo, plano_nombre, updated_at)
+        VALUES (LOWER(TRIM($1)), $2, $3, $4, NOW())
+        ON CONFLICT (codigo_sap_padre) DO UPDATE
+        SET plano = EXCLUDED.plano, plano_tipo = EXCLUDED.plano_tipo,
+            plano_nombre = EXCLUDED.plano_nombre, updated_at = NOW()`,
+        [codigo, buffer, tipo, nombre || 'plano']);
+    return { ok: true };
+};
+
+const obtenerPlano = async (codigo) => {
+    const result = await query(
+        'SELECT codigo_sap_padre, plano, plano_tipo, plano_nombre FROM codigo_planos WHERE LOWER(TRIM(codigo_sap_padre)) = LOWER(TRIM($1))',
+        [codigo]);
+    return result.rows[0] || null;
+};
+
+const eliminarPlano = async (codigo) => {
+    const result = await query('DELETE FROM codigo_planos WHERE LOWER(TRIM(codigo_sap_padre)) = LOWER(TRIM($1))', [codigo]);
+    return { ok: result.rowCount > 0 };
+};
+
+// Códigos que tienen plano (para badges "📎 plano" en el listado)
+const getPlanos = async () => {
+    const result = await query('SELECT codigo_sap_padre FROM codigo_planos ORDER BY codigo_sap_padre');
+    return result.rows;
+};
+
 const crearRecetaBom = async ({ codigo_sap_padre, materia_prima_id, cantidad, procesos_especificos_json, ancho, alto }) => {
     const procsJson = (procesos_especificos_json !== undefined && procesos_especificos_json !== null)
         ? JSON.stringify(Array.isArray(procesos_especificos_json) ? procesos_especificos_json : [])
@@ -367,5 +398,6 @@ const importarRecetasBom = async (rows) => {
 module.exports = {
     getRecetasBom, crearRecetaBom, actualizarRecetaBom, eliminarRecetaBom, eliminarTodasRecetasBom,
     previewRecetasBom, importarRecetasBom,
-    getRecetasAntiguas, crearRecetaAntigua, eliminarRecetaAntigua, eliminarTodasRecetasAntiguas, importarRecetasAntiguas
+    getRecetasAntiguas, crearRecetaAntigua, eliminarRecetaAntigua, eliminarTodasRecetasAntiguas, importarRecetasAntiguas,
+    guardarPlano, obtenerPlano, eliminarPlano, getPlanos
 };

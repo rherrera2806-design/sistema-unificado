@@ -13,6 +13,54 @@ const canDelete = requireAnyPerm(`${MOD}.eliminar`);
 
 router.get('/api/produccion/recetas-bom', canView, async (req, res, next) => { res.json(await catalogos.getRecetasBom()); });
 
+// ── Planos de código (PDF o imagen) ──────────────────────────────────────────
+// Subida en memoria (BYTEA), igual que los PDF de pedidos: máximo 20 MB,
+// solo PDF e imágenes. El plano es del CÓDIGO (todos sus items lo comparten).
+const multer = require('multer');
+const uploadPlano = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 20 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const ok = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.mimetype);
+        cb(ok ? null : new Error('Solo se permiten archivos PDF o imágenes (PNG, JPG, WEBP)'), ok);
+    }
+});
+const subirPlano = (req, res, next) => {
+    uploadPlano.single('plano')(req, res, (err) => {
+        if (!err) return next();
+        if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'El plano supera el máximo de 20 MB' });
+        return res.status(415).json({ error: err.message || 'Archivo no permitido' });
+    });
+};
+
+router.post('/api/produccion/codigos/:codigo/plano', canCreate, subirPlano, async (req, res, next) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'Archivo requerido (campo "plano")' });
+        res.json(await catalogos.guardarPlano(req.params.codigo, req.file.buffer, req.file.mimetype, req.file.originalname));
+    } catch (e) { next(e); }
+});
+
+router.get('/api/produccion/codigos/planos', canView, async (req, res, next) => {
+    res.json(await catalogos.getPlanos());
+});
+
+router.get('/api/produccion/codigos/:codigo/plano', canView, async (req, res, next) => {
+    try {
+        const plano = await catalogos.obtenerPlano(req.params.codigo);
+        if (!plano || !plano.plano) return res.status(404).json({ error: 'Este código no tiene plano adjunto' });
+        res.setHeader('Content-Type', plano.plano_tipo || 'application/pdf');
+        // inline: se ve en el navegador; filename con extensión para descargar
+        const ext = plano.plano_tipo === 'image/png' ? 'png' : plano.plano_tipo === 'image/jpeg' ? 'jpg' : plano.plano_tipo === 'image/webp' ? 'webp' : 'pdf';
+        res.setHeader('Content-Disposition', `inline; filename="plano_${req.params.codigo}.${ext}"`);
+        res.send(plano.plano);
+    } catch (e) { next(e); }
+});
+
+router.delete('/api/produccion/codigos/:codigo/plano', canDelete, async (req, res, next) => {
+    try { res.json(await catalogos.eliminarPlano(req.params.codigo)); }
+    catch (e) { next(e); }
+});
+
 router.post('/api/produccion/recetas-bom', canCreate, async (req, res, next) => {
     if (!req.body.codigo_sap_padre || !req.body.materia_prima_id) return res.status(400).json({ error: 'Código SAP y materia prima requeridos' });
     res.json(await catalogos.crearRecetaBom(req.body));

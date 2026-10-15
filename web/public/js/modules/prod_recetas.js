@@ -43,7 +43,7 @@ App.registerModule('prod_recetas', {
                         <div class="m-stat-value" id="recCustomStat">0</div>
                     </div>
                     <div class="m-stat-card stat-amber">
-                        <div class="m-stat-label">Codigos Unicos</div>
+                        <div class="m-stat-label">Códigos únicos</div>
                         <div class="m-stat-value" id="recCodigosStat">0</div>
                     </div>
                 </div>
@@ -54,10 +54,10 @@ App.registerModule('prod_recetas', {
                             <option value="">Todas las rutas</option>
                             <option value="custom">Con ruta custom</option>
                         </select>
-                        <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar codigo o material..." oninput="App.modules.prod_recetas.filter()" style="flex:1;min-width:150px;padding:10px 12px;font-size:13px">
+                        <input type="text" class="form-control" id="recFilterSearch" placeholder="Buscar código o material..." oninput="App.modules.prod_recetas.filter()" style="flex:1;min-width:150px;padding:10px 12px;font-size:13px">
                         ${puedeEditar ? `
                             <button class="btn btn-info" onclick="App.modules.prod_recetas.showImportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar</button>
-                            <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px" onclick="App.modules.prod_recetas.showCreateModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
+                            <button class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:11px" onclick="App.modules.prod_recetas.showCreateModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>
                             ${permisos.includes('usuarios') ? `<div class="rec-amenu"><button class="btn btn-sm" style="background:#fff;color:#dc2626;border:1px solid #fecaca;font-weight:600" onclick="App.modules.prod_recetas.toggleAcciones(event)">⚠ Zona de mantenimiento ▾</button><div class="rec-amenu-drop"><div class="it danger" onclick="App.modules.prod_recetas.deleteAll()">🗑 Limpiar Todo (eliminar todas las recetas)</div></div></div>` : ''}
                         ` : ''}
                     </div>
@@ -68,9 +68,9 @@ App.registerModule('prod_recetas', {
                         <table class="m-table">
                             <thead>
                                 <tr>
-                                    <th>Codigo SAP</th>
+                                    <th>Código SAP</th>
                                     <th>Materia Prima</th>
-                                    <th>Ruta de Procesos</th>
+                                    <th>Ruta de procesos</th>
                                     <th>Cant.</th>
                                     <th>Ancho</th>
                                     <th>Alto</th>
@@ -95,10 +95,10 @@ App.registerModule('prod_recetas', {
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                                 <strong style="color:#0c4a6e;font-size:13px">Formato requerido</strong>
                             </div>
-                            <p style="margin:0 0 8px;font-size:12px;color:#075985">El archivo Excel debe contener las siguientes columnas:</p>
+                            <p style="margin:0 0 8px;font-size:11px;color:#075985">El archivo Excel debe contener las siguientes columnas:</p>
                             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-                                <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Codigo SAP *</span>
-                                <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Codigo MP *</span>
+                                <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Código SAP *</span>
+                                <span style="background:#0ea5e9;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Código MP *</span>
                                 <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Cantidad</span>
                                 <span style="background:#64748b;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Estaciones (IDs separados por coma)</span>
                                 <span style="background:#8b5cf6;color:white;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">Ancho</span>
@@ -141,7 +141,7 @@ App.registerModule('prod_recetas', {
                     <div class="modal-header"><h3 id="recModalTitle">Nueva Receta BOM</h3><button class="modal-close" title="Cerrar" onclick="App.modules.prod_recetas.hideCreateModal()">&times;</button></div>
                     <div class="modal-body">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                            <div class="form-group"><label>Codigo SAP Padre *</label>
+                            <div class="form-group"><label>Código SAP padre *</label>
                                 <input class="form-control" id="recCodigoPadre" list="recCodigosList" placeholder="Ej: 500">
                                 <datalist id="recCodigosList"></datalist>
                             </div>
@@ -167,19 +167,29 @@ App.registerModule('prod_recetas', {
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                                 <div style="display:flex;align-items:center;gap:8px">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                                    <strong style="color:#5b21b6;font-size:13px">Ruta de Procesos Especifica</strong>
+                                    <strong style="color:#5b21b6;font-size:13px">Ruta de procesos específica</strong>
                                     <span style="font-size:11px;color:#7c3aed">(opcional)</span>
                                 </div>
-                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#5b21b6;font-weight:600">
-                                    <input type="checkbox" id="recUsarRutaCustom" onchange="App.modules.prod_recetas.toggleRutaCustom()" style="width:16px;height:16px;cursor:pointer"> Usar ruta especifica
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#5b21b6;font-weight:600">
+                                    <input type="checkbox" id="recUsarRutaCustom" onchange="App.modules.prod_recetas.toggleRutaCustom()" style="width:16px;height:16px;cursor:pointer"> Usar ruta específica
                                 </label>
                             </div>
                             <div id="recRutaContainer" style="display:none">
                                 <p style="margin:0 0 8px;font-size:11px;color:#6b21a8">Define las estaciones en orden de secuencia.</p>
                                 <div id="recProcesosList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div>
-                                <button onclick="App.modules.prod_recetas.addProcesoRow()" type="button" class="btn btn-outline btn-sm" style="border-color:#7c3aed;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar Estacion</button>
+                                <button onclick="App.modules.prod_recetas.addProcesoRow()" type="button" class="btn btn-outline btn-sm" style="border-color:#7c3aed;color:#7c3aed"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar estación</button>
                             </div>
                         </div>
+                    </div>
+                    <div class="form-group" style="margin-top:14px">
+                        <label style="font-weight:600;color:#334155;font-size:13px;display:block;margin-bottom:6px">Plano del código (PDF o imagen)</label>
+                        <div id="recPlanoEstado" style="font-size:11px;color:#64748b;margin-bottom:8px">Sin plano adjunto.</div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                            <input type="file" id="recPlanoFile" accept=".pdf,image/png,image/jpeg,image/webp" style="font-size:11px" onchange="App.modules.prod_recetas.onPlanoFile(this)">
+                            <button type="button" class="btn btn-outline btn-sm" id="recPlanoVer" style="display:none" onclick="App.modules.prod_recetas.verPlano()">👁 Ver plano</button>
+                            <button type="button" class="btn btn-outline btn-sm" id="recPlanoQuitar" style="display:none;color:#dc2626;border-color:#fecaca" onclick="App.modules.prod_recetas.quitarPlano()">Quitar plano</button>
+                        </div>
+                        <div style="font-size:10px;color:#94a3b8;margin-top:6px">Se guarda asociado al CÓDIGO SAP (todos sus ítems lo comparten). PDF, PNG, JPG o WEBP · máximo 20 MB.</div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-outline" onclick="App.modules.prod_recetas.hideCreateModal()">Cancelar</button>
@@ -199,16 +209,20 @@ App.registerModule('prod_recetas', {
 
     async load() {
         try {
-            const [recRes, codRes, estRes, matRes] = await Promise.all([
+            const [recRes, codRes, estRes, matRes, planosRes] = await Promise.all([
                 fetch('/api/produccion/recetas-bom', { headers: this._headers() }),
                 fetch('/api/produccion/codigos', { headers: this._headers() }),
                 fetch('/api/produccion/estaciones', { headers: this._headers() }),
-                fetch('/api/produccion/materias-primas', { headers: this._headers() })
+                fetch('/api/produccion/materias-primas', { headers: this._headers() }),
+                fetch('/api/produccion/codigos/planos', { headers: this._headers() })
             ]);
             this.recetas = recRes.ok ? await recRes.json() : [];
             this.codigos = codRes.ok ? await codRes.json() : [];
             this.estaciones = estRes.ok ? await estRes.json() : [];
             this.materias = matRes.ok ? await matRes.json() : [];
+            const planos = planosRes.ok ? await planosRes.json() : [];
+            this._planos = {};
+            (planos || []).forEach(p => { this._planos[String(p.codigo_sap_padre).toLowerCase()] = true; });
             this.populateModalSelects();
             this.renderStats();
             this.renderTable(this.recetas);
@@ -281,7 +295,7 @@ App.registerModule('prod_recetas', {
                 const chips = procs.map((id, idx) => {
                     const e = estMap[id];
                     const nombre = e ? e.nombre_estacion : ('#' + id);
-                    return '<span style="display:inline-flex;align-items:center;gap:3px;background:#7c3aed15;color:#7c3aed;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-right:3px"><span style="font-size:8px;opacity:0.7">' + (idx + 1) + '</span>' + escapeHtml(nombre) + '</span>';
+                    return '<span style="display:inline-flex;align-items:center;gap:3px;background:#7c3aed15;color:#7c3aed;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-right:3px"><span style="font-size:10px;opacity:0.7">' + (idx + 1) + '</span>' + escapeHtml(nombre) + '</span>';
                 }).join('');
                 return '<div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center">' + chips + '</div>';
             } else if (r.nombre_familia) {
@@ -303,26 +317,28 @@ App.registerModule('prod_recetas', {
             if (customRoutes.length > 0) subtitleParts.push('<span style="color:#7c3aed;font-weight:700">' + customRoutes.length + ' con ruta custom</span>');
             const subtitle = subtitleParts.length ? ' - ' + subtitleParts.join(' · ') : '';
 
-            html += `<tr class="prec-row" style="background:#f8fafc;line-height:1.3"><td colspan="7" style="padding:6px 12px"><strong style="color:var(--primary)">${escapeHtml(padre)}</strong><span style="font-size:12px;color:var(--text);font-weight:400">${subtitle}</span> <span style="font-size:11px;color:var(--text-light)">(${items.length} ${items.length === 1 ? 'receta' : 'recetas'})</span></td></tr>`;
+            html += `<tr class="prec-row" style="background:#f8fafc;line-height:1.3"><td colspan="7" style="padding:6px 12px"><strong style="color:var(--primary)">${escapeHtml(padre)}</strong><span style="font-size:11px;color:var(--text);font-weight:400">${subtitle}</span> <span style="font-size:11px;color:var(--text-light)">(${items.length} ${items.length === 1 ? 'receta' : 'recetas'})</span>${this._planos && this._planos[String(padre).toLowerCase()] ? ` <span onclick="App.modules.prod_recetas.verPlanoCodigo('${escJs(padre)}')" title="Ver el plano de este código" style="cursor:pointer;background:#0f172a;color:#fff;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700">📎 Ver plano</span>` : ''}</td></tr>`;
 
             cardsHtml += `<div style="background:#f8fafc;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--primary)">
-                <div style="font-weight:700;font-size:14px;color:var(--primary);margin-bottom:2px">${escapeHtml(padre)}</div>
+                <div style="font-weight:700;font-size:13px;color:var(--primary);margin-bottom:2px">${escapeHtml(padre)}</div>
                 <div style="font-size:11px;color:#64748b;margin-bottom:6px">${subtitle || items.length + ' recetas'}</div>
             </div>`;
 
             items.forEach(r => {
                 const rutaHtml = getRutaHtml(r);
+                const tienePlano = !!(this._planos && this._planos[String(r.codigo_sap_padre).toLowerCase()]);
                 html += `<tr class="prec-row" style="line-height:1.3">
                     <td style="padding:6px 12px"><strong style="font-size:13px;font-weight:700">${escapeHtml(padre)}</strong></td>
-                    <td style="padding:6px 12px"><span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${escapeHtml(r.codigo_mp || '-')}</span> ${r.mp_nombre ? '<span style="color:#64748b;font-size:11px">· ' + escapeHtml(r.mp_nombre) + '</span>' : ''}</td>
+                    <td style="padding:6px 12px"><span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${escapeHtml(r.codigo_mp || '-')}</span> ${r.mp_nombre ? '<span style="color:#64748b;font-size:11px">· ' + escapeHtml(r.mp_nombre) + '</span>' : ''}${r.espesor_mm ? ' <span title="Espesor de la materia prima" style="background:#f1f5f9;color:#334155;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;border:1px solid #e2e8f0">' + Number(r.espesor_mm).toLocaleString('es-CL', { maximumFractionDigits: 2 }) + ' mm</span>' : ''}</td>
                     <td style="padding:6px 12px;max-width:340px">${rutaHtml}</td>
-                    <td style="padding:6px 12px;text-align:center"><strong>${Math.round(r.cantidad || 1)}</strong></td>
-                    <td style="padding:6px 12px;text-align:right">${r.ancho ? '<span style="background:#f3e8ff;color:#7c3aed;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + Math.round(r.ancho) + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
-                    <td style="padding:6px 12px;text-align:right">${r.alto ? '<span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + Math.round(r.alto) + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
+                    <td style="padding:6px 12px;text-align:right"><strong>${Number(r.cantidad || 1).toLocaleString('es-CL', { maximumFractionDigits: 2 })}</strong></td>
+                    <td style="padding:6px 12px;text-align:right">${r.ancho ? '<span style="background:#f3e8ff;color:#7c3aed;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + Number(Math.round(r.ancho)).toLocaleString('es-CL') + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
+                    <td style="padding:6px 12px;text-align:right">${r.alto ? '<span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + Number(Math.round(r.alto)).toLocaleString('es-CL') + ' mm</span>' : '<span style="color:#cbd5e1">-</span>'}</td>
                     <td style="padding:6px 12px;white-space:nowrap">${puedeEditar ? `
                         <div class="rec-amenu"><button class="rec-amenu-btn" onclick="App.modules.prod_recetas.toggleAcciones(event)">Acciones ▾</button>
                         <div class="rec-amenu-drop">
                             <div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>
+                            ${tienePlano ? `<div class="it" onclick="App.modules.prod_recetas.verPlanoCodigo('${escJs(r.codigo_sap_padre)}')">👁 Ver plano del código</div>` : ''}
                             <div class="sep"></div>
                             <div class="it danger" onclick="App.modules.prod_recetas.delete(${r.id})">🗑 Eliminar receta</div>
                         </div></div>` : ''}</td>
@@ -334,12 +350,13 @@ App.registerModule('prod_recetas', {
                             <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:4px">
                                 <span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${escapeHtml(r.codigo_mp || '-')}</span>
                                 <span style="font-size:11px;color:#64748b">${r.mp_nombre ? escapeHtml(r.mp_nombre) : ''}</span>
+                                ${r.espesor_mm ? '<span style="background:#f1f5f9;color:#334155;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;border:1px solid #e2e8f0">' + Number(r.espesor_mm).toLocaleString('es-CL', { maximumFractionDigits: 2 }) + ' mm</span>' : ''}
                             </div>
                             <div style="margin-bottom:4px">${rutaHtml}</div>
                             <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:#64748b">
-                                <span>Cant: <strong>${Math.round(r.cantidad || 1)}</strong></span>
-                                ${r.ancho ? '<span>Ancho: <strong>' + Math.round(r.ancho) + ' mm</strong></span>' : ''}
-                                ${r.alto ? '<span>Alto: <strong>' + Math.round(r.alto) + ' mm</strong></span>' : ''}
+                                <span>Cant: <strong>${Number(r.cantidad || 1).toLocaleString('es-CL', { maximumFractionDigits: 2 })}</strong></span>
+                                ${r.ancho ? '<span>Ancho: <strong>' + Number(Math.round(r.ancho)).toLocaleString('es-CL') + ' mm</strong></span>' : ''}
+                                ${r.alto ? '<span>Alto: <strong>' + Number(Math.round(r.alto)).toLocaleString('es-CL') + ' mm</strong></span>' : ''}
                             </div>
                         </div>
                         <div style="display:flex;gap:4px;flex-shrink:0">
@@ -347,6 +364,7 @@ App.registerModule('prod_recetas', {
                             <div class="rec-amenu"><button class="rec-amenu-btn" onclick="App.modules.prod_recetas.toggleAcciones(event)">Acciones ▾</button>
                             <div class="rec-amenu-drop">
                                 <div class="it" onclick="App.modules.prod_recetas.edit(${r.id})">✏️ Editar receta</div>
+                                ${tienePlano ? `<div class="it" onclick="App.modules.prod_recetas.verPlanoCodigo('${escJs(r.codigo_sap_padre)}')">👁 Ver plano del código</div>` : ''}
                                 <div class="sep"></div>
                                 <div class="it danger" onclick="App.modules.prod_recetas.delete(${r.id})">🗑 Eliminar receta</div>
                             </div></div>` : ''}
@@ -373,8 +391,85 @@ App.registerModule('prod_recetas', {
         document.getElementById('recUsarRutaCustom').checked = false;
         document.getElementById('recProcesosList').innerHTML = '';
         document.getElementById('recRutaContainer').style.display = 'none';
+        this._resetPlano();
         document.getElementById('recSaveBtn').onclick = () => this.save();
         document.getElementById('recCreateModal').classList.add('show');
+    },
+
+    // ── Plano del código (PDF o imagen) ──
+    _resetPlano(tiene) {
+        this._planoFile = null;
+        this._planoQuitar = false;
+        this._planoTiene = !!tiene;
+        const f = document.getElementById('recPlanoFile');
+        if (f) f.value = '';
+        this._renderPlanoEstado();
+    },
+    _renderPlanoEstado() {
+        const el = document.getElementById('recPlanoEstado');
+        const btnVer = document.getElementById('recPlanoVer');
+        const btnQuitar = document.getElementById('recPlanoQuitar');
+        if (!el) return;
+        if (this._planoFile) {
+            el.innerHTML = '📎 <strong>' + escText(this._planoFile.name) + '</strong> — se guardará al pulsar Guardar';
+        } else if (this._planoQuitar) {
+            el.innerHTML = '🗑 El plano actual <strong>se quitará</strong> al pulsar Guardar';
+        } else if (this._planoTiene) {
+            el.innerHTML = '📎 Este código tiene plano adjunto';
+        } else {
+            el.textContent = 'Sin plano adjunto.';
+        }
+        if (btnVer) btnVer.style.display = (this._planoTiene && !this._planoQuitar) ? '' : 'none';
+        if (btnQuitar) btnQuitar.style.display = (this._planoTiene && !this._planoQuitar) ? '' : 'none';
+    },
+    onPlanoFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+        if (file.size > 20 * 1024 * 1024) {
+            input.value = '';
+            App.showAlert('El plano supera el máximo de 20 MB', 'danger');
+            return;
+        }
+        this._planoFile = file;
+        this._planoQuitar = false;
+        this._renderPlanoEstado();
+    },
+    verPlano() {
+        const codigo = document.getElementById('recCodigoPadre')?.value?.trim();
+        if (!codigo) return;
+        window.open('/api/produccion/codigos/' + encodeURIComponent(codigo) + '/plano', '_blank');
+    },
+    verPlanoCodigo(codigo) {
+        this._cerrarMenus();
+        window.open('/api/produccion/codigos/' + encodeURIComponent(codigo) + '/plano', '_blank');
+    },
+    quitarPlano() {
+        this._planoFile = null;
+        this._planoQuitar = true;
+        const f = document.getElementById('recPlanoFile');
+        if (f) f.value = '';
+        this._renderPlanoEstado();
+    },
+    async _guardarPlano(codigo) {
+        try {
+            if (this._planoFile) {
+                const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+                // FormData: sin Content-Type (el navegador pone el boundary)
+                const fd = new FormData();
+                fd.append('plano', this._planoFile);
+                const r = await fetch('/api/produccion/codigos/' + encodeURIComponent(codigo) + '/plano', {
+                    method: 'POST',
+                    headers: { 'X-User-Permisos': (user.permisos || []).join(','), 'X-User-Email': user.email || '' },
+                    body: fd
+                });
+                if (r.ok) App.toast('Plano guardado');
+                else { const d = await r.json().catch(() => ({})); App.showAlert(d.error || 'No se pudo guardar el plano', 'danger'); }
+            } else if (this._planoQuitar && this._planoTiene) {
+                const r = await fetch('/api/produccion/codigos/' + encodeURIComponent(codigo) + '/plano', { method: 'DELETE', headers: this._headers() });
+                if (r.ok) App.toast('Plano quitado');
+                else { const d = await r.json().catch(() => ({})); App.showAlert(d.error || 'No se pudo quitar el plano', 'danger'); }
+            }
+        } catch (e) { App.showAlert('Error con el plano: ' + e.message, 'danger'); }
     },
 
     hideCreateModal() { document.getElementById('recCreateModal').classList.remove('show'); },
@@ -449,7 +544,7 @@ App.registerModule('prod_recetas', {
         const list = document.getElementById('recProcesosList');
         if (!list) return;
         const orden = list.children.length + 1;
-        const estOpts = '<option value="">Seleccionar estacion...</option>' + this.estaciones.map(e => `<option value="${e.id}" ${e.id === estId ? 'selected' : ''}>${escapeHtml(e.nombre_estacion)} (#${e.id} · orden ${e.orden_secuencia_defecto || '-'})</option>`).join('');
+        const estOpts = '<option value="">Seleccionar estación...</option>' + this.estaciones.map(e => `<option value="${e.id}" ${e.id === estId ? 'selected' : ''}>${escapeHtml(e.nombre_estacion)} (#${e.id} · orden ${e.orden_secuencia_defecto || '-'})</option>`).join('');
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;gap:6px;align-items:center';
         row.innerHTML = `<span style="background:#7c3aed;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${orden}</span>
@@ -486,6 +581,7 @@ App.registerModule('prod_recetas', {
         const list = document.getElementById('recProcesosList');
         list.innerHTML = '';
         if (usarCustom) this._procesosTemporales.forEach(eid => this.addProcesoRow(eid));
+        this._resetPlano(!!(this._planos && this._planos[String(r.codigo_sap_padre).toLowerCase()]));
         document.getElementById('recSaveBtn').onclick = () => this.save(id);
         document.getElementById('recCreateModal').classList.add('show');
     },
@@ -520,6 +616,7 @@ App.registerModule('prod_recetas', {
             }
             this.hideCreateModal();
             App.toast(id ? 'Receta actualizada' : 'Receta creada');
+            await this._guardarPlano(codigo_sap_padre);
             await this.load();
         } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
@@ -577,9 +674,9 @@ App.registerModule('prod_recetas', {
                 preview.style.display = 'block';
                 document.getElementById('recImportBtn').disabled = data.validas === 0;
 
-                let statsHtml = '<span style="background:#dbeafe;color:#1e40af;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Total: ' + data.total + '</span>';
-                statsHtml += '<span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Validas: ' + data.validas + '</span>';
-                if (data.errores.length > 0) statsHtml += '<span style="background:#fef2f2;color:#991b1b;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600">Errores: ' + data.errores.length + '</span>';
+                let statsHtml = '<span style="background:#dbeafe;color:#1e40af;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">Total: ' + data.total + '</span>';
+                statsHtml += '<span style="background:#dcfce7;color:#166534;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">Validas: ' + data.validas + '</span>';
+                if (data.errores.length > 0) statsHtml += '<span style="background:#fef2f2;color:#991b1b;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">Errores: ' + data.errores.length + '</span>';
                 document.getElementById('recImportStats').innerHTML = statsHtml;
 
                 if (data.errores.length > 0) {
