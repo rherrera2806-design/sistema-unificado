@@ -264,7 +264,7 @@ App.registerModule('prod_recetas', {
         }
         const mpSel = document.getElementById('recMateriaPrima');
         if (mpSel) {
-            mpSel.innerHTML = '<option value="">Seleccionar materia prima...</option>' + (this.materias || []).map(m => `<option value="${m.id}">${escapeHtml(m.nombre || m.codigo_mp || ('MP-' + m.id))}${m.espesor_mm ? ' (' + m.espesor_mm + 'mm)' : ''}</option>`).join('');
+            mpSel.innerHTML = '<option value="">Seleccionar materia prima...</option>' + (this.materias || []).map(m => `<option value="${m.id}">${escapeHtml(m.nombre || m.codigo_mp || ('MP-' + m.id))}${m.espesor_mm ? ' (' + Number(m.espesor_mm).toLocaleString('es-CL', { maximumFractionDigits: 2 }) + ' mm)' : ''}</option>`).join('');
         }
     },
 
@@ -612,9 +612,9 @@ App.registerModule('prod_recetas', {
         document.getElementById('recCodigoPadre').value = r.codigo_sap_padre || '';
         document.getElementById('recCodigoPadre').disabled = true;
         document.getElementById('recMateriaPrima').value = r.materia_prima_id || '';
-        document.getElementById('recCantidad').value = r.cantidad || 1;
-        document.getElementById('recAncho').value = r.ancho || '';
-        document.getElementById('recAlto').value = r.alto || '';
+        document.getElementById('recCantidad').value = String(Number(r.cantidad || 1));
+        document.getElementById('recAncho').value = r.ancho ? String(Number(r.ancho)) : '';
+        document.getElementById('recAlto').value = r.alto ? String(Number(r.alto)) : '';
         const usarCustom = this._procesosTemporales.length > 0;
         document.getElementById('recUsarRutaCustom').checked = usarCustom;
         document.getElementById('recRutaContainer').style.display = usarCustom ? 'block' : 'none';
