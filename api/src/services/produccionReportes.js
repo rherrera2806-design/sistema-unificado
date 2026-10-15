@@ -177,8 +177,8 @@ const getExportarCorte = async () => {
     const result = await query(`
         SELECT
             o.cantidad AS fabric,
-            mp1.nombre AS mp1_nombre, mp1.espesor_mm AS mp1_espesor,
-            mp2.nombre AS mp2_nombre, mp2.espesor_mm AS mp2_espesor,
+            mp1.codigo_mp AS mp1_codigo,
+            mp2.codigo_mp AS mp2_codigo,
             o.ancho, o.alto,
             o.tipo_venta AS prioridad,
             o.item_numero AS item,
@@ -194,13 +194,13 @@ const getExportarCorte = async () => {
              WHERE cp.orden_produccion_id = o.id) AS procesos
         FROM produccion_ordenes o
         LEFT JOIN LATERAL (
-            SELECT m.nombre, m.espesor_mm
+            SELECT m.codigo_mp
             FROM recetas_bom rb JOIN materias_primas m ON m.id = rb.materia_prima_id
             WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
             ORDER BY rb.id LIMIT 1
         ) mp1 ON TRUE
         LEFT JOIN LATERAL (
-            SELECT m.nombre, m.espesor_mm
+            SELECT m.codigo_mp
             FROM recetas_bom rb JOIN materias_primas m ON m.id = rb.materia_prima_id
             WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
             ORDER BY rb.id LIMIT 1 OFFSET 1
