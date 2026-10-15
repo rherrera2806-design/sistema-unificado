@@ -189,10 +189,23 @@ const getExportarCorte = async () => {
             COALESCE(cod.descripcion, o.descripcion, '') AS detalle_sap,
             o.tipo_entrega AS ruta,
             o.orden_compra AS oc,
-            (SELECT string_agg(SUBSTRING(em.nombre_estacion, 1, 1), '-' ORDER BY cp.orden_secuencia)
-             FROM cola_produccion_pasos cp
-             JOIN estaciones_maestras em ON cp.estacion_id = em.id
-             WHERE cp.orden_produccion_id = o.id) AS procesos
+            COALESCE(
+                (SELECT string_agg(SUBSTRING(em.nombre_estacion, 1, 1), '-' ORDER BY cp.orden_secuencia)
+                 FROM cola_produccion_pasos cp
+                 JOIN estaciones_maestras em ON cp.estacion_id = em.id
+                 WHERE cp.orden_produccion_id = o.id),
+                (SELECT string_agg(SUBSTRING(em.nombre_estacion, 1, 1), '-' ORDER BY u.ord)
+                 FROM recetas_bom rb,
+                      unnest(rb.procesos_especificos_json) WITH ORDINALITY AS u(est_id, ord)
+                 JOIN estaciones_maestras em ON em.id = (u.est_id)::text::int
+                 WHERE rb.id = (SELECT MIN(rb2.id) FROM recetas_bom rb2
+                                WHERE LOWER(TRIM(rb2.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
+                                  AND rb2.procesos_especificos_json IS NOT NULL)),
+                (SELECT string_agg(SUBSTRING(em.nombre_estacion, 1, 1), '-' ORDER BY em.orden_secuencia_defecto)
+                 FROM familia_estaciones_base feb
+                 JOIN estaciones_maestras em ON feb.estacion_id = em.id
+                 WHERE feb.familia_id = o.familia_id)
+            ) AS procesos
         FROM produccion_ordenes o
         LEFT JOIN produccion_codigos cod
             ON LOWER(TRIM(cod.codigo)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
