@@ -69,7 +69,7 @@ App.registerModule('usuarios', {
             { id: 'prod_planificacion', label: 'Planificación' },
             { id: 'prod_reportes', label: 'Reporte Fechas' },
             { id: 'prod_prog_estacion', label: 'Programación Estación' },
-            { id: 'prod_notas', label: 'Mis Pendientes' },
+            { id: 'prod_notas', label: 'Bitácora de Producción' },
             { id: 'prod_config', label: 'Configuración' },
             { id: 'taller', label: 'Taller' },
             { id: 'bodega', label: 'Bodega' }

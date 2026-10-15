@@ -20,32 +20,60 @@ App.registerModule('prod_notas', {
 
         el.innerHTML = '<style>'
             + '@keyframes pnFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
-            + '.pn-card{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}'
-            + '.pn-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.08)!important;transform:translateY(-2px)}'
+            + '.nota-hero{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 55%,#1e40af 100%);border-radius:16px;padding:20px 26px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;margin-bottom:16px}'
+            + '.nota-hero::after{content:\'\';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(147,197,253,.55),transparent)}'
+            + '.nota-hero h2{color:#fff;font-size:20px;font-weight:700;margin:0}'
+            + '.nota-hero p{color:rgba(255,255,255,.62);font-size:11px;margin:4px 0 0}'
+            + '.nota-hero-actions{margin-left:auto;display:flex;gap:8px;align-items:center}'
+            + '.nota-hbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}'
+            + '.nota-hbtn:hover{background:rgba(255,255,255,.2)}'
+            + '.nota-hbtn.solid{background:#fff;color:#1e3a5f;border-color:#fff}'
+            + '.nota-hbtn.solid:hover{background:#e8eefb}'
+            + '.nota-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}'
+            + '.nota-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}'
+            + '.nota-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}'
+            + '.nota-kpi .v{font-size:20px;font-weight:700;margin-top:4px}'
+            + '.nota-kpi .s{font-size:10px;color:#8494a8;margin-top:2px}'
+            + '.nota-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}'
+            + '.nota-search{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:0 12px;flex:1;min-width:220px;max-width:360px}'
+            + '.nota-search input{border:none;outline:none;padding:10px 0;font-size:13px;width:100%;background:transparent;color:#0f172a}'
+            + '.nota-count{font-size:11px;color:#8494a8;font-weight:600}'
+            + '.nota-panel{background:#fff;border:1px solid #e4e9f0;border-radius:14px;overflow:hidden}'
+            + '.nota-p-head{padding:13px 18px;display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #e4e9f0}'
+            + '.nota-p-head h3{font-size:13px;font-weight:600;margin:0}'
+            + '.nota-p-head .sub{font-size:10px;color:#8494a8}'
+            + '.nota-p-body{padding:16px 18px}'
+            + '.nota-loading{text-align:center;padding:32px;color:#8494a8;font-size:13px}'
+            + '.nota-amenu{position:relative;display:inline-block}'
+            + '.nota-amenu-btn{padding:6px 11px;border-radius:7px;border:1px solid #e4e9f0;background:#fff;color:#475569;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}'
+            + '.nota-amenu-btn:hover{background:#f8fafc}'
+            + '.nota-amenu-drop{display:none;position:fixed;z-index:95;background:#fff;border:1px solid #e4e9f0;border-radius:10px;box-shadow:0 12px 32px rgba(15,23,42,.16);min-width:200px;padding:5px}'
+            + '.nota-amenu-drop .it{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:11px;font-weight:600;color:#475569;cursor:pointer;white-space:nowrap}'
+            + '.nota-amenu-drop .it:hover{background:#f8fafc}'
+            + '.nota-amenu-drop .it.danger{color:#dc2626}'
+            + '.nota-amenu-drop .sep{height:1px;background:#e4e9f0;margin:5px 8px}'
             + '</style>'
 
-            + '<div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#1e40af 100%);border-radius:16px;padding:8px 16px;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.3)">'
-            + '<div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0;font-size:15px;font-weight:800;color:white;letter-spacing:-0.5px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Mis Pendientes</h2>'
-            + '<p style="margin:2px 0 0;font-size:10px;color:rgba(255,255,255,0.7)">Notas personales de produccion</p></div>'
-            + '<button onclick="App.modules.prod_notas.showForm()" class="btn btn-accent" style="white-space:nowrap;padding:8px 14px;font-size:12px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Nuevo</button>'
-            + '</div></div>'
-
-            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
-            + '<div class="pn-card" style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pnFadeUp 0.5s ease both;position:relative;overflow:hidden">'
-            + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(245,158,11,0.12) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(245,158,11,0.25)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><h4 style="margin:0;font-size:20px;font-weight:800;color:#0f172a;line-height:1" id="pnPendientes">' + totalPendientes + '</h4><p style="margin:2px 0 0;font-size:10px;color:#64748b;font-weight:500">Pendientes</p></div></div></div>'
-
-            + '<div class="pn-card" style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pnFadeUp 0.5s ease 0.1s both;position:relative;overflow:hidden">'
-            + '<div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(34,197,94,0.12) 0%,transparent 70%);border-radius:50%"></div>'
-            + '<div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#dcfce7,#bbf7d0);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(34,197,94,0.25)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><h4 style="margin:0;font-size:20px;font-weight:800;color:#0f172a;line-height:1" id="pnRealizados">' + totalRealizados + '</h4><p style="margin:2px 0 0;font-size:10px;color:#64748b;font-weight:500">Realizados</p></div></div></div>'
-
+            + '<div class="nota-hero">'
+            + '<div><h2>Bitácora de Producción</h2><p>Notas entre jefes de área y supervisores</p></div>'
+            + '<div class="nota-hero-actions"><button class="nota-hbtn solid" onclick="App.modules.prod_notas.showForm()">＋ Nueva nota</button></div>'
             + '</div>'
 
-            + '<div style="background:white;border-radius:14px;padding:24px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.04);animation:pnFadeUp 0.5s ease 0.2s both">'
-            + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'
-            + '<div style="position:relative;flex:1;max-width:360px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="prodNotaSearch" placeholder="Buscar pendiente..." oninput="App.modules.prod_notas.filter()" style="width:100%;padding:10px 10px 10px 36px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;outline:none;transition:border-color 0.2s" onfocus="this.style.borderColor=\'#3b82f6\';this.style.boxShadow=\'0 0 0 3px rgba(59,130,246,0.1)\'" onblur="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\'"></div></div>'
-            + '<div id="prodNotasContent"><div style="text-align:center;padding:40px;color:#94a3b8">Cargando...</div></div></div>';
+            + '<div class="nota-kpis">'
+            + '<div class="nota-kpi"><div class="k">Total notas</div><div class="v" style="color:#0f172a">' + this._data.length + '</div><div class="s">en la bitácora</div></div>'
+            + '<div class="nota-kpi"><div class="k">Pendientes</div><div class="v" style="color:#b45309" id="pnPendientes">' + totalPendientes + '</div><div class="s">por resolver</div></div>'
+            + '<div class="nota-kpi"><div class="k">Realizadas</div><div class="v" style="color:#15803d" id="pnRealizados">' + totalRealizados + '</div><div class="s">ya atendidas</div></div>'
+            + '</div>'
+
+            + '<div class="nota-toolbar">'
+            + '<div class="nota-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8494a8" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="prodNotaSearch" placeholder="Buscar nota..." oninput="App.modules.prod_notas.filter()"></div>'
+            + '<span class="nota-count" id="pnCount"></span>'
+            + '</div>'
+
+            + '<div class="nota-panel">'
+            + '<div class="nota-p-head"><h3>Notas de la bitácora</h3><span class="sub">pendientes y realizadas</span></div>'
+            + '<div class="nota-p-body"><div id="prodNotasContent"><div class="nota-loading">Cargando...</div></div></div>'
+            + '</div>';
 
         this.renderList(this._data);
     },
@@ -60,11 +88,54 @@ App.registerModule('prod_notas', {
         this.renderList(filtered);
     },
 
+    // ── Menú de acciones (popover fijo, patrón del sistema) ──
+    menuAcciones(n) {
+        return `<div class="nota-amenu"><button class="nota-amenu-btn" onclick="App.modules.prod_notas.toggleAcciones(event)">Acciones ▾</button>
+        <div class="nota-amenu-drop">
+            ${n.estado === 'pendiente'
+                ? '<div class="it" onclick="App.modules.prod_notas.marcarRealizado(' + n.id + ')">✅ Marcar como realizado</div>'
+                : '<div class="it" onclick="App.modules.prod_notas.marcarPendiente(' + n.id + ')">↩️ Volver a pendiente</div>'}
+            <div class="it" onclick="App.modules.prod_notas.showForm(' + n.id + ')">✏️ Editar nota</div>
+            <div class="sep"></div>
+            <div class="it danger" onclick="App.modules.prod_notas.delete(' + n.id + ')">🗑 Eliminar nota</div>
+        </div></div>`;
+    },
+    toggleAcciones(e) {
+        e.stopPropagation();
+        this._setupMenus();
+        const wrap = e.currentTarget.parentElement;
+        const menu = wrap.querySelector('.nota-amenu-drop');
+        if (!menu) return;
+        const wasVisible = menu.style.display === 'block';
+        this._cerrarMenus();
+        if (wasVisible) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        menu.style.display = 'block';
+        menu.style.top = '0px';
+        menu.style.left = '0px';
+        const mh = menu.offsetHeight, mw = menu.offsetWidth;
+        const espacioAbajo = window.innerHeight - rect.bottom;
+        menu.style.top = (espacioAbajo < mh + 12 ? Math.max(8, rect.top - mh - 6) : rect.bottom + 6) + 'px';
+        menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - mw - 8)) + 'px';
+    },
+    _cerrarMenus() {
+        document.querySelectorAll('.nota-amenu-drop').forEach(d => d.style.display = 'none');
+    },
+    _setupMenus() {
+        if (this._menusBound) return;
+        this._menusBound = true;
+        document.addEventListener('click', () => this._cerrarMenus());
+        window.addEventListener('scroll', () => this._cerrarMenus(), true);
+        window.addEventListener('resize', () => this._cerrarMenus());
+    },
+
     renderList(data) {
         const container = document.getElementById('prodNotasContent');
+        const count = document.getElementById('pnCount');
+        if (count) count.textContent = '(' + (data || []).length + ' nota' + ((data || []).length === 1 ? '' : 's') + ')';
 
         if (!data || data.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:48px 20px"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><h4 style="margin:0 0 4px;color:#334155;font-size:16px">Sin resultados</h4><p style="margin:0;color:#94a3b8;font-size:13px">No se encontraron pendientes</p></div>';
+            container.innerHTML = '<div style="text-align:center;padding:48px 20px"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><h4 style="margin:0 0 4px;color:#334155;font-size:15px">Sin resultados</h4><p style="margin:0;color:#94a3b8;font-size:13px">No se encontraron notas</p></div>';
             return;
         }
 
@@ -113,11 +184,7 @@ App.registerModule('prod_notas', {
                 + '<p style="margin:0;color:#1e293b;white-space:pre-wrap;line-height:1.5">' + escapeHtml(n.nota || '') + '</p>'
                 + '</div>'
                 + '<div style="display:flex;gap:6px;flex-shrink:0;align-items:flex-start">'
-                + (esPendiente
-                    ? '<button onclick="App.modules.prod_notas.marcarRealizado(' + n.id + ')" title="Marcar como realizado" class="btn btn-sm btn-success"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg> Realizado</button>'
-                    : '<button onclick="App.modules.prod_notas.marcarPendiente(' + n.id + ')" title="Volver a pendiente" class="btn btn-sm btn-outline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> Pendiente</button>')
-                + '<button class="btn btn-sm btn-outline" title="Editar" onclick="App.modules.prod_notas.showForm(' + n.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>'
-                + '<button class="btn btn-sm btn-danger" title="Eliminar" onclick="App.modules.prod_notas.delete(' + n.id + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+                + this.menuAcciones(n)
                 + '</div></div>';
         }
         html += '</div>';
@@ -180,8 +247,8 @@ App.registerModule('prod_notas', {
             reg = all.find(n => n.id === id);
         }
         App.showModal(`
-            <div class="form-group"><label>Pendiente *</label><textarea class="form-control" id="prodNotaTexto" rows="5" placeholder="Escribe tu pendiente aqui...">${escText(reg ? reg.nota || '' : '')}</textarea></div>
-        `, { title: reg ? 'Editar Pendiente' : 'Nuevo Pendiente' });
+            <div class="form-group"><label>Nota *</label><textarea class="form-control" id="prodNotaTexto" rows="5" placeholder="Escribe la nota aquí (entre jefes de área y supervisores)...">${escText(reg ? reg.nota || '' : '')}</textarea></div>
+        `, { title: reg ? 'Editar nota' : 'Nueva nota' });
         const footer = document.querySelector('#modalOverlay .modal-footer');
         footer.innerHTML = `
             <button class="btn btn-outline" onclick="App.hideModal()">Cancelar</button>
@@ -193,7 +260,7 @@ App.registerModule('prod_notas', {
         try {
             const user = this._user();
             const nota = document.getElementById('prodNotaTexto').value.trim();
-            if (!nota) { App.showAlert('Escribe un pendiente', 'danger'); return; }
+            if (!nota) { App.showAlert('Escribe la nota', 'danger'); return; }
 
             if (id === 0) {
                 await apiJson(await fetch('/api/produccion/notas', {
@@ -209,21 +276,21 @@ App.registerModule('prod_notas', {
                 }));
             }
             App.hideModal();
-            App.showAlert(id === 0 ? 'Pendiente creado' : 'Pendiente actualizado');
+            App.showAlert(id === 0 ? 'Nota creada' : 'Nota actualizada');
             this.refresh();
         } catch(e) { App.showAlert('Error al guardar: ' + e.message, 'danger'); }
     },
 
     async delete(id) {
         try {
-            const confirmed = await App.confirm('¿Eliminar este pendiente?');
+            const confirmed = await App.confirm('¿Eliminar esta nota?');
             if (!confirmed) return;
             const user = this._user();
             await apiJson(await fetch(`/api/produccion/notas/${id}`, {
                 method: 'DELETE',
                 headers: { 'X-User-Email': user.email || '' }
             }));
-            App.showAlert('Pendiente eliminado');
+            App.showAlert('Nota eliminada');
             this.refresh();
         } catch(e) { App.showAlert('Error al eliminar: ' + e.message, 'danger'); }
     }
