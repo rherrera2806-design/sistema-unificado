@@ -126,15 +126,15 @@ App.registerModule('usuarios', {
             </div>
 
             <!-- Modal formulario -->
-            <div id="uModalOverlay" class="us-overlay" onclick="if(event.target===this)App.modules.usuarios.closeModal()">
+            <div id="uModalOverlay" class="us-overlay" onclick="if(event.target===this)App.modules.usuarios.tryCloseModal()">
                 <div class="us-modal" onclick="event.stopPropagation()">
                     <div class="us-modal-head">
                         <h3 id="uModalTitle">Nuevo usuario</h3>
-                        <button class="us-x" onclick="App.modules.usuarios.closeModal()" aria-label="Cerrar">✕</button>
+                        <button class="us-x" onclick="App.modules.usuarios.pedirCerrarForm()" aria-label="Cerrar">✕</button>
                     </div>
                     <div class="us-modal-body" id="uModalBody"></div>
                     <div class="us-modal-foot">
-                        <button class="us-btn-ghost" onclick="App.modules.usuarios.closeModal()">Cancelar</button>
+                        <button class="us-btn-ghost" onclick="App.modules.usuarios.pedirCerrarForm()">Cancelar</button>
                         <button class="us-btn-primary" id="uModalBtn" onclick="App.modules.usuarios.save()">Crear usuario</button>
                     </div>
                 </div>
@@ -402,6 +402,7 @@ App.registerModule('usuarios', {
 
         document.getElementById('uModalBtn').textContent = id ? 'Guardar cambios' : 'Crear usuario';
         document.getElementById('uModalOverlay').style.display = 'flex';
+        this._formInicial = this._capturarForm();
         setTimeout(() => document.getElementById('fUNombre')?.focus(), 60);
     },
 
@@ -426,6 +427,35 @@ App.registerModule('usuarios', {
         document.querySelectorAll(`.perm-sub-check[data-section="${sectionKey}"][data-type="${type}"]`).forEach(cb => cb.checked = checked);
     },
 
+    // Cierre protegido: nunca se pierde lo escrito sin avisar.
+    // · Click fuera del formulario → si hay datos, NO cierra (avisa).
+    // · ✕ / Cancelar → si hay datos, pregunta antes de descartar.
+    _capturarForm() {
+        const g = id => (document.getElementById(id) || {}).value || '';
+        const perm = Array.from(document.querySelectorAll('.perm-sub-check:checked'))
+            .map(c => c.dataset.sub + '.' + c.dataset.type).sort().join(',');
+        return [g('fUNombre'), g('fUEmail'), g('fUPassword'), g('fURol'), g('fUArea'), perm].join('¦');
+    },
+    _formDirty() {
+        if (!document.getElementById('uModalOverlay') || document.getElementById('uModalOverlay').style.display === 'none') return false;
+        return this._capturarForm() !== this._formInicial;
+    },
+    tryCloseModal() {
+        if (this._formDirty()) {
+            App.showAlert('Tienes datos sin guardar. Usa "Cancelar" o ✕ si quieres descartarlos.', 'danger');
+            return;
+        }
+        this.closeModal();
+    },
+    pedirCerrarForm() {
+        if (this._formDirty()) {
+            this._confirmar('Descartar cambios',
+                'Tienes datos sin guardar en el formulario. <strong>Se perderán</strong> si continúas.',
+                'Descartar cambios', true, () => this.closeModal());
+            return;
+        }
+        this.closeModal();
+    },
     closeModal() { document.getElementById('uModalOverlay').style.display = 'none'; },
 
     _fieldError(id, msg) {
