@@ -206,7 +206,7 @@ const getExportarCorte = async () => {
             ORDER BY rb.id LIMIT 1 OFFSET 1
         ) mp2 ON TRUE
         WHERE o.estado_programacion IN ('PENDIENTE', 'PROGRAMADO', 'EN_PROCESO')
-        ORDER BY LOWER(COALESCE(mp1.nombre, '')), o.pedido_sap_id, o.item_numero
+        ORDER BY LOWER(COALESCE(mp1.codigo_mp, '')), o.pedido_sap_id, o.item_numero
     `);
     return result.rows;
 };
