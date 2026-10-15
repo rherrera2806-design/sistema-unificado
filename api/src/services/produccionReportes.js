@@ -184,8 +184,9 @@ const getExportarCorte = async () => {
             o.item_numero AS item,
             o.pedido_sap_id AS ov,
             o.fecha_entrega_pactada::text AS f_termino,
-            o.codigo_producto AS id_sap,
-            o.cliente, o.descripcion AS detalle_sap,
+            COALESCE(o.codigo_padre, o.codigo_producto) AS id_sap,
+            o.cliente,
+            COALESCE(cod.descripcion, o.descripcion, '') AS detalle_sap,
             o.tipo_entrega AS ruta,
             o.orden_compra AS oc,
             (SELECT string_agg(SUBSTRING(em.nombre_estacion, 1, 1), '-' ORDER BY cp.orden_secuencia)
@@ -193,6 +194,8 @@ const getExportarCorte = async () => {
              JOIN estaciones_maestras em ON cp.estacion_id = em.id
              WHERE cp.orden_produccion_id = o.id) AS procesos
         FROM produccion_ordenes o
+        LEFT JOIN produccion_codigos cod
+            ON LOWER(TRIM(cod.codigo)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
         LEFT JOIN LATERAL (
             SELECT m.codigo_mp
             FROM recetas_bom rb JOIN materias_primas m ON m.id = rb.materia_prima_id
