@@ -143,13 +143,11 @@ App.registerModule('prod_prog_estacion', {
             totalKg += e.total_kg;
         }
         el.innerHTML = `
-            <div class="m-stats">
-                <div class="ppe-kpis">
-                    <div class="ppe-kpi"><div class="k">Estaciones</div><div class="v" style="color:#2563eb">${totalEstaciones}</div><div class="s">con programación</div></div>
-                    <div class="ppe-kpi"><div class="k">Órdenes</div><div class="v" style="color:#7c3aed">${totalOrd}</div><div class="s">en el rango seleccionado</div></div>
-                    <div class="ppe-kpi"><div class="k">Total m²</div><div class="v" style="color:#15803d">${Number(totalM2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div class="s">superficie total</div></div>
-                    <div class="ppe-kpi"><div class="k">Total kg</div><div class="v" style="color:#b45309">${Number(totalKg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="s">peso total</div></div>
-                </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;width:100%">
+                <div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8">Estaciones</div><div style="font-size:18px;font-weight:700;color:#2563eb">${totalEstaciones}</div><div style="font-size:10px;color:#8494a8">con programación</div></div>
+                <div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8">Órdenes</div><div style="font-size:18px;font-weight:700;color:#7c3aed">${totalOrd}</div><div style="font-size:10px;color:#8494a8">en el rango seleccionado</div></div>
+                <div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8">Total m²</div><div style="font-size:18px;font-weight:700;color:#15803d">${Number(totalM2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div style="font-size:10px;color:#8494a8">superficie total</div></div>
+                <div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8">Total kg</div><div style="font-size:18px;font-weight:700;color:#b45309">${Number(totalKg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div style="font-size:10px;color:#8494a8">peso total</div></div>
             </div>
         `;
     },
