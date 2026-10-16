@@ -55,6 +55,7 @@ App.registerModule('prod_prog_estacion', {
                     <p>Vista de programación completa por estación y fecha</p>
                 </div>
                 <div class="ppe-hero-actions">
+                    <button class="ppe-hbtn" onclick="App.modules.prod_prog_estacion.imprimir()" title="Imprimir el programa de máquinas (una hoja por estación)">🖨 Imprimir programa</button>
                     <button class="ppe-hbtn" onclick="App.modules.prod_prog_estacion.exportarExcel()">⬇ Exportar CSV</button>
                 </div>
             </div>
@@ -357,6 +358,116 @@ App.registerModule('prod_prog_estacion', {
         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></td>`;
         html += '</tr>';
         return html;
+    },
+
+    // ── Impresión del programa de máquinas ──────────────────────────────────
+    // Una HOJA por estación (salto de página), con sus días y órdenes: se puede
+    // colgar en la máquina. Usa los filtros activos (si filtras una estación,
+    // imprime solo su programa).
+    imprimir() {
+        if (!this.datos || !this.datos.estaciones || !this.datos.estaciones.length) {
+            App.showAlert('No hay programación para imprimir con los filtros actuales', 'danger');
+            return;
+        }
+        let frame = document.getElementById('ppePrintFrame');
+        if (!frame) {
+            frame = document.createElement('iframe');
+            frame.id = 'ppePrintFrame';
+            frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+            document.body.appendChild(frame);
+        }
+        frame.onload = () => {
+            try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+            catch (e) { App.showAlert('No se pudo abrir la impresión: ' + e.message, 'danger'); }
+        };
+        frame.srcdoc = this._htmlImpresion();
+    },
+
+    _num(v, dec) { return Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec }); },
+    _fechaCorta(s) {
+        if (!s) return '';
+        const d = new Date(String(s).slice(0, 10) + 'T12:00:00');
+        if (isNaN(d.getTime())) return String(s);
+        const p = (x) => String(x).padStart(2, '0');
+        return p(d.getDate()) + '-' + p(d.getMonth() + 1) + '-' + d.getFullYear();
+    },
+    _fechaLarga(s) {
+        const d = new Date(String(s).slice(0, 10) + 'T12:00:00');
+        if (isNaN(d.getTime())) return String(s);
+        const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        return dias[d.getDay()] + ' ' + this._fechaCorta(s);
+    },
+
+    _htmlImpresion() {
+        const d = this.datos;
+        const hoy = new Date();
+        const p = (x) => String(x).padStart(2, '0');
+        const impreso = `${p(hoy.getDate())}-${p(hoy.getMonth() + 1)}-${hoy.getFullYear()} ${p(hoy.getHours())}:${p(hoy.getMinutes())}`;
+        const rango = `${this._fechaCorta(this.filtros.fecha_inicio)} al ${this._fechaCorta(this.filtros.fecha_fin)}`;
+        const E = (v) => this.esc(v == null ? '' : v);
+
+        let cuerpo = '';
+        let primero = true;
+        for (const est of (d.estaciones || [])) {
+            const nombre = E(est.nombre || est.nombre_estacion || 'Estación');
+            const orden = est.orden != null ? est.orden + '° ' : (est.orden_secuencia_defecto != null ? est.orden_secuencia_defecto + '° ' : '');
+            const cb = est.cuello_botella ? ' · CUELLO DE BOTELLA' : '';
+            const cap = est.capacidad_m2_dia != null ? est.capacidad_m2_dia : est.cap_max;
+            cuerpo += `<section class="hoja${primero ? '' : ' salto'}">`;
+            cuerpo += `<header>
+                <div class="t1">PROGRAMA DE MÁQUINA</div>
+                <div class="t2">${orden}${nombre}${cb}</div>
+                <div class="meta">Período: ${rango} · Capacidad: ${this._num(cap, 0)} m²/día · <strong>${est.total_ordenes || 0} órdenes</strong> · ${this._num(est.total_m2, 1)} m² · ${this._num(est.total_kg, 0)} kg</div>
+            </header>`;
+            for (const dia of (est.fechas || [])) {
+                cuerpo += `<h3 class="dia">${this._fechaLarga(dia.fecha)}<span>${dia.total_ordenes || 0} órdenes · ${this._num(dia.total_m2, 1)} m² · ${this._num(dia.total_kg, 0)} kg</span></h3>`;
+                cuerpo += '<table><thead><tr>'
+                    + '<th>Pedido</th><th>Item</th><th>Código</th><th>Ref/Padre</th><th>Ancho</th><th>Alto</th>'
+                    + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th>'
+                    + '</tr></thead><tbody>';
+                for (const o of (dia.ordenes || [])) {
+                    cuerpo += `<tr>
+                        <td class="c">${E(o.pedido)}</td>
+                        <td class="c">${E(o.item)}</td>
+                        <td class="c"><strong>${E(o.codigo)}</strong></td>
+                        <td>${E(o.codigo_ref)}</td>
+                        <td class="n">${this._num(o.ancho, 0)}</td>
+                        <td class="n">${this._num(o.alto, 0)}</td>
+                        <td class="n">${this._num(o.cantidad, 0)}</td>
+                        <td class="n">${this._num(o.m2_asignados || o.m2, 2)}</td>
+                        <td class="n">${this._num(o.kg, 1)}</td>
+                        <td>${E(o.cliente)}</td>
+                        <td>${E(o.ruta)}</td>
+                        <td class="c">${E(o.estado)}</td>
+                    </tr>`;
+                }
+                cuerpo += '</tbody></table>';
+            }
+            cuerpo += `<footer>VitroFlow · Programa de máquinas · Período ${rango} · Impreso ${impreso}</footer>`;
+            cuerpo += '</section>';
+            primero = false;
+        }
+
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Programa de máquinas</title><style>'
+            + '@page{size:A4 landscape;margin:10mm}'
+            + '*{box-sizing:border-box}'
+            + 'body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:10px;margin:0}'
+            + '.hoja{padding:2px}'
+            + '.salto{page-break-before:always}'
+            + 'header{border-bottom:2px solid #111;padding-bottom:6px;margin-bottom:8px}'
+            + '.t1{font-size:9px;letter-spacing:2px;color:#555}'
+            + '.t2{font-size:17px;font-weight:800;margin:2px 0 3px}'
+            + '.meta{font-size:10px;color:#333}'
+            + 'h3.dia{font-size:11px;margin:10px 0 4px;padding:3px 6px;background:#eee;border-left:3px solid #111;display:flex;justify-content:space-between}'
+            + 'h3.dia span{font-weight:400;color:#444;font-size:9.5px;align-self:center}'
+            + 'table{width:100%;border-collapse:collapse}'
+            + 'th{background:#e8e8e8;border:1px solid #999;padding:3px 5px;font-size:9px;text-transform:uppercase;text-align:left}'
+            + 'td{border:1px solid #bbb;padding:3px 5px;font-size:10px}'
+            + 'td.n{text-align:right;font-variant-numeric:tabular-nums}'
+            + 'td.c{text-align:center}'
+            + 'tbody tr:nth-child(even){background:#fafafa}'
+            + 'footer{margin-top:10px;padding-top:5px;border-top:1px solid #999;font-size:8.5px;color:#555;display:flex;justify-content:space-between}'
+            + '</style></head><body>' + cuerpo + '</body></html>';
     },
 
     exportarExcel() {
