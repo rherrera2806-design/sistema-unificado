@@ -449,6 +449,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('userInfo').textContent = currentUser.email || 'Operario';
             aplicarContextoQR();
+            cargarHorarios();
         });
 
         // ============ VISTAS ============
@@ -487,6 +488,15 @@
                                 ${sugerencias === 'noche' ? '<span style="font-size:10px;padding:3px 8px;border-radius:10px;background:var(--primary);color:white;font-weight:700">Sugerido</span>' : ''}
                             </div>
                         </div>
+                        <div class="turno-option" data-turno="extra" onclick="selectTurno(this)" style="background:${sugerencias === 'extra' ? 'rgba(245,158,11,0.15)' : 'var(--bg)'};border:2px solid ${sugerencias === 'extra' ? '#f59e0b' : 'var(--border)'};border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s">
+                            <div style="display:flex;justify-content:space-between;align-items:center">
+                                <div>
+                                    <div style="font-weight:700;font-size:15px">⚡ Extra</div>
+                                    <div style="font-size:10px;color:var(--text-muted)">Fuera de los horarios de día/noche</div>
+                                </div>
+                                ${sugerencias === 'extra' ? '<span style="font-size:10px;padding:3px 8px;border-radius:10px;background:#f59e0b;color:white;font-weight:700">Sugerido</span>' : ''}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -497,8 +507,39 @@
             modal.classList.add('active');
         }
 
+        // ===== Horarios de turno por mes (configurable; lo demás = extra) =====
+        let horariosTurnos = [];
+
+        async function cargarHorarios() {
+            try {
+                const res = await fetch(`${API}/horarios`, { headers: getHeaders() });
+                if (res.ok) horariosTurnos = await res.json();
+            } catch (_) { }
+        }
+
         function getTurnoSugerido() {
-            const hora = new Date().getHours();
+            const ahora = new Date();
+            const anio = ahora.getFullYear();
+            const mes = ahora.getMonth() + 1;
+            const cfg = (horariosTurnos || []).filter(h => Number(h.anio) === anio && Number(h.mes) === mes);
+            if (cfg.length) {
+                const mins = ahora.getHours() * 60 + ahora.getMinutes();
+                for (const h of cfg) {
+                    const [hi, mi] = String(h.hora_inicio || '0:00').split(':').map(Number);
+                    const [hf, mf] = String(h.hora_fin || '0:00').split(':').map(Number);
+                    const ini = hi * 60 + mi;
+                    const fin = hf * 60 + mf;
+                    if (fin === ini) continue;
+                    if (fin < ini) { // cruza medianoche (ej: noche 22:00–06:00)
+                        if (mins >= ini || mins < fin) return h.turno;
+                    } else if (mins >= ini && mins < fin) {
+                        return h.turno;
+                    }
+                }
+                return 'extra'; // fuera de los rangos configurados del mes
+            }
+            // Sin configuración cargada: respaldo 06:00–22:00 día, resto noche
+            const hora = ahora.getHours();
             if (hora >= 6 && hora < 22) return 'dia';
             return 'noche';
         }

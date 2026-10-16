@@ -177,4 +177,13 @@ router.get('/api/taller/limpiar-duplicados', canUpdate, asyncHandler(async (req,
     res.json({ ok: true, eliminados: result.rowCount });
 }));
 
+// ===== Horarios de turno por mes (día / noche; lo no contemplado = extra) =====
+router.get('/api/taller/horarios', canView, asyncHandler(async (req, res) => {
+    res.json(await taller.getHorariosTurnos(Number(req.query.anio) || null));
+}));
+
+router.put('/api/taller/horarios', canUpdate, asyncHandler(async (req, res) => {
+    res.json(await taller.guardarHorariosTurnos(req.body.filas));
+}));
+
 module.exports = router;

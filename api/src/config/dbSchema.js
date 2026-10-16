@@ -605,6 +605,18 @@ async function faseColumnas({ q, safe }) {
     // programada: el resto queda como paso PENDIENTE, sin ser merma)
     await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS cantidad_real NUMERIC`, 'cola_produccion_pasos.cantidad_real');
     await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_real NUMERIC`, 'cola_produccion_pasos.m2_real');
+    // Horarios de turno por MES (cambian según la época): dia y noche; lo que
+    // quede fuera de estos rangos se considera hora EXTRA
+    await safe(`CREATE TABLE IF NOT EXISTS turnos_horarios (
+        id SERIAL PRIMARY KEY,
+        anio INTEGER NOT NULL,
+        mes INTEGER NOT NULL,
+        turno TEXT NOT NULL,
+        hora_inicio TIME NOT NULL,
+        hora_fin TIME NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (anio, mes, turno)
+    )`, 'turnos_horarios');
     // NOTA: la limpieza de pasos duplicados del bug de parciales YA NO corre al
     // arrancar (era un DELETE pesado que retrasaba el boot y Railway reiniciaba
     // el servicio en bucle). Ahora es un endpoint manual:

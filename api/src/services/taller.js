@@ -570,6 +570,39 @@ async function finalizarPasosPorPedido(pedidoSapId, estacionId, operarioEmail, o
     return count;
 }
 
+// ===== Horarios de turno por mes (dia / noche; lo demás = extra) =====
+async function getHorariosTurnos(anio) {
+    const where = anio ? 'WHERE anio = $1' : '';
+    const params = anio ? [anio] : [];
+    const result = await query(
+        `SELECT id, anio, mes, turno,
+                to_char(hora_inicio, 'HH24:MI') as hora_inicio,
+                to_char(hora_fin, 'HH24:MI') as hora_fin
+         FROM turnos_horarios ${where} ORDER BY anio DESC, mes, turno`, params);
+    return result.rows;
+}
+
+async function guardarHorariosTurnos(filas) {
+    let guardadas = 0;
+    for (const f of (Array.isArray(filas) ? filas : [])) {
+        const anio = Number(f.anio);
+        const mes = Number(f.mes);
+        const turno = String(f.turno || '').toLowerCase();
+        const horaInicio = String(f.hora_inicio || '');
+        const horaFin = String(f.hora_fin || '');
+        if (!anio || mes < 1 || mes > 12 || !['dia', 'noche'].includes(turno)) continue;
+        if (!/^\d{1,2}:\d{2}$/.test(horaInicio) || !/^\d{1,2}:\d{2}$/.test(horaFin)) continue;
+        await query(
+            `INSERT INTO turnos_horarios (anio, mes, turno, hora_inicio, hora_fin, updated_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (anio, mes, turno) DO UPDATE
+             SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin, updated_at = NOW()`,
+            [anio, mes, turno, horaInicio, horaFin]);
+        guardadas++;
+    }
+    return { guardadas };
+}
+
 module.exports = {
     getEstacionesConCarga,
     getColaPorEstacion,
@@ -583,5 +616,7 @@ module.exports = {
     procesarPaso,
     registrarMerma,
     registroManual,
+    getHorariosTurnos,
+    guardarHorariosTurnos,
     getMermas
 };
