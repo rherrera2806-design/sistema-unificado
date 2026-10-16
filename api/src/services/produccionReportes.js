@@ -100,6 +100,19 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
     `, params);
 
     const rows = result.rows;
+    // Ruta sin estaciones repetidas: un paso puede quedar partido por registros
+    // parciales (ej: dos "Corte" de la misma secuencia) y la ruta debe verse una vez
+    for (const r of rows) {
+        r.ruta_completa = String(r.ruta_completa || '').split(' → ')
+            .filter((v, i, a) => i === 0 || v !== a[i - 1]).join(' → ');
+        const t = String(r.ruta_abreviada || '').split('-');
+        const pares = [];
+        for (let i = 0; i + 1 < t.length; i += 2) {
+            const par = t[i] + '-' + t[i + 1];
+            if (!pares.length || pares[pares.length - 1] !== par) pares.push(par);
+        }
+        r.ruta_abreviada = pares.join('-');
+    }
     const porFecha = {};
 
     for (const r of rows) {

@@ -159,7 +159,9 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             grupo: r.grupo_resuelto,
             familia: r.nombre_familia,
             tipo_venta: r.tipo_venta,
-            ruta: Array.isArray(r.ruta_completa) ? r.ruta_completa.join(' → ') : '',
+            // Ruta sin estaciones repetidas (un mismo paso puede quedar partido
+            // por registros parciales: "Corte → Corte" se muestra una sola vez)
+            ruta: Array.isArray(r.ruta_completa) ? r.ruta_completa.filter((v, i, a) => i === 0 || v !== a[i - 1]).join(' → ') : '',
             mp_nombre: r.mp_nombre || null,
             mp_espesor: r.mp_espesor || null,
             hora_inicio: r.hora_inicio,

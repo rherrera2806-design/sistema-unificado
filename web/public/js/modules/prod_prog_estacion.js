@@ -173,7 +173,7 @@ App.registerModule('prod_prog_estacion', {
             html += `<div><span style="font-size:15px;font-weight:800">${escText(est.orden)}° ${escText(est.nombre)}</span>`;
             if (est.cuello_botella) html += ` <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.2);margin-left:6px">CUELLO DE BOTELLA</span>`;
             html += `</div>`;
-            html += `<div style="text-align:right;font-size:11px"><span>${est.total_ordenes} ord</span> · <span>${Number(est.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m²</span> · <span>${Number(est.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</span></div>`;
+            html += `<div style="text-align:right;font-size:11px"><span>${est.total_ordenes} ord</span> · <span>${(est.fechas || []).reduce((s, d) => s + this._unidadesDia(d), 0).toLocaleString('es-CL')} und</span> · <span>${Number(est.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m²</span> · <span>${Number(est.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</span></div>`;
             html += `</div>`;
 
             if (!est.fechas || est.fechas.length === 0) {
@@ -184,10 +184,10 @@ App.registerModule('prod_prog_estacion', {
                     const esHoy = dia.fecha === this._hoyLocal();
                     html += `<div class="ppe-date-header" style="${esHoy ? 'background:linear-gradient(135deg,#059669,#10b981)' : ''}">`;
                     html += `<div>${esHoy ? 'HOY - ' : ''}${fechaFmt}</div>`;
-                    html += `<div>${dia.total_ordenes} ord · ${Number(dia.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m² · ${Number(dia.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</div>`;
+                    html += `<div>${dia.total_ordenes} ord · ${this._unidadesDia(dia).toLocaleString('es-CL')} und · ${Number(dia.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m² · ${Number(dia.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</div>`;
                     html += `</div>`;
                     html += `<div class="m-table-wrap"><table class="ppe-table"><thead><tr>`;
-                    html += `<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código</th><th>Ref/Padre</th><th>Dim</th><th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
+                    html += `<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código</th><th>Ref/Padre</th><th>Dim</th><th>Cant. pend.</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
                     html += `</tr></thead><tbody>`;
 
                     let cardsDia = '';
@@ -218,7 +218,9 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong> <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#0ea5e9;color:white">PADRE</span></td>`;
                         html += `<td style="font-size:11px"><strong>${this.esc(p.codigo_ref)}</strong>${p.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
                         html += `<td>${p.ancho}×${p.alto}</td>`;
-                        html += `<td>${grp.hijos.length} MP</td>`;
+                        const undTotal = grp.hijos[0] ? (Number(grp.hijos[0].cantidad) || 0) : 0;
+                        const undPend = grp.hijos[0] ? (Number(grp.hijos[0].cantidad_paso) || undTotal) : 0;
+                        html += `<td title="Cantidad pendiente del pedido de ${undTotal.toLocaleString('es-CL')} und"><strong>${undPend.toLocaleString('es-CL')}</strong> und <span style="font-size:9px;color:#94a3b8">pend.</span></td>`;
                         const totalM2Grupo = grp.hijos[0] ? (grp.hijos[0].m2_asignados || grp.hijos[0].m2) : 0;
                         const totalKgGrupo = grp.hijos.reduce((s, h) => s + h.kg, 0);
                         html += `<td><strong>${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
@@ -229,23 +231,18 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></td>`;
                         html += `</tr>`;
 
+                        // Línea de receta (MP): solo la cantidad PENDIENTE según
+                        // la receta (sin repetir pedido/item/prioridad)
                         for (const h of grp.hijos) {
-                            const estadoClass = `ppe-estado-${h.estado}`;
                             const mpInfo = h.mp_nombre ? `${this.esc(h.mp_nombre)}${h.mp_espesor ? ' ' + escText(h.mp_espesor) + 'mm' : ''}` : '';
+                            const mpPend = Number(h.cantidad_paso) || Number(h.cantidad) || 0;
                             html += `<tr style="background:#faf5ff">`;
-                            html += `<td style="padding-left:24px"><span style="color:#7c3aed">└</span> ${this.esc(h.pedido || '-')}</td>`;
-                            html += `<td>${this.esc(h.item || '-')}</td>`;
-                            html += `<td>${this._prioBadge(h.prioridad)}</td>`;
+                            html += `<td colspan="3"></td>`;
                             html += `<td><strong>${this.esc(h.codigo)}</strong> <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span></td>`;
                             html += `<td style="font-size:11px;color:#7c3aed;font-weight:600">${mpInfo || this.esc(h.codigo_ref)}</td>`;
                             html += `<td></td>`;
-                            html += `<td>${this.esc(h.cantidad || 1)}</td>`;
-                            html += `<td></td>`;
-                            html += `<td><strong>${Number(h.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
-                            html += `<td></td>`;
-                            html += `<td></td>`;
-                            html += `<td></td>`;
-                            html += `<td></td>`;
+                            html += `<td title="Cantidad pendiente según receta">${mpPend.toLocaleString('es-CL')} und <span style="font-size:9px;color:#94a3b8">receta</span></td>`;
+                            html += `<td colspan="7"></td>`;
                             html += `</tr>`;
                         }
                         cardsDia += this._renderGrupoCard(p, grp.hijos);
@@ -253,7 +250,6 @@ App.registerModule('prod_prog_estacion', {
 
                     html += `</tbody></table></div>`;
                     html += `<div class="m-cards-mobile" style="display:none;padding:12px">${cardsDia}</div>`;
-                    html += `<div class="ppe-totales"><div>M²: <span>${Number(dia.total_m2).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div><div>Kg: <span>${Number(dia.total_kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</span></div><div>Órdenes: <span>${dia.total_ordenes}</span></div></div>`;
                 }
             }
             html += `</div>`;
@@ -309,17 +305,12 @@ App.registerModule('prod_prog_estacion', {
         </div>`;
     },
 
-    // Card movil para un grupo padre con sus materias primas
+    // Card movil para un grupo padre (sin filas de materias primas: esa info
+    // no se necesita en pantalla — solo las unidades)
     _renderGrupoCard(p, hijos) {
         const totalM2Grupo = hijos[0] ? (hijos[0].m2_asignados || hijos[0].m2) : 0;
         const totalKgGrupo = hijos.reduce((s, h) => s + h.kg, 0);
-        const hijosHtml = hijos.map(h => {
-            const mpInfo = h.mp_nombre ? `${this.esc(h.mp_nombre)}${h.mp_espesor ? ' ' + escText(h.mp_espesor) + 'mm' : ''}` : '';
-            return `<div style="display:flex;justify-content:space-between;gap:6px;padding:4px 0;border-top:1px solid #f1f5f9;font-size:11px">
-                <div style="min-width:0"><span style="color:#7c3aed">└</span> <strong>${this.esc(h.codigo)}</strong> <span style="color:#94a3b8">${mpInfo || this.esc(h.codigo_ref)}</span></div>
-                <div style="white-space:nowrap;color:#475569">${this.esc(h.cantidad || 1)} un · <strong>${Number(h.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong> kg</div>
-            </div>`;
-        }).join('');
+        const undPend = hijos[0] ? (Number(hijos[0].cantidad_paso) || Number(hijos[0].cantidad) || 0) : 0;
         return `<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;margin-bottom:10px">
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                 <div style="min-width:0">
@@ -335,13 +326,36 @@ App.registerModule('prod_prog_estacion', {
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:4px">
                 <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(p.ancho)}×${this.esc(p.alto)}</span></div>
-                <div><span style="color:#94a3b8">MP:</span> <span style="color:#475569">${hijos.length}</span></div>
+                <div><span style="color:#94a3b8">Und pend.:</span> <span style="color:#475569">${undPend.toLocaleString('es-CL')} und</span></div>
                 <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
                 <div><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></div>
                 <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="font-size:10px;color:#7c3aed">${this.esc(p.ruta)}</span></div>
             </div>
-            ${hijosHtml}
+            ${hijos.map(h => {
+                const mpInfo = h.mp_nombre ? `${this.esc(h.mp_nombre)}${h.mp_espesor ? ' ' + escText(h.mp_espesor) + 'mm' : ''}` : '';
+                const mpPend = Number(h.cantidad_paso) || Number(h.cantidad) || 0;
+                return `<div style="display:flex;justify-content:space-between;gap:6px;padding:4px 0;border-top:1px solid #f1f5f9;font-size:11px">
+                    <div style="min-width:0"><span style="color:#7c3aed">└</span> <strong>${this.esc(h.codigo)}</strong> <span style="color:#94a3b8">${mpInfo || this.esc(h.codigo_ref)}</span></div>
+                    <div style="white-space:nowrap;color:#475569">${mpPend.toLocaleString('es-CL')} und <span style="font-size:9px;color:#94a3b8">receta</span></div>
+                </div>`;
+            }).join('')}
         </div>`;
+    },
+
+    // Unidades de un día: los grupos (padre + MPs) cuentan UNA vez las
+    // unidades de la orden (las filas MP repiten la misma cantidad)
+    _unidadesDia(dia) {
+        const vistas = new Set();
+        let und = 0;
+        for (const o of (dia.ordenes || [])) {
+            if (o.es_compuesto && o.codigo_ref) {
+                const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
+                if (vistas.has(key)) continue;
+                vistas.add(key);
+            }
+            und += Number(o.cantidad) || 0;
+        }
+        return und;
     },
 
     // Badge de prioridad (numerada, idioma de etiquetas)
@@ -359,7 +373,7 @@ App.registerModule('prod_prog_estacion', {
         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
         html += `<td style="font-size:11px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
         html += `<td>${o.ancho}×${o.alto}</td>`;
-        html += `<td>${o.cantidad_paso || o.cantidad || 1}</td>`;
+        html += `<td title="Cantidad pendiente del pedido"><strong>${Number(o.cantidad_paso || o.cantidad || 1).toLocaleString('es-CL')}</strong> und <span style="font-size:9px;color:#94a3b8">pend.</span></td>`;
         html += `<td><strong>${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
         html += `<td><strong>${Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(o.cliente || '-')}</td>`;

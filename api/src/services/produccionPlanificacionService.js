@@ -13,9 +13,10 @@ const getDetalleGrupoDia = async (grupo, fecha) => {
         SELECT o.id, o.pedido_sap_id, o.item_numero, o.codigo_producto, o.descripcion, o.ancho, o.alto,
                o.metros_cuadrados, o.kilos, o.cantidad, o.grupo, o.codigo_padre, o.es_compuesto,
                o.estado_programacion,
-               (SELECT string_agg(em.nombre_estacion || ' (' || to_char(cp.fecha_programada,'DD/MM') || ')', ' → ' ORDER BY cp.orden_secuencia)
-                FROM cola_produccion_pasos cp JOIN estaciones_maestras em ON cp.estacion_id = em.id
-                WHERE cp.orden_produccion_id = o.id AND cp.fecha_programada IS NOT NULL) as ruta
+               (SELECT string_agg(t.nombre_estacion || ' (' || to_char(t.fecha_programada,'DD/MM') || ')', ' → ' ORDER BY t.orden_secuencia)
+                FROM (SELECT DISTINCT ON (cp.orden_secuencia, cp.estacion_id) cp.orden_secuencia, cp.fecha_programada, em.nombre_estacion
+                      FROM cola_produccion_pasos cp JOIN estaciones_maestras em ON cp.estacion_id = em.id
+                      WHERE cp.orden_produccion_id = o.id AND cp.fecha_programada IS NOT NULL) t) as ruta
         FROM produccion_ordenes o
         WHERE o.grupo ILIKE $1
           AND EXISTS (

@@ -67,8 +67,11 @@ const sincronizarEstadoOrden = async (ordenId) => {
 const getOrdenes = async () => {
     const result = await query(`
         SELECT o.*,
-            (SELECT COUNT(*) FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id) as total_pasos,
-            (SELECT COUNT(*) FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id AND p.estado = 'TERMINADO') as pasos_terminados,
+            (SELECT COUNT(*) FROM (SELECT DISTINCT p.orden_secuencia, p.estacion_id FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id) t) as total_pasos,
+            (SELECT COUNT(*) FROM (SELECT p.orden_secuencia, p.estacion_id
+             FROM cola_produccion_pasos p WHERE p.orden_produccion_id = o.id
+             GROUP BY p.orden_secuencia, p.estacion_id
+             HAVING BOOL_AND(p.estado IN ('TERMINADO','MERMADO'))) t) as pasos_terminados,
             CASE WHEN o.codigo_padre IS NOT NULL THEN
                 COALESCE(
                     (SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
@@ -100,6 +103,10 @@ const getOrdenes = async () => {
             ) as estaciones
         FROM produccion_ordenes o ORDER BY o.created_at DESC
     `);
+    for (const row of result.rows) {
+        // Sin estaciones repetidas por pasos partidos (registros parciales)
+        row.estaciones = (row.estaciones || []).filter((v, i, a) => i === 0 || v !== a[i - 1]);
+    }
     return result.rows;
 };
 

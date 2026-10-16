@@ -489,6 +489,13 @@ App.registerModule('produccion', {
             ]);
             if (!pasosRes.ok) throw new Error('HTTP ' + pasosRes.status);
             const pasos = await pasosRes.json();
+            // Pasos partidos por registros parciales (ej: dos "Corte"): se
+            // muestra solo el ÚLTIMO registro por estación/secuencia
+            const pasosUnicos = Object.values((Array.isArray(pasos) ? pasos : []).reduce((acc, p) => {
+                const k = p.orden_secuencia + '|' + p.estacion_id;
+                if (!acc[k] || Number(p.id) > Number(acc[k].id)) acc[k] = p;
+                return acc;
+            }, {})).sort((a, b) => Number(a.orden_secuencia) - Number(b.orden_secuencia));
             const todasEstaciones = await estacionesRes.json();
             const o = this.ordenes.find(x => x.id === ordenId);
             if (!o) return;
@@ -496,16 +503,18 @@ App.registerModule('produccion', {
 
             const estIdsActuales = pasos.map(p => p.estacion_id);
             const estDisponibles = todasEstaciones.filter(e => e.activa && !estIdsActuales.includes(e.id));
-            const progreso = o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos : '—';
+            const progreso = pasosUnicos.length > 0
+                ? pasosUnicos.filter(p => p.estado === 'TERMINADO' || p.estado === 'MERMADO').length + '/' + pasosUnicos.length
+                : '—';
 
             let reglas = o.reglas_extras_json;
             if (typeof reglas === 'string') { try { reglas = JSON.parse(reglas); } catch (e) { reglas = []; } }
             reglas = Array.isArray(reglas) ? reglas : [];
             const coloresRegla = { 'Radio': '#8b5cf6', 'Pulido': '#6366f1', 'Perforado': '#f59e0b', 'Destaje': '#ef4444', 'Sacado': '#ec4899', 'Ventana': '#14b8a6', 'Pintado': '#3b82f6', 'Pintado Car': '#0ea5e9' };
 
-            const pasosHtml = pasos.length === 0
+            const pasosHtml = pasosUnicos.length === 0
                 ? '<div class="po-loading" style="padding:14px">Sin pasos definidos (sin ruta)</div>'
-                : pasos.map(p => `
+                : pasosUnicos.map(p => `
                     <div class="po-paso">
                         <div class="n">${p.orden_secuencia}</div>
                         <div class="e">${escText(p.nombre_estacion || p.estacion_nombre || '—')}</div>
