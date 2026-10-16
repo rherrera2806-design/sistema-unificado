@@ -427,9 +427,28 @@
         let timerSeconds = 0;
 
         // Inicializar
+        // Llegada por QR con contexto (cámara nativa sobre el papel impreso):
+        // ?qr=VF:PEDIDO|ITEM&estacion=ID → entra DIRECTO a la cola de esa
+        // estación, con el turno sugerido por la hora y el registro pre-cargado.
+        async function aplicarContextoQR() {
+            try {
+                const params = new URLSearchParams(location.search);
+                const estId = Number(params.get('estacion')) || null;
+                if (!estId) { await loadEstaciones(); return; }
+                const res = await fetch(`${API}/estaciones`, { headers: getHeaders() });
+                const ests = await res.json();
+                const est = (ests || []).find(e => Number(e.id) === estId);
+                if (!est) { await loadEstaciones(); return; }
+                if (!turnoSeleccionado) turnoSeleccionado = getTurnoSugerido();
+                await loadCola(estId, est.nombre_estacion || est.nombre || 'Estación', null);
+            } catch (_) {
+                await loadEstaciones();
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('userInfo').textContent = currentUser.email || 'Operario';
-            loadEstaciones();
+            aplicarContextoQR();
         });
 
         // ============ VISTAS ============
