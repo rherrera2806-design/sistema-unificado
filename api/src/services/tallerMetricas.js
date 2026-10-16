@@ -22,21 +22,21 @@ const getMetricasGenerales = async (fecha) => {
             
             (SELECT COUNT(DISTINCT o.id) FROM produccion_ordenes o
              JOIN cola_produccion_pasos cp ON o.id = cp.orden_produccion_id
-             WHERE cp.estado = 'TERMINADO' AND cp.hora_fin::date = $1) as ordenes_completadas_hoy,
+             WHERE cp.estado = 'TERMINADO' AND COALESCE(cp.fecha_turno, cp.hora_fin::date) = $1) as ordenes_completadas_hoy,
             
             -- Pasos
             (SELECT COUNT(*) FROM cola_produccion_pasos WHERE estado = 'PENDIENTE') as pasos_pendientes,
             (SELECT COUNT(*) FROM cola_produccion_pasos WHERE estado = 'EN_PROCESO') as pasos_en_proceso,
-            (SELECT COUNT(*) FROM cola_produccion_pasos WHERE estado = 'TERMINADO' AND hora_fin::date = $1) as pasos_terminados_hoy,
+            (SELECT COUNT(*) FROM cola_produccion_pasos WHERE estado = 'TERMINADO' AND COALESCE(fecha_turno, hora_fin::date) = $1) as pasos_terminados_hoy,
             
             -- Producción
             (SELECT COALESCE(SUM(o.metros_cuadrados), 0) FROM produccion_ordenes o
              JOIN cola_produccion_pasos cp ON o.id = cp.orden_produccion_id
-             WHERE cp.estado = 'TERMINADO' AND cp.hora_fin::date = $1) as m2_producidos_hoy,
+             WHERE cp.estado = 'TERMINADO' AND COALESCE(cp.fecha_turno, cp.hora_fin::date) = $1) as m2_producidos_hoy,
             
             (SELECT COALESCE(SUM(o.kilos), 0) FROM produccion_ordenes o
              JOIN cola_produccion_pasos cp ON o.id = cp.orden_produccion_id
-             WHERE cp.estado = 'TERMINADO' AND cp.hora_fin::date = $1) as kilos_producidos_hoy,
+             WHERE cp.estado = 'TERMINADO' AND COALESCE(cp.fecha_turno, cp.hora_fin::date) = $1) as kilos_producidos_hoy,
             
             -- Mermas
             (SELECT COUNT(*) FROM mermas WHERE created_at::date = $1) as mermas_hoy,
@@ -55,35 +55,35 @@ const getOEEPorEstacion = async (fechaInicio, fechaFin) => {
         WITH tiempo_planificado AS (
             SELECT 
                 cp.estacion_id,
-                DATE(cp.hora_inicio) as fecha,
+                COALESCE(cp.fecha_turno, DATE(cp.hora_inicio)) as fecha,
                 SUM(EXTRACT(EPOCH FROM (COALESCE(cp.hora_fin, NOW()) - cp.hora_inicio))) as segundos_planificados
             FROM cola_produccion_pasos cp
             WHERE cp.hora_inicio IS NOT NULL
-              AND cp.hora_inicio::date BETWEEN $1 AND $2
-            GROUP BY cp.estacion_id, DATE(cp.hora_inicio)
+              AND COALESCE(cp.fecha_turno, cp.hora_inicio::date) BETWEEN $1 AND $2
+            GROUP BY cp.estacion_id, COALESCE(cp.fecha_turno, DATE(cp.hora_inicio))
         ),
         tiempo_operacion AS (
             SELECT 
                 cp.estacion_id,
-                DATE(cp.hora_inicio) as fecha,
+                COALESCE(cp.fecha_turno, DATE(cp.hora_inicio)) as fecha,
                 SUM(EXTRACT(EPOCH FROM (COALESCE(cp.hora_fin, NOW()) - cp.hora_inicio)) - COALESCE(cp.tiempo_pausado_segundos, 0)) as segundos_operacion
             FROM cola_produccion_pasos cp
             WHERE cp.hora_inicio IS NOT NULL 
               AND cp.estado = 'TERMINADO'
-              AND cp.hora_inicio::date BETWEEN $1 AND $2
-            GROUP BY cp.estacion_id, DATE(cp.hora_inicio)
+              AND COALESCE(cp.fecha_turno, cp.hora_inicio::date) BETWEEN $1 AND $2
+            GROUP BY cp.estacion_id, COALESCE(cp.fecha_turno, DATE(cp.hora_inicio))
         ),
         produccion AS (
             SELECT 
                 cp.estacion_id,
-                DATE(cp.hora_fin) as fecha,
+                COALESCE(cp.fecha_turno, DATE(cp.hora_fin)) as fecha,
                 COUNT(*) as total_pasos,
                 SUM(COALESCE(o.metros_cuadrados, 0)) as total_m2
             FROM cola_produccion_pasos cp
             JOIN produccion_ordenes o ON cp.orden_produccion_id = o.id
             WHERE cp.hora_fin IS NOT NULL
-              AND cp.hora_fin::date BETWEEN $1 AND $2
-            GROUP BY cp.estacion_id, DATE(cp.hora_fin)
+              AND COALESCE(cp.fecha_turno, cp.hora_fin::date) BETWEEN $1 AND $2
+            GROUP BY cp.estacion_id, COALESCE(cp.fecha_turno, DATE(cp.hora_fin))
         ),
         calidad AS (
             SELECT 
@@ -150,7 +150,7 @@ const getLeadTimePromedio = async (fechaInicio, fechaFin) => {
         LEFT JOIN familias_producto fp ON o.familia_id = fp.id
         WHERE cp.hora_inicio IS NOT NULL 
           AND cp.hora_fin IS NOT NULL
-          AND cp.hora_fin::date BETWEEN $1 AND $2
+          AND COALESCE(cp.fecha_turno, cp.hora_fin::date) BETWEEN $1 AND $2
         GROUP BY o.codigo_producto, o.descripcion, fp.nombre_familia
         HAVING COUNT(DISTINCT o.id) >= 3
         ORDER BY lead_time_promedio_horas DESC
@@ -203,7 +203,7 @@ const getRendimientoOperario = async (fechaInicio, fechaFin) => {
         FROM cola_produccion_pasos cp
         JOIN produccion_ordenes o ON cp.orden_produccion_id = o.id
         WHERE cp.estado = 'TERMINADO'
-          AND cp.hora_fin::date BETWEEN $1 AND $2
+          AND COALESCE(cp.fecha_turno, cp.hora_fin::date) BETWEEN $1 AND $2
           AND cp.operario_email IS NOT NULL
         GROUP BY cp.operario_email, cp.operario_nombre
         ORDER BY m2_producidos DESC

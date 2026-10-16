@@ -605,6 +605,10 @@ async function faseColumnas({ q, safe }) {
     // programada: el resto queda como paso PENDIENTE, sin ser merma)
     await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS cantidad_real NUMERIC`, 'cola_produccion_pasos.cantidad_real');
     await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_real NUMERIC`, 'cola_produccion_pasos.m2_real');
+    // Día del turno (para el turno nocturno el día = día de término): la
+    // producción nocturna se acredita al día en que el turno termina.
+    await safe('ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS fecha_turno DATE', 'fecha_turno');
+
     // Horarios de turno SEMANALES por MES (el recorte de horas en Chile va
     // cambiando los horarios según la época): día_semana 0=Dom..6=Sáb, el turno
     // puede terminar al día siguiente (cruza medianoche) y se acredita al día

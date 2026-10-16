@@ -51,7 +51,7 @@ App.registerModule('prod_horarios', {
                                     <th>☀️ Día fin</th>
                                     <th>🌙 Noche inicio</th>
                                     <th>🌙 Noche fin</th>
-                                    <th>Termina</th>
+                                    <th>Termina / se acredita a</th>
                                 </tr>
                             </thead>
                             <tbody>${this._dias.map((nom, i) => `
@@ -61,7 +61,7 @@ App.registerModule('prod_horarios', {
                                     <td><input type="time" id="htDiaFin${i}"></td>
                                     <td><input type="time" id="htNocIni${i}"></td>
                                     <td><input type="time" id="htNocFin${i}"></td>
-                                    <td class="c-fin"><label class="ht-check"><input type="checkbox" id="htNocSig${i}"> día siguiente</label></td>
+                                    <td class="c-fin"><label class="ht-check"><input type="checkbox" id="htNocSig${i}" onchange="App.modules.prod_horarios._actualizarDias()"> día siguiente</label><span class="ht-dia-turno" id="htDiaTurno${i}"></span></td>
                                 </tr>`).join('')}
                             </tbody>
                         </table>
@@ -143,6 +143,18 @@ App.registerModule('prod_horarios', {
             document.getElementById('htNocFin' + i).value = (noche && noche.hora_fin) || '';
             document.getElementById('htNocSig' + i).checked = !!(noche && noche.dia_siguiente);
         }
+        this._actualizarDias();
+    },
+
+    // Para el turno nocturno el día = día de TÉRMINO: muestra a qué día se
+    // acredita cada turno noche (ej: Jue 22:00 → Vie 06:30 = "turno del Viernes").
+    _actualizarDias() {
+        for (let i = 0; i < 7; i++) {
+            const el = document.getElementById('htDiaTurno' + i);
+            if (!el) continue;
+            const sig = document.getElementById('htNocSig' + i)?.checked;
+            el.textContent = '→ turno del ' + this._dias[sig ? (i + 1) % 7 : i];
+        }
     },
 
     copiarMesAnterior() {
@@ -163,6 +175,7 @@ App.registerModule('prod_horarios', {
         }
         if (copiados) App.showAlert('Semana copiada desde ' + this._mesTexto(prev.anio + '-' + String(prev.mes).padStart(2, '0')) + '. Revisa y guarda.', 'success');
         else App.showAlert('El mes anterior no tiene horarios cargados', 'danger');
+        this._actualizarDias();
     },
 
     async guardarMes() {
@@ -228,6 +241,7 @@ App.registerModule('prod_horarios', {
             .ht-semana input[type="time"]:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
             .ht-check{font-size:11px;color:#475569;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer}
             .ht-check input{width:15px;height:15px;accent-color:#1e40af}
+            .ht-dia-turno{display:block;font-size:10px;font-weight:700;color:#1e40af;margin-top:3px}
             .ht-btn{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;background:#1e40af;color:#fff;margin-top:12px}
             .ht-btn:hover{background:#1e3a8a}
             .ht-btn:disabled{opacity:.6;cursor:default}
