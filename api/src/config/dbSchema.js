@@ -605,16 +605,21 @@ async function faseColumnas({ q, safe }) {
     // programada: el resto queda como paso PENDIENTE, sin ser merma)
     await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS cantidad_real NUMERIC`, 'cola_produccion_pasos.cantidad_real');
     await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_real NUMERIC`, 'cola_produccion_pasos.m2_real');
-    // Limpieza de pasos DUPLICADOS que dejó el bug de ingresos parciales: pasos
-    // PENDIENTES idénticos (misma orden+estación+secuencia y mismo m2). Se queda
-    // uno y se eliminan las copias. Idempotente (no toca EN_PROCESO ni TERMINADO).
-    await safe(`DELETE FROM cola_produccion_pasos p USING cola_produccion_pasos q
-        WHERE p.id > q.id
-          AND p.orden_produccion_id = q.orden_produccion_id
-          AND p.estacion_id = q.estacion_id
-          AND p.orden_secuencia = q.orden_secuencia
-          AND p.estado = 'PENDIENTE' AND q.estado = 'PENDIENTE'
-          AND COALESCE(p.m2_asignados, 0) = COALESCE(q.m2_asignados, 0)`, 'cola_produccion_pasos duplicados limpiados');
+    // Limpieza de pasos DUPLICADOS que dejó el bug de ingresos parciales: si
+    // hay varios PENDIENTES para la misma orden+estación+secuencia, son copias
+    // del bug (el flujo correcto siempre deja uno solo). Se conserva el primero.
+    try {
+        const limpieza = await query(`DELETE FROM cola_produccion_pasos
+            WHERE estado = 'PENDIENTE'
+              AND id NOT IN (
+                  SELECT MIN(id) FROM cola_produccion_pasos
+                  WHERE estado = 'PENDIENTE'
+                  GROUP BY orden_produccion_id, estacion_id, orden_secuencia
+              )`);
+        if (limpieza.rowCount > 0) console.log('[TALLER] Pasos duplicados eliminados:', limpieza.rowCount);
+    } catch (e) {
+        console.error('[TALLER] Limpieza de duplicados falló:', e.message);
+    }
 
     // ── catalogo_tipos_cristal ───────────────────────────────────────────────
     await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.stock_critico');
