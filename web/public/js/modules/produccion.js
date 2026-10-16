@@ -107,10 +107,10 @@ App.registerModule('produccion', {
                 <div class="po-table-wrap">
                     <table class="po-table">
                         <thead><tr>
-                            <th>Pedido · Item</th><th>Cliente</th><th>Código</th><th>Dimensiones</th>
+                            <th>Pedido · Item</th><th>Cliente</th><th>Código SAP</th><th>Descripción</th><th>Código / MP</th><th>Dimensiones</th>
                             <th class="num">Cant.</th><th>Prioridad</th><th>Estado</th><th class="th-acc">Acciones</th>
                         </tr></thead>
-                        <tbody id="prodTable"><tr><td colspan="8" class="po-loading">Cargando órdenes...</td></tr></tbody>
+                        <tbody id="prodTable"><tr><td colspan="10" class="po-loading">Cargando órdenes...</td></tr></tbody>
                     </table>
                 </div>
                 <div id="prodCardsMobile" class="po-cards-mobile"></div>
@@ -269,7 +269,7 @@ App.registerModule('produccion', {
         } catch (e) {
             console.error('Error loading produccion:', e);
             const tbody = document.getElementById('prodTable');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="po-loading" style="color:#dc2626">Error al cargar: ' + escText(e.message || 'No se pudo cargar') + '</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="po-loading" style="color:#dc2626">Error al cargar: ' + escText(e.message || 'No se pudo cargar') + '</td></tr>';
             App.showAlert('Error al cargar órdenes: ' + (e.message || ''), 'danger');
         }
     },
@@ -370,11 +370,11 @@ App.registerModule('produccion', {
         if (!conMenu) return '<span class="po-prio ' + m.cls + '">● ' + n + ' · ' + m.label + '</span>';
         let opts = '';
         for (let i = 1; i <= 4; i++) {
-            opts += '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="' + i + '">'
+            opts += '<div class="prio-option" onclick="event.stopPropagation();App.modules.produccion.cambiarPrioridad(' + ordenId + ',' + i + ')">'
                 + '<span class="po-prio ' + map[i].cls + '">● ' + i + ' · ' + map[i].label + '</span></div>';
         }
         return '<div class="po-prio-wrap">'
-            + '<span class="prio-toggle po-prio ' + m.cls + '" data-orden="' + ordenId + '" title="Click para cambiar prioridad">● ' + n + ' · ' + m.label + ' ▾</span>'
+            + '<span class="prio-toggle po-prio ' + m.cls + '" data-orden="' + ordenId + '" onclick="App.modules.produccion.togglePrioridad(event)" title="Click para cambiar prioridad">● ' + n + ' · ' + m.label + ' ▾</span>'
             + '<div class="prioridad-dropdown" id="prioDrop_' + ordenId + '">' + opts + '</div>'
             + '</div>';
     },
@@ -385,7 +385,7 @@ App.registerModule('produccion', {
         const cardsMobile = document.getElementById('prodCardsMobile');
         this.renderTotales(ordenes);
         if (!ordenes.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="po-loading">No hay órdenes con los filtros actuales</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="po-loading">No hay órdenes con los filtros actuales</td></tr>';
             if (cardsMobile) cardsMobile.innerHTML = '<div class="po-loading">No hay órdenes con los filtros actuales</div>';
             return;
         }
@@ -394,9 +394,11 @@ App.registerModule('produccion', {
             return '<tr onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
                 + '<td><strong>' + escText(o.pedido_sap_id || '-') + '</strong><div class="sub2">Item ' + escText(o.item_numero || '-') + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div></td>'
                 + '<td>' + escText((o.cliente || '-').toUpperCase()) + '</td>'
+                + '<td><strong>' + escText(o.codigo_padre || o.codigo_producto || '-') + '</strong></td>'
+                + '<td class="c-desc">' + escText(o.nombre_codigo_padre || o.descripcion || '—') + '</td>'
                 + '<td><strong>' + escText(o.codigo_producto) + '</strong> '
                 + (o.es_compuesto ? '<span class="po-bom">BOM</span>' : '<span class="po-sinbom" title="Sin receta BOM">SIN BOM</span>')
-                + '<div class="sub2">' + (o.codigo_padre ? 'SAP ' + escText(o.codigo_padre) + ' · ' : '') + escText(o.descripcion || o.nombre_mp || '-') + '</div></td>'
+                + '<div class="sub2">' + escText(o.nombre_mp || '—') + '</div></td>'
                 + '<td>' + this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0) + ' mm</td>'
                 + '<td class="num"><span class="po-cant" title="Click para editar" onclick="event.stopPropagation();App.modules.produccion.showEditCantidad(' + o.id + ')">' + this._fmt(o.cantidad || 1, 0) + '</span></td>'
                 + '<td onclick="event.stopPropagation()">' + this._prioBadge(o.nivel_prioridad, o.id, true) + '</td>'
@@ -417,7 +419,9 @@ App.registerModule('produccion', {
                 const progreso = o.total_pasos > 0 ? ' · ' + o.pasos_terminados + '/' + o.total_pasos + ' pasos' : '';
                 return '<div class="po-mcard">'
                     + '<div class="t1"><strong>' + escText(o.pedido_sap_id || '-') + ' · It ' + escText(o.item_numero || '-') + '</strong>' + this._estadoBadge(o.estado_programacion) + '</div>'
-                    + '<div class="sub2">' + escText((o.cliente || '-').toUpperCase()) + ' · ' + escText(o.codigo_producto) + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div>'
+                    + '<div class="sub2">' + escText((o.cliente || '-').toUpperCase()) + ' · SAP ' + escText(o.codigo_padre || o.codigo_producto || '-') + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div>'
+                    + '<div class="sub2">' + escText(o.nombre_codigo_padre || o.descripcion || '') + '</div>'
+                    + '<div class="sub2">' + escText(o.codigo_producto) + ' · ' + escText(o.nombre_mp || '') + '</div>'
                     + '<div class="t2">' + this._prioBadge(o.nivel_prioridad, o.id, true)
                     + '<span class="sub2">' + this._fmt(o.cantidad || 1, 0) + ' und · ' + this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0) + progreso + '</span></div>'
                     + '<div class="acc">'
@@ -987,6 +991,18 @@ App.registerModule('produccion', {
         if (!wasVisible) this._abrirDrop(menu, e.currentTarget || e.target);
     },
 
+    // Menú de prioridad con handler propio: el onclick inline frena el click
+    // ANTES de que burbujee a la fila (que abriría el detalle y lo taparía todo)
+    togglePrioridad(e) {
+        e.stopPropagation();
+        const wrap = e.currentTarget.parentElement;
+        const menu = wrap.querySelector('.prioridad-dropdown');
+        if (!menu) return;
+        const wasVisible = menu.style.display === 'block';
+        this._cerrarDrops();
+        if (!wasVisible) this._abrirDrop(menu, e.currentTarget);
+    },
+
     toggleMant(e) {
         e.stopPropagation();
         const drop = document.getElementById('poMantDrop');
@@ -1181,7 +1197,7 @@ App.registerModule('produccion', {
             .po-tot span strong{color:#0f172a}
 
             .po-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-            .po-table{width:100%;border-collapse:collapse;min-width:860px}
+            .po-table{width:100%;border-collapse:collapse;min-width:1040px}
             .po-table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0;white-space:nowrap}
             .po-table td{padding:11px 14px;font-size:13px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
             .po-table tbody tr{cursor:pointer}
