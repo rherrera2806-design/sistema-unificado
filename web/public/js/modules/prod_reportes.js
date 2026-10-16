@@ -155,6 +155,13 @@ App.registerModule('prod_reportes', {
         }
     },
 
+    // Badge de prioridad (numerada, idioma de etiquetas)
+    _prioBadge(n) {
+        const map = { 1: ['1 · Normal', '#eff6ff', '#1d4ed8'], 2: ['2 · Express', '#fef9c3', '#854d0e'], 3: ['3 · Urgencia', '#dcfce7', '#15803d'], 4: ['4 · Reposición', '#fee2e2', '#b91c1c'] };
+        const m = map[Number(n) || 1] || map[1];
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:' + m[1] + ';color:' + m[2] + ';white-space:nowrap">● ' + m[0] + '</span>';
+    },
+
     renderResumen() {
         const el = document.getElementById('prResumen');
         if (!el || !this.datos) return;
@@ -200,7 +207,7 @@ App.registerModule('prod_reportes', {
                     <div class="m-table-wrap">
                     <table class="pr-table">
                         <thead><tr>
-                            <th>OV</th><th>Item</th><th>Pend.</th><th>Estado</th><th>Cliente</th>
+                            <th>OV</th><th>Item</th><th>Pend.</th><th>Estado</th><th>Prioridad</th><th>Cliente</th>
                             <th>Descripción Padre</th><th>Espesor</th><th>Ancho</th><th>Alto</th>
                             <th style="text-align:right">M²</th>
                             <th style="text-align:right">Kgs</th><th>Ruta</th><th>Tipo</th><th>Grupo</th>
@@ -215,6 +222,7 @@ App.registerModule('prod_reportes', {
                     <td>${escText(o.item || '')}</td>
                     <td style="text-align:center">${escText(o.pend || '')}</td>
                     <td><span class="pr-badge ${estadoClass}">${escText(o.estado || '')}</span></td>
+                    <td>${this._prioBadge(o.prioridad)}</td>
                     <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.cliente || '')}">${escText(o.cliente || '')}</td>
                     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.descripcion_padre || '')}">${escText(o.descripcion_padre || '')}</td>
                     <td style="text-align:center">${o.espesor ? escText(o.espesor) + 'mm' : ''}</td>
@@ -232,7 +240,7 @@ App.registerModule('prod_reportes', {
                 cardsHtml += `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
                     <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                         <div style="min-width:0">
-                            <div style="font-weight:700;font-size:13px;color:#0f172a">${escText(o.ov || '')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${escText(o.item || '')}${o.pend ? ' · Pend ' + escText(o.pend) : ''}</span></div>
+                            <div style="font-weight:700;font-size:13px;color:#0f172a">${escText(o.ov || '')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${escText(o.item || '')}${o.pend ? ' · Pend ' + escText(o.pend) : ''}</span> ${this._prioBadge(o.prioridad)}</div>
                             <div style="font-size:11px;color:#475569;margin-top:2px">${escText(o.cliente || '')}</div>
                         </div>
                         <div style="flex-shrink:0"><span class="pr-badge ${estadoClass}">${escText(o.estado || '')}</span></div>
@@ -287,11 +295,11 @@ App.registerModule('prod_reportes', {
 
     exportarExcel() {
         if (!this.datos || !this.datos.fechas.length) return App.showAlert('No hay datos para exportar', 'warning');
-        let csv = 'FECHA;OV;Item;Pend;Estado;Cliente;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Ruta;Tipo;Grupo\n';
+        let csv = 'FECHA;OV;Item;Pend;Estado;Prioridad;Cliente;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Ruta;Tipo;Grupo\n';
         for (const f of this.datos.fechas) {
             for (const o of f.ordenes) {
                 csv += [
-                    f.fecha, o.ov, o.item, o.pend, o.estado,
+                    f.fecha, o.ov, o.item, o.pend, o.estado, o.prioridad,
                     `"${(o.cliente || '').replace(/"/g, '""')}"`,
                     `"${(o.descripcion_padre || '').replace(/"/g, '""')}"`,
                     o.ancho, o.alto, o.unidades || o.pend,

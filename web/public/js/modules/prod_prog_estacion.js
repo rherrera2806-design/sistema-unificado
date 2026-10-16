@@ -187,7 +187,7 @@ App.registerModule('prod_prog_estacion', {
                     html += `<div>${dia.total_ordenes} ord · ${Number(dia.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m² · ${Number(dia.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</div>`;
                     html += `</div>`;
                     html += `<div class="m-table-wrap"><table class="ppe-table"><thead><tr>`;
-                    html += `<th>Pedido</th><th>Item</th><th>Código</th><th>Ref/Padre</th><th>Dim</th><th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
+                    html += `<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código</th><th>Ref/Padre</th><th>Dim</th><th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
                     html += `</tr></thead><tbody>`;
 
                     let cardsDia = '';
@@ -214,6 +214,7 @@ App.registerModule('prod_prog_estacion', {
                         html += `<tr style="background:#f0f9ff;border-bottom:2px solid #bae6fd">`;
                         html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
                         html += `<td>${this.esc(p.item || '-')}</td>`;
+                        html += `<td>${this._prioBadge(p.prioridad)}</td>`;
                         html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong> <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#0ea5e9;color:white">PADRE</span></td>`;
                         html += `<td style="font-size:11px"><strong>${this.esc(p.codigo_ref)}</strong>${p.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
                         html += `<td>${p.ancho}×${p.alto}</td>`;
@@ -234,6 +235,7 @@ App.registerModule('prod_prog_estacion', {
                             html += `<tr style="background:#faf5ff">`;
                             html += `<td style="padding-left:24px"><span style="color:#7c3aed">└</span> ${this.esc(h.pedido || '-')}</td>`;
                             html += `<td>${this.esc(h.item || '-')}</td>`;
+                            html += `<td>${this._prioBadge(h.prioridad)}</td>`;
                             html += `<td><strong>${this.esc(h.codigo)}</strong> <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span></td>`;
                             html += `<td style="font-size:11px;color:#7c3aed;font-weight:600">${mpInfo || this.esc(h.codigo_ref)}</td>`;
                             html += `<td></td>`;
@@ -342,10 +344,18 @@ App.registerModule('prod_prog_estacion', {
         </div>`;
     },
 
+    // Badge de prioridad (numerada, idioma de etiquetas)
+    _prioBadge(n) {
+        const map = { 1: ['1 · Normal', '#eff6ff', '#1d4ed8'], 2: ['2 · Express', '#fef9c3', '#854d0e'], 3: ['3 · Urgencia', '#dcfce7', '#15803d'], 4: ['4 · Reposición', '#fee2e2', '#b91c1c'] };
+        const m = map[Number(n) || 1] || map[1];
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:' + m[1] + ';color:' + m[2] + ';white-space:nowrap">● ' + m[0] + '</span>';
+    },
+
     _renderFila(o, estadoClass, esHijo) {
         let html = '<tr>';
         html += `<td><strong>${this.esc(o.pedido || '-')}</strong></td>`;
         html += `<td>${this.esc(o.item || '-')}</td>`;
+        html += `<td>${this._prioBadge(o.prioridad)}</td>`;
         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
         html += `<td style="font-size:11px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
         html += `<td>${o.ancho}×${o.alto}</td>`;
@@ -422,15 +432,17 @@ App.registerModule('prod_prog_estacion', {
             for (const dia of (est.fechas || [])) {
                 cuerpo += `<h3 class="dia">${this._fechaLarga(dia.fecha)}<span>${dia.total_ordenes || 0} órdenes · ${this._num(dia.total_m2, 1)} m² · ${this._num(dia.total_kg, 0)} kg</span></h3>`;
                 cuerpo += '<table><thead><tr>'
-                    + '<th>Pedido</th><th>Item</th><th>Código</th><th>Ref/Padre</th><th>Ancho</th><th>Alto</th>'
+                    + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Ancho</th><th>Alto</th>'
                     + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th>'
                     + '</tr></thead><tbody>';
                 for (const o of (dia.ordenes || [])) {
                     cuerpo += `<tr>
                         <td class="c">${E(o.pedido)}</td>
                         <td class="c">${E(o.item)}</td>
-                        <td class="c"><strong>${E(o.codigo)}</strong></td>
-                        <td>${E(o.codigo_ref)}</td>
+                        <td class="c">${E(o.prioridad != null ? (o.prioridad + ' · ' + ({ 1: 'Normal', 2: 'Express', 3: 'Urgencia', 4: 'Reposición' }[o.prioridad] || '')) : '')}</td>
+                        <td class="c"><strong>${E(o.codigo_ref)}</strong></td>
+                        <td>${E(o.nombre_padre || o.descripcion || '')}</td>
+                        <td class="c">${E(o.codigo)}</td>
                         <td class="n">${this._num(o.ancho, 0)}</td>
                         <td class="n">${this._num(o.alto, 0)}</td>
                         <td class="n">${this._num(o.cantidad, 0)}</td>
@@ -472,11 +484,11 @@ App.registerModule('prod_prog_estacion', {
 
     exportarExcel() {
         if (!this.datos || !this.datos.estaciones || !this.datos.estaciones.length) return;
-        let csv = 'Estacion;Fecha;Pedido;Item;Código;Ref/Padre;Ancho;Alto;Cant;M2;Kg;Cliente;Estado;Ruta;Grupo\n';
+        let csv = 'Estacion;Fecha;Pedido;Item;Prioridad;Código SAP;Descripción;Código;Ancho;Alto;Cant;M2;Kg;Cliente;Estado;Ruta;Grupo\n';
         for (const est of this.datos.estaciones) {
             for (const dia of (est.fechas || [])) {
                 for (const o of dia.ordenes) {
-                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.codigo, o.codigo_ref, o.ancho, o.alto, o.cantidad, Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
+                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), o.codigo, o.ancho, o.alto, o.cantidad, Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
                 }
             }
         }
