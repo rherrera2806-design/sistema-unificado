@@ -1,6 +1,6 @@
 App.registerModule('prod_prog_estacion', {
     datos: null,
-    filtros: { estacion_id: '', fecha_inicio: '', fecha_fin: '', estado: 'todos' },
+    filtros: { estacion_id: '', fecha_inicio: '', fecha_fin: '', estado: 'por_fabricar' },
 
     async render() {
         const el = document.getElementById('page-prod_prog_estacion');
@@ -79,11 +79,9 @@ App.registerModule('prod_prog_estacion', {
                     <div style="flex:1;min-width:140px">
                         <label style="display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Estado</label>
                         <select id="ppeFilterEstado" onchange="App.modules.prod_prog_estacion.aplicarFiltros()" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;background:white">
-                            <option value="todos">Todos</option>
-                            <option value="PENDIENTE">Pendiente</option>
-                            <option value="PROGRAMADO">Programado</option>
-                            <option value="EN_PROCESO">En Proceso</option>
-                            <option value="TERMINADO">Terminado</option>
+                            <option value="por_fabricar" selected>Por fabricar</option>
+                            <option value="fabricado">Fabricado</option>
+                            <option value="todos">Todos (por fabricar + fabricado)</option>
                         </select>
                     </div>
                     <div>
@@ -104,7 +102,7 @@ App.registerModule('prod_prog_estacion', {
         if (this.filtros.estacion_id) params.set('estacion_id', this.filtros.estacion_id);
         if (this.filtros.fecha_inicio) params.set('fecha_inicio', this.filtros.fecha_inicio);
         if (this.filtros.fecha_fin) params.set('fecha_fin', this.filtros.fecha_fin);
-        if (this.filtros.estado && this.filtros.estado !== 'todos') params.set('estado', this.filtros.estado);
+        if (this.filtros.estado) params.set('estado', this.filtros.estado);
 
         try {
             const res = await fetch(`/api/produccion/prog-estacion?${params}`);
@@ -268,7 +266,7 @@ App.registerModule('prod_prog_estacion', {
     limpiarFiltros() {
         const hoy = this._hoyLocal();
         const fin = new Date(); fin.setDate(fin.getDate() + 14);
-        this.filtros = { estacion_id: '', fecha_inicio: hoy, fecha_fin: fin.toISOString().split('T')[0], estado: 'todos' };
+        this.filtros = { estacion_id: '', fecha_inicio: hoy, fecha_fin: fin.toISOString().split('T')[0], estado: 'por_fabricar' };
         this.render();
     },
 

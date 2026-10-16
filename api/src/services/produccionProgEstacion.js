@@ -16,13 +16,16 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
         params.push(fecha_fin);
         where.push(`cp.fecha_programada <= $${params.length}::date`);
     }
-    if (estado) {
+    // Estado del PASO en la estación:
+    //  - por_fabricar (por defecto): todo lo que aún debe fabricarse
+    //  - fabricado: lo ya fabricado (terminado / mermado)
+    //  - todos: ambos juntos · valores viejos (PENDIENTE, TERMINADO...) siguen funcionando
+    if (estado === 'fabricado') {
+        where.push(`cp.estado IN ('TERMINADO', 'MERMADO')`);
+    } else if (estado && estado !== 'todos' && estado !== 'por_fabricar') {
         params.push(estado);
         where.push(`cp.estado = $${params.length}`);
-    } else {
-        // Por defecto se muestra lo QUE FALTA por fabricar: los TERMINADOS ya se
-        // produjeron (se "descuentan") y los MERMADOS no cuentan. Para ver los
-        // terminados se puede filtrar por estado explícitamente.
+    } else if (estado !== 'todos') {
         where.push(`cp.estado NOT IN ('TERMINADO', 'MERMADO')`);
     }
 
