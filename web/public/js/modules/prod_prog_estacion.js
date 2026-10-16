@@ -432,17 +432,19 @@ App.registerModule('prod_prog_estacion', {
             for (const dia of (est.fechas || [])) {
                 cuerpo += `<h3 class="dia">${this._fechaLarga(dia.fecha)}<span>${dia.total_ordenes || 0} órdenes · ${this._num(dia.total_m2, 1)} m² · ${this._num(dia.total_kg, 0)} kg</span></h3>`;
                 cuerpo += '<table><thead><tr>'
-                    + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Ancho</th><th>Alto</th>'
+                    + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Materia prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>'
                     + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th><th>QR</th>'
                     + '</tr></thead><tbody>';
                 for (const o of (dia.ordenes || [])) {
                     cuerpo += `<tr>
                         <td class="c">${E(o.pedido)}</td>
                         <td class="c">${E(o.item)}</td>
-                        <td class="c">${E(o.prioridad != null ? (o.prioridad + ' · ' + ({ 1: 'Normal', 2: 'Express', 3: 'Urgencia', 4: 'Reposición' }[o.prioridad] || '')) : '')}</td>
+                        <td class="c">${E(({ 1: 'Normal', 2: 'Express', 3: 'Urgencia', 4: 'Reposición' }[o.prioridad]) || '—')}</td>
                         <td class="c"><strong>${E(o.codigo_ref)}</strong></td>
                         <td>${E(o.nombre_padre || o.descripcion || '')}</td>
                         <td class="c">${E(o.codigo)}</td>
+                        <td>${E(o.mp_nombre || '—')}</td>
+                        <td class="n">${o.mp_espesor ? Number(o.mp_espesor).toLocaleString('es-CL', { maximumFractionDigits: 2 }) + ' mm' : '—'}</td>
                         <td class="n">${this._num(o.ancho, 0)}</td>
                         <td class="n">${this._num(o.alto, 0)}</td>
                         <td class="n">${this._num(o.cantidad, 0)}</td>
