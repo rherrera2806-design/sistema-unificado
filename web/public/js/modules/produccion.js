@@ -367,14 +367,14 @@ App.registerModule('produccion', {
         };
         const n = Number(nivel) || 1;
         const m = map[n] || map[1];
-        if (!conMenu) return '<span class="po-prio ' + m.cls + '">● ' + m.label + '</span>';
+        if (!conMenu) return '<span class="po-prio ' + m.cls + '">● ' + n + ' · ' + m.label + '</span>';
         let opts = '';
         for (let i = 1; i <= 4; i++) {
             opts += '<div class="prio-option" data-orden="' + ordenId + '" data-nivel="' + i + '">'
-                + '<span class="po-prio ' + map[i].cls + '">● ' + map[i].label + '</span></div>';
+                + '<span class="po-prio ' + map[i].cls + '">● ' + i + ' · ' + map[i].label + '</span></div>';
         }
         return '<div class="po-prio-wrap">'
-            + '<span class="prio-toggle po-prio ' + m.cls + '" data-orden="' + ordenId + '" title="Click para cambiar prioridad">● ' + m.label + ' ▾</span>'
+            + '<span class="prio-toggle po-prio ' + m.cls + '" data-orden="' + ordenId + '" title="Click para cambiar prioridad">● ' + n + ' · ' + m.label + ' ▾</span>'
             + '<div class="prioridad-dropdown" id="prioDrop_' + ordenId + '">' + opts + '</div>'
             + '</div>';
     },
@@ -393,7 +393,7 @@ App.registerModule('produccion', {
             const progreso = o.total_pasos > 0 ? o.pasos_terminados + '/' + o.total_pasos : '';
             return '<tr onclick="App.modules.produccion.verDetalle(' + o.id + ')">'
                 + '<td><strong>' + escText(o.pedido_sap_id || '-') + '</strong><div class="sub2">Item ' + escText(o.item_numero || '-') + (o.orden_compra ? ' · OC ' + escText(o.orden_compra) : '') + '</div></td>'
-                + '<td>' + escText((o.cliente || '-').toUpperCase()) + (o.tipo_venta ? '<div class="sub2">' + escText(o.tipo_venta) + '</div>' : '') + '</td>'
+                + '<td>' + escText((o.cliente || '-').toUpperCase()) + '</td>'
                 + '<td><strong>' + escText(o.codigo_producto) + '</strong> '
                 + (o.es_compuesto ? '<span class="po-bom">BOM</span>' : '<span class="po-sinbom" title="Sin receta BOM">SIN BOM</span>')
                 + '<div class="sub2">' + escText(o.nombre_mp || o.descripcion || '-') + '</div></td>'
@@ -529,6 +529,7 @@ App.registerModule('produccion', {
                         <div class="po-kv"><div class="k">F. programada</div><div class="v">${this._fecha(o.fecha_programada)}</div></div>
                         <div class="po-kv"><div class="k">F. término</div><div class="v">${this._fecha(o.fecha_entrega_pactada)}</div></div>
                         <div class="po-kv"><div class="k">Entrega</div><div class="v">${escText(o.tipo_entrega || '—')}</div></div>
+                        <div class="po-kv"><div class="k">Tipo de venta</div><div class="v">${escText(o.tipo_venta || '—')}</div></div>
                         ${o.codigo_padre ? '<div class="po-kv"><div class="k">Cód. padre</div><div class="v">' + escText(o.codigo_padre) + (o.nombre_codigo_padre ? ' (' + escText(o.nombre_codigo_padre) + ')' : '') + '</div></div>' : ''}
                         ${o.familia_nombre ? '<div class="po-kv"><div class="k">Familia</div><div class="v">' + escText(o.familia_nombre) + '</div></div>' : ''}
                         ${o.grupo ? '<div class="po-kv"><div class="k">Grupo</div><div class="v">' + escText(o.grupo) + '</div></div>' : ''}
@@ -907,7 +908,17 @@ App.registerModule('produccion', {
                 headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
                 body: JSON.stringify({ nivel_prioridad: nuevoNivel })
             });
-            if (res.ok) { App.toast('Prioridad actualizada'); await this.load(); this.checkReprogramacionPendiente(); if (this._drawerId === id) await this.verDetalle(id); }
+            if (res.ok) {
+                App.toast('Prioridad actualizada');
+                await this.load();
+                this.checkReprogramacionPendiente();
+                if (this._drawerId === id) await this.verDetalle(id);
+                // La nueva prioridad solo se refleja en FECHAS y FABRICACIÓN al
+                // reprogramar: se ofrece aquí mismo para que no se quede a medias.
+                this._confirmar('Prioridad actualizada',
+                    'La nueva prioridad se aplicará a <strong>fechas y fabricación</strong> al reprogramar.<br><br>¿Deseas reprogramar ahora?',
+                    'Reprogramar ahora', false, () => this._ejecutarReprogramar());
+            }
             else { const d = await res.json(); App.showAlert(d.error || 'Error al actualizar', 'danger'); }
         } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
@@ -1004,28 +1015,30 @@ App.registerModule('produccion', {
         } catch (e) { /* no bloquear la pantalla por esto */ }
     },
 
-    async reprogramarTodo() {
+    reprogramarTodo() {
         this._confirmar('Reprogramar Todo',
             'Se liberarán <strong>todas las órdenes PROGRAMADO</strong> (vuelven a PENDIENTE) y se re-asignarán automáticamente por prioridad: <strong>Reposición → Urgencia → Express → Normal</strong>.<br><br>Las órdenes EN PROCESO, MERMADAS y TERMINADAS no serán tocadas.',
-            'Reprogramar todo', true, async () => {
-                try {
-                    const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
-                    App.toast('Reprogramando... espere', 'info');
-                    const res = await fetch('/api/produccion/reprogramar', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
-                        body: JSON.stringify({ dias: 21, inicio: new Date().toISOString().split('T')[0] })
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                        const lib = data.ordenes_liberadas || 0;
-                        const asig = Array.isArray(data.asignados) ? data.asignados.length : 0;
-                        App.toast(`Reprogramado: ${lib} liberadas, ${asig} re-asignadas`);
-                        await this.load();
-                        this.checkReprogramacionPendiente();
-                    } else { App.showAlert(data.error || 'Error al reprogramar', 'danger'); }
-                } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
+            'Reprogramar todo', true, () => this._ejecutarReprogramar());
+    },
+
+    async _ejecutarReprogramar() {
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            App.toast('Reprogramando... espere', 'info');
+            const res = await fetch('/api/produccion/reprogramar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' },
+                body: JSON.stringify({ dias: 21, inicio: new Date().toISOString().split('T')[0] })
             });
+            const data = await res.json();
+            if (res.ok) {
+                const lib = data.ordenes_liberadas || 0;
+                const asig = Array.isArray(data.asignados) ? data.asignados.length : 0;
+                App.showAlert(`Reprogramado: ${lib} liberadas, ${asig} re-asignadas por prioridad`, 'success');
+                await this.load();
+                this.checkReprogramacionPendiente();
+            } else { App.showAlert(data.error || 'Error al reprogramar', 'danger'); }
+        } catch (e) { App.showAlert('Error: ' + e.message, 'danger'); }
     },
 
     // ---------------- Cerrar / eliminar ----------------
