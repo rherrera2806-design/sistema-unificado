@@ -433,7 +433,7 @@ App.registerModule('prod_prog_estacion', {
                 cuerpo += `<h3 class="dia">${this._fechaLarga(dia.fecha)}<span>${dia.total_ordenes || 0} órdenes · ${this._num(dia.total_m2, 1)} m² · ${this._num(dia.total_kg, 0)} kg</span></h3>`;
                 cuerpo += '<table><thead><tr>'
                     + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Ancho</th><th>Alto</th>'
-                    + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th>'
+                    + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th><th>QR</th>'
                     + '</tr></thead><tbody>';
                 for (const o of (dia.ordenes || [])) {
                     cuerpo += `<tr>
@@ -451,6 +451,7 @@ App.registerModule('prod_prog_estacion', {
                         <td>${E(o.cliente)}</td>
                         <td>${E(o.ruta)}</td>
                         <td class="c">${E(o.estado)}</td>
+                        <td class="c"><img src="${(typeof location !== 'undefined' ? location.origin : '')}/api/taller/qr?d=${encodeURIComponent('VF:' + (o.pedido || '') + '|' + (o.item || 1))}" width="36" height="36" alt="QR"></td>
                     </tr>`;
                 }
                 cuerpo += '</tbody></table>';

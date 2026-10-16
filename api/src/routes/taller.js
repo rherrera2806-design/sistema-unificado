@@ -86,7 +86,7 @@ router.post('/api/taller/finalizar', canUpdate, asyncHandler(async (req, res) =>
     if (!req.body.paso_id) return res.status(400).json({ error: 'paso_id requerido' });
     const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
     const operarioNombre = req.body.operario_nombre || operarioEmail;
-    const result = await taller.finalizarPaso(req.body.paso_id, operarioEmail, operarioNombre);
+    const result = await taller.finalizarPaso(req.body.paso_id, operarioEmail, operarioNombre, req.body.cantidad);
     if (!result) return res.status(404).json({ error: 'Paso no encontrado' });
     res.json({ ok: true, ...result });
 }));
@@ -134,6 +134,30 @@ router.post('/api/taller/backfill-espesor', canUpdate, asyncHandler(async (req, 
 router.post('/api/taller/backfill-pasos-termopanel', canUpdate, asyncHandler(async (req, res) => {
     const result = await backfills.backfillPasosTermopanel();
     res.json(result);
+}));
+
+// ===== Registro manual de producción (si la terminal falla) =====
+// Filas: [{ pedido, item, cantidad }] — individual o pegadas desde Excel
+router.post('/api/taller/registro-manual', canUpdate, asyncHandler(async (req, res) => {
+    const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
+    const operarioNombre = req.body.operario_nombre || operarioEmail;
+    const resultados = await taller.registroManual({
+        filas: req.body.filas,
+        userEmail: operarioEmail,
+        userName: operarioNombre
+    });
+    res.json({ resultados });
+}));
+
+// ===== QR para producción (impresión y etiquetas) =====
+// GET /api/taller/qr?d=VF:111805|1 → PNG para imprimir o mostrar
+router.get('/api/taller/qr', canView, asyncHandler(async (req, res) => {
+    const QRCode = require('qrcode');
+    const texto = String(req.query.d || '').slice(0, 200);
+    if (!texto) return res.status(400).json({ error: 'Falta el parámetro d' });
+    const buf = await QRCode.toBuffer(texto, { type: 'png', width: 320, margin: 1 });
+    res.setHeader('Content-Type', 'image/png');
+    res.send(buf);
 }));
 
 module.exports = router;

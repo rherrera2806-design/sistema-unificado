@@ -601,6 +601,10 @@ async function faseColumnas({ q, safe }) {
         plano_nombre TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`, 'codigo_planos');
+    // Cantidad REAL producida al terminar un paso (puede ser menor a la
+    // programada: el resto queda como paso PENDIENTE, sin ser merma)
+    await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS cantidad_real NUMERIC`, 'cola_produccion_pasos.cantidad_real');
+    await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_real NUMERIC`, 'cola_produccion_pasos.m2_real');
 
     // ── catalogo_tipos_cristal ───────────────────────────────────────────────
     await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.stock_critico');

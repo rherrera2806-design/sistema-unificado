@@ -206,15 +206,41 @@ async function reanudarPaso(pasoId, operarioEmail, operarioNombre) {
     } catch (_) { }
 }
 
-async function finalizarPaso(pasoId, operarioEmail, operarioNombre) {
-    const pasoResult = await query('SELECT * FROM cola_produccion_pasos WHERE id = $1', [pasoId]);
+async function finalizarPaso(pasoId, operarioEmail, operarioNombre, cantidadReal) {
+    const pasoResult = await query(
+        `SELECT p.*, o.cantidad AS cantidad_orden FROM cola_produccion_pasos p
+         JOIN produccion_ordenes o ON o.id = p.orden_produccion_id WHERE p.id = $1`, [pasoId]);
     if (pasoResult.rows.length === 0) return null;
     const p = pasoResult.rows[0];
 
+    // Cantidad REAL producida: por defecto todo lo programado. Si es menor, el
+    // resto NO es merma — queda como paso PENDIENTE en la misma estación
+    // ("aún pendiente de corte"), visible en la cola del taller.
+    const cantidadOrden = Number(p.cantidad_orden) || 1;
+    let cantReal = cantidadReal == null || cantidadReal === '' ? cantidadOrden : Number(cantidadReal);
+    if (!Number.isFinite(cantReal) || cantReal < 0) cantReal = cantidadOrden;
+    if (cantReal > cantidadOrden) cantReal = cantidadOrden;
+    const proporcion = cantidadOrden > 0 ? cantReal / cantidadOrden : 1;
+    const m2Asignados = Number(p.m2_asignados) || 0;
+    const m2Real = m2Asignados * proporcion;
+    const restoCant = cantidadOrden - cantReal;
+    const restoM2 = m2Asignados - m2Real;
+
     await query(
-        `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW(), locked_by = NULL, locked_at = NULL WHERE id = $1`,
-        [pasoId]
+        `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW(), locked_by = NULL, locked_at = NULL, cantidad_real = $2, m2_real = $3 WHERE id = $1`,
+        [pasoId, cantReal, m2Real]
     );
+
+    // Resto pendiente en la misma estación (sin merma)
+    let restoPasoId = null;
+    if (restoCant > 0 && restoM2 > 0.0001) {
+        const nuevo = await query(
+            `INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado, m2_asignados)
+             VALUES ($1, $2, $3, 'PENDIENTE', $4) RETURNING id`,
+            [p.orden_produccion_id, p.estacion_id, p.orden_secuencia, restoM2]
+        );
+        restoPasoId = nuevo.rows[0].id;
+    }
 
     // El estado de la orden se deriva del avance de sus pasos
     try { await sincronizarEstadoOrden(p.orden_produccion_id); } catch (_) { }
@@ -223,7 +249,7 @@ async function finalizarPaso(pasoId, operarioEmail, operarioNombre) {
         await query(
             `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_anteriores, usuario_email, usuario_nombre)
              VALUES ('paso', $1, 'finalizar', $2, $3, $4)`,
-            [pasoId, JSON.stringify(p), operarioEmail, operarioNombre]
+            [pasoId, JSON.stringify({ ...p, cantidad_real: cantReal, m2_real: m2Real, resto_paso_id: restoPasoId }), operarioEmail, operarioNombre]
         );
     } catch (_) { }
 
@@ -239,8 +265,62 @@ async function finalizarPaso(pasoId, operarioEmail, operarioNombre) {
         siguienteHabilitado: siguiente.rows.length > 0,
         siguientePasoId: siguiente.rows[0]?.id || null,
         siguienteEstacionId: siguiente.rows[0]?.estacion_id || null,
-        siguienteEstacionNombre: siguiente.rows[0]?.nombre_estacion || null
+        siguienteEstacionNombre: siguiente.rows[0]?.nombre_estacion || null,
+        cantidadReal: cantReal,
+        restoCantidad: restoCant,
+        restoPasoId
     };
+}
+
+// ===== Registro MANUAL de producción (si la terminal falla) =====
+// Filas: [{ pedido, item, cantidad }]. Cada fila registra la producción real
+// contra el paso actual de esa orden (EN_PROCESO o el primer PENDIENTE).
+async function registroManual({ filas, userEmail, userName }) {
+    const resultados = [];
+    for (const f of (Array.isArray(filas) ? filas : [])) {
+        const pedido = String(f.pedido || '').trim();
+        const item = Number(f.item) || 1;
+        const cant = Number(f.cantidad);
+        if (!pedido || !Number.isFinite(cant) || cant <= 0) {
+            resultados.push({ pedido, item, ok: false, mensaje: 'Datos inválidos (pedido, item y cantidad requeridos)' });
+            continue;
+        }
+        const ords = await query(
+            `SELECT id, cantidad FROM produccion_ordenes
+             WHERE pedido_sap_id = $1 AND item_numero = $2
+               AND estado_programacion NOT IN ('CERRADO', 'TERMINADO', 'MERMADO')
+             ORDER BY id DESC LIMIT 1`, [pedido, item]);
+        if (ords.rows.length === 0) {
+            resultados.push({ pedido, item, ok: false, mensaje: 'No hay orden activa con ese pedido/item' });
+            continue;
+        }
+        const orden = ords.rows[0];
+        if (cant > Number(orden.cantidad)) {
+            resultados.push({ pedido, item, ok: false, mensaje: `La cantidad ${cant} supera la de la orden (${orden.cantidad})` });
+            continue;
+        }
+        const pasos = await query(
+            `SELECT id FROM cola_produccion_pasos
+             WHERE orden_produccion_id = $1 AND estado IN ('EN_PROCESO', 'PENDIENTE')
+             ORDER BY CASE estado WHEN 'EN_PROCESO' THEN 0 ELSE 1 END, orden_secuencia
+             LIMIT 1`, [orden.id]);
+        if (pasos.rows.length === 0) {
+            resultados.push({ pedido, item, ok: false, mensaje: 'La orden no tiene pasos pendientes' });
+            continue;
+        }
+        const r = await finalizarPaso(pasos.rows[0].id, userEmail, userName, cant);
+        if (!r) {
+            resultados.push({ pedido, item, ok: false, mensaje: 'No se pudo registrar la producción' });
+            continue;
+        }
+        resultados.push({
+            pedido, item, ok: true, cantidad: cant,
+            mensaje: r.restoCantidad > 0
+                ? `Registradas ${cant}; ${r.restoCantidad} quedan pendientes de corte`
+                : 'Producción registrada completa'
+        });
+    }
+    return resultados;
 }
 
 async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail }) {
@@ -473,5 +553,6 @@ module.exports = {
     finalizarPasosPorPedido,
     procesarPaso,
     registrarMerma,
+    registroManual,
     getMermas
 };
