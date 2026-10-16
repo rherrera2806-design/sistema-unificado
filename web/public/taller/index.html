@@ -1289,9 +1289,22 @@
                 setTimeout(tick, 400);
             } catch (err) {
                 const nombre = (err && err.name) || '';
+                let estadoPerm = 'desconocido';
+                try {
+                    if (navigator.permissions && navigator.permissions.query) {
+                        const st = await navigator.permissions.query({ name: 'camera' });
+                        estadoPerm = st.state;
+                    }
+                } catch (_) { }
                 let mensaje = 'No se pudo abrir la cámara.';
                 if (nombre === 'NotAllowedError' || nombre === 'PermissionDeniedError' || nombre === 'SecurityError') {
-                    mensaje = '<strong>Permiso de cámara denegado.</strong><br><br>Para activarlo en el móvil:<br>1. Toca el ícono de la barra de direcciones (candado 🔒 o ⓘ)<br>2. Permisos → <strong>Cámara → Permitir</strong><br>3. Recarga la página y vuelve a intentar<br><br><strong>Si usas Brave:</strong> toca el león 🦁 de la barra y <strong>desactiva los Escudos</strong> de este sitio (a veces bloquean la cámara), y permite la cámara en Ajustes → Privacidad → Permisos del sitio → Cámara.';
+                    mensaje = '<strong>El navegador está negando el permiso de cámara.</strong><br><br>Revisa estos 2 niveles:<br><br>'
+                        + '<strong>1) Permiso de la APP en Android</strong> (el más común):<br>'
+                        + 'Ajustes del teléfono → Aplicaciones → <strong>Samsung Internet / Brave</strong> → Permisos → <strong>Cámara → Permitir</strong><br><br>'
+                        + '<strong>2) Permiso del SITIO en el navegador:</strong><br>'
+                        + 'En la página: candado 🔒 o ⓘ → Permisos → Cámara → Permitir · <strong>en Brave además apaga los Escudos</strong> (león 🦁)<br><br>'
+                        + 'Luego <strong>recarga la página</strong> y vuelve a intentar.'
+                        + (estadoPerm === 'denied' ? '<br><br>⚠️ El navegador reporta la cámara como <strong>BLOQUEADA</strong> para este sitio: hay que cambiar el permiso a mano.' : '');
                 } else if (nombre === 'NotFoundError' || nombre === 'OverconstrainedError') {
                     mensaje = 'No se encontró una cámara disponible en este dispositivo.';
                 } else if (nombre === 'NotReadableError' || nombre === 'AbortError') {
@@ -1300,7 +1313,7 @@
                 tModal('No se pudo abrir la cámara', `
                     <p style="font-size:13px;color:#475569;line-height:1.7">${mensaje}</p>
                     <p style="font-size:11px;color:#8494a8;margin-top:12px">Mientras tanto, puedes registrar la producción con la <strong>digitación manual</strong>.</p>
-                    <p style="font-size:10px;color:#94a3b8;margin-top:10px;background:#f8fafc;border:1px solid #e4e9f0;border-radius:8px;padding:8px 10px">Diagnóstico técnico (para soporte): HTTPS=${window.isSecureContext ? 'sí' : 'NO'} · API cámara=${navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? 'moderna' : ((navigator.getUserMedia || navigator.webkitGetUserMedia) ? 'legada' : 'ninguna')} · lector=${typeof BarcodeDetector !== 'undefined' ? 'nativo' : (window.jsQR ? 'jsQR' : 'ninguno')} · error=${String(nombre || (err && err.message) || 'desconocido')}</p>
+                    <p style="font-size:10px;color:#94a3b8;margin-top:10px;background:#f8fafc;border:1px solid #e4e9f0;border-radius:8px;padding:8px 10px">Diagnóstico técnico (para soporte): HTTPS=${window.isSecureContext ? 'sí' : 'NO'} · API cámara=${navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? 'moderna' : ((navigator.getUserMedia || navigator.webkitGetUserMedia) ? 'legada' : 'ninguna')} · lector=${typeof BarcodeDetector !== 'undefined' ? 'nativo' : (window.jsQR ? 'jsQR' : 'ninguno')} · permiso=${estadoPerm} · error=${String(nombre || (err && err.message) || 'desconocido')}</p>
                 `, `
                     <button class="btn btn-outline" onclick="tModalCerrar();showRegistroManual()">Ir a Registro manual</button>
                     <button class="btn btn-primary" onclick="tModalCerrar();showEscanerQR()">Reintentar</button>
