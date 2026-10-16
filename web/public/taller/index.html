@@ -1199,11 +1199,35 @@
             return null;
         }
 
+        // Cámara con máxima compatibilidad: API moderna (Chrome/Brave/Samsung
+        // actuales) con reintento sin restricción, y API legada (Samsung/Android
+        // antiguos) como último recurso.
+        async function _obtenerCamara() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    return await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                } catch (err) {
+                    if (err && (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError' || err.name === 'NotFoundError')) {
+                        return await navigator.mediaDevices.getUserMedia({ video: true });
+                    }
+                    throw err;
+                }
+            }
+            const legacy = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+            if (!legacy) throw Object.assign(new Error('Sin API de cámara en este navegador'), { name: 'NotSupportedError' });
+            return new Promise((resolve, reject) => {
+                legacy.call(navigator, { video: { facingMode: 'environment' } }, resolve,
+                    () => legacy.call(navigator, { video: true }, resolve, reject));
+            });
+        }
+
         let _scanStream = null;
         async function showEscanerQR() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            const soporte = { seguro: !!window.isSecureContext, media: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), legacy: !!(navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia), barcode: typeof BarcodeDetector !== 'undefined', jsqr: typeof window.jsQR !== 'undefined' };
+            if (!soporte.media && !soporte.legacy) {
                 tModal('Escanear QR', `
                     <p style="font-size:13px;color:#475569">Este navegador no permite usar la cámara. Usa el <strong>Registro manual</strong> (también puedes escribir el código que trae el QR).</p>
+                    <p style="font-size:11px;color:#8494a8;margin-top:8px">Diagnóstico: HTTPS=${soporte.seguro ? 'sí' : 'NO (esto impide la cámara)'} · lector=${soporte.barcode ? 'nativo' : (soporte.jsqr ? 'jsQR' : 'ninguno')}</p>
                     <div style="margin-top:10px"><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">CÓDIGO DEL QR</label>
                     <input id="qrManual" placeholder="VF:111805|1" style="width:100%;padding:11px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
                 `, `
@@ -1215,18 +1239,16 @@
             tModal('Escanear QR', `
                 <video id="qrVideo" autoplay muted playsinline style="width:100%;border-radius:12px;background:#0f172a;max-height:320px"></video>
                 <p style="font-size:11px;color:#8494a8;margin:10px 0 0">Apunta al <strong>QR del programa impreso</strong> o al <strong>QR de la etiqueta del vidrio</strong>. El registro continuará con el pedido y el item leídos.</p>
+                <div style="margin-top:12px;border-top:1px solid #e4e9f0;padding-top:12px">
+                    <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">¿NO DETECTA? ESCRIBE EL CÓDIGO DEL QR</label>
+                    <div style="display:flex;gap:6px">
+                        <input id="qrManual" placeholder="VF:111805|1" style="flex:1;padding:11px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+                        <button class="btn btn-outline" onclick="qrManualContinuar()">Continuar</button>
+                    </div>
+                </div>
             `, `<button class="btn btn-outline" onclick="qrCerrar()">Cerrar</button>`);
             try {
-                try {
-                    _scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                } catch (errCam) {
-                    // Cámara trasera no disponible: intentar con cualquier cámara
-                    if (errCam && (errCam.name === 'OverconstrainedError' || errCam.name === 'ConstraintNotSatisfiedError' || errCam.name === 'NotFoundError')) {
-                        _scanStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    } else {
-                        throw errCam;
-                    }
-                }
+                _scanStream = await _obtenerCamara();
                 const video = document.getElementById('qrVideo');
                 video.srcObject = _scanStream;
                 // Doble motor: BarcodeDetector nativo (Chrome/Android) o jsQR
@@ -1278,6 +1300,7 @@
                 tModal('No se pudo abrir la cámara', `
                     <p style="font-size:13px;color:#475569;line-height:1.7">${mensaje}</p>
                     <p style="font-size:11px;color:#8494a8;margin-top:12px">Mientras tanto, puedes registrar la producción con la <strong>digitación manual</strong>.</p>
+                    <p style="font-size:10px;color:#94a3b8;margin-top:10px;background:#f8fafc;border:1px solid #e4e9f0;border-radius:8px;padding:8px 10px">Diagnóstico técnico (para soporte): HTTPS=${window.isSecureContext ? 'sí' : 'NO'} · API cámara=${navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? 'moderna' : ((navigator.getUserMedia || navigator.webkitGetUserMedia) ? 'legada' : 'ninguna')} · lector=${typeof BarcodeDetector !== 'undefined' ? 'nativo' : (window.jsQR ? 'jsQR' : 'ninguno')} · error=${String(nombre || (err && err.message) || 'desconocido')}</p>
                 `, `
                     <button class="btn btn-outline" onclick="tModalCerrar();showRegistroManual()">Ir a Registro manual</button>
                     <button class="btn btn-primary" onclick="tModalCerrar();showEscanerQR()">Reintentar</button>
@@ -1293,7 +1316,7 @@
         function qrManualContinuar() {
             const leido = parseQR(document.getElementById('qrManual')?.value);
             if (!leido) { showToast('Código no reconocido', 'error'); return; }
-            tModalCerrar();
+            qrCerrar();
             showRegistroManual(leido);
         }
 
