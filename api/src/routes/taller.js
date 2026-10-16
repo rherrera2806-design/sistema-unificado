@@ -182,7 +182,9 @@ router.get('/api/taller/horarios', canView, asyncHandler(async (req, res) => {
     res.json(await taller.getHorariosTurnos(Number(req.query.anio) || null));
 }));
 
-router.put('/api/taller/horarios', canUpdate, asyncHandler(async (req, res) => {
+// Escritura protegida con el permiso 'prod_horarios' (el Taller solo LEE esta
+// configuración para sugerir turnos; modificarla exige ese permiso de usuario).
+router.put('/api/taller/horarios', requireAnyPerm('prod_horarios'), asyncHandler(async (req, res) => {
     res.json(await taller.guardarHorariosTurnos(req.body.filas));
 }));
 

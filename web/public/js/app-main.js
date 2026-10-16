@@ -728,7 +728,7 @@ const SIDEBAR_SECTIONS = {
     inventario: ['inv_inventario', 'inv_movimientos', 'inv_historial', 'inv_consumo', 'inv_autonomia', 'inv_reporte'],
     mantencion: ['bitacora', 'calendar', 'components', 'corrective', 'dashboard', 'history', 'machines', 'machineTypes', 'notas', 'preventive', 'proveedores', 'reports'],
     pedidos: ['pedidos', 'pedidos_grafico_mes', 'pedidos_reporte'],
-    produccion: ['prod_config', 'prod_notas', 'prod_planificacion', 'prod_ordenes', 'prod_reportes', 'prod_prog_estacion', 'taller', 'bodega'],
+    produccion: ['prod_config', 'prod_notas', 'prod_planificacion', 'prod_ordenes', 'prod_reportes', 'prod_prog_estacion', 'prod_horarios', 'taller', 'bodega'],
     reclamos: ['reclamos', 'reclamos_reporte'],
 };
 
@@ -823,6 +823,7 @@ function renderSidebar() {
         { key: 'produccion', label: 'PRODUCCION', items: [
             { id: 'prod_config', label: 'Configuracion', icon: SVG.settings },
             { id: 'prod_notas', label: 'Bitácora de Producción', icon: SVG.clipboard },
+            { id: 'prod_horarios', label: 'Horarios de Turno', icon: SVG.calendar },
             { id: 'prod_planificacion', label: 'Planificacion', icon: SVG.calendar },
             { id: 'prod_ordenes', label: 'Produccion', icon: SVG.box },
             { id: 'prod_reportes', label: 'Reporte Fechas', icon: SVG.chart },
