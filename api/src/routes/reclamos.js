@@ -960,13 +960,18 @@ router.put('/api/reclamos/:id', perms.update, async (req, res, next) => {
         if (id === null) return;
         const d = req.body || {};
 
-        const prohibidos = ['estado', 'resolucion', 'responsable_falla', 'responsable_ingreso']
+        // Prohibidos: estado/resolucion van por PUT /:id/estado (máquina de
+        // estados + historial) y la identidad se toma de la sesión. El análisis
+        // (responsable_falla, motivo, observacion_analisis) SÍ se edita aquí:
+        // queda en el historial 'Edición' y así el formulario puede guardarlo
+        // sin tener que cambiar el estado del reclamo.
+        const prohibidos = ['estado', 'resolucion', 'responsable_ingreso']
             .filter(c => d[c] !== undefined);
         if (prohibidos.length > 0) {
             return res.status(400).json({
                 error: `Los campos ${prohibidos.map(c => `'${c}'`).join(', ')} no se editan por aqui: ` +
-                    'el estado, la resolución y el análisis se cambian con PUT /api/reclamos/:id/estado ' +
-                    '(queda en el historial) y la identidad se toma de la sesión'
+                    'el estado y la resolucion se cambian con PUT /api/reclamos/:id/estado ' +
+                    '(queda en el historial) y la identidad se toma de la sesion'
             });
         }
 
@@ -976,7 +981,8 @@ router.put('/api/reclamos/:id', perms.update, async (req, res, next) => {
         const detalle = textoDeBody(d.detalle_reclamo, 'detalle_reclamo', LIM.detalle_reclamo);
         const motivo = textoDeBody(d.motivo, 'motivo', LIM.motivo, 'frase');
         const obsAnalisis = textoDeBody(d.observacion_analisis, 'observacion_analisis', LIM.observacion_analisis);
-        for (const c of [cliente, numeroOrden, descripcion, detalle, motivo, obsAnalisis]) {
+        const respFalla = textoDeBody(d.responsable_falla, 'responsable_falla', LIM.responsable_falla, 'titulo');
+        for (const c of [cliente, numeroOrden, descripcion, detalle, motivo, obsAnalisis, respFalla]) {
             if (!c.ok) return res.status(400).json({ error: c.error });
         }
         const items = validarItems(d.items);
@@ -992,7 +998,8 @@ router.put('/api/reclamos/:id', perms.update, async (req, res, next) => {
             detalle_reclamo: detalle.valor,
             fotos: fotos.fotos,
             motivo: motivo.valor,
-            observacion_analisis: obsAnalisis.valor
+            observacion_analisis: obsAnalisis.valor,
+            responsable_falla: respFalla.valor
         };
         const hayDatos = Object.values(cambios).some(v => v !== undefined);
         if (!hayDatos) return res.status(400).json({ error: 'No hay datos para actualizar' });

@@ -1530,7 +1530,13 @@ const Reclamos = {
                         await apiJson(await authFetch('/api/reclamos/' + this._editingId + '/estado', {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ estado: 'FINALIZADO', resolucion: resolucion })
+                            body: JSON.stringify({
+                                estado: 'FINALIZADO',
+                                resolucion: resolucion,
+                                responsable_falla: data.responsable_falla,
+                                motivo: data.motivo,
+                                observacion_analisis: data.observacion_analisis
+                            })
                         }));
                     } catch (err) {
                         App.toast('Reclamo guardado, pero no se pudo aplicar la resolución: ' + err.message, 'error');
