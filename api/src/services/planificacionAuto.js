@@ -131,7 +131,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   const pendRes = await query(
     `SELECT o.* FROM produccion_ordenes o
      WHERE o.estado_programacion = 'PENDIENTE' AND o.fecha_programada IS NULL
-     ORDER BY COALESCE(o.nivel_prioridad, 1) DESC, COALESCE(CAST(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[^0-9]', '', 'g'), '') AS INTEGER), 999999) ASC, o.item_numero ASC`
+     ORDER BY CASE COALESCE(o.nivel_prioridad, 1) WHEN 4 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 ELSE 4 END ASC, COALESCE(CAST(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[^0-9]', '', 'g'), '') AS INTEGER), 999999) ASC, o.item_numero ASC`
   );
 
   const padreRes = await query(

@@ -484,8 +484,8 @@ App.modules.planificacion = {
                 <strong>Atención:</strong> esta acción liberará TODAS las órdenes en estado PROGRAMADO (vuelven a PENDIENTE) y las re-asignará automáticamente respetando la prioridad:
                 <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
                     <span class="pln-prio p-reposicion">4. Reposición</span>
-                    <span class="pln-prio p-urgencia">3. Urgencia</span>
                     <span class="pln-prio p-express">2. Express</span>
+                    <span class="pln-prio p-urgencia">3. Urgencia</span>
                     <span class="pln-prio p-normal">1. Normal</span>
                 </div>
                 <div class="sub2" style="margin-top:8px"><strong>Protegidas:</strong> las órdenes EN PROCESO, MERMADAS y TERMINADAS no serán tocadas.</div>

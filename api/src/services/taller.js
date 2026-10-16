@@ -97,7 +97,7 @@ async function getColaPorEstacion(estacionId) {
                   AND prev.orden_secuencia = p.orden_secuencia - 1
                   AND prev.estado = 'TERMINADO'
             ) AND p.orden_secuencia > 1 THEN 1 ELSE 0 END,
-            COALESCE(o.nivel_prioridad, 1) DESC,
+            CASE COALESCE(o.nivel_prioridad, 1) WHEN 4 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 ELSE 4 END ASC,
             COALESCE(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[^0-9]', '', 'g'), ''), '0')::BIGINT ASC,
             COALESCE(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[0-9]', '', 'g'), ''), '') ASC,
             COALESCE(o.item_numero, 0) ASC,

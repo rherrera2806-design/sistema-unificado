@@ -1017,7 +1017,7 @@ App.registerModule('produccion', {
 
     reprogramarTodo() {
         this._confirmar('Reprogramar Todo',
-            'Se liberarán <strong>todas las órdenes PROGRAMADO</strong> (vuelven a PENDIENTE) y se re-asignarán automáticamente por prioridad: <strong>Reposición → Urgencia → Express → Normal</strong>.<br><br>Las órdenes EN PROCESO, MERMADAS y TERMINADAS no serán tocadas.',
+            'Se liberarán <strong>todas las órdenes PROGRAMADO</strong> (vuelven a PENDIENTE) y se re-asignarán automáticamente por prioridad: <strong>Reposición → Express → Urgencia → Normal</strong>.<br><br>Las órdenes EN PROCESO, MERMADAS y TERMINADAS no serán tocadas.',
             'Reprogramar todo', true, () => this._ejecutarReprogramar());
     },
 
