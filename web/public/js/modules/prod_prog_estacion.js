@@ -453,7 +453,7 @@ App.registerModule('prod_prog_estacion', {
                         <td>${E(o.cliente)}</td>
                         <td>${E(o.ruta)}</td>
                         <td class="c">${E(o.estado)}</td>
-                        <td class="c"><img src="${(typeof location !== 'undefined' ? location.origin : '')}/api/taller/qr?d=${encodeURIComponent('VF:' + (o.pedido || '') + '|' + (o.item || 1))}" width="36" height="36" alt="QR"></td>
+                        <td class="c"><img src="${(typeof location !== 'undefined' ? location.origin : '')}/api/taller/qr?d=${encodeURIComponent((typeof location !== 'undefined' ? location.origin : '') + '/taller/index.html?qr=VF:' + (o.pedido || '') + '|' + (o.item || 1))}" width="44" height="44" alt="QR"></td>
                     </tr>`;
                 }
                 cuerpo += '</tbody></table>';

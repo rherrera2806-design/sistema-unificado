@@ -435,6 +435,14 @@
         // ============ VISTAS ============
 
         let turnoSeleccionado = null;
+        // Registro venido de un QR escaneado con la cámara del celular: el QR del
+        // programa impreso abre esta página con ?qr=VF:PEDIDO|ITEM
+        let registroPendiente = (() => {
+            try {
+                const q = new URLSearchParams(location.search).get('qr');
+                return q ? parseQR(q) : null;
+            } catch (_) { return null; }
+        })();
 
         function showTurnoModal(estacionId, estacionNombre) {
             const modal = document.getElementById('pasoModal');
@@ -671,6 +679,13 @@
                 const res = await fetch(`${API}/colaxestacion/${currentEstacion.id}`, { headers: getHeaders() });
                 colaActual = await res.json();
                 renderCola();
+                // Si se llegó por un QR (cámara del celular), abrir el registro
+                // ya con el pedido cargado, en el contexto de máquina y turno
+                if (registroPendiente) {
+                    const pre = registroPendiente;
+                    registroPendiente = null;
+                    setTimeout(() => showRegistroManual(pre), 150);
+                }
             } catch (err) {
                 app.innerHTML = '<div class="empty-state"><p>Error al cargar cola</p></div>';
             }
@@ -1186,6 +1201,12 @@
         // "SAP|FECHA|OV-10ITEM|M2" o un número de pedido simple.
         function parseQR(texto) {
             const t = String(texto || '').trim();
+            // URL completa (QR del programa impreso: la cámara del celular abre
+            // la página sola y el registro viene pre-cargado)
+            const mUrl = t.match(/[?&]qr=([^&]+)/);
+            if (mUrl) {
+                try { return parseQR(decodeURIComponent(mUrl[1])); } catch (_) { }
+            }
             let m = t.match(/^VF:([^|]+)\|(\d+)$/i);
             if (m) return { pedido: m[1].trim(), item: Number(m[2]) || 1 };
             const partes = t.split('|');
