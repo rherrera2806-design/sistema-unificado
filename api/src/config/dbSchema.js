@@ -605,21 +605,10 @@ async function faseColumnas({ q, safe }) {
     // programada: el resto queda como paso PENDIENTE, sin ser merma)
     await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS cantidad_real NUMERIC`, 'cola_produccion_pasos.cantidad_real');
     await safe(`ALTER TABLE cola_produccion_pasos ADD COLUMN IF NOT EXISTS m2_real NUMERIC`, 'cola_produccion_pasos.m2_real');
-    // Limpieza de pasos DUPLICADOS que dejó el bug de ingresos parciales: si
-    // hay varios PENDIENTES para la misma orden+estación+secuencia, son copias
-    // del bug (el flujo correcto siempre deja uno solo). Se conserva el primero.
-    try {
-        const limpieza = await query(`DELETE FROM cola_produccion_pasos
-            WHERE estado = 'PENDIENTE'
-              AND id NOT IN (
-                  SELECT MIN(id) FROM cola_produccion_pasos
-                  WHERE estado = 'PENDIENTE'
-                  GROUP BY orden_produccion_id, estacion_id, orden_secuencia
-              )`);
-        if (limpieza.rowCount > 0) console.log('[TALLER] Pasos duplicados eliminados:', limpieza.rowCount);
-    } catch (e) {
-        console.error('[TALLER] Limpieza de duplicados falló:', e.message);
-    }
+    // NOTA: la limpieza de pasos duplicados del bug de parciales YA NO corre al
+    // arrancar (era un DELETE pesado que retrasaba el boot y Railway reiniciaba
+    // el servicio en bucle). Ahora es un endpoint manual:
+    //   GET /api/taller/limpiar-duplicados
 
     // ── catalogo_tipos_cristal ───────────────────────────────────────────────
     await safe(`ALTER TABLE catalogo_tipos_cristal ADD COLUMN IF NOT EXISTS stock_critico INTEGER DEFAULT 0`, 'catalogo_tipos_cristal.stock_critico');

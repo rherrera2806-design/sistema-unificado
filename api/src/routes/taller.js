@@ -163,4 +163,18 @@ router.get('/api/taller/qr', canView, asyncHandler(async (req, res) => {
     res.send(buf);
 }));
 
+// ===== Limpieza manual de pasos duplicados (bug de ingresos parciales) =====
+// GET para poder ejecutarlo abriendo la URL con la sesión iniciada.
+router.get('/api/taller/limpiar-duplicados', canUpdate, asyncHandler(async (req, res) => {
+    const { query } = require('../config/database');
+    const result = await query(`DELETE FROM cola_produccion_pasos
+        WHERE estado = 'PENDIENTE'
+          AND id NOT IN (
+              SELECT MIN(id) FROM cola_produccion_pasos
+              WHERE estado = 'PENDIENTE'
+              GROUP BY orden_produccion_id, estacion_id, orden_secuencia
+          )`);
+    res.json({ ok: true, eliminados: result.rowCount });
+}));
+
 module.exports = router;
