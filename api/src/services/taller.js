@@ -210,7 +210,7 @@ async function reanudarPaso(pasoId, operarioEmail, operarioNombre) {
     } catch (_) { }
 }
 
-async function finalizarPaso(pasoId, operarioEmail, operarioNombre, cantidadReal) {
+async function finalizarPaso(pasoId, operarioEmail, operarioNombre, cantidadReal, turnoRegistro) {
     const pasoResult = await query(
         `SELECT p.*, o.cantidad AS cantidad_orden, o.metros_cuadrados AS m2_orden
          FROM cola_produccion_pasos p
@@ -235,9 +235,12 @@ async function finalizarPaso(pasoId, operarioEmail, operarioNombre, cantidadReal
     const restoCant = cantidadAsignada - cantReal;
     const restoM2 = m2Asignados - m2Real;
 
+    // Trazabilidad: usuario que registró, hora (NOW), turno y fecha de turno
+    const infoTurno = await getTurnoInfo();
+    const turnoFinal = turnoRegistro || infoTurno.turno;
     await query(
-        `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW(), locked_by = NULL, locked_at = NULL, cantidad_real = $2, m2_real = $3, fecha_turno = $4 WHERE id = $1`,
-        [pasoId, cantReal, m2Real, await getFechaTurno()]
+        `UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW(), locked_by = NULL, locked_at = NULL, cantidad_real = $2, m2_real = $3, fecha_turno = $4, turno = $5, operario_email = COALESCE($6, operario_email), operario_nombre = COALESCE($7, operario_nombre) WHERE id = $1`,
+        [pasoId, cantReal, m2Real, infoTurno.fecha, turnoFinal, operarioEmail, operarioNombre]
     );
 
     // Resto pendiente en la misma estación (sin merma)
@@ -258,7 +261,7 @@ async function finalizarPaso(pasoId, operarioEmail, operarioNombre, cantidadReal
         await query(
             `INSERT INTO taller_historial (entidad_tipo, entidad_id, accion, datos_anteriores, usuario_email, usuario_nombre)
              VALUES ('paso', $1, 'finalizar', $2, $3, $4)`,
-            [pasoId, JSON.stringify({ ...p, cantidad_real: cantReal, m2_real: m2Real, resto_paso_id: restoPasoId }), operarioEmail, operarioNombre]
+            [pasoId, JSON.stringify({ ...p, cantidad_real: cantReal, m2_real: m2Real, turno: turnoFinal, fecha_turno: infoTurno.fecha, resto_paso_id: restoPasoId }), operarioEmail, operarioNombre]
         );
     } catch (_) { }
 
@@ -330,7 +333,7 @@ async function registroManual({ filas, userEmail, userName, estacionId, maquinaI
             });
             continue;
         }
-        const r = await finalizarPaso(pasos.rows[0].id, userEmail, userName, cant);
+        const r = await finalizarPaso(pasos.rows[0].id, userEmail, userName, cant, turno);
         if (!r) {
             resultados.push({ pedido, item, ok: false, mensaje: 'No se pudo registrar la producción' });
             continue;
@@ -419,9 +422,10 @@ async function registrarMerma({ paso_id, causa, cantidad, observacion, userEmail
                 [proporcionRestante.m2, paso_id]
             );
         } else {
+            const infoTurnoMerma = await getTurnoInfo();
             await txQuery(
-                `UPDATE cola_produccion_pasos SET estado = 'MERMADO', hora_fin = NOW(), fecha_turno = $2 WHERE id = $1`,
-                [paso_id, await getFechaTurno()]
+                `UPDATE cola_produccion_pasos SET estado = 'MERMADO', hora_fin = NOW(), fecha_turno = $2, turno = $3 WHERE id = $1`,
+                [paso_id, infoTurnoMerma.fecha, infoTurnoMerma.turno]
             );
         }
 
@@ -509,7 +513,8 @@ async function procesarPaso(pasoId, cantidad, maquinaId, operarioEmail, operario
     updates.push(`operario_nombre = $${idx++}`); params.push(operarioNombre);
     params.push(pasoId);
     await query(`UPDATE cola_produccion_pasos SET ${updates.join(', ')} WHERE id = $${idx}`, params);
-    await query(`UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW(), fecha_turno = $2 WHERE id = $1`, [pasoId, await getFechaTurno()]);
+    const infoTurnoProc = await getTurnoInfo();
+    await query(`UPDATE cola_produccion_pasos SET estado = 'TERMINADO', hora_fin = NOW(), fecha_turno = $2, turno = $3, operario_email = COALESCE($4, operario_email), operario_nombre = COALESCE($5, operario_nombre) WHERE id = $1`, [pasoId, infoTurnoProc.fecha, infoTurnoProc.turno, operarioEmail, operarioNombre]);
 
     // El estado de la orden se deriva del avance de sus pasos
     try { await sincronizarEstadoOrden(p.orden_produccion_id); } catch (_) { }
@@ -570,16 +575,17 @@ async function finalizarPasosPorPedido(pedidoSapId, estacionId, operarioEmail, o
     return count;
 }
 
-// ===== Día del turno: para el turno nocturno el día = día de TÉRMINO =====
+// ===== Turno y día del turno: para el nocturno el día = día de TÉRMINO =====
 // (ej: la noche que arranca Jue 22:00 y termina Vie 06:30 es el turno del
-// VIERNES; el especial Dom 00:00 → Lun 07:30 = Lunes). Devuelve 'YYYY-MM-DD'
-// local. Sin configuración o fuera de ventana = fecha calendario.
-async function getFechaTurno(fecha) {
+// VIERNES; el especial Dom 00:00 → Lun 07:30 = Lunes). Devuelve
+// { turno: 'dia'|'noche'|'extra', fecha: 'YYYY-MM-DD' } (local). Sin
+// configuración o fuera de ventana = 'extra' y fecha calendario.
+async function getTurnoInfo(fecha) {
     const f = fecha ? new Date(fecha) : new Date();
     const local = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     try {
         const result = await query(
-            `SELECT dia_semana, hora_inicio, hora_fin, dia_siguiente
+            `SELECT dia_semana, turno, hora_inicio, hora_fin, dia_siguiente
              FROM turnos_semanales WHERE anio = $1 AND mes = $2`,
             [f.getFullYear(), f.getMonth() + 1]);
         for (let atras = 0; atras <= 1; atras++) {
@@ -590,11 +596,15 @@ async function getFechaTurno(fecha) {
                 const [hf, mf] = String(h.hora_fin).split(':').map(Number);
                 const ini = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hi, mi);
                 const fin = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (h.dia_siguiente ? 1 : 0), hf, mf);
-                if (fin > ini && f >= ini && f < fin) return local(fin); // día de término
+                if (fin > ini && f >= ini && f < fin) return { turno: h.turno, fecha: local(fin) }; // día de término
             }
         }
     } catch (_) { }
-    return local(f);
+    return { turno: 'extra', fecha: local(f) };
+}
+
+async function getFechaTurno(fecha) {
+    return (await getTurnoInfo(fecha)).fecha;
 }
 
 // ===== Horarios de turno semanales por mes (día / noche; lo demás = extra) =====
