@@ -20,7 +20,10 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
         params.push(estado);
         where.push(`cp.estado = $${params.length}`);
     } else {
-        where.push(`cp.estado != 'MERMADO'`);
+        // Por defecto se muestra lo QUE FALTA por fabricar: los TERMINADOS ya se
+        // produjeron (se "descuentan") y los MERMADOS no cuentan. Para ver los
+        // terminados se puede filtrar por estado explícitamente.
+        where.push(`cp.estado NOT IN ('TERMINADO', 'MERMADO')`);
     }
 
     where.push(`cp.fecha_programada IS NOT NULL`);
@@ -136,6 +139,19 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             kg: Number(r.kilos) || 0,
             cantidad: r.cantidad || 1,
             m2_asignados: Number(r.m2_asignados) || 0,
+            // Cantidad y kilos PROPIOS del paso (proporción de su m2 sobre el de
+            // la orden): los pasos "resto" de un parcial cubren solo una parte.
+            cantidad_paso: (() => {
+                const m2o = Number(r.metros_cuadrados) || 0;
+                const m2p = Number(r.m2_asignados) || m2o;
+                const c = Number(r.cantidad) || 1;
+                return (m2o > 0 && m2p > 0) ? Math.max(1, Math.round(c * m2p / m2o)) : c;
+            })(),
+            kg_paso: (() => {
+                const m2o = Number(r.metros_cuadrados) || 0;
+                const m2p = Number(r.m2_asignados) || m2o;
+                return m2o > 0 ? (Number(r.kilos) || 0) * m2p / m2o : (Number(r.kilos) || 0);
+            })(),
             estado: r.estado,
             prioridad: r.nivel_prioridad,
             estado_programacion: r.estado_programacion,

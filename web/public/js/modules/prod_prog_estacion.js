@@ -359,9 +359,9 @@ App.registerModule('prod_prog_estacion', {
         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
         html += `<td style="font-size:11px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
         html += `<td>${o.ancho}×${o.alto}</td>`;
-        html += `<td>${o.cantidad || 1}</td>`;
+        html += `<td>${o.cantidad_paso || o.cantidad || 1}</td>`;
         html += `<td><strong>${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
-        html += `<td><strong>${Number(o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
+        html += `<td><strong>${Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(o.cliente || '-')}</td>`;
         html += `<td><span class="ppe-badge ${estadoClass}">${this.esc(o.estado)}</span></td>`;
         html += `<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta)}">${this.esc(o.ruta)}</td>`;
@@ -447,9 +447,9 @@ App.registerModule('prod_prog_estacion', {
                         <td class="n">${o.mp_espesor ? Number(o.mp_espesor).toLocaleString('es-CL', { maximumFractionDigits: 2 }) + ' mm' : '—'}</td>
                         <td class="n">${this._num(o.ancho, 0)}</td>
                         <td class="n">${this._num(o.alto, 0)}</td>
-                        <td class="n">${this._num(o.cantidad, 0)}</td>
+                        <td class="n">${this._num(o.cantidad_paso != null ? o.cantidad_paso : o.cantidad, 0)}</td>
                         <td class="n">${this._num(o.m2_asignados || o.m2, 2)}</td>
-                        <td class="n">${this._num(o.kg, 1)}</td>
+                        <td class="n">${this._num(o.kg_paso != null ? o.kg_paso : o.kg, 1)}</td>
                         <td>${E(o.cliente)}</td>
                         <td>${E(o.ruta)}</td>
                         <td class="c">${E(o.estado)}</td>
@@ -491,7 +491,7 @@ App.registerModule('prod_prog_estacion', {
         for (const est of this.datos.estaciones) {
             for (const dia of (est.fechas || [])) {
                 for (const o of dia.ordenes) {
-                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), o.codigo, o.ancho, o.alto, o.cantidad, Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
+                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), o.codigo, o.ancho, o.alto, (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad), Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
                 }
             }
         }
