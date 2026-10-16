@@ -333,11 +333,11 @@
             const app = document.getElementById('app');
             
             const oeePromedio = oee.length > 0 
-                ? (oee.reduce((sum, e) => sum + Number(e.oee_promedio || 0), 0) / oee.length).toFixed(1)
+                ? Number(oee.reduce((sum, e) => sum + Number(e.oee_promedio || 0), 0) / oee.length).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})
                 : 0;
 
             const tasaMerma = generales.ordenes_completadas_hoy > 0
-                ? ((generales.mermas_hoy / generales.ordenes_completadas_hoy) * 100).toFixed(1)
+                ? Number((generales.mermas_hoy / generales.ordenes_completadas_hoy) * 100).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})
                 : 0;
 
             app.innerHTML = `
@@ -438,7 +438,7 @@
                                 ${calidad.tasa_aprobacion || 0}%
                             </div>
                             <div style="color:var(--text-muted);margin-top:4px">Tasa de Aprobación</div>
-                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px">
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:20px">
                                 <div>
                                     <div style="font-size:20px;font-weight:700;color:var(--success)">${calidad.aprobados || 0}</div>
                                     <div style="font-size:11px;color:var(--text-muted)">Aprobados</div>
@@ -527,7 +527,7 @@
                                             ${op.operario_nombre || op.operario_email}
                                         </td>
                                         <td>${op.pasos_completados}</td>
-                                        <td>${Number(op.horas_trabajadas || 0).toFixed(1)}h</td>
+                                        <td>${Number(op.horas_trabajadas || 0).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}h</td>
                                         <td><strong>${Math.round(op.m2_producidos || 0)}</strong></td>
                                         <td>${op.m2_por_hora || 0}</td>
                                     </tr>
@@ -566,8 +566,8 @@
                                         <td>${m.nombre_estacion || '-'}</td>
                                         <td>${m.causa}</td>
                                         <td><strong>${m.total_mermas}</strong></td>
-                                        <td>${Number(m.m2_mermados || 0).toFixed(2)}</td>
-                                        <td>$${Number(m.costo_total || 0).toLocaleString()}</td>
+                                        <td>${Number(m.m2_mermados || 0).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                                        <td>$${Number(m.costo_total || 0).toLocaleString('es-CL')}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
