@@ -570,38 +570,51 @@ async function finalizarPasosPorPedido(pedidoSapId, estacionId, operarioEmail, o
     return count;
 }
 
-// ===== Horarios de turno por mes (dia / noche; lo demás = extra) =====
+// ===== Horarios de turno semanales por mes (día / noche; lo demás = extra) =====
+// dia_semana: 0=Dom .. 6=Sáb. dia_siguiente=true cuando el turno termina al
+// día siguiente (ej: noche Lun 22:00 → Mar 07:30; el especial Dom 00:00 → Lun 07:30).
 async function getHorariosTurnos(anio) {
     const where = anio ? 'WHERE anio = $1' : '';
     const params = anio ? [anio] : [];
     const result = await query(
-        `SELECT id, anio, mes, turno,
+        `SELECT id, anio, mes, dia_semana, turno,
                 to_char(hora_inicio, 'HH24:MI') as hora_inicio,
-                to_char(hora_fin, 'HH24:MI') as hora_fin
-         FROM turnos_horarios ${where} ORDER BY anio DESC, mes, turno`, params);
+                to_char(hora_fin, 'HH24:MI') as hora_fin,
+                dia_siguiente
+         FROM turnos_semanales ${where} ORDER BY anio DESC, mes, dia_semana, turno`, params);
     return result.rows;
 }
 
+// Guardar la semana completa de un mes: primero se limpia el mes y luego se
+// insertan los turnos definidos (así el mes queda exactamente como se cargó).
 async function guardarHorariosTurnos(filas) {
-    let guardadas = 0;
-    for (const f of (Array.isArray(filas) ? filas : [])) {
+    const validas = (Array.isArray(filas) ? filas : []).filter(f => {
         const anio = Number(f.anio);
         const mes = Number(f.mes);
+        const diaSemana = Number(f.dia_semana);
         const turno = String(f.turno || '').toLowerCase();
-        const horaInicio = String(f.hora_inicio || '');
-        const horaFin = String(f.hora_fin || '');
-        if (!anio || mes < 1 || mes > 12 || !['dia', 'noche'].includes(turno)) continue;
-        if (!/^\d{1,2}:\d{2}$/.test(horaInicio) || !/^\d{1,2}:\d{2}$/.test(horaFin)) continue;
+        return anio && mes >= 1 && mes <= 12 && diaSemana >= 0 && diaSeis(diaSemana)
+            && ['dia', 'noche'].includes(turno)
+            && /^\d{1,2}:\d{2}$/.test(String(f.hora_inicio || ''))
+            && /^\d{1,2}:\d{2}$/.test(String(f.hora_fin || ''));
+    });
+    if (!validas.length) return { guardadas: 0 };
+    const anio = Number(validas[0].anio);
+    const mes = Number(validas[0].mes);
+    await query('DELETE FROM turnos_semanales WHERE anio = $1 AND mes = $2', [anio, mes]);
+    let guardadas = 0;
+    for (const f of validas) {
+        const diaSiguiente = f.dia_siguiente === true || f.dia_siguiente === 'true';
         await query(
-            `INSERT INTO turnos_horarios (anio, mes, turno, hora_inicio, hora_fin, updated_at)
-             VALUES ($1, $2, $3, $4, $5, NOW())
-             ON CONFLICT (anio, mes, turno) DO UPDATE
-             SET hora_inicio = EXCLUDED.hora_inicio, hora_fin = EXCLUDED.hora_fin, updated_at = NOW()`,
-            [anio, mes, turno, horaInicio, horaFin]);
+            `INSERT INTO turnos_semanales (anio, mes, dia_semana, turno, hora_inicio, hora_fin, dia_siguiente, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
+            [Number(f.anio), Number(f.mes), Number(f.dia_semana), String(f.turno).toLowerCase(),
+                String(f.hora_inicio), String(f.hora_fin), diaSiguiente]);
         guardadas++;
     }
     return { guardadas };
 }
+function diaSeis(d) { return Number.isInteger(d) && d >= 0 && d <= 6; }
 
 module.exports = {
     getEstacionesConCarga,

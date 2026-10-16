@@ -517,26 +517,29 @@
             } catch (_) { }
         }
 
+        // Sugiere el turno por las VENTANAS DEL DÍA DE LA SEMANA (el horario se
+        // recorta gradualmente: jueves -1h, viernes -2h, etc.). El turno se
+        // acredita al día en que TERMINA (el especial: Dom 00:00 → Lun 07:30 = Lunes).
         function getTurnoSugerido() {
             const ahora = new Date();
             const anio = ahora.getFullYear();
             const mes = ahora.getMonth() + 1;
             const cfg = (horariosTurnos || []).filter(h => Number(h.anio) === anio && Number(h.mes) === mes);
             if (cfg.length) {
-                const mins = ahora.getHours() * 60 + ahora.getMinutes();
-                for (const h of cfg) {
-                    const [hi, mi] = String(h.hora_inicio || '0:00').split(':').map(Number);
-                    const [hf, mf] = String(h.hora_fin || '0:00').split(':').map(Number);
-                    const ini = hi * 60 + mi;
-                    const fin = hf * 60 + mf;
-                    if (fin === ini) continue;
-                    if (fin < ini) { // cruza medianoche (ej: noche 22:00–06:00)
-                        if (mins >= ini || mins < fin) return h.turno;
-                    } else if (mins >= ini && mins < fin) {
-                        return h.turno;
+                // Ventanas de hoy y las de ayer (que pueden cruzar medianoche hacia hoy)
+                for (let atras = 0; atras <= 1; atras++) {
+                    const d = new Date(ahora.getTime() - atras * 86400000);
+                    const diaSemana = d.getDay(); // 0=Dom..6=Sáb
+                    for (const h of cfg) {
+                        if (Number(h.dia_semana) !== diaSemana || !h.hora_inicio || !h.hora_fin) continue;
+                        const [hi, mi] = String(h.hora_inicio).split(':').map(Number);
+                        const [hf, mf] = String(h.hora_fin).split(':').map(Number);
+                        const ini = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hi, mi);
+                        const fin = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (h.dia_siguiente ? 1 : 0), hf, mf);
+                        if (fin > ini && ahora >= ini && ahora < fin) return h.turno;
                     }
                 }
-                return 'extra'; // fuera de los rangos configurados del mes
+                return 'extra'; // fuera de las ventanas configuradas del mes
             }
             // Sin configuración cargada: respaldo 06:00–22:00 día, resto noche
             const hora = ahora.getHours();

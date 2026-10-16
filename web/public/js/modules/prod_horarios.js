@@ -1,13 +1,18 @@
 // ============================================================================
 // Horarios de Turno (Producción → Horarios de Turno)
-// Configuración MES A MES de los horarios de Día y Noche (cambian según la
-// época). Lo que no esté contemplado en esos rangos se registra como ⚡ Extra.
-// Protegido por el permiso 'prod_horarios' (visible en el árbol de Usuarios):
-// el Taller solo LEE esta configuración para sugerir el turno; modificarla
-// exige este permiso. Escala 20/15/13/11/10 · estilo del sistema.
+// Configuración MES A MES de la SEMANA: por cada día de la semana, el turno
+// ☀️ Día y el 🌙 Noche con su hora de inicio y fin (pueden terminar al día
+// siguiente al cruzar medianoche). El recorte de horas en Chile es gradual
+// (jueves -1h, viernes -2h, quizá miércoles...), por eso todo es configurable
+// mes a mes. Lo que no esté contemplado en las ventanas = ⚡ Extra.
+// El turno se acredita al día en que TERMINA (ej: Lun 22:00 → Mar 07:30 =
+// Martes; el especial Dom 00:00 → Lun 07:30 = Lunes).
+// Protegido por el permiso 'prod_horarios' (árbol de Usuarios).
+// Escala 20/15/13/11/10 · estilo del sistema.
 // ============================================================================
 App.registerModule('prod_horarios', {
     _horarios: [],
+    _dias: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
 
     async render() {
         const el = document.getElementById('page-prod_horarios');
@@ -18,27 +23,55 @@ App.registerModule('prod_horarios', {
             <div class="ht-hero">
                 <div>
                     <h2>Horarios de Turno</h2>
-                    <p>Horarios de Día y Noche por mes (según la época) · lo no contemplado en el rango = ⚡ Extra</p>
+                    <p>Horarios de la semana por mes (según la época y el recorte de horas) · lo no contemplado = ⚡ Extra</p>
                 </div>
             </div>
 
             <div class="ht-panel">
-                <div class="ht-p-head"><h3>Configurar mes</h3><span class="sub">aplica a la sugerencia de turno del Taller y a la clasificación de horas</span></div>
+                <div class="ht-p-head">
+                    <h3>Configurar mes</h3>
+                    <span class="sub">cada día tiene su turno Día y Noche · el turno se acredita al día en que termina</span>
+                </div>
                 <div class="ht-p-body">
-                    <div class="ht-grid">
+                    <div class="ht-mes-row">
                         <div class="ht-field"><label>Mes</label><input type="month" id="htMes" value="${mesActual}" onchange="App.modules.prod_horarios.cargarMes()"></div>
-                        <div class="ht-field"><label>☀️ Día inicio</label><input type="time" id="htDiaIni" value="06:00"></div>
-                        <div class="ht-field"><label>☀️ Día fin</label><input type="time" id="htDiaFin" value="22:00"></div>
-                        <div class="ht-field"><label>🌙 Noche inicio</label><input type="time" id="htNocIni" value="22:00"></div>
-                        <div class="ht-field"><label>🌙 Noche fin</label><input type="time" id="htNocFin" value="06:00"></div>
+                        <button class="ht-btn ghost" onclick="App.modules.prod_horarios.copiarMesAnterior()">Copiar mes anterior</button>
                     </div>
-                    <div class="ht-hint">Los horarios cambian según la época: configúralos <strong>mes a mes</strong>. Ejemplo de turno nocturno que cruza medianoche: inicio 22:00 · fin 06:00. Todo minuto fuera de estos rangos se registra como <strong>⚡ Extra</strong>.</div>
+                    <div class="ht-hint">
+                        El turno <strong>🌙 Noche</strong> que cruza medianoche marca <strong>"termina al día siguiente"</strong> y se acredita al día de término
+                        (ej: Lun 22:00 → Mar 07:30 = <strong>Martes</strong>). El caso especial del <strong>domingo</strong>: Noche 00:00 → Lun 07:30 = <strong>Lunes</strong>.
+                        Deja vacío un turno si ese día no se trabaja.
+                    </div>
+                    <div class="ht-table-wrap">
+                        <table class="ht-table ht-semana">
+                            <thead>
+                                <tr>
+                                    <th>Día</th>
+                                    <th>☀️ Día inicio</th>
+                                    <th>☀️ Día fin</th>
+                                    <th>🌙 Noche inicio</th>
+                                    <th>🌙 Noche fin</th>
+                                    <th>Termina</th>
+                                </tr>
+                            </thead>
+                            <tbody>${this._dias.map((nom, i) => `
+                                <tr>
+                                    <td class="c-dia"><strong>${nom}</strong></td>
+                                    <td><input type="time" id="htDiaIni${i}"></td>
+                                    <td><input type="time" id="htDiaFin${i}"></td>
+                                    <td><input type="time" id="htNocIni${i}"></td>
+                                    <td><input type="time" id="htNocFin${i}"></td>
+                                    <td class="c-fin"><label class="ht-check"><input type="checkbox" id="htNocSig${i}"> día siguiente</label></td>
+                                </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                     <button class="ht-btn" id="htGuardar" onclick="App.modules.prod_horarios.guardarMes()">Guardar mes</button>
                 </div>
             </div>
 
             <div class="ht-panel" style="margin-top:14px">
-                <div class="ht-p-head"><h3>Meses configurados</h3><span class="sub">los últimos configurados</span></div>
+                <div class="ht-p-head"><h3>Meses configurados</h3><span class="sub">elige "Editar" para ajustar la semana de un mes</span></div>
                 <div class="ht-p-body" id="htLista"><div class="ht-loading">Cargando...</div></div>
             </div>`;
         await this.cargarTodo();
@@ -68,22 +101,23 @@ App.registerModule('prod_horarios', {
         const meses = {};
         for (const h of (this._horarios || [])) {
             const clave = h.anio + '-' + String(h.mes).padStart(2, '0');
-            if (!meses[clave]) meses[clave] = {};
-            meses[clave][h.turno] = h;
+            (meses[clave] = meses[clave] || []).push(h);
         }
         const claves = Object.keys(meses).sort().reverse();
         if (!claves.length) {
-            el.innerHTML = '<div class="ht-loading">Todavía no hay meses configurados. Arriba elige el mes y guarda.</div>';
+            el.innerHTML = '<div class="ht-loading">Todavía no hay meses configurados. Arriba elige el mes y carga la semana.</div>';
             return;
         }
-        el.innerHTML = '<table class="ht-table"><thead><tr><th>Mes</th><th>☀️ Día</th><th>🌙 Noche</th><th></th></tr></thead><tbody>'
+        el.innerHTML = '<table class="ht-table"><thead><tr><th>Mes</th><th>Días con turno</th><th>Ejemplos</th><th></th></tr></thead><tbody>'
             + claves.map(k => {
-                const d = meses[k].dia || {};
-                const n = meses[k].noche || {};
+                const filas = meses[k];
+                const dias = [...new Set(filas.map(f => Number(f.dia_semana)))].sort((a, b) => a - b);
+                const ejemplos = filas.slice(0, 2).map(f =>
+                    this._dias[Number(f.dia_semana)].slice(0, 3) + ' ' + (f.turno === 'dia' ? '☀️' : '🌙') + ' ' + f.hora_inicio + '→' + f.hora_fin + (f.dia_siguiente ? '(+1)' : '')).join(' · ');
                 return `<tr>
                     <td><strong>${this._mesTexto(k)}</strong></td>
-                    <td>${d.hora_inicio || '—'} → ${d.hora_fin || '—'}</td>
-                    <td>${n.hora_inicio || '—'} → ${n.hora_fin || '—'}</td>
+                    <td>${dias.length} de 7</td>
+                    <td class="c-ej">${escText(ejemplos)}</td>
                     <td class="c-acc"><button class="ht-btn ghost sm" onclick="App.modules.prod_horarios.editarMes('${k}')">Editar</button></td>
                 </tr>`;
             }).join('')
@@ -100,22 +134,51 @@ App.registerModule('prod_horarios', {
         const ym = document.getElementById('htMes')?.value || '';
         const [anio, mes] = ym.split('-').map(Number);
         if (!anio || !mes) return;
-        const dia = (this._horarios || []).find(h => Number(h.anio) === anio && Number(h.mes) === mes && h.turno === 'dia');
-        const noche = (this._horarios || []).find(h => Number(h.anio) === anio && Number(h.mes) === mes && h.turno === 'noche');
-        document.getElementById('htDiaIni').value = (dia && dia.hora_inicio) || '06:00';
-        document.getElementById('htDiaFin').value = (dia && dia.hora_fin) || '22:00';
-        document.getElementById('htNocIni').value = (noche && noche.hora_inicio) || '22:00';
-        document.getElementById('htNocFin').value = (noche && noche.hora_fin) || '06:00';
+        for (let i = 0; i < 7; i++) {
+            const dia = (this._horarios || []).find(h => Number(h.anio) === anio && Number(h.mes) === mes && Number(h.dia_semana) === i && h.turno === 'dia');
+            const noche = (this._horarios || []).find(h => Number(h.anio) === anio && Number(h.mes) === mes && Number(h.dia_semana) === i && h.turno === 'noche');
+            document.getElementById('htDiaIni' + i).value = (dia && dia.hora_inicio) || '';
+            document.getElementById('htDiaFin' + i).value = (dia && dia.hora_fin) || '';
+            document.getElementById('htNocIni' + i).value = (noche && noche.hora_inicio) || '';
+            document.getElementById('htNocFin' + i).value = (noche && noche.hora_fin) || '';
+            document.getElementById('htNocSig' + i).checked = !!(noche && noche.dia_siguiente);
+        }
+    },
+
+    copiarMesAnterior() {
+        const ym = document.getElementById('htMes')?.value || '';
+        const [anio, mes] = ym.split('-').map(Number);
+        if (!anio || !mes) return;
+        const prev = mes === 1 ? { anio: anio - 1, mes: 12 } : { anio, mes: mes - 1 };
+        let copiados = 0;
+        for (let i = 0; i < 7; i++) {
+            const dia = (this._horarios || []).find(h => Number(h.anio) === prev.anio && Number(h.mes) === prev.mes && Number(h.dia_semana) === i && h.turno === 'dia');
+            const noche = (this._horarios || []).find(h => Number(h.anio) === prev.anio && Number(h.mes) === prev.mes && Number(h.dia_semana) === i && h.turno === 'noche');
+            if (dia || noche) copiados++;
+            document.getElementById('htDiaIni' + i).value = (dia && dia.hora_inicio) || '';
+            document.getElementById('htDiaFin' + i).value = (dia && dia.hora_fin) || '';
+            document.getElementById('htNocIni' + i).value = (noche && noche.hora_inicio) || '';
+            document.getElementById('htNocFin' + i).value = (noche && noche.hora_fin) || '';
+            document.getElementById('htNocSig' + i).checked = !!(noche && noche.dia_siguiente);
+        }
+        if (copiados) App.showAlert('Semana copiada desde ' + this._mesTexto(prev.anio + '-' + String(prev.mes).padStart(2, '0')) + '. Revisa y guarda.', 'success');
+        else App.showAlert('El mes anterior no tiene horarios cargados', 'danger');
     },
 
     async guardarMes() {
         const ym = document.getElementById('htMes')?.value || '';
         const [anio, mes] = ym.split('-').map(Number);
         if (!anio || !mes) { App.showAlert('Selecciona un mes', 'danger'); return; }
-        const filas = [
-            { anio, mes, turno: 'dia', hora_inicio: document.getElementById('htDiaIni').value, hora_fin: document.getElementById('htDiaFin').value },
-            { anio, mes, turno: 'noche', hora_inicio: document.getElementById('htNocIni').value, hora_fin: document.getElementById('htNocFin').value }
-        ];
+        const filas = [];
+        for (let i = 0; i < 7; i++) {
+            const dIni = document.getElementById('htDiaIni' + i).value;
+            const dFin = document.getElementById('htDiaFin' + i).value;
+            const nIni = document.getElementById('htNocIni' + i).value;
+            const nFin = document.getElementById('htNocFin' + i).value;
+            if (dIni && dFin) filas.push({ anio, mes, dia_semana: i, turno: 'dia', hora_inicio: dIni, hora_fin: dFin, dia_siguiente: false });
+            if (nIni && nFin) filas.push({ anio, mes, dia_semana: i, turno: 'noche', hora_inicio: nIni, hora_fin: nFin, dia_siguiente: document.getElementById('htNocSig' + i).checked });
+        }
+        if (!filas.length) { App.showAlert('Carga al menos un turno (deja vacío lo que no aplica)', 'danger'); return; }
         const btn = document.getElementById('htGuardar');
         if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
         try {
@@ -126,7 +189,7 @@ App.registerModule('prod_horarios', {
             });
             const data = await res.json();
             if (res.ok) {
-                App.showAlert('Horarios guardados para ' + this._mesTexto(ym), 'success');
+                App.showAlert('Horarios guardados para ' + this._mesTexto(ym) + ' (' + (data.guardadas || 0) + ' turnos)', 'success');
                 await this.cargarTodo();
             } else {
                 App.showAlert(data.error || 'Error al guardar', 'danger');
@@ -148,23 +211,30 @@ App.registerModule('prod_horarios', {
             .ht-p-head h3{font-size:13px;font-weight:600;margin:0}
             .ht-p-head .sub{font-size:10px;color:#8494a8}
             .ht-p-body{padding:16px 18px}
-            .ht-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+            .ht-mes-row{display:flex;gap:12px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap}
             .ht-field label{display:block;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#475569;margin-bottom:5px}
-            .ht-field input{width:100%;padding:10px 12px;border:1px solid #e4e9f0;border-radius:8px;font-size:13px;outline:none;color:#0f172a;background:#fff}
+            .ht-field input{padding:9px 11px;border:1px solid #e4e9f0;border-radius:8px;font-size:13px;outline:none;color:#0f172a;background:#fff}
             .ht-field input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
-            .ht-hint{font-size:11px;color:#8494a8;margin:12px 0}
-            .ht-btn{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;background:#1e40af;color:#fff}
-            .ht-btn:hover{background:#1e3a8a}
-            .ht-btn:disabled{opacity:.6;cursor:default}
-            .ht-btn.ghost{background:#fff;color:#475569;border-color:#e4e9f0}
-            .ht-btn.sm{padding:6px 11px;font-size:11px}
-            .ht-loading{text-align:center;padding:26px;color:#8494a8;font-size:13px}
+            .ht-hint{font-size:11px;color:#8494a8;margin:0 0 12px;line-height:1.6}
+            .ht-table-wrap{overflow-x:auto;border:1px solid #e4e9f0;border-radius:10px}
             .ht-table{width:100%;border-collapse:collapse}
-            .ht-table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0}
-            .ht-table td{padding:11px 14px;font-size:13px;border-bottom:1px solid #f1f5f9}
+            .ht-table th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:#8494a8;background:#f8fafc;border-bottom:1px solid #e4e9f0}
+            .ht-table td{padding:9px 12px;font-size:13px;border-bottom:1px solid #f1f5f9}
             .ht-table tbody tr:hover{background:#f8fafc}
             .ht-table .c-acc{text-align:right}
-            @media(max-width:768px){ .ht-grid{grid-template-columns:1fr 1fr} }
+            .ht-table .c-ej{font-size:11px;color:#64748b}
+            .ht-semana .c-dia{white-space:nowrap}
+            .ht-semana input[type="time"]{width:118px;padding:8px 10px;border:1px solid #e4e9f0;border-radius:8px;font-size:13px;outline:none;color:#0f172a;background:#fff}
+            .ht-semana input[type="time"]:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+            .ht-check{font-size:11px;color:#475569;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer}
+            .ht-check input{width:15px;height:15px;accent-color:#1e40af}
+            .ht-btn{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;background:#1e40af;color:#fff;margin-top:12px}
+            .ht-btn:hover{background:#1e3a8a}
+            .ht-btn:disabled{opacity:.6;cursor:default}
+            .ht-btn.ghost{background:#fff;color:#475569;border-color:#e4e9f0;margin-top:0}
+            .ht-btn.sm{padding:6px 11px;font-size:11px;margin-top:0}
+            .ht-loading{text-align:center;padding:26px;color:#8494a8;font-size:13px}
+            @media(max-width:768px){ .ht-semana input[type="time"]{width:100px} }
         </style>`;
     }
 });
