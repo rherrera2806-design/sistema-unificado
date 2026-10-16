@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const taller = require('../services/taller');
+const produccionOrdenes = require('../services/produccionOrdenes');
 const backfills = require('../services/tallerBackfills');
 const { autoAsignarPendientes } = require('../services/planificacionAuto');
 const { requireAnyPerm } = require('../middleware/permisos');
@@ -120,6 +121,12 @@ router.post('/api/taller/merma', canCreate, asyncHandler(async (req, res) => {
 }));
 
 // ============ BACKFILLS ============
+
+// Resincronizar estados de las órdenes (mantenimiento MANUAL — no corre al
+// arrancar): aplica "con registro de fabricación = EN_PROCESO" a lo existente.
+router.post('/api/taller/resincronizar-estados', canUpdate, asyncHandler(async (req, res) => {
+    res.json(await produccionOrdenes.resincronizarEstados());
+}));
 
 router.post('/api/taller/backfill-familia', canUpdate, asyncHandler(async (req, res) => {
     const actualizadas = await backfills.backfillFamilia();

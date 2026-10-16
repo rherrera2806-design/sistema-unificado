@@ -11,6 +11,33 @@ const { getPasos, actualizarPaso, eliminarPaso, agregarPaso, crearPasos } = requ
  * Una orden 'CERRADO' nunca se toca. Si cambia, se devuelve el estado nuevo;
  * si no existe la orden se devuelve null.
  */
+// ===== Mantenimiento MANUAL (no corre al arrancar): resincronizar estados =====
+// Aplica a las órdenes existentes la regla "con registro de fabricación =
+// EN_PROCESO; todo terminado/mermado = TERMINADO". Corrige órdenes creadas
+// antes de esa regla.
+const resincronizarEstados = async () => {
+    const ords = await query(`
+        SELECT o.id, o.estado_programacion,
+               COUNT(p.id) as total,
+               COUNT(*) FILTER (WHERE p.estado IN ('TERMINADO','MERMADO')) as cerrados,
+               COUNT(*) FILTER (WHERE p.estado IN ('EN_PROCESO','PAUSADO')) as activos
+        FROM produccion_ordenes o
+        JOIN cola_produccion_pasos p ON p.orden_produccion_id = o.id
+        WHERE o.estado_programacion IS DISTINCT FROM 'CERRADO'
+        GROUP BY o.id, o.estado_programacion`);
+    let cambiadas = 0;
+    for (const r of ords.rows) {
+        let nuevo = r.estado_programacion;
+        if (Number(r.total) > 0 && Number(r.cerrados) === Number(r.total)) nuevo = 'TERMINADO';
+        else if (Number(r.activos) > 0 || Number(r.cerrados) > 0) nuevo = 'EN_PROCESO';
+        if (nuevo !== r.estado_programacion) {
+            await query('UPDATE produccion_ordenes SET estado_programacion = $1 WHERE id = $2', [nuevo, r.id]);
+            cambiadas++;
+        }
+    }
+    return { revisadas: ords.rows.length, cambiadas };
+};
+
 const sincronizarEstadoOrden = async (ordenId) => {
     if (!ordenId) return null;
     const ordenRes = await query('SELECT estado_programacion FROM produccion_ordenes WHERE id = $1', [ordenId]);
@@ -22,10 +49,13 @@ const sincronizarEstadoOrden = async (ordenId) => {
     const estados = pasosRes.rows.map(r => r.estado);
 
     let estadoNuevo = estadoActual;
-    if (estados.some(e => e === 'EN_PROCESO' || e === 'PAUSADO')) {
-        estadoNuevo = 'EN_PROCESO';
-    } else if (estados.length > 0 && estados.every(e => e === 'TERMINADO' || e === 'MERMADO')) {
+    if (estados.length > 0 && estados.every(e => e === 'TERMINADO' || e === 'MERMADO')) {
         estadoNuevo = 'TERMINADO';
+    } else if (estados.some(e => e === 'EN_PROCESO' || e === 'PAUSADO' || e === 'TERMINADO' || e === 'MERMADO')) {
+        // Con que exista ALGÚN registro de fabricación (paso terminado o
+        // mermado) o un paso activo, la orden está EN_PROCESO aunque queden
+        // pasos pendientes. Solo queda TERMINADO cuando ya no queda nada.
+        estadoNuevo = 'EN_PROCESO';
     }
 
     if (estadoNuevo !== estadoActual) {
@@ -330,6 +360,7 @@ module.exports = {
     editarOrden,
     eliminarOrden,
     sincronizarEstadoOrden,
+    resincronizarEstados,
     getPasos,
     actualizarPaso,
     eliminarPaso,

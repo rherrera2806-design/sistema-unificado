@@ -60,6 +60,10 @@ App.registerModule('produccion', {
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                                 Reprogramar Todo (por prioridad)
                             </div>
+                            <div class="it" onclick="App.modules.produccion.resincronizarEstados()">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                Resincronizar estados
+                            </div>
                             <div class="sep"></div>
                             <div class="it danger" onclick="App.modules.produccion.eliminarTodas()">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -1030,6 +1034,32 @@ App.registerModule('produccion', {
                 }
             }
         } catch (e) { /* no bloquear la pantalla por esto */ }
+    },
+
+    resincronizarEstados() {
+        this._confirmar('Resincronizar estados',
+            'Se recalculará el <strong>estado de todas las órdenes</strong> con la regla actual: con algún registro de fabricación = <strong>EN PROCESO</strong>; con todo terminado/mermado = <strong>TERMINADO</strong>.<br><br>Las órdenes CERRADAS no serán tocadas.',
+            'Resincronizar', false, () => this._ejecutarResincronizar());
+    },
+
+    async _ejecutarResincronizar() {
+        try {
+            const user = JSON.parse(localStorage.getItem('unified_user') || '{}');
+            App.toast('Resincronizando estados... espere', 'info');
+            const res = await fetch('/api/taller/resincronizar-estados', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-User-Email': user.email || '' }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                App.toast('Estados resincronizados: ' + (data.cambiadas || 0) + ' órdenes cambiaron (de ' + (data.revisadas || 0) + ' revisadas)', 'success');
+                await this.load();
+            } else {
+                App.toast(data.error || 'Error al resincronizar', 'error');
+            }
+        } catch (e) {
+            App.toast('Error de conexión: ' + e.message, 'error');
+        }
     },
 
     reprogramarTodo() {
