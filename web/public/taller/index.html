@@ -1212,11 +1212,20 @@
                 return;
             }
             tModal('Escanear QR', `
-                <video id="qrVideo" autoplay playsinline style="width:100%;border-radius:12px;background:#0f172a;max-height:320px"></video>
+                <video id="qrVideo" autoplay muted playsinline style="width:100%;border-radius:12px;background:#0f172a;max-height:320px"></video>
                 <p style="font-size:11px;color:#8494a8;margin:10px 0 0">Apunta al <strong>QR del programa impreso</strong> o al <strong>QR de la etiqueta del vidrio</strong>. El registro continuará con el pedido y el item leídos.</p>
             `, `<button class="btn btn-outline" onclick="qrCerrar()">Cerrar</button>`);
             try {
-                _scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                try {
+                    _scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                } catch (errCam) {
+                    // Cámara trasera no disponible: intentar con cualquier cámara
+                    if (errCam && (errCam.name === 'OverconstrainedError' || errCam.name === 'ConstraintNotSatisfiedError' || errCam.name === 'NotFoundError')) {
+                        _scanStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    } else {
+                        throw errCam;
+                    }
+                }
                 const video = document.getElementById('qrVideo');
                 video.srcObject = _scanStream;
                 const detector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -1241,7 +1250,22 @@
                 };
                 setTimeout(tick, 400);
             } catch (err) {
-                tModal('Sin acceso a la cámara', `<p style="font-size:13px;color:#475569">No se pudo abrir la cámara (${String(err.message || err)}). Usa el <strong>Registro manual</strong>.</p>`, `<button class="btn btn-primary" onclick="tModalCerrar()">Entendido</button>`);
+                const nombre = (err && err.name) || '';
+                let mensaje = 'No se pudo abrir la cámara.';
+                if (nombre === 'NotAllowedError' || nombre === 'PermissionDeniedError' || nombre === 'SecurityError') {
+                    mensaje = '<strong>Permiso de cámara denegado.</strong><br><br>Para activarlo en el móvil:<br>1. Toca el ícono de la barra de direcciones (candado 🔒 o ⓘ)<br>2. Permisos → <strong>Cámara → Permitir</strong><br>3. Recarga la página y vuelve a intentar<br><br>Si usas Chrome en Android también: Ajustes del sitio → Cámara → Permitir.';
+                } else if (nombre === 'NotFoundError' || nombre === 'OverconstrainedError') {
+                    mensaje = 'No se encontró una cámara disponible en este dispositivo.';
+                } else if (nombre === 'NotReadableError' || nombre === 'AbortError') {
+                    mensaje = 'La cámara está siendo usada por otra aplicación. Ciérrala e inténtalo de nuevo.';
+                }
+                tModal('No se pudo abrir la cámara', `
+                    <p style="font-size:13px;color:#475569;line-height:1.7">${mensaje}</p>
+                    <p style="font-size:11px;color:#8494a8;margin-top:12px">Mientras tanto, puedes registrar la producción con la <strong>digitación manual</strong>.</p>
+                `, `
+                    <button class="btn btn-outline" onclick="tModalCerrar();showRegistroManual()">Ir a Registro manual</button>
+                    <button class="btn btn-primary" onclick="tModalCerrar();showEscanerQR()">Reintentar</button>
+                `);
             }
         }
 
