@@ -64,6 +64,10 @@ async function getColaPorEstacion(estacionId) {
                o.id as orden_id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion,
                o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
                o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
+               -- Cantidad y kilos PROPIOS de este paso (los pasos "resto" que
+               -- nacen de un ingreso parcial cubren solo una parte de la orden)
+               ROUND(o.cantidad * COALESCE(p.m2_asignados, o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0)) as cantidad_paso,
+               ROUND(o.kilos * COALESCE(p.m2_asignados, o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0), 1) as kilos_paso,
                f.nombre_familia,
                mq.nombre as maquina_nombre,
                est_actual.nombre_estacion as estacion_actual,
@@ -208,22 +212,27 @@ async function reanudarPaso(pasoId, operarioEmail, operarioNombre) {
 
 async function finalizarPaso(pasoId, operarioEmail, operarioNombre, cantidadReal) {
     const pasoResult = await query(
-        `SELECT p.*, o.cantidad AS cantidad_orden FROM cola_produccion_pasos p
+        `SELECT p.*, o.cantidad AS cantidad_orden, o.metros_cuadrados AS m2_orden
+         FROM cola_produccion_pasos p
          JOIN produccion_ordenes o ON o.id = p.orden_produccion_id WHERE p.id = $1`, [pasoId]);
     if (pasoResult.rows.length === 0) return null;
     const p = pasoResult.rows[0];
 
-    // Cantidad REAL producida: por defecto todo lo programado. Si es menor, el
-    // resto NO es merma — queda como paso PENDIENTE en la misma estación
-    // ("aún pendiente de corte"), visible en la cola del taller.
+    // La cantidad REAL se mide contra lo ASIGNADO A ESTE PASO (proporción de su
+    // m2 sobre el m2 de la orden), no contra el total de la orden: un paso
+    // "resto" de un ingreso parcial solo cubre esa parte.
     const cantidadOrden = Number(p.cantidad_orden) || 1;
-    let cantReal = cantidadReal == null || cantidadReal === '' ? cantidadOrden : Number(cantidadReal);
-    if (!Number.isFinite(cantReal) || cantReal < 0) cantReal = cantidadOrden;
-    if (cantReal > cantidadOrden) cantReal = cantidadOrden;
-    const proporcion = cantidadOrden > 0 ? cantReal / cantidadOrden : 1;
-    const m2Asignados = Number(p.m2_asignados) || 0;
+    const m2Orden = Number(p.m2_orden) || 0;
+    const m2Asignados = Number(p.m2_asignados) || m2Orden;
+    const cantidadAsignada = (m2Orden > 0 && m2Asignados > 0)
+        ? Math.max(1, Math.round(cantidadOrden * m2Asignados / m2Orden))
+        : cantidadOrden;
+    let cantReal = cantidadReal == null || cantidadReal === '' ? cantidadAsignada : Number(cantidadReal);
+    if (!Number.isFinite(cantReal) || cantReal < 0) cantReal = cantidadAsignada;
+    if (cantReal > cantidadAsignada) cantReal = cantidadAsignada;
+    const proporcion = cantidadAsignada > 0 ? cantReal / cantidadAsignada : 1;
     const m2Real = m2Asignados * proporcion;
-    const restoCant = cantidadOrden - cantReal;
+    const restoCant = cantidadAsignada - cantReal;
     const restoM2 = m2Asignados - m2Real;
 
     await query(
@@ -327,10 +336,12 @@ async function registroManual({ filas, userEmail, userName, estacionId, maquinaI
             continue;
         }
         resultados.push({
-            pedido, item, ok: true, cantidad: cant,
-            mensaje: r.restoCantidad > 0
-                ? `Registradas ${cant}; ${r.restoCantidad} quedan pendientes de corte`
-                : 'Producción registrada completa'
+            pedido, item, ok: true, cantidad: r.cantidadReal,
+            mensaje: r.cantidadReal < cant
+                ? `Solo se podían registrar ${r.cantidadReal} (era lo que quedaba en este paso)`
+                : (r.restoCantidad > 0
+                    ? `Registradas ${r.cantidadReal}; ${r.restoCantidad} quedan pendientes de corte`
+                    : 'Producción registrada completa')
         });
     }
     return resultados;
