@@ -396,10 +396,10 @@ App.registerModule('produccion', {
                 + '<td>' + escText((o.cliente || '-').toUpperCase()) + '</td>'
                 + '<td><strong>' + escText(o.codigo_producto) + '</strong> '
                 + (o.es_compuesto ? '<span class="po-bom">BOM</span>' : '<span class="po-sinbom" title="Sin receta BOM">SIN BOM</span>')
-                + '<div class="sub2">' + escText(o.nombre_mp || o.descripcion || '-') + '</div></td>'
+                + '<div class="sub2">' + (o.codigo_padre ? 'SAP ' + escText(o.codigo_padre) + ' · ' : '') + escText(o.descripcion || o.nombre_mp || '-') + '</div></td>'
                 + '<td>' + this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0) + ' mm</td>'
                 + '<td class="num"><span class="po-cant" title="Click para editar" onclick="event.stopPropagation();App.modules.produccion.showEditCantidad(' + o.id + ')">' + this._fmt(o.cantidad || 1, 0) + '</span></td>'
-                + '<td>' + this._prioBadge(o.nivel_prioridad, o.id, true) + '</td>'
+                + '<td onclick="event.stopPropagation()">' + this._prioBadge(o.nivel_prioridad, o.id, true) + '</td>'
                 + '<td>' + this._estadoBadge(o.estado_programacion) + (progreso ? '<div class="sub2">' + progreso + ' pasos</div>' : (o.total_pasos === 0 ? '<div class="sub2" style="color:#dc2626">Sin ruta</div>' : '')) + '</td>'
                 + '<td class="c-acc" onclick="event.stopPropagation()">'
                 + '<div class="po-amenu"><button class="po-amenu-btn" onclick="App.modules.produccion.toggleAcciones(event,' + o.id + ')">Acciones ▾</button>'
@@ -521,6 +521,7 @@ App.registerModule('produccion', {
                     <div class="po-dr-sec">Datos de la orden</div>
                     <div class="po-dr-grid">
                         <div class="po-kv"><div class="k">Código</div><div class="v">${escText(o.codigo_producto)} ${o.es_compuesto ? '<span class="po-bom">BOM</span>' : '<span class="po-sinbom">SIN BOM</span>'}</div></div>
+                        <div class="po-kv" style="grid-column:1/-1"><div class="k">Código SAP / Descripción</div><div class="v">${o.codigo_padre ? escText(o.codigo_padre) + ' · ' : ''}${escText(o.descripcion || o.nombre_mp || '—')}</div></div>
                         <div class="po-kv"><div class="k">Dimensiones</div><div class="v">${this._fmt(o.ancho, 0)} × ${this._fmt(o.alto, 0)} mm</div></div>
                         <div class="po-kv"><div class="k">Cantidad</div><div class="v">${this._fmt(o.cantidad || 1, 0)} und</div></div>
                         <div class="po-kv"><div class="k">Superficie</div><div class="v">${this._fmt(o.metros_cuadrados, 2)} m²</div></div>
@@ -1212,7 +1213,7 @@ App.registerModule('produccion', {
             .p-express{background:#fef9c3;color:#854d0e;border:1px solid #fde047}
             .p-urgencia{background:#dcfce7;color:#15803d;border:1px solid #86efac}
             .p-reposicion{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5}
-            .prioridad-dropdown{display:none;position:absolute;top:110%;left:0;z-index:50;background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:5px;min-width:150px;box-shadow:0 12px 32px rgba(15,23,42,.16)}
+            .prioridad-dropdown{display:none;position:fixed;top:110%;left:0;z-index:95;background:#fff;border:1px solid #e4e9f0;border-radius:10px;padding:5px;min-width:150px;box-shadow:0 12px 32px rgba(15,23,42,.16)}
             .prio-option{padding:5px 8px;border-radius:7px;cursor:pointer}
             .prio-option:hover{background:#f8fafc}
 
