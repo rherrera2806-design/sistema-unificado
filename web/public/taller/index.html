@@ -503,12 +503,7 @@
                 const res = await fetch(`${API}/estaciones`, { headers: getHeaders() });
                 const estaciones = await res.json();
 
-                let html = '<div style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:700;color:var(--text)">Selecciona una Estación</h2><p style="font-size:12px;color:var(--text-muted)">Elige la estación donde vas a trabajar</p>'
-                    + '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
-                    + '<button onclick="showRegistroManual()" class="btn btn-outline" style="padding:12px 18px;font-size:13px;font-weight:700">⌨ Registro manual</button>'
-                    + '<button onclick="showEscanerQR()" class="btn btn-primary" style="padding:12px 18px;font-size:13px;font-weight:700">📷 Escanear QR</button>'
-                    + '<span style="font-size:11px;color:var(--text-muted);align-self:center">Si la terminal falla: digitación o QR desde el móvil</span>'
-                    + '</div></div>';
+                let html = '<div style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:700;color:var(--text)">Selecciona una Estación</h2><p style="font-size:12px;color:var(--text-muted)">Elige la estación donde vas a trabajar</p></div>';
 
                 estaciones.forEach(e => {
                     const carga = e.pendientes + e.en_proceso;
@@ -696,6 +691,11 @@
                     </button>
                     <h2 style="font-size:16px;font-weight:700;color:var(--text);margin-top:8px">${estacionNombre}</h2>
                     <p style="font-size:12px;color:var(--text-muted)">${colaActual.length} trabajos en cola</p>
+                    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+                        <button onclick="showRegistroManual()" class="btn btn-outline" style="padding:10px 16px;font-size:12px;font-weight:700">⌨ Registro manual</button>
+                        <button onclick="showEscanerQR()" class="btn btn-primary" style="padding:10px 16px;font-size:12px;font-weight:700">📷 Escanear QR</button>
+                        <span style="font-size:11px;color:var(--text-muted);align-self:center">Se registra en esta máquina y turno</span>
+                    </div>
                 </div>
             `;
 
@@ -1154,7 +1154,12 @@
                 const res = await fetch(`${API}/registro-manual`, {
                     method: 'POST',
                     headers: getHeaders(),
-                    body: JSON.stringify({ filas: registroFilas })
+                    body: JSON.stringify({
+                        filas: registroFilas,
+                        estacion_id: currentEstacion?.id || null,
+                        maquina_id: currentEstacion?.maquina?.id || null,
+                        turno: turnoSeleccionado || null
+                    })
                 });
                 const data = await res.json();
                 const resultados = data.resultados || [];

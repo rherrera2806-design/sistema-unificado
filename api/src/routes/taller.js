@@ -144,7 +144,10 @@ router.post('/api/taller/registro-manual', canUpdate, asyncHandler(async (req, r
     const resultados = await taller.registroManual({
         filas: req.body.filas,
         userEmail: operarioEmail,
-        userName: operarioNombre
+        userName: operarioNombre,
+        estacionId: req.body.estacion_id || null,
+        maquinaId: req.body.maquina_id || null,
+        turno: req.body.turno || null
     });
     res.json({ resultados });
 }));

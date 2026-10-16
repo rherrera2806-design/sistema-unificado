@@ -273,10 +273,13 @@ async function finalizarPaso(pasoId, operarioEmail, operarioNombre, cantidadReal
 }
 
 // ===== Registro MANUAL de producción (si la terminal falla) =====
-// Filas: [{ pedido, item, cantidad }]. Cada fila registra la producción real
-// contra el paso actual de esa orden (EN_PROCESO o el primer PENDIENTE).
-async function registroManual({ filas, userEmail, userName }) {
+// Filas: [{ pedido, item, cantidad }]. Con estacion_id el registro se ata a la
+// estación/máquina/turno donde se está trabajando (contexto del piso).
+async function registroManual({ filas, userEmail, userName, estacionId, maquinaId, turno }) {
     const resultados = [];
+    if (turno) {
+        try { await registrarTurnoSiNoExiste(userEmail, userName, turno); } catch (_) { }
+    }
     for (const f of (Array.isArray(filas) ? filas : [])) {
         const pedido = String(f.pedido || '').trim();
         const item = Number(f.item) || 1;
@@ -299,13 +302,23 @@ async function registroManual({ filas, userEmail, userName }) {
             resultados.push({ pedido, item, ok: false, mensaje: `La cantidad ${cant} supera la de la orden (${orden.cantidad})` });
             continue;
         }
+        const filtros = ['orden_produccion_id = $1', `estado IN ('EN_PROCESO', 'PENDIENTE')`];
+        const params = [orden.id];
+        if (estacionId) {
+            filtros.push(`estacion_id = $${params.length + 1}`);
+            params.push(estacionId);
+        }
         const pasos = await query(
-            `SELECT id FROM cola_produccion_pasos
-             WHERE orden_produccion_id = $1 AND estado IN ('EN_PROCESO', 'PENDIENTE')
+            `SELECT id FROM cola_produccion_pasos WHERE ${filtros.join(' AND ')}
              ORDER BY CASE estado WHEN 'EN_PROCESO' THEN 0 ELSE 1 END, orden_secuencia
-             LIMIT 1`, [orden.id]);
+             LIMIT 1`, params);
         if (pasos.rows.length === 0) {
-            resultados.push({ pedido, item, ok: false, mensaje: 'La orden no tiene pasos pendientes' });
+            resultados.push({
+                pedido, item, ok: false,
+                mensaje: estacionId
+                    ? 'La orden no tiene pasos pendientes en ESTA estación'
+                    : 'La orden no tiene pasos pendientes'
+            });
             continue;
         }
         const r = await finalizarPaso(pasos.rows[0].id, userEmail, userName, cant);
