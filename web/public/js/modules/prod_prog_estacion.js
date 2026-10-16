@@ -41,11 +41,11 @@ App.registerModule('prod_prog_estacion', {
                 .ppe-hero-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
                 .ppe-hbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}
                 .ppe-hbtn:hover{background:rgba(255,255,255,.2)}
-                .ppe-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
-                .ppe-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:13px 16px}
+                .ppe-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;width:100%}
+                .ppe-kpi{background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
                 .ppe-kpi .k{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8}
-                .ppe-kpi .v{font-size:20px;font-weight:700;margin-top:4px}
-                .ppe-kpi .s{font-size:10px;color:#8494a8;margin-top:2px}
+                .ppe-kpi .v{font-size:18px;font-weight:700}
+                .ppe-kpi .s{font-size:10px;color:#8494a8}
                 @media(max-width:768px){.m-hero-btns .btn{height:40px;min-height:40px;flex:1}}
             </style>
 
@@ -237,10 +237,8 @@ App.registerModule('prod_prog_estacion', {
                             html += `<tr style="background:#faf5ff">`;
                             html += `<td colspan="3"></td>`;
                             html += `<td><strong>${this.esc(h.codigo)}</strong> <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span></td>`;
-                            html += `<td style="font-size:11px;color:#7c3aed;font-weight:600">${mpInfo || this.esc(h.codigo_ref)}</td>`;
-                            html += `<td></td>`;
-                            html += `<td title="Cantidad pendiente según receta">${mpPend.toLocaleString('es-CL')} und <span style="font-size:9px;color:#94a3b8">receta</span></td>`;
-                            html += `<td colspan="7"></td>`;
+                            html += `<td style="font-size:11px;color:#7c3aed;font-weight:600">${mpInfo || this.esc(h.codigo_ref)} <span title="Cantidad pendiente según receta" style="margin-left:12px;font-size:11px;color:#0f172a;font-weight:700">${mpPend.toLocaleString('es-CL')} und <span style="font-size:9px;color:#94a3b8">receta</span></span></td>`;
+                            html += `<td colspan="8"></td>`;
                             html += `</tr>`;
                         }
                         cardsDia += this._renderGrupoCard(p, grp.hijos);
