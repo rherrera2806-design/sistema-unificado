@@ -178,6 +178,7 @@ const getExportarCorte = async () => {
         SELECT
             o.cantidad AS fabric,
             mp1.codigo_mp AS mp1_codigo,
+            mp1.espesor_mm AS mp1_espesor,
             mp2.codigo_mp AS mp2_codigo,
             o.ancho, o.alto,
             o.tipo_venta AS prioridad,
@@ -210,7 +211,7 @@ const getExportarCorte = async () => {
         LEFT JOIN produccion_codigos cod
             ON LOWER(TRIM(cod.codigo)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
         LEFT JOIN LATERAL (
-            SELECT m.codigo_mp
+            SELECT m.codigo_mp, m.espesor_mm
             FROM recetas_bom rb JOIN materias_primas m ON m.id = rb.materia_prima_id
             WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
             ORDER BY rb.id LIMIT 1
