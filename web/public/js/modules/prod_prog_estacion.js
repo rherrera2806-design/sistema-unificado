@@ -443,7 +443,7 @@ App.registerModule('prod_prog_estacion', {
                     + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Materia prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>'
                     + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th><th>QR</th>'
                     + '</tr></thead><tbody>';
-                for (const o of (dia.ordenes || [])) {
+                for (const o of [...(dia.ordenes || [])].sort((a, b) => (({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)))) {
                     cuerpo += `<tr>
                         <td class="c">${E(o.pedido)}</td>
                         <td class="c">${E(o.item)}</td>
