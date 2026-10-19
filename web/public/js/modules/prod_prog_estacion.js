@@ -209,7 +209,7 @@ App.registerModule('prod_prog_estacion', {
                         cardsDia += this._renderFilaCard(o);
                     }
 
-                    for (const [key, grp] of Object.entries(groups)) {
+                    const _vistos = new Set(); for (const o2 of _ord) { const key = (o2.pedido || o2.ov || '') + '|' + o2.item + '|' + o2.codigo_ref; if (!groups[key] || _vistos.has(key)) continue; _vistos.add(key); const grp = groups[key];
                         const p = grp.padre;
                         html += `<tr style="background:#f0f9ff;border-bottom:2px solid #bae6fd">`;
                         html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
