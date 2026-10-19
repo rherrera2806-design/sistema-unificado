@@ -33,7 +33,12 @@ const backfillAuto = (fn) => {
 };
 
 async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
-  const fechaMinima = inicio || new Date().toISOString().split('T')[0];
+  // Fecha mínima SIEMPRE en fecha local (toISOString usa UTC y a la noche
+  // "hoy" se convertía en "mañana")
+  const fechaMinima = inicio || (() => {
+    const h = new Date();
+    return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+  })();
 
   // ═══════════════════════════════════════════════════════════════
   // 1. CARGAR ESTACIONES (cap_max en m2, cuello_botella flag)
@@ -316,6 +321,28 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     return resultado;
   }
 
+  /**
+   * REGLA DURA (realidad): NUNCA dos pasos de un pedido el mismo día — la
+   * jornada no da para cortar y armar (o cortar y pulir) el mismo día. Cada
+   * paso corre al menos UN día hábil después del anterior. Si las cuerdas
+   * aplastaron fechas, aquí se corren hacia adelante.
+   */
+  function esparcirPorDias(route, estFechas, fechaMin) {
+    let previa = null;
+    for (const estId of route) {
+      let fs = estFechas[estId] || null;
+      if (previa) {
+        const minimo = siguienteDiaHabil(previa);
+        if (!fs || fs < minimo) fs = minimo;
+      } else if (!fs || fs < fechaMin) {
+        fs = fechaMin;
+      }
+      estFechas[estId] = fs;
+      previa = fs;
+    }
+    return estFechas;
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // 7. PRE-PROCESAR BOM SIBLINGS (Armado conjunto)
   // ═══════════════════════════════════════════════════════════════
@@ -389,6 +416,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         estFechas[a.estId] = a.fecha;
         agregarCarga(a.fecha, a.estId, sibM2);
       }
+      esparcirPorDias(sibRoute, estFechas, fechaMinima);
 
       const fechas = Object.values(estFechas);
       const fechaPrimera = fechas.sort()[0];
@@ -487,6 +515,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         estFechas[drumEstId] = drumFecha;
         for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
         for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
+        esparcirPorDias(route, estFechas, fechaMinima);
 
         const fechas = Object.values(estFechas);
         const fechaPrimera = fechas.sort()[0];
@@ -543,6 +572,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         estFechas[drumEstId] = drumFecha;
         for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
         for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
+        esparcirPorDias(route, estFechas, fechaMinima);
 
         const fechas = Object.values(estFechas);
         const fechaPrimera = fechas.sort()[0];
