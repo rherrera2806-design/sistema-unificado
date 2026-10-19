@@ -190,7 +190,7 @@ App.registerModule('prod_prog_estacion', {
                     let cardsDia = '';
                     const groups = {};
                     const sinGrupo = [];
-                    const _ord = [...(dia.ordenes || [])].sort((a, b) => (({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)));
+                    const _ord = [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))));
                     for (const o of _ord) {
                         if (o.es_compuesto && o.codigo_ref) {
                             const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
@@ -330,7 +330,7 @@ App.registerModule('prod_prog_estacion', {
     _unidadesDia(dia) {
         const vistas = new Set();
         let und = 0;
-        for (const o of [...(dia.ordenes || [])].sort((a, b) => (({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)))) {
+        for (const o of [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))))) {
             if (o.es_compuesto && o.codigo_ref) {
                 const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
                 if (vistas.has(key)) continue;
@@ -480,7 +480,7 @@ App.registerModule('prod_prog_estacion', {
                     + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Materia prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>'
                     + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th><th>QR</th>'
                     + '</tr></thead><tbody>';
-                for (const o of [...(dia.ordenes || [])].sort((a, b) => (({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)))) {
+                for (const o of [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))))) {
                     cuerpo += `<tr>
                         <td class="c">${E(o.pedido)}</td>
                         <td class="c">${E(o.item)}</td>
