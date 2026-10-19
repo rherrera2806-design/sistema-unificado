@@ -451,7 +451,11 @@ App.registerModule('prod_prog_estacion', {
                 <div class="meta">Período: ${rango} · Capacidad: ${this._num(cap, 0)} m²/día · <strong>${est.total_ordenes || 0} órdenes</strong> · ${this._num(est.total_m2, 1)} m² · ${this._num(est.total_kg, 0)} kg</div>
             </header>`;
             for (const dia of (est.fechas || [])) {
-                cuerpo += `<h3 class="dia">${this._fechaLarga(dia.fecha)}<span>${dia.total_ordenes || 0} órdenes · ${this._num(dia.total_m2, 1)} m² · ${this._num(dia.total_kg, 0)} kg</span></h3>`;
+                // Cada CAMBIO DE DÍA empieza hoja nueva (el primer día de la
+                // estación queda junto al título de la estación)
+                if (this._printEstPrev !== est) { this._printEstPrev = est; this._printDiaIdx = 0; }
+                const _brkDia = this._printDiaIdx++ > 0 ? ' style="break-before:page;page-break-before:always"' : '';
+                cuerpo += `<h3 class="dia"${_brkDia}>${this._fechaLarga(dia.fecha)}<span>${dia.total_ordenes || 0} órdenes · ${this._num(dia.total_m2, 1)} m² · ${this._num(dia.total_kg, 0)} kg</span></h3>`;
                 cuerpo += '<table><thead><tr>'
                     + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Materia prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>'
                     + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th><th>QR</th>'
