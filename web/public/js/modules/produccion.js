@@ -1437,7 +1437,7 @@ App.registerModule('produccion', {
         return '<div class="etq" style="width:' + (cfg.ancho * escala) + 'mm;height:' + (cfg.alto * escala) + 'mm;position:relative;background:#fff;font-family:Segoe UI,Arial,sans-serif;overflow:hidden">'
             + '<div style="padding:' + (2 * escala) + 'mm;display:flex;gap:' + (2 * escala) + 'mm">'
             + '  <div style="flex:1;min-width:0">'
-            + '    <div style="font-size:' + (26 * escala) + 'px;font-weight:800">' + escText((o.pedido_sap_id || '') + ' · Item ' + (o.item_numero || '')) + ' <span style="font-size:' + (14 * escala) + 'px;font-weight:600;color:#1d4ed8">' + escText(pri) + '</span></div>'
+            + '    <div style="font-size:' + (26 * escala) + 'px;font-weight:800">' + escText((o.pedido_sap_id || '') + ' · Item ' + (o.item_numero || ''))+ '</div>'
             + '    <div style="font-size:' + (14 * escala) + 'px;margin-top:' + (1 * escala) + 'mm">' + escText(o.cliente || '') + '</div>'
             + '    <div style="font-size:' + (14 * escala) + 'px;margin-top:' + (1 * escala) + 'mm"><strong>SAP:</strong> ' + escText(o.codigo_padre || o.codigo_producto || '') + ' · <strong>MP:</strong> ' + escText(o.codigo_producto || '') + '</div>'
             + '    <div style="font-size:' + (14 * escala) + 'px">' + escText((o.nombre_mp || o.descripcion || '') ) + '</div>'
