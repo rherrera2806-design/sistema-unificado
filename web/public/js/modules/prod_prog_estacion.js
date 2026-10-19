@@ -18,6 +18,7 @@ App.registerModule('prod_prog_estacion', {
                 .ppe-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.06)!important;transform:translateY(-1px)}
                 .ppe-table{width:100%;font-size:11px;border-collapse:collapse}
                 .ppe-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:1}
+                .ppe-table th:nth-child(6),.ppe-table th:nth-child(7),.ppe-table th:nth-child(8),.ppe-table th:nth-child(9),.ppe-table td:nth-child(6),.ppe-table td:nth-child(7),.ppe-table td:nth-child(8),.ppe-table td:nth-child(9){text-align:right}
                 .ppe-table td{padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#334155}
                 .ppe-table tbody tr{transition:background .15s}
                 .ppe-table tbody tr:hover{background:#f8fafc!important}
@@ -177,7 +178,8 @@ App.registerModule('prod_prog_estacion', {
                 html += `<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px">Sin programación en este rango</div>`;
             } else {
                 for (const dia of est.fechas) {
-                    const fechaFmt = this.formatFecha(dia.fecha);
+                    const _fd = new Date(dia.fecha + 'T12:00:00');
+                    const fechaFmt = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][_fd.getDay()] + ' ' + String(_fd.getDate()).padStart(2, '0') + '-' + String(_fd.getMonth() + 1).padStart(2, '0') + '-' + _fd.getFullYear();
                     const esHoy = dia.fecha === this._hoyLocal();
                     html += `<div class="ppe-date-header" style="${esHoy ? 'background:linear-gradient(135deg,#059669,#10b981)' : ''}">`;
                     html += `<div>${esHoy ? 'HOY - ' : ''}${fechaFmt}</div>`;
@@ -475,7 +477,7 @@ App.registerModule('prod_prog_estacion', {
                 // estación queda junto al título de la estación)
                 if (this._printEstPrev !== est) { this._printEstPrev = est; this._printDiaIdx = 0; }
                 const _brkDia = this._printDiaIdx++ > 0 ? ' style="break-before:page;page-break-before:always"' : '';
-                cuerpo += `<h3 class="dia"${_brkDia}>${this._fechaLarga(dia.fecha)}<span>${dia.total_ordenes || 0} órdenes · ${this._num(dia.total_m2, 1)} m² · ${this._num(dia.total_kg, 0)} kg</span></h3>`;
+                cuerpo += `<h3 class="dia"${_brkDia}>${(() => { const d = new Date(dia.fecha + 'T12:00:00'); return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()] + ' ' + String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear(); })()}<span>${dia.total_ordenes || 0} órdenes · ${this._num(dia.total_m2, 1)} m² · ${this._num(dia.total_kg, 0)} kg</span></h3>`;
                 cuerpo += '<table><thead><tr>'
                     + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Materia prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>'
                     + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th><th>QR</th>'
