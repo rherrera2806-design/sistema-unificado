@@ -13,12 +13,18 @@ const { autoAsignarPendientes } = require('./planificacionAuto');
  * Solo se liberan las que están PROGRAMADO (asignadas a fecha pero aún no iniciadas).
  */
 async function reprogramarPendientes({ dias = 21, inicio } = {}) {
-    const fechaMinima = inicio || new Date().toISOString().split('T')[0];
+    // Fecha mínima en hora local (toISOString usa UTC y a la noche cambiaba el día)
+    const fechaMinima = inicio || (() => {
+        const h = new Date();
+        return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+    })();
 
     // ═══════════════════════════════════════════════════════════════
-    // PASO A: LIBERACIÓN — Resetear PROGRAMADO → PENDIENTE
+    // PASO A: LIBERACIÓN — Soltar TODO lo programable → PENDIENTE
     // ═══════════════════════════════════════════════════════════════
-    // Solo tocar órdenes PROGRAMADO. NUNCA EN PROCESO, MERMADO, TERMINADO.
+    // Se suelta TODO excepto EN PROCESO, MERMADO, TERMINADO y CERRADO
+    // (antes solo se soltaban las PROGRAMADO y se escapaban órdenes con fecha
+    // asignada en otro estado: quedaban sin re-ordenar por prioridad).
     // NOTA: NO se toca fecha_entrega_pactada; es una fecha pactada (puede haberse
     // cargado a mano) y no depende de la programación diaria. Antes se ponía en
     // NULL para todas las órdenes PROGRAMADO y se perdían pactos manuales.
@@ -26,7 +32,8 @@ async function reprogramarPendientes({ dias = 21, inicio } = {}) {
         UPDATE produccion_ordenes
         SET estado_programacion = 'PENDIENTE',
             fecha_programada = NULL
-        WHERE estado_programacion = 'PROGRAMADO'
+        WHERE estado_programacion NOT IN ('EN_PROCESO', 'TERMINADO', 'MERMADO', 'CERRADO')
+          AND (estado_programacion = 'PROGRAMADO' OR fecha_programada IS NOT NULL)
         RETURNING id
     `);
     const ordenesLiberadas = liberar.rowCount;

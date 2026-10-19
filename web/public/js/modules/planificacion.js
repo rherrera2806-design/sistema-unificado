@@ -487,7 +487,7 @@ App.modules.planificacion = {
     showReprogramar() {
         const html = `
             <div class="pln-warnbox">
-                <strong>Atención:</strong> esta acción liberará TODAS las órdenes en estado PROGRAMADO (vuelven a PENDIENTE) y las re-asignará automáticamente respetando la prioridad:
+                <strong>Atención:</strong> esta acción liberará TODAS las órdenes que no estén EN PROCESO, TERMINADAS, MERMADAS ni CERRADAS (vuelven a PENDIENTE con sus pasos) y las re-asignará automáticamente respetando la prioridad:
                 <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
                     <span class="pln-prio p-reposicion">4. Reposición</span>
                     <span class="pln-prio p-express">2. Express</span>
