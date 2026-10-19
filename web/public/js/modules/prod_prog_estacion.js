@@ -355,7 +355,7 @@ App.registerModule('prod_prog_estacion', {
 
     // Badge de prioridad (numerada, idioma de etiquetas)
     _prioBadge(n) {
-        const map = { 1: ['1 · Normal', '#eff6ff', '#1d4ed8'], 2: ['2 · Express', '#fef9c3', '#854d0e'], 3: ['3 · Urgencia', '#dcfce7', '#15803d'], 4: ['4 · Reposición', '#fee2e2', '#b91c1c'] };
+        const map = { 1: ['Normal', '#eff6ff', '#1d4ed8'], 2: ['Express', '#fef9c3', '#854d0e'], 3: ['Urgencia', '#dcfce7', '#15803d'], 4: ['Reposición', '#fee2e2', '#b91c1c'] };
         const m = map[Number(n) || 1] || map[1];
         return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:' + m[1] + ';color:' + m[2] + ';white-space:nowrap">● ' + m[0] + '</span>';
     },
