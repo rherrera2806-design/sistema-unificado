@@ -207,7 +207,7 @@ App.registerModule('prod_reportes', {
                     <div class="m-table-wrap">
                     <table class="pr-table">
                         <thead><tr>
-                            <th>OV</th><th>Item</th><th>Pend.</th><th>Estado</th><th>Prioridad</th><th>Cliente</th>
+                            <th>OV</th><th>Item</th><th>Pend.</th><th>Estado</th><th>Prioridad</th><th>Cliente</th><th>SAP Padre</th>
                             <th>Descripción Padre</th><th>Espesor</th><th>Ancho</th><th>Alto</th>
                             <th style="text-align:right">M²</th>
                             <th style="text-align:right">Kgs</th><th>Ruta</th><th>Tipo</th><th>Grupo</th>
@@ -215,7 +215,7 @@ App.registerModule('prod_reportes', {
                         <tbody>`;
 
             let cardsHtml = '';
-            for (const o of fecha.ordenes) {
+            for (const o of this._agrupar(fecha.ordenes)) {
                 const estadoClass = 'pr-estado-' + (o.estado || 'PENDIENTE');
                 html += `<tr>
                     <td style="font-weight:600">${escText(o.ov || '')}</td>
@@ -224,6 +224,7 @@ App.registerModule('prod_reportes', {
                     <td><span class="pr-badge ${estadoClass}">${escText(o.estado || '')}</span></td>
                     <td>${this._prioBadge(o.prioridad)}</td>
                     <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.cliente || '')}">${escText(o.cliente || '')}</td>
+                    <td style="font-weight:600;white-space:nowrap">${escText(o.codigo_sap_padre || '')}</td>
                     <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.descripcion_padre || '')}">${escText(o.descripcion_padre || '')}</td>
                     <td style="text-align:center">${o.espesor ? escText(o.espesor) + 'mm' : ''}</td>
                     <td style="text-align:right">${escText(o.ancho || '')}</td>
@@ -293,14 +294,37 @@ App.registerModule('prod_reportes', {
         this.render();
     },
 
+    // Termopanel: las líneas de un mismo pedido-item se muestran en UNA sola
+    // línea — se suman espesor y kilos (también m²). Los demás grupos van a la
+    // vista tal cual, una fila por orden.
+    _agrupar(ordenes) {
+        const salida = [];
+        const idx = {};
+        for (const o of (ordenes || [])) {
+            const clave = /termopanel/i.test(o.grupo || '') ? (o.ov + '|' + o.item) : null;
+            if (!clave) { salida.push(o); continue; }
+            if (!idx[clave]) {
+                idx[clave] = { ...o, espesor: Number(o.espesor) || 0, kgs: Number(o.kgs) || 0, m2: Number(o.m2) || 0 };
+                salida.push(idx[clave]);
+            } else {
+                const g = idx[clave];
+                g.espesor = (Number(g.espesor) || 0) + (Number(o.espesor) || 0);
+                g.kgs = (Number(g.kgs) || 0) + (Number(o.kgs) || 0);
+                g.m2 = (Number(g.m2) || 0) + (Number(o.m2) || 0);
+            }
+        }
+        return salida;
+    },
+
     exportarExcel() {
         if (!this.datos || !this.datos.fechas.length) return App.showAlert('No hay datos para exportar', 'warning');
-        let csv = 'FECHA;OV;Item;Pend;Estado;Prioridad;Cliente;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Ruta;Tipo;Grupo\n';
+        let csv = 'FECHA;OV;Item;Pend;Estado;Prioridad;Cliente;SAP Padre;Descripción Padre;Ancho;Alto;Unidades;M2;Kgs;Ruta;Tipo;Grupo\n';
         for (const f of this.datos.fechas) {
-            for (const o of f.ordenes) {
+            for (const o of this._agrupar(f.ordenes)) {
                 csv += [
                     f.fecha, o.ov, o.item, o.pend, o.estado, o.prioridad,
                     `"${(o.cliente || '').replace(/"/g, '""')}"`,
+                    `"${(o.codigo_sap_padre || '').replace(/"/g, '""')}"`,
                     `"${(o.descripcion_padre || '').replace(/"/g, '""')}"`,
                     o.ancho, o.alto, o.unidades || o.pend,
                     Number(o.m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), Math.round(o.kgs),
