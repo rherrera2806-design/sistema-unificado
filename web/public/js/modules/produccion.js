@@ -412,7 +412,7 @@ App.registerModule('produccion', {
                 + '<div class="po-amenu-drop" id="poAcc_' + o.id + '">'
                 + '<div class="it" onclick="App.modules.produccion.verDetalle(' + o.id + ')">👁 Ver detalle y pasos</div>'
                 + '<div class="it" onclick="App.modules.produccion.showEditCantidad(' + o.id + ')">✏️ Editar cantidad</div>'
-                + (o.estado_programacion !== 'CERRADO' ? '<div class="it" onclick="App.modules.produccion.etiquetaModal(' + o.id + ')">⛔ Imprimir Etiqueta</div>' : '')
+                + (o.estado_programacion !== 'CERRADO' ? '<div class="it" onclick="App.modules.produccion.etiquetaModal(' + o.id + ')">🏷️ Imprimir Etiqueta</div>' : '')
                 + (o.estado_programacion !== 'CERRADO' ? '<div class="it" onclick="App.modules.produccion.cerrarOrden(' + o.id + ')">⛔ Cerrar orden</div>' : '')
                 + '<div class="sep"></div>'
                 + '<div class="it danger" onclick="App.modules.produccion.eliminarOrden(' + o.id + ')">🗑 Eliminar</div>'
