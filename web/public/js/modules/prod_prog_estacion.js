@@ -56,6 +56,7 @@ App.registerModule('prod_prog_estacion', {
                 </div>
                 <div class="ppe-hero-actions">
                     <button class="ppe-hbtn" onclick="App.modules.prod_prog_estacion.imprimir()" title="Imprimir el programa de máquinas (una hoja por estación)">🖨 Imprimir programa</button>
+                    <button class="ppe-hbtn" onclick="App.modules.prod_prog_estacion.reporteCartas()" title="Cartas clave por estación: días de carga, unidades, m² y kilos">📊 Reporte</button>
                     <button class="ppe-hbtn" onclick="App.modules.prod_prog_estacion.exportarExcel()">⬇ Exportar CSV</button>
                 </div>
             </div>
@@ -383,6 +384,38 @@ App.registerModule('prod_prog_estacion', {
     // Una HOJA por estación (salto de página), con sus días y órdenes: se puede
     // colgar en la máquina. Usa los filtros activos (si filtras una estación,
     // imprime solo su programa).
+    // ── Reporte: cartas clave por estación ─────────────────────────────────
+    // Días de carga · unidades · m² · kilos (respeta el filtro de estación)
+    reporteCartas() {
+        if (!this.datos || !this.datos.estaciones || !this.datos.estaciones.length) {
+            App.showAlert('No hay programación para el reporte', 'danger');
+            return;
+        }
+        let ests = this.datos.estaciones || [];
+        if (this.filtros && this.filtros.estacion_id) {
+            const f = String(this.filtros.estacion_id);
+            ests = ests.filter(e => String(e.id ?? e.estacion_id ?? '') === f || String(e.nombre || '') === f);
+        }
+        const fmtN = (v, dec) => Number(v || 0).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+        const html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">`
+            + ests.map(est => {
+                const fechas = (est.fechas || []).filter(d => (d.total_ordenes || 0) > 0);
+                const und = (est.fechas || []).reduce((s, d) => s + this._unidadesDia(d), 0);
+                return `<div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:14px 16px">
+                    <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px">${escText(est.orden ? est.orden + '° ' : '')}${escText(est.nombre || '')}</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                        <div><div style="font-size:10px;color:#8494a8;text-transform:uppercase;letter-spacing:.5px">Días de carga</div><div style="font-size:18px;font-weight:700;color:#2563eb">${fechas.length}</div></div>
+                        <div><div style="font-size:10px;color:#8494a8;text-transform:uppercase;letter-spacing:.5px">Unidades</div><div style="font-size:18px;font-weight:700;color:#7c3aed">${fmtN(und, 0)}</div></div>
+                        <div><div style="font-size:10px;color:#8494a8;text-transform:uppercase;letter-spacing:.5px">M²</div><div style="font-size:18px;font-weight:700;color:#15803d">${fmtN(est.total_m2, 1)}</div></div>
+                        <div><div style="font-size:10px;color:#8494a8;text-transform:uppercase;letter-spacing:.5px">Kilos</div><div style="font-size:18px;font-weight:700;color:#b45309">${fmtN(est.total_kg, 0)}</div></div>
+                    </div>
+                </div>`;
+            }).join('')
+            + `</div>`;
+        App.showModalInv('📊 Reporte por estación — cartas clave', html,
+            `<button class="ppe-hbtn" style="color:#475569;border-color:#e4e9f0;background:#fff" onclick="App.hideModal()">Cerrar</button>`);
+    },
+
     imprimir() {
         if (!this.datos || !this.datos.estaciones || !this.datos.estaciones.length) {
             App.showAlert('No hay programación para imprimir con los filtros actuales', 'danger');
