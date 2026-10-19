@@ -228,19 +228,6 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td style="font-size:11px">${this.esc(p.ruta)}</td>`;
                         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></td>`;
                         html += `</tr>`;
-
-                        // Línea de receta (MP): solo la cantidad PENDIENTE según
-                        // la receta (sin repetir pedido/item/prioridad)
-                        for (const h of grp.hijos) {
-                            const mpInfo = h.mp_nombre ? `${this.esc(h.mp_nombre)}${h.mp_espesor ? ' ' + escText(h.mp_espesor) + 'mm' : ''}` : '';
-                            const mpPend = Number(h.cantidad_paso) || Number(h.cantidad) || 0;
-                            html += `<tr style="background:#faf5ff">`;
-                            html += `<td colspan="3"></td>`;
-                            html += `<td><strong>${this.esc(h.codigo)}</strong> <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">MP</span></td>`;
-                            html += `<td style="font-size:11px;color:#7c3aed;font-weight:600">${mpInfo || this.esc(h.codigo_ref)} <span title="Cantidad pendiente según receta" style="margin-left:12px;font-size:11px;color:#0f172a;font-weight:700">${mpPend.toLocaleString('es-CL')} und <span style="font-size:9px;color:#94a3b8">receta</span></span></td>`;
-                            html += `<td colspan="8"></td>`;
-                            html += `</tr>`;
-                        }
                         cardsDia += this._renderGrupoCard(p, grp.hijos);
                     }
 
