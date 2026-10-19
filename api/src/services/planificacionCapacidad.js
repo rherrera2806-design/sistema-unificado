@@ -47,15 +47,25 @@ const getCargaPorGrupo = async (inicio, fin) => {
     const calMap = await getCalendarioMap(inicio, fin);
 
     const cargaRes = await query(`
-        SELECT COALESCE(o.grupo, '(sin grupo)') as nombre_familia,
+        -- Grupo REAL de la orden (o.grupo puede venir NULL en lo importado):
+        -- el mismo criterio del resto del sistema — receta/padre primero.
+        SELECT COALESCE(
+            o.grupo,
+            CASE WHEN o.es_compuesto AND o.bom_padre_id IS NOT NULL THEN COALESCE(
+                (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                (SELECT cc2.grupo FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+                (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)) END,
+            (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto),
+            (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+            '(sin grupo)') as nombre_familia,
             o.fecha_programada::text as fecha,
             COALESCE(SUM(o.kilos), 0) as kilos
         FROM produccion_ordenes o
         WHERE o.fecha_programada BETWEEN $1 AND $2
           AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
           AND o.kilos > 0
-        GROUP BY o.grupo, o.fecha_programada
-        ORDER BY o.fecha_programada, o.grupo
+        GROUP BY 1, 2
+        ORDER BY 2, 1
     `, [inicio, fin]);
 
     const capRes = await query(`
@@ -184,15 +194,23 @@ const getCargaPorGrupoFinales = async (inicio, fin) => {
     const calMap = await getCalendarioMap(inicio, fin);
 
     const cargaRes = await query(`
-        SELECT COALESCE(o.grupo, '(sin grupo)') as nombre_familia,
+        SELECT COALESCE(
+            o.grupo,
+            CASE WHEN o.es_compuesto AND o.bom_padre_id IS NOT NULL THEN COALESCE(
+                (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+                (SELECT cc2.grupo FROM recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id),
+                (SELECT cc2.grupo FROM produccion_recetas_bom rb JOIN produccion_codigos cc2 ON cc2.codigo = rb.codigo_sap_padre WHERE rb.id = o.bom_padre_id)) END,
+            (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_producto),
+            (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
+            '(sin grupo)') as nombre_familia,
             o.fecha_entrega_pactada::text as fecha,
             COALESCE(SUM(o.kilos), 0) as kilos
         FROM produccion_ordenes o
         WHERE o.fecha_entrega_pactada BETWEEN $1 AND $2
           AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
           AND o.kilos > 0
-        GROUP BY o.grupo, o.fecha_entrega_pactada
-        ORDER BY o.fecha_entrega_pactada, o.grupo
+        GROUP BY 1, 2
+        ORDER BY 2, 1
     `, [inicio, fin]);
 
     const capRes = await query(`
