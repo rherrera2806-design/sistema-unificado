@@ -40,6 +40,14 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
   })();
 
+  // OBJETIVO: programar TODO lo programable — que no queden órdenes sin fecha
+  // solo porque la ventana de días era corta. Si la ventana indicada no alcanza,
+  // la búsqueda se extiende hasta 365 días hábiles: las órdenes van cayendo en
+  // días posteriores respetando la capacidad. Lo único que queda sin programar:
+  // EN PROCESO / TERMINADAS / MERMADAS / CERRADAS (no se tocan) y lo que
+  // realmente no cabe por capacidad.
+  dias = Math.max(Number(dias) || 14, 365);
+
   // ═══════════════════════════════════════════════════════════════
   // 1. CARGAR ESTACIONES (cap_max en m2, cuello_botella flag)
   // ═══════════════════════════════════════════════════════════════
@@ -592,7 +600,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     }
 
     if (!asignado) {
-      noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Sin capacidad en los próximos ' + dias + ' días (cuello + previas)', grupo, kg_total: kg, m2_total: m2 });
+      noAsignados.push({ orden_id: o.id, pedido: o.pedido_sap_id, motivo: 'Sin capacidad en el horizonte de ' + dias + ' días hábiles (cuello + previas)', grupo, kg_total: kg, m2_total: m2 });
     }
   }
 

@@ -498,7 +498,7 @@ App.modules.planificacion = {
             </div>
             <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde (fecha inicio búsqueda)</label>
             <input type="date" id="reprogInicio" value="${this.fechaGrupo}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
-            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Días hábiles a buscar capacidad</label>
+            <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Días hábiles a buscar capacidad (se extiende sola hasta 365 para programar todo)</label>
             <input type="number" id="reprogDias" value="21" min="1" max="60" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
             <div id="reprogResultado" style="margin-top:12px"></div>
         `;
