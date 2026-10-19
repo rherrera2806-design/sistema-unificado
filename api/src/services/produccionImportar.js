@@ -1,6 +1,16 @@
 const { query } = require('../config/database');
 const { explosionBOM, crearOrdenSimple } = require('./produccionBomExplosion');
 
+// El campo "tipo de venta" de la planilla SAP define la PRIORIDAD del pedido:
+// Normal=1 · Express=2 · Urgencia=3 · Reposición=4 (lo no contemplado = Normal)
+const prioridadDesdeTipoVenta = (texto) => {
+    const t = String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (t.includes('repo')) return 4;
+    if (t.includes('express') || t.includes('expres')) return 2;
+    if (t.includes('urgen')) return 3;
+    return 1;
+};
+
 // Normaliza claves de código para comparar SIN distinguir mayúsculas ni
 // espacios: "V4761", "v4761 " y "V4761" deben encontrar la misma receta.
 const ck = (codigo) => String(codigo || '').trim().toLowerCase();
@@ -122,6 +132,7 @@ const mergearFilas = (rows) => {
                 pintado: Number(row['pintado'] || row['Pintado'] || row['PINTADO'] || 0) === 1,
                 pintado_car: Number(row['pintado car'] || row['pintado_car'] || row['PintadoCar'] || row['PINTADO CAR'] || row['pintado_carroceros'] || row['PINTADO_CARROCEROS'] || 0) === 1,
                 tipo_venta: String(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || row['TIPO VENTA'] || row['TIPO_DE_VENTA'] || 'Normal').trim(),
+                nivel_prioridad: prioridadDesdeTipoVenta(row['tipo de venta'] || row['tipo_de_venta'] || row['TipoVenta'] || row['TIPO VENTA'] || row['TIPO_DE_VENTA'] || 'Normal'),
                 familia_codigo: String(row['familia'] || row['Familia'] || row['FAMILIA'] || row['grupo'] || row['Grupo'] || '').trim(),
                 fecha_creacion: String(row['fecha_creacion'] || row['FechaCreacion'] || row['fecha'] || row['Fecha'] || '').trim() || new Date().toISOString(),
                 nota: String(row['nota'] || row['Nota'] || row['NOTA'] || row['observacion'] || row['Observacion'] || '').trim() || null,
