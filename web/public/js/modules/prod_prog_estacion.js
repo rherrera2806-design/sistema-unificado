@@ -213,7 +213,7 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td>${this.esc(p.item || '-')}</td>`;
                         html += `<td>${this._prioBadge(p.prioridad)}</td>`;
                         html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong> <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#0ea5e9;color:white">PADRE</span></td>`;
-                        html += `<td style="font-size:11px"><strong>${this.esc(p.codigo_ref)}</strong>${p.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
+                        html += `<td style="font-size:11px">${p.nombre_padre ? '<span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
                         html += `<td>${p.ancho}×${p.alto}</td>`;
                         const undTotal = grp.hijos[0] ? (Number(grp.hijos[0].cantidad) || 0) : 0;
                         const undPend = grp.hijos[0] ? (Number(grp.hijos[0].cantidad_paso) || undTotal) : 0;
