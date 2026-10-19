@@ -412,6 +412,7 @@ App.registerModule('produccion', {
                 + '<div class="po-amenu-drop" id="poAcc_' + o.id + '">'
                 + '<div class="it" onclick="App.modules.produccion.verDetalle(' + o.id + ')">👁 Ver detalle y pasos</div>'
                 + '<div class="it" onclick="App.modules.produccion.showEditCantidad(' + o.id + ')">✏️ Editar cantidad</div>'
+                + (o.estado_programacion !== 'CERRADO' ? '<div class="it" onclick="App.modules.produccion.etiquetaModal(' + o.id + ')">⛔ Imprimir Etiqueta</div>' : '')
                 + (o.estado_programacion !== 'CERRADO' ? '<div class="it" onclick="App.modules.produccion.cerrarOrden(' + o.id + ')">⛔ Cerrar orden</div>' : '')
                 + '<div class="sep"></div>'
                 + '<div class="it danger" onclick="App.modules.produccion.eliminarOrden(' + o.id + ')">🗑 Eliminar</div>'
@@ -1391,4 +1392,82 @@ App.registerModule('produccion', {
             }
         </style>`;
     }
+
+    // ── Etiqueta de pedido (100x70mm por defecto, 20mm libres abajo) ─────────
+    etiquetaModal(id) {
+        const o = this.ordenes.find(x => x.id === id);
+        if (!o) return;
+        this._etiqueta = o;
+        const guardado = JSON.parse(localStorage.getItem('vf_etiqueta_cfg') || '{}');
+        const ancho = guardado.ancho || 100, alto = guardado.alto || 70, libre = guardado.libre || 20;
+        const html = `
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+                <div><label style="display:block;font-size:10px;font-weight:700;color:#475569;margin-bottom:4px">ANCHO (mm)</label><input type="number" id="etqAncho" value="${ancho}" style="width:100%;padding:9px;border:1px solid #e4e9f0;border-radius:8px;font-size:13px"></div>
+                <div><label style="display:block;font-size:10px;font-weight:700;color:#475569;margin-bottom:4px">ALTO (mm)</label><input type="number" id="etqAlto" value="${alto}" style="width:100%;padding:9px;border:1px solid #e4e9f0;border-radius:8px;font-size:13px"></div>
+                <div><label style="display:block;font-size:10px;font-weight:700;color:#475569;margin-bottom:4px">ZONA LIBRE ABAJO (mm)</label><input type="number" id="etqLibre" value="${libre}" style="width:100%;padding:9px;border:1px solid #e4e9f0;border-radius:8px;font-size:13px"></div>
+            </div>
+            <div style="font-size:11px;color:#8494a8;margin-bottom:10px">Al imprimir elige tu <strong>impresora de etiquetas</strong> en el diálogo del navegador (el tamaño se ajusta solo vía @page). El margen inferior queda sin información.</div>
+            <div id="etqPreview"></div>`;
+        App.showModalInv('🏷️ Imprimir etiqueta — ' + escText((o.pedido_sap_id || '') + ' · Item ' + (o.item_numero || '')), html,
+            '<button class="po-btn ghost" onclick="App.hideModal()">Cancelar</button>' +
+            '<button class="po-btn primary" onclick="App.modules.produccion.printEtiqueta()">🖨 Imprimir</button>');
+        this._pintarEtiquetaPreview();
+    },
+
+    _etiquetaCfg() {
+        const cfg = {
+            ancho: Number(document.getElementById('etqAncho')?.value) || 100,
+            alto: Number(document.getElementById('etqAlto')?.value) || 70,
+            libre: Number(document.getElementById('etqLibre')?.value) || 20
+        };
+        localStorage.setItem('vf_etiqueta_cfg', JSON.stringify(cfg));
+        return cfg;
+    },
+
+    _nota9(o) {
+        const f = o.fecha_entrega_pactada ? new Date(o.fecha_entrega_pactada) : new Date();
+        const ff = String(f.getDate()).padStart(2, '0') + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + f.getFullYear();
+        return (o.codigo_padre || o.codigo_producto || '') + '|' + ff + '|' + (o.pedido_sap_id || '') + '-' + String(o.item_numero || 1) + '|' + Number(o.metros_cuadrados || 0).toFixed(3);
+    },
+
+    _etiquetaHtml(o, escala) {
+        const cfg = this._etiquetaCfg();
+        const pri = ({ 1: 'Normal', 2: 'Express', 3: 'Urgencia', 4: 'Reposición' }[Number(o.nivel_prioridad)]) || 'Normal';
+        const qr = (typeof location !== 'undefined' ? location.origin : '') + '/api/taller/qr?d=' + encodeURIComponent(this._nota9(o));
+        return '<div class="etq" style="width:' + (cfg.ancho * escala) + 'mm;height:' + (cfg.alto * escala) + 'mm;position:relative;border:1px solid #0f172a;background:#fff;font-family:Segoe UI,Arial,sans-serif;overflow:hidden">'
+            + '<div style="padding:' + (2 * escala) + 'mm;display:flex;gap:' + (2 * escala) + 'mm">'
+            + '  <div style="flex:1;min-width:0">'
+            + '    <div style="font-size:' + (5 * escala) + 'px;font-weight:800">' + escText((o.pedido_sap_id || '') + ' · Item ' + (o.item_numero || '')) + ' <span style="font-size:' + (3.2 * escala) + 'px;font-weight:600;color:#1d4ed8">' + escText(pri) + '</span></div>'
+            + '    <div style="font-size:' + (3.2 * escala) + 'px;margin-top:' + (1 * escala) + 'mm">' + escText(o.cliente || '') + '</div>'
+            + '    <div style="font-size:' + (3.2 * escala) + 'px;margin-top:' + (1 * escala) + 'mm"><strong>SAP:</strong> ' + escText(o.codigo_padre || o.codigo_producto || '') + ' · <strong>MP:</strong> ' + escText(o.codigo_producto || '') + '</div>'
+            + '    <div style="font-size:' + (3.2 * escala) + 'px">' + escText(o.descripcion || '') + '</div>'
+            + '    <div style="font-size:' + (3.2 * escala) + 'px">' + this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0) + ' mm · ' + this._fmt(o.cantidad || 1, 0) + ' und · ' + this._fmt(o.metros_cuadrados, 2) + ' m² · ' + this._fmt(o.kilos, 1) + ' kg</div>'
+            + '    <div style="font-size:' + (3.2 * escala) + 'px"><strong>Entrega:</strong> ' + escText(this._fecha(o.fecha_entrega_pactada) || '—') + ' · <strong>Grupo:</strong> ' + escText(o.grupo || '—') + '</div>'
+            + '    <div style="font-size:' + (2.8 * escala) + 'px;color:#475569">' + escText(o.orden_compra ? 'OC ' + o.orden_compra + ' · ' : '') + escText(o.tipo_entrega || '') + '</div>'
+            + '  </div>'
+            + '  <div style="text-align:center"><img src="' + qr + '" width="' + (22 * escala) + 'mm" height="' + (22 * escala) + 'mm" alt="QR"><div style="font-size:' + (2.4 * escala) + 'px;color:#475569">' + escText(this._nota9(o)) + '</div></div>'
+            + '</div>'
+            + '<div style="position:absolute;left:0;right:0;bottom:0;height:' + (cfg.libre * escala) + 'mm;border-top:1px dashed #cbd5e1"></div>'
+            + '</div>';
+    },
+
+    _pintarEtiquetaPreview() {
+        const el = document.getElementById('etqPreview');
+        if (el && this._etiqueta) el.innerHTML = this._etiquetaHtml(this._etiqueta, 1);
+    },
+
+    printEtiqueta() {
+        const o = this._etiqueta;
+        if (!o) return;
+        const cfg = this._etiquetaCfg();
+        const frame = document.createElement('iframe');
+        frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+        document.body.appendChild(frame);
+        const doc = frame.contentWindow.document;
+        doc.open();
+        doc.write('<html><head><title>Etiqueta</title><style>@page{size:' + cfg.ancho + 'mm ' + cfg.alto + 'mm;margin:0}body{margin:0}</style></head><body>' + this._etiquetaHtml(o, 1) + '</body></html>');
+        doc.close();
+        setTimeout(() => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => frame.remove(), 1500); }, 300);
+    },
+
 });
