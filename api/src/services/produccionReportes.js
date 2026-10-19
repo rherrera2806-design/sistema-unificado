@@ -43,9 +43,9 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
                       WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
                         AND LOWER(TRIM(m.codigo_mp)) = LOWER(TRIM(o.codigo_producto))
                       ORDER BY rb.id LIMIT 1),
-                     (SELECT rb.cantidad FROM produccion_recetas_bom rb JOIN materias_primas m ON m.id = rb.materia_prima_id
+                     (SELECT rb.cantidad FROM produccion_recetas_bom rb
                       WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
-                        AND LOWER(TRIM(m.codigo_mp)) = LOWER(TRIM(o.codigo_producto))
+                        AND LOWER(TRIM(rb.codigo_materia_prima)) = LOWER(TRIM(o.codigo_producto))
                       ORDER BY rb.id LIMIT 1), 1) as cant_receta,
             o.ancho,
             o.alto,
