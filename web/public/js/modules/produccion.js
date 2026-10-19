@@ -135,7 +135,7 @@ App.registerModule('produccion', {
                     <div class="po-modal-body">
                         <label class="po-label">Archivo Excel</label>
                         <div id="prodImportArea" class="po-drop" onclick="document.getElementById('prodImportFile').click()">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            🏷️ 
                             <div class="t">Arrastra un Excel o haz clic para seleccionar</div>
                             <div id="prodImportName" class="ok"></div>
                         </div>
