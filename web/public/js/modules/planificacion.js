@@ -185,9 +185,15 @@ App.modules.planificacion = {
     },
 
     // ---------------- Vista por Grupo ----------------
+    // Tras programar/reprogramar: refrescar TODAS las vistas (si no, la carga
+    // por estaciones quedaba con datos viejos hasta recorrer los días)
+    async refrescarTodo() {
+        await Promise.allSettled([this.cargarGrupo(), this.cargarDatos(), this.cargarEstaciones()]);
+    },
+
     async cargarGrupo() {
         try {
-            const res = await fetch(`/api/produccion/planificacion-grupo?fecha=${this.fechaGrupo}`);
+            const res = await fetch(`/api/produccion/planificacion-grupo?fecha=${this.fechaGrupo}`, { cache: 'no-store' });
             if (!res.ok) {
                 const elC = document.getElementById('planGrupoCards');
                 if (elC) elC.innerHTML = '<div class="pln-error">Error ' + res.status + ' al cargar la planificación por grupo</div>';
@@ -325,7 +331,7 @@ App.modules.planificacion = {
         }
         const fEl = document.getElementById('planGrupoFecha');
         if (fEl) fEl.value = this.fechaGrupo;
-        this.cargarGrupo();
+        this.refrescarTodo();
     },
 
     async asignarGrupo(ordenId) {
@@ -337,7 +343,7 @@ App.modules.planificacion = {
             });
             if (res.ok) {
                 App.toast('Orden asignada al ' + this._fecha(this.fechaGrupo));
-                await this.cargarGrupo();
+                await this.refrescarTodo();
             } else {
                 const d = await res.json().catch(() => ({}));
                 App.showAlert(d.error || 'Error al asignar la orden', 'danger');
@@ -413,7 +419,7 @@ App.modules.planificacion = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ capacidad_kg_dia: val })
             });
-            if (res.ok) { App.toast('Capacidad actualizada'); await this.cargarGrupo(); }
+            if (res.ok) { App.toast('Capacidad actualizada'); await this.refrescarTodo(); }
             else {
                 const d = await res.json().catch(() => ({}));
                 App.showAlert(d.error || 'Error al guardar la capacidad', 'danger');
@@ -467,7 +473,7 @@ App.modules.planificacion = {
                     if (numNoAsignados > 20) html += `<div class="sub2" style="margin-top:4px">... y ${numNoAsignados - 20} más</div>`;
                 }
                 resEl.innerHTML = html;
-                await this.cargarGrupo();
+                await this.refrescarTodo();
                 App.showAlert('Auto-asignación completada', 'success');
             } else {
                 resEl.innerHTML = '<div class="pln-error">' + escText(data.error || 'Error') + '</div>';
@@ -532,7 +538,7 @@ App.modules.planificacion = {
                     ).join('');
                 }
                 resEl.innerHTML = html;
-                await this.cargarGrupo();
+                await this.refrescarTodo();
                 App.showAlert('Reprogramación completada', 'success');
             } else {
                 resEl.innerHTML = '<div class="pln-error">' + escText(data.error || 'Error') + '</div>';
@@ -550,8 +556,8 @@ App.modules.planificacion = {
         const fin = this.fmtDate(finD);
         try {
             const [grupoChartRes, grupoFinalesRes] = await Promise.all([
-                fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${fin}`),
-                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${fin}`)
+                fetch(`/api/produccion/planificacion/carga-por-grupo?inicio=${inicio}&fin=${fin}`, { cache: 'no-store' }),
+                fetch(`/api/produccion/planificacion/carga-por-grupo-finales?inicio=${inicio}&fin=${fin}`, { cache: 'no-store' })
             ]);
             this.cargaPorGrupo = grupoChartRes.ok ? await grupoChartRes.json() : null;
             this.cargaPorGrupoFinales = grupoFinalesRes.ok ? await grupoFinalesRes.json() : null;
@@ -752,7 +758,7 @@ App.modules.planificacion = {
         const rango = document.getElementById('plnEstacRango');
         if (rango) rango.textContent = this._fecha(inicio) + ' → ' + this._fecha(fin);
         try {
-            const res = await fetch(`/api/produccion/planificacion/carga-estaciones?inicio=${inicio}&fin=${fin}`);
+            const res = await fetch(`/api/produccion/planificacion/carga-estaciones?inicio=${inicio}&fin=${fin}`, { cache: 'no-store' });
             if (!res.ok) {
                 const el = document.getElementById('planEstaciones');
                 if (el) el.innerHTML = '<div class="pln-error">Error ' + res.status + ' al cargar las estaciones</div>';
