@@ -1408,7 +1408,7 @@ App.registerModule('produccion', {
             </div>
             <div style="font-size:11px;color:#8494a8;margin-bottom:10px">Al imprimir elige tu <strong>impresora de etiquetas</strong> en el diálogo del navegador (el tamaño se ajusta solo vía @page). El margen inferior queda sin información.</div>
             <div id="etqPreview"></div>`;
-        App.showModalInv('🏷️ Imprimir etiqueta — ' + escText((o.pedido_sap_id || '') + ' · Item ' + (o.item_numero || '')), html,
+        App.showModalInv('🏷️ Imprimir etiqueta — ' + escText((o.pedido_sap_id || '') + ' · ' + (o.item_numero || '')), html,
             '<button class="po-btn ghost" onclick="App.hideModal()">Cancelar</button>' +
             '<button class="po-btn primary" onclick="App.modules.produccion.printEtiqueta()">🖨 Imprimir</button>');
         this._pintarEtiquetaPreview();
@@ -1437,7 +1437,7 @@ App.registerModule('produccion', {
         return '<div class="etq" style="width:' + (cfg.ancho * escala) + 'mm;height:' + (cfg.alto * escala) + 'mm;position:relative;background:#fff;font-family:Segoe UI,Arial,sans-serif;overflow:hidden">'
             + '<div style="padding:' + (2 * escala) + 'mm;display:flex;gap:' + (2 * escala) + 'mm">'
             + '  <div style="flex:1;min-width:0">'
-            + '    <div style="font-size:' + (26 * escala) + 'px;font-weight:800">' + escText((o.pedido_sap_id || '') + ' · Item ' + (o.item_numero || ''))+ '</div>'
+            + '    <div style="font-size:' + (26 * escala) + 'px;font-weight:800">' + escText((o.pedido_sap_id || '') + ' · ' + (o.item_numero || ''))+ '</div>'
             + '    <div style="font-size:' + (14 * escala) + 'px;margin-top:' + (1 * escala) + 'mm">' + escText(o.cliente || '') + '</div>'
             + '    <div style="font-size:' + (14 * escala) + 'px;margin-top:' + (1 * escala) + 'mm"><strong>SAP:</strong> ' + escText(o.codigo_padre || o.codigo_producto || '') + ' · <strong>MP:</strong> ' + escText(o.codigo_producto || '') + '</div>'
             + '    <div style="font-size:' + (14 * escala) + 'px">' + escText((o.nombre_mp || o.descripcion || '') ) + '</div>'
@@ -1445,8 +1445,7 @@ App.registerModule('produccion', {
             + '    <div style="font-size:' + (14 * escala) + 'px">' + this._fmt(o.ancho, 0) + ' × ' + this._fmt(o.alto, 0) + ' mm · ' + this._fmt(o.cantidad || 1, 0) + ' und · ' + this._fmt(o.metros_cuadrados, 2) + ' m² · ' + this._fmt(o.kilos, 1) + ' kg</div>'
             + '    <div style="font-size:' + (14 * escala) + 'px"><strong>Entrega:</strong> ' + escText(this._fecha(o.fecha_entrega_pactada) || '—') + ' · <strong>Grupo:</strong> ' + escText(o.grupo || '—') + '</div>'
             + '    <div style="font-size:' + (14 * escala) + 'px;color:#475569;line-height:1.25;word-break:break-word"><strong>Ruta:</strong> ' + escText((o.estaciones || []).join(' → ') || '—') + '</div>'
-            + '    <div style="font-size:' + (14 * escala) + 'px;color:#475569">' + escText(o.orden_compra ? 'OC ' + o.orden_compra + ' · ' : '') + escText(o.tipo_entrega || '') + '</div>'
-            + '    <div style="font-size:' + (16 * escala) + 'px;font-weight:800;color:#1d4ed8;margin-top:' + (1 * escala) + 'mm">Prioridad: ' + escText(pri) + '</div>'
+            + '    <div style="font-size:' + (14 * escala) + 'px;color:#475569">' + escText(o.orden_compra ? 'OC ' + o.orden_compra + ' · ' : '') + escText(o.tipo_entrega || '') + ' · Prioridad: ' + escText(pri) + '</div>'
             + '  </div>'
                         + '</div>'
             + '<div style="position:absolute;right:' + (1 * escala) + 'mm;bottom:' + ((cfg.libre + 0.5) * escala) + 'mm;text-align:center"><img src="' + qr + '" width="' + (45 * escala) + 'mm" height="' + (45 * escala) + 'mm" alt="QR"></div>'
