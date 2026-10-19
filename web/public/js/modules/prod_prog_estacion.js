@@ -388,6 +388,18 @@ App.registerModule('prod_prog_estacion', {
             App.showAlert('No hay programación para imprimir con los filtros actuales', 'danger');
             return;
         }
+        // La impresión respeta el filtro de estación activo (si hay una estación
+        // seleccionada, se imprime SOLO su programa)
+        if (this.filtros && this.filtros.estacion_id) {
+            const f = String(this.filtros.estacion_id);
+            const estFiltradas = (this.datos.estaciones || []).filter(e =>
+                String(e.id ?? e.estacion_id ?? '') === f || String(e.nombre || '') === f);
+            if (!estFiltradas.length) {
+                App.showAlert('La estación filtrada no tiene programación para imprimir', 'danger');
+                return;
+            }
+            this.datos = { ...this.datos, estaciones: estFiltradas };
+        }
         let frame = document.getElementById('ppePrintFrame');
         if (!frame) {
             frame = document.createElement('iframe');
