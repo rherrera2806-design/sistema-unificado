@@ -39,6 +39,10 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             COALESCE(o.descripcion, pc.descripcion) as detalle_sap,
             COALESCE(pc_padre.descripcion, '') as descripcion_padre,
             COALESCE(o.codigo_padre, o.codigo_producto) as codigo_sap_padre,
+            COALESCE((SELECT rb.cantidad FROM recetas_bom rb JOIN materias_primas m ON m.id = rb.materia_prima_id
+                      WHERE LOWER(TRIM(rb.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))
+                        AND m.codigo_mp = o.codigo_producto
+                      ORDER BY rb.id LIMIT 1), 1) as cant_receta,
             o.ancho,
             o.alto,
             o.metros_cuadrados as m2,
@@ -137,6 +141,7 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
             detalle_sap: r.detalle_sap || r.descripcion_completa || '',
             descripcion_padre: r.descripcion_padre || '',
             codigo_sap_padre: r.codigo_sap_padre || '',
+            cant_receta: Number(r.cant_receta) || 1,
             ancho: r.ancho,
             alto: r.alto,
             m2: Number(r.m2) || 0,
