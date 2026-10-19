@@ -294,24 +294,26 @@ App.registerModule('prod_reportes', {
         this.render();
     },
 
-    // Termopanel y Laminado: las líneas de un mismo pedido-item se muestran en
-    // UNA sola línea — cada MP pesa por su CANTIDAD DE RECETA (x1, x2, x3…) y
-    // se suman espesor, kilos y m². Los demás grupos van fila por orden.
+    // Laminado/Termopanel (detectado por producto, no por grupo — un laminado
+    // puede estar en "Arquitectura"): cada MP pesa por su CANTIDAD DE RECETA
+    // (ej: Extra Claro 8mm x4 = 32mm) y las líneas de un mismo pedido-item se
+    // muestran en UNA sola fila sumando espesor y kilos.
     _agrupar(ordenes) {
         const salida = [];
         const idx = {};
         for (const o of (ordenes || [])) {
-            const clave = /(termopanel|laminado)/i.test(o.grupo || '') ? (o.ov + '|' + o.item) : null;
             const mult = Number(o.cant_receta) || 1;
-            if (!clave) { salida.push(o); continue; }
-            if (!idx[clave]) {
-                idx[clave] = { ...o, espesor: (Number(o.espesor) || 0) * mult, kgs: (Number(o.kgs) || 0) * mult, m2: (Number(o.m2) || 0) * mult };
-                salida.push(idx[clave]);
-            } else {
+            const fila = { ...o, espesor: (Number(o.espesor) || 0) * mult, kgs: (Number(o.kgs) || 0) * mult };
+            const texto = ((o.grupo || '') + ' ' + (o.descripcion_padre || '') + ' ' + (o.ruta || '')).toLowerCase();
+            const agrupable = /(termopanel|laminado|lami\.|temp\.)/.test(texto);
+            const clave = agrupable ? (o.ov + '|' + o.item) : null;
+            if (!clave) { salida.push(fila); continue; }
+            if (!idx[clave]) { idx[clave] = fila; salida.push(fila); }
+            else {
                 const g = idx[clave];
-                g.espesor = (Number(g.espesor) || 0) + (Number(o.espesor) || 0) * mult;
-                g.kgs = (Number(g.kgs) || 0) + (Number(o.kgs) || 0) * mult;
-                g.m2 = (Number(g.m2) || 0) + (Number(o.m2) || 0) * mult;
+                g.espesor += fila.espesor;
+                g.kgs += fila.kgs;
+                g.m2 = (Number(g.m2) || 0) + (Number(o.m2) || 0);
             }
         }
         return salida;
