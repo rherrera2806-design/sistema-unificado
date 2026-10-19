@@ -1391,7 +1391,7 @@ App.registerModule('produccion', {
                 .po-kpis[style*="repeat(4"]{grid-template-columns:1fr 1fr!important}
             }
         </style>`;
-    }
+    },
 
     // ── Etiqueta de pedido (100x70mm por defecto, 20mm libres abajo) ─────────
     etiquetaModal(id) {
