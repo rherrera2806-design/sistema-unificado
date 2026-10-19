@@ -1445,9 +1445,9 @@ App.registerModule('produccion', {
             + '    <div style="font-size:' + (12 * escala) + 'px"><strong>Entrega:</strong> ' + escText(this._fecha(o.fecha_entrega_pactada) || '—') + ' · <strong>Grupo:</strong> ' + escText(o.grupo || '—') + '</div>'
             + '    <div style="font-size:' + (10 * escala) + 'px;color:#475569">' + escText(o.orden_compra ? 'OC ' + o.orden_compra + ' · ' : '') + escText(o.tipo_entrega || '') + '</div>'
             + '  </div>'
-            + '  <div style="text-align:center"><img src="' + qr + '" width="' + (22 * escala) + 'mm" height="' + (22 * escala) + 'mm" alt="QR"><div style="font-size:' + (9 * escala) + 'px;color:#475569">' + escText(this._nota9(o)) + '</div></div>'
-            + '</div>'
-            + '<div style="position:absolute;left:0;right:0;bottom:0;height:' + (cfg.libre * escala) + 'mm;border-top:1px dashed #cbd5e1"></div>'
+                        + '</div>'
+            + '<div style="position:absolute;right:' + (2 * escala) + 'mm;bottom:' + ((cfg.libre + 1) * escala) + 'mm;text-align:center"><img src="' + qr + '" width="' + (30 * escala) + 'mm" height="' + (30 * escala) + 'mm" alt="QR"><div style="font-size:' + (8 * escala) + 'px;color:#475569">' + escText(this._nota9(o)) + '</div></div>'
++ '<div style="position:absolute;left:0;right:0;bottom:0;height:' + (cfg.libre * escala) + 'mm;border-top:1px dashed #cbd5e1"></div>'
             + '</div>';
     },
 
