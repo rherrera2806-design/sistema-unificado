@@ -1398,8 +1398,8 @@ App.registerModule('produccion', {
         const o = this.ordenes.find(x => x.id === id);
         if (!o) return;
         this._etiqueta = o;
-        const guardado = JSON.parse(localStorage.getItem('vf_etiqueta_cfg') || '{}');
-        const ancho = guardado.ancho || 100, alto = guardado.alto || 70, libre = guardado.libre || 20;
+        const guardado = JSON.parse(localStorage.getItem('vf_etiqueta_cfg2') || '{}');
+        const ancho = guardado.ancho || 100, alto = guardado.alto || 70, libre = guardado.libre || 10;
         const html = `
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
                 <div><label style="display:block;font-size:10px;font-weight:700;color:#475569;margin-bottom:4px">ANCHO (mm)</label><input type="number" id="etqAncho" value="${ancho}" style="width:100%;padding:9px;border:1px solid #e4e9f0;border-radius:8px;font-size:13px"></div>
@@ -1420,7 +1420,7 @@ App.registerModule('produccion', {
             alto: Number(document.getElementById('etqAlto')?.value) || 70,
             libre: Number(document.getElementById('etqLibre')?.value) || 20
         };
-        localStorage.setItem('vf_etiqueta_cfg', JSON.stringify(cfg));
+        localStorage.setItem('vf_etiqueta_cfg2', JSON.stringify(cfg));
         return cfg;
     },
 
