@@ -189,7 +189,8 @@ App.registerModule('prod_prog_estacion', {
                     let cardsDia = '';
                     const groups = {};
                     const sinGrupo = [];
-                    for (const o of dia.ordenes) {
+                    const _ord = [...(dia.ordenes || [])].sort((a, b) => (({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)));
+                    for (const o of _ord) {
                         if (o.es_compuesto && o.codigo_ref) {
                             const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
                             if (!groups[key]) groups[key] = { padre: o, hijos: [] };
@@ -341,7 +342,7 @@ App.registerModule('prod_prog_estacion', {
     _unidadesDia(dia) {
         const vistas = new Set();
         let und = 0;
-        for (const o of (dia.ordenes || [])) {
+        for (const o of [...(dia.ordenes || [])].sort((a, b) => (({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)))) {
             if (o.es_compuesto && o.codigo_ref) {
                 const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
                 if (vistas.has(key)) continue;
