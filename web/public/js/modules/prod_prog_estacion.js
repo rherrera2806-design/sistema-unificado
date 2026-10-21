@@ -147,7 +147,7 @@ App.registerModule('prod_prog_estacion', {
         el.innerHTML = `
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;width:100%">
                 <div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8">Estaciones</div><div style="font-size:18px;font-weight:700;color:#2563eb">${totalEstaciones}</div><div style="font-size:10px;color:#8494a8">con programación</div></div>
-                <div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8">Órdenes</div><div style="font-size:18px;font-weight:700;color:#7c3aed">${totalOrd}</div><div style="font-size:10px;color:#8494a8">en el rango seleccionado</div></div>
+                <div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8">Órdenes</div><div style="font-size:18px;font-weight:700;color:#7c3aed">${Number(totalOrd).toLocaleString('es-CL')}</div><div style="font-size:10px;color:#8494a8">en el rango seleccionado</div></div>
                 <div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8">Total m²</div><div style="font-size:18px;font-weight:700;color:#15803d">${Number(totalM2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</div><div style="font-size:10px;color:#8494a8">superficie total</div></div>
                 <div style="background:#fff;border:1px solid #e4e9f0;border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#8494a8">Total kg</div><div style="font-size:18px;font-weight:700;color:#b45309">${Number(totalKg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div style="font-size:10px;color:#8494a8">peso total</div></div>
             </div>
@@ -159,7 +159,7 @@ App.registerModule('prod_prog_estacion', {
         if (!el || !this.datos) return;
         const estaciones = this.datos.estaciones || [];
         if (!estaciones.length) {
-            el.innerHTML = '<div style="background:white;border-radius:14px;padding:40px;text-align:center;color:#94a3b8;border:1px solid #e2e8f0"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg><div style="font-size:15px;font-weight:600">Sin programación</div><div style="font-size:11px;margin-top:4px">No hay ordenes programadas en el rango seleccionado</div></div>';
+            el.innerHTML = '<div style="background:white;border-radius:14px;padding:40px;text-align:center;color:#94a3b8;border:1px solid #e2e8f0"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" style="margin-bottom:12px"><path d="M2 20h20"/><path d="M5 20V8l5 4V8l5 4V4h3v16"/></svg><div style="font-size:15px;font-weight:600">Sin programación</div><div style="font-size:10px;margin-top:4px">No hay ordenes programadas en el rango seleccionado</div></div>';
             return;
         }
 
@@ -211,12 +211,12 @@ App.registerModule('prod_prog_estacion', {
 
                     const _vistos = new Set(); for (const o2 of _ord) { const key = (o2.pedido || o2.ov || '') + '|' + o2.item + '|' + o2.codigo_ref; if (!groups[key] || _vistos.has(key)) continue; _vistos.add(key); const grp = groups[key];
                         const p = grp.padre;
-                        html += `<tr style="background:#f0f9ff;border-bottom:2px solid #bae6fd">`;
+                        html += `<tr style="border-bottom:2px solid #e2e8f0">`;
                         html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
                         html += `<td>${this.esc(p.item || '-')}</td>`;
                         html += `<td>${this._prioBadge(p.prioridad)}</td>`;
                         html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong></td>`;
-                        html += `<td style="font-size:11px">${p.nombre_padre ? '<span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
+                        html += `<td style="font-size:10px">${p.nombre_padre ? '<span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
                         html += `<td>${p.ancho}×${p.alto}</td>`;
                         const undTotal = grp.hijos[0] ? (Number(grp.hijos[0].cantidad) || 0) : 0;
                         const undPend = grp.hijos[0] ? (Number(grp.hijos[0].cantidad_paso) || undTotal) : 0;
@@ -227,7 +227,7 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td><strong>${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
                         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(p.cliente || '-')}</td>`;
                         html += `<td>${p.estado === 'PENDIENTE' ? '' : `<span class="ppe-badge ppe-estado-${p.estado}">${this.esc(p.estado)}</span>`}</td>`;
-                        html += `<td style="font-size:11px">${this.esc(p.ruta)}</td>`;
+                        html += `<td style="font-size:10px">${this.esc(p.ruta)}</td>`;
                         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></td>`;
                         html += `</tr>`;
                         cardsDia += this._renderGrupoCard(p, grp.hijos);
@@ -272,12 +272,12 @@ App.registerModule('prod_prog_estacion', {
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                 <div style="min-width:0">
                     <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(o.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(o.item || '-')}</span></div>
-                    <div style="font-size:11px;color:#475569;margin-top:2px">${this.esc(o.cliente || '-')}</div>
+                    <div style="font-size:10px;color:#475569;margin-top:2px">${this.esc(o.cliente || '-')}</div>
                 </div>
                 <div style="flex-shrink:0"><span class="ppe-badge ppe-estado-${o.estado}">${this.esc(o.estado)}</span></div>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px">
-                <strong style="font-size:11px;color:#0f172a">${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}
+                <strong style="font-size:10px;color:#0f172a">${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}
                 <span style="font-size:10px;color:#94a3b8">${this.esc(o.codigo_ref)}${o.nombre_padre ? ' · ' + this.esc(o.nombre_padre) : ''}</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
@@ -300,7 +300,7 @@ App.registerModule('prod_prog_estacion', {
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                 <div style="min-width:0">
                     <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(p.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(p.item || '-')}</span></div>
-                    <div style="font-size:11px;color:#475569;margin-top:2px">${this.esc(p.cliente || '-')}</div>
+                    <div style="font-size:10px;color:#475569;margin-top:2px">${this.esc(p.cliente || '-')}</div>
                 </div>
                 <div style="flex-shrink:0"><span class="ppe-badge ppe-estado-${p.estado}">${this.esc(p.estado)}</span></div>
             </div>
@@ -356,14 +356,14 @@ App.registerModule('prod_prog_estacion', {
         html += `<td>${this.esc(o.item || '-')}</td>`;
         html += `<td>${this._prioBadge(o.prioridad)}</td>`;
         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
-        html += `<td style="font-size:11px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
+        html += `<td style="font-size:10px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
         html += `<td>${o.ancho}×${o.alto}</td>`;
         html += `<td title="Cantidad pendiente del pedido"><strong>${Number(o.cantidad_paso || o.cantidad || 1).toLocaleString('es-CL')}</strong> und <span style="font-size:9px;color:#94a3b8">pend.</span></td>`;
         html += `<td><strong>${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
         html += `<td><strong>${Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(o.cliente || '-')}</td>`;
         html += `<td>${o.estado === 'PENDIENTE' ? '' : `<span class="ppe-badge ${estadoClass}">${this.esc(o.estado)}</span>`}</td>`;
-        html += `<td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta)}">${this.esc(o.ruta)}</td>`;
+        html += `<td style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta)}">${this.esc(o.ruta)}</td>`;
         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></td>`;
         html += '</tr>';
         return html;
