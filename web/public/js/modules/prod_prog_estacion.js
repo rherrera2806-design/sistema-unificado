@@ -217,15 +217,15 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td>${this._prioBadge(p.prioridad)}</td>`;
                         html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong></td>`;
                         html += `<td style="font-size:10px">${p.nombre_padre ? '<span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
-                        html += `<td>${p.ancho}×${p.alto}</td>`;
+                        html += `<td>${Number(p.ancho).toLocaleString('es-CL')}×${Number(p.alto).toLocaleString('es-CL')}</td>`;
                         const undTotal = grp.hijos[0] ? (Number(grp.hijos[0].cantidad) || 0) : 0;
                         const undPend = grp.hijos[0] ? (Number(grp.hijos[0].cantidad_paso) || undTotal) : 0;
-                        html += `<td title="Cantidad pendiente del pedido de ${undTotal.toLocaleString('es-CL')} und"><strong>${undPend.toLocaleString('es-CL')}</strong> und <span style="font-size:9px;color:#94a3b8">pend.</span></td>`;
+                        html += `<td title="Cantidad pendiente del pedido de ${undTotal.toLocaleString('es-CL')} und"><strong>${undPend.toLocaleString('es-CL')}</strong> und</td>`;
                         const totalM2Grupo = grp.hijos[0] ? (grp.hijos[0].m2_asignados || grp.hijos[0].m2) : 0;
                         const totalKgGrupo = grp.hijos.reduce((s, h) => s + h.kg, 0);
                         html += `<td><strong>${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
                         html += `<td><strong>${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
-                        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(p.cliente || '-')}</td>`;
+                        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(this._titulo(p.cliente || '-'))}</td>`;
                         html += `<td>${p.estado === 'PENDIENTE' ? '' : `<span class="ppe-badge ppe-estado-${p.estado}">${this.esc(p.estado)}</span>`}</td>`;
                         html += `<td style="font-size:10px">${this.esc(p.ruta)}</td>`;
                         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></td>`;
@@ -272,7 +272,7 @@ App.registerModule('prod_prog_estacion', {
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                 <div style="min-width:0">
                     <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(o.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(o.item || '-')}</span></div>
-                    <div style="font-size:10px;color:#475569;margin-top:2px">${this.esc(o.cliente || '-')}</div>
+                    <div style="font-size:10px;color:#475569;margin-top:2px">${this.esc(this._titulo(o.cliente || '-'))}</div>
                 </div>
                 <div style="flex-shrink:0"><span class="ppe-badge ppe-estado-${o.estado}">${this.esc(o.estado)}</span></div>
             </div>
@@ -300,7 +300,7 @@ App.registerModule('prod_prog_estacion', {
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                 <div style="min-width:0">
                     <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(p.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(p.item || '-')}</span></div>
-                    <div style="font-size:10px;color:#475569;margin-top:2px">${this.esc(p.cliente || '-')}</div>
+                    <div style="font-size:10px;color:#475569;margin-top:2px">${this.esc(this._titulo(p.cliente || '-'))}</div>
                 </div>
                 <div style="flex-shrink:0"><span class="ppe-badge ppe-estado-${p.estado}">${this.esc(p.estado)}</span></div>
             </div>
@@ -310,7 +310,7 @@ App.registerModule('prod_prog_estacion', {
                 ${p.nombre_padre ? '<span style="font-size:10px;color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:4px">
-                <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(p.ancho)}×${this.esc(p.alto)}</span></div>
+                <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(Number(p.ancho).toLocaleString('es-CL'))}×${this.esc(Number(p.alto).toLocaleString('es-CL'))}</span></div>
                 <div><span style="color:#94a3b8">Und pend.:</span> <span style="color:#475569">${undPend.toLocaleString('es-CL')} und</span></div>
                 <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
                 <div><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></div>
@@ -325,6 +325,14 @@ App.registerModule('prod_prog_estacion', {
                 </div>`;
             }).join('')}
         </div>`;
+    },
+
+    // Mayúsculas naturales: "VENTAGLASS SERVICIOS SPA" → "Ventaglass servicios SPA"
+    // (siglas y palabras cortas se conservan; una sola palabra queda como viene)
+    _titulo(t) {
+        const s2 = String(t || '').trim();
+        if (!s2 || !/\s/.test(s2)) return s2;
+        return s2.split(/\s+/).map(w => (w.includes('.') || w.length <= 4) ? w : (w.charAt(0) + w.slice(1).toLowerCase())).join(' ');
     },
 
     // Unidades de un día: los grupos (padre + MPs) cuentan UNA vez las
@@ -357,11 +365,11 @@ App.registerModule('prod_prog_estacion', {
         html += `<td>${this._prioBadge(o.prioridad)}</td>`;
         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
         html += `<td style="font-size:10px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
-        html += `<td>${o.ancho}×${o.alto}</td>`;
-        html += `<td title="Cantidad pendiente del pedido"><strong>${Number(o.cantidad_paso || o.cantidad || 1).toLocaleString('es-CL')}</strong> und <span style="font-size:9px;color:#94a3b8">pend.</span></td>`;
+        html += `<td>${Number(o.ancho).toLocaleString('es-CL')}×${Number(o.alto).toLocaleString('es-CL')}</td>`;
+        html += `<td title="Cantidad pendiente del pedido"><strong>${Number(o.cantidad_paso || o.cantidad || 1).toLocaleString('es-CL')}</strong> und</td>`;
         html += `<td><strong>${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
         html += `<td><strong>${Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
-        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(o.cliente || '-')}</td>`;
+        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(this._titulo(o.cliente || '-'))}</td>`;
         html += `<td>${o.estado === 'PENDIENTE' ? '' : `<span class="ppe-badge ${estadoClass}">${this.esc(o.estado)}</span>`}</td>`;
         html += `<td style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta)}">${this.esc(o.ruta)}</td>`;
         html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></td>`;
