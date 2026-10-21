@@ -1,0 +1,19 @@
+{
+  "name": "VitroFlow Taller",
+  "short_name": "Taller",
+  "description": "Registro de producción en planta: cola, QR y trazabilidad",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "./icono.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
