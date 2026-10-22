@@ -296,7 +296,7 @@ App.registerModule('prod_prog_estacion', {
         const totalM2Grupo = hijos[0] ? (hijos[0].m2_asignados || hijos[0].m2) : 0;
         const totalKgGrupo = hijos.reduce((s, h) => s + h.kg, 0);
         const undPend = hijos[0] ? (Number(hijos[0].cantidad_paso) || Number(hijos[0].cantidad) || 0) : 0;
-        return `<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+        return `<div style="border:1px solid #e4e9f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                 <div style="min-width:0">
                     <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(p.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(p.item || '-')}</span></div>
