@@ -923,6 +923,18 @@ async function faseColumnas({ q, safe }) {
     // es UTC y desfasaba -3/-4 horas (y a la noche caía al día siguiente).
     await safe(`ALTER TABLE reclamos_devoluciones ALTER COLUMN fecha_ingreso SET DEFAULT (NOW() AT TIME ZONE 'America/Santiago')`, 'reclamos fecha_ingreso hora local');
 
+    // Backfill UNA SOLA VEZ: las fechas antiguas se guardaron en UTC — pasan a
+    // hora de Chile (con DST automático). Marcado en _migraciones para no
+    // volver a aplicarlo (evita doble corrimiento).
+    await safe(`CREATE TABLE IF NOT EXISTS _migraciones (id TEXT PRIMARY KEY, aplicado_en TIMESTAMP DEFAULT NOW())`, '_migraciones');
+    await safe(`DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM _migraciones WHERE id = 'reclamos_hora_local_backfill') THEN
+            UPDATE reclamos_devoluciones SET fecha_ingreso = (fecha_ingreso AT TIME ZONE 'UTC') AT TIME ZONE 'America/Santiago';
+            INSERT INTO _migraciones(id) VALUES ('reclamos_hora_local_backfill');
+        END IF;
+    END $$`, 'reclamos backfill hora local');
+
     // CHECK de dominio de reclamos_devoluciones.estado SOLO si los datos
     // existentes respetan el vocabulario ('PENDIENTE' | 'EN REVISION' |
     // 'EN PROCESO' | 'FINALIZADO', ver cabecera). Mismo patrón condicional que
