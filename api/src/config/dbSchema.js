@@ -919,6 +919,10 @@ async function faseColumnas({ q, safe }) {
         END IF;
     END $$`, 'reclamos_devoluciones.fecha_ingreso tipo date->timestamp');
 
+    // La fecha/hora de ingreso debe ser HORA LOCAL (Chile): NOW() del servidor
+    // es UTC y desfasaba -3/-4 horas (y a la noche caía al día siguiente).
+    await safe(`ALTER TABLE reclamos_devoluciones ALTER COLUMN fecha_ingreso SET DEFAULT (NOW() AT TIME ZONE 'America/Santiago')`, 'reclamos fecha_ingreso hora local');
+
     // CHECK de dominio de reclamos_devoluciones.estado SOLO si los datos
     // existentes respetan el vocabulario ('PENDIENTE' | 'EN REVISION' |
     // 'EN PROCESO' | 'FINALIZADO', ver cabecera). Mismo patrón condicional que
