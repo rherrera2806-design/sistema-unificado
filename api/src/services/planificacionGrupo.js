@@ -78,17 +78,20 @@ const getSemanaGrupo = async (inicio, fin) => {
     const grupos = capacidadRes.rows;
 
     const cargaRes = await query(`
-        SELECT o.fecha_programada::text as fecha,
+        SELECT p.fecha_programada::text as fecha,
             COALESCE(o.grupo, '(sin grupo)') as grupo,
-            COALESCE(SUM(o.metros_cuadrados), 0) as m2,
-            COALESCE(SUM(2.0 * (COALESCE(o.ancho,0) + COALESCE(o.alto,0)) / 1000.0 * COALESCE(o.cantidad, 1)), 0) as m_lineales,
-            COALESCE(SUM(o.kilos), 0) as kilos,
-            COUNT(*) as ordenes
-        FROM produccion_ordenes o
-        WHERE o.fecha_programada BETWEEN $1 AND $2
-          AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
-        GROUP BY o.fecha_programada, o.grupo
-        ORDER BY o.fecha_programada
+            COALESCE(SUM(CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE COALESCE(o.metros_cuadrados,0) END), 0) as m2,
+            COALESCE(SUM(2.0 * (COALESCE(o.ancho,0) + COALESCE(o.alto,0)) / 1000.0 * CASE WHEN COALESCE(o.metros_cuadrados,0) > 0 THEN ROUND(COALESCE(o.cantidad,1) * (CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados) ELSE COALESCE(o.cantidad,1) END), 0) as m_lineales,
+            COALESCE(SUM(CASE WHEN COALESCE(o.metros_cuadrados,0) > 0
+                THEN COALESCE(o.kilos,0) * (CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados
+                ELSE COALESCE(o.kilos,0) END), 0) as kilos,
+            COUNT(DISTINCT (o.pedido_sap_id, o.item_numero)) as ordenes
+        FROM cola_produccion_pasos p
+        JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
+        WHERE p.fecha_programada BETWEEN $1 AND $2
+          AND p.estado NOT IN ('TERMINADO','MERMADO')
+        GROUP BY p.fecha_programada, o.grupo
+        ORDER BY p.fecha_programada
     `, [inicio, fin]);
 
     const dias = [];
@@ -127,18 +130,28 @@ const getDiaGrupo = async (fecha) => {
     let cargaRes;
     if (fecha) {
         cargaRes = await query(`
-            SELECT COALESCE(o.grupo, '(sin grupo)') as grupo, COALESCE(SUM(o.kilos), 0) as kg_total, COUNT(*) as ordenes
-            FROM produccion_ordenes o
-            WHERE o.fecha_programada = $1 AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+            SELECT COALESCE(o.grupo, '(sin grupo)') as grupo,
+                   COALESCE(SUM(CASE WHEN COALESCE(o.metros_cuadrados,0) > 0
+                       THEN COALESCE(o.kilos,0) * (CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados
+                       ELSE COALESCE(o.kilos,0) END), 0) as kg_total,
+                   COUNT(DISTINCT (o.pedido_sap_id, o.item_numero)) as ordenes
+            FROM cola_produccion_pasos p
+            JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
+            WHERE p.fecha_programada = $1 AND p.estado NOT IN ('TERMINADO','MERMADO')
             GROUP BY o.grupo
         `, [fecha]);
     } else {
         cargaRes = await query(`
-            SELECT o.fecha_programada, COALESCE(o.grupo, '(sin grupo)') as grupo, COALESCE(SUM(o.kilos), 0) as kg_total, COUNT(*) as ordenes
-            FROM produccion_ordenes o
-            WHERE o.fecha_programada IS NOT NULL AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
-            GROUP BY o.fecha_programada, o.grupo
-            ORDER BY o.fecha_programada
+            SELECT p.fecha_programada, COALESCE(o.grupo, '(sin grupo)') as grupo,
+                   COALESCE(SUM(CASE WHEN COALESCE(o.metros_cuadrados,0) > 0
+                       THEN COALESCE(o.kilos,0) * (CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados
+                       ELSE COALESCE(o.kilos,0) END), 0) as kg_total,
+                   COUNT(DISTINCT (o.pedido_sap_id, o.item_numero)) as ordenes
+            FROM cola_produccion_pasos p
+            JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
+            WHERE p.fecha_programada IS NOT NULL AND p.estado NOT IN ('TERMINADO','MERMADO')
+            GROUP BY p.fecha_programada, o.grupo
+            ORDER BY p.fecha_programada
         `);
     }
 
@@ -217,13 +230,16 @@ const getSemanaGrupoFinales = async (inicio, fin) => {
     const cargaRes = await query(`
         SELECT o.fecha_entrega_pactada::text as fecha,
             COALESCE(o.grupo, '(sin grupo)') as grupo,
-            COALESCE(SUM(o.metros_cuadrados), 0) as m2,
-            COALESCE(SUM(2.0 * (COALESCE(o.ancho,0) + COALESCE(o.alto,0)) / 1000.0 * COALESCE(o.cantidad, 1)), 0) as m_lineales,
-            COALESCE(SUM(o.kilos), 0) as kilos,
-            COUNT(*) as ordenes
-        FROM produccion_ordenes o
+            COALESCE(SUM(CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE COALESCE(o.metros_cuadrados,0) END), 0) as m2,
+            COALESCE(SUM(2.0 * (COALESCE(o.ancho,0) + COALESCE(o.alto,0)) / 1000.0 * CASE WHEN COALESCE(o.metros_cuadrados,0) > 0 THEN ROUND(COALESCE(o.cantidad,1) * (CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados) ELSE COALESCE(o.cantidad,1) END), 0) as m_lineales,
+            COALESCE(SUM(CASE WHEN COALESCE(o.metros_cuadrados,0) > 0
+                THEN COALESCE(o.kilos,0) * (CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados
+                ELSE COALESCE(o.kilos,0) END), 0) as kilos,
+            COUNT(DISTINCT (o.pedido_sap_id, o.item_numero)) as ordenes
+        FROM cola_produccion_pasos p
+        JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
         WHERE o.fecha_entrega_pactada BETWEEN $1 AND $2
-          AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+          AND p.estado NOT IN ('TERMINADO','MERMADO')
         GROUP BY o.fecha_entrega_pactada, o.grupo
         ORDER BY o.fecha_entrega_pactada
     `, [inicio, fin]);

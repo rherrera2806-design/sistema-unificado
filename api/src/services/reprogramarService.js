@@ -321,8 +321,10 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         }
         for (const [primera, ultima, ordenId, esAvanzada] of updatesOrdenes) {
             if (esAvanzada) {
-                // Orden avanzada: NO se toca su estado ni fecha de inicio
-                await txQuery(`UPDATE produccion_ordenes SET fecha_entrega_pactada = $1 WHERE id = $2`, [ultima, ordenId]);
+                // Orden avanzada: NO se toca su estado (sigue EN_PROCESO), pero
+                // SÍ la fecha de programación (inicio del trabajo restante) para
+                // que las vistas de carga no muestren datos viejos del plan
+                await txQuery(`UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2 WHERE id = $3`, [primera, ultima, ordenId]);
             } else {
                 await txQuery(`UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO' WHERE id = $3`, [primera, ultima, ordenId]);
             }
