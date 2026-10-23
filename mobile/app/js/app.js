@@ -3,6 +3,7 @@
 import { api, login, logout, getUser, ApiError } from './api.js';
 import { parseQR, getTurnoSugerido } from './helpers.js';
 import { scanCode } from './scan.js';
+import { checkForUpdate, openDownload } from './update.js';
 
 const state = {
     view: 'login',
@@ -698,6 +699,42 @@ async function rmRegistrar() {
     }
 }
 
+// ============================ ACTUALIZACIONES ============================
+// La app consulta /planta/version.json al abrir: si el APK publicado es más
+// nuevo que el instalado, avisa con un botón que instala la actualización
+// encima (misma firma, no se pierden datos ni hay que desinstalar).
+
+let updatePendiente = null;
+
+async function checkUpdate() {
+    try {
+        updatePendiente = await checkForUpdate();
+    } catch (_) {
+        return;
+    }
+    if (!updatePendiente) return;
+    openSheet('Nueva versión disponible', `
+        <p style="font-size:13.5px;color:var(--text);line-height:1.6">
+            Hay una versión más nueva de <strong>VitroFlow Planta</strong>
+            (${esc(updatePendiente.versionName || '')} — tienes la ${esc(updatePendiente.versionLocal || '?')}).
+        </p>
+        ${updatePendiente.notas ? `<div style="background:var(--bg);border-radius:11px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:11px">${esc(updatePendiente.notas)}</div>` : ''}
+        <p style="font-size:11.5px;color:var(--muted);margin-top:11px">
+            Toca <strong>Actualizar ahora</strong>, espera la descarga y confirma la instalación.
+            La app se actualiza encima de la actual: no se pierde nada ni hay que desinstalar.
+        </p>
+    `, `
+        <button class="btn btn-outline" onclick="App.closeSheet()">Después</button>
+        <button class="btn btn-primary" onclick="App.updateNow()">⬆ Actualizar ahora</button>
+    `);
+}
+
+function updateNow() {
+    const url = (updatePendiente && updatePendiente.apk) || '/planta/VitroFlow-Planta.apk';
+    closeSheet();
+    openDownload(url);
+}
+
 // ============================ ARRANQUE ============================
 
 async function boot() {
@@ -708,6 +745,7 @@ async function boot() {
     } else {
         renderLogin();
     }
+    checkUpdate();
 }
 
 window.App = {
@@ -717,6 +755,7 @@ window.App = {
     iniciar, pausar, reanudar,
     showFinalizar, confirmFinalizar, showProcesar, confirmProcesar, showMerma, confirmMerma,
     scan, qrManual, showRegistro, rmAgregar, rmPegado, rmCambiar, rmQuitar, rmRegistrar,
+    updateNow,
     closeSheet,
 };
 

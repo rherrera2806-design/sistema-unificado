@@ -5,6 +5,20 @@
 $ErrorActionPreference = 'Stop'
 $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path
 
+# Publica mobile/app/version.json con la versión del APK: la app lo consulta al
+# abrir para avisar cuando hay una actualización disponible.
+$gradle = Get-Content (Join-Path $raiz 'android\app\build.gradle') -Raw
+$versionCode = [int]([regex]::Match($gradle, 'versionCode\s+(\d+)').Groups[1].Value)
+$versionName = [regex]::Match($gradle, 'versionName\s+"([^"]+)"').Groups[1].Value
+$version = @{
+    versionCode = $versionCode
+    versionName = $versionName
+    apk         = '/planta/VitroFlow-Planta.apk'
+    fecha       = (Get-Date -Format 'yyyy-MM-dd')
+} | ConvertTo-Json
+Set-Content -Path (Join-Path $raiz 'app\version.json') -Value $version -Encoding UTF8
+Write-Output "version.json = $versionName ($versionCode)"
+
 # JDK 21 (Capacitor 8 lo exige). Si JAVA_HOME ya apunta a un JDK 21+, se respeta.
 $jdk21 = Join-Path $env:LOCALAPPDATA 'jdk-21'
 $jdkDir = Get-ChildItem $jdk21 -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
