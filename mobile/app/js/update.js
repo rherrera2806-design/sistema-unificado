@@ -1,13 +1,17 @@
-// Detección de actualizaciones para la app nativa (APK).
+// Detección y aplicación de actualizaciones para la app nativa (APK).
 //
-// El servidor publica /planta/version.json con la versión del APK disponible
-// para descarga. La app lo compara con la versión instalada (la real, la del
-// sistema Android/iOS) y, si hay algo nuevo, la UI ofrece "Actualizar ahora",
-// que abre la descarga del APK: al confirmar, Android lo instala ENCIMA del
-// actual (misma firma) sin perder datos.
+// El servidor publica /planta/version.json con la versión del APK disponible.
+// La app lo compara con la versión instalada y, si hay algo nuevo, la UI ofrece
+// "Actualizar ahora": la descarga se hace DENTRO de la app (una sola descarga,
+// con progreso) y al terminar se abre el instalador de Android — que instala
+// encima del actual (misma firma) sin perder datos.
+//
+// OJO: no usar el navegador para la descarga. Abrir la URL del APK desde el
+// WebView/Custom Tab generaba descargas repetidas según el navegador.
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
-import { Browser } from '@capacitor/browser';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { FileOpener } from '@capacitor-community/file-opener';
 import { getApiBase } from './config.js';
 
 /** Versión instalada real (versionName / versionCode del APK). */
@@ -39,12 +43,43 @@ export async function checkForUpdate() {
     return null;
 }
 
-/** Abre la descarga del APK en el navegador del sistema. */
-export async function openDownload(url) {
+/**
+ * Descarga el APK dentro de la app y abre el instalador de Android.
+ * @param {string} url  Ruta o URL del APK.
+ * @param {(pct:number)=>void} onProgress  Avance 0-100 (puede llegar null si
+ *        el servidor no informa tamaño).
+ */
+export async function descargarEInstalar(url, onProgress) {
     const full = /^https?:/i.test(url) ? url : getApiBase() + url;
+
+    if (!Capacitor.isNativePlatform()) {
+        // En navegador (pruebas): descarga normal
+        window.location.href = full;
+        return;
+    }
+
+    const nombre = `VitroFlow-Planta-${Date.now()}.apk`;
+    let handle = null;
     try {
-        await Browser.open({ url: full });
-    } catch (_) {
-        window.open(full, '_blank');
+        handle = await Filesystem.addListener('progress', (p) => {
+            if (!onProgress || !p || p.url !== full) return;
+            const total = Number(p.contentLength) || 0;
+            if (total > 0) onProgress(Math.min(100, Math.round((Number(p.bytes) / total) * 100)));
+        });
+        await Filesystem.downloadFile({
+            url: full,
+            path: nombre,
+            directory: Directory.Cache,
+            progress: true,
+            recursive: true
+        });
+        const { uri } = await Filesystem.getUri({ path: nombre, directory: Directory.Cache });
+        await FileOpener.open({
+            filePath: uri,
+            contentType: 'application/vnd.android.package-archive',
+            openWithDefault: true
+        });
+    } finally {
+        if (handle && typeof handle.remove === 'function') { try { handle.remove(); } catch (_) { } }
     }
 }

@@ -3,7 +3,7 @@
 import { api, login, logout, getUser, ApiError } from './api.js';
 import { parseQR, getTurnoSugerido } from './helpers.js';
 import { scanCode } from './scan.js';
-import { checkForUpdate, openDownload } from './update.js';
+import { checkForUpdate, descargarEInstalar } from './update.js';
 import { escuchar, parseComandoVoz } from './voice.js';
 
 const state = {
@@ -321,7 +321,8 @@ function pintarCola() {
     const espesores = [...new Set(state.cola.map(it => it.espesor_mm).filter(e => e != null))].sort((a, b) => a - b);
 
     // Tipo de pedido (nivel_prioridad): 1 Normal · 2 Express · 3 Urgencia · 4 Reposición
-    const PRIORIDAD = { 1: ['Normal', '#475569'], 2: ['Express', '#d97706'], 3: ['Urgencia', '#dc2626'], 4: ['Reposición', '#7c3aed'] };
+    // Colores ESTÁNDAR (iguales que Órdenes de producción): azul/amarillo/verde/rojo
+    const PRIORIDAD = { 1: ['Normal', '#eff6ff', '#1d4ed8'], 2: ['Express', '#fef9c3', '#854d0e'], 3: ['Urgencia', '#dcfce7', '#15803d'], 4: ['Reposición', '#fee2e2', '#b91c1c'] };
 
     box.innerHTML = `
         <div class="field" style="margin-bottom:10px">
@@ -340,7 +341,7 @@ function pintarCola() {
         const enProceso = item.estado === 'EN_PROCESO';
         const pausado = item.estado === 'PAUSADO';
         const cantPaso = item.cantidad_paso || item.cantidad || 1;
-        const [prioTxt, prioColor] = PRIORIDAD[item.nivel_prioridad || 1] || PRIORIDAD[1];
+        const [prioTxt, prioBg, prioFg] = PRIORIDAD[item.nivel_prioridad || 1] || PRIORIDAD[1];
         return `
             <div class="card q-item ${enProceso ? 'en-proceso' : ''}">
                 <div class="q-head">
@@ -349,7 +350,7 @@ function pintarCola() {
                         <div class="q-sub">${esc(item.cliente || 'Sin cliente')}</div>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-                        <span class="badge" style="background:${prioColor}1c;color:${prioColor}">${prioTxt}</span>
+                        <span class="badge" style="background:${prioBg};color:${prioFg}">${prioTxt}</span>
                         <span class="status status-${String(item.estado || '').toLowerCase().replace('_', '-')}">${esc(item.estado || '')}</span>
                     </div>
                 </div>
@@ -997,10 +998,38 @@ async function checkUpdate() {
     `);
 }
 
+let updateDescargando = false;
 function updateNow() {
     const url = (updatePendiente && updatePendiente.apk) || '/planta/VitroFlow-Planta.apk';
-    closeSheet();
-    openDownload(url);
+    if (updateDescargando) return;
+    updateDescargando = true;
+    openSheet('Descargando actualización', `
+        <div style="text-align:center;padding:10px 0">
+            <div style="font-size:46px;line-height:1">⬇️</div>
+            <p style="font-size:14.5px;font-weight:700;margin-top:12px" id="updTxt">Descargando…</p>
+            <div style="height:11px;background:var(--bg);border-radius:999px;margin:15px 4px 6px;overflow:hidden">
+                <div id="updBar" style="height:100%;width:2%;background:var(--primary);border-radius:999px;transition:width .3s"></div>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">
+                No cierres la app. Al terminar se abrirá el instalador de Android:<br>
+                toca <strong>Instalar</strong> y listo.
+            </p>
+        </div>
+    `, '');
+    descargarEInstalar(url, (pct) => {
+        const bar = $('#updBar');
+        const txt = $('#updTxt');
+        if (bar && pct != null) bar.style.width = Math.max(2, pct) + '%';
+        if (txt && pct != null) txt.textContent = `Descargando… ${pct}%`;
+    }).then(() => {
+        updateDescargando = false;
+        closeSheet();
+        toast('Descarga lista: confirma la instalación', 'ok');
+    }).catch((err) => {
+        updateDescargando = false;
+        closeSheet();
+        manejarError(err);
+    });
 }
 
 // ============================ ARRANQUE ============================
