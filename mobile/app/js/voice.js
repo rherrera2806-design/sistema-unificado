@@ -83,8 +83,12 @@ function esPalabraNumero(p) {
 
 /**
  * Convierte un número escrito en palabras a dígitos.
- * "ciento doce mil ciento cuarenta y dos" → 112142. Devuelve null si la
- * frase no es (enteramente) un número.
+ * Entiende tres estilos de lectura:
+ *   1. Con escala:  "ciento doce mil ciento cuarenta y dos" → 112142
+ *   2. Por grupos:  "ciento doce ciento cuarenta y dos"     → 112142
+ *                   (lectura de 3 en 3 dígitos, sin decir "mil")
+ *   3. Dígito a dígito: "uno dos tres"                      → 123
+ * Devuelve null si la frase no es (enteramente) un número.
  */
 export function palabrasANumero(txt) {
     const palabras = String(txt || '').toLowerCase()
@@ -93,18 +97,50 @@ export function palabrasANumero(txt) {
         .split(/\s+/).map(p => p.replace(/[^a-z]/g, '')).filter(Boolean);
     if (!palabras.length) return null;
 
-    let total = 0, actual = 0, ok = false;
-    for (const p of palabras) {
-        if (p === 'y') continue;
-        if (p === 'mil') { total += (actual || 1) * 1000; actual = 0; ok = true; continue; }
-        if (p === 'millon') { total += (actual || 1) * 1000000; actual = 0; ok = true; continue; }
-        if (p === 'millones') { ok = true; continue; }
-        if (p in UNIDADES) { actual += UNIDADES[p]; ok = true; continue; }
-        if (p in DECENAS) { actual += DECENAS[p]; ok = true; continue; }
-        if (p in CENTENAS) { actual += CENTENAS[p]; ok = true; continue; }
-        return null; // palabra que no es número → no aplica
+    // 1) Con escala (mil / millón): aritmética de valor
+    const hayEscala = palabras.some(p => p === 'mil' || p === 'millon' || p === 'millones');
+    if (hayEscala) {
+        let total = 0, actual = 0, ok = false;
+        for (const p of palabras) {
+            if (p === 'mil') { total += (actual || 1) * 1000; actual = 0; ok = true; continue; }
+            if (p === 'millon') { total += (actual || 1) * 1000000; actual = 0; ok = true; continue; }
+            if (p === 'millones') { ok = true; continue; }
+            if (p in UNIDADES) { actual += UNIDADES[p]; ok = true; continue; }
+            if (p in DECENAS) { actual += DECENAS[p]; ok = true; continue; }
+            if (p in CENTENAS) { actual += CENTENAS[p]; ok = true; continue; }
+            return null;
+        }
+        return ok ? total + actual : null;
     }
-    return ok ? total + actual : null;
+
+    // 2) Dígito a dígito: "uno dos tres" → 123 (solo unidades 1-9)
+    if (palabras.length >= 2 && palabras.every(p => p in UNIDADES && UNIDADES[p] <= 9)) {
+        return Number(palabras.map(p => UNIDADES[p]).join(''));
+    }
+
+    // 3) Por grupos de 3 dígitos: "ciento doce ciento cuarenta y dos" → 112142
+    //    Un grupo cierra cuando llega otra CENTENA, o una decena/unidad que ya
+    //    no cabe en el grupo actual ("ciento doce | cuarenta").
+    const grupos = [];
+    let actual = 0, last = '', ok = false;
+    const cerrar = () => { if (ok) { grupos.push(actual); actual = 0; } };
+    for (const p of palabras) {
+        if (p in CENTENAS) {
+            if (actual > 0) cerrar();
+            actual = CENTENAS[p]; last = 'centena'; ok = true; continue;
+        }
+        if (p in DECENAS) {
+            if (actual >= 100 && (last === 'unidad' || last === 'decena')) cerrar();
+            actual += DECENAS[p]; last = 'decena'; ok = true; continue;
+        }
+        if (p in UNIDADES) {
+            if (actual >= 100 && last === 'unidad') cerrar();
+            actual += UNIDADES[p]; last = 'unidad'; ok = true; continue;
+        }
+        return null;
+    }
+    if (ok) grupos.push(actual);
+    return grupos.length ? Number(grupos.map(g => String(g)).join('')) : null;
 }
 
 /**
