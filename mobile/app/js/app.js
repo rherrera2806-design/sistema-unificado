@@ -1,7 +1,6 @@
 // VitroFlow Planta — vistas y lógica de la app.
 // Pantallas: Login → Estaciones → Turno/Máquina → Cola → Escanear/Registro.
 import { api, login, logout, getUser, ApiError } from './api.js';
-import { getApiBase, setApiBase } from './config.js';
 import { parseQR, getTurnoSugerido } from './helpers.js';
 import { scanCode } from './scan.js';
 
@@ -76,15 +75,6 @@ function renderLogin() {
                     <input id="lgPass" type="password" autocomplete="current-password" placeholder="••••••••">
                 </div>
                 <button class="btn btn-primary btn-block" id="lgBtn" onclick="App.doLogin()">Ingresar</button>
-                <div class="divider"></div>
-                <button class="btn btn-outline btn-block btn-sm" onclick="App.toggleServer()">⚙️ Servidor: ${esc(getApiBase().replace(/^https?:\/\//, ''))}</button>
-                <div id="lgServer" style="display:none;margin-top:10px">
-                    <div class="field" style="margin-bottom:8px">
-                        <label>URL del servidor</label>
-                        <input id="lgApi" value="${esc(getApiBase())}">
-                    </div>
-                    <button class="btn btn-outline btn-block btn-sm" onclick="App.saveServer()">Guardar servidor</button>
-                </div>
             </div>
         </div>`;
     $('#lgPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
@@ -107,16 +97,6 @@ async function doLogin() {
     } finally {
         if ($('#lgBtn')) { $('#lgBtn').disabled = false; $('#lgBtn').textContent = 'Ingresar'; }
     }
-}
-
-function toggleServer() {
-    const box = $('#lgServer');
-    box.style.display = box.style.display === 'none' ? 'block' : 'none';
-}
-function saveServer() {
-    setApiBase($('#lgApi').value);
-    toast('Servidor guardado', 'ok');
-    renderLogin();
 }
 
 // ============================ ESTACIONES ============================
@@ -335,6 +315,9 @@ function pintarCola() {
 
     const espesores = [...new Set(state.cola.map(it => it.espesor_mm).filter(e => e != null))].sort((a, b) => a - b);
 
+    // Tipo de pedido (nivel_prioridad): 1 Normal · 2 Express · 3 Urgencia · 4 Reposición
+    const PRIORIDAD = { 1: ['Normal', '#475569'], 2: ['Express', '#d97706'], 3: ['Urgencia', '#dc2626'], 4: ['Reposición', '#7c3aed'] };
+
     box.innerHTML = `
         <div class="field" style="margin-bottom:10px">
             <input id="qSearch" placeholder="🔍 Buscar por pedido…" value="${esc(state.filtroPedido)}"
@@ -352,6 +335,7 @@ function pintarCola() {
         const enProceso = item.estado === 'EN_PROCESO';
         const pausado = item.estado === 'PAUSADO';
         const cantPaso = item.cantidad_paso || item.cantidad || 1;
+        const [prioTxt, prioColor] = PRIORIDAD[item.nivel_prioridad || 1] || PRIORIDAD[1];
         return `
             <div class="card q-item ${enProceso ? 'en-proceso' : ''}">
                 <div class="q-head">
@@ -359,9 +343,12 @@ function pintarCola() {
                         <div class="q-title">Pedido <strong>${esc(item.pedido_sap_id || '-')}</strong> · Item <strong>${item.item_numero != null ? item.item_numero : '-'}</strong></div>
                         <div class="q-sub">${esc(item.cliente || 'Sin cliente')}</div>
                     </div>
-                    <span class="status status-${String(item.estado || '').toLowerCase().replace('_', '-')}">${esc(item.estado || '')}</span>
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                        <span class="badge" style="background:${prioColor}1c;color:${prioColor}">${prioTxt}</span>
+                        <span class="status status-${String(item.estado || '').toLowerCase().replace('_', '-')}">${esc(item.estado || '')}</span>
+                    </div>
                 </div>
-                <div class="q-prod">${esc(item.codigo_producto || '-')}</div>
+                <div class="q-prod">${esc(item.codigo_producto || '-')}${item.descripcion_padre ? ' <span style="font-size:12px;font-weight:600;color:var(--muted)">· ' + esc(item.descripcion_padre) + '</span>' : ''}</div>
                 <div class="q-sub">${esc(item.descripcion || '')}${item.espesor_mm ? ' · ' + esc(item.espesor_mm) + 'mm' : ''}</div>
                 <div class="q-details">
                     <div class="q-detail"><div class="l">Cantidad</div><div class="v">${cantPaso}${item.cantidad_paso && item.cantidad && item.cantidad_paso < item.cantidad ? ' <span style="color:#94a3b8;font-size:9px">de ' + item.cantidad + '</span>' : ''}</div></div>
@@ -724,7 +711,7 @@ async function boot() {
 }
 
 window.App = {
-    doLogin, toggleServer, saveServer, doLogout,
+    doLogin, doLogout,
     selectEstacion, pickTurno, confirmTurno, pickMaquina, confirmMaquina, continuarSinMaquina,
     refreshCola, onSearch, onEspesor, volverEstaciones,
     iniciar, pausar, reanudar,

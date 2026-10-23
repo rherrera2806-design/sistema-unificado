@@ -1,7 +1,12 @@
 ext {
     minSdkVersion = 24
     compileSdkVersion = 36
-    targetSdkVersion = 36
+    // targetSdk 34: Android 15+ (targetSdk 35+) obliga a dibujar la app DETRÁS
+    // de la barra de estado y la de navegación ("edge-to-edge"), lo que tapaba
+    // el header con el reloj/batería. Para una app interna (APK directo, sin
+    // Play Store) targetSdk 34 conserva el layout clásico correcto. Si algún
+    // día se publica en Play Store, habrá que migrar a manejo de insets.
+    targetSdkVersion = 34
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'
     androidxCoordinatorLayoutVersion = '1.3.0'

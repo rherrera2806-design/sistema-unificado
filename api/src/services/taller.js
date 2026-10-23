@@ -64,6 +64,12 @@ async function getColaPorEstacion(estacionId) {
                o.id as orden_id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion,
                o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
                o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
+               o.codigo_padre,
+               -- Descripción del código padre (catálogo de códigos): se muestra
+               -- junto al código SAP en la cola de planta
+               CASE WHEN o.codigo_padre IS NOT NULL THEN
+                   COALESCE((SELECT cc.descripcion FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre), o.codigo_padre)
+               ELSE NULL END as descripcion_padre,
                -- Cantidad y kilos PROPIOS de este paso (los pasos "resto" que
                -- nacen de un ingreso parcial cubren solo una parte de la orden)
                ROUND(o.cantidad * COALESCE(p.m2_asignados, o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0)) as cantidad_paso,
