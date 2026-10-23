@@ -268,8 +268,8 @@
             const nombreTurno = ({ dia: 'Día', noche: 'Noche', extra: 'Extra' })[String(d.turno_actual || '').toLowerCase()] || 'Día';
             const totalVenc = ests.reduce((a, e) => a + Number(e.venc_pendientes || 0), 0);
             const dv = d.desvio || {};
-            const bannerDesvio = (Number(dv.faltan_und) > 0)
-                ? `<div style="grid-column:1/-1;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:#fcd34d;border-radius:12px;padding:11px 16px;font-size:13px;font-weight:700">🔔 El programa va al <strong style="color:#fff">${dv.cumplimiento != null ? dv.cumplimiento : 0}%</strong> — faltan ${fmt(dv.faltan_und)} und de hoy · <span style="opacity:.85">pendiente de reprogramar</span></div>`
+            const bannerDesvio = (Number(dv.faltan_und) > 0 || (dv.vencidas || []).length || (dv.por_vencer || []).length)
+                ? `<div style="grid-column:1/-1;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:#fcd34d;border-radius:12px;padding:11px 16px;font-size:13px;font-weight:700">🔔 El programa va al <strong style="color:#fff">${dv.cumplimiento != null ? dv.cumplimiento : 0}%</strong> — faltan ${fmt(dv.faltan_und)} und de hoy · <strong style="color:#f87171">${(dv.vencidas || []).length} vencidas</strong> · <strong style="color:#fde68a">${(dv.por_vencer || []).length} por vencer</strong> <span style="opacity:.85">· pendiente de reprogramar</span></div>`
                 : '';
             const bannerVenc = (vista === 'hoy' && totalVenc > 0)
                 ? `<div style="grid-column:1/-1;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#fca5a5;border-radius:12px;padding:11px 16px;font-size:13px;font-weight:700">⚠️ Además hay ${fmt(totalVenc)} und <strong>vencidas + sin programar</strong> — toca <strong style="color:#fff">⏰ Vencido</strong> para verlas (o 📊 Total para el macro completo)</div>`

@@ -707,7 +707,7 @@ async function getTurnoActual() {
 // y los trabajos urgentes/express/reposición en cola.
 
 async function getDashboard() {
-    const [estaciones, resumen, urgencias, enProceso, hoyPorEstacion, ordenesGlobales, produccion] = await Promise.all([
+    const [estaciones, resumen, urgencias, enProceso, hoyPorEstacion, incumplidas, ordenesGlobales, produccion] = await Promise.all([
         getEstacionesConCarga(),
         query(`
             SELECT COUNT(*)::int as pasos,
@@ -783,8 +783,26 @@ async function getDashboard() {
             ) sub
             GROUP BY sub.estacion_id
         `),
-        // Nº de ÓRDENES con trabajo pendiente (global — por orden, sin duplicar
-        // las que tienen pasos en varias estaciones)
+        // ÓRDENES COMPROMETIDAS INCUMPLIDAS (decisión 5): VENCIDAS (fecha
+        // pactada < hoy) y POR VENCER (pactada = hoy), con el avance real
+        // por estación para mostrar "Corte ✅ · Pulido ⏳ · Templado ❌"
+        query(`
+            SELECT o.pedido_sap_id, o.item_numero, o.cliente, o.nivel_prioridad,
+                   o.fecha_entrega_pactada::text as fecha_pactada,
+                   (o.fecha_entrega_pactada < (NOW() AT TIME ZONE 'America/Santiago')::date) as vencida,
+                   ARRAY_AGG(e.nombre_estacion ORDER BY p.orden_secuencia) as estaciones,
+                   ARRAY_AGG(p.estado ORDER BY p.orden_secuencia) as estados
+            FROM produccion_ordenes o
+            JOIN cola_produccion_pasos p ON p.orden_produccion_id = o.id
+            LEFT JOIN estaciones_maestras e ON e.id = p.estacion_id
+            WHERE o.fecha_entrega_pactada IS NOT NULL
+              AND o.fecha_entrega_pactada <= (NOW() AT TIME ZONE 'America/Santiago')::date
+              AND o.estado_programacion NOT IN ('TERMINADO', 'CERRADO')
+            GROUP BY o.pedido_sap_id, o.item_numero, o.cliente, o.nivel_prioridad, o.fecha_entrega_pactada
+            HAVING COUNT(p.id) FILTER (WHERE p.estado NOT IN ('TERMINADO', 'MERMADO')) > 0
+            ORDER BY o.fecha_entrega_pactada
+            LIMIT 40
+        `),
         query(`
             SELECT COUNT(DISTINCT (sub.pedido, sub.item)) FILTER (WHERE sub.cubeta = 'hoy')::int as hoy_ordenes,
                    COUNT(DISTINCT (sub.pedido, sub.item)) FILTER (WHERE sub.cubeta = 'vencido')::int as venc_ordenes,
@@ -860,20 +878,33 @@ async function getDashboard() {
             vencido: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].venc_ordenes) || 0,
             total: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].total_ordenes) || 0
         },
-        // DESVÍO DEL PROGRAMA DE HOY: cumplimiento = producido / (producido +
-        // pendiente de hoy). Cuando baja, la app avisa y ofrece REPROGRAMAR
-        // (POST /api/produccion/reprogramar) en 1 clic.
+        // Desvío del programa: VENCIDAS (pactada < hoy) y POR VENCER (pactada =
+        // hoy) con avance por estación — la app avisa y ofrece reprogramar
         desvio: (() => {
             const faltanHoy = ests.reduce((a, e) => a + Number(e.hoy_pendientes || 0), 0);
             const vencidas = ests.reduce((a, e) => a + Number(e.venc_pendientes || 0), 0);
             const producido = Number((resumen.rows[0] && resumen.rows[0].unidades) || 0);
             const programado = faltanHoy + producido;
+            const filas = (incumplidas && incumplidas.rows) || [];
+            const arma = (r) => ({
+                pedido: r.pedido_sap_id,
+                item: r.item_numero,
+                cliente: r.cliente,
+                prioridad: Number(r.nivel_prioridad) || 1,
+                fecha_pactada: String(r.fecha_pactada || '').slice(0, 10),
+                avance: (r.estaciones || []).map((est, i) => ({
+                    estacion: est,
+                    estado: (r.estados || [])[i]
+                }))
+            });
             return {
                 cumplimiento: programado > 0 ? Math.round((producido / programado) * 100) : 100,
                 faltan_und: faltanHoy,
                 vencidas_und: vencidas,
                 producido_und: producido,
-                programado_und: programado
+                programado_und: programado,
+                vencidas: filas.filter(r => r.vencida).map(arma),
+                por_vencer: filas.filter(r => !r.vencida).map(arma)
             };
         })(),
         resumen_hoy: resumen.rows[0] || { pasos: 0, unidades: 0, m2: 0 },

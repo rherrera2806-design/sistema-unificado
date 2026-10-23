@@ -3,7 +3,7 @@ const router = express.Router();
 const planificacion = require('../services/planificacion');
 const planificacionGrupo = require('../services/planificacionGrupo');
 const { autoAsignarPendientes } = require('../services/planificacionAuto');
-const { reprogramarPendientes } = require('../services/reprogramarService');
+const { reprogramarPendientes, reprogramarPorAvance } = require('../services/reprogramarService');
 const { importarOrdenes } = require('../services/produccionImportar');
 const planificacionService = require('../services/produccionPlanificacionService');
 const { requireAnyPerm } = require('../middleware/permisos');
@@ -194,6 +194,14 @@ router.post('/api/produccion/reprogramar', canCreate, asyncHandler(async (req, r
 // ═══════════════════════════════════════════════════════════════
 router.get('/api/produccion/reprogramar/pendientes', canView, asyncHandler(async (req, res) => {
     res.json(await planificacionService.getReprogramarPendientes());
+}));
+
+// REPROGRAMACIÓN POR AVANCE — POST /api/produccion/reprogramar/avance
+// Reprograma SOLO lo pendiente respetando lo avanzado en piso (el corte hecho
+// no se vuelve a programar). Cola: atrasados primero y dentro de cada grupo
+// Reposición → Express → Urgencia → Normal. Ver reprogramarService.
+router.post('/api/produccion/reprogramar/avance', canCreate, asyncHandler(async (req, res) => {
+    res.json(await reprogramarPorAvance({ fechaMinima: req.body.fecha_minima || undefined }));
 }));
 
 module.exports = router;

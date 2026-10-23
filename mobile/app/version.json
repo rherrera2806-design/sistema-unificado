@@ -1,7 +1,7 @@
 {
-    "notas":  "NUEVO: alerta de desvio del programa — la app avisa \u0027el programa va al X%\u0027 y ofrece REPROGRAMAR EN 1 CLIC. Mas: teclado que ya no tapa los campos y tarjetas en unidades.",
+    "notas":  "NUEVO: reprogramacion POR AVANCE — avisa ordenes vencidas/por vencer con su avance por proceso y reprograma SOLO lo pendiente (lo cortado no se vuelve a programar). Cola: atrasados primero y por prioridad.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  14,
-    "versionName":  "1.13",
+    "versionCode":  15,
+    "versionName":  "1.14",
     "fecha":  "2026-10-23"
 }

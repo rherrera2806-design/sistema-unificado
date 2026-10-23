@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { transaction } = require('../config/dbPool');
 const { autoAsignarPendientes } = require('./planificacionAuto');
 
 /**
@@ -149,4 +150,183 @@ async function reprogramarPendientes({ dias = 21, inicio } = {}) {
     };
 }
 
-module.exports = { reprogramarPendientes };
+module.exports = { reprogramarPendientes, reprogramarPorAvance };
+
+/**
+ * ============================ REPROGRAMACIÓN POR AVANCE ============================
+ * Reprograma lo PENDIENTE respetando el avance real del piso. Reglas del
+ * negocio confirmadas:
+ *
+ * 1. COLA: primero los ATRASADOS (fecha pactada ≤ hoy y no terminada) y
+ *    después lo NUEVO; DENTRO de cada grupo: Reposición(4) → Express(2) →
+ *    Urgencia(3) → Normal(1). Empate: fecha pactada más antigua primero.
+ * 2. Solo se re-fechan los pasos PENDIENTE. Los TERMINADO/MERMADO son
+ *    historia (el corte ya se hizo, su fecha no se mueve). El paso EN
+ *    PROCESO/PAUSADO se mantiene HOY y OCUPA capacidad de hoy.
+ * 3. SIN SPLITS: no se fragmentan órdenes ya avanzadas.
+ * 4. fecha_entrega_pactada = fecha del último paso restante (la nueva fecha
+ *    para el cliente) y se avisa si EXCEDE el compromiso anterior.
+ * 5. FECHAS: cascada de 1 día hábil por paso (Configuración → Calendario)
+ *    con BLOQUEO DURO de capacidad diaria por estación (cap_max m², sin
+ *    tolerancia — misma regla que cabeEnDia del motor DBR).
+ *    Cada paso se coloca en un día respetando la capacidad de SU estación:
+ *    por eso no se generan cuellos nuevos (p.ej. Pulido lunes, Templado
+ *    martes, sin exceder la capacidad de cada uno).
+ */
+async function reprogramarPorAvance({ fechaMinima } = {}) {
+    const calendario = require('./calendario');
+    const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const hoy = fechaMinima || fmtL(new Date());
+
+    // 1) Todo el avance real: pasos de órdenes NO terminadas
+    const res = await query(`
+        SELECT o.id as orden_id, o.pedido_sap_id, o.item_numero, o.nivel_prioridad,
+               o.fecha_entrega_pactada, o.metros_cuadrados, o.cantidad, o.estado_programacion,
+               p.id as paso_id, p.estacion_id, p.orden_secuencia, p.estado,
+               p.m2_asignados, p.fecha_programada as fecha_paso, em.cap_max
+        FROM cola_produccion_pasos p
+        JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+        LEFT JOIN estaciones_maestras em ON em.id = p.estacion_id
+        WHERE o.estado_programacion NOT IN ('TERMINADO', 'CERRADO')
+        ORDER BY o.id, p.orden_secuencia
+    `);
+
+    // 2) Agrupar por orden con su cadena de pasos
+    const ordenes = new Map();
+    for (const r of res.rows) {
+        if (!ordenes.has(r.orden_id)) {
+            ordenes.set(r.orden_id, {
+                orden_id: r.orden_id,
+                pedido: r.pedido_sap_id,
+                item: r.item_numero,
+                prioridad: Number(r.nivel_prioridad) || 1,
+                fecha_pactada: r.fecha_entrega_pactada
+                    ? (typeof r.fecha_entrega_pactada === 'string'
+                        ? r.fecha_entrega_pactada.split('T')[0]
+                        : fmtL(new Date(r.fecha_entrega_pactada)))
+                    : null,
+                m2_orden: Number(r.metros_cuadrados) || 0,
+                avance: 0,
+                pasos: []
+            });
+        }
+        const o = ordenes.get(r.orden_id);
+        const m2p = Number(r.m2_asignados) > 0 ? Number(r.m2_asignados) : (Number(r.metros_cuadrados) || 0);
+        o.pasos.push({
+            paso_id: r.paso_id,
+            estacion_id: r.estacion_id,
+            estado: r.estado,
+            m2: m2p,
+            cap: Number(r.cap_max) || 0
+        });
+        if (r.estado === 'TERMINADO' || r.estado === 'MERMADO') o.avance++;
+    }
+
+    // 3) COLA (regla 1): atascado primero, luego prioridad 4→2→3→1, luego fecha
+    const rangoPrio = { 4: 0, 2: 1, 3: 2, 1: 3 };
+    const cola = [...ordenes.values()].filter(o =>
+        o.pasos.some(p => p.estado !== 'TERMINADO' && p.estado !== 'MERMADO'));
+    cola.sort((a, b) => {
+        const atA = (a.fecha_pactada && a.fecha_pactada <= hoy) ? 0 : 1;
+        const atB = (b.fecha_pactada && b.fecha_pactada <= hoy) ? 0 : 1;
+        return (atA - atB)
+            || ((rangoPrio[a.prioridad] ?? 3) - (rangoPrio[b.prioridad] ?? 3))
+            || String(a.fecha_pactada || '9999').localeCompare(String(b.fecha_pactada || '9999'));
+    });
+
+    // 4) Carga existente: los pasos EN CURSO ocupan capacidad de HOY
+    const carga = new Map();      // 'fecha|estId' -> m²
+    const caps = new Map();       // estId -> cap_max
+    const agregarCarga = (estId, fecha, m2) => {
+        const k = fecha + '|' + estId;
+        carga.set(k, (carga.get(k) || 0) + m2);
+    };
+    const cabeEnDia = (estId, fecha, m2) => {
+        const cap = caps.get(estId) || 0;
+        if (!(cap > 0)) return true;                    // sin capacidad configurada = sin tope
+        return ((carga.get(fecha + '|' + estId) || 0) + m2) <= cap;   // REGLA 2: duro, sin tolerancia
+    };
+    for (const o of cola) {
+        for (const p of o.pasos) {
+            if (p.cap > 0) caps.set(p.estacion_id, p.cap);
+            if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') {
+                agregarCarga(p.estacion_id, hoy, p.m2);
+            }
+        }
+    }
+    const buscarDia = async (estId, m2, desde) => {
+        let f = desde;
+        for (let i = 0; i < 400; i++) {
+            if (cabeEnDia(estId, f, m2)) return f;
+            f = await calendario.siguienteDiaHabil(f);
+        }
+        return f;
+    };
+
+    // 5) Programar cada orden por su SUB-RUTA pendiente (reglas 2, 3, 5)
+    const updatesPasos = [];
+    const updatesOrdenes = [];
+    const alertas = [];
+    let pasosFechados = 0;
+    let pasosEnCurso = 0;
+
+    for (const o of cola) {
+        let base = hoy;
+        let primeraFecha = null;
+        let ultimaFecha = null;
+
+        for (const p of o.pasos) {
+            if (p.estado === 'TERMINADO' || p.estado === 'MERMADO') continue;   // historia
+            let fecha;
+            if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') {
+                fecha = hoy;                                                     // decisión 2
+                pasosEnCurso++;
+                agregarCarga(p.estacion_id, fecha, p.m2);
+            } else {
+                fecha = await buscarDia(p.estacion_id, p.m2, base);              // cascada + capacidad
+                agregarCarga(p.estacion_id, fecha, p.m2);
+                pasosFechados++;
+            }
+            const m2p = p.m2 > 0 ? p.m2 : (o.m2_orden || 0);
+            updatesPasos.push([fecha, m2p, p.paso_id]);
+            if (!primeraFecha || fecha < primeraFecha) primeraFecha = fecha;
+            if (!ultimaFecha || fecha > ultimaFecha) ultimaFecha = fecha;
+            base = await calendario.siguienteDiaHabil(fecha);                    // 1 día hábil por paso
+        }
+
+        if (!ultimaFecha) continue;
+        // Nueva fecha pactada = último paso restante (decisión 4)
+        const excede = !!(o.fecha_pactada && ultimaFecha > o.fecha_pactada);
+        updatesOrdenes.push([primeraFecha, ultimaFecha, o.orden_id, o.avance > 0]);
+        if (excede || (o.fecha_pactada && o.fecha_pactada <= hoy)) {
+            alertas.push({
+                pedido: o.pedido, item: o.item,
+                fecha_anterior: o.fecha_pactada, fecha_nueva: ultimaFecha,
+                excede_pacto: excede
+            });
+        }
+    }
+
+    // 6) Aplicar en BD (atómico: o todo o nada)
+    await transaction(async ({ query: txQuery }) => {
+        for (const [fecha, m2, pasoId] of updatesPasos) {
+            await txQuery(`UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE id = $3`, [fecha, m2, pasoId]);
+        }
+        for (const [primera, ultima, ordenId, esAvanzada] of updatesOrdenes) {
+            if (esAvanzada) {
+                // Orden avanzada: NO se toca su estado ni fecha de inicio
+                await txQuery(`UPDATE produccion_ordenes SET fecha_entrega_pactada = $1 WHERE id = $2`, [ultima, ordenId]);
+            } else {
+                await txQuery(`UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO' WHERE id = $3`, [primera, ultima, ordenId]);
+            }
+        }
+    });
+
+    return {
+        ordenes_reprogramadas: cola.length,
+        pasos_fechados: pasosFechados,
+        pasos_en_curso_respetados: pasosEnCurso,
+        alertas,
+        mensaje: `${cola.length} órdenes re-programadas respetando el avance (${pasosFechados} pasos fechados, ${pasosEnCurso} en curso mantenidos hoy)`
+    };
+}

@@ -1118,25 +1118,49 @@ async function checkDesvio() {
         d = await api('/api/taller/dashboard');
     } catch (_) { return; }
     const dv = d.desvio || {};
-    const hora = new Date().getHours();
-    // Avisar cuando ya avanzó el día (desde las 15:00) o si hay trabajo vencido
-    if (Number(dv.faltan_und) > 0 && (hora >= 15 || Number(dv.vencidas_und) > 0)) {
+    const vencidas = dv.vencidas || [];
+    const porVencer = dv.por_vencer || [];
+    // Decisión 5: vencidas (pactada < hoy) siempre alertan; las del día se
+    // muestran como "por vencer" para poder monitorear
+    if (vencidas.length || porVencer.length) {
         mostrarDesvio(dv);
     }
+}
+
+function filaIncumplida(o, esVencida) {
+    const prio = ({ 1: 'Normal', 2: 'Express', 3: 'Urgencia', 4: 'Reposición' })[o.prioridad] || 'Normal';
+    const avance = (o.avance || []).map(a => {
+        const ok = a.estado === 'TERMINADO' || a.estado === 'MERMADO';
+        const curso = a.estado === 'EN_PROCESO' || a.estado === 'PAUSADO';
+        return `<span style="color:${ok ? 'var(--success)' : curso ? 'var(--warning)' : 'var(--muted)'}">${ok ? '✅' : curso ? '⏳' : '❌'} ${esc(a.estacion || '')}</span>`;
+    }).join(' <span style="color:var(--muted)">·</span> ');
+    return `
+        <div style="background:${esVencida ? '#fef2f2' : '#fffbeb'};border:1px solid ${esVencida ? '#fecaca' : '#fde68a'};border-radius:11px;padding:10px 12px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+                <strong style="font-size:13px">${esc(o.pedido || '')} <span style="color:var(--muted);font-weight:500">item ${o.item != null ? o.item : '—'}</span></strong>
+                <span class="badge" style="background:${esVencida ? '#fee2e2' : '#fef3c7'};color:${esVencida ? '#b91c1c' : '#b45309'};font-size:9.5px">${esVencida ? 'VENCIDA' : 'POR VENCER'} ${esc(String(o.fecha_pactada || '').slice(5))}</span>
+            </div>
+            <div style="font-size:10.5px;color:var(--muted);margin:3px 0 6px">${esc(o.cliente || '')} · ${esc(prio)}</div>
+            <div style="font-size:10.5px;line-height:1.7">${avance}</div>
+        </div>`;
 }
 
 function mostrarDesvio(dv) {
     const u = state.user || {};
     const puede = u.rol === 'admin' || (u.permisos || []).includes('prod_planificacion.agregar');
-    openSheet('⚠️ El programa va al ' + (dv.cumplimiento != null ? dv.cumplimiento : 0) + '%', `
-        <p style="font-size:13.5px;line-height:1.9;color:var(--text)">
-            Quedan <strong>${fmtN(dv.faltan_und)} und</strong> del programa de hoy
-            ${Number(dv.vencidas_und) > 0 ? `<br>Y hay <strong style="color:var(--danger)">${fmtN(dv.vencidas_und)} und vencidas + sin programar</strong>` : ''}
-        </p>
+    const vencidas = dv.vencidas || [];
+    const porVencer = dv.por_vencer || [];
+    const lista = [
+        ...vencidas.map(o => filaIncumplida(o, true)),
+        ...porVencer.map(o => filaIncumplida(o, false))
+    ].slice(0, 6).join('');
+    openSheet('⚠️ ' + vencidas.length + ' vencidas · ' + porVencer.length + ' por vencer', `
+        <div style="max-height:44vh;overflow:auto">${lista || '<p style="color:var(--muted);font-size:12px">Sin órdenes incumplidas</p>'}</div>
         <div style="background:var(--bg);border-radius:11px;padding:12px 14px;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.8">
-            <strong style="color:var(--text)">¿Reprogramar los pendientes?</strong><br>
-            El sistema re-asigna las fechas por prioridad (Reposición → Express → Urgencia → Normal)
-            y capacidad, <strong>sin tocar</strong> lo en proceso ni las fechas de entrega pactadas.
+            <strong style="color:var(--text)">¿Reprogramar dando nueva fecha?</strong><br>
+            Se re-programa <strong>solo lo pendiente</strong> respetando el avance (lo cortado ya no se
+            programa), con la cola: <strong>atrasados → Reposición → Express → Urgencia → Normal</strong>
+            y la capacidad diaria de cada estación.
         </div>
     `, `
         <button class="btn btn-outline" onclick="App.closeSheet()">Después</button>
@@ -1146,11 +1170,25 @@ function mostrarDesvio(dv) {
 
 async function reprogramarAhora() {
     closeSheet();
-    toast('Reprogramando el plan…', 'ok');
+    toast('Reprogramando por avance…', 'ok');
     try {
-        const r = await api('/api/produccion/reprogramar', { method: 'POST', body: {} });
-        const n = r && (r.ordenesLiberadas != null ? r.ordenesLiberadas : null);
-        toast('Reprogramado ✅' + (n != null ? ' · ' + n + ' órdenes re-asignadas' : ''), 'ok');
+        const r = await api('/api/produccion/reprogramar/avance', { method: 'POST', body: {} });
+        const alertas = (r && r.alertas) || [];
+        const exceden = alertas.filter(a => a.excede_pacto).length;
+        toast((r && r.mensaje) || 'Reprogramado ✅' + (exceden ? ` · ${exceden} exceden el compromiso` : ''), 'ok');
+        if (exceden) {
+            setTimeout(() => {
+                openSheet('📅 Fechas que exceden el compromiso', `
+                    ${alertas.filter(a => a.excede_pacto).slice(0, 8).map(a => `
+                        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:9px 12px;margin-bottom:7px;font-size:12px">
+                            <strong>${esc(a.pedido || '')}</strong> item ${a.item != null ? a.item : '—'}:
+                            pactada <strong>${esc(String(a.fecha_anterior || '').slice(5))}</strong>
+                            → nueva <strong style="color:var(--danger)">${esc(String(a.fecha_nueva || '').slice(5))}</strong>
+                        </div>`).join('')}
+                    <p style="font-size:11.5px;color:var(--muted);margin-top:8px">Comunica las nuevas fechas a los clientes.</p>
+                `, `<button class="btn btn-primary" onclick="App.closeSheet()">Entendido</button>`);
+            }, 900);
+        }
     } catch (err) {
         manejarError(err);
     }
