@@ -72,7 +72,7 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
   const cargaRes = await query(
     `SELECT cp.fecha_programada, cp.estacion_id, cp.orden_produccion_id, cp.m2_asignados
      FROM cola_produccion_pasos cp
-     WHERE cp.fecha_programada IS NOT NULL AND cp.estado != 'TERMINADO'`
+     WHERE cp.fecha_programada IS NOT NULL AND cp.estado NOT IN ('TERMINADO','MERMADO')`
   );
   const cargaMap = {};
   const cargaDedup = {};

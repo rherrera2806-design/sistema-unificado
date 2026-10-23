@@ -30,11 +30,11 @@ const getMetricasGenerales = async (fecha) => {
             (SELECT COUNT(*) FROM cola_produccion_pasos WHERE estado = 'TERMINADO' AND COALESCE(fecha_turno, hora_fin::date) = $1) as pasos_terminados_hoy,
             
             -- Producción
-            (SELECT COALESCE(SUM(o.metros_cuadrados), 0) FROM produccion_ordenes o
+            (SELECT COALESCE(SUM(cp.m2_real), 0) FROM produccion_ordenes o
              JOIN cola_produccion_pasos cp ON o.id = cp.orden_produccion_id
              WHERE cp.estado = 'TERMINADO' AND COALESCE(cp.fecha_turno, cp.hora_fin::date) = $1) as m2_producidos_hoy,
             
-            (SELECT COALESCE(SUM(o.kilos), 0) FROM produccion_ordenes o
+            (SELECT COALESCE(SUM(o.kilos * cp.cantidad_real / NULLIF(o.cantidad, 0)), 0) FROM produccion_ordenes o
              JOIN cola_produccion_pasos cp ON o.id = cp.orden_produccion_id
              WHERE cp.estado = 'TERMINADO' AND COALESCE(cp.fecha_turno, cp.hora_fin::date) = $1) as kilos_producidos_hoy,
             
@@ -78,7 +78,7 @@ const getOEEPorEstacion = async (fechaInicio, fechaFin) => {
                 cp.estacion_id,
                 COALESCE(cp.fecha_turno, DATE(cp.hora_fin)) as fecha,
                 COUNT(*) as total_pasos,
-                SUM(COALESCE(o.metros_cuadrados, 0)) as total_m2
+                SUM(COALESCE(cp.m2_real, 0)) as total_m2
             FROM cola_produccion_pasos cp
             JOIN produccion_ordenes o ON cp.orden_produccion_id = o.id
             WHERE cp.hora_fin IS NOT NULL
@@ -194,10 +194,10 @@ const getRendimientoOperario = async (fechaInicio, fechaFin) => {
             cp.operario_nombre,
             COUNT(*) as pasos_completados,
             SUM(EXTRACT(EPOCH FROM (cp.hora_fin - cp.hora_inicio)) / 3600) as horas_trabajadas,
-            SUM(COALESCE(o.metros_cuadrados, 0)) as m2_producidos,
-            SUM(COALESCE(o.cantidad, 0)) as unidades_producidas,
+            SUM(COALESCE(cp.m2_real, 0)) as m2_producidos,
+            SUM(COALESCE(cp.cantidad_real, 0)) as unidades_producidas,
             ROUND(
-                SUM(COALESCE(o.metros_cuadrados, 0)) / 
+                SUM(COALESCE(cp.m2_real, 0)) / 
                 NULLIF(SUM(EXTRACT(EPOCH FROM (cp.hora_fin - cp.hora_inicio)) / 3600), 0), 
             2) as m2_por_hora
         FROM cola_produccion_pasos cp

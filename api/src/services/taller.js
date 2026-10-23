@@ -760,12 +760,14 @@ async function getDashboard() {
                    COALESCE(SUM(sub.kilos) FILTER (WHERE sub.cubeta = 'vencido'), 0)::numeric as venc_kilos,
                    COALESCE(SUM(sub.cant), 0)::int as total_unidades,
                    COALESCE(SUM(sub.kilos), 0)::numeric as total_kilos,
-                   COUNT(DISTINCT sub.orden_id) FILTER (WHERE sub.cubeta = 'hoy')::int as hoy_ordenes,
-                   COUNT(DISTINCT sub.orden_id) FILTER (WHERE sub.cubeta = 'vencido')::int as venc_ordenes,
-                   COUNT(DISTINCT sub.orden_id)::int as total_ordenes
+                   COUNT(DISTINCT (sub.pedido, sub.item)) FILTER (WHERE sub.cubeta = 'hoy')::int as hoy_ordenes,
+                   COUNT(DISTINCT (sub.pedido, sub.item)) FILTER (WHERE sub.cubeta = 'vencido')::int as venc_ordenes,
+                   COUNT(DISTINCT (sub.pedido, sub.item))::int as total_ordenes
             FROM (
                 SELECT p.estacion_id,
                        p.orden_produccion_id as orden_id,
+                       o.pedido_sap_id as pedido,
+                       o.item_numero as item,
                        CASE WHEN p.fecha_programada = (NOW() AT TIME ZONE 'America/Santiago')::date THEN 'hoy'
                             WHEN p.fecha_programada IS NULL OR p.fecha_programada < (NOW() AT TIME ZONE 'America/Santiago')::date THEN 'vencido'
                             ELSE 'futuro' END as cubeta,
@@ -784,15 +786,18 @@ async function getDashboard() {
         // Nº de ÓRDENES con trabajo pendiente (global — por orden, sin duplicar
         // las que tienen pasos en varias estaciones)
         query(`
-            SELECT COUNT(DISTINCT sub.orden_id) FILTER (WHERE sub.cubeta = 'hoy')::int as hoy_ordenes,
-                   COUNT(DISTINCT sub.orden_id) FILTER (WHERE sub.cubeta = 'vencido')::int as venc_ordenes,
-                   COUNT(DISTINCT sub.orden_id)::int as total_ordenes
+            SELECT COUNT(DISTINCT (sub.pedido, sub.item)) FILTER (WHERE sub.cubeta = 'hoy')::int as hoy_ordenes,
+                   COUNT(DISTINCT (sub.pedido, sub.item)) FILTER (WHERE sub.cubeta = 'vencido')::int as venc_ordenes,
+                   COUNT(DISTINCT (sub.pedido, sub.item))::int as total_ordenes
             FROM (
                 SELECT p.orden_produccion_id as orden_id,
+                       o.pedido_sap_id as pedido,
+                       o.item_numero as item,
                        CASE WHEN p.fecha_programada = (NOW() AT TIME ZONE 'America/Santiago')::date THEN 'hoy'
                             WHEN p.fecha_programada IS NULL OR p.fecha_programada < (NOW() AT TIME ZONE 'America/Santiago')::date THEN 'vencido'
                             ELSE 'futuro' END as cubeta
                 FROM cola_produccion_pasos p
+                JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
                 WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
             ) sub
         `),

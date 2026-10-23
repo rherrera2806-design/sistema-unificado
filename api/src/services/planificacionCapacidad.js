@@ -11,7 +11,7 @@ const getCargaSemanal = async (inicio, fin) => {
             `SELECT p.estacion_id, to_char(p.fecha_programada, 'YYYY-MM-DD') as fs,
              COALESCE(SUM(p.m2_asignados), 0) as m2, COUNT(*) as oc
              FROM cola_produccion_pasos p
-             WHERE p.fecha_programada >= $1::date AND p.fecha_programada <= $2::date AND p.estado <> 'MERMADO'
+             WHERE p.fecha_programada >= $1::date AND p.fecha_programada <= $2::date AND p.estado NOT IN ('TERMINADO','MERMADO')
              GROUP BY p.estacion_id, p.fecha_programada`, [inicio, fin]
         );
         for (const r of cargaRes.rows) cargaMap[r.estacion_id + '|' + r.fs] = { m2: Number(r.m2), ordenes: Number(r.oc) };
@@ -126,7 +126,7 @@ const getCargaEstaciones = async (inicio, fin) => {
                COALESCE(SUM(cp.m2_asignados), 0) as m2_total, COUNT(*) as ordenes
         FROM cola_produccion_pasos cp
         WHERE cp.fecha_programada >= $1::date AND cp.fecha_programada <= $2::date
-          AND cp.estado != 'MERMADO'
+          AND cp.estado NOT IN ('TERMINADO','MERMADO')
         GROUP BY cp.estacion_id, cp.fecha_programada
     `, [inicio, fin]);
 

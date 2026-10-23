@@ -102,6 +102,9 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
 
     const estacionesMap = {};
     const estacionesLista = [];
+    // Dedup de órdenes macro (pedido|item) para los contadores "ord"
+    const vistasDia = new Set();
+    const vistasEst = new Set();
 
     for (const r of result.rows) {
         const estKey = r.estacion_id;
@@ -179,8 +182,11 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
         // kg_paso (proporcional al paso) = lo que muestra la columna Kg de cada
         // fila: antes el total sumaba los kilos COMPLETOS y no cuadraba
         dia.total_kg += ordenInfo.kg_paso;
-        dia.total_ordenes++;
-        est.total_ordenes++;
+        // "ord" = órdenes MACRO (pedido|item): las filas MP de una orden
+        // compuesta cuentan UNA sola vez
+        const kOrd = `${ordenInfo.pedido}|${ordenInfo.item}`;
+        if (!vistasDia.has(estKey + '|' + fecha + '|' + kOrd)) { vistasDia.add(estKey + '|' + fecha + '|' + kOrd); dia.total_ordenes++; }
+        if (!vistasEst.has(estKey + '|' + kOrd)) { vistasEst.add(estKey + '|' + kOrd); est.total_ordenes++; }
         est.total_m2 += ordenInfo.m2_asignados || ordenInfo.m2;
         est.total_kg += ordenInfo.kg_paso;
     }

@@ -102,7 +102,7 @@ const programarOrden = async (orden_id, fecha_entrega_propuesta) => {
                     SELECT COALESCE(SUM(p.m2_asignados), 0) as m2_ocupados
                     FROM cola_produccion_pasos p
                     WHERE p.estacion_id = $1 AND p.fecha_programada = $2
-                    AND p.estado != 'MERMADO' AND p.orden_produccion_id != $3
+                    AND p.estado NOT IN ('TERMINADO','MERMADO') AND p.orden_produccion_id != $3
                 `, [estacionId, fechaStr, orden_id]);
                 const disponible = Math.max(0, capacidad - (Number(cargaRes.rows[0]?.m2_ocupados) || 0));
 

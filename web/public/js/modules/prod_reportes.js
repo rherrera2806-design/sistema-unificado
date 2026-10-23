@@ -299,24 +299,15 @@ App.registerModule('prod_reportes', {
     // (ej: Extra Claro 8mm x4 = 32mm) y las líneas de un mismo pedido-item se
     // muestran en UNA sola fila sumando espesor y kilos.
     _agrupar(ordenes) {
-        const salida = [];
-        const idx = {};
-        for (const o of (ordenes || [])) {
-            const mult = Number(o.cant_receta) || 1;
-            const fila = { ...o, espesor: (Number(o.espesor) || 0) * mult, kgs: (Number(o.kgs) || 0) * mult };
-            const texto = ((o.grupo || '') + ' ' + (o.descripcion_padre || '') + ' ' + (o.ruta || '')).toLowerCase();
-            const agrupable = /(termopanel|laminado|lami\.|temp\.)/.test(texto);
-            const clave = agrupable ? (o.ov + '|' + o.item) : null;
-            if (!clave) { salida.push(fila); continue; }
-            if (!idx[clave]) { idx[clave] = fila; salida.push(fila); }
-            else {
-                const g = idx[clave];
-                g.espesor += fila.espesor;
-                g.kgs += fila.kgs;
-                g.m2 = (Number(g.m2) || 0) + (Number(o.m2) || 0);
-            }
-        }
-        return salida;
+        // Las filas ya vienen MACRO por codigo padre desde el servicio (reglas
+        // 1+5): espesor = suma de espesores del BOM, kilos = suma de las partes,
+        // m2/unidades = los del padre. NO multiplicar por cant_receta ni
+        // re-agrupar (eso inflaba los kilos de los compuestos).
+        return (ordenes || []).map(o => ({
+            ...o,
+            espesor: Number(o.espesor) || 0,
+            kgs: Number(o.kgs) || 0
+        }));
     },
 
     exportarExcel() {
