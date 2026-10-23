@@ -1,6 +1,7 @@
 {
+    "notas":  "Si al tocar \u0027Actualizar ahora\u0027 se abre el navegador: espera la descarga y toca el archivo APK (en las notificaciones o en Archivos \u003e Descargas) para instalar. Desde esta version la app se actualiza sola con barra de progreso.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  10,
-    "versionName":  "1.9",
+    "versionCode":  11,
+    "versionName":  "1.10",
     "fecha":  "2026-10-23"
 }

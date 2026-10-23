@@ -10,6 +10,7 @@
 // WebView/Custom Tab generaba descargas repetidas según el navegador.
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capacitor-community/file-opener';
 import { getApiBase } from './config.js';
@@ -44,18 +45,18 @@ export async function checkForUpdate() {
 }
 
 /**
- * Descarga el APK dentro de la app y abre el instalador de Android.
+ * Descarga el APK y abre el instalador de Android.
+ * Devuelve 'instalador' (flujo nativo) o 'navegador' (respaldo: el navegador
+ * descarga y hay que tocar el archivo para instalar).
  * @param {string} url  Ruta o URL del APK.
- * @param {(pct:number)=>void} onProgress  Avance 0-100 (puede llegar null si
- *        el servidor no informa tamaño).
+ * @param {(pct:number)=>void} onProgress  Avance 0-100 (null si no hay tamaño).
  */
 export async function descargarEInstalar(url, onProgress) {
     const full = /^https?:/i.test(url) ? url : getApiBase() + url;
 
     if (!Capacitor.isNativePlatform()) {
-        // En navegador (pruebas): descarga normal
         window.location.href = full;
-        return;
+        return 'navegador';
     }
 
     const nombre = `VitroFlow-Planta-${Date.now()}.apk`;
@@ -79,6 +80,16 @@ export async function descargarEInstalar(url, onProgress) {
             contentType: 'application/vnd.android.package-archive',
             openWithDefault: true
         });
+        return 'instalador';
+    } catch (e) {
+        // Respaldo: si el flujo nativo falla por lo que sea, que al menos el
+        // navegador descargue el archivo (el usuario lo toca para instalar).
+        try {
+            await Browser.open({ url: full });
+        } catch (_) {
+            window.open(full, '_blank');
+        }
+        return 'navegador';
     } finally {
         if (handle && typeof handle.remove === 'function') { try { handle.remove(); } catch (_) { } }
     }

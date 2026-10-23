@@ -2,6 +2,11 @@
 # Uso:  powershell -ExecutionPolicy Bypass -File mobile\build-apk.ps1
 # Salida: mobile\android\app\build\outputs\apk\release\app-release.apk
 
+# Nota visible en el aviso de actualización de la app (todas las versiones leen
+# version.json.notas). Se puede sobreescribir: .\build-apk.ps1 -Notas "texto"
+param(
+    [string]$Notas = 'Mejoras y correcciones. La app se actualiza encima de la actual: no se pierden datos.'
+)
 $ErrorActionPreference = 'Stop'
 $raiz = Split-Path -Parent $MyInvocation.MyCommand.Path
 
@@ -15,6 +20,7 @@ $version = @{
     versionName = $versionName
     apk         = '/planta/VitroFlow-Planta.apk'
     fecha       = (Get-Date -Format 'yyyy-MM-dd')
+    notas       = $Notas
 } | ConvertTo-Json
 # Escribir sin BOM: un BOM al inicio puede romper el parseo JSON en algunos
 # navegadores/WebView.

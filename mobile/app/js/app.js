@@ -1061,10 +1061,25 @@ function updateNow() {
         const txt = $('#updTxt');
         if (bar && pct != null) bar.style.width = Math.max(2, pct) + '%';
         if (txt && pct != null) txt.textContent = `Descargando… ${pct}%`;
-    }).then(() => {
+    }).then((modo) => {
         updateDescargando = false;
         closeSheet();
-        toast('Descarga lista: confirma la instalación', 'ok');
+        if (modo === 'instalador') {
+            toast('Descarga lista: confirma la instalación', 'ok');
+        } else {
+            // Respaldo vía navegador: explicar dónde está el archivo
+            openSheet('Descarga en el navegador', `
+                <p style="font-size:13px;color:var(--text);line-height:1.7">
+                    La descarga se hizo en el <strong>navegador del celular</strong>. Para instalar:
+                </p>
+                <ol style="font-size:12.5px;color:var(--muted);line-height:2;padding-left:20px;margin-top:10px">
+                    <li>Espera a que termine la descarga (verás la <strong>notificación</strong> 📥)</li>
+                    <li>Toca la notificación <strong>o</strong> abre <strong>Archivos → Descargas</strong></li>
+                    <li>Toca <strong>VitroFlow-Planta.apk</strong> → <strong>Instalar</strong></li>
+                </ol>
+                <p style="font-size:11px;color:var(--muted);margin-top:10px">La app se actualiza encima de la actual: no se pierden datos.</p>
+            `, `<button class="btn btn-primary" onclick="App.closeSheet()">Entendido</button>`);
+        }
     }).catch((err) => {
         updateDescargando = false;
         closeSheet();
