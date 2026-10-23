@@ -12,8 +12,13 @@ const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, '..', '..', 'w
 const MOBILE_DIR = path.join(__dirname, '..', '..', 'mobile', 'app');
 
 // https://localhost y capacitor://localhost = origen del WebView de la app
-// móvil Capacitor (Android e iOS respectivamente).
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://vitroflow.up.railway.app,https://sistema-unified-production.up.railway.app,http://localhost:3000,https://localhost,capacitor://localhost').split(',').map(s => s.trim());
+// móvil Capacitor (Android e iOS respectivamente). Se agregan SIEMPRE a la
+// lista: si la variable ALLOWED_ORIGINS existe en Railway sobrescribe el valor
+// por defecto y, sin estos orígenes, la app no puede hacer login.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://vitroflow.up.railway.app,https://sistema-unified-production.up.railway.app,http://localhost:3000').split(',').map(s => s.trim());
+for (const origenApp of ['https://localhost', 'capacitor://localhost']) {
+    if (!ALLOWED_ORIGINS.includes(origenApp)) ALLOWED_ORIGINS.push(origenApp);
+}
 
 let dbReady = false;
 let dbError = null;
