@@ -1,7 +1,7 @@
 {
-    "notas":  "APK mas liviano (14 MB): mas rapido de descargar. Si la app no abre el instalador, descarga el APK desde Chrome y tocalo para instalar.",
+    "notas":  "Mejoras: pendientes que descuentan al registrar, produccion por estacion en el dashboard y teclado que ya no tapa los campos.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  11,
-    "versionName":  "1.10",
+    "versionCode":  12,
+    "versionName":  "1.11",
     "fecha":  "2026-10-23"
 }

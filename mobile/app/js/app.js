@@ -1105,6 +1105,17 @@ function updateNow() {
 
 // ============================ ARRANQUE ============================
 
+// Teclado del celular: al enfocar un campo, dejarlo VISIBLE (no detrás del
+// header). Sin esto, Android empuja la pantalla y el campo se pierde de vista.
+document.addEventListener('focusin', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('input, select, textarea')) {
+        setTimeout(() => {
+            try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { }
+        }, 280);
+    }
+});
+
 async function boot() {
     state.user = getUser();
     if (state.user) {

@@ -739,17 +739,25 @@ async function getDashboard() {
             ORDER BY p.hora_inicio NULLS LAST
             LIMIT 12
         `),
-        // Trabajo del DÍA por estación (para la vista "Día" del dashboard)
+        // PENDIENTES POR PRODUCIR por estación, en UNIDADES (descuenta con cada
+        // registro, aunque sea parcial) — vista Día (programado <= hoy, incluye
+        // vencido) vs Total (toda la cola).
         query(`
-            SELECT p.estacion_id,
-                   COUNT(*) FILTER (WHERE p.estado = 'PENDIENTE')::int as hoy_pendientes,
-                   COUNT(*) FILTER (WHERE p.estado = 'EN_PROCESO')::int as hoy_en_proceso,
-                   COALESCE(SUM(COALESCE(o.kilos, 0)), 0)::numeric as hoy_kilos
-            FROM cola_produccion_pasos p
-            JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
-            WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
-              AND p.fecha_programada = (NOW() AT TIME ZONE 'America/Santiago')::date
-            GROUP BY p.estacion_id
+            SELECT sub.estacion_id,
+                   COALESCE(SUM(sub.cant) FILTER (WHERE sub.es_hoy), 0)::int as hoy_unidades,
+                   COALESCE(SUM(sub.kilos) FILTER (WHERE sub.es_hoy), 0)::numeric as hoy_kilos,
+                   COALESCE(SUM(sub.cant), 0)::int as total_unidades,
+                   COALESCE(SUM(sub.kilos), 0)::numeric as total_kilos
+            FROM (
+                SELECT p.estacion_id,
+                       (COALESCE(p.fecha_programada, '2999-12-31') <= (NOW() AT TIME ZONE 'America/Santiago')::date) as es_hoy,
+                       ROUND(o.cantidad * COALESCE(p.m2_asignados, o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0)) as cant,
+                       COALESCE(o.kilos, 0) as kilos
+                FROM cola_produccion_pasos p
+                JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
+            ) sub
+            GROUP BY sub.estacion_id
         `),
         // PRODUCIDO por estación: del día y del turno actual (unidades, m², kilos)
         (async () => {
@@ -778,9 +786,11 @@ async function getDashboard() {
         const pr = prodMap.get(Number(e.id)) || {};
         return {
             ...e,
-            hoy_pendientes: Number(h.hoy_pendientes) || 0,
-            hoy_en_proceso: Number(h.hoy_en_proceso) || 0,
+            hoy_pendientes: Number(h.hoy_unidades) || 0,
+            hoy_en_proceso: 0,
             hoy_kilos: Number(h.hoy_kilos) || 0,
+            total_unidades_pend: Number(h.total_unidades) || 0,
+            total_kilos_pend: Number(h.total_kilos) || 0,
             prod_hoy: {
                 unidades: Number(pr.hoy_unidades) || 0,
                 m2: Number(pr.hoy_m2) || 0,
