@@ -102,6 +102,7 @@ App.modules.planificacion = {
                             ${puedeEditar ? `
                             <button class="pln-btn ghost sm" onclick="App.modules.planificacion.showCapacidadGrupo()" title="Configurar capacidad">⚙ Capacidad</button>
                             <button class="pln-btn primary sm" onclick="App.modules.planificacion.showAutoAsignarGrupo()" title="Repartir pendientes respetando capacidad">⚡ Auto-Asignar</button>
+                            <button class="pln-btn warn sm" onclick="App.modules.planificacion.showReprogramarAvance()" title="Re-programa SOLO lo pendiente respetando lo avanzado">🔔 Por Avance</button>
                             <button class="pln-btn warn sm" onclick="App.modules.planificacion.showReprogramar()" title="Libera PROGRAMADO y re-asigna por prioridad">↻ Reprogramar</button>` : ''}
                         </div>
                     </div>
@@ -507,6 +508,96 @@ App.modules.planificacion = {
             <button class="pln-btn danger" onclick="App.modules.planificacion.ejecutarReprogramar()">Reprogramar Todo</button>
         `;
         App.showModalInv('↻ Reprogramar Pendientes', html, footer);
+    },
+
+    // ---------------- Reprogramar POR AVANCE (regla de planta) ----------------
+    // Reprograma SOLO lo pendiente respetando lo avanzado: una orden con el
+    // corte hecho NO vuelve a programar corte. Cola: primero los ATRASADOS
+    // (fecha pactada <= hoy) y despues lo nuevo; dentro de cada grupo
+    // Reposicion -> Express -> Urgencia -> Normal. Sin splits. Capacidad dura.
+    async showReprogramarAvance() {
+        App.showModalInv('Reprogramar por Avance', '<div class="pln-loading">Cargando ordenes comprometidas...</div>', '<button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>');
+        let dv = {};
+        try {
+            const res = await fetch('/api/taller/dashboard', { headers: { 'Content-Type': 'application/json' } });
+            const d = await res.json();
+            dv = (d && d.desvio) || {};
+        } catch (e) {
+            dv = {};
+        }
+        const vencidas = dv.vencidas || [];
+        const porVencer = dv.por_vencer || [];
+        const fila = (o, venc) => `
+            <div style="background:${venc ? '#fef2f2' : '#fffbeb'};border:1px solid ${venc ? '#fecaca' : '#fde68a'};border-radius:10px;padding:9px 12px;margin-bottom:7px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                    <strong style="font-size:12.5px">${o.pedido || ''} <span style="color:#94a3b8;font-weight:500">item ${o.item != null ? o.item : '-'}</span></strong>
+                    <span class="pln-prio ${venc ? 'p-reposicion' : 'p-express'}" style="font-size:9px">${venc ? 'VENCIDA' : 'POR VENCER'} ${String(o.fecha_pactada || '').slice(5)}</span>
+                </div>
+                <div style="font-size:10px;color:#94a3b8;margin:2px 0 5px">${o.cliente || ''}</div>
+                <div style="font-size:10.5px;display:flex;gap:6px;flex-wrap:wrap">
+                    ${(o.avance || []).map(a => {
+            const ok = a.estado === 'TERMINADO' || a.estado === 'MERMADO';
+            const cur = a.estado === 'EN_PROCESO' || a.estado === 'PAUSADO';
+            return `<span style="color:${ok ? '#15803d' : cur ? '#b45309' : '#94a3b8'}">${ok ? 'OK' : cur ? '>>' : '..'} ${a.estacion || ''}</span>`;
+        }).join('<span style="color:#cbd5e1">·</span>')}
+                </div>
+            </div>`;
+        const lista = [...vencidas.map(o => fila(o, true)), ...porVencer.map(o => fila(o, false))].slice(0, 8).join('');
+        const html = `
+            <div class="pln-warnbox">
+                <strong>Reprogramacion POR AVANCE:</strong> se re-programa <strong>solo lo pendiente</strong> respetando lo ya fabricado (lo cortado NO se vuelve a programar), en la cola:
+                <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+                    <span class="pln-prio p-reposicion">1. Atrasados primero</span>
+                    <span class="pln-prio p-reposicion">4. Reposicion</span>
+                    <span class="pln-prio p-express">2. Express</span>
+                    <span class="pln-prio p-urgencia">3. Urgencia</span>
+                    <span class="pln-prio p-normal">1. Normal</span>
+                </div>
+                <div class="sub2" style="margin-top:8px"><strong>Sin splits:</strong> no fragmenta ordenes avanzadas. Los pasos terminados/mermados son historia y los EN PROCESO se mantienen hoy ocupando capacidad.</div>
+            </div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin:4px 0 8px">Ordenes comprometidas incumplidas (${vencidas.length} vencidas · ${porVencer.length} por vencer)</div>
+            <div style="max-height:38vh;overflow:auto">${lista || '<div class="pln-loading">Sin ordenes incumplidas</div>'}</div>
+            <div id="reprogAvanceResultado" style="margin-top:12px"></div>
+        `;
+        const footer = `
+            <button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>
+            <button class="pln-btn warn" onclick="App.modules.planificacion.ejecutarReprogramarAvance()">Reprogramar por Avance</button>
+        `;
+        App.showModalInv('Reprogramar por Avance', html, footer);
+    },
+
+    async ejecutarReprogramarAvance() {
+        const resEl = document.getElementById('reprogAvanceResultado');
+        if (resEl) resEl.innerHTML = '<div class="pln-loading">Reprogramando por avance: respetando lo fabricado y la capacidad diaria...</div>';
+        try {
+            const res = await fetch('/api/produccion/reprogramar/avance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await res.json();
+            if (res.ok) {
+                const alertas = data.alertas || [];
+                const exceden = alertas.filter(a => a.excede_pacto);
+                let html = `<div class="pln-ok" style="margin-bottom:8px"><strong>${data.mensaje || 'Reprogramacion completada'}</strong></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+                        <div class="pln-stat"><div class="v" style="color:#b45309">${data.ordenes_reprogramadas || 0}</div><div class="k">Ordenes</div></div>
+                        <div class="pln-stat"><div class="v" style="color:#15803d">${data.pasos_fechados || 0}</div><div class="k">Pasos fechados</div></div>
+                        <div class="pln-stat"><div class="v" style="color:#2563eb">${data.pasos_en_curso_respetados || 0}</div><div class="k">En curso (hoy)</div></div>
+                    </div>`;
+                if (exceden.length) {
+                    html += `<div style="margin-top:10px;color:#b91c1c;font-weight:700;font-size:12px">⚠ ${exceden.length} exceden el compromiso pactado (avisar a clientes):</div>`;
+                    html += exceden.slice(0, 12).map(a =>
+                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${a.pedido || ''}</strong> item ${a.item != null ? a.item : '-'}: pactada ${String(a.fecha_anterior || '').slice(5)} → nueva ${String(a.fecha_nueva || '').slice(5)}</div>`).join('');
+                }
+                if (resEl) resEl.innerHTML = html;
+                this.refrescarTodo();
+            } else {
+                if (resEl) resEl.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:12px">Error: ${data.error || 'no se pudo reprogramar'}</div>`;
+            }
+        } catch (e) {
+            if (resEl) resEl.innerHTML = '<div style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:12px">Error de conexion</div>';
+        }
     },
 
     async ejecutarReprogramar() {

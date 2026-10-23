@@ -1157,14 +1157,12 @@ function mostrarDesvio(dv) {
     openSheet('⚠️ ' + vencidas.length + ' vencidas · ' + porVencer.length + ' por vencer', `
         <div style="max-height:44vh;overflow:auto">${lista || '<p style="color:var(--muted);font-size:12px">Sin órdenes incumplidas</p>'}</div>
         <div style="background:var(--bg);border-radius:11px;padding:12px 14px;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.8">
-            <strong style="color:var(--text)">¿Reprogramar dando nueva fecha?</strong><br>
-            Se re-programa <strong>solo lo pendiente</strong> respetando el avance (lo cortado ya no se
-            programa), con la cola: <strong>atrasados → Reposición → Express → Urgencia → Normal</strong>
-            y la capacidad diaria de cada estación.
+            <strong style="color:var(--text)">Para dar nueva fecha</strong><br>
+            La reprogramación se hace desde la web en <strong style="color:var(--text)">Producción → Planificación → 🔔 Por Avance</strong>
+            (re-programa solo lo pendiente, respetando lo ya fabricado).
         </div>
     `, `
-        <button class="btn btn-outline" onclick="App.closeSheet()">Después</button>
-        ${puede ? '<button class="btn btn-primary" onclick="App.reprogramarAhora()">🔄 Sí, reprogramar</button>' : ''}
+        <button class="btn btn-primary" onclick="App.closeSheet()">Entendido</button>
     `);
 }
 

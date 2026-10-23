@@ -1,7 +1,7 @@
 {
-    "notas":  "NUEVO: reprogramacion POR AVANCE — avisa ordenes vencidas/por vencer con su avance por proceso y reprograma SOLO lo pendiente (lo cortado no se vuelve a programar). Cola: atrasados primero y por prioridad.",
+    "notas":  "Alerta de ordenes vencidas/por vencer con avance por proceso. La reprogramacion POR AVANCE ahora es en la web: Produccion \u003e Planificacion \u003e Por Avance.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  15,
-    "versionName":  "1.14",
+    "versionCode":  16,
+    "versionName":  "1.15",
     "fecha":  "2026-10-23"
 }
