@@ -48,7 +48,11 @@ app.use((req, res, next) => {
         res.setHeader('Access-Control-Allow-Origin', origin);
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Permisos, X-User-Email');
+    // Se aceptan los headers que el cliente pida en el preflight (además de los
+    // habituales). Sin esto, headers nuevos como X-Turno (app de planta) hacen
+    // que el navegador corte la petición y la app muestre "error de red".
+    res.setHeader('Access-Control-Allow-Headers',
+        req.headers['access-control-request-headers'] || 'Content-Type, Authorization, X-User-Permisos, X-User-Email, X-Turno');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
     next();
