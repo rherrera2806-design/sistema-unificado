@@ -15,10 +15,14 @@ const { autoAsignarPendientes } = require('./planificacionAuto');
  */
 async function reprogramarPendientes({ dias = 21, inicio } = {}) {
     // Fecha mínima en hora local (toISOString usa UTC y a la noche cambiaba el día)
-    const fechaMinima = inicio || (() => {
+    const calendario = require('./calendario');
+    // Fecha mínima en hora local. REGLA: reprogramar NUNCA parte de HOY
+    // ("hoy no alcanza"): sin fecha explícita, empieza el día siguiente hábil.
+    // El planificador puede fijar otra fecha con el selector "Desde".
+    const fechaMinima = inicio || await calendario.siguienteDiaHabil((() => {
         const h = new Date();
         return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
-    })();
+    })());
 
     // ═══════════════════════════════════════════════════════════════
     // PASO A: LIBERACIÓN — Soltar TODO lo programable → PENDIENTE
@@ -42,7 +46,6 @@ async function reprogramarPendientes({ dias = 21, inicio } = {}) {
 
     // REGLA: los días laborales se definen en Configuración → Calendario
     // (mes a mes); NO solo saltar sáb/dom. Ver services/calendario.js
-    const calendario = require('./calendario');
     const sigHabil = (f) => calendario.siguienteDiaHabil(f);
 
     // ═══════════════════════════════════════════════════════════════
@@ -177,6 +180,10 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     const calendario = require('./calendario');
     const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const hoy = fechaMinima || fmtL(new Date());
+    // REGLA: reprogramar NUNCA fecha para hoy ("hoy no alcanza" — el día ya
+    // está en curso): por defecto lo pendiente parte del SIGUIENTE día hábil.
+    // El planificador puede elegir otra fecha de inicio (selector "Desde").
+    const desde = fechaMinima || await calendario.siguienteDiaHabil(hoy);
 
     // 1) Todo el avance real: pasos de órdenes NO terminadas
     const res = await query(`
@@ -271,7 +278,7 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     let pasosEnCurso = 0;
 
     for (const o of cola) {
-        let base = hoy;
+        let base = desde;   // lo pendiente empieza SIEMPRE el día siguiente hábil
         let primeraFecha = null;
         let ultimaFecha = null;
 

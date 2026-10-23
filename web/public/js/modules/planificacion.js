@@ -526,7 +526,7 @@ App.modules.planificacion = {
                 <div class="sub2" style="margin-top:8px"><strong>Protegidas:</strong> las órdenes EN PROCESO, MERMADAS y TERMINADAS no serán tocadas.</div>
             </div>
             <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde (fecha inicio búsqueda)</label>
-            <input type="date" id="reprogInicio" value="${this.fechaGrupo}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+            <input type="date" id="reprogInicio" value="${this._mananaHabil()}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
             <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Días hábiles a buscar capacidad (se extiende sola hasta 365 para programar todo)</label>
             <input type="number" id="reprogDias" value="21" min="1" max="60" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
             <div id="reprogResultado" style="margin-top:12px"></div>
@@ -543,6 +543,14 @@ App.modules.planificacion = {
     // corte hecho NO vuelve a programar corte. Cola: primero los ATRASADOS
     // (fecha pactada <= hoy) y despues lo nuevo; dentro de cada grupo
     // Reposicion -> Express -> Urgencia -> Normal. Sin splits. Capacidad dura.
+    // Día siguiente hábil (aprox. sáb/dom; el calendario de Configuración se
+    // valida en el servidor). Default de los selectores "Desde" al reprogramar.
+    _mananaHabil() {
+        const d = new Date();
+        do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    },
+
     async showReprogramarAvance() {
         App.showModalInv('Reprogramar por Avance', '<div class="pln-loading">Cargando ordenes comprometidas...</div>', '<button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>');
         let dv = {};
@@ -583,6 +591,8 @@ App.modules.planificacion = {
                 </div>
                 <div class="sub2" style="margin-top:8px"><strong>Sin splits:</strong> no fragmenta ordenes avanzadas. Los pasos terminados/mermados son historia y los EN PROCESO se mantienen hoy ocupando capacidad.</div>
             </div>
+            <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde (día de inicio de la re-programación — por defecto el día siguiente hábil, hoy no alcanza)</label>
+            <input type="date" id="reprogAvanceInicio" value="${this._mananaHabil()}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin:4px 0 8px">Ordenes comprometidas incumplidas (${vencidas.length} vencidas · ${porVencer.length} por vencer)</div>
             <div style="max-height:38vh;overflow:auto">${lista || '<div class="pln-loading">Sin ordenes incumplidas</div>'}</div>
             <div id="reprogAvanceResultado" style="margin-top:12px"></div>
@@ -618,10 +628,11 @@ App.modules.planificacion = {
                 </div>
             </div>`;
         try {
+            const desde = (document.getElementById('reprogAvanceInicio') || {}).value || '';
             const res = await fetch('/api/produccion/reprogramar/avance', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify(desde ? { fecha_minima: desde } : {})
             });
             const data = await res.json();
             clearInterval(timer);
