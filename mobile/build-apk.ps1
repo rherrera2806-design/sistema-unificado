@@ -16,7 +16,10 @@ $version = @{
     apk         = '/planta/VitroFlow-Planta.apk'
     fecha       = (Get-Date -Format 'yyyy-MM-dd')
 } | ConvertTo-Json
-Set-Content -Path (Join-Path $raiz 'app\version.json') -Value $version -Encoding UTF8
+# Escribir sin BOM: un BOM al inicio puede romper el parseo JSON en algunos
+# navegadores/WebView.
+$sinBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText((Join-Path $raiz 'app\version.json'), $version, $sinBom)
 Write-Output "version.json = $versionName ($versionCode)"
 
 # JDK 21 (Capacitor 8 lo exige). Si JAVA_HOME ya apunta a un JDK 21+, se respeta.
