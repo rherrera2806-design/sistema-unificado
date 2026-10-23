@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VitroFlow Planta</title>
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div id="app"><div class="loading">Iniciando…</div></div>
+    <div class="overlay" id="overlay">
+        <div class="sheet" onclick="event.stopPropagation()">
+            <div class="sheet-head">
+                <h3 id="sheetTitle"></h3>
+                <button class="close-x" onclick="App.closeSheet()">✕</button>
+            </div>
+            <div class="sheet-body" id="sheetBody"></div>
+            <div class="sheet-foot" id="sheetFoot"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="js/bundle.js"></script>
+</body>
+</html>

@@ -31,7 +31,9 @@ router.post('/api/auth/login', async (req, res, next) => {
         const isSecure = req.headers.host && !req.headers.host.includes('localhost');
         const cookieValue = `session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL / 1000}${isSecure ? '; Secure' : ''}`;
         res.setHeader('Set-Cookie', cookieValue);
-        res.json(user);
+        // 'token' viaja también en el body para la app móvil (Capacitor), que no
+        // puede leer la cookie HttpOnly ni enviarla cross-origin (SameSite=Lax).
+        res.json({ ...user, token });
     } catch (e) { next(e); }
 });
 
@@ -63,11 +65,8 @@ router.post('/api/auth/verify-password', requireAuth, async (req, res, next) => 
 
 router.get('/api/auth/me', async (req, res, next) => {
     try {
-        const { getSession } = require('../middleware/security');
-        const cookieHeader = req.headers.cookie || '';
-        const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
-        const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-        const sessionUser = getSession(token);
+        const { getSession, getTokenFromReq } = require('../middleware/security');
+        const sessionUser = getSession(getTokenFromReq(req));
         if (!sessionUser) return res.status(401).json({ error: 'No autenticado' });
         
         // Obtener permisos actualizados de la BD
@@ -95,11 +94,8 @@ router.get('/api/auth/me', async (req, res, next) => {
 
 router.post('/api/auth/logout', (req, res, next) => {
     try {
-        const { destroySession } = require('../middleware/security');
-        const cookieHeader = req.headers.cookie || '';
-        const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
-        const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-        destroySession(token);
+        const { destroySession, getTokenFromReq } = require('../middleware/security');
+        destroySession(getTokenFromReq(req));
         res.setHeader('Set-Cookie', 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
         res.json({ ok: true });
     } catch (e) { next(e); }

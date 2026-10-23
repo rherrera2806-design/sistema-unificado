@@ -75,6 +75,22 @@ setInterval(() => {
 const sessions = new Map();
 const SESSION_TTL = 24 * 60 * 60 * 1000;
 
+/**
+ * Token de sesión del request. Acepta dos formas, en orden:
+ *  1. Cookie HttpOnly 'session=' — la usa la web (mismo origen, SameSite no importa).
+ *  2. Header 'Authorization: Bearer <token>' — la usa la app móvil (Capacitor):
+ *     la cookie SameSite=Lax del API no viaja entre el WebView y otro dominio,
+ *     así que la app guarda el token devuelto por /api/auth/login y lo envía aquí.
+ */
+function getTokenFromReq(req) {
+    const cookieHeader = req.headers.cookie || '';
+    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
+    const cookieToken = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
+    if (cookieToken) return cookieToken;
+    const auth = req.headers.authorization || '';
+    return auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+}
+
 function createSession(user) {
     const token = crypto.randomBytes(32).toString('hex');
     sessions.set(token, { user, createdAt: Date.now() });
@@ -125,6 +141,7 @@ module.exports = {
     createSession,
     getSession,
     destroySession,
+    getTokenFromReq,
     setSecurityHeaders,
     SESSION_TTL
 };

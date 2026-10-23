@@ -1,0 +1,12 @@
+{
+  "appId": "cl.vitroflow.planta",
+  "appName": "VitroFlow Planta",
+  "webDir": "app",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "vitroflow-planta",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VitroFlow Planta - App móvil: escaneo de etiquetas y registro de producción",
+  "scripts": {
+    "build": "esbuild app/js/main.js --bundle --minify --outfile=app/js/bundle.js --format=iife --target=es2020",
+    "build:dev": "esbuild app/js/main.js --bundle --outfile=app/js/bundle.js --format=iife --target=es2020",
+    "sync": "npm run build && cap sync android",
+    "android": "npm run build && cap sync android && cap open android"
+  },
+  "dependencies": {
+    "@capacitor-mlkit/barcode-scanning": "^8.2.1",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "jsqr": "^1.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "esbuild": "^0.28.2"
+  }
+}

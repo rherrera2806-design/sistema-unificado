@@ -19,17 +19,14 @@
  *   - modulo.eliminar   → eliminar registros (DELETE)
  */
 
-const { getSession } = require('./security');
+const { getSession, getTokenFromReq } = require('./security');
 
 /**
  * Resuelve el usuario de la sesión a partir de la cookie 'session='.
  * Retorna null si no hay cookie o el token no corresponde a una sesión válida.
  */
 function getUserFromSession(req) {
-    const cookieHeader = req.headers.cookie || '';
-    const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('session='));
-    const token = sessionCookie ? sessionCookie.split('=')[1].trim() : null;
-    return getSession(token);
+    return getSession(getTokenFromReq(req));
 }
 
 /**

@@ -7,8 +7,13 @@ const { logger, requestLogger } = require('./config/logger');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, '..', '..', 'web', 'public');
+// App de planta (mobile/app): se sirve también por web bajo /planta para poder
+// probarla en el navegador del celular antes de instalar el APK.
+const MOBILE_DIR = path.join(__dirname, '..', '..', 'mobile', 'app');
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://vitroflow.up.railway.app,https://sistema-unified-production.up.railway.app,http://localhost:3000').split(',').map(s => s.trim());
+// https://localhost y capacitor://localhost = origen del WebView de la app
+// móvil Capacitor (Android e iOS respectivamente).
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://vitroflow.up.railway.app,https://sistema-unified-production.up.railway.app,http://localhost:3000,https://localhost,capacitor://localhost').split(',').map(s => s.trim());
 
 let dbReady = false;
 let dbError = null;
@@ -71,6 +76,13 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use(require('./routes/router'));
+
+// App de planta bajo /planta/ (la misma que se empaqueta en el APK de Android)
+app.use('/planta', express.static(MOBILE_DIR, {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+    }
+}));
 
 // HTML sin caché (no-cache = revalida siempre): sin esto, el navegador guarda
 // un app.html viejo que apunta a los módulos con ?v= antiguos y cada deploy se
