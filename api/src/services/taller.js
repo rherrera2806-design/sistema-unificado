@@ -100,18 +100,25 @@ async function getColaPorEstacion(estacionId) {
         LEFT JOIN estaciones_maestras prev_est ON prev_paso.estacion_id = prev_est.id
         WHERE p.estacion_id = $1 AND p.estado IN ('PENDIENTE', 'EN_PROCESO')
         ORDER BY
+            -- 1) Lo que se está trabajando ahora, siempre arriba
             CASE WHEN p.estado = 'EN_PROCESO' THEN 0 ELSE 1 END,
+            -- 2) PROGRAMA DIARIO: lo programado primero (sin fecha = al final)
+            COALESCE(p.fecha_programada, '2999-12-31') ASC,
+            -- 3) Trabajo listo para arrancar antes que el bloqueado por su paso anterior
             CASE WHEN p.estado = 'PENDIENTE' AND NOT EXISTS(
                 SELECT 1 FROM cola_produccion_pasos prev
                 WHERE prev.orden_produccion_id = o.id
                   AND prev.orden_secuencia = p.orden_secuencia - 1
                   AND prev.estado = 'TERMINADO'
             ) AND p.orden_secuencia > 1 THEN 1 ELSE 0 END,
+            -- 4) Prioridad: Reposición → Express → Urgencia → Normal
             CASE COALESCE(o.nivel_prioridad, 1) WHEN 4 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 ELSE 4 END ASC,
+            -- 5) Espesor: agrupa material y reduce cambios de herramienta
+            COALESCE(o.espesor_mm, 0) ASC,
+            -- 6) Pedido, item
             COALESCE(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[^0-9]', '', 'g'), ''), '0')::BIGINT ASC,
             COALESCE(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[0-9]', '', 'g'), ''), '') ASC,
             COALESCE(o.item_numero, 0) ASC,
-            p.fecha_programada ASC NULLS LAST,
             p.orden_secuencia ASC, o.id ASC
     `, [estacionId]);
     return result.rows;
@@ -659,8 +666,61 @@ async function guardarHorariosTurnos(filas) {
 }
 function diaSeis(d) { return Number.isInteger(d) && d >= 0 && d <= 6; }
 
+// ============ DASHBOARD DE PLANTA (pantallas en vivo) ============
+// Datos agregados para la TV de planta: carga por estación, resumen del día
+// y los trabajos urgentes/express/reposición en cola.
+
+async function getDashboard() {
+    const [estaciones, resumen, urgencias, enProceso] = await Promise.all([
+        getEstacionesConCarga(),
+        query(`
+            SELECT COUNT(*)::int as pasos,
+                   COALESCE(SUM(cantidad_real), 0)::int as unidades,
+                   COALESCE(SUM(m2_real), 0)::numeric as m2
+            FROM cola_produccion_pasos
+            WHERE estado = 'TERMINADO'
+              AND hora_fin >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Santiago')
+        `),
+        query(`
+            SELECT * FROM (
+                SELECT DISTINCT ON (o.id)
+                       o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto,
+                       o.descripcion, o.espesor_mm, o.nivel_prioridad,
+                       est.nombre_estacion as estacion
+                FROM cola_produccion_pasos p
+                JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                LEFT JOIN estaciones_maestras est ON p.estacion_id = est.id
+                WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
+                  AND COALESCE(o.nivel_prioridad, 1) >= 2
+                ORDER BY o.id, p.orden_secuencia
+            ) u
+            ORDER BY nivel_prioridad DESC, pedido_sap_id
+            LIMIT 25
+        `),
+        query(`
+            SELECT p.id, o.pedido_sap_id, o.item_numero, o.codigo_producto, o.cliente,
+                   est.nombre_estacion as estacion,
+                   ROUND(o.cantidad * COALESCE(p.m2_asignados, o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0)) as cantidad_paso
+            FROM cola_produccion_pasos p
+            JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+            LEFT JOIN estaciones_maestras est ON p.estacion_id = est.id
+            WHERE p.estado = 'EN_PROCESO'
+            ORDER BY p.hora_inicio NULLS LAST
+            LIMIT 12
+        `)
+    ]);
+    return {
+        estaciones,
+        resumen_hoy: resumen.rows[0] || { pasos: 0, unidades: 0, m2: 0 },
+        urgencias: urgencias.rows,
+        en_proceso: enProceso.rows,
+        ts: Date.now()
+    };
+}
+
 module.exports = {
     getEstacionesConCarga,
+    getDashboard,
     getColaPorEstacion,
     getMaquinasPorEstacion,
     iniciarPaso,

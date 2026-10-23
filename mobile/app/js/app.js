@@ -315,6 +315,35 @@ async function refreshColaManual() {
     toast(`Cola actualizada ✓ · ${state.cola.length} trabajos${state.cola.length !== antes ? ' (cambió)' : ''}`, 'ok');
 }
 
+// ===== Agrupación visual por FECHA DE PROGRAMACIÓN =====
+// La cola viene ordenada por fecha→prioridad→espesor→pedido/item: estos
+// encabezados muestran el programa diario y cuánto queda de cada día.
+function keyFecha(item) {
+    const f = item && item.fecha_programada ? String(item.fecha_programada).slice(0, 10) : '';
+    return f || 'sin';
+}
+
+function headerFecha(key, lista) {
+    const n = lista.filter(it => keyFecha(it) === key).length;
+    let etiqueta;
+    if (key === 'sin') {
+        etiqueta = 'Sin fecha programada';
+    } else {
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        const f = new Date(key + 'T00:00:00');
+        const dif = Math.round((f - hoy) / 86400000);
+        const larga = f.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+        etiqueta = dif === 0 ? 'Hoy · ' + larga
+            : dif === 1 ? 'Mañana · ' + larga
+                : larga.charAt(0).toUpperCase() + larga.slice(1);
+    }
+    return `<div style="display:flex;align-items:center;gap:9px;margin:15px 2px 8px">
+        <div style="font-size:13px;font-weight:800;color:var(--text)">📅 ${etiqueta}</div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <div class="badge" style="background:var(--bg);color:var(--muted)">${n} ${n === 1 ? 'trabajo' : 'trabajos'}</div>
+    </div>`;
+}
+
 function pintarCola() {
     const box = $('#colaList');
     if (!box) return;
@@ -345,12 +374,15 @@ function pintarCola() {
         ${lista.length === 0 ? `
             <div class="empty">
                 <p>${filtro ? 'Sin coincidencias para ese pedido' : 'No hay trabajos en esta estación'}</p>
-            </div>` : lista.map(item => {
+            </div>` : (() => { let lastF = null; return lista.map(item => {
+        const f = keyFecha(item);
+        let cabeza = '';
+        if (f !== lastF) { lastF = f; cabeza = headerFecha(f, lista); }
         const enProceso = item.estado === 'EN_PROCESO';
         const pausado = item.estado === 'PAUSADO';
         const cantPaso = item.cantidad_paso || item.cantidad || 1;
         const [prioTxt, prioBg, prioFg] = PRIORIDAD[item.nivel_prioridad || 1] || PRIORIDAD[1];
-        return `
+        return cabeza + `
             <div class="card q-item ${enProceso ? 'en-proceso' : ''}">
                 <div class="q-head">
                     <div>
@@ -387,7 +419,7 @@ function pintarCola() {
                     <button class="btn btn-danger btn-sm" onclick="App.showMerma(${item.id})">✕ Merma</button>
                 </div>
             </div>`;
-    }).join('')}`;
+    }).join(''); })()}`;
 }
 
 function onSearch(v) {
