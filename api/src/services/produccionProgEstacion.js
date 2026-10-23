@@ -41,6 +41,7 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             cp.estacion_id,
             cp.fecha_programada,
             cp.estado,
+            cp.turno,
             cp.orden_secuencia,
             cp.m2_asignados,
             cp.hora_inicio,
@@ -163,6 +164,7 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
                 return m2o > 0 ? (Number(r.kilos) || 0) * m2p / m2o : (Number(r.kilos) || 0);
             })(),
             estado: r.estado,
+            turno: r.turno || null,
             prioridad: r.nivel_prioridad,
             estado_programacion: r.estado_programacion,
             es_compuesto: r.es_compuesto,

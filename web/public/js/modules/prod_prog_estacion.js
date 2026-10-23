@@ -364,7 +364,7 @@ App.registerModule('prod_prog_estacion', {
     _renderFila(o, estadoClass, esHijo) {
         let html = '<tr>';
         html += `<td><strong>${this.esc(o.pedido || '-')}</strong></td>`;
-        html += `<td>${this.esc(o.item || '-')}</td>`;
+        html += `<td>${this.esc(o.item || '-')}${o.turno ? (String(o.turno).toLowerCase() === 'noche' ? ' <span title="Turno noche">🌙</span>' : ' <span title="Turno día">🌞</span>') : ''}</td>`;
         html += `<td>${this._prioBadge(o.prioridad)}</td>`;
         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
         html += `<td style="font-size:10px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;

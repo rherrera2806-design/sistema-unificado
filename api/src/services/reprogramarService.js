@@ -190,7 +190,7 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         SELECT o.id as orden_id, o.pedido_sap_id, o.item_numero, o.nivel_prioridad,
                o.fecha_entrega_pactada, o.metros_cuadrados, o.cantidad, o.estado_programacion,
                p.id as paso_id, p.estacion_id, p.orden_secuencia, p.estado,
-               p.m2_asignados, p.fecha_programada as fecha_paso, em.cap_max
+               p.m2_asignados, p.fecha_programada as fecha_paso, p.turno, em.cap_max
         FROM cola_produccion_pasos p
         JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
         LEFT JOIN estaciones_maestras em ON em.id = p.estacion_id
@@ -229,48 +229,72 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         if (r.estado === 'TERMINADO' || r.estado === 'MERMADO') o.avance++;
     }
 
-    // 3) COLA (regla 1): atascado primero, luego prioridad 4→2→3→1, luego fecha
+    // 3) COLA (jerarquía): primero ATRASADOS, luego prioridad 4→2→3→1, luego
+    // LO LISTO para entrar a la estación antes que lo bloqueado (lo que ya
+    // tiene proceso avanzado está disponible para pasar), y por último la
+    // fecha pactada más antigua
     const rangoPrio = { 4: 0, 2: 1, 3: 2, 1: 3 };
+    const esHecho = (estado) => estado === 'TERMINADO' || estado === 'MERMADO';
     const cola = [...ordenes.values()].filter(o =>
-        o.pasos.some(p => p.estado !== 'TERMINADO' && p.estado !== 'MERMADO'));
+        o.pasos.some(p => !esHecho(p.estado)));
+    for (const o of cola) {
+        const idx = o.pasos.findIndex(p => !esHecho(p.estado));
+        const prev = idx > 0 ? o.pasos[idx - 1] : null;
+        o.listo = !prev || esHecho(prev.estado);
+    }
     cola.sort((a, b) => {
         const atA = (a.fecha_pactada && a.fecha_pactada <= hoy) ? 0 : 1;
         const atB = (b.fecha_pactada && b.fecha_pactada <= hoy) ? 0 : 1;
         return (atA - atB)
             || ((rangoPrio[a.prioridad] ?? 3) - (rangoPrio[b.prioridad] ?? 3))
+            || ((a.listo ? 0 : 1) - (b.listo ? 0 : 1))
             || String(a.fecha_pactada || '9999').localeCompare(String(b.fecha_pactada || '9999'));
     });
 
-    // 4) Carga existente: los pasos EN CURSO ocupan capacidad de HOY
-    const carga = new Map();      // 'fecha|estId' -> m²
-    const caps = new Map();       // estId -> cap_max
-    const agregarCarga = (estId, fecha, m2) => {
-        const k = fecha + '|' + estId;
+    // 4) CAPACIDAD POR TURNO: un día tiene 2 turnos (día y noche) y la
+    // capacidad diaria de la estación se reparte entre ellos según
+    // Configuración → Turnos (p.ej. 60/40 o 50/50). BLOQUEO DURO como cabeEnDia.
+    const configTurnos = require('./configTurnos');
+    const cfgTurnos = await configTurnos.getConfigTurnos();
+    const carga = new Map();      // 'fecha|turno|estId' -> m²
+    const caps = new Map();       // estId -> cap_max (m²/día)
+    const agregarCarga = (estId, fecha, turno, m2) => {
+        const k = fecha + '|' + turno + '|' + estId;
         carga.set(k, (carga.get(k) || 0) + m2);
     };
-    const cabeEnDia = (estId, fecha, m2) => {
-        const cap = caps.get(estId) || 0;
-        if (!(cap > 0)) return true;                    // sin capacidad configurada = sin tope
-        return ((carga.get(fecha + '|' + estId) || 0) + m2) <= cap;   // REGLA 2: duro, sin tolerancia
+    const cabeEnTurno = (estId, fecha, turno, m2) => {
+        const capDia = caps.get(estId) || 0;
+        if (!(capDia > 0)) return true;   // sin capacidad configurada = sin tope
+        const capTurno = configTurnos.capacidadTurno(capDia, turno, cfgTurnos);
+        return ((carga.get(fecha + '|' + turno + '|' + estId) || 0) + m2) <= capTurno;
     };
+    const turnoActual = (() => {
+        const h = new Date().getHours();
+        return (h >= 6 && h < 22) ? 'dia' : 'noche';
+    })();
+    // La cascada avanza de TURNO en TURNO: 🌞 → 🌙 → (día hábil siguiente) 🌞
+    const siguienteSlot = async (slot) => slot.turno === 'dia'
+        ? { fecha: slot.fecha, turno: 'noche' }
+        : { fecha: await calendario.siguienteDiaHabil(slot.fecha), turno: 'dia' };
     for (const o of cola) {
         for (const p of o.pasos) {
             if (p.cap > 0) caps.set(p.estacion_id, p.cap);
             if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') {
-                agregarCarga(p.estacion_id, hoy, p.m2);
+                agregarCarga(p.estacion_id, hoy, p.turno || turnoActual, p.m2);
             }
         }
     }
-    const buscarDia = async (estId, m2, desde) => {
-        let f = desde;
-        for (let i = 0; i < 400; i++) {
-            if (cabeEnDia(estId, f, m2)) return f;
-            f = await calendario.siguienteDiaHabil(f);
+    const buscarSlot = async (estId, m2, desdeSlot) => {
+        let slot = desdeSlot;
+        for (let i = 0; i < 600; i++) {
+            if (cabeEnTurno(estId, slot.fecha, slot.turno, m2)) return slot;
+            slot = await siguienteSlot(slot);
         }
-        return f;
+        return slot;
     };
 
-    // 5) Programar cada orden por su SUB-RUTA pendiente (reglas 2, 3, 5)
+    // 5) Programar cada orden por su SUB-RUTA pendiente, TURNOS en cascada:
+    //    Pulido 🌞 lunes → Templado 🌙 lunes → siguiente paso 🌞 martes
     const updatesPasos = [];
     const updatesOrdenes = [];
     const alertas = [];
@@ -278,27 +302,26 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     let pasosEnCurso = 0;
 
     for (const o of cola) {
-        let base = desde;   // lo pendiente empieza SIEMPRE el día siguiente hábil
+        let slot = { fecha: desde, turno: 'dia' };
         let primeraFecha = null;
         let ultimaFecha = null;
 
         for (const p of o.pasos) {
-            if (p.estado === 'TERMINADO' || p.estado === 'MERMADO') continue;   // historia
-            let fecha;
+            if (esHecho(p.estado)) continue;   // historia
+            let slotPaso;
             if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') {
-                fecha = hoy;                                                     // decisión 2
+                slotPaso = { fecha: hoy, turno: p.turno || turnoActual };   // decisión 2
                 pasosEnCurso++;
-                agregarCarga(p.estacion_id, fecha, p.m2);
             } else {
-                fecha = await buscarDia(p.estacion_id, p.m2, base);              // cascada + capacidad
-                agregarCarga(p.estacion_id, fecha, p.m2);
+                slotPaso = await buscarSlot(p.estacion_id, p.m2, slot);
                 pasosFechados++;
             }
+            agregarCarga(p.estacion_id, slotPaso.fecha, slotPaso.turno, p.m2);
             const m2p = p.m2 > 0 ? p.m2 : (o.m2_orden || 0);
-            updatesPasos.push([fecha, m2p, p.paso_id]);
-            if (!primeraFecha || fecha < primeraFecha) primeraFecha = fecha;
-            if (!ultimaFecha || fecha > ultimaFecha) ultimaFecha = fecha;
-            base = await calendario.siguienteDiaHabil(fecha);                    // 1 día hábil por paso
+            updatesPasos.push([slotPaso.fecha, slotPaso.turno, m2p, p.paso_id]);
+            if (!primeraFecha || slotPaso.fecha < primeraFecha) primeraFecha = slotPaso.fecha;
+            if (!ultimaFecha || slotPaso.fecha > ultimaFecha) ultimaFecha = slotPaso.fecha;
+            slot = await siguienteSlot(slotPaso);   // +1 TURNO (el turno siguiente)
         }
 
         if (!ultimaFecha) continue;
@@ -316,8 +339,8 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
 
     // 6) Aplicar en BD (atómico: o todo o nada)
     await transaction(async ({ query: txQuery }) => {
-        for (const [fecha, m2, pasoId] of updatesPasos) {
-            await txQuery(`UPDATE cola_produccion_pasos SET fecha_programada = $1, m2_asignados = $2 WHERE id = $3`, [fecha, m2, pasoId]);
+        for (const [fecha, turno, m2, pasoId] of updatesPasos) {
+            await txQuery(`UPDATE cola_produccion_pasos SET fecha_programada = $1, turno = $2, m2_asignados = $3 WHERE id = $4`, [fecha, turno, m2, pasoId]);
         }
         for (const [primera, ultima, ordenId, esAvanzada] of updatesOrdenes) {
             if (esAvanzada) {

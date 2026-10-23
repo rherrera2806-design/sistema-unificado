@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const config = require('../services/produccionConfig');
+const configTurnos = require('../services/configTurnos');
 const catalogos = require('../services/produccionCatalogos');
 const procesosCarroceria = require('../services/procesosCarroceria');
 const { requireAnyPerm, requireAdmin } = require('../middleware/permisos');
@@ -221,6 +222,17 @@ router.post('/api/produccion/procesos-carroceria/importar', canCreate, asyncHand
     }
     const r = await procesosCarroceria.importarMasivo(filas);
     res.json(r);
+}));
+
+// ===== Reparto de capacidad por TURNO (Configuración → Turnos) =====
+// pct_dia = % de la capacidad diaria que va al turno DÍA (el resto al NOCHE).
+// Con la barra se puede pasar de 50/50 a 60/40 o lo que convenga.
+router.get('/api/produccion/turnos', canView, asyncHandler(async (req, res) => {
+    res.json(await configTurnos.getConfigTurnos());
+}));
+
+router.put('/api/produccion/turnos', canUpdate, asyncHandler(async (req, res) => {
+    res.json(await configTurnos.setConfigTurnos(req.body.pct_dia));
 }));
 
 module.exports = router;
