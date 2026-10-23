@@ -1153,7 +1153,11 @@
         // ===== Registro MANUAL (si la terminal falla) + escaneo QR =====
         let registroFilas = [];
 
-        function showRegistroManual(prefill) {
+        let registroOrigen = 'manual';
+        function showRegistroManual(prefill, origen) {
+            // 'qr' = llegamos escaneando: el flujo continúa escaneando el siguiente
+            // vidrio. 'manual' = digitación desde cero.
+            registroOrigen = origen || (prefill ? 'qr' : 'manual');
             // Una etiqueta = 1 vidrio: si el QR no trae cantidad, se asume 1
             // (antes quedaba "undefined und" y el backend rechazaba el registro)
             if (prefill) {
@@ -1165,8 +1169,8 @@
                 };
             }
             registroFilas = prefill ? [prefill] : [];
-            tModal('Registro manual de producción', `
-                <p style="font-size:12px;color:#64748b;margin:0 0 12px">Digitación directa o pegado desde Excel (una fila por línea: <strong>pedido · item · cantidad</strong>, separados por tabulador, coma o punto y coma).</p>
+            tModal(registroOrigen === 'qr' ? 'Registrar producción' : 'Registro manual de producción', `
+                <p style="font-size:12px;color:#64748b;margin:0 0 12px">${registroOrigen === 'qr' ? 'Etiqueta escaneada. Revisa la cantidad (por defecto <strong>1 vidrio</strong>) y registra.' : 'Digitación directa o pegado desde Excel (una fila por línea: <strong>pedido · item · cantidad</strong>, separados por tabulador, coma o punto y coma).'}</p>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;align-items:end">
                     <div><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">PEDIDO</label>
                         <input id="rmPedido" style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px" placeholder="111805"></div>
@@ -1270,7 +1274,10 @@
                 if (fallos.length) {
                     cuerpo += fallos.map(f => `<div style="padding:7px 10px;background:#fef2f2;border-radius:8px;font-size:12px;color:#991b1b;margin-bottom:5px"><strong>${String(f.pedido)}</strong> · Item ${f.item}: ${f.mensaje}</div>`).join('');
                 }
-                tModal('Resultado del registro', cuerpo, `
+                tModal('Resultado del registro', cuerpo, registroOrigen === 'qr' ? `
+                    <button class="btn btn-outline" onclick="tModalCerrar();cargarCola()">Volver a la cola</button>
+                    <button class="btn btn-primary" onclick="tModalCerrar();showEscanerQR()">📷 Escanear otro</button>
+                ` : `
                     <button class="btn btn-outline" onclick="tModalCerrar();showRegistroManual()">Seguir registrando</button>
                     <button class="btn btn-primary" onclick="tModalCerrar();cargarCola()">Cerrar</button>
                 `);
