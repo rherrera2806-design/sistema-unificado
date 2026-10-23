@@ -32,10 +32,16 @@ async function getEstacionesConCarga() {
             SELECT p.estacion_id,
                    COUNT(*) FILTER (WHERE p.estado = 'PENDIENTE') as pendientes,
                    COUNT(*) FILTER (WHERE p.estado = 'EN_PROCESO') as en_proceso,
-                   SUM(COALESCE(o.kilos, 0)) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_kilos,
+                   -- FÓRMULA ESTÁNDAR: kilos/unidades PROPORCIONALES al m2 del
+                   -- paso (si no tiene m2_asignado >0, se usa el total de la orden)
+                   SUM(CASE WHEN COALESCE(o.metros_cuadrados, 0) > 0
+                            THEN COALESCE(o.kilos, 0) * (CASE WHEN COALESCE(p.m2_asignados, 0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados
+                            ELSE COALESCE(o.kilos, 0) END) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_kilos,
                    SUM(COALESCE(p.m2_asignados, (o.ancho::DECIMAL * o.alto / 1000000) * COALESCE(o.cantidad, 1))) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_m2,
                    SUM((o.alto::DECIMAL / 1000) * COALESCE(o.cantidad, 1)) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_ml,
-                   SUM(COALESCE(o.cantidad, 1)) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_unidades
+                   SUM(CASE WHEN COALESCE(o.metros_cuadrados, 0) > 0
+                            THEN ROUND(COALESCE(o.cantidad, 1) * (CASE WHEN COALESCE(p.m2_asignados, 0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados)
+                            ELSE COALESCE(o.cantidad, 1) END) FILTER (WHERE p.estado IN ('PENDIENTE','EN_PROCESO')) as total_unidades
             FROM cola_produccion_pasos p
             JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
             WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
@@ -72,8 +78,8 @@ async function getColaPorEstacion(estacionId) {
                ELSE NULL END as descripcion_padre,
                -- Cantidad y kilos PROPIOS de este paso (los pasos "resto" que
                -- nacen de un ingreso parcial cubren solo una parte de la orden)
-               ROUND(o.cantidad * COALESCE(p.m2_asignados, o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0)) as cantidad_paso,
-               ROUND(o.kilos * COALESCE(p.m2_asignados, o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0), 1) as kilos_paso,
+               ROUND(o.cantidad * CASE WHEN COALESCE(p.m2_asignados, 0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END / NULLIF(o.metros_cuadrados, 0)) as cantidad_paso,
+               ROUND(o.kilos * CASE WHEN COALESCE(p.m2_asignados, 0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END / NULLIF(o.metros_cuadrados, 0), 1) as kilos_paso,
                f.nombre_familia,
                mq.nombre as maquina_nombre,
                est_actual.nombre_estacion as estacion_actual,
@@ -701,7 +707,7 @@ async function getTurnoActual() {
 // y los trabajos urgentes/express/reposición en cola.
 
 async function getDashboard() {
-    const [estaciones, resumen, urgencias, enProceso, hoyPorEstacion, produccion] = await Promise.all([
+    const [estaciones, resumen, urgencias, enProceso, hoyPorEstacion, ordenesGlobales, produccion] = await Promise.all([
         getEstacionesConCarga(),
         query(`
             SELECT COUNT(*)::int as pasos,
@@ -731,7 +737,7 @@ async function getDashboard() {
         query(`
             SELECT p.id, o.pedido_sap_id, o.item_numero, o.codigo_producto, o.cliente,
                    est.nombre_estacion as estacion,
-                   ROUND(o.cantidad * COALESCE(p.m2_asignados, o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0)) as cantidad_paso
+                   ROUND(o.cantidad * CASE WHEN COALESCE(p.m2_asignados, 0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END / NULLIF(o.metros_cuadrados, 0)) as cantidad_paso
             FROM cola_produccion_pasos p
             JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
             LEFT JOIN estaciones_maestras est ON p.estacion_id = est.id
@@ -739,25 +745,54 @@ async function getDashboard() {
             ORDER BY p.hora_inicio NULLS LAST
             LIMIT 12
         `),
-        // PENDIENTES POR PRODUCIR por estación, en UNIDADES (descuenta con cada
-        // registro, aunque sea parcial) — vista Día (programado <= hoy, incluye
-        // vencido) vs Total (toda la cola).
+        // PENDIENTES POR PRODUCIR por estación en UNIDADES, en 3 cubetas para
+        // que los reportes cuadren entre sí:
+        //   HOY = fecha_programada == hoy  (igual que Prog. por Estación)
+        //   VENCIDO = fecha < hoy o sin fecha (lo atrasado y lo sin programar)
+        //   TOTAL = toda la cola
         query(`
             SELECT sub.estacion_id,
-                   COALESCE(SUM(sub.cant) FILTER (WHERE sub.es_hoy), 0)::int as hoy_unidades,
-                   COALESCE(SUM(sub.kilos) FILTER (WHERE sub.es_hoy), 0)::numeric as hoy_kilos,
+                   COALESCE(SUM(sub.cant) FILTER (WHERE sub.cubeta = 'hoy'), 0)::int as hoy_unidades,
+                   COALESCE(SUM(sub.kilos) FILTER (WHERE sub.cubeta = 'hoy'), 0)::numeric as hoy_kilos,
+                   COALESCE(SUM(sub.cant) FILTER (WHERE sub.cubeta = 'vencido'), 0)::int as venc_unidades,
+                   COALESCE(SUM(sub.kilos) FILTER (WHERE sub.cubeta = 'vencido'), 0)::numeric as venc_kilos,
                    COALESCE(SUM(sub.cant), 0)::int as total_unidades,
-                   COALESCE(SUM(sub.kilos), 0)::numeric as total_kilos
+                   COALESCE(SUM(sub.kilos), 0)::numeric as total_kilos,
+                   COUNT(DISTINCT sub.orden_id) FILTER (WHERE sub.cubeta = 'hoy')::int as hoy_ordenes,
+                   COUNT(DISTINCT sub.orden_id) FILTER (WHERE sub.cubeta = 'vencido')::int as venc_ordenes,
+                   COUNT(DISTINCT sub.orden_id)::int as total_ordenes
             FROM (
                 SELECT p.estacion_id,
-                       (COALESCE(p.fecha_programada, '2999-12-31') <= (NOW() AT TIME ZONE 'America/Santiago')::date) as es_hoy,
-                       ROUND(o.cantidad * COALESCE(p.m2_asignados, o.metros_cuadrados) / NULLIF(o.metros_cuadrados, 0)) as cant,
-                       COALESCE(o.kilos, 0) as kilos
+                       p.orden_produccion_id as orden_id,
+                       CASE WHEN p.fecha_programada = (NOW() AT TIME ZONE 'America/Santiago')::date THEN 'hoy'
+                            WHEN p.fecha_programada IS NULL OR p.fecha_programada < (NOW() AT TIME ZONE 'America/Santiago')::date THEN 'vencido'
+                            ELSE 'futuro' END as cubeta,
+                       CASE WHEN COALESCE(o.metros_cuadrados, 0) > 0
+                            THEN ROUND(o.cantidad * (CASE WHEN COALESCE(p.m2_asignados, 0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados)
+                            ELSE COALESCE(o.cantidad, 1) END as cant,
+                       CASE WHEN COALESCE(o.metros_cuadrados, 0) > 0
+                            THEN COALESCE(o.kilos, 0) * (CASE WHEN COALESCE(p.m2_asignados, 0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados
+                            ELSE COALESCE(o.kilos, 0) END as kilos
                 FROM cola_produccion_pasos p
                 JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
                 WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
             ) sub
             GROUP BY sub.estacion_id
+        `),
+        // Nº de ÓRDENES con trabajo pendiente (global — por orden, sin duplicar
+        // las que tienen pasos en varias estaciones)
+        query(`
+            SELECT COUNT(DISTINCT sub.orden_id) FILTER (WHERE sub.cubeta = 'hoy')::int as hoy_ordenes,
+                   COUNT(DISTINCT sub.orden_id) FILTER (WHERE sub.cubeta = 'vencido')::int as venc_ordenes,
+                   COUNT(DISTINCT sub.orden_id)::int as total_ordenes
+            FROM (
+                SELECT p.orden_produccion_id as orden_id,
+                       CASE WHEN p.fecha_programada = (NOW() AT TIME ZONE 'America/Santiago')::date THEN 'hoy'
+                            WHEN p.fecha_programada IS NULL OR p.fecha_programada < (NOW() AT TIME ZONE 'America/Santiago')::date THEN 'vencido'
+                            ELSE 'futuro' END as cubeta
+                FROM cola_produccion_pasos p
+                WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
+            ) sub
         `),
         // PRODUCIDO por estación: del día y del turno actual (unidades, m², kilos)
         (async () => {
@@ -789,8 +824,13 @@ async function getDashboard() {
             hoy_pendientes: Number(h.hoy_unidades) || 0,
             hoy_en_proceso: 0,
             hoy_kilos: Number(h.hoy_kilos) || 0,
+            venc_pendientes: Number(h.venc_unidades) || 0,
+            venc_kilos: Number(h.venc_kilos) || 0,
             total_unidades_pend: Number(h.total_unidades) || 0,
             total_kilos_pend: Number(h.total_kilos) || 0,
+            hoy_ordenes: Number(h.hoy_ordenes) || 0,
+            venc_ordenes: Number(h.venc_ordenes) || 0,
+            total_ordenes: Number(h.total_ordenes) || 0,
             prod_hoy: {
                 unidades: Number(pr.hoy_unidades) || 0,
                 m2: Number(pr.hoy_m2) || 0,
@@ -806,6 +846,11 @@ async function getDashboard() {
     return {
         estaciones: ests,
         turno_actual: produccion.turnoActual || 'dia',
+        ordenes: {
+            hoy: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].hoy_ordenes) || 0,
+            vencido: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].venc_ordenes) || 0,
+            total: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].total_ordenes) || 0
+        },
         resumen_hoy: resumen.rows[0] || { pasos: 0, unidades: 0, m2: 0 },
         urgencias: urgencias.rows,
         en_proceso: enProceso.rows,

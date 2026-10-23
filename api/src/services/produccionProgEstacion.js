@@ -10,11 +10,11 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
     }
     if (fecha_inicio) {
         params.push(fecha_inicio);
-        where.push(`cp.fecha_programada >= $${params.length}::date`);
+        where.push(`(cp.fecha_programada >= $${params.length}::date OR cp.fecha_programada IS NULL)`);
     }
     if (fecha_fin) {
         params.push(fecha_fin);
-        where.push(`cp.fecha_programada <= $${params.length}::date`);
+        where.push(`(cp.fecha_programada <= $${params.length}::date OR cp.fecha_programada IS NULL)`);
     }
     // Estado del PASO en la estación:
     //  - por_fabricar (por defecto): todo lo que aún debe fabricarse
@@ -29,7 +29,9 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
         where.push(`cp.estado NOT IN ('TERMINADO', 'MERMADO')`);
     }
 
-    where.push(`cp.fecha_programada IS NOT NULL`);
+    // NOTA: los pasos SIN fecha programada (importaciones, BOM, restos de
+    // cortes parciales) también se muestran — agrupados como 'sin_fecha' —
+    // para que este programa cuadre con el taller, donde sí aparecen.
 
     const whereClause = where.length > 0 ? 'WHERE ' + where.join(' AND ') : '';
 
@@ -118,9 +120,11 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             estacionesLista.push(estacionesMap[estKey]);
         }
         const est = estacionesMap[estKey];
-        const fecha = typeof r.fecha_programada === 'string'
-            ? r.fecha_programada.split('T')[0]
-            : new Date(r.fecha_programada).toISOString().split('T')[0];
+        const fecha = !r.fecha_programada
+            ? 'sin_fecha'
+            : (typeof r.fecha_programada === 'string'
+                ? r.fecha_programada.split('T')[0]
+                : new Date(r.fecha_programada).toISOString().split('T')[0]);
 
         if (!est.por_fecha[fecha]) {
             est.por_fecha[fecha] = { ordenes: [], total_m2: 0, total_kg: 0, total_ordenes: 0 };
@@ -172,11 +176,13 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
         };
         dia.ordenes.push(ordenInfo);
         dia.total_m2 += ordenInfo.m2_asignados || ordenInfo.m2;
-        dia.total_kg += ordenInfo.kg;
+        // kg_paso (proporcional al paso) = lo que muestra la columna Kg de cada
+        // fila: antes el total sumaba los kilos COMPLETOS y no cuadraba
+        dia.total_kg += ordenInfo.kg_paso;
         dia.total_ordenes++;
         est.total_ordenes++;
         est.total_m2 += ordenInfo.m2_asignados || ordenInfo.m2;
-        est.total_kg += ordenInfo.kg;
+        est.total_kg += ordenInfo.kg_paso;
     }
 
     for (const est of estacionesLista) {

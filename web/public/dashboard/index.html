@@ -45,7 +45,7 @@
         @keyframes pulso { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
 
         /* ===== KPIs ===== */
-        .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 6px 30px 15px; }
+        .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 6px 30px 15px; }
         .kpi {
             background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
             padding: 17px 22px;
@@ -171,13 +171,15 @@
         <div class="kpi"><div class="l">Unidades producidas</div><div class="v" id="kUnid">0</div></div>
         <div class="kpi"><div class="l">M² producidos</div><div class="v" id="kM2">0,00</div><div class="u">metros cuadrados</div></div>
         <div class="kpi"><div class="l" id="kColaLabel">Programa de hoy</div><div class="v" id="kCola">0</div><div class="u" id="kColaUnid">trabajos del día</div></div>
+        <div class="kpi"><div class="l" id="kOrdLabel">Órdenes</div><div class="v" id="kOrd">0</div><div class="u" id="kOrdUnid">con trabajo pendiente</div></div>
     </div>
 
     <div class="main">
         <div class="panel">
             <h2>📊 Estaciones
                 <span style="margin-left:auto;display:flex;gap:8px">
-                    <button id="vDia" class="vista-btn sel" onclick="setVista('dia')">📅 Día</button>
+                    <button id="vHoy" class="vista-btn sel" onclick="setVista('hoy')">📅 Hoy</button>
+                    <button id="vVenc" class="vista-btn" onclick="setVista('vencido')">⏰ Vencido</button>
                     <button id="vTotal" class="vista-btn" onclick="setVista('total')">📊 Total</button>
                 </span>
             </h2>
@@ -214,12 +216,13 @@
         setInterval(tickReloj, 1000); tickReloj();
 
         // ===== Datos ===== */
-        let vista = 'dia';   // 'dia' = programa de hoy · 'total' = toda la cola
-        let datos = null;
+        let vista = 'hoy';   // 'hoy' | 'vencido' | 'total' — las3 vistas cuadran
+        let datos = null;    // con Prog. por Estación (misma fórmula por paso)
 
         function setVista(v) {
             vista = v;
-            document.getElementById('vDia').className = 'vista-btn' + (v === 'dia' ? ' sel' : '');
+            document.getElementById('vHoy').className = 'vista-btn' + (v === 'hoy' ? ' sel' : '');
+            document.getElementById('vVenc').className = 'vista-btn' + (v === 'vencido' ? ' sel' : '');
             document.getElementById('vTotal').className = 'vista-btn' + (v === 'total' ? ' sel' : '');
             if (datos) pintar(datos);
         }
@@ -238,22 +241,28 @@
 
         function pintar(d) {
             const ests = d.estaciones || [];
-            const esDia = vista === 'dia';
+            const esDia = vista === 'hoy';
+            const etiquetaVista = vista === 'hoy' ? 'hoy' : vista === 'vencido' ? 'vencidas' : 'en cola';
             // Campos según la vista: programa de HOY vs toda la cola
-            const de = (e) => esDia
-                ? { pend: Number(e.hoy_pendientes || 0), kg: Number(e.hoy_kilos || 0) }
-                : { pend: Number(e.total_unidades_pend || 0), kg: Number(e.total_kilos_pend || 0) };
+            const de = (e) => vista === 'hoy'
+                ? { pend: Number(e.hoy_pendientes || 0), kg: Number(e.hoy_kilos || 0), ord: Number(e.hoy_ordenes || 0) }
+                : vista === 'vencido'
+                    ? { pend: Number(e.venc_pendientes || 0), kg: Number(e.venc_kilos || 0), ord: Number(e.venc_ordenes || 0) }
+                    : { pend: Number(e.total_unidades_pend || 0), kg: Number(e.total_kilos_pend || 0), ord: Number(e.total_ordenes || 0) };
 
             document.getElementById('kPasos').textContent = fmt(d.resumen_hoy.pasos);
             document.getElementById('kUnid').textContent = fmt(d.resumen_hoy.unidades);
             document.getElementById('kM2').textContent = fmt(d.resumen_hoy.m2, 2);
             const cargaVista = ests.reduce((a, e) => a + de(e).pend, 0);
-            const cargaTotal = ests.reduce((a, e) => a + Number(e.total_unidades_pend || 0), 0);
+            const ordVista = ({ hoy: (d.ordenes || {}).hoy, vencido: (d.ordenes || {}).vencido, total: (d.ordenes || {}).total })[vista] || 0;
             document.getElementById('kCola').textContent = fmt(cargaVista);
-            document.getElementById('kColaLabel').textContent = esDia ? 'Programa de hoy' : 'Total por producir';
-            document.getElementById('kColaUnid').textContent = esDia
-                ? 'unidades de hoy + vencidas · total: ' + fmt(cargaTotal) + ' und'
-                : 'unidades pendientes (todos los días)';
+            document.getElementById('kColaLabel').textContent = vista === 'hoy' ? 'Programa de hoy' : vista === 'vencido' ? 'Trabajo vencido' : 'Total por producir';
+            document.getElementById('kColaUnid').textContent = vista === 'hoy' ? 'unidades programadas para hoy'
+                : vista === 'vencido' ? 'unidades atrasadas + sin programar'
+                    : 'unidades pendientes (todos los días)';
+            document.getElementById('kOrd').textContent = fmt(ordVista);
+            document.getElementById('kOrdLabel').textContent = vista === 'hoy' ? 'Órdenes de hoy' : vista === 'vencido' ? 'Órdenes vencidas' : 'Órdenes en cola';
+            document.getElementById('kOrdUnid').textContent = 'con trabajo por producir';
 
             const maxCarga = Math.max(1, ...ests.map(e => de(e).pend));
             const nombreTurno = ({ dia: 'Día', noche: 'Noche', extra: 'Extra' })[String(d.turno_actual || '').toLowerCase()] || 'Día';
@@ -267,11 +276,12 @@
                 return `
                 <div class="st">
                     <div class="nombre">${esc(e.nombre_estacion)}
-                        <span class="carga" style="background:${color}22;color:${color}">${fmt(carga)} und ${esDia ? 'hoy' : 'en cola'}</span>
+                        <span class="carga" style="background:${color}22;color:${color}">${fmt(carga)} und ${etiquetaVista}</span>
                     </div>
-                    <div class="nums" style="grid-template-columns:1fr 1fr">
+                    <div class="nums">
                         <div class="num"><div class="v" style="color:var(--azul)">${fmt(x.pend)}</div><div class="l">Pendientes (und)</div></div>
-                        <div class="num"><div class="v">${fmt(x.kg)}</div><div class="l">Kilos${esDia ? ' hoy' : ''}</div></div>
+                        <div class="num"><div class="v" style="color:var(--morado)">${fmt(x.ord)}</div><div class="l">Órdenes</div></div>
+                        <div class="num"><div class="v">${fmt(x.kg)}</div><div class="l">Kilos</div></div>
                     </div>
                     <div class="barra"><div style="width:${pct}%;background:${color}"></div></div>
                     <div class="prod">

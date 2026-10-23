@@ -178,11 +178,12 @@ App.registerModule('prod_prog_estacion', {
                 html += `<div style="padding:16px;text-align:center;color:#94a3b8;font-size:13px">Sin programación en este rango</div>`;
             } else {
                 for (const dia of est.fechas) {
-                    const _fd = new Date(dia.fecha + 'T12:00:00');
+                    const esSinFecha = dia.fecha === 'sin_fecha';
+                    const _fd = new Date((esSinFecha ? '2000-01-01' : dia.fecha) + 'T12:00:00');
                     const fechaFmt = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][_fd.getDay()] + ' ' + String(_fd.getDate()).padStart(2, '0') + '-' + String(_fd.getMonth() + 1).padStart(2, '0') + '-' + _fd.getFullYear();
                     const esHoy = dia.fecha === this._hoyLocal();
-                    html += `<div class="ppe-date-header" style="${esHoy ? 'background:linear-gradient(135deg,#059669,#10b981)' : ''}">`;
-                    html += `<div>${esHoy ? 'HOY - ' : ''}${fechaFmt}</div>`;
+                    html += `<div class="ppe-date-header" style="${esSinFecha ? 'background:linear-gradient(135deg,#b45309,#d97706)' : esHoy ? 'background:linear-gradient(135deg,#059669,#10b981)' : ''}">`;
+                    html += `<div>${esSinFecha ? 'SIN FECHA PROGRAMADA' : (esHoy ? 'HOY - ' : '') + fechaFmt}</div>`;
                     html += `<div>${dia.total_ordenes} ord · ${this._unidadesDia(dia).toLocaleString('es-CL')} und · ${Number(dia.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m² · ${Number(dia.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</div>`;
                     html += `</div>`;
                     html += `<div class="m-table-wrap"><table class="ppe-table"><thead><tr>`;
@@ -346,7 +347,9 @@ App.registerModule('prod_prog_estacion', {
                 if (vistas.has(key)) continue;
                 vistas.add(key);
             }
-            und += Number(o.cantidad) || 0;
+            // cantidad_paso (la misma que muestra la columna CANT. PEND.):
+            // antes se sumaba o.cantidad completa y los totales no cuadraban
+            und += Number(o.cantidad_paso != null ? o.cantidad_paso : o.cantidad) || 0;
         }
         return und;
     },
