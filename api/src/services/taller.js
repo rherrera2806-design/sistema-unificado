@@ -666,12 +666,42 @@ async function guardarHorariosTurnos(filas) {
 }
 function diaSeis(d) { return Number.isInteger(d) && d >= 0 && d <= 6; }
 
+// Turno actual según las ventanas horarias configuradas (GET horarios).
+// Mismo criterio que la web/app: ventanas del día de la semana; fuera de
+// ellas = 'extra'. Sin configuración: 06:00-22:00 día, resto noche.
+async function getTurnoActual() {
+    const respaldo = () => (new Date().getHours() >= 6 && new Date().getHours() < 22) ? 'dia' : 'noche';
+    try {
+        const horarios = await getHorariosTurnos();
+        const ahora = new Date();
+        const cfg = (horarios || []).filter(h => Number(h.anio) === ahora.getFullYear() && Number(h.mes) === ahora.getMonth() + 1);
+        if (cfg.length) {
+            for (let atras = 0; atras <= 1; atras++) {
+                const d = new Date(ahora.getTime() - atras * 86400000);
+                const diaSemana = d.getDay();
+                for (const h of cfg) {
+                    if (Number(h.dia_semana) !== diaSemana || !h.hora_inicio || !h.hora_fin) continue;
+                    const [hi, mi] = String(h.hora_inicio).split(':').map(Number);
+                    const [hf, mf] = String(h.hora_fin).split(':').map(Number);
+                    const ini = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hi, mi);
+                    const fin = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (h.dia_siguiente ? 1 : 0), hf, mf);
+                    if (fin > ini && ahora >= ini && ahora < fin) return h.turno;
+                }
+            }
+            return 'extra';
+        }
+        return respaldo();
+    } catch (_) {
+        return respaldo();
+    }
+}
+
 // ============ DASHBOARD DE PLANTA (pantallas en vivo) ============
 // Datos agregados para la TV de planta: carga por estación, resumen del día
 // y los trabajos urgentes/express/reposición en cola.
 
 async function getDashboard() {
-    const [estaciones, resumen, urgencias, enProceso, hoyPorEstacion] = await Promise.all([
+    const [estaciones, resumen, urgencias, enProceso, hoyPorEstacion, produccion] = await Promise.all([
         getEstacionesConCarga(),
         query(`
             SELECT COUNT(*)::int as pasos,
@@ -720,20 +750,52 @@ async function getDashboard() {
             WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
               AND p.fecha_programada = (NOW() AT TIME ZONE 'America/Santiago')::date
             GROUP BY p.estacion_id
-        `)
+        `),
+        // PRODUCIDO por estación: del día y del turno actual (unidades, m², kilos)
+        (async () => {
+            const turnoActual = await getTurnoActual();
+            const prod = await query(`
+                SELECT p.estacion_id,
+                       COALESCE(SUM(p.cantidad_real), 0)::int as hoy_unidades,
+                       COALESCE(SUM(p.m2_real), 0)::numeric as hoy_m2,
+                       COALESCE(SUM(o.kilos * p.cantidad_real / NULLIF(o.cantidad, 0)), 0)::numeric as hoy_kilos,
+                       COALESCE(SUM(p.cantidad_real) FILTER (WHERE LOWER(COALESCE(p.turno, '')) = $1), 0)::int as turno_unidades,
+                       COALESCE(SUM(p.m2_real) FILTER (WHERE LOWER(COALESCE(p.turno, '')) = $1), 0)::numeric as turno_m2,
+                       COALESCE(SUM(o.kilos * p.cantidad_real / NULLIF(o.cantidad, 0)) FILTER (WHERE LOWER(COALESCE(p.turno, '')) = $1), 0)::numeric as turno_kilos
+                FROM cola_produccion_pasos p
+                JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+                WHERE p.estado = 'TERMINADO'
+                  AND p.hora_fin >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Santiago')
+                GROUP BY p.estacion_id
+            `, [String(turnoActual).toLowerCase()]);
+            return { turnoActual, rows: prod.rows };
+        })()
     ]);
+    const prodMap = new Map((produccion.rows || []).map(r => [Number(r.estacion_id), r]));
     const hoyMap = new Map(hoyPorEstacion.rows.map(r => [Number(r.estacion_id), r]));
     const ests = estaciones.map(e => {
         const h = hoyMap.get(Number(e.id)) || {};
+        const pr = prodMap.get(Number(e.id)) || {};
         return {
             ...e,
             hoy_pendientes: Number(h.hoy_pendientes) || 0,
             hoy_en_proceso: Number(h.hoy_en_proceso) || 0,
-            hoy_kilos: Number(h.hoy_kilos) || 0
+            hoy_kilos: Number(h.hoy_kilos) || 0,
+            prod_hoy: {
+                unidades: Number(pr.hoy_unidades) || 0,
+                m2: Number(pr.hoy_m2) || 0,
+                kilos: Number(pr.hoy_kilos) || 0
+            },
+            prod_turno: {
+                unidades: Number(pr.turno_unidades) || 0,
+                m2: Number(pr.turno_m2) || 0,
+                kilos: Number(pr.turno_kilos) || 0
+            }
         };
     });
     return {
         estaciones: ests,
+        turno_actual: produccion.turnoActual || 'dia',
         resumen_hoy: resumen.rows[0] || { pasos: 0, unidades: 0, m2: 0 },
         urgencias: urgencias.rows,
         en_proceso: enProceso.rows,

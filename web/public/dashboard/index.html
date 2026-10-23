@@ -84,6 +84,15 @@
         .barra { height: 7px; border-radius: 999px; background: #0d1526; margin-top: 12px; overflow: hidden; }
         .barra > div { height: 100%; border-radius: 999px; transition: width .6s ease; }
 
+        /* ===== Producción del día / turno por estación ===== */
+        .prod {
+            margin-top: 11px; padding-top: 10px; border-top: 1px dashed var(--border);
+            display: flex; flex-direction: column; gap: 5px;
+        }
+        .prod .fila-prod { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+        .prod .fila-prod b { color: var(--text); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+        .prod .pl { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; margin-left: auto; }
+
         /* ===== Listas laterales ===== */
         .lateral { display: flex; flex-direction: column; gap: 15px; overflow: hidden; }
         .lista { overflow: auto; flex: 1; }
@@ -247,11 +256,14 @@
                 : 'pendientes + en proceso (todos los días)';
 
             const maxCarga = Math.max(1, ...ests.map(e => { const x = de(e); return x.pend + x.proc; }));
+            const nombreTurno = ({ dia: 'Día', noche: 'Noche', extra: 'Extra' })[String(d.turno_actual || '').toLowerCase()] || 'Día';
             document.getElementById('estaciones').innerHTML = ests.map(e => {
                 const x = de(e);
                 const carga = x.pend + x.proc;
                 const color = carga > 10 ? 'var(--rojo)' : carga > 5 ? 'var(--amarillo)' : 'var(--verde)';
                 const pct = Math.min(100, Math.round((carga / maxCarga) * 100));
+                const ph = e.prod_hoy || { unidades: 0, m2: 0, kilos: 0 };
+                const pt = e.prod_turno || { unidades: 0, m2: 0, kilos: 0 };
                 return `
                 <div class="st">
                     <div class="nombre">${esc(e.nombre_estacion)}
@@ -263,6 +275,10 @@
                         <div class="num"><div class="v">${fmt(x.kg)}</div><div class="l">Kilos${esDia ? ' hoy' : ''}</div></div>
                     </div>
                     <div class="barra"><div style="width:${pct}%;background:${color}"></div></div>
+                    <div class="prod">
+                        <div class="fila-prod">✅ <b>${fmt(ph.unidades)}</b> und · <b>${fmt(ph.m2, 1)}</b> m² · <b>${fmt(ph.kilos)}</b> kg <span class="pl">producido hoy</span></div>
+                        <div class="fila-prod">🕐 <b>${fmt(pt.unidades)}</b> und · <b>${fmt(pt.m2, 1)}</b> m² · <b>${fmt(pt.kilos)}</b> kg <span class="pl">turno ${nombreTurno}</span></div>
+                    </div>
                 </div>`;
             }).join('');
 
