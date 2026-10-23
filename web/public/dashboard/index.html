@@ -266,13 +266,23 @@
 
             const maxCarga = Math.max(1, ...ests.map(e => de(e).pend));
             const nombreTurno = ({ dia: 'Día', noche: 'Noche', extra: 'Extra' })[String(d.turno_actual || '').toLowerCase()] || 'Día';
-            document.getElementById('estaciones').innerHTML = ests.map(e => {
+            const totalVenc = ests.reduce((a, e) => a + Number(e.venc_pendientes || 0), 0);
+            const bannerVenc = (vista === 'hoy' && totalVenc > 0)
+                ? `<div style="grid-column:1/-1;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);color:#fca5a5;border-radius:12px;padding:11px 16px;font-size:13px;font-weight:700">⚠️ Además hay ${fmt(totalVenc)} und <strong>vencidas + sin programar</strong> — toca <strong style="color:#fff">⏰ Vencido</strong> para verlas (o 📊 Total para el macro completo)</div>`
+                : '';
+            document.getElementById('estaciones').innerHTML = bannerVenc + ests.map(e => {
                 const x = de(e);
                 const carga = x.pend;
                 const pct = Math.min(100, Math.round((carga / maxCarga) * 100));
                 const color = pct > 66 ? 'var(--rojo)' : pct > 33 ? 'var(--amarillo)' : 'var(--verde)';
                 const ph = e.prod_hoy || { unidades: 0, m2: 0, kilos: 0 };
                 const pt = e.prod_turno || { unidades: 0, m2: 0, kilos: 0 };
+                // En la vista Hoy se muestra también lo VENCIDO como aviso
+                // aparte (el número grande sigue cuadrando con Prog. Estación)
+                const vencUnd = Number(e.venc_pendientes || 0);
+                const lineaVenc = (vista === 'hoy' && vencUnd > 0)
+                    ? `<div class="fila-prod" style="color:var(--rojo);font-weight:700">⏰ ${fmt(vencUnd)} und vencidas + sin programar <span class="pl">ver Vencido</span></div>`
+                    : '';
                 return `
                 <div class="st">
                     <div class="nombre">${esc(e.nombre_estacion)}
@@ -285,6 +295,7 @@
                     </div>
                     <div class="barra"><div style="width:${pct}%;background:${color}"></div></div>
                     <div class="prod">
+                        ${lineaVenc}
                         <div class="fila-prod">✅ <b>${fmt(ph.unidades)}</b> und · <b>${fmt(ph.m2, 1)}</b> m² · <b>${fmt(ph.kilos)}</b> kg <span class="pl">producido hoy</span></div>
                         <div class="fila-prod">🕐 <b>${fmt(pt.unidades)}</b> und · <b>${fmt(pt.m2, 1)}</b> m² · <b>${fmt(pt.kilos)}</b> kg <span class="pl">turno ${nombreTurno}</span></div>
                     </div>
