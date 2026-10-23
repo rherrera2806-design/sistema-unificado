@@ -98,6 +98,14 @@
         .badge { padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
         .vacio { color: var(--muted); font-size: 13.5px; text-align: center; padding: 22px 8px; }
 
+        /* ===== Selector Día / Total ===== */
+        .vista-btn {
+            padding: 8px 18px; border-radius: 999px; border: 1px solid var(--border);
+            background: var(--panel2); color: var(--muted); font-size: 13px;
+            font-weight: 800; cursor: pointer;
+        }
+        .vista-btn.sel { background: var(--azul); color: #fff; border-color: var(--azul); }
+
         /* ===== Login ===== */
         .login {
             position: fixed; inset: 0; background: var(--bg); z-index: 50;
@@ -153,23 +161,22 @@
         <div class="kpi"><div class="l">Pasos terminados hoy</div><div class="v" id="kPasos">0</div></div>
         <div class="kpi"><div class="l">Unidades producidas</div><div class="v" id="kUnid">0</div></div>
         <div class="kpi"><div class="l">M² producidos</div><div class="v" id="kM2">0,00</div><div class="u">metros cuadrados</div></div>
-        <div class="kpi"><div class="l">Trabajos en cola</div><div class="v" id="kCola">0</div><div class="u">pendientes + en proceso</div></div>
+        <div class="kpi"><div class="l" id="kColaLabel">Programa de hoy</div><div class="v" id="kCola">0</div><div class="u" id="kColaUnid">trabajos del día</div></div>
     </div>
 
     <div class="main">
         <div class="panel">
-            <h2>📊 Estaciones</h2>
+            <h2>📊 Estaciones
+                <span style="margin-left:auto;display:flex;gap:8px">
+                    <button id="vDia" class="vista-btn sel" onclick="setVista('dia')">📅 Día</button>
+                    <button id="vTotal" class="vista-btn" onclick="setVista('total')">📊 Total</button>
+                </span>
+            </h2>
             <div class="stations" id="estaciones"><div class="vacio">Cargando…</div></div>
         </div>
-        <div class="lateral">
-            <div class="panel" style="flex:1.15">
-                <h2>🔴 Urgencias / Express</h2>
-                <div class="lista" id="urgencias"><div class="vacio">Cargando…</div></div>
-            </div>
-            <div class="panel" style="flex:1">
-                <h2>⚙️ En proceso ahora</h2>
-                <div class="lista" id="enProceso"><div class="vacio">Cargando…</div></div>
-            </div>
+        <div class="panel">
+            <h2>🔴 Urgencias / Express</h2>
+            <div class="lista" id="urgencias"><div class="vacio">Cargando…</div></div>
         </div>
     </div>
 
@@ -198,9 +205,20 @@
         setInterval(tickReloj, 1000); tickReloj();
 
         // ===== Datos ===== */
+        let vista = 'dia';   // 'dia' = programa de hoy · 'total' = toda la cola
+        let datos = null;
+
+        function setVista(v) {
+            vista = v;
+            document.getElementById('vDia').className = 'vista-btn' + (v === 'dia' ? ' sel' : '');
+            document.getElementById('vTotal').className = 'vista-btn' + (v === 'total' ? ' sel' : '');
+            if (datos) pintar(datos);
+        }
+
         async function cargar() {
             try {
                 const d = await api('/api/taller/dashboard');
+                datos = d;
                 pintar(d);
                 setLive(true);
             } catch (e) {
@@ -211,25 +229,38 @@
 
         function pintar(d) {
             const ests = d.estaciones || [];
+            const esDia = vista === 'dia';
+            // Campos según la vista: programa de HOY vs toda la cola
+            const de = (e) => esDia
+                ? { pend: Number(e.hoy_pendientes || 0), proc: Number(e.hoy_en_proceso || 0), kg: Number(e.hoy_kilos || 0) }
+                : { pend: Number(e.pendientes || 0), proc: Number(e.en_proceso || 0), kg: Number(e.total_kilos || 0) };
+
             document.getElementById('kPasos').textContent = fmt(d.resumen_hoy.pasos);
             document.getElementById('kUnid').textContent = fmt(d.resumen_hoy.unidades);
             document.getElementById('kM2').textContent = fmt(d.resumen_hoy.m2, 2);
-            document.getElementById('kCola').textContent = fmt(ests.reduce((a, e) => a + Number(e.pendientes || 0) + Number(e.en_proceso || 0), 0));
+            const cargaVista = ests.reduce((a, e) => { const x = de(e); return a + x.pend + x.proc; }, 0);
+            const cargaTotal = ests.reduce((a, e) => a + Number(e.pendientes || 0) + Number(e.en_proceso || 0), 0);
+            document.getElementById('kCola').textContent = fmt(cargaVista);
+            document.getElementById('kColaLabel').textContent = esDia ? 'Programa de hoy' : 'Trabajos en cola';
+            document.getElementById('kColaUnid').textContent = esDia
+                ? 'de hoy · total en cola: ' + fmt(cargaTotal)
+                : 'pendientes + en proceso (todos los días)';
 
-            const maxCarga = Math.max(1, ...ests.map(e => Number(e.pendientes || 0) + Number(e.en_proceso || 0)));
+            const maxCarga = Math.max(1, ...ests.map(e => { const x = de(e); return x.pend + x.proc; }));
             document.getElementById('estaciones').innerHTML = ests.map(e => {
-                const carga = Number(e.pendientes || 0) + Number(e.en_proceso || 0);
+                const x = de(e);
+                const carga = x.pend + x.proc;
                 const color = carga > 10 ? 'var(--rojo)' : carga > 5 ? 'var(--amarillo)' : 'var(--verde)';
                 const pct = Math.min(100, Math.round((carga / maxCarga) * 100));
                 return `
                 <div class="st">
                     <div class="nombre">${esc(e.nombre_estacion)}
-                        <span class="carga" style="background:${color}22;color:${color}">${carga} en cola</span>
+                        <span class="carga" style="background:${color}22;color:${color}">${carga} ${esDia ? 'hoy' : 'en cola'}</span>
                     </div>
                     <div class="nums">
-                        <div class="num"><div class="v" style="color:var(--azul)">${fmt(e.pendientes)}</div><div class="l">Pendientes</div></div>
-                        <div class="num"><div class="v" style="color:var(--amarillo)">${fmt(e.en_proceso)}</div><div class="l">En proceso</div></div>
-                        <div class="num"><div class="v">${fmt(e.total_kilos)}</div><div class="l">Kilos</div></div>
+                        <div class="num"><div class="v" style="color:var(--azul)">${fmt(x.pend)}</div><div class="l">Pendientes</div></div>
+                        <div class="num"><div class="v" style="color:var(--amarillo)">${fmt(x.proc)}</div><div class="l">En proceso</div></div>
+                        <div class="num"><div class="v">${fmt(x.kg)}</div><div class="l">Kilos${esDia ? ' hoy' : ''}</div></div>
                     </div>
                     <div class="barra"><div style="width:${pct}%;background:${color}"></div></div>
                 </div>`;
@@ -238,24 +269,19 @@
             const urg = d.urgencias || [];
             document.getElementById('urgencias').innerHTML = urg.length ? urg.map(u => {
                 const [txt, bg, fg] = PRIO[u.nivel_prioridad] || PRIO[1];
+                const f = u.fecha_programada ? String(u.fecha_programada).slice(0, 10) : null;
+                const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                const dif = f ? Math.round((new Date(f + 'T00:00:00') - hoy) / 86400000) : null;
+                const etFecha = dif === 0 ? 'Hoy' : dif === 1 ? 'Mañana' : (f ? new Date(f + 'T00:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }) : '');
                 return `
                 <div class="fila">
                     <div>
-                        <div class="ped">${esc(u.pedido_sap_id)} <span style="color:var(--muted);font-size:11.5px">item ${u.item_numero != null ? u.item_numero : '—'}</span></div>
+                        <div class="ped">${esc(u.pedido_sap_id)} <span style="color:var(--muted);font-size:11.5px">item ${u.item_numero != null ? u.item_numero : '—'}${etFecha ? ' · 📅 ' + etFecha : ''}</span></div>
                         <div class="det">${esc(u.codigo_producto || '')} · ${esc(u.cliente || '')} · ${esc(u.estacion || '')}</div>
                     </div>
                     <div class="est"><span class="badge" style="background:${bg};color:${fg}">${txt}</span></div>
                 </div>`;
             }).join('') : '<div class="vacio">Sin trabajos urgentes 🎉</div>';
-
-            const proc = d.en_proceso || [];
-            document.getElementById('enProceso').innerHTML = proc.length ? proc.map(p => `
-                <div class="fila">
-                    <div>
-                        <div class="ped">${esc(p.pedido_sap_id)} <span style="color:var(--muted);font-size:11.5px">item ${p.item_numero != null ? p.item_numero : '—'}</span></div>
-                        <div class="det">${esc(p.codigo_producto || '')} · ${esc(p.estacion || '')} · ${fmt(p.cantidad_paso)} und</div>
-                    </div>
-                </div>`).join('') : '<div class="vacio">Nada en proceso ahora</div>';
         }
 
         function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

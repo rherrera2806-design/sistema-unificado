@@ -671,7 +671,7 @@ function diaSeis(d) { return Number.isInteger(d) && d >= 0 && d <= 6; }
 // y los trabajos urgentes/express/reposición en cola.
 
 async function getDashboard() {
-    const [estaciones, resumen, urgencias, enProceso] = await Promise.all([
+    const [estaciones, resumen, urgencias, enProceso, hoyPorEstacion] = await Promise.all([
         getEstacionesConCarga(),
         query(`
             SELECT COUNT(*)::int as pasos,
@@ -686,7 +686,8 @@ async function getDashboard() {
                 SELECT DISTINCT ON (o.id)
                        o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto,
                        o.descripcion, o.espesor_mm, o.nivel_prioridad,
-                       est.nombre_estacion as estacion
+                       est.nombre_estacion as estacion,
+                       p.fecha_programada
                 FROM cola_produccion_pasos p
                 JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
                 LEFT JOIN estaciones_maestras est ON p.estacion_id = est.id
@@ -707,10 +708,32 @@ async function getDashboard() {
             WHERE p.estado = 'EN_PROCESO'
             ORDER BY p.hora_inicio NULLS LAST
             LIMIT 12
+        `),
+        // Trabajo del DÍA por estación (para la vista "Día" del dashboard)
+        query(`
+            SELECT p.estacion_id,
+                   COUNT(*) FILTER (WHERE p.estado = 'PENDIENTE')::int as hoy_pendientes,
+                   COUNT(*) FILTER (WHERE p.estado = 'EN_PROCESO')::int as hoy_en_proceso,
+                   COALESCE(SUM(COALESCE(o.kilos, 0)), 0)::numeric as hoy_kilos
+            FROM cola_produccion_pasos p
+            JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
+            WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
+              AND p.fecha_programada = (NOW() AT TIME ZONE 'America/Santiago')::date
+            GROUP BY p.estacion_id
         `)
     ]);
+    const hoyMap = new Map(hoyPorEstacion.rows.map(r => [Number(r.estacion_id), r]));
+    const ests = estaciones.map(e => {
+        const h = hoyMap.get(Number(e.id)) || {};
+        return {
+            ...e,
+            hoy_pendientes: Number(h.hoy_pendientes) || 0,
+            hoy_en_proceso: Number(h.hoy_en_proceso) || 0,
+            hoy_kilos: Number(h.hoy_kilos) || 0
+        };
+    });
     return {
-        estaciones,
+        estaciones: ests,
         resumen_hoy: resumen.rows[0] || { pasos: 0, unidades: 0, m2: 0 },
         urgencias: urgencias.rows,
         en_proceso: enProceso.rows,
