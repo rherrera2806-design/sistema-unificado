@@ -241,37 +241,36 @@
             const esDia = vista === 'dia';
             // Campos según la vista: programa de HOY vs toda la cola
             const de = (e) => esDia
-                ? { pend: Number(e.hoy_pendientes || 0), proc: Number(e.hoy_en_proceso || 0), kg: Number(e.hoy_kilos || 0) }
-                : { pend: Number(e.pendientes || 0), proc: Number(e.en_proceso || 0), kg: Number(e.total_kilos || 0) };
+                ? { pend: Number(e.hoy_pendientes || 0), kg: Number(e.hoy_kilos || 0) }
+                : { pend: Number(e.total_unidades_pend || 0), kg: Number(e.total_kilos_pend || 0) };
 
             document.getElementById('kPasos').textContent = fmt(d.resumen_hoy.pasos);
             document.getElementById('kUnid').textContent = fmt(d.resumen_hoy.unidades);
             document.getElementById('kM2').textContent = fmt(d.resumen_hoy.m2, 2);
-            const cargaVista = ests.reduce((a, e) => { const x = de(e); return a + x.pend + x.proc; }, 0);
-            const cargaTotal = ests.reduce((a, e) => a + Number(e.pendientes || 0) + Number(e.en_proceso || 0), 0);
+            const cargaVista = ests.reduce((a, e) => a + de(e).pend, 0);
+            const cargaTotal = ests.reduce((a, e) => a + Number(e.total_unidades_pend || 0), 0);
             document.getElementById('kCola').textContent = fmt(cargaVista);
-            document.getElementById('kColaLabel').textContent = esDia ? 'Programa de hoy' : 'Trabajos en cola';
+            document.getElementById('kColaLabel').textContent = esDia ? 'Programa de hoy' : 'Total por producir';
             document.getElementById('kColaUnid').textContent = esDia
-                ? 'de hoy · total en cola: ' + fmt(cargaTotal)
-                : 'pendientes + en proceso (todos los días)';
+                ? 'unidades de hoy + vencidas · total: ' + fmt(cargaTotal) + ' und'
+                : 'unidades pendientes (todos los días)';
 
-            const maxCarga = Math.max(1, ...ests.map(e => { const x = de(e); return x.pend + x.proc; }));
+            const maxCarga = Math.max(1, ...ests.map(e => de(e).pend));
             const nombreTurno = ({ dia: 'Día', noche: 'Noche', extra: 'Extra' })[String(d.turno_actual || '').toLowerCase()] || 'Día';
             document.getElementById('estaciones').innerHTML = ests.map(e => {
                 const x = de(e);
-                const carga = x.pend + x.proc;
-                const color = carga > 10 ? 'var(--rojo)' : carga > 5 ? 'var(--amarillo)' : 'var(--verde)';
+                const carga = x.pend;
                 const pct = Math.min(100, Math.round((carga / maxCarga) * 100));
+                const color = pct > 66 ? 'var(--rojo)' : pct > 33 ? 'var(--amarillo)' : 'var(--verde)';
                 const ph = e.prod_hoy || { unidades: 0, m2: 0, kilos: 0 };
                 const pt = e.prod_turno || { unidades: 0, m2: 0, kilos: 0 };
                 return `
                 <div class="st">
                     <div class="nombre">${esc(e.nombre_estacion)}
-                        <span class="carga" style="background:${color}22;color:${color}">${carga} ${esDia ? 'hoy' : 'en cola'}</span>
+                        <span class="carga" style="background:${color}22;color:${color}">${fmt(carga)} und ${esDia ? 'hoy' : 'en cola'}</span>
                     </div>
-                    <div class="nums">
-                        <div class="num"><div class="v" style="color:var(--azul)">${fmt(x.pend)}</div><div class="l">Pendientes</div></div>
-                        <div class="num"><div class="v" style="color:var(--amarillo)">${fmt(x.proc)}</div><div class="l">En proceso</div></div>
+                    <div class="nums" style="grid-template-columns:1fr 1fr">
+                        <div class="num"><div class="v" style="color:var(--azul)">${fmt(x.pend)}</div><div class="l">Pendientes (und)</div></div>
                         <div class="num"><div class="v">${fmt(x.kg)}</div><div class="l">Kilos${esDia ? ' hoy' : ''}</div></div>
                     </div>
                     <div class="barra"><div style="width:${pct}%;background:${color}"></div></div>
