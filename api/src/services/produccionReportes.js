@@ -122,9 +122,28 @@ const getReporteFechas = async ({ familia, fecha_inicio, fecha_fin, grupo, estad
         }
         r.ruta_abreviada = pares.join('-');
     }
+
+    // ===== MACRO POR CÓDIGO PADRE (reglas del negocio 1 y 5) =====
+    // Las órdenes compuestas (BOM) crean UNA FILA POR CADA materia prima, todas
+    // con el mismo m²/cantidad del pedido: el reporte se mide por CÓDIGO PADRE.
+    //   espesor = SUMA de los espesores del BOM (ej: 6+6 = 12mm)
+    //   kilos   = suma de las partes (= peso del producto terminado)
+    //   m² / unidades = los del PADRE (las filas MP los repiten, no se suman)
+    const macro = new Map();
+    for (const r of rows) {
+        const key = `${r.ov}|${r.item}|${r.codigo_sap_padre || ''}`;
+        if (!macro.has(key)) macro.set(key, { ...r, espesor: 0, kilos: 0, pend: 0, m2: 0 });
+        const g = macro.get(key);
+        g.espesor += Number(r.espesor) || 0;
+        g.kilos += Number(r.kilos) || 0;
+        g.pend = Math.max(g.pend, Number(r.pend) || 0);
+        g.m2 = Math.max(g.m2, Number(r.m2) || 0);
+    }
+    const rowsMacro = [...macro.values()];
+
     const porFecha = {};
 
-    for (const r of rows) {
+    for (const r of rowsMacro) {
         const fecha = r.fecha;
         if (!porFecha[fecha]) {
             porFecha[fecha] = {

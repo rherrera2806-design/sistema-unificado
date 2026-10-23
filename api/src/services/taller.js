@@ -715,7 +715,9 @@ async function getDashboard() {
                    COALESCE(SUM(m2_real), 0)::numeric as m2
             FROM cola_produccion_pasos
             WHERE estado = 'TERMINADO'
-              AND hora_fin >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Santiago')
+              -- REGLA: todo se mide POR DÍA (2 turnos por día calendario); el
+              -- turno nocturno se acredita al día en que termina (fecha_turno)
+              AND COALESCE(fecha_turno, hora_fin::date) = (NOW() AT TIME ZONE 'America/Santiago')::date
         `),
         query(`
             SELECT * FROM (
@@ -794,7 +796,9 @@ async function getDashboard() {
                 WHERE p.estado IN ('PENDIENTE', 'EN_PROCESO')
             ) sub
         `),
-        // PRODUCIDO por estación: del día y del turno actual (unidades, m², kilos)
+        // PRODUCIDO por estación: del día y del turno actual (unidades, m², kilos).
+        // REGLA: 1 día calendario = 2 turnos (día y noche) y todo se mide POR DÍA;
+        // el turno nocturno se acredita al día en que TERMINA (fecha_turno).
         (async () => {
             const turnoActual = await getTurnoActual();
             const prod = await query(`
@@ -808,7 +812,7 @@ async function getDashboard() {
                 FROM cola_produccion_pasos p
                 JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
                 WHERE p.estado = 'TERMINADO'
-                  AND p.hora_fin >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Santiago')
+                  AND COALESCE(p.fecha_turno, p.hora_fin::date) = (NOW() AT TIME ZONE 'America/Santiago')::date
                 GROUP BY p.estacion_id
             `, [String(turnoActual).toLowerCase()]);
             return { turnoActual, rows: prod.rows };

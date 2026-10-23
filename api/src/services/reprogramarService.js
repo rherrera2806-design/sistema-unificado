@@ -39,12 +39,10 @@ async function reprogramarPendientes({ dias = 21, inicio } = {}) {
     const ordenesLiberadas = liberar.rowCount;
     const idsLiberadas = liberar.rows.map(r => r.id);
 
-    const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const sigHabil = (f) => {
-        const d = new Date(f + 'T00:00:00');
-        do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
-        return fmtL(d);
-    };
+    // REGLA: los días laborales se definen en Configuración → Calendario
+    // (mes a mes); NO solo saltar sáb/dom. Ver services/calendario.js
+    const calendario = require('./calendario');
+    const sigHabil = (f) => calendario.siguienteDiaHabil(f);
 
     // ═══════════════════════════════════════════════════════════════
     // PASO A2: SINCRONIZAR RUTAS CON LA RECETA ACTUAL
@@ -130,7 +128,7 @@ async function reprogramarPendientes({ dias = 21, inicio } = {}) {
         for (const p of sinFecha.rows) {
             const ultima = baseMap[p.orden_produccion_id];
             const base = (ultima && ultima >= fechaMinima) ? ultima : fechaMinima;
-            const fs = sigHabil(base);
+            const fs = await sigHabil(base);
             await query('UPDATE cola_produccion_pasos SET fecha_programada = $1 WHERE id = $2', [fs, p.id]);
             baseMap[p.orden_produccion_id] = fs;
             pasosFechados++;

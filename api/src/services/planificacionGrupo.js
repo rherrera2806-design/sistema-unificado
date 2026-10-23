@@ -182,14 +182,14 @@ const asignarOrdenFecha = async (orden_id, fecha) => {
         // Cada paso recibe SU día: al menos un día hábil después del anterior
         // (en la realidad no se corta y arma el mismo día)
         const pasos = await query('SELECT id FROM cola_produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [orden_id]);
-        const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        // REGLA: el siguiente día hábil salta según Configuración → Calendario
+        // (días bloqueados del mes), no solo sáb/dom
+        const calendario = require('./calendario');
         let prev = null;
         for (const p of pasos.rows) {
             let fs = fecha;
             if (prev) {
-                const d = new Date(prev + 'T00:00:00');
-                do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
-                fs = fmtL(d);
+                fs = await calendario.siguienteDiaHabil(prev);
             }
             await query('UPDATE cola_produccion_pasos SET fecha_programada = $1 WHERE id = $2', [fs, p.id]);
             prev = fs;
