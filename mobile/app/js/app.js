@@ -287,8 +287,9 @@ async function renderCola() {
         </div>
         <div class="container" id="colaList"><div class="loading">Cargando cola de trabajo…</div></div>
         <div class="action-bar">
-            <button class="btn btn-outline" onclick="App.showRegistro()">✏️ Registro manual</button>
-            <button class="btn btn-primary" onclick="App.scan()">📷 Escanear QR</button>
+            ${esEstacionCorte() && puedeMovimientos() ? `<button class="btn btn-outline" onclick="App.showMovimientos()">📦 Planas</button>` : ''}
+            <button class="btn btn-outline" onclick="App.showRegistro()">✏️ Registro</button>
+            <button class="btn btn-primary" onclick="App.scan()">📷 Escanear</button>
         </div>`;
     await refreshCola();
 }
@@ -699,6 +700,197 @@ async function rmRegistrar() {
     }
 }
 
+// ============================ MOVIMIENTOS DE PLANCHAS ============================
+// Mismo formulario que Inventario → Movimientos, accesible desde la cola de
+// la estación de Corte: entradas/salidas de planchas sin salir de la app.
+
+let movMP = [];          // materias primas
+let movDims = [];        // stock por medida de la MP seleccionada
+let movTipo = 'entrada'; // 'entrada' | 'salida'
+let movTipoSalida = '';  // 'plancha_completa' | 'trozo'
+
+function puedeMovimientos() {
+    const u = state.user || {};
+    if (u.rol === 'admin') return true;
+    const p = u.permisos || [];
+    return p.includes('inv_movimientos') || p.includes('inv_movimientos.agregar');
+}
+
+function esEstacionCorte() {
+    return /corte/i.test((state.estacion && state.estacion.nombre) || '');
+}
+
+async function showMovimientos() {
+    movTipo = 'entrada';
+    movTipoSalida = '';
+    movDims = [];
+    openSheet('Movimientos de planchas', '<div class="loading">Cargando materias primas…</div>', '');
+    try {
+        movMP = (await api('/api/inv/materias-primas')) || [];
+    } catch (err) {
+        manejarError(err);
+        closeSheet();
+        return;
+    }
+    pintarMovForm();
+}
+
+function pintarMovForm() {
+    const ahora = new Date();
+    const hhmm = String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0');
+    const hoy = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0') + '-' + String(ahora.getDate()).padStart(2, '0');
+    const turnoDefault = state.turno === 'dia' ? 'Dia' : state.turno === 'noche' ? 'Noche' : '';
+    const esSalida = movTipo === 'salida';
+    const esPlancha = esSalida && movTipoSalida === 'plancha_completa';
+
+    openSheet('Movimientos de planchas', `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <button class="btn ${movTipo === 'entrada' ? 'btn-success' : 'btn-outline'}" onclick="App.mvSetTipo('entrada')">⬆ Entrada</button>
+            <button class="btn ${movTipo === 'salida' ? 'btn-danger' : 'btn-outline'}" onclick="App.mvSetTipo('salida')">⬇ Salida</button>
+        </div>
+        ${esSalida ? `
+        <div class="chips" style="margin-bottom:12px">
+            <span style="font-size:11px;color:var(--muted);align-self:center">Tipo de salida:</span>
+            <button class="chip ${movTipoSalida === 'plancha_completa' ? 'sel' : ''}" onclick="App.mvSetTipoSalida('plancha_completa')">Plancha completa</button>
+            <button class="chip ${movTipoSalida === 'trozo' ? 'sel' : ''}" onclick="App.mvSetTipoSalida('trozo')">Trozo</button>
+        </div>` : ''}
+        <div class="field">
+            <label>Materia prima *</label>
+            <select id="mvMP" onchange="App.mvMpChange()">
+                <option value="">Seleccionar…</option>
+                ${movMP.map(mp => `<option value="${mp.id}">${esc(mp.nombre)} (${esc(mp.espesor_mm)}mm)</option>`).join('')}
+            </select>
+        </div>
+        ${esPlancha ? `
+        <div class="field">
+            <label>Medida disponible (stock) *</label>
+            <select id="mvDim" onchange="App.mvDimChange()">
+                <option value="">Seleccionar medida…</option>
+                ${movDims.map((d, i) => `<option value="${i}">${esc(d.ancho)} x ${esc(d.alto)} mm — ${esc(d.stock)} en stock</option>`).join('')}
+            </select>
+        </div>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div class="field" style="margin:0"><label>Ancho (mm) *</label><input id="mvAncho" type="number" min="1" inputmode="numeric" placeholder="2000" oninput="App.mvCalc()"></div>
+            <div class="field" style="margin:0"><label>Alto (mm) *</label><input id="mvAlto" type="number" min="1" inputmode="numeric" placeholder="1500" oninput="App.mvCalc()"></div>
+            <div class="field" style="margin:0"><label>Cantidad *</label><input id="mvCant" type="number" min="1" inputmode="numeric" placeholder="5" oninput="App.mvCalc()"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:11px;padding:11px 13px;margin:11px 0">
+            <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700">M² total</span>
+            <span id="mvM2" style="font-size:16px;font-weight:800">0.00 m²</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="field" style="margin:0"><label>Turno *</label>
+                <select id="mvTurno"><option value="">Seleccionar…</option>
+                    <option ${turnoDefault === 'Dia' ? 'selected' : ''}>Dia</option>
+                    <option ${turnoDefault === 'Noche' ? 'selected' : ''}>Noche</option>
+                </select></div>
+            <div class="field" style="margin:0"><label>Fecha</label><input id="mvFecha" type="date" value="${hoy}" max="${hoy}"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px">
+            <div class="field" style="margin:0"><label>Hora</label><input id="mvHora" type="time" value="${hhmm}"></div>
+            <div class="field" style="margin:0"><label>Proveedor</label><input id="mvProveedor" placeholder="Opcional"></div>
+        </div>
+        <div class="field" style="margin-top:11px"><label>Observaciones</label><input id="mvObs" placeholder="Notas…"></div>
+    `, `
+        <button class="btn btn-outline" onclick="App.closeSheet()">Cancelar</button>
+        <button class="btn btn-success" id="mvBtn" onclick="App.mvRegistrar()">Registrar movimiento</button>
+    `);
+}
+
+function mvSetTipo(t) {
+    movTipo = t;
+    if (t !== 'salida') movTipoSalida = '';
+    pintarMovForm();
+}
+function mvSetTipoSalida(t) {
+    movTipoSalida = t;
+    pintarMovForm();
+}
+
+async function mvMpChange() {
+    const mpId = Number($('#mvMP').value) || 0;
+    movDims = [];
+    if (mpId) {
+        try {
+            const body = await api(`/api/inv/stock-por-dimension?mp_id=${mpId}`);
+            movDims = Array.isArray(body) ? body : [];
+        } catch (_) { }
+    }
+    // Recargar el formulario para mostrar/ocultar el selector de medidas
+    pintarMovForm();
+}
+
+function mvDimChange() {
+    const i = Number($('#mvDim').value);
+    const d = movDims[i];
+    if (d) {
+        $('#mvAncho').value = d.ancho;
+        $('#mvAlto').value = d.alto;
+        mvCalc();
+    }
+}
+
+function mvCalc() {
+    const a = Number($('#mvAncho') && $('#mvAncho').value) || 0;
+    const h = Number($('#mvAlto') && $('#mvAlto').value) || 0;
+    const c = Number($('#mvCant') && $('#mvCant').value) || 0;
+    const m2 = (a * h * c) / 1000000;
+    const el = $('#mvM2');
+    if (el) el.textContent = m2.toFixed(2) + ' m²';
+}
+
+async function mvRegistrar() {
+    const mpId = Number($('#mvMP').value) || 0;
+    const ancho = Number($('#mvAncho').value) || 0;
+    const alto = Number($('#mvAlto').value) || 0;
+    const cantidad = Number($('#mvCant').value) || 0;
+    const turno = $('#mvTurno').value || null;
+
+    if (!movTipo) { toast('Selecciona tipo de movimiento', 'err'); return; }
+    if (!mpId) { toast('Selecciona una materia prima', 'err'); return; }
+    if (movTipo === 'salida' && !movTipoSalida) { toast('Selecciona tipo de salida: Plancha o Trozo', 'err'); return; }
+    if (!(ancho > 0 && alto > 0 && cantidad > 0)) { toast('Completa ancho, alto y cantidad', 'err'); return; }
+    if (!turno) { toast('Selecciona el turno', 'err'); return; }
+
+    if (movTipo === 'salida' && movTipoSalida === 'plancha_completa') {
+        const i = Number($('#mvDim').value);
+        const d = movDims[i];
+        if ($('#mvDim').value === '' || !d) { toast('Selecciona una medida disponible', 'err'); return; }
+        if (cantidad > Number(d.stock)) { toast(`Cantidad excede stock disponible (${d.stock} planchas)`, 'err'); return; }
+    }
+
+    const fecha = $('#mvFecha').value || '';
+    const hora = $('#mvHora').value || '';
+    const ahora = new Date();
+    const hhmmss = String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0') + ':' + String(ahora.getSeconds()).padStart(2, '0');
+    const fechaHora = fecha
+        ? fecha + 'T' + (hora ? hora + ':00' : hhmmss)
+        : ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0') + '-' + String(ahora.getDate()).padStart(2, '0') + 'T' + hhmmss;
+
+    const btn = $('#mvBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+    try {
+        await api('/api/inv/movimientos', {
+            method: 'POST',
+            body: {
+                tipo_movimiento: movTipo,
+                materia_prima_id: mpId,
+                ancho, alto, cantidad_planchas: cantidad,
+                proveedor: ($('#mvProveedor').value || '').trim() || null,
+                turno,
+                tipo_salida: movTipo === 'salida' ? movTipoSalida : null,
+                observaciones: ($('#mvObs').value || '').trim() || null,
+                fecha_hora: fechaHora
+            }
+        });
+        toast('Movimiento registrado', 'ok');
+        closeSheet();
+    } catch (err) {
+        manejarError(err);
+        if (btn) { btn.disabled = false; btn.textContent = 'Registrar movimiento'; }
+    }
+}
+
 // ============================ ACTUALIZACIONES ============================
 // La app consulta /planta/version.json al abrir: si el APK publicado es más
 // nuevo que el instalado, avisa con un botón que instala la actualización
@@ -755,6 +947,7 @@ window.App = {
     iniciar, pausar, reanudar,
     showFinalizar, confirmFinalizar, showProcesar, confirmProcesar, showMerma, confirmMerma,
     scan, qrManual, showRegistro, rmAgregar, rmPegado, rmCambiar, rmQuitar, rmRegistrar,
+    showMovimientos, mvSetTipo, mvSetTipoSalida, mvMpChange, mvDimChange, mvCalc, mvRegistrar,
     updateNow,
     closeSheet,
 };
