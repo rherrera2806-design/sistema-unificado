@@ -1,7 +1,7 @@
 {
-    "notas":  "Cuadre total de reportes: unidades y kilos con formula unica en todas las pantallas, ordenes macro y metricas del taller reales.",
+    "notas":  "NUEVO: alerta de desvio del programa — la app avisa \u0027el programa va al X%\u0027 y ofrece REPROGRAMAR EN 1 CLIC. Mas: teclado que ya no tapa los campos y tarjetas en unidades.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  13,
-    "versionName":  "1.12",
+    "versionCode":  14,
+    "versionName":  "1.13",
     "fecha":  "2026-10-23"
 }

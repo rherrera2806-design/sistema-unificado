@@ -94,7 +94,10 @@ input, select, textarea { font-family: inherit; }
     width: 100%; padding: 13px; border: 1.5px solid var(--border); border-radius: 11px;
     font-size: 15px; background: #fff; outline: none;
 }
-.field input:focus, .field textarea:focus { border-color: var(--primary); }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--primary); }
+/* Teclado del celular: al hacer scroll de un campo enfocado, dejar espacio
+   para el teclado (abajo) y para el header sticky (arriba) */
+input, select, textarea { scroll-margin-top: 90px; scroll-margin-bottom: 45vh; }
 
 /* ===== Modal ===== */
 .overlay {

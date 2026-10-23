@@ -1104,24 +1104,90 @@ function updateNow() {
     });
 }
 
+// ============================ ALERTA DE DESVÍO ============================
+// "El programa va al 72%, ¿reprogramo?" — al abrir la app, si el programa de
+// hoy quedó corto (o hay vencido), se avisa y se ofrece reprogramar EN 1 CLIC
+// (POST /api/produccion/reprogramar: re-asigna fechas por prioridad DBR sin
+// tocar lo en proceso ni las fechas de entrega pactadas).
+
+function fmtN(n) { return Number(n || 0).toLocaleString('es-CL'); }
+
+async function checkDesvio() {
+    let d;
+    try {
+        d = await api('/api/taller/dashboard');
+    } catch (_) { return; }
+    const dv = d.desvio || {};
+    const hora = new Date().getHours();
+    // Avisar cuando ya avanzó el día (desde las 15:00) o si hay trabajo vencido
+    if (Number(dv.faltan_und) > 0 && (hora >= 15 || Number(dv.vencidas_und) > 0)) {
+        mostrarDesvio(dv);
+    }
+}
+
+function mostrarDesvio(dv) {
+    const u = state.user || {};
+    const puede = u.rol === 'admin' || (u.permisos || []).includes('prod_planificacion.agregar');
+    openSheet('⚠️ El programa va al ' + (dv.cumplimiento != null ? dv.cumplimiento : 0) + '%', `
+        <p style="font-size:13.5px;line-height:1.9;color:var(--text)">
+            Quedan <strong>${fmtN(dv.faltan_und)} und</strong> del programa de hoy
+            ${Number(dv.vencidas_und) > 0 ? `<br>Y hay <strong style="color:var(--danger)">${fmtN(dv.vencidas_und)} und vencidas + sin programar</strong>` : ''}
+        </p>
+        <div style="background:var(--bg);border-radius:11px;padding:12px 14px;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.8">
+            <strong style="color:var(--text)">¿Reprogramar los pendientes?</strong><br>
+            El sistema re-asigna las fechas por prioridad (Reposición → Express → Urgencia → Normal)
+            y capacidad, <strong>sin tocar</strong> lo en proceso ni las fechas de entrega pactadas.
+        </div>
+    `, `
+        <button class="btn btn-outline" onclick="App.closeSheet()">Después</button>
+        ${puede ? '<button class="btn btn-primary" onclick="App.reprogramarAhora()">🔄 Sí, reprogramar</button>' : ''}
+    `);
+}
+
+async function reprogramarAhora() {
+    closeSheet();
+    toast('Reprogramando el plan…', 'ok');
+    try {
+        const r = await api('/api/produccion/reprogramar', { method: 'POST', body: {} });
+        const n = r && (r.ordenesLiberadas != null ? r.ordenesLiberadas : null);
+        toast('Reprogramado ✅' + (n != null ? ' · ' + n + ' órdenes re-asignadas' : ''), 'ok');
+    } catch (err) {
+        manejarError(err);
+    }
+}
+
 // ============================ ARRANQUE ============================
 
-// Teclado del celular: al enfocar un campo, dejarlo VISIBLE (no detrás del
-// header). Sin esto, Android empuja la pantalla y el campo se pierde de vista.
-document.addEventListener('focusin', (e) => {
-    const t = e.target;
-    if (t && t.matches && t.matches('input, select, textarea')) {
-        setTimeout(() => {
-            try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { }
-        }, 280);
+// Teclado del celular: el campo enfocado debe quedar SIEMPRE visible (no
+// detrás del header). Se recoloca cada vez que el teclado cambia el tamaño de
+// la pantalla (visualViewport) — esperar X ms fijos perdía la carrera contra
+// el teclado.
+(function () {
+    const mantenerVisible = () => {
+        const t = document.activeElement;
+        if (t && t.matches && t.matches('input, select, textarea')) {
+            try { t.scrollIntoView({ block: 'center', behavior: 'instant' }); } catch (_) { }
+        }
+    };
+    document.addEventListener('focusin', (e) => {
+        if (e.target && e.target.matches && e.target.matches('input, select, textarea')) {
+            setTimeout(mantenerVisible, 120);
+            setTimeout(mantenerVisible, 400);
+        }
+    });
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => setTimeout(mantenerVisible, 60));
+        window.visualViewport.addEventListener('scroll', () => setTimeout(mantenerVisible, 60));
     }
-});
+    window.addEventListener('resize', () => setTimeout(mantenerVisible, 60));
+})();
 
 async function boot() {
     state.user = getUser();
     if (state.user) {
         renderEstaciones();
         cargarHorarios();
+        checkDesvio();
     } else {
         renderLogin();
     }
@@ -1135,7 +1201,7 @@ window.App = {
     iniciar, pausar, reanudar,
     showFinalizar, confirmFinalizar, showProcesar, confirmProcesar, showMerma, confirmMerma,
     scan, qrManual, voice, cancelVoice, showRegistro, rmAgregar, rmPegado, rmCambiar, rmQuitar, rmRegistrar,
-    refreshColaManual,
+    refreshColaManual, reprogramarAhora,
     showMovimientos, mvSetTipo, mvSetTipoSalida, mvMpChange, mvDimChange, mvCalc, mvRegistrar,
     updateNow,
     closeSheet,

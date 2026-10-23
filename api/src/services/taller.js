@@ -860,6 +860,22 @@ async function getDashboard() {
             vencido: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].venc_ordenes) || 0,
             total: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].total_ordenes) || 0
         },
+        // DESVÍO DEL PROGRAMA DE HOY: cumplimiento = producido / (producido +
+        // pendiente de hoy). Cuando baja, la app avisa y ofrece REPROGRAMAR
+        // (POST /api/produccion/reprogramar) en 1 clic.
+        desvio: (() => {
+            const faltanHoy = ests.reduce((a, e) => a + Number(e.hoy_pendientes || 0), 0);
+            const vencidas = ests.reduce((a, e) => a + Number(e.venc_pendientes || 0), 0);
+            const producido = Number((resumen.rows[0] && resumen.rows[0].unidades) || 0);
+            const programado = faltanHoy + producido;
+            return {
+                cumplimiento: programado > 0 ? Math.round((producido / programado) * 100) : 100,
+                faltan_und: faltanHoy,
+                vencidas_und: vencidas,
+                producido_und: producido,
+                programado_und: programado
+            };
+        })(),
         resumen_hoy: resumen.rows[0] || { pasos: 0, unidades: 0, m2: 0 },
         urgencias: urgencias.rows,
         en_proceso: enProceso.rows,
