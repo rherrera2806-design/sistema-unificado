@@ -1,6 +1,7 @@
 // VitroFlow Planta — vistas y lógica de la app.
 // Pantallas: Login → Estaciones → Turno/Máquina → Cola → Escanear/Registro.
 import { api, login, logout, getUser, ApiError } from './api.js';
+import { getApiBase } from './config.js';
 import { parseQR, getTurnoSugerido } from './helpers.js';
 import { scanCode } from './scan.js';
 import { checkForUpdate, descargarEInstalar } from './update.js';
@@ -1043,13 +1044,14 @@ function updateNow() {
     const url = (updatePendiente && updatePendiente.apk) || '/planta/VitroFlow-Planta.apk';
     if (updateDescargando) return;
     updateDescargando = true;
-    openSheet('Descargando actualización', `
+    openSheet('Actualizando VitroFlow Planta', `
         <div style="text-align:center;padding:10px 0">
             <div style="font-size:46px;line-height:1">⬇️</div>
             <p style="font-size:14.5px;font-weight:700;margin-top:12px" id="updTxt">Descargando…</p>
             <div style="height:11px;background:var(--bg);border-radius:999px;margin:15px 4px 6px;overflow:hidden">
                 <div id="updBar" style="height:100%;width:2%;background:var(--primary);border-radius:999px;transition:width .3s"></div>
             </div>
+            <div id="updLog" style="font-size:11.5px;color:var(--muted);margin-top:12px;min-height:36px;line-height:1.7;text-align:left;background:var(--bg);border-radius:10px;padding:9px 12px"></div>
             <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">
                 No cierres la app. Al terminar se abrirá el instalador de Android:<br>
                 toca <strong>Instalar</strong> y listo.
@@ -1061,29 +1063,43 @@ function updateNow() {
         const txt = $('#updTxt');
         if (bar && pct != null) bar.style.width = Math.max(2, pct) + '%';
         if (txt && pct != null) txt.textContent = `Descargando… ${pct}%`;
+    }, (paso) => {
+        const log = $('#updLog');
+        if (log) log.innerHTML = (log.innerHTML ? log.innerHTML + '<br>' : '') + '· ' + esc(paso);
     }).then((modo) => {
         updateDescargando = false;
-        closeSheet();
         if (modo === 'instalador') {
+            closeSheet();
             toast('Descarga lista: confirma la instalación', 'ok');
         } else {
             // Respaldo vía navegador: explicar dónde está el archivo
             openSheet('Descarga en el navegador', `
                 <p style="font-size:13px;color:var(--text);line-height:1.7">
-                    La descarga se hizo en el <strong>navegador del celular</strong>. Para instalar:
+                    La descarga continúa en el <strong>navegador del celular</strong>. Para instalar:
                 </p>
                 <ol style="font-size:12.5px;color:var(--muted);line-height:2;padding-left:20px;margin-top:10px">
-                    <li>Espera a que termine la descarga (verás la <strong>notificación</strong> 📥)</li>
-                    <li>Toca la notificación <strong>o</strong> abre <strong>Archivos → Descargas</strong></li>
+                    <li>Espera a que termine la descarga 📥</li>
+                    <li>Toca la <strong>notificación</strong> de descarga, o abre <strong>Archivos → Descargas</strong></li>
                     <li>Toca <strong>VitroFlow-Planta.apk</strong> → <strong>Instalar</strong></li>
                 </ol>
-                <p style="font-size:11px;color:var(--muted);margin-top:10px">La app se actualiza encima de la actual: no se pierden datos.</p>
+                <p style="font-size:11px;color:var(--muted);margin-top:10px">Si el teléfono pide "permitir instalación de apps desconocidas", actívala para el navegador y vuelve a tocar el archivo.</p>
             `, `<button class="btn btn-primary" onclick="App.closeSheet()">Entendido</button>`);
         }
     }).catch((err) => {
         updateDescargando = false;
-        closeSheet();
-        manejarError(err);
+        const msg = String((err && err.message) || err);
+        openSheet('No se pudo actualizar', `
+            <p style="font-size:13px;color:var(--text);line-height:1.7">Ocurrió un problema:</p>
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:11px 13px;font-size:12px;color:#991b1b;margin:10px 0;word-break:break-word">${esc(msg)}</div>
+            <p style="font-size:11.5px;color:var(--muted);line-height:1.7">
+                Puedes instalarla a mano: abre <strong>Chrome</strong> y ve a<br>
+                <strong style="color:var(--text);word-break:break-all">${esc(getApiBase())}/planta/VitroFlow-Planta.apk</strong><br>
+                y toca el archivo descargado para instalar.
+            </p>
+        `, `
+            <button class="btn btn-outline" onclick="App.closeSheet()">Cerrar</button>
+            <button class="btn btn-primary" onclick="App.closeSheet();App.updateNow()">Reintentar</button>
+        `);
     });
 }
 

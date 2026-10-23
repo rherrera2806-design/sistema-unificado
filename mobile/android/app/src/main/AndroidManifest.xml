@@ -39,6 +39,10 @@
     <!-- CAMERA: lo necesita el escáner ML Kit (startScan). El plugin no lo
          declara, hay que hacerlo aquí para que requestPermissions() funcione. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- REQUEST_INSTALL_PACKAGES: sin este permiso, MIUI/Xiaomi y algunos
+         fabricantes bloquean EN SILENCIO el instalador de actualizaciones
+         (el APK se descarga pero nunca se abre la instalación). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.hardware.camera" android:required="true" />
 </manifest>

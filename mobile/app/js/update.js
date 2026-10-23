@@ -46,13 +46,14 @@ export async function checkForUpdate() {
 
 /**
  * Descarga el APK y abre el instalador de Android.
- * Devuelve 'instalador' (flujo nativo) o 'navegador' (respaldo: el navegador
- * descarga y hay que tocar el archivo para instalar).
- * @param {string} url  Ruta o URL del APK.
+ * Devuelve 'instalador' (flujo nativo) o 'navegador' (respaldo manual).
+ * @param {string} url
  * @param {(pct:number)=>void} onProgress  Avance 0-100 (null si no hay tamaño).
+ * @param {(txt:string)=>void} onStep  Cada paso visible en pantalla.
  */
-export async function descargarEInstalar(url, onProgress) {
+export async function descargarEInstalar(url, onProgress, onStep) {
     const full = /^https?:/i.test(url) ? url : getApiBase() + url;
+    const paso = (t) => { if (onStep) onStep(t); };
 
     if (!Capacitor.isNativePlatform()) {
         window.location.href = full;
@@ -62,6 +63,7 @@ export async function descargarEInstalar(url, onProgress) {
     const nombre = `VitroFlow-Planta-${Date.now()}.apk`;
     let handle = null;
     try {
+        paso('Conectando con el servidor…');
         handle = await Filesystem.addListener('progress', (p) => {
             if (!onProgress || !p || p.url !== full) return;
             const total = Number(p.contentLength) || 0;
@@ -74,16 +76,30 @@ export async function descargarEInstalar(url, onProgress) {
             progress: true,
             recursive: true
         });
+
+        // Verificar que el archivo bajó completo (0 bytes = descarga fallida)
+        let tamano = 0;
+        try {
+            const st = await Filesystem.stat({ path: nombre, directory: Directory.Cache });
+            tamano = Number(st && st.size) || 0;
+        } catch (_) { }
+        if (tamano < 1000000) {
+            throw new Error(`La descarga quedó incompleta (${tamano} bytes). Verifica el internet y reintenta.`);
+        }
+        paso(`Descarga completa (${(tamano / 1048576).toFixed(1)} MB). Abriendo el instalador…`);
+
         const { uri } = await Filesystem.getUri({ path: nombre, directory: Directory.Cache });
         await FileOpener.open({
             filePath: uri,
             contentType: 'application/vnd.android.package-archive',
             openWithDefault: true
         });
+        paso('Instalador abierto: confirma la instalación.');
         return 'instalador';
     } catch (e) {
-        // Respaldo: si el flujo nativo falla por lo que sea, que al menos el
-        // navegador descargue el archivo (el usuario lo toca para instalar).
+        const msg = String((e && e.message) || e);
+        paso('Error: ' + msg);
+        // Respaldo: el navegador descarga el archivo y el usuario lo toca.
         try {
             await Browser.open({ url: full });
         } catch (_) {
