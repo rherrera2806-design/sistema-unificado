@@ -82,6 +82,8 @@ App.modules.planificacion = {
                 </div>
             </div>
 
+            <div id="plnAvisoIncumplidas"></div>
+
             <div class="pln-kpis" id="plnKpis"></div>
 
             <div class="pln-tabs">
@@ -168,7 +170,7 @@ App.modules.planificacion = {
             <div id="planDetalleGrupoDia"></div>
         `;
 
-        await Promise.all([this.cargarGrupo(), this.cargarDatos()]);
+        await Promise.all([this.cargarGrupo(), this.cargarDatos(), this.cargarAvisoIncumplidas()]);
         this.cargarEstaciones();
     },
 
@@ -189,7 +191,33 @@ App.modules.planificacion = {
     // Tras programar/reprogramar: refrescar TODAS las vistas (si no, la carga
     // por estaciones quedaba con datos viejos hasta recorrer los días)
     async refrescarTodo() {
-        await Promise.allSettled([this.cargarGrupo(), this.cargarDatos(), this.cargarEstaciones()]);
+        await Promise.allSettled([this.cargarGrupo(), this.cargarDatos(), this.cargarEstaciones(), this.cargarAvisoIncumplidas()]);
+    },
+
+    // Aviso VISIBLE de órdenes comprometidas incumplidas (vencidas / por
+    // vencer) — el planificador lo ve de frente, sin tener que abrir el modal
+    async cargarAvisoIncumplidas() {
+        const el = document.getElementById('plnAvisoIncumplidas');
+        if (!el) return;
+        try {
+            const res = await fetch('/api/taller/dashboard', { cache: 'no-store' });
+            const d = await res.json();
+            const dv = (d && d.desvio) || {};
+            const venc = (dv.vencidas || []).length;
+            const porv = (dv.por_vencer || []).length;
+            if (!venc && !porv) { el.innerHTML = ''; return; }
+            el.innerHTML = `
+                <div style="background:linear-gradient(135deg,#7f1d1d,#b91c1c);border-radius:12px;padding:13px 18px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 4px 14px rgba(185,28,28,.25)">
+                    <div style="font-size:15px;font-weight:800;color:#fff">⚠ Órdenes comprometidas incumplidas</div>
+                    <div style="display:flex;gap:8px">
+                        ${venc ? `<span class="pln-prio p-reposicion">🔴 ${venc} VENCIDAS</span>` : ''}
+                        ${porv ? `<span class="pln-prio p-express">🟡 ${porv} POR VENCER</span>` : ''}
+                    </div>
+                    <button class="pln-btn warn" style="margin-left:auto" onclick="App.modules.planificacion.showReprogramarAvance()">🔔 Ver y Reprogramar por Avance</button>
+                </div>`;
+        } catch (e) {
+            el.innerHTML = '';
+        }
     },
 
     async cargarGrupo() {
