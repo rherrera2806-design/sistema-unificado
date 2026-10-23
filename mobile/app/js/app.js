@@ -283,7 +283,7 @@ async function renderCola() {
                         ${state.turno ? '🕐 Turno ' + esc(state.turno) : ''}
                     </div>
                 </div>
-                <button class="back-link" onclick="App.refreshCola()">↻</button>
+                <button class="back-link" style="padding:10px 15px;font-size:12.5px;min-height:42px" onclick="App.refreshColaManual()">↻ Actualizar</button>
             </div>
         </div>
         <div class="container" id="colaList"><div class="loading">Cargando cola de trabajo…</div></div>
@@ -305,6 +305,14 @@ async function refreshCola() {
     } catch (err) {
         manejarError(err);
     }
+}
+
+// Actualizar a mano (botón del header): con confirmación visible para que no
+// parezca que "no hizo nada".
+async function refreshColaManual() {
+    const antes = state.cola.length;
+    await refreshCola();
+    toast(`Cola actualizada ✓ · ${state.cola.length} trabajos${state.cola.length !== antes ? ' (cambió)' : ''}`, 'ok');
 }
 
 function pintarCola() {
@@ -1052,6 +1060,7 @@ window.App = {
     iniciar, pausar, reanudar,
     showFinalizar, confirmFinalizar, showProcesar, confirmProcesar, showMerma, confirmMerma,
     scan, qrManual, voice, cancelVoice, showRegistro, rmAgregar, rmPegado, rmCambiar, rmQuitar, rmRegistrar,
+    refreshColaManual,
     showMovimientos, mvSetTipo, mvSetTipoSalida, mvMpChange, mvDimChange, mvCalc, mvRegistrar,
     updateNow,
     closeSheet,
