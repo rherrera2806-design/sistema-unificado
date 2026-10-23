@@ -107,7 +107,10 @@ function setSecurityHeaders(res) {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    // camera=(self): el escáner QR de planta (web/public/taller) usa getUserMedia
+    // sobre esta misma página. Con camera=() el navegador bloquea la cámara SIEMPRE
+    // sin preguntar permiso: es la causa raíz de que "no abriera la cámara" en móvil.
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self)');
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' ws: wss:");
 }

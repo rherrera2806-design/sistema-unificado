@@ -1279,9 +1279,12 @@
             if (m) return { pedido: m[1].trim(), item: Number(m[2]) || 1 };
             const partes = t.split('|');
             if (partes.length >= 3) {
-                m = (partes[2] || '').match(/^(\d+)-10(\d+)$/);
+                // Optiway: campo 3 = "OV-10ITEM". Se tolera un prefijo literal
+                // "OV-" / "OV" si la etiqueta lo trae impreso.
+                const campo = (partes[2] || '').trim().replace(/^OV[-_]?/i, '');
+                m = campo.match(/^(\d+)-10(\d+)$/);
                 if (m) return { pedido: m[1], item: Number(m[2]) || 1 };
-                m = (partes[2] || '').match(/^(\d+)-(\d+)$/);
+                m = campo.match(/^(\d+)-(\d+)$/);
                 if (m) return { pedido: m[1], item: Number(m[2]) || 1 };
             }
             if (/^\d{4,}$/.test(t)) return { pedido: t, item: 1 };
@@ -1318,7 +1321,7 @@
                     <p style="font-size:13px;color:#475569">Este navegador no permite usar la cámara. Usa el <strong>Registro manual</strong> (también puedes escribir el código que trae el QR).</p>
                     <p style="font-size:11px;color:#8494a8;margin-top:8px">Diagnóstico: HTTPS=${soporte.seguro ? 'sí' : 'NO (esto impide la cámara)'} · lector=${soporte.barcode ? 'nativo' : (soporte.jsqr ? 'jsQR' : 'ninguno')}</p>
                     <div style="margin-top:10px"><label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">CÓDIGO DEL QR</label>
-                    <input id="qrManual" placeholder="VF:111805|1" style="width:100%;padding:11px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
+                    <input id="qrManual" placeholder="Ej: 700123|2025-06-12|111805-101|12.5" style="width:100%;padding:11px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
                 `, `
                     <button class="btn btn-outline" onclick="tModalCerrar()">Cancelar</button>
                     <button class="btn btn-primary" onclick="qrManualContinuar()">Continuar</button>
@@ -1331,7 +1334,7 @@
                 <div style="margin-top:12px;border-top:1px solid #e4e9f0;padding-top:12px">
                     <label style="font-size:10px;font-weight:700;color:#64748b;display:block;margin-bottom:4px">¿NO DETECTA? ESCRIBE EL CÓDIGO DEL QR</label>
                     <div style="display:flex;gap:6px">
-                        <input id="qrManual" placeholder="VF:111805|1" style="flex:1;padding:11px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+                        <input id="qrManual" placeholder="Ej: 700123|2025-06-12|111805-101|12.5" style="flex:1;padding:11px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
                         <button class="btn btn-outline" onclick="qrManualContinuar()">Continuar</button>
                     </div>
                 </div>
@@ -1340,6 +1343,11 @@
                 _scanStream = await _obtenerCamara();
                 const video = document.getElementById('qrVideo');
                 video.srcObject = _scanStream;
+                video.setAttribute('playsinline', 'true');
+                // play() explícito: autoplay NO arranca el video en varios
+                // navegadores móviles (iOS Safari sobre todo) y sin video a
+                // 0px de ancho el escáner nunca detecta nada.
+                try { await video.play(); } catch (_) { }
                 // Doble motor: BarcodeDetector nativo (Chrome/Android) o jsQR
                 // (funciona en Brave, Firefox, iOS y navegadores sin el API nativo)
                 const detector = typeof BarcodeDetector !== 'undefined' ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
@@ -1354,8 +1362,12 @@
                             const codes = await detector.detect(video);
                             if (codes && codes.length) crudo = codes[0].rawValue;
                         } else if (window.jsQR && video.videoWidth > 0) {
-                            canvasQr.width = video.videoWidth;
-                            canvasQr.height = video.videoHeight;
+                            // Escalar antes de leer: jsQR es JS puro y correrlo
+                            // sobre el frame nativo (1080p+) congela el celular.
+                            // 1024px de ancho basta para etiquetas impresas.
+                            const escala = Math.min(1, 1024 / video.videoWidth);
+                            canvasQr.width = Math.max(1, Math.round(video.videoWidth * escala));
+                            canvasQr.height = Math.max(1, Math.round(video.videoHeight * escala));
                             ctxQr.drawImage(video, 0, 0, canvasQr.width, canvasQr.height);
                             const img = ctxQr.getImageData(0, 0, canvasQr.width, canvasQr.height);
                             const code = window.jsQR(img.data, canvasQr.width, canvasQr.height);
@@ -1373,9 +1385,9 @@
                             return;
                         }
                     } catch (_) { }
-                    setTimeout(tick, 350);
+                    setTimeout(tick, 250);
                 };
-                setTimeout(tick, 400);
+                setTimeout(tick, 250);
             } catch (err) {
                 const nombre = (err && err.name) || '';
                 let estadoPerm = 'desconocido';
