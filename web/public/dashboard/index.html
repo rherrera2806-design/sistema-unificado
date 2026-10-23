@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitroFlow · Producción en vivo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0b1220; --panel: #111a2e; --panel2: #16213a; --border: #223052;
+            --text: #e8eefc; --muted: #8fa3c4;
+            --azul: #3b82f6; --verde: #22c55e; --amarillo: #eab308; --rojo: #ef4444; --morado: #a78bfa;
+        }
+        html, body { height: 100%; }
+        body {
+            background: var(--bg); color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+
+        /* ===== Top ===== */
+        .top {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 30px 14px;
+        }
+        .marca { display: flex; align-items: center; gap: 14px; }
+        .marca .logo {
+            width: 52px; height: 52px; border-radius: 14px;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            display: flex; align-items: center; justify-content: center; font-size: 26px;
+        }
+        .marca h1 { font-size: 27px; font-weight: 800; letter-spacing: .3px; }
+        .marca .sub { font-size: 14px; color: var(--muted); margin-top: 2px; }
+        .reloj { text-align: right; }
+        .reloj .hora { font-size: 42px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+        .reloj .fecha { font-size: 14px; color: var(--muted); margin-top: 5px; }
+        .live {
+            display: inline-flex; align-items: center; gap: 7px; background: rgba(34,197,94,.15);
+            color: var(--verde); border: 1px solid rgba(34,197,94,.35); padding: 5px 13px;
+            border-radius: 999px; font-size: 12px; font-weight: 700; margin-left: 14px;
+        }
+        .live .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--verde); animation: pulso 1.6s infinite; }
+        .live.off { background: rgba(239,68,68,.12); color: var(--rojo); border-color: rgba(239,68,68,.35); }
+        .live.off .punto { background: var(--rojo); animation: none; }
+        @keyframes pulso { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
+
+        /* ===== KPIs ===== */
+        .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 6px 30px 15px; }
+        .kpi {
+            background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+            padding: 17px 22px;
+        }
+        .kpi .l { font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .kpi .v { font-size: 44px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; }
+        .kpi .u { font-size: 15px; color: var(--muted); font-weight: 600; }
+
+        /* ===== Cuerpo ===== */
+        .main {
+            display: grid; grid-template-columns: 2.25fr 1fr; gap: 15px;
+            padding: 0 30px 22px; height: calc(100vh - 205px);
+        }
+        .panel {
+            background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+            padding: 17px 19px; overflow: hidden; display: flex; flex-direction: column;
+        }
+        .panel h2 {
+            font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--muted); margin-bottom: 13px; display: flex; align-items: center; gap: 9px;
+        }
+        .stations {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
+            gap: 13px; overflow: auto; padding-right: 4px;
+        }
+        .st {
+            background: var(--panel2); border: 1px solid var(--border); border-radius: 15px;
+            padding: 15px 17px;
+        }
+        .st .nombre { font-size: 18px; font-weight: 800; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .st .carga { font-size: 11.5px; font-weight: 800; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }
+        .st .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+        .st .num { text-align: center; }
+        .st .num .v { font-size: 27px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .st .num .l { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-top: 3px; }
+        .barra { height: 7px; border-radius: 999px; background: #0d1526; margin-top: 12px; overflow: hidden; }
+        .barra > div { height: 100%; border-radius: 999px; transition: width .6s ease; }
+
+        /* ===== Listas laterales ===== */
+        .lateral { display: flex; flex-direction: column; gap: 15px; overflow: hidden; }
+        .lista { overflow: auto; flex: 1; }
+        .fila {
+            display: flex; align-items: center; gap: 11px; padding: 10px 12px;
+            background: var(--panel2); border: 1px solid var(--border); border-radius: 12px;
+            margin-bottom: 8px;
+        }
+        .fila .ped { font-size: 15.5px; font-weight: 800; }
+        .fila .det { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+        .fila .est { margin-left: auto; text-align: right; }
+        .badge { padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+        .vacio { color: var(--muted); font-size: 13.5px; text-align: center; padding: 22px 8px; }
+
+        /* ===== Login ===== */
+        .login {
+            position: fixed; inset: 0; background: var(--bg); z-index: 50;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .login-card {
+            background: var(--panel); border: 1px solid var(--border); border-radius: 22px;
+            padding: 40px 42px; width: 420px;
+        }
+        .login-card h2 { font-size: 22px; margin-bottom: 6px; }
+        .login-card p { color: var(--muted); font-size: 13.5px; margin-bottom: 22px; }
+        .login-card input {
+            width: 100%; padding: 14px; border-radius: 12px; border: 1.5px solid var(--border);
+            background: var(--panel2); color: var(--text); font-size: 15px; margin-bottom: 12px; outline: none;
+        }
+        .login-card input:focus { border-color: var(--azul); }
+        .login-card button {
+            width: 100%; padding: 15px; border-radius: 12px; border: none;
+            background: var(--azul); color: #fff; font-size: 15.5px; font-weight: 800; cursor: pointer;
+        }
+        .login-err { color: var(--rojo); font-size: 12.5px; min-height: 18px; margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <!-- Login -->
+    <div class="login" id="login">
+        <div class="login-card">
+            <h2>🏭 VitroFlow</h2>
+            <p>Dashboard de producción en vivo — inicia sesión una vez y la pantalla queda activa</p>
+            <div class="login-err" id="loginErr"></div>
+            <input id="lgEmail" placeholder="Email" autocomplete="username">
+            <input id="lgPass" type="password" placeholder="Contraseña" autocomplete="current-password">
+            <button onclick="doLogin()">Ingresar</button>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="top">
+        <div class="marca">
+            <div class="logo">🏭</div>
+            <div>
+                <h1>Producción en vivo <span class="live" id="live"><span class="punto"></span> EN VIVO</span></h1>
+                <div class="sub" id="subtitulo">Carga por estación · trabajos urgentes · progreso del día</div>
+            </div>
+        </div>
+        <div class="reloj">
+            <div class="hora" id="hora">--:--</div>
+            <div class="fecha" id="fecha">—</div>
+        </div>
+    </div>
+
+    <div class="kpis">
+        <div class="kpi"><div class="l">Pasos terminados hoy</div><div class="v" id="kPasos">0</div></div>
+        <div class="kpi"><div class="l">Unidades producidas</div><div class="v" id="kUnid">0</div></div>
+        <div class="kpi"><div class="l">M² producidos</div><div class="v" id="kM2">0,00</div><div class="u">metros cuadrados</div></div>
+        <div class="kpi"><div class="l">Trabajos en cola</div><div class="v" id="kCola">0</div><div class="u">pendientes + en proceso</div></div>
+    </div>
+
+    <div class="main">
+        <div class="panel">
+            <h2>📊 Estaciones</h2>
+            <div class="stations" id="estaciones"><div class="vacio">Cargando…</div></div>
+        </div>
+        <div class="lateral">
+            <div class="panel" style="flex:1.15">
+                <h2>🔴 Urgencias / Express</h2>
+                <div class="lista" id="urgencias"><div class="vacio">Cargando…</div></div>
+            </div>
+            <div class="panel" style="flex:1">
+                <h2>⚙️ En proceso ahora</h2>
+                <div class="lista" id="enProceso"><div class="vacio">Cargando…</div></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const fmt = (n, dec = 0) => Number(n || 0).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+        // Paleta ESTÁNDAR de prioridades (igual que Órdenes de producción)
+        const PRIO = { 1: ['Normal', '#eff6ff', '#1d4ed8'], 2: ['Express', '#fef9c3', '#854d0e'], 3: ['Urgencia', '#dcfce7', '#15803d'], 4: ['Reposición', '#fee2e2', '#b91c1c'] };
+
+        async function api(path, opts = {}) {
+            const res = await fetch(path, {
+                method: opts.method || 'GET',
+                headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+                body: opts.body ? JSON.stringify(opts.body) : undefined
+            });
+            if (res.status === 401) throw Object.assign(new Error('No autenticado'), { status: 401 });
+            return res.json();
+        }
+
+        // ===== Reloj ===== */
+        function tickReloj() {
+            const d = new Date();
+            document.getElementById('hora').textContent = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('fecha').textContent = d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }
+        setInterval(tickReloj, 1000); tickReloj();
+
+        // ===== Datos ===== */
+        async function cargar() {
+            try {
+                const d = await api('/api/taller/dashboard');
+                pintar(d);
+                setLive(true);
+            } catch (e) {
+                if (e.status === 401) { mostrarLogin(); return; }
+                setLive(false);
+            }
+        }
+
+        function pintar(d) {
+            const ests = d.estaciones || [];
+            document.getElementById('kPasos').textContent = fmt(d.resumen_hoy.pasos);
+            document.getElementById('kUnid').textContent = fmt(d.resumen_hoy.unidades);
+            document.getElementById('kM2').textContent = fmt(d.resumen_hoy.m2, 2);
+            document.getElementById('kCola').textContent = fmt(ests.reduce((a, e) => a + Number(e.pendientes || 0) + Number(e.en_proceso || 0), 0));
+
+            const maxCarga = Math.max(1, ...ests.map(e => Number(e.pendientes || 0) + Number(e.en_proceso || 0)));
+            document.getElementById('estaciones').innerHTML = ests.map(e => {
+                const carga = Number(e.pendientes || 0) + Number(e.en_proceso || 0);
+                const color = carga > 10 ? 'var(--rojo)' : carga > 5 ? 'var(--amarillo)' : 'var(--verde)';
+                const pct = Math.min(100, Math.round((carga / maxCarga) * 100));
+                return `
+                <div class="st">
+                    <div class="nombre">${esc(e.nombre_estacion)}
+                        <span class="carga" style="background:${color}22;color:${color}">${carga} en cola</span>
+                    </div>
+                    <div class="nums">
+                        <div class="num"><div class="v" style="color:var(--azul)">${fmt(e.pendientes)}</div><div class="l">Pendientes</div></div>
+                        <div class="num"><div class="v" style="color:var(--amarillo)">${fmt(e.en_proceso)}</div><div class="l">En proceso</div></div>
+                        <div class="num"><div class="v">${fmt(e.total_kilos)}</div><div class="l">Kilos</div></div>
+                    </div>
+                    <div class="barra"><div style="width:${pct}%;background:${color}"></div></div>
+                </div>`;
+            }).join('');
+
+            const urg = d.urgencias || [];
+            document.getElementById('urgencias').innerHTML = urg.length ? urg.map(u => {
+                const [txt, bg, fg] = PRIO[u.nivel_prioridad] || PRIO[1];
+                return `
+                <div class="fila">
+                    <div>
+                        <div class="ped">${esc(u.pedido_sap_id)} <span style="color:var(--muted);font-size:11.5px">item ${u.item_numero != null ? u.item_numero : '—'}</span></div>
+                        <div class="det">${esc(u.codigo_producto || '')} · ${esc(u.cliente || '')} · ${esc(u.estacion || '')}</div>
+                    </div>
+                    <div class="est"><span class="badge" style="background:${bg};color:${fg}">${txt}</span></div>
+                </div>`;
+            }).join('') : '<div class="vacio">Sin trabajos urgentes 🎉</div>';
+
+            const proc = d.en_proceso || [];
+            document.getElementById('enProceso').innerHTML = proc.length ? proc.map(p => `
+                <div class="fila">
+                    <div>
+                        <div class="ped">${esc(p.pedido_sap_id)} <span style="color:var(--muted);font-size:11.5px">item ${p.item_numero != null ? p.item_numero : '—'}</span></div>
+                        <div class="det">${esc(p.codigo_producto || '')} · ${esc(p.estacion || '')} · ${fmt(p.cantidad_paso)} und</div>
+                    </div>
+                </div>`).join('') : '<div class="vacio">Nada en proceso ahora</div>';
+        }
+
+        function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+        function setLive(on) {
+            const el = document.getElementById('live');
+            el.className = 'live' + (on ? '' : ' off');
+            el.innerHTML = on
+                ? '<span class="punto"></span> EN VIVO'
+                : '<span class="punto"></span> SIN CONEXIÓN · reintentando';
+        }
+
+        // ===== Socket.IO (tiempo real) + polling de respaldo ===== */
+        let socket = null;
+        function conectarSocket() {
+            try {
+                socket = io({ auth: {} });
+                socket.on('dashboard:update', () => cargar());
+                socket.on('disconnect', () => setLive(false));
+                socket.on('connect', () => { setLive(true); cargar(); });
+                socket.on('connect_error', () => setLive(false));
+            } catch (e) { /* el polling cubre */ }
+        }
+        setInterval(cargar, 60000);
+
+        // ===== Login ===== */
+        function mostrarLogin() {
+            document.getElementById('login').style.display = 'flex';
+        }
+        async function doLogin() {
+            const email = document.getElementById('lgEmail').value.trim();
+            const password = document.getElementById('lgPass').value;
+            const err = document.getElementById('loginErr');
+            if (!email || !password) { err.textContent = 'Completa email y contraseña'; return; }
+            err.textContent = 'Ingresando…';
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Credenciales inválidas');
+                document.getElementById('login').style.display = 'none';
+                err.textContent = '';
+                conectarSocket();
+                cargar();
+            } catch (e) {
+                err.textContent = e.message;
+            }
+        }
+        document.getElementById('lgPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+
+        // Arranque: si ya hay sesión, entra directo
+        (async () => {
+            try {
+                await api('/api/auth/me');
+                document.getElementById('login').style.display = 'none';
+                conectarSocket();
+                cargar();
+            } catch (e) {
+                mostrarLogin();
+            }
+        })();
+    </script>
+</body>
+</html>

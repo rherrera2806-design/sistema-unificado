@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const taller = require('../services/taller');
+const eventos = require('../services/eventos');
 const produccionOrdenes = require('../services/produccionOrdenes');
 const backfills = require('../services/tallerBackfills');
 const { autoAsignarPendientes } = require('../services/planificacionAuto');
@@ -26,6 +27,11 @@ router.get('/api/taller/colaxestacion/:id', canView, asyncHandler(async (req, re
     res.json(await taller.getColaPorEstacion(req.params.id));
 }));
 
+// Datos agregados para el dashboard de planta (pantallas en vivo)
+router.get('/api/taller/dashboard', canView, asyncHandler(async (req, res) => {
+    res.json(await taller.getDashboard());
+}));
+
 router.get('/api/taller/mermas', canView, asyncHandler(async (req, res) => {
     const hoy = req.query.fecha || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
     res.json(await taller.getMermas(hoy));
@@ -39,6 +45,7 @@ router.post('/api/taller/iniciar', canUpdate, asyncHandler(async (req, res) => {
     const operarioNombre = req.body.operario_nombre || operarioEmail;
     const turno = req.headers['x-turno'] || null;
     await taller.iniciarPaso(req.body.paso_id, req.body.maquina_id, operarioEmail, operarioNombre, turno);
+    eventos.dashboardUpdate('iniciar');
     res.json({ ok: true });
 }));
 
@@ -72,6 +79,7 @@ router.post('/api/taller/pausar', canUpdate, asyncHandler(async (req, res) => {
     const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
     const operarioNombre = req.body.operario_nombre || operarioEmail;
     await taller.pausarPaso(req.body.paso_id, operarioEmail, operarioNombre);
+    eventos.dashboardUpdate('pausar');
     res.json({ ok: true });
 }));
 
@@ -80,6 +88,7 @@ router.post('/api/taller/reanudar', canUpdate, asyncHandler(async (req, res) => 
     const operarioEmail = req.headers['x-user-email'] || req.body.operario_email || 'Operario';
     const operarioNombre = req.body.operario_nombre || operarioEmail;
     await taller.reanudarPaso(req.body.paso_id, operarioEmail, operarioNombre);
+    eventos.dashboardUpdate('reanudar');
     res.json({ ok: true });
 }));
 
@@ -89,6 +98,7 @@ router.post('/api/taller/finalizar', canUpdate, asyncHandler(async (req, res) =>
     const operarioNombre = req.body.operario_nombre || operarioEmail;
     const result = await taller.finalizarPaso(req.body.paso_id, operarioEmail, operarioNombre, req.body.cantidad);
     if (!result) return res.status(404).json({ error: 'Paso no encontrado' });
+    eventos.dashboardUpdate('finalizar');
     res.json({ ok: true, ...result });
 }));
 
@@ -98,6 +108,7 @@ router.post('/api/taller/procesar', canUpdate, asyncHandler(async (req, res) => 
     const operarioNombre = req.body.operario_nombre || operarioEmail;
     const result = await taller.procesarPaso(req.body.paso_id, req.body.cantidad, req.body.maquina_id, operarioEmail, operarioNombre);
     if (!result) return res.status(404).json({ error: 'Paso no encontrado' });
+    eventos.dashboardUpdate('procesar');
     res.json({ ok: true, ...result });
 }));
 
@@ -118,6 +129,7 @@ router.post('/api/taller/merma', canCreate, asyncHandler(async (req, res) => {
     } catch (autoErr) { console.error('[TALLER] Auto-asignar post-merma error:', autoErr.message); }
 
     res.json({ ok: true, ...result, mensaje: msg + (autoAsignados > 0 ? ` Auto-asignada: ${autoAsignados} orden(es).` : '') });
+    eventos.dashboardUpdate('merma');
 }));
 
 // ============ BACKFILLS ============
@@ -156,6 +168,7 @@ router.post('/api/taller/registro-manual', canUpdate, asyncHandler(async (req, r
         maquinaId: req.body.maquina_id || null,
         turno: req.body.turno || null
     });
+    eventos.dashboardUpdate('registro-manual');
     res.json({ resultados });
 }));
 

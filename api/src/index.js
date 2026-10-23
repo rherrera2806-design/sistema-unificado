@@ -4,6 +4,7 @@ const path = require('path');
 const { initDB } = require('./config/database');
 const { setSecurityHeaders, checkGlobalRateLimit } = require('./middleware/security');
 const { logger, requestLogger } = require('./config/logger');
+const eventos = require('./services/eventos');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, '..', '..', 'web', 'public');
@@ -144,4 +145,22 @@ const server = app.listen(PORT, () => {
     console.log('='.repeat(70) + '\n');
 });
 
-module.exports = { app, server };
+// ===== Socket.IO: eventos en vivo para el dashboard de planta =====
+// El dashboard (web/public/dashboard) se conecta y refresca cuando llega
+// 'dashboard:update' — emitido desde los endpoints que cambian producción.
+const { Server } = require('socket.io');
+const io = new Server(server, {
+    cors: { origin: ALLOWED_ORIGINS, credentials: true }
+});
+io.use((socket, next) => {
+    // Misma identidad que la web: cookie 'session=' o Authorization Bearer.
+    const { getSession, getTokenFromReq } = require('./middleware/security');
+    const user = getSession(getTokenFromReq(socket.request));
+    if (!user) return next(new Error('No autenticado'));
+    socket.user = user;
+    next();
+});
+eventos.setIo(io);
+logger.info('Socket.IO listo para el dashboard de planta');
+
+module.exports = { app, server, io };

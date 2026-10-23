@@ -89,7 +89,9 @@ router.post('/api/inv/movimientos', canCreateMov, async (req, res, next) => {
         // si pasa a crearMovimiento(data, usuarioId), el 2º argumento es el que se usa
         // (el argumento extra es ignorado sin efecto con la firma actual).
         data.usuario_id = req.user.id || null;
-        res.status(201).json(await inventarioService.crearMovimiento(data, req.user.id || null));
+        const mov = await inventarioService.crearMovimiento(data, req.user.id || null);
+        require('../services/eventos').dashboardUpdate('movimiento');
+        res.status(201).json(mov);
     }
     catch (e) {
         // Errores de negocio con err.status (404, 409...) se respetan tal cual
