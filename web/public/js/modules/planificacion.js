@@ -588,15 +588,35 @@ App.modules.planificacion = {
             <div id="reprogAvanceResultado" style="margin-top:12px"></div>
         `;
         const footer = `
-            <button class="pln-btn ghost" onclick="App.hideModal()">Cerrar</button>
-            <button class="pln-btn warn" onclick="App.modules.planificacion.ejecutarReprogramarAvance()">Reprogramar por Avance</button>
+            <button class="pln-btn ghost" id="reprogAvanceCerrar" onclick="App.hideModal()">Cerrar</button>
+            <button class="pln-btn warn" id="reprogAvanceRun" onclick="App.modules.planificacion.ejecutarReprogramarAvance()">Reprogramar por Avance</button>
         `;
         App.showModalInv('Reprogramar por Avance', html, footer);
     },
 
     async ejecutarReprogramarAvance() {
         const resEl = document.getElementById('reprogAvanceResultado');
-        if (resEl) resEl.innerHTML = '<div class="pln-loading">Reprogramando por avance: respetando lo fabricado y la capacidad diaria...</div>';
+        const btnRun = document.getElementById('reprogAvanceRun');
+        const btnCerrar = document.getElementById('reprogAvanceCerrar');
+        // BLOQUEO de la operación: botones inactivos mientras corre, avance
+        // visible (spinner + segundos) y se sueltan SOLO al terminar
+        if (btnRun) { btnRun.disabled = true; btnRun.style.opacity = '.5'; btnRun.textContent = '⏳ Reprogramando…'; }
+        if (btnCerrar) { btnCerrar.disabled = true; btnCerrar.style.opacity = '.5'; }
+        let seg = 0;
+        const timer = setInterval(() => {
+            seg++;
+            const t = document.getElementById('reprogAvanceTimer');
+            if (t) t.textContent = seg + 's';
+        }, 1000);
+        if (resEl) resEl.innerHTML = `
+            <style>@keyframes plnSpin{to{transform:rotate(360deg)}}</style>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+                <div style="width:22px;height:22px;border:3px solid #bfdbfe;border-top-color:#2563eb;border-radius:50%;animation:plnSpin .9s linear infinite"></div>
+                <div>
+                    <div style="font-size:13px;font-weight:700;color:#1e40af">Re-programando el plan… <span id="reprogAvanceTimer" style="font-variant-numeric:tabular-nums">0s</span></div>
+                    <div style="font-size:11px;color:#64748b;margin-top:2px">Respetando lo fabricado, la cola de prioridades y la capacidad diaria. <strong>No cierres esta ventana</strong> — se liberará al completarse.</div>
+                </div>
+            </div>`;
         try {
             const res = await fetch('/api/produccion/reprogramar/avance', {
                 method: 'POST',
@@ -604,10 +624,18 @@ App.modules.planificacion = {
                 body: JSON.stringify({})
             });
             const data = await res.json();
+            clearInterval(timer);
+            // SOLTAR la operación: botones habilitados de nuevo
+            if (btnRun) { btnRun.disabled = false; btnRun.style.opacity = '1'; btnRun.textContent = 'Reprogramar por Avance'; }
+            if (btnCerrar) { btnCerrar.disabled = false; btnCerrar.style.opacity = '1'; }
             if (res.ok) {
                 const alertas = data.alertas || [];
                 const exceden = alertas.filter(a => a.excede_pacto);
-                let html = `<div class="pln-ok" style="margin-bottom:8px"><strong>${data.mensaje || 'Reprogramacion completada'}</strong></div>
+                let html = `<div class="pln-ok" style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+                        <span style="font-size:20px">✅</span>
+                        <div><strong style="font-size:14px;color:#15803d">COMPLETADO en ${seg}s</strong>
+                        <div style="font-size:12px;color:#166534">${data.mensaje || 'Reprogramacion completada'}</div></div>
+                    </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
                         <div class="pln-stat"><div class="v" style="color:#b45309">${data.ordenes_reprogramadas || 0}</div><div class="k">Ordenes</div></div>
                         <div class="pln-stat"><div class="v" style="color:#15803d">${data.pasos_fechados || 0}</div><div class="k">Pasos fechados</div></div>
@@ -619,12 +647,18 @@ App.modules.planificacion = {
                         `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${a.pedido || ''}</strong> item ${a.item != null ? a.item : '-'}: pactada ${String(a.fecha_anterior || '').slice(5)} → nueva ${String(a.fecha_nueva || '').slice(5)}</div>`).join('');
                 }
                 if (resEl) resEl.innerHTML = html;
+                if (window.App && App.toast) App.toast('✅ Reprogramación por avance completada (' + (data.ordenes_reprogramadas || 0) + ' órdenes)', 'success');
                 this.refrescarTodo();
             } else {
-                if (resEl) resEl.innerHTML = `<div style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:12px">Error: ${data.error || 'no se pudo reprogramar'}</div>`;
+                if (resEl) resEl.innerHTML = `<div class="pln-ok" style="background:#fee2e2;border-color:#fecaca;margin-bottom:8px"><span style="font-size:20px">❌</span> <strong style="color:#b91c1c">ERROR:</strong> ${data.error || 'no se pudo reprogramar'}</div>`;
+                if (window.App && App.toast) App.toast('❌ La reprogramación falló', 'error');
             }
         } catch (e) {
-            if (resEl) resEl.innerHTML = '<div style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:12px">Error de conexion</div>';
+            clearInterval(timer);
+            if (btnRun) { btnRun.disabled = false; btnRun.style.opacity = '1'; btnRun.textContent = 'Reprogramar por Avance'; }
+            if (btnCerrar) { btnCerrar.disabled = false; btnCerrar.style.opacity = '1'; }
+            if (resEl) resEl.innerHTML = '<div class="pln-ok" style="background:#fee2e2;border-color:#fecaca;margin-bottom:8px"><span style="font-size:20px">❌</span> <strong style="color:#b91c1c">ERROR DE CONEXIÓN</strong> — no se pudo completar. Reintenta.</div>';
+            if (window.App && App.toast) App.toast('❌ Error de conexión al reprogramar', 'error');
         }
     },
 
