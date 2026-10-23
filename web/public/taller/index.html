@@ -1154,6 +1154,16 @@
         let registroFilas = [];
 
         function showRegistroManual(prefill) {
+            // Una etiqueta = 1 vidrio: si el QR no trae cantidad, se asume 1
+            // (antes quedaba "undefined und" y el backend rechazaba el registro)
+            if (prefill) {
+                const cant = Number(prefill.cantidad);
+                prefill = {
+                    pedido: prefill.pedido,
+                    item: Number(prefill.item) || 1,
+                    cantidad: Number.isFinite(cant) && cant > 0 ? cant : 1
+                };
+            }
             registroFilas = prefill ? [prefill] : [];
             tModal('Registro manual de producción', `
                 <p style="font-size:12px;color:#64748b;margin:0 0 12px">Digitación directa o pegado desde Excel (una fila por línea: <strong>pedido · item · cantidad</strong>, separados por tabulador, coma o punto y coma).</p>
@@ -1189,9 +1199,14 @@
                 + registroFilas.map((f, i) => `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #e4e9f0;border-radius:8px;margin-bottom:5px;font-size:13px">
                     <strong style="min-width:80px">${String(f.pedido)}</strong>
                     <span style="color:#64748b">Item ${f.item}</span>
-                    <strong>${f.cantidad} und</strong>
+                    <span style="display:flex;align-items:center;gap:4px"><input type="number" min="1" step="1" inputmode="numeric" value="${Number(f.cantidad) || 1}" oninput="rmCambiarCantidad(${i}, this.value)" onchange="rmRenderLista()" style="width:64px;padding:6px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-weight:700"> und</span>
                     <button onclick="rmQuitar(${i})" style="margin-left:auto;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px">✕</button>
                 </div>`).join('');
+        }
+
+        function rmCambiarCantidad(i, valor) {
+            const n = Number(valor);
+            if (registroFilas[i] && Number.isFinite(n) && n >= 1) registroFilas[i].cantidad = n;
         }
 
         function rmAgregarManual() {
@@ -1232,6 +1247,8 @@
 
         async function rmRegistrarTodo() {
             if (!registroFilas.length) { showToast('Agrega al menos una fila', 'error'); return; }
+            const invalidas = registroFilas.filter(f => !(Number(f.cantidad) > 0));
+            if (invalidas.length) { showToast('Revisa las cantidades: deben ser 1 o más', 'error'); return; }
             const btn = document.getElementById('rmBtnRegistrar');
             if (btn) { btn.disabled = true; btn.textContent = 'Registrando...'; }
             try {
