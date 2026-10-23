@@ -4,6 +4,7 @@ import { api, login, logout, getUser, ApiError } from './api.js';
 import { parseQR, getTurnoSugerido } from './helpers.js';
 import { scanCode } from './scan.js';
 import { checkForUpdate, openDownload } from './update.js';
+import { escuchar, parseComandoVoz } from './voice.js';
 
 const state = {
     view: 'login',
@@ -290,7 +291,9 @@ async function renderCola() {
             ${esEstacionCorte() && puedeMovimientos() ? `<button class="btn btn-outline" onclick="App.showMovimientos()">📦 Planchas</button>` : ''}
             <button class="btn btn-outline" onclick="App.showRegistro()">✏️ Registro</button>
             <button class="btn btn-primary" onclick="App.scan()">📷 Escanear</button>
-        </div>`;
+        </div>
+        <button onclick="App.voice()" title="Comando de voz"
+            style="position:fixed;right:16px;bottom:calc(86px + env(safe-area-inset-bottom, 0px));width:60px;height:60px;border-radius:50%;background:var(--primary);color:#fff;border:none;box-shadow:0 8px 22px rgba(37,99,235,.45);font-size:25px;z-index:61">🎤</button>`;
     await refreshCola();
 }
 
@@ -564,6 +567,54 @@ function qrManual() {
     showRegistro([{ pedido: leido.pedido, item: leido.item, cantidad: 1 }], 'qr');
 }
 
+// ============================ COMANDO DE VOZ ============================
+
+async function voice() {
+    if (!state.estacion) { toast('Primero elige una estación', 'err'); return; }
+    openSheet('Comando de voz', `
+        <div style="text-align:center;padding:14px 0">
+            <div style="font-size:54px;line-height:1">🎤</div>
+            <p style="font-size:15px;font-weight:700;margin-top:10px">Escuchando…</p>
+            <p style="font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.7">
+                Di por ejemplo:<br>
+                <strong style="color:var(--text)">"Registrar 5 del pedido 111836"</strong><br>
+                <span style="font-size:11px">también: "…pedido 111836 item 2"</span>
+            </p>
+        </div>
+    `, `<button class="btn btn-outline" onclick="App.cancelVoice()">Cancelar</button>`);
+    voiceCancelado = false;
+    let texto = null;
+    try {
+        texto = await escuchar();
+    } catch (err) {
+        closeSheet();
+        manejarError(err);
+        return;
+    }
+    if (voiceCancelado) return;
+    closeSheet();
+    if (!texto) return;
+
+    const cmd = parseComandoVoz(texto);
+    if (!cmd) {
+        openSheet('No entendí el comando', `
+            <p style="font-size:13px;color:var(--muted);line-height:1.7">Escuché:<br><strong style="color:var(--text)">${esc(texto)}</strong></p>
+            <p style="font-size:12px;color:var(--muted);margin-top:10px">Prueba con:<br><strong>"Registrar 5 del pedido 111836"</strong></p>
+        `, `
+            <button class="btn btn-outline" onclick="App.closeSheet()">Cerrar</button>
+            <button class="btn btn-primary" onclick="App.closeSheet();App.voice()">Intentar de nuevo</button>
+        `);
+        return;
+    }
+    showRegistro([{ pedido: cmd.pedido, item: cmd.item, cantidad: cmd.cantidad }], 'voz');
+}
+
+let voiceCancelado = false;
+function cancelVoice() {
+    voiceCancelado = true;
+    closeSheet();
+}
+
 function showRegistro(filas, origen) {
     state.registroOrigen = origen || 'manual';
     state.registroFilas = filas ? filas.map(f => ({ ...f })) : [];
@@ -689,6 +740,9 @@ async function rmRegistrar() {
         `, state.registroOrigen === 'qr' ? `
             <button class="btn btn-outline" onclick="App.closeSheet();App.refreshCola()">Volver a la cola</button>
             <button class="btn btn-primary" onclick="App.closeSheet();App.scan()">📷 Escanear otro</button>
+        ` : state.registroOrigen === 'voz' ? `
+            <button class="btn btn-outline" onclick="App.closeSheet();App.refreshCola()">Volver a la cola</button>
+            <button class="btn btn-primary" onclick="App.closeSheet();App.voice()">🎤 Hablar otro</button>
         ` : `
             <button class="btn btn-outline" onclick="App.showRegistro()">Seguir registrando</button>
             <button class="btn btn-primary" onclick="App.closeSheet();App.refreshCola()">Cerrar</button>
@@ -968,7 +1022,7 @@ window.App = {
     refreshCola, onSearch, onEspesor, volverEstaciones,
     iniciar, pausar, reanudar,
     showFinalizar, confirmFinalizar, showProcesar, confirmProcesar, showMerma, confirmMerma,
-    scan, qrManual, showRegistro, rmAgregar, rmPegado, rmCambiar, rmQuitar, rmRegistrar,
+    scan, qrManual, voice, cancelVoice, showRegistro, rmAgregar, rmPegado, rmCambiar, rmQuitar, rmRegistrar,
     showMovimientos, mvSetTipo, mvSetTipoSalida, mvMpChange, mvDimChange, mvCalc, mvRegistrar,
     updateNow,
     closeSheet,
