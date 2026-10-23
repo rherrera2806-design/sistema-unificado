@@ -35,6 +35,10 @@ $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
 Push-Location $raiz
 npm run build
 npx cap sync android
+# El APK de distribución vive en app/ para servirlo en /planta/, pero NO debe
+# empaquetarse dentro de la app (cap sync copia todo app/ a los assets: sin este
+# borrado cada APK contiene al anterior y crece sin control).
+Get-ChildItem (Join-Path $raiz 'android\app\src\main\assets\public') -Filter *.apk -ErrorAction SilentlyContinue | Remove-Item -Force
 Pop-Location
 
 # 2) Compilar y firmar

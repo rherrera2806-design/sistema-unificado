@@ -287,7 +287,7 @@ async function renderCola() {
         </div>
         <div class="container" id="colaList"><div class="loading">Cargando cola de trabajo…</div></div>
         <div class="action-bar">
-            ${esEstacionCorte() && puedeMovimientos() ? `<button class="btn btn-outline" onclick="App.showMovimientos()">📦 Planas</button>` : ''}
+            ${esEstacionCorte() && puedeMovimientos() ? `<button class="btn btn-outline" onclick="App.showMovimientos()">📦 Planchas</button>` : ''}
             <button class="btn btn-outline" onclick="App.showRegistro()">✏️ Registro</button>
             <button class="btn btn-primary" onclick="App.scan()">📷 Escanear</button>
         </div>`;
@@ -708,6 +708,18 @@ let movMP = [];          // materias primas
 let movDims = [];        // stock por medida de la MP seleccionada
 let movTipo = 'entrada'; // 'entrada' | 'salida'
 let movTipoSalida = '';  // 'plancha_completa' | 'trozo'
+// Estado del formulario: el form se re-renderiza al cambiar tipo/materia prima
+// (para mostrar/ocultar campos) y sin esto se pierde lo ya ingresado.
+let movSel = { mp: '', dim: '', ancho: '', alto: '', cant: '', turno: '', fecha: '', hora: '', proveedor: '', obs: '' };
+
+function capturarMovForm() {
+    const g = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+    movSel = {
+        mp: g('mvMP'), dim: g('mvDim'), ancho: g('mvAncho'), alto: g('mvAlto'),
+        cant: g('mvCant'), turno: g('mvTurno'), fecha: g('mvFecha'), hora: g('mvHora'),
+        proveedor: g('mvProveedor'), obs: g('mvObs')
+    };
+}
 
 function puedeMovimientos() {
     const u = state.user || {};
@@ -724,6 +736,7 @@ async function showMovimientos() {
     movTipo = 'entrada';
     movTipoSalida = '';
     movDims = [];
+    movSel = { mp: '', dim: '', ancho: '', alto: '', cant: '', turno: '', fecha: '', hora: '', proveedor: '', obs: '' };
     openSheet('Movimientos de planchas', '<div class="loading">Cargando materias primas…</div>', '');
     try {
         movMP = (await api('/api/inv/materias-primas')) || [];
@@ -739,7 +752,7 @@ function pintarMovForm() {
     const ahora = new Date();
     const hhmm = String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0');
     const hoy = ahora.getFullYear() + '-' + String(ahora.getMonth() + 1).padStart(2, '0') + '-' + String(ahora.getDate()).padStart(2, '0');
-    const turnoDefault = state.turno === 'dia' ? 'Dia' : state.turno === 'noche' ? 'Noche' : '';
+    const turnoVal = movSel.turno || (state.turno === 'dia' ? 'Dia' : state.turno === 'noche' ? 'Noche' : '');
     const esSalida = movTipo === 'salida';
     const esPlancha = esSalida && movTipoSalida === 'plancha_completa';
 
@@ -758,7 +771,7 @@ function pintarMovForm() {
             <label>Materia prima *</label>
             <select id="mvMP" onchange="App.mvMpChange()">
                 <option value="">Seleccionar…</option>
-                ${movMP.map(mp => `<option value="${mp.id}">${esc(mp.nombre)} (${esc(mp.espesor_mm)}mm)</option>`).join('')}
+                ${movMP.map(mp => `<option value="${mp.id}" ${String(mp.id) === String(movSel.mp) ? 'selected' : ''}>${esc(mp.nombre)} (${esc(mp.espesor_mm)}mm)</option>`).join('')}
             </select>
         </div>
         ${esPlancha ? `
@@ -766,13 +779,13 @@ function pintarMovForm() {
             <label>Medida disponible (stock) *</label>
             <select id="mvDim" onchange="App.mvDimChange()">
                 <option value="">Seleccionar medida…</option>
-                ${movDims.map((d, i) => `<option value="${i}">${esc(d.ancho)} x ${esc(d.alto)} mm — ${esc(d.stock)} en stock</option>`).join('')}
+                ${movDims.map((d, i) => `<option value="${i}" ${String(i) === String(movSel.dim) ? 'selected' : ''}>${esc(d.ancho)} x ${esc(d.alto)} mm — ${esc(d.stock)} en stock</option>`).join('')}
             </select>
         </div>` : ''}
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-            <div class="field" style="margin:0"><label>Ancho (mm) *</label><input id="mvAncho" type="number" min="1" inputmode="numeric" placeholder="2000" oninput="App.mvCalc()"></div>
-            <div class="field" style="margin:0"><label>Alto (mm) *</label><input id="mvAlto" type="number" min="1" inputmode="numeric" placeholder="1500" oninput="App.mvCalc()"></div>
-            <div class="field" style="margin:0"><label>Cantidad *</label><input id="mvCant" type="number" min="1" inputmode="numeric" placeholder="5" oninput="App.mvCalc()"></div>
+            <div class="field" style="margin:0"><label>Ancho (mm) *</label><input id="mvAncho" type="number" min="1" inputmode="numeric" placeholder="2000" value="${esc(movSel.ancho)}" oninput="App.mvCalc()"></div>
+            <div class="field" style="margin:0"><label>Alto (mm) *</label><input id="mvAlto" type="number" min="1" inputmode="numeric" placeholder="1500" value="${esc(movSel.alto)}" oninput="App.mvCalc()"></div>
+            <div class="field" style="margin:0"><label>Cantidad *</label><input id="mvCant" type="number" min="1" inputmode="numeric" placeholder="5" value="${esc(movSel.cant)}" oninput="App.mvCalc()"></div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:11px;padding:11px 13px;margin:11px 0">
             <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700">M² total</span>
@@ -781,51 +794,60 @@ function pintarMovForm() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="field" style="margin:0"><label>Turno *</label>
                 <select id="mvTurno"><option value="">Seleccionar…</option>
-                    <option ${turnoDefault === 'Dia' ? 'selected' : ''}>Dia</option>
-                    <option ${turnoDefault === 'Noche' ? 'selected' : ''}>Noche</option>
+                    <option ${turnoVal === 'Dia' ? 'selected' : ''}>Dia</option>
+                    <option ${turnoVal === 'Noche' ? 'selected' : ''}>Noche</option>
                 </select></div>
-            <div class="field" style="margin:0"><label>Fecha</label><input id="mvFecha" type="date" value="${hoy}" max="${hoy}"></div>
+            <div class="field" style="margin:0"><label>Fecha</label><input id="mvFecha" type="date" value="${esc(movSel.fecha) || hoy}" max="${hoy}"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px">
-            <div class="field" style="margin:0"><label>Hora</label><input id="mvHora" type="time" value="${hhmm}"></div>
-            <div class="field" style="margin:0"><label>Proveedor</label><input id="mvProveedor" placeholder="Opcional"></div>
+            <div class="field" style="margin:0"><label>Hora</label><input id="mvHora" type="time" value="${esc(movSel.hora) || hhmm}"></div>
+            <div class="field" style="margin:0"><label>Proveedor</label><input id="mvProveedor" placeholder="Opcional" value="${esc(movSel.proveedor)}"></div>
         </div>
-        <div class="field" style="margin-top:11px"><label>Observaciones</label><input id="mvObs" placeholder="Notas…"></div>
+        <div class="field" style="margin-top:11px"><label>Observaciones</label><input id="mvObs" placeholder="Notas…" value="${esc(movSel.obs)}"></div>
     `, `
         <button class="btn btn-outline" onclick="App.closeSheet()">Cancelar</button>
         <button class="btn btn-success" id="mvBtn" onclick="App.mvRegistrar()">Registrar movimiento</button>
     `);
+    mvCalc();
 }
 
 function mvSetTipo(t) {
+    capturarMovForm();
     movTipo = t;
     if (t !== 'salida') movTipoSalida = '';
     pintarMovForm();
 }
 function mvSetTipoSalida(t) {
+    capturarMovForm();
     movTipoSalida = t;
     pintarMovForm();
 }
 
 async function mvMpChange() {
-    const mpId = Number($('#mvMP').value) || 0;
+    capturarMovForm();
+    movSel.dim = '';
     movDims = [];
+    const mpId = Number(movSel.mp) || 0;
     if (mpId) {
         try {
             const body = await api(`/api/inv/stock-por-dimension?mp_id=${mpId}`);
             movDims = Array.isArray(body) ? body : [];
         } catch (_) { }
     }
-    // Recargar el formulario para mostrar/ocultar el selector de medidas
+    // Re-render para mostrar/ocultar el selector de medidas (sin perder datos)
     pintarMovForm();
 }
 
 function mvDimChange() {
-    const i = Number($('#mvDim').value);
+    capturarMovForm();
+    const i = Number(movSel.dim);
     const d = movDims[i];
     if (d) {
-        $('#mvAncho').value = d.ancho;
-        $('#mvAlto').value = d.alto;
+        movSel.ancho = d.ancho;
+        movSel.alto = d.alto;
+        const ae = $('#mvAncho'); const al = $('#mvAlto');
+        if (ae) ae.value = d.ancho;
+        if (al) al.value = d.alto;
         mvCalc();
     }
 }
