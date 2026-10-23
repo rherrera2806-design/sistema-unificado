@@ -77,7 +77,7 @@ const getCargaPorGrupo = async (inicio, fin) => {
         FROM (
             SELECT DISTINCT fecha_programada FROM cola_produccion_pasos
             WHERE fecha_programada BETWEEN $1 AND $2
-              AND estado_programacion NOT IN ('CERRADO','TERMINADO')
+              AND estado NOT IN ('TERMINADO','MERMADO')
         ) o
         CROSS JOIN produccion_capacidad_grupo pg
         WHERE pg.activo = TRUE
@@ -207,10 +207,13 @@ const getCargaPorGrupoFinales = async (inicio, fin) => {
             (SELECT cc.grupo FROM produccion_codigos cc WHERE cc.codigo = o.codigo_padre),
             '(sin grupo)') as nombre_familia,
             o.fecha_entrega_pactada::text as fecha,
-            COALESCE(SUM(o.kilos), 0) as kilos
-        FROM produccion_ordenes o
+            COALESCE(SUM(CASE WHEN COALESCE(o.metros_cuadrados,0) > 0
+                THEN COALESCE(o.kilos,0) * (CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados
+                ELSE COALESCE(o.kilos,0) END), 0) as kilos
+        FROM cola_produccion_pasos p
+        JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
         WHERE o.fecha_entrega_pactada BETWEEN $1 AND $2
-          AND o.estado_programacion NOT IN ('CERRADO','TERMINADO')
+          AND p.estado NOT IN ('TERMINADO','MERMADO')
           AND o.kilos > 0
         GROUP BY 1, 2
         ORDER BY 2, 1
@@ -220,9 +223,10 @@ const getCargaPorGrupoFinales = async (inicio, fin) => {
         SELECT o.fecha_entrega_pactada::text as fecha,
             COALESCE(SUM(pg.capacidad_kg_dia), 0) as capacidad_total
         FROM (
-            SELECT DISTINCT fecha_entrega_pactada FROM produccion_ordenes
-            WHERE fecha_entrega_pactada BETWEEN $1 AND $2
-              AND estado_programacion NOT IN ('CERRADO','TERMINADO')
+            SELECT DISTINCT o.fecha_entrega_pactada FROM cola_produccion_pasos p
+            JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
+            WHERE o.fecha_entrega_pactada BETWEEN $1 AND $2
+              AND p.estado NOT IN ('TERMINADO','MERMADO')
         ) o
         CROSS JOIN produccion_capacidad_grupo pg
         WHERE pg.activo = TRUE
