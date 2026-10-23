@@ -1,7 +1,7 @@
 {
-    "notas":  "Mejoras: pendientes que descuentan al registrar, produccion por estacion en el dashboard y teclado que ya no tapa los campos.",
+    "notas":  "Cuadre total de reportes: unidades y kilos con formula unica en todas las pantallas, ordenes macro y metricas del taller reales.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  12,
-    "versionName":  "1.11",
+    "versionCode":  13,
+    "versionName":  "1.12",
     "fecha":  "2026-10-23"
 }

@@ -36,15 +36,15 @@
                 <button class="back-link" onclick="App.doLogout()">Salir</button>
             </div>
         </div>
-        <div class="container" id="estList"><div class="loading">Cargando estaciones\u2026</div></div>`;try{let x=await W("/api/taller/estaciones");if(!x||!x.length){P("#estList").innerHTML='<div class="empty">No hay estaciones configuradas</div>';return}P("#estList").innerHTML=x.map(t=>{let o=(t.pendientes||0)+(t.en_proceso||0),a=o>10?"var(--danger)":o>5?"var(--warning)":"var(--success)";return`
+        <div class="container" id="estList"><div class="loading">Cargando estaciones\u2026</div></div>`;try{let x=await W("/api/taller/estaciones");if(!x||!x.length){P("#estList").innerHTML='<div class="empty">No hay estaciones configuradas</div>';return}P("#estList").innerHTML=x.map(t=>{let o=(t.pendientes||0)+(t.en_proceso||0),a=Number(t.total_unidades||0),n=o>10?"var(--danger)":o>5?"var(--warning)":"var(--success)";return`
             <div class="card tap" onclick="App.selectEstacion(${Number(t.id)}, '${$(t.nombre_estacion||t.nombre)}')">
                 <div class="q-head">
                     <div class="q-title" style="font-size:16px">${$(t.nombre_estacion||t.nombre)}</div>
-                    <span class="badge" style="background:${a}20;color:${a}">${o} en cola</span>
+                    <span class="badge" style="background:${n}20;color:${n}">${a.toLocaleString("es-CL")} und en cola</span>
                 </div>
                 <div class="stat-grid">
-                    <div class="stat"><div class="v" style="color:var(--primary)">${t.pendientes||0}</div><div class="l">Pendientes</div></div>
-                    <div class="stat"><div class="v" style="color:var(--warning)">${t.en_proceso||0}</div><div class="l">En proceso</div></div>
+                    <div class="stat"><div class="v" style="color:var(--primary)">${a.toLocaleString("es-CL")}</div><div class="l">Unidades pend.</div></div>
+                    <div class="stat"><div class="v" style="color:var(--warning)">${o}</div><div class="l">Trabajos</div></div>
                     <div class="stat"><div class="v">${t.total_kilos?Number(Math.round(t.total_kilos)).toLocaleString("es-CL"):0}</div><div class="l">Kilos</div></div>
                 </div>
             </div>`}).join("")}catch(x){Z(x),P("#estList").innerHTML='<div class="empty">Error al cargar estaciones</div>'}}async function Le(){await lx(),f.user=null,nx()}function Ne(e,x){f.estacion={id:e,nombre:x},f.turno=null,f.maquina=null,$e()}function $e(){let e=Cx(f.horarios),x=[{v:"dia",t:"\u2600\uFE0F D\xEDa",d:""},{v:"noche",t:"\u{1F319} Noche",d:""},{v:"extra",t:"\u23F1\uFE0F Extra",d:"Fuera de los horarios de d\xEDa/noche"}];j("Seleccionar turno",`

@@ -128,16 +128,17 @@ async function renderEstaciones() {
         }
         $('#estList').innerHTML = estaciones.map(e => {
             const carga = (e.pendientes || 0) + (e.en_proceso || 0);
+            const unidades = Number(e.total_unidades || 0);
             const color = carga > 10 ? 'var(--danger)' : carga > 5 ? 'var(--warning)' : 'var(--success)';
             return `
             <div class="card tap" onclick="App.selectEstacion(${Number(e.id)}, '${esc(e.nombre_estacion || e.nombre)}')">
                 <div class="q-head">
                     <div class="q-title" style="font-size:16px">${esc(e.nombre_estacion || e.nombre)}</div>
-                    <span class="badge" style="background:${color}20;color:${color}">${carga} en cola</span>
+                    <span class="badge" style="background:${color}20;color:${color}">${unidades.toLocaleString('es-CL')} und en cola</span>
                 </div>
                 <div class="stat-grid">
-                    <div class="stat"><div class="v" style="color:var(--primary)">${e.pendientes || 0}</div><div class="l">Pendientes</div></div>
-                    <div class="stat"><div class="v" style="color:var(--warning)">${e.en_proceso || 0}</div><div class="l">En proceso</div></div>
+                    <div class="stat"><div class="v" style="color:var(--primary)">${unidades.toLocaleString('es-CL')}</div><div class="l">Unidades pend.</div></div>
+                    <div class="stat"><div class="v" style="color:var(--warning)">${carga}</div><div class="l">Trabajos</div></div>
                     <div class="stat"><div class="v">${e.total_kilos ? Number(Math.round(e.total_kilos)).toLocaleString('es-CL') : 0}</div><div class="l">Kilos</div></div>
                 </div>
             </div>`;

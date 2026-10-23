@@ -583,22 +583,24 @@
                 let html = '<div style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:700;color:var(--text)">Selecciona una Estación</h2><p style="font-size:12px;color:var(--text-muted)">Elige la estación donde vas a trabajar</p></div>';
 
                 estaciones.forEach(e => {
-                    const carga = e.pendientes + e.en_proceso;
+                    // Number(): la base devuelve los conteos como texto y sin
+                    // convertir "544" + "0" daba "5440" en el badge de cola
+                    const carga = Number(e.pendientes || 0) + Number(e.en_proceso || 0);
                     const cargaColor = carga > 10 ? 'var(--danger)' : carga > 5 ? 'var(--warning)' : 'var(--success)';
                     html += `
                         <div class="station-card" onclick="showTurnoModal(${e.id}, '${e.nombre_estacion}')">
                             <div class="station-header">
                                 <div class="station-name">${e.nombre_estacion}</div>
-                                <div class="station-badge" style="background:${cargaColor}20;color:${cargaColor}">${carga} en cola</div>
+                                <div class="station-badge" style="background:${cargaColor}20;color:${cargaColor}">${Number(e.total_unidades || 0).toLocaleString('es-CL')} und en cola</div>
                             </div>
                             <div class="station-stats">
                                 <div class="stat">
-                                    <div class="stat-value" style="color:var(--primary)">${e.pendientes}</div>
-                                    <div class="stat-label">Pendientes</div>
+                                    <div class="stat-value" style="color:var(--primary)">${Number(e.total_unidades || 0).toLocaleString('es-CL')}</div>
+                                    <div class="stat-label">Unidades pend.</div>
                                 </div>
                                 <div class="stat">
-                                    <div class="stat-value" style="color:var(--warning)">${e.en_proceso}</div>
-                                    <div class="stat-label">En Proceso</div>
+                                    <div class="stat-value" style="color:var(--warning)">${Number(e.pendientes || 0) + Number(e.en_proceso || 0)}</div>
+                                    <div class="stat-label">Trabajos</div>
                                 </div>
                                 <div class="stat">
                                     <div class="stat-value" style="color:var(--text)">${e.total_kilos ? Number(Math.round(e.total_kilos)).toLocaleString('es-CL') : 0}</div>
