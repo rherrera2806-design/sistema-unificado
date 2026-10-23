@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">VitroFlow Planta</string>
+    <string name="title_activity_main">VitroFlow Planta</string>
+    <string name="package_name">cl.vitroflow.planta</string>
+    <string name="custom_url_scheme">cl.vitroflow.planta</string>
+</resources>

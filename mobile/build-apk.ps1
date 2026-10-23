@@ -1,0 +1,35 @@
+# Genera el APK firmado de VitroFlow Planta.
+# Uso:  powershell -ExecutionPolicy Bypass -File mobile\build-apk.ps1
+# Salida: mobile\android\app\build\outputs\apk\release\app-release.apk
+
+$ErrorActionPreference = 'Stop'
+$raiz = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+# JDK 21 (Capacitor 8 lo exige). Si JAVA_HOME ya apunta a un JDK 21+, se respeta.
+$jdk21 = Join-Path $env:LOCALAPPDATA 'jdk-21'
+$jdkDir = Get-ChildItem $jdk21 -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($jdkDir) { $env:JAVA_HOME = $jdkDir.FullName }
+Write-Output "JAVA_HOME = $env:JAVA_HOME"
+
+$env:ANDROID_HOME = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
+$env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
+
+# 1) Bundle de la web de la app
+Push-Location $raiz
+npm run build
+npx cap sync android
+Pop-Location
+
+# 2) Compilar y firmar
+Push-Location (Join-Path $raiz 'android')
+.\gradlew.bat assembleRelease --no-daemon
+Pop-Location
+
+$apk = Join-Path $raiz 'android\app\build\outputs\apk\release\app-release.apk'
+if (Test-Path $apk) {
+    Write-Output ""
+    Write-Output "APK listo: $apk"
+    Write-Output ("Tamano: " + [math]::Round((Get-Item $apk).Length / 1MB, 1) + " MB")
+} else {
+    Write-Output "No se genero el APK (revisa los errores de Gradle arriba)"
+}

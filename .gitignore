@@ -1,3 +1,16 @@
 node_modules/
 .env
 *.log
+
+# Android (Capacitor): se comparte el proyecto nativo, no los builds ni rutas locales
+mobile/android/local.properties
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/app/release/
+mobile/android/capacitor-cordova-android-plugins/build/
+*.apk
+*.aab
+# APK de distribución de la app de planta (se sirve en /planta/ para bajarlo
+# directo al celular) — es la excepción a la regla *.apk de arriba.
+!mobile/app/VitroFlow-Planta.apk
