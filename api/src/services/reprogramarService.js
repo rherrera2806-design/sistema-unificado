@@ -227,7 +227,7 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
                COALESCE(NULLIF(o.grupo, ''), '(sin grupo)') as grupo,
                COALESCE(o.kilos, 0) as kilos,
                p.id as paso_id, p.estacion_id, p.orden_secuencia, p.estado,
-               p.m2_asignados, p.fecha_programada as fecha_paso, p.turno, em.cap_max
+               p.m2_asignados, p.fecha_programada as fecha_paso, p.turno, em.cap_max, em.cuello_botella
         FROM cola_produccion_pasos p
         JOIN produccion_ordenes o ON p.orden_produccion_id = o.id
         LEFT JOIN estaciones_maestras em ON em.id = p.estacion_id
@@ -257,6 +257,7 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
                 // nPasos = estaciones por las que pasa (se cuentan de los pasos)
                 espesor: Number(r.espesor_mm) || 0,
                 m2_orden: Number(r.metros_cuadrados) || 0,
+                kilos_orden: Number(r.kilos) || 0,
                 avance: 0,
                 nPasos: 0,
                 pasos: []
@@ -274,8 +275,10 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
             estado: r.estado,
             m2: m2p,
             kg: kgp,
+            ordenKg: Number(r.kilos) || 0,
             grupo: r.grupo || '(sin grupo)',
-            cap: Number(r.cap_max) || 0
+            cap: Number(r.cap_max) || 0,
+            cuello: !!r.cuello_botella
         });
         if (r.estado === 'TERMINADO' || r.estado === 'MERMADO') o.avance++;
     }
@@ -292,6 +295,10 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         const idx = o.pasos.findIndex(p => !esHecho(p.estado));
         const prev = idx > 0 ? o.pasos[idx - 1] : null;
         o.listo = !prev || esHecho(prev.estado);
+        // PRIORIDAD TOC: lo que alimenta los CUELLOS DE BOTELLA primero — el
+        // cuello nunca debe quedar sin carga (si pierde 1 hora, la planta pierde
+        // 1 hora). Se marca si su ruta tiene algún paso pendiente en un cuello.
+        o.tieneCuello = o.pasos.some(p => p.cuello && !esHecho(p.estado));
     }
     cola.sort((a, b) => {
         const atA = (a.fecha_pactada && a.fecha_pactada <= hoy) ? 0 : 1;
@@ -299,6 +306,7 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         return (atA - atB)
             || ((rangoPrio[a.prioridad] ?? 3) - (rangoPrio[b.prioridad] ?? 3))
             || ((a.listo ? 0 : 1) - (b.listo ? 0 : 1))
+            || ((a.tieneCuello ? 0 : 1) - (b.tieneCuello ? 0 : 1))
             || String(a.fecha_pactada || '9999').localeCompare(String(b.fecha_pactada || '9999'));
     });
 
@@ -352,10 +360,10 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
             }
         }
     }
-    const buscarSlot = async (paso, desdeSlot) => {
+    const buscarSlot = async (paso, desdeSlot, kgYaContado) => {
         let slot = desdeSlot;
         for (let i = 0; i < 600; i++) {
-            if (cabeEnTurno(paso.estacion_id, paso.grupo, slot.fecha, slot.turno, paso.m2, paso.kg)) return slot;
+            if (cabeEnTurno(paso.estacion_id, paso.grupo, slot.fecha, slot.turno, paso.m2, kgYaContado ? 0 : (paso.ordenKg || paso.kg))) return slot;
             slot = await siguienteSlot(slot);
         }
         return slot;
@@ -373,6 +381,11 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         let slot = { fecha: desde, turno: 'dia' };
         let primeraFecha = null;
         let ultimaFecha = null;
+        // REGLA: el kg de la orden consume capacidad del GRUPO UNA sola vez
+        // (en su primer paso). Contarlo en cada paso hacía que una orden de 5
+        // procesos comiera 5 veces su peso y el plan se estrujara dejando los
+        // cuellos de botella vacíos (el método original lo contaba una vez).
+        let kgContado = false;
 
         for (const p of o.pasos) {
             if (esHecho(p.estado)) continue;   // historia
@@ -381,10 +394,11 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
                 slotPaso = { fecha: hoy, turno: p.turno || turnoActual };   // decisión 2
                 pasosEnCurso++;
             } else {
-                slotPaso = await buscarSlot(p, slot);
+                slotPaso = await buscarSlot(p, slot, kgContado);
                 pasosFechados++;
             }
-            agregarCarga(p.estacion_id, p.grupo, slotPaso.fecha, slotPaso.turno, p.m2, p.kg);
+            agregarCarga(p.estacion_id, p.grupo, slotPaso.fecha, slotPaso.turno, p.m2, kgContado ? 0 : (o.kilos_orden || p.kg || 0));
+            kgContado = true;
             const m2p = p.m2 > 0 ? p.m2 : (o.m2_orden || 0);
             updatesPasos.push([slotPaso.fecha, slotPaso.turno, m2p, p.paso_id]);
             if (!primeraFecha || slotPaso.fecha < primeraFecha) primeraFecha = slotPaso.fecha;

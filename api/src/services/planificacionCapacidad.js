@@ -60,7 +60,7 @@ const getCargaPorGrupo = async (inicio, fin) => {
             '(sin grupo)') as nombre_familia,
             p.fecha_programada::text as fecha,
             COALESCE(SUM(CASE WHEN COALESCE(o.metros_cuadrados,0) > 0
-                THEN COALESCE(o.kilos,0) * (CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados
+                THEN CASE WHEN p.id = (SELECT MIN(p2.id) FROM cola_produccion_pasos p2 WHERE p2.orden_produccion_id = o.id AND p2.estado NOT IN ('TERMINADO','MERMADO')) THEN COALESCE(o.kilos,0) ELSE 0 END
                 ELSE COALESCE(o.kilos,0) END), 0) as kilos
         FROM cola_produccion_pasos p
         JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
@@ -208,7 +208,7 @@ const getCargaPorGrupoFinales = async (inicio, fin) => {
             '(sin grupo)') as nombre_familia,
             o.fecha_entrega_pactada::text as fecha,
             COALESCE(SUM(CASE WHEN COALESCE(o.metros_cuadrados,0) > 0
-                THEN COALESCE(o.kilos,0) * (CASE WHEN COALESCE(p.m2_asignados,0) > 0 THEN p.m2_asignados ELSE o.metros_cuadrados END) / o.metros_cuadrados
+                THEN CASE WHEN p.id = (SELECT MIN(p2.id) FROM cola_produccion_pasos p2 WHERE p2.orden_produccion_id = o.id AND p2.estado NOT IN ('TERMINADO','MERMADO')) THEN COALESCE(o.kilos,0) ELSE 0 END
                 ELSE COALESCE(o.kilos,0) END), 0) as kilos
         FROM cola_produccion_pasos p
         JOIN produccion_ordenes o ON o.id = p.orden_produccion_id
