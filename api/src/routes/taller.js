@@ -198,13 +198,16 @@ router.get('/api/taller/limpiar-duplicados', canUpdate, asyncHandler(async (req,
 }));
 
 // ===== Horarios de turno por mes (día / noche; lo no contemplado = extra) =====
-router.get('/api/taller/horarios', canView, asyncHandler(async (req, res) => {
+// Lectura: permiso de producción (Taller) o de Configuración/Horarios — la
+// pantalla de Horarios de Turno ahora es una pestaña de Configuración
+router.get('/api/taller/horarios', requireAnyPerm('produccion', 'produccion.editar', 'produccion.eliminar', 'produccion.agregar', 'prod_config', 'prod_horarios'), asyncHandler(async (req, res) => {
     res.json(await taller.getHorariosTurnos(Number(req.query.anio) || null));
 }));
 
-// Escritura protegida con el permiso 'prod_horarios' (el Taller solo LEE esta
+// Escritura: permiso 'prod_horarios' o 'prod_config' (la pantalla ahora vive
+// como pestaña de Configuración; el Taller solo LEE esta
 // configuración para sugerir turnos; modificarla exige ese permiso de usuario).
-router.put('/api/taller/horarios', requireAnyPerm('prod_horarios'), asyncHandler(async (req, res) => {
+router.put('/api/taller/horarios', requireAnyPerm('prod_horarios', 'prod_config'), asyncHandler(async (req, res) => {
     res.json(await taller.guardarHorariosTurnos(req.body.filas));
 }));
 

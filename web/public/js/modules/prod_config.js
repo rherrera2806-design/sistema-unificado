@@ -27,7 +27,8 @@ App.registerModule('prod_config', {
             { id: 'reglas', label: 'Reglas Extras', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>' },
             { id: 'materias', label: 'Materias primas', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>' },
             { id: 'calendario', label: 'Calendario', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' },
-            { id: 'turnos', label: 'Turnos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>' }
+            { id: 'turnos', label: 'Turnos', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>' },
+            { id: 'horarios', label: 'Horarios de Turno', svg: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' }
         ];
         el.innerHTML = '<style>'
             + '@keyframes pcFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}'
@@ -108,7 +109,7 @@ App.registerModule('prod_config', {
         const token = ++this._tabToken; // id de esta carga: si cambia el tab, la respuesta se descarta
         container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light)">Cargando...</div>';
         // Tabs que delegan a modulos originales (Codigos, Maquinas, Recetas, Carroceria)
-        if (this._tab === 'codigos' || this._tab === 'maquinas' || this._tab === 'recetas') {
+        if (this._tab === 'codigos' || this._tab === 'maquinas' || this._tab === 'recetas' || this._tab === 'horarios') {
             await this.loadDelegated(this._tab, token);
             return;
         }
@@ -190,7 +191,7 @@ App.registerModule('prod_config', {
         if (token != null && token !== this._tabToken) return; // respuesta de un tab viejo: descartar
         const container = document.getElementById('prodConfigContent');
         container.innerHTML = '';
-        const moduleMap = { codigos: 'prod_codigos', maquinas: 'prod_maquinas', recetas: 'prod_recetas' };
+        const moduleMap = { codigos: 'prod_codigos', maquinas: 'prod_maquinas', recetas: 'prod_recetas', horarios: 'prod_horarios' };
         const moduleName = moduleMap[tab];
         const pageId = 'page-' + moduleName;
         // Crear page temporal para que el modulo original pueda renderizar

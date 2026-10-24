@@ -1,5 +1,5 @@
 // ============================================================================
-// Horarios de Turno (Producción → Horarios de Turno)
+// Horarios de Turno (Producción → Configuración → pestaña Horarios de Turno)
 // Configuración MES A MES de la SEMANA: por cada día de la semana, el turno
 // ☀️ Día y el 🌙 Noche con su hora de inicio y fin (pueden terminar al día
 // siguiente al cruzar medianoche). El recorte de horas en Chile es gradual

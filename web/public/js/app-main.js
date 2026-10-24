@@ -823,7 +823,6 @@ function renderSidebar() {
         { key: 'produccion', label: 'PRODUCCION', items: [
             { id: 'prod_config', label: 'Configuracion', icon: SVG.settings },
             { id: 'prod_notas', label: 'Bitácora de Producción', icon: SVG.clipboard },
-            { id: 'prod_horarios', label: 'Horarios de Turno', icon: SVG.calendar },
             { id: 'prod_planificacion', label: 'Planificacion', icon: SVG.calendar },
             { id: 'prod_ordenes', label: 'Produccion', icon: SVG.box },
             { id: 'prod_reportes', label: 'Reporte Fechas', icon: SVG.chart },
