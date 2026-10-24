@@ -126,6 +126,7 @@
                         <div class="q-sub">${M(r.cliente||"Sin cliente")}</div>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                        <span class="badge" title="Turno programado (T1 Noche arranca la tarde anterior)" style="background:${String(r.turno||"").toLowerCase()==="noche"?"#0f172a":"#eff6ff"};color:${String(r.turno||"").toLowerCase()==="noche"?"#93c5fd":"#1d4ed8"}">${String(r.turno||"").toLowerCase()==="noche"?"\u{1F319} T1 Noche":"\u{1F31E} T2 D\xEDa"}</span>
                         <span class="badge" style="background:${m};color:${D}">${d}</span>
                         <span class="status status-${String(r.estado||"").toLowerCase().replace("_","-")}">${M(r.estado||"")}</span>
                     </div>

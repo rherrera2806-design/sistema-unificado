@@ -1,7 +1,7 @@
 {
-    "notas":  "Alerta de ordenes vencidas/por vencer con avance por proceso. La reprogramacion POR AVANCE ahora es en la web: Produccion \u003e Planificacion \u003e Por Avance.",
+    "notas":  "Cola en el mismo orden que Programa por Estacion: T1 Noche antes que T2 Dia, con badge de turno programado en cada trabajo.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  16,
-    "versionName":  "1.15",
-    "fecha":  "2026-10-23"
+    "versionCode":  17,
+    "versionName":  "1.16",
+    "fecha":  "2026-10-24"
 }

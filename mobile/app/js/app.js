@@ -318,8 +318,9 @@ async function refreshColaManual() {
 }
 
 // ===== Agrupación visual por FECHA DE PROGRAMACIÓN =====
-// La cola viene ordenada por fecha→prioridad→espesor→pedido/item: estos
-// encabezados muestran el programa diario y cuánto queda de cada día.
+// La cola viene ordenada por fecha→T1 Noche/T2 Día→prioridad→espesor→
+// pedido/item (mismo orden que Prog. por Estación): estos encabezados
+// muestran el programa diario y cuánto queda de cada día.
 function keyFecha(item) {
     const f = item && item.fecha_programada ? String(item.fecha_programada).slice(0, 10) : '';
     return f || 'sin';
@@ -392,6 +393,7 @@ function pintarCola() {
                         <div class="q-sub">${esc(item.cliente || 'Sin cliente')}</div>
                     </div>
                     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                        <span class="badge" title="Turno programado (T1 Noche arranca la tarde anterior)" style="background:${String(item.turno || '').toLowerCase() === 'noche' ? '#0f172a' : '#eff6ff'};color:${String(item.turno || '').toLowerCase() === 'noche' ? '#93c5fd' : '#1d4ed8'}">${String(item.turno || '').toLowerCase() === 'noche' ? '🌙 T1 Noche' : '🌞 T2 Día'}</span>
                         <span class="badge" style="background:${prioBg};color:${prioFg}">${prioTxt}</span>
                         <span class="status status-${String(item.estado || '').toLowerCase().replace('_', '-')}">${esc(item.estado || '')}</span>
                     </div>
