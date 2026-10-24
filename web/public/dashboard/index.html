@@ -205,7 +205,12 @@
                 body: opts.body ? JSON.stringify(opts.body) : undefined
             });
             if (res.status === 401) throw Object.assign(new Error('No autenticado'), { status: 401 });
-            return res.json();
+            // Cualquier respuesta no-OK es error del SERVIDOR (p.ej. un 500 con
+            // JSON): antes solo se trataba el 401 y el resto rompía el render
+            if (!res.ok) throw Object.assign(new Error('Error ' + res.status), { status: res.status });
+            const txt = await res.text();
+            try { return JSON.parse(txt); }
+            catch (_) { throw Object.assign(new Error('Respuesta inválida del servidor'), { status: res.status }); }
         }
 
         // ===== Reloj ===== */
@@ -228,15 +233,32 @@
             if (datos) pintar(datos);
         }
 
+        let fallosSeguidos = 0;
         async function cargar() {
             try {
                 const d = await api('/api/taller/dashboard');
+                // Validar la FORMA del dato: un error del servidor no debe romper
+                // el render (antes pintar() explotaba y quedaba todo en
+                // "Cargando..." con el aviso de SIN CONEXIÓN tapando la causa real)
+                if (!d || !d.resumen_hoy) {
+                    throw Object.assign(new Error((d && d.error) || 'Respuesta incompleta'), { status: 500 });
+                }
                 datos = d;
                 pintar(d);
                 setLive(true);
+                fallosSeguidos = 0;
             } catch (e) {
                 if (e.status === 401) { mostrarLogin(); return; }
-                setLive(false);
+                fallosSeguidos++;
+                // Diagnóstico HONESTO: servidor con error vs conexión caída
+                setLive(false, e.status
+                    ? `ERROR DEL SERVIDOR (${e.status}) · reintentando`
+                    : 'SIN CONEXIÓN · reintentando');
+                // Reintento rápido mientras falla (el intervalo normal es 60 s)
+                if (fallosSeguidos < 5) setTimeout(() => cargar(), 15000);
+                // Auto-recuperación de la TV: si quedó sin datos por más de
+                // ~2,5 min o sin responder por más de 15 min, se recarga sola
+                if ((fallosSeguidos >= 10 && !datos) || fallosSeguidos >= 60) location.reload();
             }
         }
 
@@ -251,9 +273,10 @@
                     ? { pend: Number(e.venc_pendientes || 0), kg: Number(e.venc_kilos || 0), ord: Number(e.venc_ordenes || 0) }
                     : { pend: Number(e.total_unidades_pend || 0), kg: Number(e.total_kilos_pend || 0), ord: Number(e.total_ordenes || 0) };
 
-            document.getElementById('kPasos').textContent = fmt(d.resumen_hoy.pasos);
-            document.getElementById('kUnid').textContent = fmt(d.resumen_hoy.unidades);
-            document.getElementById('kM2').textContent = fmt(d.resumen_hoy.m2, 2);
+            const rh = d.resumen_hoy || { pasos: 0, unidades: 0, m2: 0 };
+            document.getElementById('kPasos').textContent = fmt(rh.pasos);
+            document.getElementById('kUnid').textContent = fmt(rh.unidades);
+            document.getElementById('kM2').textContent = fmt(rh.m2, 2);
             const cargaVista = ests.reduce((a, e) => a + de(e).pend, 0);
             const ordVista = ({ hoy: (d.ordenes || {}).hoy, vencido: (d.ordenes || {}).vencido, total: (d.ordenes || {}).total })[vista] || 0;
             document.getElementById('kCola').textContent = fmt(cargaVista);
@@ -335,12 +358,12 @@
 
         function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-        function setLive(on) {
+        function setLive(on, motivo) {
             const el = document.getElementById('live');
             el.className = 'live' + (on ? '' : ' off');
             el.innerHTML = on
                 ? '<span class="punto"></span> EN VIVO'
-                : '<span class="punto"></span> SIN CONEXIÓN · reintentando';
+                : `<span class="punto"></span> ${motivo || 'SIN CONEXIÓN · reintentando'}`;
         }
 
         // ===== Socket.IO (tiempo real) + polling de respaldo ===== */

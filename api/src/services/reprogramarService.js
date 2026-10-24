@@ -187,7 +187,7 @@ async function getCumplimiento() {
     }
 }
 
-module.exports = { reprogramarPendientes, reprogramarPorAvance };
+module.exports = { reprogramarPendientes, reprogramarPorAvance, getCumplimiento };
 
 /**
  * ============================ REPROGRAMACIÓN POR AVANCE ============================
