@@ -188,7 +188,7 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     // 1) Todo el avance real: pasos de órdenes NO terminadas
     const res = await query(`
         SELECT o.id as orden_id, o.pedido_sap_id, o.item_numero, o.nivel_prioridad,
-               o.fecha_entrega_pactada, o.espesor_mm,
+               o.fecha_entrega_pactada, o.espesor_mm, o.created_at,
                o.metros_cuadrados, o.cantidad, o.estado_programacion,
                COALESCE(NULLIF(o.grupo, ''), '(sin grupo)') as grupo,
                COALESCE(o.kilos, 0) as kilos,
@@ -212,6 +212,13 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
                 item: r.item_numero,
                 prioridad: Number(r.nivel_prioridad) || 1,
                 fecha_pactada: fFecha(r.fecha_entrega_pactada),
+                // REGLA DE NEGOCIO: lo único RÍGIDO son las ventanas por
+                // prioridad, en DÍAS HÁBILES desde el INGRESO del pedido:
+                //   Reposición(4) = 2 días · Express(2) = 3 días (el cliente
+                //   paga por eso, va primero) · Urgencia(3) = 3 días ·
+                //   Normal(1) = sin ventana (lo que deje la capacidad)
+                fecha_ingreso: fFecha(r.created_at),
+                ventana: ({ 4: 2, 2: 3, 3: 3 })[Number(r.nivel_prioridad) || 1] || null,
                 // espesor viene de la RECETA (backfill lo llena en la orden);
                 // nPasos = estaciones por las que pasa (se cuentan de los pasos)
                 espesor: Number(r.espesor_mm) || 0,
@@ -358,14 +365,24 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
 
         if (!ultimaFecha) continue;
         // UNA sola fecha: la que calcula el sistema según la capacidad real.
-        // Se avisa si la nueva fecha queda más allá de la calculada antes (o si
-        // la orden ya estaba vencida) para comunicarlo
+        // VENTANA RÍGIDA (regla del negocio): Repo/Express/Urgencia deben caber
+        // en ingreso + 2/3 DÍAS HÁBILES; Normal no tiene ventana (usa el
+        // espacio que dejen los rígidos).
+        let fechaLimite = null;
+        if (o.ventana && o.fecha_ingreso) {
+            fechaLimite = o.fecha_ingreso;
+            for (let i = 0; i < o.ventana; i++) fechaLimite = await calendario.siguienteDiaHabil(fechaLimite);
+        }
         const excede = !!(o.fecha_pactada && ultimaFecha > o.fecha_pactada);
+        const fueraDeVentana = !!(fechaLimite && ultimaFecha > fechaLimite);
         updatesOrdenes.push([primeraFecha, ultimaFecha, o.orden_id, o.avance > 0]);
-        if (excede || (o.fecha_pactada && o.fecha_pactada <= hoy)) {
+        if (fueraDeVentana || excede || (o.fecha_pactada && o.fecha_pactada <= hoy)) {
             alertas.push({
-                pedido: o.pedido, item: o.item,
+                pedido: o.pedido, item: o.item, prioridad: o.prioridad,
                 fecha_anterior: o.fecha_pactada, fecha_nueva: ultimaFecha,
+                ventana_dias: o.ventana || null,
+                fecha_limite: fechaLimite,
+                fuera_de_ventana: fueraDeVentana,
                 excede_pacto: excede
             });
         }

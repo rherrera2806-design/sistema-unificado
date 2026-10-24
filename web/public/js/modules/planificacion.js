@@ -653,9 +653,15 @@ App.modules.planificacion = {
                         <div class="pln-stat"><div class="v" style="color:#2563eb">${data.pasos_en_curso_respetados || 0}</div><div class="k">En curso (hoy)</div></div>
                     </div>`;
                 if (exceden.length) {
-                    html += `<div style="margin-top:10px;color:#b91c1c;font-weight:700;font-size:12px">⚠ ${exceden.length} exceden el compromiso pactado (avisar a clientes):</div>`;
+                    html += `<div style="margin-top:10px;color:#b91c1c;font-weight:700;font-size:12px">⚠ ${exceden.length} exceden la fecha calculada anteriormente:</div>`;
                     html += exceden.slice(0, 12).map(a =>
-                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${a.pedido || ''}</strong> item ${a.item != null ? a.item : '-'}: pactada ${String(a.fecha_anterior || '').slice(5)} → nueva ${String(a.fecha_nueva || '').slice(5)}</div>`).join('');
+                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${a.pedido || ''}</strong> item ${a.item != null ? a.item : '-'}: ${String(a.fecha_anterior || '').slice(5)} → nueva ${String(a.fecha_nueva || '').slice(5)}</div>`).join('');
+                }
+                const fuera = alertas.filter(a => a.fuera_de_ventana);
+                if (fuera.length) {
+                    html += `<div style="margin-top:10px;color:#7f1d1d;font-weight:800;font-size:12.5px">🔴 ${fuera.length} NO caben en su ventana rígida (compromiso de prioridad incumplido):</div>`;
+                    html += fuera.slice(0, 12).map(a =>
+                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${a.pedido || ''}</strong> item ${a.item != null ? a.item : '-'} (${({ 4: 'Reposición', 2: 'Express', 3: 'Urgencia', 1: 'Normal' })[a.prioridad] || ''}): ventana ${a.ventana_dias} días hábiles → límite ${String(a.fecha_limite || '').slice(5)} · estimada <strong>${String(a.fecha_nueva || '').slice(5)}</strong></div>`).join('');
                 }
                 if (resEl) resEl.innerHTML = html;
                 if (window.App && App.toast) App.toast('✅ Reprogramación por avance completada (' + (data.ordenes_reprogramadas || 0) + ' órdenes)', 'success');
