@@ -191,26 +191,19 @@ App.registerModule('prod_prog_estacion', {
                     html += `</tr></thead><tbody>`;
 
                     let cardsDia = '';
-                    const groups = {};
-                    const sinGrupo = [];
-                    const _ord = [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor_bom ?? a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor_bom ?? b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))));
-                    for (const o of _ord) {
-                        if (o.es_compuesto && o.codigo_ref) {
-                            const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
-                            if (!groups[key]) groups[key] = { padre: o, hijos: [] };
-                            groups[key].hijos.push(o);
-                        } else {
-                            sinGrupo.push(o);
+                    // Regla de la receta BOM: en las estaciones de PROCESO cada
+                    // componente/capa se muestra como fila aparte (se procesan
+                    // por separado). SOLO en la estación final (último paso de la
+                    // ruta: Armado en termopanel, Laminado VM en laminado) los
+                    // componentes se muestran como uno solo.
+                    for (const f of this._prepararFilasDia(dia)) {
+                        if (f.tipo === 'fila') {
+                            const o = f.o;
+                            html += this._renderFila(o, `ppe-estado-${o.estado}`, false);
+                            cardsDia += this._renderFilaCard(o);
+                            continue;
                         }
-                    }
-
-                    for (const o of sinGrupo) {
-                        const estadoClass = `ppe-estado-${o.estado}`;
-                        html += this._renderFila(o, estadoClass, false);
-                        cardsDia += this._renderFilaCard(o);
-                    }
-
-                    const _vistos = new Set(); for (const o2 of _ord) { const key = (o2.pedido || o2.ov || '') + '|' + o2.item + '|' + o2.codigo_ref; if (!groups[key] || _vistos.has(key)) continue; _vistos.add(key); const grp = groups[key];
+                        const grp = { padre: f.p, hijos: f.hijos };
                         const p = grp.padre;
                         html += `<tr style="border-bottom:2px solid #e2e8f0">`;
                         html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
@@ -218,13 +211,13 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td>${this._prioBadge(p.prioridad)}</td>`;
                         html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong></td>`;
                         html += `<td style="font-size:10px">${p.nombre_padre ? '<span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
-                        html += `<td style="white-space:nowrap">${(p.espesor_bom ?? p.mp_espesor) ? Number(p.espesor_bom ?? p.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
+                        html += `<td style="white-space:nowrap">${this._espesorFila(p) ? Number(this._espesorFila(p)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
                         html += `<td>${Number(p.ancho).toLocaleString('es-CL')}×${Number(p.alto).toLocaleString('es-CL')}</td>`;
                         const undTotal = grp.hijos[0] ? (Number(grp.hijos[0].cantidad) || 0) : 0;
                         const undPend = grp.hijos[0] ? (Number(grp.hijos[0].cantidad_paso) || undTotal) : 0;
                         html += `<td title="Cantidad pendiente del pedido de ${undTotal.toLocaleString('es-CL')} und"><strong>${undPend.toLocaleString('es-CL')}</strong> und</td>`;
                         const totalM2Grupo = grp.hijos[0] ? (grp.hijos[0].m2_asignados || grp.hijos[0].m2) : 0;
-                        const totalKgGrupo = grp.hijos.reduce((s, h) => s + h.kg, 0);
+                        const totalKgGrupo = grp.hijos.reduce((s, h) => s + (Number(h.kg_paso != null ? h.kg_paso : h.kg) || 0), 0);
                         html += `<td><strong>${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
                         html += `<td><strong>${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
                         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(this._titulo(p.cliente || '-'))}</td>`;
@@ -268,6 +261,54 @@ App.registerModule('prod_prog_estacion', {
     // Escapeo de texto/atributo: delega al helper global (el metodo viejo no escapaba comillas)
     esc(s) { return escText(s); },
 
+    // ── Regla de la receta BOM ─────────────────────────────────────────────
+    // Cada código padre tiene su receta. En las estaciones de PROCESO cada
+    // componente/capa se muestra como fila aparte (se procesan por separado).
+    // SOLO en la estación final (último paso de la ruta de la orden: Armado en
+    // termopanel, Laminado VM en laminado) los componentes se muestran como
+    // uno solo. `es_estacion_final` lo calcula el backend por ruta, no por nombre.
+    _esAgrupable(o) {
+        return !!(o.es_compuesto && o.codigo_ref && o.es_estacion_final !== false);
+    },
+    _claveGrupo(o) {
+        return `${o.pedido || o.ov || ''}|${o.item}|${o.codigo_ref}`;
+    },
+    // Espesor de la fila: en proceso el de la capa (mp_espesor); en la estación
+    // final el suma del BOM (5+5 = 10mm). El backend ya lo resuelve en
+    // espesor_fila; los fallbacks cubren datos viejos.
+    _espesorFila(o) {
+        return o.espesor_fila ?? o.espesor_bom ?? o.mp_espesor ?? o.espesor ?? null;
+    },
+    _ordenarFilas(filas) {
+        return [...(filas || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(this._espesorFila(a) ?? a.espesor) || 0) - (Number(this._espesorFila(b) ?? b.espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))));
+    },
+    // Filas a mostrar para un día: componentes sueltos en estaciones de proceso
+    // y UNA fila agregada por grupo (pedido|item|padre) en la estación final.
+    _prepararFilasDia(dia) {
+        const ordenadas = this._ordenarFilas(dia.ordenes || []);
+        const grupos = {};
+        for (const o of ordenadas) {
+            if (this._esAgrupable(o)) {
+                const key = this._claveGrupo(o);
+                if (!grupos[key]) grupos[key] = { padre: o, hijos: [] };
+                grupos[key].hijos.push(o);
+            }
+        }
+        const filas = [];
+        const vistos = new Set();
+        for (const o of ordenadas) {
+            if (this._esAgrupable(o)) {
+                const key = this._claveGrupo(o);
+                if (vistos.has(key)) continue;
+                vistos.add(key);
+                filas.push({ tipo: 'grupo', p: grupos[key].padre, hijos: grupos[key].hijos });
+            } else {
+                filas.push({ tipo: 'fila', o });
+            }
+        }
+        return filas;
+    },
+
     // Card movil para una orden suelta (patron MODULE_RESPONSIVE_V1)
     _renderFilaCard(o) {
         return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
@@ -283,9 +324,9 @@ App.registerModule('prod_prog_estacion', {
                 <span style="font-size:10px;color:#94a3b8">${this.esc(o.codigo_ref)}${o.nombre_padre ? ' · ' + this.esc(o.nombre_padre) : ''}</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
-                <div><span style="color:#94a3b8">Espesor:</span> <span style="color:#475569">${(o.espesor_bom ?? o.mp_espesor) ? Number(o.espesor_bom ?? o.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</span></div>
+                <div><span style="color:#94a3b8">Espesor:</span> <span style="color:#475569">${this._espesorFila(o) ? Number(this._espesorFila(o)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</span></div>
                 <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(o.ancho)}×${this.esc(o.alto)}</span></div>
-                <div><span style="color:#94a3b8">Cant:</span> <span style="color:#475569">${this.esc(o.cantidad || 1)}</span></div>
+                <div><span style="color:#94a3b8">Cant:</span> <span style="color:#475569">${this.esc(o.piezas_paso != null ? o.piezas_paso : (o.cantidad_paso || o.cantidad || 1))}</span></div>
                 <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${Number(o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
                 <div><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></div>
                 <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="font-size:10px;color:#7c3aed">${this.esc(o.ruta || '-')}</span></div>
@@ -297,7 +338,7 @@ App.registerModule('prod_prog_estacion', {
     // no se necesita en pantalla — solo las unidades)
     _renderGrupoCard(p, hijos) {
         const totalM2Grupo = hijos[0] ? (hijos[0].m2_asignados || hijos[0].m2) : 0;
-        const totalKgGrupo = hijos.reduce((s, h) => s + h.kg, 0);
+        const totalKgGrupo = hijos.reduce((s, h) => s + (Number(h.kg_paso != null ? h.kg_paso : h.kg) || 0), 0);
         const undPend = hijos[0] ? (Number(hijos[0].cantidad_paso) || Number(hijos[0].cantidad) || 0) : 0;
         return `<div style="border:1px solid #e4e9f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
@@ -313,7 +354,7 @@ App.registerModule('prod_prog_estacion', {
                 ${p.nombre_padre ? '<span style="font-size:10px;color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:4px">
-                <div><span style="color:#94a3b8">Espesor:</span> <span style="color:#475569">${(p.espesor_bom ?? p.mp_espesor) ? Number(p.espesor_bom ?? p.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</span></div>
+                <div><span style="color:#94a3b8">Espesor:</span> <span style="color:#475569">${this._espesorFila(p) ? Number(this._espesorFila(p)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</span></div>
                 <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(Number(p.ancho).toLocaleString('es-CL'))}×${this.esc(Number(p.alto).toLocaleString('es-CL'))}</span></div>
                 <div><span style="color:#94a3b8">Und pend.:</span> <span style="color:#475569">${undPend.toLocaleString('es-CL')} und</span></div>
                 <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
@@ -344,7 +385,7 @@ App.registerModule('prod_prog_estacion', {
     _unidadesDia(dia) {
         const vistas = new Set();
         let und = 0;
-        for (const o of [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor_bom ?? a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor_bom ?? b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))))) {
+        for (const o of this._ordenarFilas(dia.ordenes || [])) {
             if (o.es_compuesto && o.codigo_ref) {
                 const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
                 if (vistas.has(key)) continue;
@@ -371,9 +412,9 @@ App.registerModule('prod_prog_estacion', {
         html += `<td>${this._prioBadge(o.prioridad)}</td>`;
         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
         html += `<td style="font-size:10px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
-        html += `<td style="white-space:nowrap">${(o.espesor_bom ?? o.mp_espesor) ? Number(o.espesor_bom ?? o.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
+        html += `<td style="white-space:nowrap">${this._espesorFila(o) ? Number(this._espesorFila(o)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
         html += `<td>${Number(o.ancho).toLocaleString('es-CL')}×${Number(o.alto).toLocaleString('es-CL')}</td>`;
-        html += `<td title="Cantidad pendiente del pedido"><strong>${Number(o.cantidad_paso || o.cantidad || 1).toLocaleString('es-CL')}</strong> und</td>`;
+        html += `<td title="Piezas de materia prima pendientes"><strong>${Number(o.piezas_paso != null ? o.piezas_paso : (o.cantidad_paso || o.cantidad || 1)).toLocaleString('es-CL')}</strong> und</td>`;
         html += `<td><strong>${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
         html += `<td><strong>${Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(this._titulo(o.cliente || '-'))}</td>`;
@@ -497,21 +538,31 @@ App.registerModule('prod_prog_estacion', {
                     + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Materia prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>'
                     + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th><th>QR</th>'
                     + '</tr></thead><tbody>';
-                for (const o of [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor_bom ?? a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor_bom ?? b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))))) {
+                for (const f of this._prepararFilasDia(dia)) {
+                    // En estaciones de proceso cada componente/capa se imprime
+                    // con SU espesor; en la estación final va una fila agregada
+                    // con el espesor suma del BOM (5+5 = 10mm).
+                    const esGrupo = f.tipo === 'grupo';
+                    const o = esGrupo ? f.p : f.o;
+                    const codigosMp = esGrupo ? f.hijos.map(h => h.codigo).filter(Boolean).join(' + ') : (o.codigo || '');
+                    const nomsMp = esGrupo ? f.hijos.map(h => h.mp_nombre).filter(Boolean).join(' + ') : (o.mp_nombre || '—');
+                    const espVal = this._espesorFila(o);
+                    const cantVal = esGrupo ? (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad) : (o.piezas_paso != null ? o.piezas_paso : (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad));
+                    const kgVal = esGrupo ? f.hijos.reduce((s, h) => s + (Number(h.kg_paso != null ? h.kg_paso : h.kg) || 0), 0) : (o.kg_paso != null ? o.kg_paso : o.kg);
                     cuerpo += `<tr>
                         <td class="c">${E(o.pedido)}</td>
                         <td class="c">${E(o.item)}</td>
                         <td class="c">${E(({ 1: 'Normal', 2: 'Express', 3: 'Urgencia', 4: 'Reposición' }[o.prioridad]) || '—')}</td>
                         <td class="c"><strong>${E(o.codigo_ref)}</strong></td>
                         <td>${E(o.nombre_padre || o.descripcion || '')}</td>
-                        <td class="c">${E(o.codigo)}</td>
-                        <td>${E(o.mp_nombre || '—')}</td>
-                        <td class="n">${(o.espesor_bom ?? o.mp_espesor) ? Number(o.espesor_bom ?? o.mp_espesor).toLocaleString('es-CL', { maximumFractionDigits: 2 }) + ' mm' : '—'}</td>
+                        <td class="c">${E(codigosMp)}</td>
+                        <td>${E(nomsMp || '—')}</td>
+                        <td class="n">${espVal ? Number(espVal).toLocaleString('es-CL', { maximumFractionDigits: 2 }) + ' mm' : '—'}</td>
                         <td class="n">${this._num(o.ancho, 0)}</td>
                         <td class="n">${this._num(o.alto, 0)}</td>
-                        <td class="n">${this._num(o.cantidad_paso != null ? o.cantidad_paso : o.cantidad, 0)}</td>
+                        <td class="n">${this._num(cantVal, 0)}</td>
                         <td class="n">${this._num(o.m2_asignados || o.m2, 2)}</td>
-                        <td class="n">${this._num(o.kg_paso != null ? o.kg_paso : o.kg, 1)}</td>
+                        <td class="n">${this._num(kgVal, 1)}</td>
                         <td>${E(o.cliente)}</td>
                         <td>${E(o.ruta)}</td>
                         <td class="c">${E(o.estado)}</td>
@@ -552,8 +603,16 @@ App.registerModule('prod_prog_estacion', {
         let csv = 'Estacion;Fecha;Pedido;Item;Prioridad;Código SAP;Descripción;Código;Espesor;Ancho;Alto;Cant;M2;Kg;Cliente;Estado;Ruta;Grupo\n';
         for (const est of this.datos.estaciones) {
             for (const dia of (est.fechas || [])) {
-                for (const o of dia.ordenes) {
-                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), o.codigo, ((o.espesor_bom ?? o.mp_espesor) ? Number(o.espesor_bom ?? o.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : ''), o.ancho, o.alto, (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad), Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
+                // Mismas filas que la pantalla: componentes por separado en
+                // estaciones de proceso y una sola fila en la estación final
+                for (const f of this._prepararFilasDia(dia)) {
+                    const esGrupo = f.tipo === 'grupo';
+                    const o = esGrupo ? f.p : f.o;
+                    const codigosMp = esGrupo ? f.hijos.map(h => h.codigo).filter(Boolean).join(' + ') : (o.codigo || '');
+                    const espVal = this._espesorFila(o);
+                    const cantVal = esGrupo ? (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad) : (o.piezas_paso != null ? o.piezas_paso : (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad));
+                    const kgVal = esGrupo ? f.hijos.reduce((s, h) => s + (Number(h.kg_paso != null ? h.kg_paso : h.kg) || 0), 0) : (o.kg_paso != null ? o.kg_paso : o.kg);
+                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), codigosMp, (espVal ? Number(espVal).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : ''), o.ancho, o.alto, cantVal, Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(kgVal).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
                 }
             }
         }

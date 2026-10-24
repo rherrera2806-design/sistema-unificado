@@ -98,6 +98,22 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
                  WHERE LOWER(TRIM(rb_old.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))),
                 o.espesor_mm
             ) as espesor_bom,
+            -- Espesor PROPIO de la capa/componente (el de su materia prima,
+            -- con fallback al espesor de la orden). En estaciones de proceso
+            -- cada capa se muestra con SU espesor; el suma BOM solo aplica en
+            -- la estación final.
+            COALESCE(mp.espesor_mm, o.espesor_mm) as espesor_capa,
+            -- ¿Este paso es el ÚLTIMO de la ruta de la orden? (genérico: en
+            -- termopanel cae en Armado, en laminado en Laminado VM). Solo ahí
+            -- los componentes del BOM se muestran como uno solo; en las
+            -- estaciones de proceso cada componente va con su fila aparte.
+            (cp.orden_secuencia >= (SELECT MAX(cp3.orden_secuencia) FROM cola_produccion_pasos cp3 WHERE cp3.orden_produccion_id = o.id)) as es_estacion_final,
+            -- Cantidad de la receta BOM para este componente (ej: 1 MP x 2 und)
+            COALESCE(
+                (SELECT rb.cantidad FROM recetas_bom rb WHERE rb.id = o.bom_padre_id),
+                (SELECT rb_old.cantidad FROM produccion_recetas_bom rb_old WHERE rb_old.id = o.bom_padre_id),
+                1
+            ) as bom_cantidad,
             ARRAY(
                 SELECT em2.nombre_estacion
                 FROM cola_produccion_pasos cp2
@@ -147,6 +163,25 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             est.por_fecha[fecha] = { ordenes: [], total_m2: 0, total_kg: 0, total_ordenes: 0 };
         }
         const dia = est.por_fecha[fecha];
+        // Cantidad y kilos PROPIOS del paso (proporción de su m2 sobre el de
+        // la orden): los pasos "resto" de un parcial cubren solo una parte.
+        const m2o = Number(r.metros_cuadrados) || 0;
+        const m2p = Number(r.m2_asignados) || m2o;
+        const cantBase = Number(r.cantidad) || 1;
+        const cantidadPaso = (m2o > 0 && m2p > 0) ? Math.max(1, Math.round(cantBase * m2p / m2o)) : cantBase;
+        const kgPaso = m2o > 0 ? (Number(r.kilos) || 0) * m2p / m2o : (Number(r.kilos) || 0);
+        // Regla de la receta BOM: el último paso de la ruta es la estación
+        // FINAL (Armado / Laminado VM) — solo ahí los componentes se agrupan.
+        const esEstacionFinal = r.es_estacion_final != null ? !!r.es_estacion_final : true;
+        // Piezas de MATERIA PRIMA de esta capa = unidades del pedido x cantidad
+        // de la receta (ej: 1 MP x 2 und sobre 10 pedidas = 20 piezas)
+        const bomCant = Number(r.bom_cantidad) || 1;
+        const piezasPaso = Math.max(1, Math.round(cantidadPaso * bomCant));
+        // Espesor de la FILA: en proceso el de la capa; en la estación final el
+        // suma del BOM (5+5 = 10mm) — misma regla macro que los reportes.
+        const espesorCapa = r.espesor_capa != null ? Number(r.espesor_capa) : (r.espesor_orden != null ? Number(r.espesor_orden) : null);
+        const espesorBom = r.espesor_bom != null ? Number(r.espesor_bom) : null;
+        const espesorFila = esEstacionFinal ? (espesorBom ?? espesorCapa) : (espesorCapa ?? espesorBom);
         const ordenInfo = {
             paso_id: r.paso_id,
             orden_id: r.orden_id,
@@ -163,19 +198,11 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             kg: Number(r.kilos) || 0,
             cantidad: r.cantidad || 1,
             m2_asignados: Number(r.m2_asignados) || 0,
-            // Cantidad y kilos PROPIOS del paso (proporción de su m2 sobre el de
-            // la orden): los pasos "resto" de un parcial cubren solo una parte.
-            cantidad_paso: (() => {
-                const m2o = Number(r.metros_cuadrados) || 0;
-                const m2p = Number(r.m2_asignados) || m2o;
-                const c = Number(r.cantidad) || 1;
-                return (m2o > 0 && m2p > 0) ? Math.max(1, Math.round(c * m2p / m2o)) : c;
-            })(),
-            kg_paso: (() => {
-                const m2o = Number(r.metros_cuadrados) || 0;
-                const m2p = Number(r.m2_asignados) || m2o;
-                return m2o > 0 ? (Number(r.kilos) || 0) * m2p / m2o : (Number(r.kilos) || 0);
-            })(),
+            cantidad_paso: cantidadPaso,
+            piezas_paso: piezasPaso,
+            bom_cantidad: bomCant,
+            kg_paso: kgPaso,
+            es_estacion_final: esEstacionFinal,
             estado: r.estado,
             turno: r.turno || null,
             prioridad: r.nivel_prioridad,
@@ -189,7 +216,9 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             ruta: Array.isArray(r.ruta_completa) ? r.ruta_completa.filter((v, i, a) => i === 0 || v !== a[i - 1]).join(' → ') : '',
             mp_nombre: r.mp_nombre || null,
             mp_espesor: r.mp_espesor || null,
-            espesor_bom: r.espesor_bom != null ? Number(r.espesor_bom) : null,
+            espesor_bom: espesorBom,
+            espesor_capa: espesorCapa,
+            espesor_fila: espesorFila,
             hora_inicio: r.hora_inicio,
             hora_fin: r.hora_fin
         };
