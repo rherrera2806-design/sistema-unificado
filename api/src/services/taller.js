@@ -66,7 +66,7 @@ async function getMaquinasPorEstacion(estacionId) {
 
 async function getColaPorEstacion(estacionId) {
     const result = await query(`
-        SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados, p.fecha_programada, p.maquina_id,
+        SELECT p.id, p.estado, p.orden_secuencia, p.hora_inicio, p.hora_fin, p.m2_asignados, p.fecha_programada, p.maquina_id, p.turno,
                o.id as orden_id, o.pedido_sap_id, o.item_numero, o.cliente, o.codigo_producto, o.descripcion,
                o.ancho, o.alto, o.cantidad, o.espesor_mm, o.kilos, o.pintado, o.perforaciones,
                o.nota, o.grupo, o.es_reposicion, o.familia_id, o.mecanizado_operaciones, o.nivel_prioridad,
@@ -110,18 +110,22 @@ async function getColaPorEstacion(estacionId) {
             CASE WHEN p.estado = 'EN_PROCESO' THEN 0 ELSE 1 END,
             -- 2) PROGRAMA DIARIO: lo programado primero (sin fecha = al final)
             COALESCE(p.fecha_programada, '2999-12-31') ASC,
-            -- 3) Trabajo listo para arrancar antes que el bloqueado por su paso anterior
+            -- 3) TURNO 1 (Noche, que arranca la tarde anterior y se acredita al
+            --    día en que termina) antes que TURNO 2 (Día) — MISMO orden que
+            --    Prog. por Estación. Sin turno / 'extra' se asume DÍA.
+            CASE WHEN LOWER(COALESCE(p.turno, '')) = 'noche' THEN 0 ELSE 1 END,
+            -- 4) Trabajo listo para arrancar antes que el bloqueado por su paso anterior
             CASE WHEN p.estado = 'PENDIENTE' AND NOT EXISTS(
                 SELECT 1 FROM cola_produccion_pasos prev
                 WHERE prev.orden_produccion_id = o.id
                   AND prev.orden_secuencia = p.orden_secuencia - 1
                   AND prev.estado = 'TERMINADO'
             ) AND p.orden_secuencia > 1 THEN 1 ELSE 0 END,
-            -- 4) Prioridad: Reposición → Express → Urgencia → Normal
+            -- 5) Prioridad: Reposición → Express → Urgencia → Normal
             CASE COALESCE(o.nivel_prioridad, 1) WHEN 4 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 ELSE 4 END ASC,
-            -- 5) Espesor: agrupa material y reduce cambios de herramienta
+            -- 6) Espesor: agrupa material y reduce cambios de herramienta
             COALESCE(o.espesor_mm, 0) ASC,
-            -- 6) Pedido, item
+            -- 7) Pedido, item
             COALESCE(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[^0-9]', '', 'g'), ''), '0')::BIGINT ASC,
             COALESCE(NULLIF(REGEXP_REPLACE(o.pedido_sap_id, '[0-9]', '', 'g'), ''), '') ASC,
             COALESCE(o.item_numero, 0) ASC,

@@ -907,6 +907,7 @@
                                     <div style="font-size:12px;color:var(--text-muted)">${item.cliente || 'Sin cliente'}</div>
                                 </div>
                                 <div style="display:flex;gap:6px;align-items:center">
+                                    <span class="priority-badge" title="Turno programado (T1 Noche arranca la tarde anterior)" style="background:${String(item.turno || '').toLowerCase() === 'noche' ? '#0f172a' : '#eff6ff'};color:${String(item.turno || '').toLowerCase() === 'noche' ? '#93c5fd' : '#1d4ed8'}">${String(item.turno || '').toLowerCase() === 'noche' ? '🌙 T1 Noche' : '🌞 T2 Día'}</span>
                                     <span class="priority-badge" style="background:${prioBg};color:${prioFg}">${prioridadLabel}</span>
                                     <span class="status-badge status-${item.estado.toLowerCase().replace('_', '-')}">${item.estado}</span>
                                 </div>
