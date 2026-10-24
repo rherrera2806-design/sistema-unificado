@@ -403,7 +403,9 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
     if (!drumFechaGrupo) continue;
 
     // Asignar TODOS los hermanos en el mismo día de Armado
-    agregarCarga(drumFechaGrupo, armadoEstId, totalM2Grupo);
+    // La carga de Armado se registra al FINAL de cada hermano, con las fechas
+    // definitivas de esparcirPorDias (antes se registraba aquí y quedaba
+    // desfasada: el bloqueo duro se rompía)
     if (!cargaGrupoMap[drumFechaGrupo]) cargaGrupoMap[drumFechaGrupo] = {};
     cargaGrupoMap[drumFechaGrupo][grupo] = (cargaGrupoMap[drumFechaGrupo][grupo] || 0) + totalKgGrupo;
 
@@ -420,11 +422,14 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
 
       const estFechas = {};
       estFechas[armadoEstId] = drumFechaGrupo;
-      for (const a of backward) if (a.fecha) {
-        estFechas[a.estId] = a.fecha;
-        agregarCarga(a.fecha, a.estId, sibM2);
-      }
+      for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
       esparcirPorDias(sibRoute, estFechas, fechaMinima);
+      // REGLA: la carga va en las fechas FINALES (las de esparcirPorDias). Si se
+      // agregaba antes, quedaba en las fechas de las cuerdas y el bloqueo duro
+      // se rompía (días con 200-300% de ocupación real).
+      for (const estId of sibRoute) {
+        if (estFechas[estId]) agregarCarga(estFechas[estId], estId, sibM2);
+      }
 
       const fechas = Object.values(estFechas);
       const fechaPrimera = fechas.sort()[0];
@@ -515,15 +520,15 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         if (!forward.every(a => a.fecha !== null)) continue;
 
         // ✅ Todo encaja — aplicar cargas
-        agregarCarga(drumFecha, drumEstId, m2Parcial);
-        for (const a of backward) if (a.fecha) agregarCarga(a.fecha, a.estId, m2Parcial);
-        for (const a of forward) if (a.fecha) agregarCarga(a.fecha, a.estId, m2Parcial);
-
         const estFechas = {};
         estFechas[drumEstId] = drumFecha;
         for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
         for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
         esparcirPorDias(route, estFechas, fechaMinima);
+        // REGLA: la carga va en las fechas FINALES de esparcirPorDias
+        for (const estId of route) {
+            if (estFechas[estId]) agregarCarga(estFechas[estId], estId, m2Parcial);
+        }
 
         const fechas = Object.values(estFechas);
         const fechaPrimera = fechas.sort()[0];
@@ -572,15 +577,15 @@ async function autoAsignarPendientes({ dias = 14, inicio } = {}) {
         if (!forward.every(a => a.fecha !== null)) continue;
 
         // ✅ Todo encaja — aplicar cargas
-        agregarCarga(drumFecha, drumEstId, consumoM2);
-        for (const a of backward) if (a.fecha) agregarCarga(a.fecha, a.estId, consumoM2);
-        for (const a of forward) if (a.fecha) agregarCarga(a.fecha, a.estId, consumoM2);
-
         const estFechas = {};
         estFechas[drumEstId] = drumFecha;
         for (const a of forward) if (a.fecha) estFechas[a.estId] = a.fecha;
         for (const a of backward) if (a.fecha) estFechas[a.estId] = a.fecha;
         esparcirPorDias(route, estFechas, fechaMinima);
+        // REGLA: la carga va en las fechas FINALES de esparcirPorDias
+        for (const estId of route) {
+            if (estFechas[estId]) agregarCarga(estFechas[estId], estId, consumoM2);
+        }
 
         const fechas = Object.values(estFechas);
         const fechaPrimera = fechas.sort()[0];

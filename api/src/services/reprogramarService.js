@@ -153,6 +153,40 @@ async function reprogramarPendientes({ dias = 21, inicio } = {}) {
     };
 }
 
+// KPI DE CUMPLIMIENTO: % de órdenes RÍGIDAS (Reposición/Express/Urgencia)
+// terminadas dentro de su ventana (ingreso + 2/3 días hábiles). Normal no
+// tiene ventana y no entra al cálculo. Ventana: últimos 30 días.
+async function getCumplimiento() {
+    try {
+        const { siguienteDiaHabil } = require('./calendario');
+        const res = await query(`
+            SELECT o.id, o.nivel_prioridad, o.created_at, MAX(p.hora_fin)::date as termino
+            FROM produccion_ordenes o
+            JOIN cola_produccion_pasos p ON p.orden_produccion_id = o.id
+            WHERE o.estado_programacion = 'TERMINADO'
+              AND o.nivel_prioridad IN (2, 3, 4)
+            GROUP BY o.id, o.nivel_prioridad, o.created_at
+            HAVING MAX(p.hora_fin) >= NOW() - INTERVAL '30 days'
+        `);
+        const fFecha = (v) => v ? (typeof v === 'string' ? String(v).split('T')[0]
+            : new Date(v).getFullYear() + '-' + String(new Date(v).getMonth() + 1).padStart(2, '0') + '-' + String(new Date(v).getDate()).padStart(2, '0')) : null;
+        let cumplidas = 0;
+        for (const r of res.rows) {
+            const ventana = ({ 4: 2, 2: 3, 3: 3 })[Number(r.nivel_prioridad)] || 0;
+            const ingreso = fFecha(r.created_at);
+            const termino = fFecha(r.termino);
+            if (!ventana || !ingreso || !termino) continue;
+            let limite = ingreso;
+            for (let i = 0; i < ventana; i++) limite = await siguienteDiaHabil(limite);
+            if (termino <= limite) cumplidas++;
+        }
+        const total = res.rows.length;
+        return { pct: total > 0 ? Math.round((cumplidas / total) * 100) : 100, cumplidas, total };
+    } catch (_) {
+        return { pct: null, cumplidas: 0, total: 0 };
+    }
+}
+
 module.exports = { reprogramarPendientes, reprogramarPorAvance };
 
 /**

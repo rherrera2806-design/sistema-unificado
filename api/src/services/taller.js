@@ -878,6 +878,9 @@ async function getDashboard() {
             vencido: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].venc_ordenes) || 0,
             total: Number(ordenesGlobales.rows[0] && ordenesGlobales.rows[0].total_ordenes) || 0
         },
+        // KPI de CUMPLIMIENTO: % de órdenes rígidas terminadas dentro de su
+        // ventana (Repo 2 días / Express-Urgencia 3 días hábiles desde ingreso)
+        cumplimiento: await require('./reprogramarService').getCumplimiento(),
         // Desvío del programa: VENCIDAS (pactada < hoy) y POR VENCER (pactada =
         // hoy) con avance por estación — la app avisa y ofrece reprogramar
         desvio: (() => {

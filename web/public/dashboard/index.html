@@ -45,7 +45,7 @@
         @keyframes pulso { 0%, 100% { opacity: 1 } 50% { opacity: .3 } }
 
         /* ===== KPIs ===== */
-        .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding: 6px 30px 15px; }
+        .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 13px; padding: 6px 30px 15px; }
         .kpi {
             background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
             padding: 17px 22px;
@@ -172,6 +172,7 @@
         <div class="kpi"><div class="l">M² producidos</div><div class="v" id="kM2">0,00</div><div class="u">metros cuadrados</div></div>
         <div class="kpi"><div class="l" id="kColaLabel">Programa de hoy</div><div class="v" id="kCola">0</div><div class="u" id="kColaUnid">trabajos del día</div></div>
         <div class="kpi"><div class="l" id="kOrdLabel">Órdenes</div><div class="v" id="kOrd">0</div><div class="u" id="kOrdUnid">con trabajo pendiente</div></div>
+        <div class="kpi"><div class="l">Cumplimiento</div><div class="v" id="kCump">—</div><div class="u" id="kCumpUnid">rígidos en su ventana (30 días)</div></div>
     </div>
 
     <div class="main">
@@ -263,6 +264,14 @@
             document.getElementById('kOrd').textContent = fmt(ordVista);
             document.getElementById('kOrdLabel').textContent = vista === 'hoy' ? 'Órdenes de hoy' : vista === 'vencido' ? 'Órdenes vencidas' : 'Órdenes en cola';
             document.getElementById('kOrdUnid').textContent = 'con trabajo por producir';
+            const cum = d.cumplimiento || {};
+            const kCump = document.getElementById('kCump');
+            if (kCump) {
+                kCump.textContent = cum.pct != null ? cum.pct + '%' : '—';
+                kCump.style.color = cum.pct == null ? '' : cum.pct >= 95 ? 'var(--verde)' : cum.pct >= 80 ? 'var(--amarillo)' : 'var(--rojo)';
+                const uc = document.getElementById('kCumpUnid');
+                if (uc) uc.textContent = (cum.cumplidas || 0) + ' de ' + (cum.total || 0) + ' rígidas en su ventana (30 días)';
+            }
 
             const maxCarga = Math.max(1, ...ests.map(e => de(e).pend));
             const nombreTurno = ({ dia: 'Día', noche: 'Noche', extra: 'Extra' })[String(d.turno_actual || '').toLowerCase()] || 'Día';
