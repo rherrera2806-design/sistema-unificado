@@ -217,7 +217,7 @@ App.registerModule('prod_prog_estacion', {
                         const undPend = grp.hijos[0] ? (Number(grp.hijos[0].cantidad_paso) || undTotal) : 0;
                         html += `<td title="Cantidad pendiente del pedido de ${undTotal.toLocaleString('es-CL')} und"><strong>${undPend.toLocaleString('es-CL')}</strong> und</td>`;
                         const totalM2Grupo = grp.hijos[0] ? (grp.hijos[0].m2_asignados || grp.hijos[0].m2) : 0;
-                        const totalKgGrupo = grp.hijos.reduce((s, h) => s + (Number(h.kg_paso != null ? h.kg_paso : h.kg) || 0), 0);
+                        const totalKgGrupo = grp.hijos.reduce((s, h) => s + (Number(h.kg_fila != null ? h.kg_fila : (h.kg_paso != null ? h.kg_paso : h.kg)) || 0), 0);
                         html += `<td><strong>${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
                         html += `<td><strong>${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
                         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(this._titulo(p.cliente || '-'))}</td>`;
@@ -327,7 +327,7 @@ App.registerModule('prod_prog_estacion', {
                 <div><span style="color:#94a3b8">Espesor:</span> <span style="color:#475569">${this._espesorFila(o) ? Number(this._espesorFila(o)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</span></div>
                 <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(o.ancho)}×${this.esc(o.alto)}</span></div>
                 <div><span style="color:#94a3b8">Cant:</span> <span style="color:#475569">${this.esc(o.piezas_paso != null ? o.piezas_paso : (o.cantidad_paso || o.cantidad || 1))}</span></div>
-                <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${Number(o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
+                <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number((o.m2_fila ?? (o.m2_asignados || o.m2))).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${Number(o.kg_fila != null ? o.kg_fila : (o.kg_paso != null ? o.kg_paso : o.kg)).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
                 <div><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(o.grupo || '-')}</span></div>
                 <div style="grid-column:1/-1"><span style="color:#94a3b8">Ruta:</span> <span style="font-size:10px;color:#7c3aed">${this.esc(o.ruta || '-')}</span></div>
             </div>
@@ -338,7 +338,7 @@ App.registerModule('prod_prog_estacion', {
     // no se necesita en pantalla — solo las unidades)
     _renderGrupoCard(p, hijos) {
         const totalM2Grupo = hijos[0] ? (hijos[0].m2_asignados || hijos[0].m2) : 0;
-        const totalKgGrupo = hijos.reduce((s, h) => s + (Number(h.kg_paso != null ? h.kg_paso : h.kg) || 0), 0);
+        const totalKgGrupo = hijos.reduce((s, h) => s + (Number(h.kg_fila != null ? h.kg_fila : (h.kg_paso != null ? h.kg_paso : h.kg)) || 0), 0);
         const undPend = hijos[0] ? (Number(hijos[0].cantidad_paso) || Number(hijos[0].cantidad) || 0) : 0;
         return `<div style="border:1px solid #e4e9f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
@@ -415,8 +415,8 @@ App.registerModule('prod_prog_estacion', {
         html += `<td style="white-space:nowrap">${this._espesorFila(o) ? Number(this._espesorFila(o)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
         html += `<td>${Number(o.ancho).toLocaleString('es-CL')}×${Number(o.alto).toLocaleString('es-CL')}</td>`;
         html += `<td title="Piezas de materia prima pendientes"><strong>${Number(o.piezas_paso != null ? o.piezas_paso : (o.cantidad_paso || o.cantidad || 1)).toLocaleString('es-CL')}</strong> und</td>`;
-        html += `<td><strong>${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
-        html += `<td><strong>${Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
+        html += `<td><strong>${Number((o.m2_fila ?? (o.m2_asignados || o.m2))).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
+        html += `<td><strong>${Number(o.kg_fila != null ? o.kg_fila : (o.kg_paso != null ? o.kg_paso : o.kg)).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
         html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(this._titulo(o.cliente || '-'))}</td>`;
         html += `<td>${o.estado === 'PENDIENTE' ? '' : `<span class="ppe-badge ${estadoClass}">${this.esc(o.estado)}</span>`}</td>`;
         html += `<td style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(o.ruta)}">${this.esc(o.ruta)}</td>`;
@@ -548,7 +548,10 @@ App.registerModule('prod_prog_estacion', {
                     const nomsMp = esGrupo ? f.hijos.map(h => h.mp_nombre).filter(Boolean).join(' + ') : (o.mp_nombre || '—');
                     const espVal = this._espesorFila(o);
                     const cantVal = esGrupo ? (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad) : (o.piezas_paso != null ? o.piezas_paso : (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad));
-                    const kgVal = esGrupo ? f.hijos.reduce((s, h) => s + (Number(h.kg_paso != null ? h.kg_paso : h.kg) || 0), 0) : (o.kg_paso != null ? o.kg_paso : o.kg);
+                    // Estación final: UN solo m² y el kg de todas las partes
+                    // (= m² x espesor total x 2.5). Proceso: m²/kg del ítem.
+                    const m2Val = esGrupo ? (o.m2_asignados || o.m2) : (o.m2_fila ?? (o.m2_asignados || o.m2));
+                    const kgVal = esGrupo ? f.hijos.reduce((s, h) => s + (Number(h.kg_fila != null ? h.kg_fila : (h.kg_paso != null ? h.kg_paso : h.kg)) || 0), 0) : (o.kg_fila != null ? o.kg_fila : (o.kg_paso != null ? o.kg_paso : o.kg));
                     cuerpo += `<tr>
                         <td class="c">${E(o.pedido)}</td>
                         <td class="c">${E(o.item)}</td>
@@ -561,7 +564,7 @@ App.registerModule('prod_prog_estacion', {
                         <td class="n">${this._num(o.ancho, 0)}</td>
                         <td class="n">${this._num(o.alto, 0)}</td>
                         <td class="n">${this._num(cantVal, 0)}</td>
-                        <td class="n">${this._num(o.m2_asignados || o.m2, 2)}</td>
+                        <td class="n">${this._num(m2Val, 2)}</td>
                         <td class="n">${this._num(kgVal, 1)}</td>
                         <td>${E(o.cliente)}</td>
                         <td>${E(o.ruta)}</td>
@@ -611,8 +614,11 @@ App.registerModule('prod_prog_estacion', {
                     const codigosMp = esGrupo ? f.hijos.map(h => h.codigo).filter(Boolean).join(' + ') : (o.codigo || '');
                     const espVal = this._espesorFila(o);
                     const cantVal = esGrupo ? (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad) : (o.piezas_paso != null ? o.piezas_paso : (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad));
-                    const kgVal = esGrupo ? f.hijos.reduce((s, h) => s + (Number(h.kg_paso != null ? h.kg_paso : h.kg) || 0), 0) : (o.kg_paso != null ? o.kg_paso : o.kg);
-                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), codigosMp, (espVal ? Number(espVal).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : ''), o.ancho, o.alto, cantVal, Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(kgVal).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
+                    // Estación final: UN solo m² y el kg de todas las partes
+                    // (= m² x espesor total x 2.5). Proceso: m²/kg del ítem.
+                    const m2Val = esGrupo ? (o.m2_asignados || o.m2) : (o.m2_fila ?? (o.m2_asignados || o.m2));
+                    const kgVal = esGrupo ? f.hijos.reduce((s, h) => s + (Number(h.kg_fila != null ? h.kg_fila : (h.kg_paso != null ? h.kg_paso : h.kg)) || 0), 0) : (o.kg_fila != null ? o.kg_fila : (o.kg_paso != null ? o.kg_paso : o.kg));
+                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), codigosMp, (espVal ? Number(espVal).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : ''), o.ancho, o.alto, cantVal, Number(m2Val).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(kgVal).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
                 }
             }
         }

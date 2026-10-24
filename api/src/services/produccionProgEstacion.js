@@ -85,15 +85,16 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             fp.nombre_familia,
             mp.nombre as mp_nombre,
             mp.espesor_mm as mp_espesor,
-            -- ESPESOR del producto = SUMA de los espesores de la receta BOM
-            -- (ej: 5+5 = 10mm). Misma regla macro que los reportes. Si el
-            -- codigo no tiene receta, cae al espesor de la orden.
+            -- ESPESOR del producto = SUMA de los espesores de CADA CAPA del BOM
+            -- (ej: 5+5 = 10mm). Si una MP se usa en mas de una unidad, cada
+            -- unidad cuenta como una capa (1 MP x 2 de 5mm = 10mm). Mismo
+            -- criterio que los reportes. Sin receta, cae al espesor de la orden.
             COALESCE(
-                (SELECT SUM(COALESCE(m2.espesor_mm, 0))
+                (SELECT SUM(COALESCE(m2.espesor_mm, 0) * COALESCE(rb2.cantidad, 1))
                  FROM recetas_bom rb2
                  JOIN materias_primas m2 ON m2.id = rb2.materia_prima_id
                  WHERE LOWER(TRIM(rb2.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))),
-                (SELECT SUM(COALESCE(rb_old.espesor, 0))
+                (SELECT SUM(COALESCE(rb_old.espesor, 0) * COALESCE(rb_old.cantidad, 1))
                  FROM produccion_recetas_bom rb_old
                  WHERE LOWER(TRIM(rb_old.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))),
                 o.espesor_mm
@@ -135,6 +136,8 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
     // Dedup de órdenes macro (pedido|item) para los contadores "ord"
     const vistasDia = new Set();
     const vistasEst = new Set();
+    // Dedup del "1 solo m²" de los grupos en la estación final
+    const vistasM2Grupo = new Set();
 
     for (const r of result.rows) {
         const estKey = r.estacion_id;
@@ -177,6 +180,12 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
         // de la receta (ej: 1 MP x 2 und sobre 10 pedidas = 20 piezas)
         const bomCant = Number(r.bom_cantidad) || 1;
         const piezasPaso = Math.max(1, Math.round(cantidadPaso * bomCant));
+        // m² y kg PROPIOS del ítem: cada ítem de la receta tiene su m² y su kg
+        // según SU espesor (kg = m² x espesor de la capa x 2.5). Si la receta
+        // usa la MP más de una vez (1 MP x 2 und), cada pieza es una capa y
+        // suma su superficie.
+        const m2Fila = m2p * bomCant;
+        const kgFila = kgPaso * bomCant;
         // Espesor de la FILA: en proceso el de la capa; en la estación final el
         // suma del BOM (5+5 = 10mm) — misma regla macro que los reportes.
         const espesorCapa = r.espesor_capa != null ? Number(r.espesor_capa) : (r.espesor_orden != null ? Number(r.espesor_orden) : null);
@@ -202,6 +211,11 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             piezas_paso: piezasPaso,
             bom_cantidad: bomCant,
             kg_paso: kgPaso,
+            // m² / kg del ÍTEM (receta): lo que muestra la fila en estaciones
+            // de proceso. En la estación final el grupo se muestra con UN solo
+            // m² y el kg de todas las partes.
+            m2_fila: m2Fila,
+            kg_fila: kgFila,
             es_estacion_final: esEstacionFinal,
             estado: r.estado,
             turno: r.turno || null,
@@ -223,17 +237,25 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             hora_fin: r.hora_fin
         };
         dia.ordenes.push(ordenInfo);
-        dia.total_m2 += ordenInfo.m2_asignados || ordenInfo.m2;
-        // kg_paso (proporcional al paso) = lo que muestra la columna Kg de cada
-        // fila: antes el total sumaba los kilos COMPLETOS y no cuadraba
-        dia.total_kg += ordenInfo.kg_paso;
+        // Totales = suma de las FILAS que se muestran:
+        //  - estación de proceso: cada ítem suma su m² y su kg (los de su espesor)
+        //  - estación final: el grupo cuenta UN solo m² y el kg de todas las
+        //    partes (= m² x espesor total x 2.5)
+        const esGrupoFinal = esEstacionFinal && !!r.es_compuesto;
+        const m2Visible = esGrupoFinal ? m2p : m2Fila;
+        const kGrupoDia = estKey + '|' + fecha + '|' + `${ordenInfo.pedido}|${ordenInfo.item}|${ordenInfo.codigo_ref}`;
+        if (!esGrupoFinal || !vistasM2Grupo.has(kGrupoDia)) {
+            if (esGrupoFinal) vistasM2Grupo.add(kGrupoDia);
+            dia.total_m2 += m2Visible;
+            est.total_m2 += m2Visible;
+        }
+        dia.total_kg += kgFila;
+        est.total_kg += kgFila;
         // "ord" = órdenes MACRO (pedido|item): las filas MP de una orden
         // compuesta cuentan UNA sola vez
         const kOrd = `${ordenInfo.pedido}|${ordenInfo.item}`;
         if (!vistasDia.has(estKey + '|' + fecha + '|' + kOrd)) { vistasDia.add(estKey + '|' + fecha + '|' + kOrd); dia.total_ordenes++; }
         if (!vistasEst.has(estKey + '|' + kOrd)) { vistasEst.add(estKey + '|' + kOrd); est.total_ordenes++; }
-        est.total_m2 += ordenInfo.m2_asignados || ordenInfo.m2;
-        est.total_kg += ordenInfo.kg_paso;
     }
 
     for (const est of estacionesLista) {
