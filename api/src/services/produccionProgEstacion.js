@@ -85,6 +85,19 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             fp.nombre_familia,
             mp.nombre as mp_nombre,
             mp.espesor_mm as mp_espesor,
+            -- ESPESOR del producto = SUMA de los espesores de la receta BOM
+            -- (ej: 5+5 = 10mm). Misma regla macro que los reportes. Si el
+            -- codigo no tiene receta, cae al espesor de la orden.
+            COALESCE(
+                (SELECT SUM(COALESCE(m2.espesor_mm, 0))
+                 FROM recetas_bom rb2
+                 JOIN materias_primas m2 ON m2.id = rb2.materia_prima_id
+                 WHERE LOWER(TRIM(rb2.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))),
+                (SELECT SUM(COALESCE(rb_old.espesor, 0))
+                 FROM produccion_recetas_bom rb_old
+                 WHERE LOWER(TRIM(rb_old.codigo_sap_padre)) = LOWER(TRIM(COALESCE(o.codigo_padre, o.codigo_producto)))),
+                o.espesor_mm
+            ) as espesor_bom,
             ARRAY(
                 SELECT em2.nombre_estacion
                 FROM cola_produccion_pasos cp2
@@ -176,6 +189,7 @@ const getProgEstacion = async ({ estacion_id, fecha_inicio, fecha_fin, estado } 
             ruta: Array.isArray(r.ruta_completa) ? r.ruta_completa.filter((v, i, a) => i === 0 || v !== a[i - 1]).join(' → ') : '',
             mp_nombre: r.mp_nombre || null,
             mp_espesor: r.mp_espesor || null,
+            espesor_bom: r.espesor_bom != null ? Number(r.espesor_bom) : null,
             hora_inicio: r.hora_inicio,
             hora_fin: r.hora_fin
         };

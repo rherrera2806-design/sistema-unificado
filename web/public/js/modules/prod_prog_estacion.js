@@ -187,13 +187,13 @@ App.registerModule('prod_prog_estacion', {
                     html += `<div>${dia.total_ordenes} ord · ${this._unidadesDia(dia).toLocaleString('es-CL')} und · ${Number(dia.total_m2).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})} m² · ${Number(dia.total_kg).toLocaleString('es-CL',{minimumFractionDigits:0,maximumFractionDigits:0})} kg</div>`;
                     html += `</div>`;
                     html += `<div class="m-table-wrap"><table class="ppe-table"><thead><tr>`;
-                    html += `<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código</th><th>Ref/Padre</th><th>Dim</th><th>Cant. pend.</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
+                    html += `<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código</th><th>Ref/Padre</th><th>Espesor</th><th>Dim</th><th>Cant. pend.</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Estado</th><th>Ruta</th><th>Grupo</th>`;
                     html += `</tr></thead><tbody>`;
 
                     let cardsDia = '';
                     const groups = {};
                     const sinGrupo = [];
-                    const _ord = [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))));
+                    const _ord = [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor_bom ?? a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor_bom ?? b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))));
                     for (const o of _ord) {
                         if (o.es_compuesto && o.codigo_ref) {
                             const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
@@ -218,6 +218,7 @@ App.registerModule('prod_prog_estacion', {
                         html += `<td>${this._prioBadge(p.prioridad)}</td>`;
                         html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong></td>`;
                         html += `<td style="font-size:10px">${p.nombre_padre ? '<span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
+                        html += `<td style="white-space:nowrap">${(p.espesor_bom ?? p.mp_espesor) ? Number(p.espesor_bom ?? p.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
                         html += `<td>${Number(p.ancho).toLocaleString('es-CL')}×${Number(p.alto).toLocaleString('es-CL')}</td>`;
                         const undTotal = grp.hijos[0] ? (Number(grp.hijos[0].cantidad) || 0) : 0;
                         const undPend = grp.hijos[0] ? (Number(grp.hijos[0].cantidad_paso) || undTotal) : 0;
@@ -282,6 +283,7 @@ App.registerModule('prod_prog_estacion', {
                 <span style="font-size:10px;color:#94a3b8">${this.esc(o.codigo_ref)}${o.nombre_padre ? ' · ' + this.esc(o.nombre_padre) : ''}</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
+                <div><span style="color:#94a3b8">Espesor:</span> <span style="color:#475569">${(o.espesor_bom ?? o.mp_espesor) ? Number(o.espesor_bom ?? o.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</span></div>
                 <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(o.ancho)}×${this.esc(o.alto)}</span></div>
                 <div><span style="color:#94a3b8">Cant:</span> <span style="color:#475569">${this.esc(o.cantidad || 1)}</span></div>
                 <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${Number(o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
@@ -311,6 +313,7 @@ App.registerModule('prod_prog_estacion', {
                 ${p.nombre_padre ? '<span style="font-size:10px;color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:4px">
+                <div><span style="color:#94a3b8">Espesor:</span> <span style="color:#475569">${(p.espesor_bom ?? p.mp_espesor) ? Number(p.espesor_bom ?? p.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</span></div>
                 <div><span style="color:#94a3b8">Dim:</span> <span style="color:#475569">${this.esc(Number(p.ancho).toLocaleString('es-CL'))}×${this.esc(Number(p.alto).toLocaleString('es-CL'))}</span></div>
                 <div><span style="color:#94a3b8">Und pend.:</span> <span style="color:#475569">${undPend.toLocaleString('es-CL')} und</span></div>
                 <div><span style="color:#94a3b8">M²:</span> <strong style="color:#0f172a">${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> <span style="color:#94a3b8">Kg:</span> <strong style="color:#0f172a">${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></div>
@@ -341,7 +344,7 @@ App.registerModule('prod_prog_estacion', {
     _unidadesDia(dia) {
         const vistas = new Set();
         let und = 0;
-        for (const o of [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))))) {
+        for (const o of [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor_bom ?? a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor_bom ?? b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))))) {
             if (o.es_compuesto && o.codigo_ref) {
                 const key = `${o.pedido}|${o.item}|${o.codigo_ref}`;
                 if (vistas.has(key)) continue;
@@ -368,6 +371,7 @@ App.registerModule('prod_prog_estacion', {
         html += `<td>${this._prioBadge(o.prioridad)}</td>`;
         html += `<td><strong>${this.esc(o.codigo)}</strong>${o.es_compuesto ? ' <span style="font-size:10px;padding:1px 4px;border-radius:3px;background:#ede9fe;color:#7c3aed">BOM</span>' : ''}</td>`;
         html += `<td style="font-size:10px"><strong>${this.esc(o.codigo_ref)}</strong>${o.nombre_padre ? '<br><span style="color:#94a3b8">' + this.esc(o.nombre_padre) + '</span>' : ''}</td>`;
+        html += `<td style="white-space:nowrap">${(o.espesor_bom ?? o.mp_espesor) ? Number(o.espesor_bom ?? o.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
         html += `<td>${Number(o.ancho).toLocaleString('es-CL')}×${Number(o.alto).toLocaleString('es-CL')}</td>`;
         html += `<td title="Cantidad pendiente del pedido"><strong>${Number(o.cantidad_paso || o.cantidad || 1).toLocaleString('es-CL')}</strong> und</td>`;
         html += `<td><strong>${Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
@@ -493,7 +497,7 @@ App.registerModule('prod_prog_estacion', {
                     + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Materia prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>'
                     + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th><th>QR</th>'
                     + '</tr></thead><tbody>';
-                for (const o of [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))))) {
+                for (const o of [...(dia.ordenes || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(a.espesor_bom ?? a.espesor ?? a.mp_espesor) || 0) - (Number(b.espesor_bom ?? b.espesor ?? b.mp_espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))))) {
                     cuerpo += `<tr>
                         <td class="c">${E(o.pedido)}</td>
                         <td class="c">${E(o.item)}</td>
@@ -502,7 +506,7 @@ App.registerModule('prod_prog_estacion', {
                         <td>${E(o.nombre_padre || o.descripcion || '')}</td>
                         <td class="c">${E(o.codigo)}</td>
                         <td>${E(o.mp_nombre || '—')}</td>
-                        <td class="n">${o.mp_espesor ? Number(o.mp_espesor).toLocaleString('es-CL', { maximumFractionDigits: 2 }) + ' mm' : '—'}</td>
+                        <td class="n">${(o.espesor_bom ?? o.mp_espesor) ? Number(o.espesor_bom ?? o.mp_espesor).toLocaleString('es-CL', { maximumFractionDigits: 2 }) + ' mm' : '—'}</td>
                         <td class="n">${this._num(o.ancho, 0)}</td>
                         <td class="n">${this._num(o.alto, 0)}</td>
                         <td class="n">${this._num(o.cantidad_paso != null ? o.cantidad_paso : o.cantidad, 0)}</td>
@@ -545,11 +549,11 @@ App.registerModule('prod_prog_estacion', {
 
     exportarExcel() {
         if (!this.datos || !this.datos.estaciones || !this.datos.estaciones.length) return;
-        let csv = 'Estacion;Fecha;Pedido;Item;Prioridad;Código SAP;Descripción;Código;Ancho;Alto;Cant;M2;Kg;Cliente;Estado;Ruta;Grupo\n';
+        let csv = 'Estacion;Fecha;Pedido;Item;Prioridad;Código SAP;Descripción;Código;Espesor;Ancho;Alto;Cant;M2;Kg;Cliente;Estado;Ruta;Grupo\n';
         for (const est of this.datos.estaciones) {
             for (const dia of (est.fechas || [])) {
                 for (const o of dia.ordenes) {
-                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), o.codigo, o.ancho, o.alto, (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad), Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
+                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), o.codigo, ((o.espesor_bom ?? o.mp_espesor) ? Number(o.espesor_bom ?? o.mp_espesor).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : ''), o.ancho, o.alto, (o.cantidad_paso != null ? o.cantidad_paso : o.cantidad), Number((o.m2_asignados || o.m2)).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(o.kg_paso != null ? o.kg_paso : o.kg).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
                 }
             }
         }
