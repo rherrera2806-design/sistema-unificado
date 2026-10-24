@@ -829,13 +829,43 @@ App.modules.planificacion = {
             order: -1
         });
 
+        // ===== TOTALES =====
+        // Suma de todos los grupos por día (se dibuja sobre cada barra) y
+        // total del período — aplica a F. Inicio y F. Término
+        const fmtT = (n) => this._fmt(n, 0);
+        const totalesDia = fechasConData.map(f => data.familias.reduce((s, fam) => s + (Number(data.datos[fam][f]) || 0), 0));
+        const totalPeriodo = totalesDia.reduce((a, b) => a + b, 0);
+        const totalesPlugin = {
+            id: 'totalesBarras',
+            afterDatasetsDraw(chart) {
+                const { ctx, scales } = chart;
+                if (!scales || !scales.x || !scales.y) return;
+                ctx.save();
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillStyle = '#0f172a';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                totalesDia.forEach((t, i) => {
+                    if (!t) return;
+                    try {
+                        const xPos = scales.x.getPixelForValue(i);
+                        const yPos = scales.y.getPixelForValue(t) - 4;
+                        ctx.fillText(fmtT(t), xPos, yPos);
+                    } catch (e) { }
+                });
+                ctx.restore();
+            }
+        };
+
         if (legend) {
             legend.innerHTML = '<div class="ttl">Grupos</div>' + data.familias.map((fam, i) =>
                 '<span class="lg"><span class="dot" style="background:' + colores[i % colores.length].bg + '"></span>' + escText(fam) + '</span>'
             ).join('');
         }
         if (capProm) {
-            capProm.innerHTML = 'Capacidad promedio de producción: <strong>' + this._fmt(capacidadPromedio, 0) + ' kg/día</strong>';
+            capProm.innerHTML = 'Capacidad promedio de producción: <strong>' + this._fmt(capacidadPromedio, 0) + ' kg/día</strong>'
+                + ' · Total del período: <strong>' + this._fmt(totalPeriodo, 0) + ' kg</strong>'
+                + ' · Promedio por día: <strong>' + this._fmt(fechasConData.length ? totalPeriodo / fechasConData.length : 0, 0) + ' kg</strong>';
         }
 
         if (this._chartInstance) { this._chartInstance.destroy(); this._chartInstance = null; }
@@ -844,7 +874,7 @@ App.modules.planificacion = {
         this._chartInstance = new Chart(ctx, {
             type: 'bar',
             data: { labels, datasets },
-            plugins: [ChartDataLabels],
+            plugins: [ChartDataLabels, totalesPlugin],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
