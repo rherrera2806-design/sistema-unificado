@@ -1,7 +1,7 @@
 {
-    "notas":  "Cola en el mismo orden que Programa por Estacion: T1 Noche antes que T2 Dia, con badge de turno programado en cada trabajo.",
+    "notas":  "Correccion del login: con el teclado abierto los campos ya no se pierden hacia arriba. Prueba obligatoria antes de publicar cada version (mobile/QA-CHECKLIST.md).",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  17,
-    "versionName":  "1.16",
+    "versionCode":  18,
+    "versionName":  "1.17",
     "fecha":  "2026-10-24"
 }

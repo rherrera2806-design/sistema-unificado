@@ -54,9 +54,17 @@ Pop-Location
 
 $apk = Join-Path $raiz 'android\app\build\outputs\apk\release\app-release.apk'
 if (Test-Path $apk) {
+    # Copia al APK de DISTRIBUCIÓN servido en /planta/ (bajada directa al celular)
+    $dist = Join-Path $raiz 'app\VitroFlow-Planta.apk'
+    Copy-Item $apk $dist -Force
     Write-Output ""
     Write-Output "APK listo: $apk"
     Write-Output ("Tamano: " + [math]::Round((Get-Item $apk).Length / 1MB, 1) + " MB")
+    Write-Output "APK de distribucion (se sirve en /planta/): $dist"
+    Write-Output ""
+    Write-Output "CHECKLIST antes de publicar (mobile/QA-CHECKLIST.md):"
+    Write-Output "  - LOGIN con teclado abierto: los campos NO deben taparse ni irse hacia arriba"
+    Write-Output "  - Cola: T1 Noche -> T2 Dia con badge de turno"
 } else {
     Write-Output "No se genero el APK (revisa los errores de Gradle arriba)"
 }

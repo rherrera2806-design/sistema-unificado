@@ -14,6 +14,9 @@ body {
 }
 button { font-family: inherit; cursor: pointer; }
 input, select, textarea { font-family: inherit; }
+/* Teclado virtual: un campo NUNCA debe quedar bajo el header sticky ni ser
+   expulsado hacia arriba al abrir el teclado (bug clásico del login) */
+input, select, textarea { scroll-margin-top: 100px; scroll-margin-bottom: 28px; }
 
 /* ===== Header ===== */
 .header {

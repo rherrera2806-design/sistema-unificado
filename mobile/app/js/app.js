@@ -1196,28 +1196,45 @@ async function reprogramarAhora() {
 
 // ============================ ARRANQUE ============================
 
-// Teclado del celular: el campo enfocado debe quedar SIEMPRE visible (no
-// detrás del header). Se recoloca cada vez que el teclado cambia el tamaño de
-// la pantalla (visualViewport) — esperar X ms fijos perdía la carrera contra
-// el teclado.
+// Teclado del celular: el campo enfocado debe quedar SIEMPRE visible, sin
+// taparse con el header ni que los campos se vayan "hacia arriba" (bug clásico
+// del LOGIN). ANTES se usaba scrollIntoView({block:'center'}) que SOBRESCROLLEA
+// y expulsa los campos de pantalla cuando el WebView ya movió la vista.
+// Ahora se corrige SOLO lo necesario para que el campo quede dentro del área
+// visible real (visualViewport = lo que se ve encima del teclado).
+// ⚠️ MANTENER ESTE BLOQUE en toda actualización de la app (mobile/QA-CHECKLIST.md).
 (function () {
+    const MARGEN = 12;
+    const esCampo = (t) => t && t.matches && t.matches('input, select, textarea');
     const mantenerVisible = () => {
         const t = document.activeElement;
-        if (t && t.matches && t.matches('input, select, textarea')) {
-            try { t.scrollIntoView({ block: 'center', behavior: 'instant' }); } catch (_) { }
-        }
+        if (!esCampo(t)) return;
+        try {
+            const vv = window.visualViewport;
+            if (!vv) { t.scrollIntoView({ block: 'nearest' }); return; }
+            const r = t.getBoundingClientRect();
+            // Área visible REAL del campo: [vv.offsetTop, vv.offsetTop + vv.height]
+            // (con el teclado abierto vv.height ya viene recortado)
+            const visTop = vv.offsetTop + MARGEN;
+            const visBottom = vv.offsetTop + vv.height - MARGEN;
+            let delta = 0;
+            if (r.bottom > visBottom) delta = r.bottom - visBottom;   // tapado por el teclado: bajar la vista
+            else if (r.top < visTop) delta = r.top - visTop;          // perdido hacia arriba: subir la vista
+            if (delta !== 0) window.scrollBy(0, delta);               // movimiento mínimo, nunca 'center'
+        } catch (_) { }
     };
     document.addEventListener('focusin', (e) => {
-        if (e.target && e.target.matches && e.target.matches('input, select, textarea')) {
-            setTimeout(mantenerVisible, 120);
-            setTimeout(mantenerVisible, 400);
+        if (esCampo(e.target)) {
+            setTimeout(mantenerVisible, 60);
+            setTimeout(mantenerVisible, 250);
+            setTimeout(mantenerVisible, 500);
         }
     });
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', () => setTimeout(mantenerVisible, 60));
-        window.visualViewport.addEventListener('scroll', () => setTimeout(mantenerVisible, 60));
+        window.visualViewport.addEventListener('resize', () => setTimeout(mantenerVisible, 30));
+        window.visualViewport.addEventListener('scroll', () => setTimeout(mantenerVisible, 30));
     }
-    window.addEventListener('resize', () => setTimeout(mantenerVisible, 60));
+    window.addEventListener('resize', () => setTimeout(mantenerVisible, 30));
 })();
 
 async function boot() {
