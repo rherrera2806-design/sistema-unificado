@@ -188,7 +188,8 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     // 1) Todo el avance real: pasos de órdenes NO terminadas
     const res = await query(`
         SELECT o.id as orden_id, o.pedido_sap_id, o.item_numero, o.nivel_prioridad,
-               o.fecha_entrega_pactada, o.metros_cuadrados, o.cantidad, o.estado_programacion,
+               o.fecha_entrega_pactada, o.espesor_mm,
+               o.metros_cuadrados, o.cantidad, o.estado_programacion,
                COALESCE(NULLIF(o.grupo, ''), '(sin grupo)') as grupo,
                COALESCE(o.kilos, 0) as kilos,
                p.id as paso_id, p.estacion_id, p.orden_secuencia, p.estado,
@@ -202,6 +203,7 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
 
     // 2) Agrupar por orden con su cadena de pasos
     const ordenes = new Map();
+    const fFecha = (v) => v ? (typeof v === 'string' ? String(v).split('T')[0] : fmtL(new Date(v))) : null;
     for (const r of res.rows) {
         if (!ordenes.has(r.orden_id)) {
             ordenes.set(r.orden_id, {
@@ -209,17 +211,18 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
                 pedido: r.pedido_sap_id,
                 item: r.item_numero,
                 prioridad: Number(r.nivel_prioridad) || 1,
-                fecha_pactada: r.fecha_entrega_pactada
-                    ? (typeof r.fecha_entrega_pactada === 'string'
-                        ? r.fecha_entrega_pactada.split('T')[0]
-                        : fmtL(new Date(r.fecha_entrega_pactada)))
-                    : null,
+                fecha_pactada: fFecha(r.fecha_entrega_pactada),
+                // espesor viene de la RECETA (backfill lo llena en la orden);
+                // nPasos = estaciones por las que pasa (se cuentan de los pasos)
+                espesor: Number(r.espesor_mm) || 0,
                 m2_orden: Number(r.metros_cuadrados) || 0,
                 avance: 0,
+                nPasos: 0,
                 pasos: []
             });
         }
         const o = ordenes.get(r.orden_id);
+        o.nPasos++;
         const m2p = Number(r.m2_asignados) > 0 ? Number(r.m2_asignados) : (Number(r.metros_cuadrados) || 0);
         const m2o = Number(r.metros_cuadrados) || 0;
         // kg_paso (fórmula estándar) = lo que consume capacidad del GRUPO
@@ -255,6 +258,11 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         return (atA - atB)
             || ((rangoPrio[a.prioridad] ?? 3) - (rangoPrio[b.prioridad] ?? 3))
             || ((a.listo ? 0 : 1) - (b.listo ? 0 : 1))
+            // SPT: las rutas CORTAS primero (un pedido de 2 procesos se libera
+            // antes que uno de 5) — minimiza el tiempo promedio de entrega
+            || ((a.nPasos || 0) - (b.nPasos || 0))
+            // MISMO ESPESOR juntos = menos cambios de receta/herramienta
+            || ((a.espesor || 0) - (b.espesor || 0))
             || String(a.fecha_pactada || '9999').localeCompare(String(b.fecha_pactada || '9999'));
     });
 
@@ -349,7 +357,9 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         }
 
         if (!ultimaFecha) continue;
-        // Nueva fecha pactada = último paso restante (decisión 4)
+        // UNA sola fecha: la que calcula el sistema según la capacidad real.
+        // Se avisa si la nueva fecha queda más allá de la calculada antes (o si
+        // la orden ya estaba vencida) para comunicarlo
         const excede = !!(o.fecha_pactada && ultimaFecha > o.fecha_pactada);
         updatesOrdenes.push([primeraFecha, ultimaFecha, o.orden_id, o.avance > 0]);
         if (excede || (o.fecha_pactada && o.fecha_pactada <= hoy)) {
@@ -368,9 +378,6 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         }
         for (const [primera, ultima, ordenId, esAvanzada] of updatesOrdenes) {
             if (esAvanzada) {
-                // Orden avanzada: NO se toca su estado (sigue EN_PROCESO), pero
-                // SÍ la fecha de programación (inicio del trabajo restante) para
-                // que las vistas de carga no muestren datos viejos del plan
                 await txQuery(`UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2 WHERE id = $3`, [primera, ultima, ordenId]);
             } else {
                 await txQuery(`UPDATE produccion_ordenes SET fecha_programada = $1, fecha_entrega_pactada = $2, estado_programacion = 'PROGRAMADO' WHERE id = $3`, [primera, ultima, ordenId]);
