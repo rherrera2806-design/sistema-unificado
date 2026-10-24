@@ -1198,43 +1198,63 @@ async function reprogramarAhora() {
 
 // Teclado del celular: el campo enfocado debe quedar SIEMPRE visible, sin
 // taparse con el header ni que los campos se vayan "hacia arriba" (bug clásico
-// del LOGIN). ANTES se usaba scrollIntoView({block:'center'}) que SOBRESCROLLEA
-// y expulsa los campos de pantalla cuando el WebView ya movió la vista.
-// Ahora se corrige SOLO lo necesario para que el campo quede dentro del área
-// visible real (visualViewport = lo que se ve encima del teclado).
+// del LOGIN). IMPORTANTE: en Android 15+ (edge-to-edge) el teclado se
+// SUPERPONE y ya no redimensiona la ventana — por eso NO se confía en
+// window.innerHeight y se usa visualViewport (= lo que realmente se ve).
+// Reglas:
+//  - mover SOLO lo necesario (nunca scrollIntoView 'center', que sobrescrollea
+//    y expulsa los campos de pantalla)
+//  - cada movimiento LIMITADO a 1/4 de la vista visible (nada de "vuelos")
+//  - re-verificar hasta 3 veces (el teclado anima y la vista se mueve después)
+//  - padding inferior = altura del teclado: SIEMPRE hay espacio para desplazar
+//    el campo sobre el teclado
 // ⚠️ MANTENER ESTE BLOQUE en toda actualización de la app (mobile/QA-CHECKLIST.md).
 (function () {
     const MARGEN = 12;
     const esCampo = (t) => t && t.matches && t.matches('input, select, textarea');
+    const vv = () => window.visualViewport;
+    // Altura del teclado como padding inferior del área de scroll (variable --kb)
+    const aplicarAlturaTeclado = () => {
+        const v = vv();
+        if (!v) return;
+        const kb = Math.max(0, Math.round(window.innerHeight - v.height - v.offsetTop));
+        document.documentElement.style.setProperty('--kb', kb + 'px');
+    };
     const mantenerVisible = () => {
         const t = document.activeElement;
         if (!esCampo(t)) return;
         try {
-            const vv = window.visualViewport;
-            if (!vv) { t.scrollIntoView({ block: 'nearest' }); return; }
-            const r = t.getBoundingClientRect();
-            // Área visible REAL del campo: [vv.offsetTop, vv.offsetTop + vv.height]
-            // (con el teclado abierto vv.height ya viene recortado)
-            const visTop = vv.offsetTop + MARGEN;
-            const visBottom = vv.offsetTop + vv.height - MARGEN;
-            let delta = 0;
-            if (r.bottom > visBottom) delta = r.bottom - visBottom;   // tapado por el teclado: bajar la vista
-            else if (r.top < visTop) delta = r.top - visTop;          // perdido hacia arriba: subir la vista
-            if (delta !== 0) window.scrollBy(0, delta);               // movimiento mínimo, nunca 'center'
+            const v = vv();
+            if (!v || v.height < 120) return;   // teclado a medio abrir: no tocar nada
+            for (let i = 0; i < 3; i++) {
+                const r = t.getBoundingClientRect();
+                const visTop = v.offsetTop + MARGEN;
+                const visBottom = v.offsetTop + v.height - MARGEN;
+                let delta = 0;
+                if (r.bottom > visBottom) delta = r.bottom - visBottom;   // tapado por el teclado
+                else if (r.top < visTop) delta = r.top - visTop;          // perdido hacia arriba
+                if (delta === 0) return;                                  // ya está visible
+                const limite = Math.max(80, v.height / 4);                // nunca un "vuelo"
+                delta = Math.max(-limite, Math.min(limite, delta));
+                window.scrollBy(0, delta);
+            }
         } catch (_) { }
     };
+    const alCambiarVista = () => { aplicarAlturaTeclado(); setTimeout(mantenerVisible, 30); setTimeout(mantenerVisible, 250); };
     document.addEventListener('focusin', (e) => {
         if (esCampo(e.target)) {
+            aplicarAlturaTeclado();
             setTimeout(mantenerVisible, 60);
             setTimeout(mantenerVisible, 250);
             setTimeout(mantenerVisible, 500);
         }
     });
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', () => setTimeout(mantenerVisible, 30));
-        window.visualViewport.addEventListener('scroll', () => setTimeout(mantenerVisible, 30));
+        window.visualViewport.addEventListener('resize', alCambiarVista);
+        window.visualViewport.addEventListener('scroll', alCambiarVista);
     }
-    window.addEventListener('resize', () => setTimeout(mantenerVisible, 30));
+    window.addEventListener('resize', alCambiarVista);
+    aplicarAlturaTeclado();
 })();
 
 async function boot() {

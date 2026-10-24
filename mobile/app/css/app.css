@@ -7,6 +7,10 @@
     --border: #e2e8f0; --header: #0f172a;
 }
 html, body { height: 100%; }
+/* --kb = altura del teclado virtual (la calcula js/app.js con visualViewport).
+   Este padding inferior garantiza que SIEMPRE se pueda desplazar un campo
+   sobre el teclado, incluso cuando el teclado se superpone (Android 15+). */
+#app { padding-bottom: calc(var(--kb, 0px) + 24px); }
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;

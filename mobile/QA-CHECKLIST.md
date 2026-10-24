@@ -3,6 +3,8 @@
 Cada vez que se actualiza la app (bundle + APK), probar en un celular REAL:
 
 ## 🔴 OBLIGATORIO — Login con teclado abierto
+- [ ] Probar en el celular **REAL** y con la app **ACTUALIZADA** (el código de la
+      UI va dentro del APK: un cambio de interfaz NO se ve hasta actualizar).
 - [ ] Al tocar **Email** y **Contraseña**, el teclado **no debe tapar ni expulsar
       los campos hacia arriba**: ambos campos y el botón "Ingresar" deben quedar
       visibles mientras se escribe. (Bug clásico que se repitió: los campos se

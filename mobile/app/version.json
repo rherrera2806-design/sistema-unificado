@@ -1,7 +1,7 @@
 {
-    "notas":  "Correccion del login: con el teclado abierto los campos ya no se pierden hacia arriba. Prueba obligatoria antes de publicar cada version (mobile/QA-CHECKLIST.md).",
+    "notas":  "Login a prueba de teclado: funciona con teclado superpuesto (Android 15/Samsung), movimientos limitados y verificados. Los campos ya no se van hacia arriba.",
     "apk":  "/planta/VitroFlow-Planta.apk",
-    "versionCode":  18,
-    "versionName":  "1.17",
+    "versionCode":  19,
+    "versionName":  "1.18",
     "fecha":  "2026-10-24"
 }
