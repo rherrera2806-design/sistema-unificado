@@ -219,6 +219,44 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     // El planificador puede elegir otra fecha de inicio (selector "Desde").
     const desde = fechaMinima || await calendario.siguienteDiaHabil(hoy);
 
+    // ===== SINCRONIZAR RUTAS CON LA RECETA ACTUAL (antes era exclusivo del
+    // "Reprogramar" tradicional; ahora lo hace también Por Avance) =====
+    // Si cambió la receta de un código (sus estaciones de paso), las órdenes
+    // sin trabajar se regeneran desde procesos_especificos_json. Nunca se
+    // tocan órdenes con pasos ya trabajados.
+    let rutasActualizadas = 0;
+    try {
+        const recMap = {};
+        for (const tabla of ['recetas_bom', 'produccion_recetas_bom']) {
+            try {
+                const rr = await query(`SELECT codigo_sap_padre, procesos_especificos_json FROM ${tabla} WHERE procesos_especificos_json IS NOT NULL`);
+                for (const r of rr.rows) {
+                    const k = String(r.codigo_sap_padre || '').trim().toLowerCase();
+                    if (k && !recMap[k]) recMap[k] = r.procesos_especificos_json;
+                }
+            } catch (_) { }
+        }
+        const candRes = await query(`
+            SELECT o.id, COALESCE(o.codigo_padre, o.codigo_producto) as codigo
+            FROM produccion_ordenes o
+            WHERE o.estado_programacion NOT IN ('EN_PROCESO','TERMINADO','MERMADO','CERRADO')`);
+        for (const o of candRes.rows) {
+            const ruta = recMap[String(o.codigo || '').trim().toLowerCase()];
+            if (!Array.isArray(ruta) || !ruta.length) continue;
+            const ids = ruta.map(x => Number(typeof x === 'object' ? (x.estacion_id || x.id) : x)).filter(Boolean);
+            if (!ids.length) continue;
+            const act = await query('SELECT estacion_id, estado, hora_inicio, hora_fin FROM cola_produccion_pasos WHERE orden_produccion_id = $1 ORDER BY orden_secuencia', [o.id]);
+            if (act.rows.some(p => p.estado !== 'PENDIENTE' || p.hora_inicio || p.hora_fin)) continue;
+            const actuales = act.rows.map(p => Number(p.estacion_id));
+            if (ids.every(id => actuales.includes(id))) continue;
+            await query(`DELETE FROM cola_produccion_pasos WHERE orden_produccion_id = $1 AND estado = 'PENDIENTE' AND hora_inicio IS NULL AND hora_fin IS NULL`, [o.id]);
+            for (let i = 0; i < ids.length; i++) {
+                await query(`INSERT INTO cola_produccion_pasos (orden_produccion_id, estacion_id, orden_secuencia, estado) VALUES ($1,$2,$3,'PENDIENTE')`, [o.id, ids[i], i + 1]);
+            }
+            rutasActualizadas++;
+        }
+    } catch (_) { }
+
     // 1) Todo el avance real: pasos de órdenes NO terminadas
     const res = await query(`
         SELECT o.id as orden_id, o.pedido_sap_id, o.item_numero, o.nivel_prioridad,
@@ -449,7 +487,8 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         ordenes_reprogramadas: cola.length,
         pasos_fechados: pasosFechados,
         pasos_en_curso_respetados: pasosEnCurso,
+        rutas_actualizadas: rutasActualizadas,
         alertas,
-        mensaje: `${cola.length} órdenes re-programadas respetando el avance (${pasosFechados} pasos fechados, ${pasosEnCurso} en curso mantenidos hoy)`
+        mensaje: `${cola.length} órdenes re-programadas respetando el avance (${pasosFechados} pasos fechados, ${pasosEnCurso} en curso mantenidos hoy${rutasActualizadas ? ', ' + rutasActualizadas + ' rutas sincronizadas con la receta' : ''})`
     };
 }

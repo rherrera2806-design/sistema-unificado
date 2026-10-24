@@ -104,8 +104,7 @@ App.modules.planificacion = {
                             ${puedeEditar ? `
                             <button class="pln-btn ghost sm" onclick="App.modules.planificacion.showCapacidadGrupo()" title="Configurar capacidad">⚙ Capacidad</button>
                             <button class="pln-btn primary sm" onclick="App.modules.planificacion.showAutoAsignarGrupo()" title="Repartir pendientes respetando capacidad">⚡ Auto-Asignar</button>
-                            <button class="pln-btn warn sm" onclick="App.modules.planificacion.showReprogramarAvance()" title="Re-programa SOLO lo pendiente respetando lo avanzado">🔔 Por Avance</button>
-                            <button class="pln-btn warn sm" onclick="App.modules.planificacion.showReprogramar()" title="Libera PROGRAMADO y re-asigna por prioridad">↻ Reprogramar</button>` : ''}
+                            <button class="pln-btn warn sm" onclick="App.modules.planificacion.showReprogramarAvance()" title="Re-programa SOLO lo pendiente respetando lo avanzado">🔔 Por Avance</button>` : ''}
                         </div>
                     </div>
                     <div class="pln-p-body">
@@ -598,6 +597,7 @@ App.modules.planificacion = {
             <div id="reprogAvanceResultado" style="margin-top:12px"></div>
         `;
         const footer = `
+            <button class="pln-btn ghost" style="margin-right:auto" title="Avanzado: libera TODO lo no iniciado y re-planifica desde cero (reinicio completo del plan)" onclick="App.modules.planificacion.showReprogramar()">⚙ Todo desde cero</button>
             <button class="pln-btn ghost" id="reprogAvanceCerrar" onclick="App.hideModal()">Cerrar</button>
             <button class="pln-btn warn" id="reprogAvanceRun" onclick="App.modules.planificacion.ejecutarReprogramarAvance()">Reprogramar por Avance</button>
         `;
