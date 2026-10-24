@@ -299,10 +299,11 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         return (atA - atB)
             || ((rangoPrio[a.prioridad] ?? 3) - (rangoPrio[b.prioridad] ?? 3))
             || ((a.listo ? 0 : 1) - (b.listo ? 0 : 1))
-            // SPT: las rutas CORTAS primero (un pedido de 2 procesos se libera
-            // antes que uno de 5) — minimiza el tiempo promedio de entrega
-            || ((a.nPasos || 0) - (b.nPasos || 0))
-            // MISMO ESPESOR juntos = menos cambios de receta/herramienta
+            // MISMO ESPESOR juntos = menos cambios de receta/herramienta.
+            // OJO: NO meter "rutas cortas primero" (SPT) — priorizar pedidos de
+            // pocas estaciones dejaba la mayoría de estaciones en 0: el método
+            // que llena todas las estaciones es intercalar rutas largas y
+            // cortas (cada orden larga toca varias estaciones y las carga).
             || ((a.espesor || 0) - (b.espesor || 0))
             || String(a.fecha_pactada || '9999').localeCompare(String(b.fecha_pactada || '9999'));
     });
