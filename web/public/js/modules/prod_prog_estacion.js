@@ -1,5 +1,6 @@
 App.registerModule('prod_prog_estacion', {
     datos: null,
+    _horarios: [],
     filtros: { estacion_id: '', fecha_inicio: '', fecha_fin: '', estado: 'por_fabricar' },
 
     async render() {
@@ -107,9 +108,15 @@ App.registerModule('prod_prog_estacion', {
         if (this.filtros.estado) params.set('estado', this.filtros.estado);
 
         try {
-            const res = await fetch(`/api/produccion/prog-estacion?${params}`);
+            // Horarios de Turno (Configuración) para mostrar la ventana real de
+            // cada turno en los encabezados; si falla, se muestra sin horas
+            const [res, resHor] = await Promise.all([
+                fetch(`/api/produccion/prog-estacion?${params}`),
+                fetch('/api/taller/horarios').catch(() => null)
+            ]);
             if (!res.ok) throw new Error(`Error ${res.status}`);
             this.datos = await res.json();
+            this._horarios = (resHor && resHor.ok) ? await resHor.json() : [];
             this.poblarEstaciones();
             this.renderResumen();
             this.renderContenido();
@@ -196,36 +203,44 @@ App.registerModule('prod_prog_estacion', {
                     // por separado). SOLO en la estación final (último paso de la
                     // ruta: Armado en termopanel, Laminado VM en laminado) los
                     // componentes se muestran como uno solo.
-                    for (const f of this._prepararFilasDia(dia)) {
-                        if (f.tipo === 'fila') {
-                            const o = f.o;
-                            html += this._renderFila(o, `ppe-estado-${o.estado}`, false);
-                            cardsDia += this._renderFilaCard(o);
-                            continue;
+                    // Dentro del día: TURNO 1 (Noche) primero y luego TURNO 2
+                    // (Día) — el nocturno arranca la tarde anterior (acreditado
+                    // al día en que termina).
+                    for (const bloque of this._bloquesTurno(dia, this._prepararFilasDia(dia))) {
+                        const colorTurno = bloque.turno === 'noche' ? '#0f172a' : '#0369a1';
+                        html += `<tr><td colspan="14" style="background:${colorTurno};color:#fff;font-size:11px;font-weight:700;padding:6px 12px;letter-spacing:.3px">${this.esc(bloque.etiqueta)}</td></tr>`;
+                        cardsDia += `<div style="background:${colorTurno};color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;margin:10px 0 6px">${this.esc(bloque.etiqueta)}</div>`;
+                        for (const f of bloque.filas) {
+                            if (f.tipo === 'fila') {
+                                const o = f.o;
+                                html += this._renderFila(o, `ppe-estado-${o.estado}`, false);
+                                cardsDia += this._renderFilaCard(o);
+                                continue;
+                            }
+                            const grp = { padre: f.p, hijos: f.hijos };
+                            const p = grp.padre;
+                            html += `<tr style="border-bottom:2px solid #e2e8f0">`;
+                            html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
+                            html += `<td>${this.esc(p.item || '-')}</td>`;
+                            html += `<td>${this._prioBadge(p.prioridad)}</td>`;
+                            html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong></td>`;
+                            html += `<td style="font-size:10px">${p.nombre_padre ? '<span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
+                            html += `<td style="white-space:nowrap">${this._espesorFila(p) ? Number(this._espesorFila(p)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
+                            html += `<td>${Number(p.ancho).toLocaleString('es-CL')}×${Number(p.alto).toLocaleString('es-CL')}</td>`;
+                            const undTotal = grp.hijos[0] ? (Number(grp.hijos[0].cantidad) || 0) : 0;
+                            const undPend = grp.hijos[0] ? (Number(grp.hijos[0].cantidad_paso) || undTotal) : 0;
+                            html += `<td title="Cantidad pendiente del pedido de ${undTotal.toLocaleString('es-CL')} und"><strong>${undPend.toLocaleString('es-CL')}</strong> und</td>`;
+                            const totalM2Grupo = grp.hijos[0] ? (grp.hijos[0].m2_asignados || grp.hijos[0].m2) : 0;
+                            const totalKgGrupo = grp.hijos.reduce((s, h) => s + (Number(h.kg_fila != null ? h.kg_fila : (h.kg_paso != null ? h.kg_paso : h.kg)) || 0), 0);
+                            html += `<td><strong>${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
+                            html += `<td><strong>${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
+                            html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(this._titulo(p.cliente || '-'))}</td>`;
+                            html += `<td>${p.estado === 'PENDIENTE' ? '' : `<span class="ppe-badge ppe-estado-${p.estado}">${this.esc(p.estado)}</span>`}</td>`;
+                            html += `<td style="font-size:10px">${this.esc(p.ruta)}</td>`;
+                            html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></td>`;
+                            html += `</tr>`;
+                            cardsDia += this._renderGrupoCard(p, grp.hijos);
                         }
-                        const grp = { padre: f.p, hijos: f.hijos };
-                        const p = grp.padre;
-                        html += `<tr style="border-bottom:2px solid #e2e8f0">`;
-                        html += `<td><strong>${this.esc(p.pedido || '-')}</strong></td>`;
-                        html += `<td>${this.esc(p.item || '-')}</td>`;
-                        html += `<td>${this._prioBadge(p.prioridad)}</td>`;
-                        html += `<td><strong style="color:#0369a1">${this.esc(p.codigo_ref)}</strong></td>`;
-                        html += `<td style="font-size:10px">${p.nombre_padre ? '<span style="color:#94a3b8">' + this.esc(p.nombre_padre) + '</span>' : ''}</td>`;
-                        html += `<td style="white-space:nowrap">${this._espesorFila(p) ? Number(this._espesorFila(p)).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : '—'}</td>`;
-                        html += `<td>${Number(p.ancho).toLocaleString('es-CL')}×${Number(p.alto).toLocaleString('es-CL')}</td>`;
-                        const undTotal = grp.hijos[0] ? (Number(grp.hijos[0].cantidad) || 0) : 0;
-                        const undPend = grp.hijos[0] ? (Number(grp.hijos[0].cantidad_paso) || undTotal) : 0;
-                        html += `<td title="Cantidad pendiente del pedido de ${undTotal.toLocaleString('es-CL')} und"><strong>${undPend.toLocaleString('es-CL')}</strong> und</td>`;
-                        const totalM2Grupo = grp.hijos[0] ? (grp.hijos[0].m2_asignados || grp.hijos[0].m2) : 0;
-                        const totalKgGrupo = grp.hijos.reduce((s, h) => s + (Number(h.kg_fila != null ? h.kg_fila : (h.kg_paso != null ? h.kg_paso : h.kg)) || 0), 0);
-                        html += `<td><strong>${Number(totalM2Grupo).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></td>`;
-                        html += `<td><strong>${Number(totalKgGrupo).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})}</strong></td>`;
-                        html += `<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.esc(this._titulo(p.cliente || '-'))}</td>`;
-                        html += `<td>${p.estado === 'PENDIENTE' ? '' : `<span class="ppe-badge ppe-estado-${p.estado}">${this.esc(p.estado)}</span>`}</td>`;
-                        html += `<td style="font-size:10px">${this.esc(p.ruta)}</td>`;
-                        html += `<td><span style="padding:1px 6px;border-radius:4px;font-size:10px;background:#f0fdf4;color:#166534">${this.esc(p.grupo || '-')}</span></td>`;
-                        html += `</tr>`;
-                        cardsDia += this._renderGrupoCard(p, grp.hijos);
                     }
 
                     html += `</tbody></table></div>`;
@@ -279,8 +294,49 @@ App.registerModule('prod_prog_estacion', {
     _espesorFila(o) {
         return o.espesor_fila ?? o.espesor_bom ?? o.mp_espesor ?? o.espesor ?? null;
     },
+    // ── Turnos: TURNO 1 = Noche (comienza el día anterior), TURNO 2 = Día ──
+    // El turno se acredita al día en que TERMINA (Horarios de Turno): la noche
+    // del martes arranca el lunes 22:00 y la del lunes, el domingo 00:00. Por
+    // eso dentro de un día primero va el nocturno y después el diurno. Los
+    // pasos sin turno (o 'extra') se asumen TURNO 2 (DÍA).
+    _turnoDeFila(f) {
+        const o = f.tipo === 'grupo' ? f.p : f.o;
+        return String(o.turno || '').toLowerCase() === 'noche' ? 'noche' : 'dia';
+    },
+    // Encabezado del turno con la ventana REAL configurada (Configuración →
+    // Horarios de Turno). La fila de la noche está guardada en el día de
+    // INICIO (el día anterior al día acreditado).
+    _etiquetaTurno(fechaStr, turno) {
+        const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const base = turno === 'noche' ? '🌙 Turno 1 · Noche' : '🌞 Turno 2 · Día';
+        const d = new Date(fechaStr + 'T12:00:00');
+        if (isNaN(d.getTime())) return base;
+        const cfg = (this._horarios || []).filter(h => Number(h.anio) === d.getFullYear() && Number(h.mes) === d.getMonth() + 1 && String(h.turno || '').toLowerCase() === turno);
+        if (turno === 'noche') {
+            const dwIni = (d.getDay() + 6) % 7;
+            const h = cfg.find(x => Number(x.dia_semana) === dwIni);
+            return h ? `${base} — comienza ${dias[dwIni]} ${h.hora_inicio} → ${dias[d.getDay()]} ${h.hora_fin}` : base;
+        }
+        const h = cfg.find(x => Number(x.dia_semana) === d.getDay());
+        return h ? `${base} — ${dias[d.getDay()]} ${h.hora_inicio} → ${h.hora_fin}` : base;
+    },
+    // Bloques de turno de un día en orden cronológico real: T1 Noche y luego
+    // T2 Día (sin bloques vacíos)
+    _bloquesTurno(dia, filas) {
+        const bloques = [
+            { turno: 'noche', etiqueta: this._etiquetaTurno(dia.fecha, 'noche'), filas: [] },
+            { turno: 'dia', etiqueta: this._etiquetaTurno(dia.fecha, 'dia'), filas: [] }
+        ];
+        for (const f of filas) {
+            (this._turnoDeFila(f) === 'noche' ? bloques[0] : bloques[1]).filas.push(f);
+        }
+        return bloques.filter(b => b.filas.length > 0);
+    },
     _ordenarFilas(filas) {
-        return [...(filas || [])].sort((a, b) => ((({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(this._espesorFila(a) ?? a.espesor) || 0) - (Number(this._espesorFila(b) ?? b.espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))));
+        // Orden cronológico real del día: TURNO 1 (Noche) antes que TURNO 2
+        // (Día); dentro de cada turno mantiene prioridad → espesor → pedido → item
+        const t = (o) => (String(o.turno || '').toLowerCase() === 'noche' ? 0 : 1);
+        return [...(filas || [])].sort((a, b) => ((t(a) - t(b)) || (({ 4: 0, 2: 1, 3: 2 }[Number(a.prioridad)] ?? 3) - ({ 4: 0, 2: 1, 3: 2 }[Number(b.prioridad)] ?? 3)) || ((Number(this._espesorFila(a) ?? a.espesor) || 0) - (Number(this._espesorFila(b) ?? b.espesor) || 0)) || String(a.pedido || a.ov || '').localeCompare(String(b.pedido || b.ov || ''), 'es', { numeric: true }) || ((Number(a.item) || 0) - (Number(b.item) || 0))));
     },
     // Filas a mostrar para un día: componentes sueltos en estaciones de proceso
     // y UNA fila agregada por grupo (pedido|item|padre) en la estación final.
@@ -314,7 +370,7 @@ App.registerModule('prod_prog_estacion', {
         return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                 <div style="min-width:0">
-                    <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(o.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(o.item || '-')}</span></div>
+                    <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(o.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(o.item || '-')}</span> <span title="${String(o.turno || '').toLowerCase() === 'noche' ? 'Turno 1 · Noche' : 'Turno 2 · Día'}">${String(o.turno || '').toLowerCase() === 'noche' ? '🌙' : '🌞'}</span></div>
                     <div style="font-size:10px;color:#475569;margin-top:2px">${this.esc(this._titulo(o.cliente || '-'))}</div>
                 </div>
                 <div style="flex-shrink:0"><span class="ppe-badge ppe-estado-${o.estado}">${this.esc(o.estado)}</span></div>
@@ -343,7 +399,7 @@ App.registerModule('prod_prog_estacion', {
         return `<div style="border:1px solid #e4e9f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
             <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px">
                 <div style="min-width:0">
-                    <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(p.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(p.item || '-')}</span></div>
+                    <div style="font-weight:700;font-size:13px;color:#0f172a">${this.esc(p.pedido || '-')} <span style="font-weight:500;font-size:11px;color:#64748b">Item ${this.esc(p.item || '-')}</span> <span title="${String(p.turno || '').toLowerCase() === 'noche' ? 'Turno 1 · Noche' : 'Turno 2 · Día'}">${String(p.turno || '').toLowerCase() === 'noche' ? '🌙' : '🌞'}</span></div>
                     <div style="font-size:10px;color:#475569;margin-top:2px">${this.esc(this._titulo(p.cliente || '-'))}</div>
                 </div>
                 <div style="flex-shrink:0"><span class="ppe-badge ppe-estado-${p.estado}">${this.esc(p.estado)}</span></div>
@@ -538,7 +594,15 @@ App.registerModule('prod_prog_estacion', {
                     + '<th>Pedido</th><th>Item</th><th>Prioridad</th><th>Código SAP</th><th>Descripción</th><th>Código</th><th>Materia prima</th><th>Espesor</th><th>Ancho</th><th>Alto</th>'
                     + '<th>Cant</th><th>M²</th><th>Kg</th><th>Cliente</th><th>Ruta</th><th>Estado</th><th>QR</th>'
                     + '</tr></thead><tbody>';
+                let _turnoPrev = null;
                 for (const f of this._prepararFilasDia(dia)) {
+                    // Encabezado de turno: T1 Noche (arranca la tarde anterior)
+                    // primero y luego T2 Día, con su ventana real configurada
+                    const _t = this._turnoDeFila(f);
+                    if (_t !== _turnoPrev) {
+                        _turnoPrev = _t;
+                        cuerpo += `<tr><td colspan="17" style="background:#333;color:#fff;font-weight:700;font-size:9px;padding:3px 6px;letter-spacing:.5px">${E(this._etiquetaTurno(dia.fecha, _t))}</td></tr>`;
+                    }
                     // En estaciones de proceso cada componente/capa se imprime
                     // con SU espesor; en la estación final va una fila agregada
                     // con el espesor suma del BOM (5+5 = 10mm).
@@ -603,7 +667,7 @@ App.registerModule('prod_prog_estacion', {
 
     exportarExcel() {
         if (!this.datos || !this.datos.estaciones || !this.datos.estaciones.length) return;
-        let csv = 'Estacion;Fecha;Pedido;Item;Prioridad;Código SAP;Descripción;Código;Espesor;Ancho;Alto;Cant;M2;Kg;Cliente;Estado;Ruta;Grupo\n';
+        let csv = 'Estacion;Fecha;Turno;Pedido;Item;Prioridad;Código SAP;Descripción;Código;Espesor;Ancho;Alto;Cant;M2;Kg;Cliente;Estado;Ruta;Grupo\n';
         for (const est of this.datos.estaciones) {
             for (const dia of (est.fechas || [])) {
                 // Mismas filas que la pantalla: componentes por separado en
@@ -618,7 +682,7 @@ App.registerModule('prod_prog_estacion', {
                     // (= m² x espesor total x 2.5). Proceso: m²/kg del ítem.
                     const m2Val = esGrupo ? (o.m2_asignados || o.m2) : (o.m2_fila ?? (o.m2_asignados || o.m2));
                     const kgVal = esGrupo ? f.hijos.reduce((s, h) => s + (Number(h.kg_fila != null ? h.kg_fila : (h.kg_paso != null ? h.kg_paso : h.kg)) || 0), 0) : (o.kg_fila != null ? o.kg_fila : (o.kg_paso != null ? o.kg_paso : o.kg));
-                    csv += [est.nombre, dia.fecha, o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), codigosMp, (espVal ? Number(espVal).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : ''), o.ancho, o.alto, cantVal, Number(m2Val).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(kgVal).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
+                    csv += [est.nombre, dia.fecha, (this._turnoDeFila(f) === 'noche' ? 'T1 Noche' : 'T2 Día'), o.pedido, o.item, o.prioridad, o.codigo_ref, (o.nombre_padre || o.descripcion || ''), codigosMp, (espVal ? Number(espVal).toLocaleString('es-CL',{maximumFractionDigits:2}) + ' mm' : ''), o.ancho, o.alto, cantVal, Number(m2Val).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2}), Number(kgVal).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1}), o.cliente, o.estado, o.ruta, o.grupo].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';') + '\n';
                 }
             }
         }

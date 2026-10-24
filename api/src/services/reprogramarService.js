@@ -392,10 +392,14 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha } = {}) {
         const h = new Date().getHours();
         return (h >= 6 && h < 22) ? 'dia' : 'noche';
     })();
-    // La cascada avanza de TURNO en TURNO: 🌞 → 🌙 → (día hábil siguiente) 🌞
-    const siguienteSlot = async (slot) => slot.turno === 'dia'
-        ? { fecha: slot.fecha, turno: 'noche' }
-        : { fecha: await calendario.siguienteDiaHabil(slot.fecha), turno: 'dia' };
+    // REGLA DE TURNOS (acreditación al día en que TERMINA): el TURNO 1 del día
+    // productivo es el NOCHE —comienza el día anterior (mar noche = lun 22:00 →
+    // mar 07:30; el especial del lunes comienza el dom 00:00)— y el TURNO 2 es
+    // el DÍA (07:30 → 22:00). La cascada avanza en orden cronológico real:
+    // 🌙 T1 → 🌞 T2 → 🌙 T1 del día hábil siguiente → 🌞 T2 → …
+    const siguienteSlot = async (slot) => slot.turno === 'noche'
+        ? { fecha: slot.fecha, turno: 'dia' }
+        : { fecha: await calendario.siguienteDiaHabil(slot.fecha), turno: 'noche' };
     for (const o of ordenes.values()) {
         let kgHecho = false;
         for (const p of o.pasos) {
@@ -424,8 +428,9 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha } = {}) {
         return slot;
     };
 
-    // 5) Programar cada orden por su SUB-RUTA pendiente, TURNOS en cascada:
-    //    Pulido 🌞 lunes → Templado 🌙 lunes → siguiente paso 🌞 martes
+    // 5) Programar cada orden por su SUB-RUTA pendiente, TURNOS en cascada
+    //    (T1 noche primero porque arranca la tarde anterior):
+    //    Pulido 🌙 lunes (dom 22:00) → Templado 🌞 lunes → sig. paso 🌙 martes (lun 22:00)
     const updatesPasos = [];
     const updatesOrdenes = [];
     const alertas = [];
@@ -433,7 +438,9 @@ async function reprogramarPorAvance({ fechaMinima, soloSinFecha } = {}) {
     let pasosEnCurso = 0;
 
     for (const o of cola) {
-        let slot = { fecha: desde, turno: 'dia' };
+        // El primer slot del día productivo es el TURNO 1 (noche), que comienza
+        // la tarde anterior: desde = martes implica empezar en lun 22:00.
+        let slot = { fecha: desde, turno: 'noche' };
         let primeraFecha = null;
         let ultimaFecha = null;
         // REGLA: el kg de la orden consume capacidad del GRUPO UNA sola vez
