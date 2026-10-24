@@ -462,7 +462,7 @@ App.modules.planificacion = {
             App.showAlert('Sin permiso para auto-asignar', 'danger'); return;
         }
         const html = `
-            <p style="font-size:13px;color:#64748b;margin-bottom:12px">Reparte las órdenes <strong>pendientes</strong> en los próximos días respetando la capacidad máxima por grupo (kg/día). Solo días hábiles.</p>
+            <p style="font-size:13px;color:#64748b;margin-bottom:12px">Inserta las ordenes <strong>nuevas (sin fecha)</strong> con el mismo motor de "Por Avance": turnos, ventanas rigidas, cuellos de botella y capacidad dura. <strong>No toca</strong> el plan ya programado. Solo dias habiles.</p>
             <div style="margin-bottom:12px"><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Desde</label>
             <input type="date" id="planAutoGInicio" value="${this.fechaGrupo}" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px"></div>
             <div><label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#475569;margin-bottom:5px">Cantidad de días hábiles a buscar</label>
@@ -489,16 +489,18 @@ App.modules.planificacion = {
             });
             const data = await res.json();
             if (res.ok) {
-                const numAsignados = Array.isArray(data.asignados) ? data.asignados.length : 0;
-                const numNoAsignados = Array.isArray(data.noAsignados) ? data.noAsignados.length : 0;
-                let html = `<div class="pln-ok" style="margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> <strong>Asignadas: ${numAsignados}</strong></div>`;
-                if (numNoAsignados > 0) {
-                    html += `<div style="color:#b91c1c;font-weight:700;font-size:13px;margin-bottom:6px">Sin capacidad (${numNoAsignados}):</div>`;
-                    html += data.noAsignados.slice(0, 20).map(n =>
-                        `<div class="pln-sincupo"><strong>${escapeHtml(n.pedido || n.id || n.orden_id)}</strong> — ${escapeHtml(n.motivo)}
-                         <div class="sub2">Grupo: ${escapeHtml(n.grupo || '?')} · ${Number(n.m2_total || 0).toFixed(1)} m² · ${Number(n.kg_total || 0).toFixed(0)} kg</div></div>`
-                    ).join('');
-                    if (numNoAsignados > 20) html += `<div class="sub2" style="margin-top:4px">... y ${numNoAsignados - 20} más</div>`;
+                let html = `<div class="pln-ok" style="margin-bottom:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> <strong>${data.mensaje || 'Asignación completada'}</strong></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+                        <div class="pln-stat"><div class="v" style="color:#b45309">${data.ordenes_reprogramadas || 0}</div><div class="k">Órdenes asignadas</div></div>
+                        <div class="pln-stat"><div class="v" style="color:#15803d">${data.pasos_fechados || 0}</div><div class="k">Pasos fechados</div></div>
+                        <div class="pln-stat"><div class="v" style="color:#2563eb">${data.rutas_actualizadas || 0}</div><div class="k">Rutas sincronizadas</div></div>
+                    </div>`;
+                const alertas = (data && data.alertas) || [];
+                const fuera = alertas.filter(a => a.fuera_de_ventana);
+                if (fuera.length) {
+                    html += `<div style="margin-top:10px;color:#7f1d1d;font-weight:800;font-size:12.5px">🔴 ${fuera.length} NO caben en su ventana rígida:</div>`;
+                    html += fuera.slice(0, 12).map(a =>
+                        `<div style="font-size:11px;color:#7f1d1d;padding:3px 0">• <strong>${a.pedido || ''}</strong> item ${a.item != null ? a.item : '-'}: ventana ${a.ventana_dias} días hábiles → límite ${String(a.fecha_limite || '').slice(5)} · estimada <strong>${String(a.fecha_nueva || '').slice(5)}</strong></div>`).join('');
                 }
                 resEl.innerHTML = html;
                 await this.refrescarTodo();

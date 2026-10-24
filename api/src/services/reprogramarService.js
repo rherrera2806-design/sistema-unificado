@@ -210,7 +210,7 @@ module.exports = { reprogramarPendientes, reprogramarPorAvance };
  *    por eso no se generan cuellos nuevos (p.ej. Pulido lunes, Templado
  *    martes, sin exceder la capacidad de cada uno).
  */
-async function reprogramarPorAvance({ fechaMinima } = {}) {
+async function reprogramarPorAvance({ fechaMinima, soloSinFecha } = {}) {
     const calendario = require('./calendario');
     const fmtL = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const hoy = fechaMinima || fmtL(new Date());
@@ -261,6 +261,7 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     const res = await query(`
         SELECT o.id as orden_id, o.pedido_sap_id, o.item_numero, o.nivel_prioridad,
                o.fecha_entrega_pactada, o.espesor_mm, o.created_at,
+               o.fecha_programada,
                o.metros_cuadrados, o.cantidad, o.estado_programacion,
                COALESCE(NULLIF(o.grupo, ''), '(sin grupo)') as grupo,
                COALESCE(o.kilos, 0) as kilos,
@@ -284,6 +285,7 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
                 item: r.item_numero,
                 prioridad: Number(r.nivel_prioridad) || 1,
                 fecha_pactada: fFecha(r.fecha_entrega_pactada),
+                fecha_programada: fFecha(r.fecha_programada),
                 // REGLA DE NEGOCIO: lo único RÍGIDO son las ventanas por
                 // prioridad, en DÍAS HÁBILES desde el INGRESO del pedido:
                 //   Reposición(4) = 2 días · Express(2) = 3 días (el cliente
@@ -327,8 +329,12 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     // fecha pactada más antigua
     const rangoPrio = { 4: 0, 2: 1, 3: 2, 1: 3 };
     const esHecho = (estado) => estado === 'TERMINADO' || estado === 'MERMADO';
+    // modo soloSinFecha (Auto-Asignar): entra SOLO lo que nunca tuvo fecha —
+    // el plan ya programado NO se toca (su carga existente se respeta)
     const cola = [...ordenes.values()].filter(o =>
-        o.pasos.some(p => !esHecho(p.estado)));
+        o.pasos.some(p => !esHecho(p.estado))
+        && (!soloSinFecha || !o.fecha_programada));
+    const enCola = new Set(cola.map(o => o.orden_id));
     for (const o of cola) {
         const idx = o.pasos.findIndex(p => !esHecho(p.estado));
         const prev = idx > 0 ? o.pasos[idx - 1] : null;
@@ -390,11 +396,22 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     const siguienteSlot = async (slot) => slot.turno === 'dia'
         ? { fecha: slot.fecha, turno: 'noche' }
         : { fecha: await calendario.siguienteDiaHabil(slot.fecha), turno: 'dia' };
-    for (const o of cola) {
+    for (const o of ordenes.values()) {
+        let kgHecho = false;
         for (const p of o.pasos) {
             if (p.cap > 0) caps.set(p.estacion_id, p.cap);
-            if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') {
-                agregarCarga(p.estacion_id, p.grupo, hoy, p.turno || turnoActual, p.m2, p.kg);
+            const kgOrden = kgHecho ? 0 : (o.kilos_orden || p.kg || 0);
+            if (enCola.has(o.orden_id)) {
+                // se va a re-fecha: solo lo EN CURSO ocupa capacidad de hoy
+                if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') {
+                    agregarCarga(p.estacion_id, p.grupo, hoy, p.turno || turnoActual, p.m2, kgOrden);
+                    kgHecho = true;
+                }
+            } else if (!esHecho(p.estado) && p.fecha_paso) {
+                // fuera de la cola (modo Auto-Asignar): su carga YA asignada
+                // ocupa capacidad real en su fecha — no se puede doble-reservar
+                agregarCarga(p.estacion_id, p.grupo, p.fecha_paso, p.turno || 'dia', p.m2, kgOrden);
+                kgHecho = true;
             }
         }
     }

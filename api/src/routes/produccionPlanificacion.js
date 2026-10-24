@@ -132,9 +132,14 @@ router.post('/api/produccion/planificacion-grupo/asignar', canCreate, asyncHandl
 }));
 
 router.post('/api/produccion/planificacion-grupo/auto-asignar', canCreate, asyncHandler(async (req, res) => {
-    const dias = Number(req.body.dias) || 14;
-    const inicio = req.body.inicio || new Date().toISOString().split('T')[0];
-    res.json(await autoAsignarPendientes({ dias, inicio }));
+    // MOTOR UNIFICADO: mismas reglas que "Por Avance" (turnos, ventanas rígidas,
+    // cuellos de botella, capacidad dura) pero SOLO para órdenes SIN FECHA:
+    // el plan ya programado NO se toca (su carga existente se respeta).
+    const inicio = req.body.inicio || (() => {
+        const h = new Date();
+        return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+    })();
+    res.json(await reprogramarPorAvance({ fechaMinima: inicio, soloSinFecha: true }));
 }));
 
 // El dueno de la nota es el usuario de la SESION (req.user lo setea el middleware),
