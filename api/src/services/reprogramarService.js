@@ -189,6 +189,8 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     const res = await query(`
         SELECT o.id as orden_id, o.pedido_sap_id, o.item_numero, o.nivel_prioridad,
                o.fecha_entrega_pactada, o.metros_cuadrados, o.cantidad, o.estado_programacion,
+               COALESCE(NULLIF(o.grupo, ''), '(sin grupo)') as grupo,
+               COALESCE(o.kilos, 0) as kilos,
                p.id as paso_id, p.estacion_id, p.orden_secuencia, p.estado,
                p.m2_asignados, p.fecha_programada as fecha_paso, p.turno, em.cap_max
         FROM cola_produccion_pasos p
@@ -219,11 +221,16 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         }
         const o = ordenes.get(r.orden_id);
         const m2p = Number(r.m2_asignados) > 0 ? Number(r.m2_asignados) : (Number(r.metros_cuadrados) || 0);
+        const m2o = Number(r.metros_cuadrados) || 0;
+        // kg_paso (fórmula estándar) = lo que consume capacidad del GRUPO
+        const kgp = m2o > 0 ? Number(r.kilos || 0) * m2p / m2o : Number(r.kilos || 0);
         o.pasos.push({
             paso_id: r.paso_id,
             estacion_id: r.estacion_id,
             estado: r.estado,
             m2: m2p,
+            kg: kgp,
+            grupo: r.grupo || '(sin grupo)',
             cap: Number(r.cap_max) || 0
         });
         if (r.estado === 'TERMINADO' || r.estado === 'MERMADO') o.avance++;
@@ -258,15 +265,32 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
     const cfgTurnos = await configTurnos.getConfigTurnos();
     const carga = new Map();      // 'fecha|turno|estId' -> m²
     const caps = new Map();       // estId -> cap_max (m²/día)
-    const agregarCarga = (estId, fecha, turno, m2) => {
+    const cargaGrupo = new Map(); // 'fecha|turno|grupo' -> kg
+    // Capacidad por GRUPO (kg/día) = la línea roja de los gráficos
+    const capGruposRes = await query('SELECT grupo, capacidad_kg_dia FROM produccion_capacidad_grupo WHERE activo = TRUE');
+    const capsGrupo = new Map();  // grupo -> kg/día
+    for (const g of capGruposRes.rows) capsGrupo.set(String(g.grupo || ''), Number(g.capacidad_kg_dia) || 0);
+    const agregarCarga = (estId, grupo, fecha, turno, m2, kg) => {
         const k = fecha + '|' + turno + '|' + estId;
         carga.set(k, (carga.get(k) || 0) + m2);
+        if (grupo) {
+            const gk = fecha + '|' + turno + '|' + grupo;
+            cargaGrupo.set(gk, (cargaGrupo.get(gk) || 0) + (Number(kg) || 0));
+        }
     };
-    const cabeEnTurno = (estId, fecha, turno, m2) => {
+    // BLOQUEO DURO doble: estación (m²) Y grupo (kg) — sin tolerancia
+    const cabeEnTurno = (estId, grupo, fecha, turno, m2, kg) => {
         const capDia = caps.get(estId) || 0;
-        if (!(capDia > 0)) return true;   // sin capacidad configurada = sin tope
-        const capTurno = configTurnos.capacidadTurno(capDia, turno, cfgTurnos);
-        return ((carga.get(fecha + '|' + turno + '|' + estId) || 0) + m2) <= capTurno;
+        if (capDia > 0) {
+            const capTurno = configTurnos.capacidadTurno(capDia, turno, cfgTurnos);
+            if (((carga.get(fecha + '|' + turno + '|' + estId) || 0) + m2) > capTurno) return false;
+        }
+        const capG = grupo ? (capsGrupo.get(String(grupo)) || 0) : 0;
+        if (capG > 0) {
+            const capGTurno = configTurnos.capacidadTurno(capG, turno, cfgTurnos);
+            if (((cargaGrupo.get(fecha + '|' + turno + '|' + grupo) || 0) + (Number(kg) || 0)) > capGTurno) return false;
+        }
+        return true;
     };
     const turnoActual = (() => {
         const h = new Date().getHours();
@@ -280,14 +304,14 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
         for (const p of o.pasos) {
             if (p.cap > 0) caps.set(p.estacion_id, p.cap);
             if (p.estado === 'EN_PROCESO' || p.estado === 'PAUSADO') {
-                agregarCarga(p.estacion_id, hoy, p.turno || turnoActual, p.m2);
+                agregarCarga(p.estacion_id, p.grupo, hoy, p.turno || turnoActual, p.m2, p.kg);
             }
         }
     }
-    const buscarSlot = async (estId, m2, desdeSlot) => {
+    const buscarSlot = async (paso, desdeSlot) => {
         let slot = desdeSlot;
         for (let i = 0; i < 600; i++) {
-            if (cabeEnTurno(estId, slot.fecha, slot.turno, m2)) return slot;
+            if (cabeEnTurno(paso.estacion_id, paso.grupo, slot.fecha, slot.turno, paso.m2, paso.kg)) return slot;
             slot = await siguienteSlot(slot);
         }
         return slot;
@@ -313,10 +337,10 @@ async function reprogramarPorAvance({ fechaMinima } = {}) {
                 slotPaso = { fecha: hoy, turno: p.turno || turnoActual };   // decisión 2
                 pasosEnCurso++;
             } else {
-                slotPaso = await buscarSlot(p.estacion_id, p.m2, slot);
+                slotPaso = await buscarSlot(p, slot);
                 pasosFechados++;
             }
-            agregarCarga(p.estacion_id, slotPaso.fecha, slotPaso.turno, p.m2);
+            agregarCarga(p.estacion_id, p.grupo, slotPaso.fecha, slotPaso.turno, p.m2, p.kg);
             const m2p = p.m2 > 0 ? p.m2 : (o.m2_orden || 0);
             updatesPasos.push([slotPaso.fecha, slotPaso.turno, m2p, p.paso_id]);
             if (!primeraFecha || slotPaso.fecha < primeraFecha) primeraFecha = slotPaso.fecha;
